@@ -217,7 +217,7 @@ function AnnouncementModal({ open, onClose, editing, onCreate, onUpdate }: {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const isSuperAdmin = user?.role === 'SUPERADMIN';
+    const isSuperAdmin = user?.is_superadmin;
 
     const handleSubmit = async () => {
         if (!form.title || !form.body) {
@@ -332,7 +332,7 @@ export default function AnnouncementsPage() {
     const [editing, setEditing] = useState<Announcement | null>(null);
     const [filter, setFilter] = useState<'all' | 'unread' | 'needs_feedback'>('all');
 
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
+    const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
 
     const filtered = announcements.filter(a => {
         if (filter === 'unread') return !a.is_read;

@@ -228,11 +228,11 @@ function UsersTable({ users, loading }: { users: OrgUser[]; loading: boolean }) 
                             <td className="px-5 py-3 text-sm text-gray-600">{user.email}</td>
                             <td className="px-5 py-3">
                                 <div className="flex items-center gap-1.5">
-                                    {user.role === 'ADMIN'
+                                    {activeRole === 'ADMIN'
                                         ? <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
                                         : <GraduationCap className="h-3.5 w-3.5 text-green-500" />
                                     }
-                                    <span className="text-xs font-medium text-gray-700">{user.role_display}</span>
+                                    <span className="text-xs font-medium text-gray-700">{activeRole}</span>
                                 </div>
                             </td>
                             <td className="px-5 py-3">

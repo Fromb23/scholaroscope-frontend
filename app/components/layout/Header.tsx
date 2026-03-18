@@ -1,8 +1,4 @@
-// ============================================================================
-// components/layout/Header.tsx - Top Header
-// Updated for GAP 1: workspace switcher
-// ============================================================================
-
+// components/layout/Header.tsx
 'use client';
 
 import { useState } from 'react';
@@ -10,13 +6,15 @@ import Link from 'next/link';
 import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { roleHomeRoute } from '@/app/utils/routeAccess';
 
 export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
-    const { user, activeOrg, memberships, logout, switchOrg } = useAuth();
+    const { user, activeOrg, activeRole, memberships, logout, switchOrg } = useAuth();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
     const [switching, setSwitching] = useState<number | null>(null);
     const router = useRouter();
+
     const handleLogout = async () => {
         await logout();
         router.push('/login');
@@ -31,10 +29,11 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
         try {
             await switchOrg(orgId);
             setOrgDropdownOpen(false);
-            // Navigate to role home — role may have changed in new workspace
-            const { roleHomeRoute } = await import('@/app/utils/routeAccess');
-            const currentRole = JSON.parse(localStorage.getItem('user') || '{}')?.role ?? 'ADMIN';
-            window.location.href = roleHomeRoute[currentRole as keyof typeof roleHomeRoute] ?? '/dashboard';
+            // activeRole is updated by switchOrg — navigate to the new role's home
+            // Use a full reload so all context re-hydrates cleanly
+            window.location.href = activeRole
+                ? roleHomeRoute[activeRole] ?? '/dashboard'
+                : '/dashboard';
         } catch (err) {
             console.error('Failed to switch org:', err);
         } finally {
@@ -42,12 +41,10 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
         }
     };
 
-    // Only show switcher if user has more than one active membership
     const showSwitcher = memberships.length > 1;
 
     return (
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:px-6">
-            {/* Left: Mobile menu button */}
             <button
                 onClick={onMenuClick}
                 className="rounded-lg p-2 hover:bg-gray-100 lg:hidden"
@@ -55,10 +52,9 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                 <Menu className="h-6 w-6 text-gray-600" />
             </button>
 
-            {/* Right: Workspace switcher + User menu */}
             <div className="ml-auto flex items-center gap-3">
 
-                {/* Workspace switcher — only for multi-org users */}
+                {/* Workspace switcher */}
                 {showSwitcher && activeOrg && (
                     <div className="relative">
                         <button
@@ -133,7 +129,7 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                         </div>
                         <div className="hidden text-left md:block">
                             <p className="text-sm font-medium text-gray-700">{user?.full_name}</p>
-                            <p className="text-xs text-gray-500">{user?.role_display}</p>
+                            <p className="text-xs text-gray-500">{activeRole ?? '—'}</p>
                         </div>
                     </button>
 
@@ -146,7 +142,8 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                             <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-2 shadow-xl z-20">
                                 <Link
                                     href="/profile"
-                                    className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
                                     <User className="h-4 w-4" />
                                     View Profile
                                 </Link>

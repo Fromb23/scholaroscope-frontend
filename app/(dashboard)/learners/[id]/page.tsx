@@ -71,9 +71,9 @@ export default function LearnerDetailPage() {
 
     if (!user) return null;
 
-    const canEdit = user && hasCapability(user.role, 'EDIT_LEARNER');
+    const canEdit = user && hasCapability(activeRole, 'EDIT_LEARNER');
 
-    const canManageEnrollment = user && hasCapability(user.role, 'MANAGE_ENROLLMENT');
+    const canManageEnrollment = user && hasCapability(activeRole, 'MANAGE_ENROLLMENT');
 
     const { data: attendanceData } = useStudentAttendanceHistory(studentId);
     const { cohorts } = useCohorts();

@@ -23,8 +23,8 @@ export default function RequestsPage() {
     const { user } = useAuth();
     const { requests, loading, error, refetch, reviewRequest, deleteRequest } = useRequests();
 
-    const isAdmin = user?.role === 'ADMIN';
-    const isInstructor = user?.role === 'INSTRUCTOR';
+    const isAdmin = activeRole === 'ADMIN';
+    const isInstructor = activeRole === 'INSTRUCTOR';
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');

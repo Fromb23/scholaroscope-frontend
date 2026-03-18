@@ -1,18 +1,5 @@
-'use client';
-
-// ============================================================================
 // app/context/AuthContext.tsx
-// Updated for GAP 1: multi-org membership + workspace switching
-//
-// New state:
-//   activeOrg    → the org the current JWT is scoped to
-//   memberships  → all orgs the user has active membership in
-//
-// New actions:
-//   switchOrg(id)  → calls POST /api/users/switch_org/, swaps token,
-//                    updates activeOrg — all subsequent API calls scope to new org
-//   register(...)  → calls POST /api/users/register/, logs in automatically
-// ============================================================================
+'use client';
 
 import {
   createContext,
@@ -21,6 +8,7 @@ import {
   useEffect,
   useCallback,
   ReactNode,
+  useMemo,
 } from 'react';
 import { authAPI } from '@/app/core/api/auth';
 import type {
@@ -28,12 +16,14 @@ import type {
   ActiveOrg,
   OrgMembership,
   RegisterPayload,
+  Role,
 } from '@/app/core/types/auth';
 
 interface AuthContextType {
   user: User | null;
   activeOrg: ActiveOrg | null;
   memberships: OrgMembership[];
+  activeRole: Role | null;   // ← derived from activeOrg membership
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -43,8 +33,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-// ─── Storage helpers ──────────────────────────────────────────────────────────
 
 function persist(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value));
@@ -66,7 +54,25 @@ function clearStorage() {
   );
 }
 
-// ─── Provider ────────────────────────────────────────────────────────────────
+/**
+ * Resolve the active role:
+ * - Superadmin: always 'SUPERADMIN' regardless of org
+ * - Regular user: role from the active org's membership
+ * - No active org: null
+ */
+function resolveActiveRole(
+  user: User | null,
+  activeOrg: ActiveOrg | null,
+  memberships: OrgMembership[]
+): Role | null {
+  if (!user) return null;
+  if (user.is_superadmin) return 'SUPERADMIN';
+  if (!activeOrg) return null;
+  const membership = memberships.find(
+    (m) => m.organization.id === activeOrg.id && m.is_active
+  );
+  return membership?.role ?? null;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => restore<User>('user'));
@@ -81,7 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !!localStorage.getItem('access_token');
   });
 
-  // ── Bootstrap: validate stored token on mount ──────────────────────────────
+  // Derived — never stored, always computed
+  const activeRole = useMemo(
+    () => resolveActiveRole(user, activeOrg, memberships),
+    [user, activeOrg, memberships]
+  );
+
+  // Bootstrap: validate stored token on mount
   useEffect(() => {
     const access = localStorage.getItem('access_token');
     if (!access) {
@@ -106,17 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // ── Login ──────────────────────────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string) => {
     const res = await authAPI.login({ email, password });
 
-    // Store tokens first — getProfile needs them
     localStorage.setItem('access_token', res.access);
     localStorage.setItem('refresh_token', res.refresh);
     persist('active_org', res.active_org ?? null);
     persist('memberships', res.memberships ?? []);
 
-    // Re-fetch profile with the new token so role/org reflects active workspace
     const profile = await authAPI.getProfile();
     persist('user', profile);
 
@@ -126,7 +135,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try {
       await authAPI.logout();
@@ -139,14 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // ── Switch Org ─────────────────────────────────────────────────────────────
-  // Issues a new JWT scoped to the target org.
-  // Swaps the stored access/refresh tokens so all subsequent API calls
-  // automatically scope to the new org.
   const switchOrg = useCallback(async (organizationId: number) => {
     const res = await authAPI.switchOrg(organizationId);
 
-    // Swap tokens — all API calls after this point scope to the new org
     localStorage.setItem('access_token', res.access);
     localStorage.setItem('refresh_token', res.refresh);
     persist('active_org', res.active_org);
@@ -155,15 +158,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveOrg(res.active_org);
     setMemberships(res.memberships ?? memberships);
 
-    // Re-fetch profile — role may differ per org
     const updatedUser = await authAPI.getProfile();
     persist('user', updatedUser);
     setUser(updatedUser);
   }, [memberships]);
 
-  // ── Register ───────────────────────────────────────────────────────────────
-  // Self-service personal workspace signup.
-  // Automatically logs the user in after successful registration.
   const register = useCallback(async (payload: RegisterPayload) => {
     const res = await authAPI.register(payload);
 
@@ -171,25 +170,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('refresh_token', res.refresh);
     persist('user', res.user);
 
-    // Personal workspace — single org, single membership
-    const activeOrg = {
+    const newActiveOrg: ActiveOrg = {
       id: res.organization.id,
       name: res.organization.name,
       slug: '',
       org_type: res.organization.type,
     };
     const membership: OrgMembership = {
-      organization: activeOrg,
+      organization: newActiveOrg,
       role: 'ADMIN',
+      role_display: 'Admin',
       is_active: true,
       joined_at: new Date().toISOString(),
     };
 
-    persist('active_org', activeOrg);
+    persist('active_org', newActiveOrg);
     persist('memberships', [membership]);
 
     setUser(res.user);
-    setActiveOrg(activeOrg);
+    setActiveOrg(newActiveOrg);
     setMemberships([membership]);
     setLoading(false);
   }, []);
@@ -200,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         activeOrg,
         memberships,
+        activeRole,
         loading,
         isAuthenticated: !!user,
         login,
@@ -212,8 +212,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
