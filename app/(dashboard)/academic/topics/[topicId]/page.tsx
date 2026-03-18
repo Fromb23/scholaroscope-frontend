@@ -25,7 +25,7 @@ import type { Subtopic, SubtopicFormData } from '@/app/core/types/topics';
 export default function TopicDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
     const topicId = Number(params.topicId);
 

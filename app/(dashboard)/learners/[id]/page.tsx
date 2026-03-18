@@ -42,7 +42,7 @@ const END_REASONS = [
 export default function LearnerDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const studentId = Number(params.id);
 
     const [student, setStudent] = useState<StudentDetail | null>(null);

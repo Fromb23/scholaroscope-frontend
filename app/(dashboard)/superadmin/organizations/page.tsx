@@ -280,7 +280,7 @@ function OrgTableRow({
             <td className="px-6 py-4">
                 <div className="flex items-center gap-1.5 text-sm text-gray-700">
                     <Users className="h-3.5 w-3.5 text-gray-400" />
-                    {org.user_count}
+                    {org.member_count}
                 </div>
             </td>
 

@@ -203,7 +203,7 @@ function AnnouncementModal({ open, onClose, editing, onCreate, onUpdate }: {
     onCreate: (data: AnnouncementFormData) => Promise<void>;
     onUpdate: (id: number, data: Partial<AnnouncementFormData>) => Promise<void>;
 }) {
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const [form, setForm] = useState<AnnouncementFormData>(
         editing ? {
             title: editing.title, body: editing.body,
@@ -228,7 +228,7 @@ function AnnouncementModal({ open, onClose, editing, onCreate, onUpdate }: {
             const payload = {
                 ...form,
                 feedback_type: form.requires_feedback ? form.feedback_type : 'NONE',
-                expires_at: form.expires_at || null,
+                expires_at: form.expires_at || undefined,
             };
             if (editing) {
                 await onUpdate(editing.id, payload);
@@ -326,13 +326,13 @@ function AnnouncementModal({ open, onClose, editing, onCreate, onUpdate }: {
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function AnnouncementsPage() {
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const { announcements, loading, refetch, create, update, remove, markRead } = useAnnouncements();
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Announcement | null>(null);
     const [filter, setFilter] = useState<'all' | 'unread' | 'needs_feedback'>('all');
 
-    const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
+    const isAdmin = activeRole === 'ADMIN' || !!user?.is_superadmin;
 
     const filtered = announcements.filter(a => {
         if (filter === 'unread') return !a.is_read;

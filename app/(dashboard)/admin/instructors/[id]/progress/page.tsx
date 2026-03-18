@@ -80,7 +80,7 @@ export default function InstructorProgressPage() {
 
     const handleToggle = () =>
         withSubmit(async () => {
-            await instructorsAPI.update(instructorId, { is_active: !instructor!.is_active });
+            await (instructor?.is_active ? instructorsAPI.deactivate(instructorId) : instructorsAPI.activate(instructorId));
             await refetch();
         },
             `Instructor ${instructor?.is_active ? 'deactivated' : 'activated'}`,

@@ -13,7 +13,7 @@ import {
 import { useGlobalUsers } from '@/app/core/hooks/useGlobalUsers';
 import { useOrganizations } from '@/app/core/hooks/useOrganizations';
 import {
-    GlobalUser, UserCreatePayload, UserUpdatePayload,
+    GlobalUser, UserRole, UserCreatePayload, UserUpdatePayload,
     ROLE_COLORS,
 } from '@/app/core/types/globalUsers';
 import { Badge } from '@/app/components/ui/Badge';
@@ -37,7 +37,7 @@ function RoleIcon({ role }: { role: string }) {
 // Stats Bar
 // ============================================================================
 function StatsBar({ users }: { users: GlobalUser[] }) {
-    const superadmins = users.filter(u => u.role === 'SUPERADMIN').length;
+    const superadmins = users.filter(u => u.is_superadmin).length;
     const admins = users.filter(u => u.role === 'ADMIN').length;
     const instructors = users.filter(u => u.role === 'INSTRUCTOR').length;
     const inactive = users.filter(u => !u.is_active).length;
@@ -116,7 +116,6 @@ function CreateUserModal({
             email: form.email,
             first_name: form.first_name,
             last_name: form.last_name,
-            organization: form.organization,
             role: form.role as 'ADMIN' | 'INSTRUCTOR',
             phone: form.phone || undefined,
             password: form.password,
@@ -318,7 +317,7 @@ export default function GlobalUsersPage() {
             const matchStatus = statusFilter === 'all' ||
                 (statusFilter === 'active' && u.is_active) ||
                 (statusFilter === 'inactive' && !u.is_active);
-            const matchOrg = orgFilter === 'all' || String(u.organization) === orgFilter;
+            const matchOrg = orgFilter === 'all' || String(u.organization ?? '' ) === orgFilter;
             return matchSearch && matchRole && matchStatus && matchOrg;
         });
     }, [users, search, roleFilter, statusFilter, orgFilter]);
@@ -440,9 +439,9 @@ export default function GlobalUsersPage() {
             ],
             render: (row) => (
                 <div className="flex items-center gap-1.5">
-                    <RoleIcon role={row.role} />
-                    <Badge variant={ROLE_COLORS[row.role]} size="sm">
-                        {row.role_display}
+                    <RoleIcon role={row.role ?? 'INSTRUCTOR'} />
+                    <Badge variant={ROLE_COLORS[(row.role ?? 'INSTRUCTOR') as 'ADMIN' | 'INSTRUCTOR' | 'SUPERADMIN']} size="sm">
+                        {row.role_display ?? 'Unknown'}
                     </Badge>
                 </div>
             ),

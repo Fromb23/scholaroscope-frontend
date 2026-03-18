@@ -77,7 +77,7 @@ export const useGlobalUsers = () => {
             const updated = activate
                 ? await globalUsersAPI.activate(id)
                 : await globalUsersAPI.deactivate(id);
-            setUsers(prev => prev.map(u => (u.id === id ? updated.user ?? updated : u)));
+            setUsers(prev => prev.map(u => (u.id === id ? updated : u)));
             return updated;
         } catch (err: any) {
             throw new Error(err.response?.data?.message || 'Failed to change user status');

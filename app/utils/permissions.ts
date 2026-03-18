@@ -74,3 +74,22 @@ export const canDeleteRecords = (user: User | null, activeRole: Role | null): bo
 
 export const canAccessSuperAdminPanel = (user: User | null): boolean =>
     !!user?.is_superadmin;
+
+type Capability =
+    | 'EDIT_LEARNER'
+    | 'CREATE_LEARNER'
+    | 'MANAGE_ENROLLMENT';
+
+export const hasCapability = (
+    activeRole: Role | null,
+    capability: Capability
+): boolean => {
+    switch (capability) {
+        case 'CREATE_LEARNER':
+        case 'EDIT_LEARNER':
+        case 'MANAGE_ENROLLMENT':
+            return activeRole === 'ADMIN';
+        default:
+            return false;
+    }
+};

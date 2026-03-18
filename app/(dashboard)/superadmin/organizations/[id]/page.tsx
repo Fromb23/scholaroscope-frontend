@@ -1,5 +1,7 @@
 'use client';
 
+import { useAuth } from '@/app/context/AuthContext';
+
 // ============================================================================
 // app/(dashboard)/superadmin/organizations/[id]/page.tsx
 // Enhanced: SuperAdmin can oversee organization's academic hierarchy
@@ -228,11 +230,11 @@ function UsersTable({ users, loading }: { users: OrgUser[]; loading: boolean }) 
                             <td className="px-5 py-3 text-sm text-gray-600">{user.email}</td>
                             <td className="px-5 py-3">
                                 <div className="flex items-center gap-1.5">
-                                    {activeRole === 'ADMIN'
+                                    {user.role === 'ADMIN'
                                         ? <ShieldCheck className="h-3.5 w-3.5 text-blue-500" />
                                         : <GraduationCap className="h-3.5 w-3.5 text-green-500" />
                                     }
-                                    <span className="text-xs font-medium text-gray-700">{activeRole}</span>
+                                    <span className="text-xs font-medium text-gray-700">{user.role_display}</span>
                                 </div>
                             </td>
                             <td className="px-5 py-3">
@@ -464,13 +466,13 @@ export default function OrganizationDetailPage() {
             {/* Stats */}
             {!statsLoading && stats && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <StatCard label="Total Users" value={stats.total_users} icon={Users}
+                    <StatCard label="Total Users" value={stats.total_members} icon={Users}
                         color="bg-blue-50 border-blue-200 text-blue-800" />
-                    <StatCard label="Active Users" value={stats.active_users} icon={CheckCircle}
+                    <StatCard label="Active Users" value={stats.active_members} icon={CheckCircle}
                         color="bg-green-50 border-green-200 text-green-800" />
-                    <StatCard label="Admins" value={stats.by_role.admins} icon={ShieldCheck}
+                    <StatCard label="Admins" value={stats.by_role.ADMIN} icon={ShieldCheck}
                         color="bg-purple-50 border-purple-200 text-purple-800" />
-                    <StatCard label="Instructors" value={stats.by_role.instructors} icon={GraduationCap}
+                    <StatCard label="Instructors" value={stats.by_role.INSTRUCTOR} icon={GraduationCap}
                         color="bg-orange-50 border-orange-200 text-orange-800" />
                 </div>
             )}
