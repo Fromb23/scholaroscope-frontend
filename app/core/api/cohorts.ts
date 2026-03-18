@@ -15,6 +15,8 @@ export interface Cohort {
   academic_year_name: string;
   student_count: number;
   is_active: boolean;
+  subjects_count: number;
+  is_current_year: boolean;
   created_at: string;
   updated_at: string;
 }

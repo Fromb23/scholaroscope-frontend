@@ -103,7 +103,9 @@ function computeMetrics(
 
     const needsSupport = scores.filter(s => {
         if (!s.score || !s.assessment) return false;
-        const pct = (s.score / (s.assessment as unknown as Assessment).total_marks) * 100;
+        const totalMarks = (s.assessment as unknown as Assessment).total_marks;
+        if (!totalMarks) return false;
+        const pct = (s.score / totalMarks) * 100;
         return pct < 50;
     }).length;
 
@@ -162,7 +164,7 @@ function generateAlerts(metrics: DashboardMetrics): DashboardAlert[] {
 export function useAdminDashboard() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
 
-    const { students, loading: studentsLoading, refetch: refetchStudents } = useStudents();
+    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents();
     const { cohorts, loading: cohortsLoading } = useCohorts();
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
     const { currentTerm, loading: termLoading } = useCurrentTerm();

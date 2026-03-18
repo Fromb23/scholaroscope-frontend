@@ -45,7 +45,7 @@ export interface InstructorMetrics {
 function computeInstructorMetrics(
     students: { id: number; status?: string }[],
     assessments: { assessment_date?: string | null }[],
-    scores: { score?: number | null; rubric_level?: string | null; assessment?: unknown }[],
+    scores: { score?: number | null; rubric_level?: number | null; assessment?: unknown }[],
     sessions: Session[]
 ): InstructorMetrics {
     const now = new Date();
@@ -138,7 +138,7 @@ function generateInstructorAlerts(metrics: InstructorMetrics): DashboardAlert[] 
 export function useInstructorDashboard() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
 
-    const { students, loading: studentsLoading, refetch: refetchStudents } = useStudents();
+    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents();
     const { cohorts, loading: cohortsLoading } = useCohorts();
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
     const { currentTerm, loading: termLoading } = useCurrentTerm();

@@ -109,7 +109,7 @@ export const useTopicDetail = (topicId: number | null) => {
         }
         try {
             setLoading(true);
-            const data = await topicAPI.getById(topicId);
+            const data = await topicAPI.getById(topicId) as TopicDetail;
             setTopic(data);
             setError(null);
         } catch (err: any) {
