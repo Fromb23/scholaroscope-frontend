@@ -1,3 +1,4 @@
+// app/(dashboard)/layout.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,35 +14,41 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const { user, loading } = useAuth();
+    const { user, activeRole, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
+        // Still loading auth state — do nothing
         if (loading) return;
 
+        // No user at all — send to login
         if (!user) {
             router.replace('/login');
             return;
         }
 
+        // Superadmin has no org/role — never restrict routes
+        if (user.is_superadmin) return;
+
+        // Regular user but role not resolved yet (memberships still hydrating)
+        // Do NOT redirect — wait for next render when activeRole is set
+        if (activeRole === null) return;
+
         const matchedRule = routeRules.find((rule) =>
             rule.pattern.test(pathname)
         );
 
-        const isUnauthorized =
-            matchedRule &&
-            !matchedRule.allowedRoles.includes(user.role);
+        if (!matchedRule) return; // Unmatched route — allow through
 
-        if (isUnauthorized) {
-            const home = roleHomeRoute[user.role] ?? '/dashboard/admin';
-            router.replace(home);
-            return;
+        if (!matchedRule.allowedRoles.includes(activeRole)) {
+            router.replace(roleHomeRoute[activeRole]);
         }
 
-    }, [loading, user, user?.role, pathname, router]);
+    }, [loading, user, activeRole, pathname, router]);
 
-    if (loading || !user) {
+    // Show spinner while loading OR while role is still resolving for non-superadmin
+    if (loading || !user || (!user.is_superadmin && activeRole === null)) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="text-center">
@@ -55,10 +62,8 @@ export default function DashboardLayout({
     return (
         <div className="flex h-screen overflow-hidden bg-gray-50">
             <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-
             <div className="flex flex-1 flex-col overflow-hidden">
                 <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-
                 <main className="flex-1 overflow-y-auto p-4 lg:p-6">
                     {children}
                 </main>

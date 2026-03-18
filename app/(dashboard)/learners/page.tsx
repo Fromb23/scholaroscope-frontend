@@ -123,7 +123,7 @@ export default function LearnersPage() {
         },
     ];
 
-    const canCreateLearner = hasCapability(user.role, 'CREATE_LEARNER');
+    const canCreateLearner = hasCapability(activeRole, 'CREATE_LEARNER');
 
     return (
         <div className="space-y-6">

@@ -116,6 +116,7 @@ function CreateUserModal({
             email: form.email,
             first_name: form.first_name,
             last_name: form.last_name,
+            organization: form.organization,
             role: form.role as 'ADMIN' | 'INSTRUCTOR',
             phone: form.phone || undefined,
             password: form.password,
@@ -330,7 +331,7 @@ export default function GlobalUsersPage() {
             await createUser(data);
             setCreateOpen(false);
             showSuccess('User created successfully');
-        } catch (err: unknown) { 
+        } catch (err: unknown) {
             if (err instanceof Error) {
                 setActionError(err.message);
             } else {

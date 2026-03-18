@@ -29,7 +29,7 @@ export interface UserCreatePayload {
     first_name: string;
     last_name: string;
     role: 'ADMIN' | 'INSTRUCTOR';        // SUPERADMIN blocked via API
-    // organization: number;
+    organization: string;
     phone?: string;
     password: string;
     password2: string;

@@ -20,8 +20,8 @@ export default function RequestDetailPage() {
 
     const { request, loading, error, addComment, reviewRequest } = useRequestDetail(id);
 
-    const isAdmin = user?.role === 'ADMIN';
-    const isSuperAdmin = user?.role === 'SUPERADMIN';
+    const isAdmin = activeRole === 'ADMIN';
+    const isSuperAdmin = user?.is_superadmin;
     const canReview = isAdmin || isSuperAdmin;
 
     const handleReview = async (action: 'approve' | 'reject' | 'review', note: string) => {
@@ -63,7 +63,7 @@ export default function RequestDetailPage() {
                 onReview={canReview ? handleReview : undefined}
                 onAddComment={handleAddComment}
                 canReview={canReview}
-                reviewerRole={user?.role ?? ''}
+                reviewerRole={activeRole ?? ''}
             />
         </div>
     );

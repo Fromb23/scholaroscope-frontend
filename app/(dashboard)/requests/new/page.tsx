@@ -41,8 +41,8 @@ export default function NewRequestPage() {
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
 
-    const isAdmin = user?.role === 'ADMIN';
-    const isInstructor = user?.role === 'INSTRUCTOR';
+    const isAdmin = activeRole === 'ADMIN';
+    const isInstructor = activeRole === 'INSTRUCTOR';
 
     const typeOptions = isAdmin ? ADMIN_REQUEST_OPTIONS : INSTRUCTOR_REQUEST_OPTIONS;
 

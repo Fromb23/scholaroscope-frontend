@@ -23,7 +23,7 @@ import {
 
 export default function AcademicProgressPage() {
     const { user } = useAuth();
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
+    const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
 
     const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find(y => y.is_current), [academicYears]);

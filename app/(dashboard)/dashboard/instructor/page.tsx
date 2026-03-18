@@ -1,12 +1,6 @@
 'use client';
 
-// ============================================================================
-// app/(dashboard)/dashboard/instructor/page.tsx
-//
-// Responsibility: guard role, fetch via hook, compose widgets, render.
-// No logic. No metrics. No API calls.
-// ============================================================================
-
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -26,7 +20,7 @@ import {
 
 export default function InstructorDashboard() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
 
     const {
         metrics, alerts, sessions, cohorts,
@@ -34,11 +28,14 @@ export default function InstructorDashboard() {
         lastRefresh, isLoading, refresh,
     } = useInstructorDashboard();
 
-    if (user?.role !== 'INSTRUCTOR') {
-        router.push('/dashboard');
-        return null;
-    }
+    useEffect(() => {
+        if (activeRole && activeRole !== 'INSTRUCTOR') {
+            router.push('/dashboard');
+        }
+    }, [activeRole, router]);
 
+    if (!user || activeRole === null) return null;
+    if (activeRole !== 'INSTRUCTOR') return null;
     if (isLoading) return <LoadingSpinner message="Loading your dashboard..." />;
 
     return (
@@ -51,11 +48,8 @@ export default function InstructorDashboard() {
                 alertCount={alerts.length}
                 onRefresh={refresh}
             />
-
             <InstructorAlertsBanner alerts={alerts} />
-
             <InstructorKeyMetrics metrics={metrics} />
-
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">
                     <TodayScheduleCard sessions={sessions} />
@@ -65,7 +59,6 @@ export default function InstructorDashboard() {
                     />
                     <MyCohortsCard cohorts={cohorts} />
                 </div>
-
                 <div className="space-y-6">
                     <InstructorQuickActions needsGrading={metrics.assessments.needsGrading} />
                     <MyRequestsCard />
@@ -77,7 +70,6 @@ export default function InstructorDashboard() {
                     />
                 </div>
             </div>
-
             <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-2xl p-6 border border-green-200">
                 <p className="text-center text-gray-700">
                     <span className="font-bold text-green-600">🚀 More Features Coming Soon:</span>{' '}

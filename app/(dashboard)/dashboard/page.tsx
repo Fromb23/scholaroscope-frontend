@@ -3,34 +3,31 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
+import { roleHomeRoute } from '@/app/utils/routeAccess';
 
 export default function DashboardResolver() {
     const router = useRouter();
-    const { user, loading } = useAuth();
+    const { user, activeRole, loading } = useAuth();
 
     useEffect(() => {
         if (loading) return;
 
         if (!user) {
-            router.push('/auth/login');
+            router.push('/login');
             return;
         }
 
-        // Redirect to role-specific dashboard
-        switch (user.role) {
-            case 'SUPERADMIN':
-                router.push('/dashboard/superadmin');
-                break;
-            case 'ADMIN':
-                router.push('/dashboard/admin');
-                break;
-            case 'INSTRUCTOR':
-                router.push('/dashboard/instructor');
-                break;
-            default:
-                router.push('/dashboard/admin');
-        }
-    }, [user, loading, router]);
+        // Wait for role to resolve
+        if (!user.is_superadmin && activeRole === null) return;
+
+        const destination = user.is_superadmin
+            ? roleHomeRoute['SUPERADMIN']
+            : activeRole
+                ? roleHomeRoute[activeRole]
+                : '/dashboard/admin';
+
+        router.replace(destination);
+    }, [user, activeRole, loading, router]);
 
     return (
         <div className="flex items-center justify-center min-h-screen">

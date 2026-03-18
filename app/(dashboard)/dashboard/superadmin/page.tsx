@@ -55,10 +55,13 @@ export default function SuperAdminDashboard() {
         { id: 3, type: 'info', message: 'System maintenance scheduled for tonight', time: '2 hours ago' }
     ];
 
-    if (user?.role !== 'SUPERADMIN') {
-        router.push('/dashboard');
-        return null;
-    }
+    useEffect(() => {
+        if (user && !user.is_superadmin) {
+            router.push('/dashboard');
+        }
+    }, [user, router]);
+
+    if (!user || !user.is_superadmin) return null;
 
     return (
         <>

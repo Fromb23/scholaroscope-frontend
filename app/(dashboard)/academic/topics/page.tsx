@@ -25,7 +25,7 @@ import type { Topic, TopicFormData } from '@/app/core/types/topics';
 export default function TopicsPage() {
     const router = useRouter();
     const { user } = useAuth();
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
+    const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
 
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | undefined>();
     const [searchQuery, setSearchQuery] = useState('');

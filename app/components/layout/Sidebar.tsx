@@ -111,12 +111,7 @@ const getAdminNavigation = (
   secondary: [
     { name: 'Instructor Activity', href: '/admin/instructors', icon: Activity },
     { name: 'System Alerts', href: '/admin/alerts', icon: AlertCircle },
-    {
-      name: 'Announcements',
-      href: '/announcements',
-      icon: Megaphone,
-      badge: unreadAnnouncements,
-    },
+    { name: 'Announcements', href: '/announcements', icon: Megaphone, badge: unreadAnnouncements },
     { name: 'Settings', href: '/admin/settings', icon: Settings },
   ],
 });
@@ -157,12 +152,7 @@ const getInstructorNavigation = (
   ],
   secondary: [
     { name: 'Learners at Risk', href: '/learners?filter=at-risk', icon: AlertCircle },
-    {
-      name: 'Announcements',
-      href: '/announcements',
-      icon: Megaphone,
-      badge: unreadAnnouncements,
-    },
+    { name: 'Announcements', href: '/announcements', icon: Megaphone, badge: unreadAnnouncements },
     { name: 'Submit Request', href: '/requests/new', icon: FileText },
   ],
 });
@@ -196,7 +186,7 @@ const roleColors: Record<Role, RoleColorScheme> = {
 
 export default function Sidebar({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, activeOrg, activeRole } = useAuth();
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const { hasPlugin } = usePlugins();
   const { count: unreadCount } = useUnreadAnnouncements();
@@ -210,12 +200,13 @@ export default function Sidebar({ open, setOpen }: { open: boolean; setOpen: (op
   const hasProjects = hasPlugin('projects');
 
   const navigationConfig: NavigationConfig = !user ? { primary: [] } :
-    user.role === 'SUPERADMIN' ? superAdminNavigation :
-      user.role === 'ADMIN' ? getAdminNavigation(hasCBC, hasProjects, unreadCount) :
-        getInstructorNavigation(hasCBC, unreadCount);
+    user.is_superadmin ? superAdminNavigation :
+      activeRole === 'ADMIN' ? getAdminNavigation(hasCBC, hasProjects, unreadCount) :
+        activeRole === 'INSTRUCTOR' ? getInstructorNavigation(hasCBC, unreadCount) :
+          { primary: [] };
 
-  const userRole = (user?.role ?? 'ADMIN') as Role;
-  const colors = roleColors[userRole] || roleColors.ADMIN;
+  const resolvedRole = (activeRole ?? 'ADMIN') as Role;
+  const colors = roleColors[resolvedRole] || roleColors.ADMIN;
 
   const isActive = (href: string): boolean => {
     const hrefPath = href.split('?')[0];
@@ -244,7 +235,7 @@ export default function Sidebar({ open, setOpen }: { open: boolean; setOpen: (op
   }, [pathname]);
 
   const getRoleIcon = () => {
-    switch (user?.role) {
+    switch (activeRole) {
       case 'SUPERADMIN': return ShieldCheck;
       case 'ADMIN': return Building2;
       case 'INSTRUCTOR': return GraduationCap;
@@ -330,6 +321,7 @@ export default function Sidebar({ open, setOpen }: { open: boolean; setOpen: (op
       )}
       <aside className={`fixed left-0 top-0 z-50 h-screen w-72 transform bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto`}>
         <div className="flex h-full flex-col">
+
           {/* Logo */}
           <div className="flex h-16 items-center border-b border-gray-200 px-6">
             <div className="flex items-center gap-3">
@@ -347,14 +339,18 @@ export default function Sidebar({ open, setOpen }: { open: boolean; setOpen: (op
                 <RoleIcon className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{user.role_display}</p>
-                <p className="text-sm font-bold text-gray-900">{user.first_name} {user.last_name}</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  {activeRole ?? '—'}
+                </p>
+                <p className="text-sm font-bold text-gray-900">
+                  {user.first_name} {user.last_name}
+                </p>
               </div>
             </div>
-            {user.role !== 'SUPERADMIN' && (
+            {!user.is_superadmin && activeOrg && (
               <div className="pl-11">
                 <p className="text-xs text-gray-500">Organization</p>
-                <p className="text-sm font-medium text-gray-800 truncate">{user.organization_name}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{activeOrg.name}</p>
               </div>
             )}
           </div>
@@ -363,14 +359,18 @@ export default function Sidebar({ open, setOpen }: { open: boolean; setOpen: (op
           <nav className="flex-1 overflow-y-auto px-3 py-4">
             <div className="space-y-6">
               <div>
-                <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Main Menu</h3>
+                <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  Main Menu
+                </h3>
                 <ul className="space-y-1">
                   {navigationConfig.primary.map(item => renderNavItem(item))}
                 </ul>
               </div>
               {navigationConfig.secondary && navigationConfig.secondary.length > 0 && (
                 <div>
-                  <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick Access</h3>
+                  <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Quick Access
+                  </h3>
                   <ul className="space-y-1">
                     {navigationConfig.secondary.map(item => renderNavItem(item))}
                   </ul>
@@ -385,13 +385,15 @@ export default function Sidebar({ open, setOpen }: { open: boolean; setOpen: (op
               <div>
                 <p className="font-semibold text-gray-700">ScholaroScope v2.0.1</p>
                 <p className="mt-0.5">
-                  {user.role === 'SUPERADMIN' ? 'System Governance' :
-                    user.role === 'ADMIN' ? 'Institution Management' : 'Teaching Operations'}
+                  {user.is_superadmin ? 'System Governance' :
+                    activeRole === 'ADMIN' ? 'Institution Management' :
+                      'Teaching Operations'}
                 </p>
               </div>
               <Activity className="h-4 w-4 text-green-500" />
             </div>
           </div>
+
         </div>
       </aside>
     </>

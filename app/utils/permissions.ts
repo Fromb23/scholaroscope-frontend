@@ -1,87 +1,76 @@
-// ============================================================================
 // app/utils/permissions.ts
-//
-// Utility functions for role-based permission checks.
-// Mirrors the backend authority model:
-//   SUPERADMIN  → full platform access
-//   ADMIN       → full access within their org
-//   INSTRUCTOR  → read + limited write on session-linked objects
-// ============================================================================
-
 import type { Role, User } from '@/app/core/types/auth';
 
-// ── Role checks ───────────────────────────────────────────────────────────────
+// ── Core role checks (take activeRole, not activeRole) ─────────────────────────
 
 export const isSuperAdmin = (user: User | null): boolean =>
-    user?.role === 'SUPERADMIN';
+    !!user?.is_superadmin;
 
-export const isAdmin = (user: User | null): boolean =>
-    user?.role === 'ADMIN';
+export const isAdmin = (activeRole: Role | null): boolean =>
+    activeRole === 'ADMIN';
 
-export const isInstructor = (user: User | null): boolean =>
-    user?.role === 'INSTRUCTOR';
+export const isInstructor = (activeRole: Role | null): boolean =>
+    activeRole === 'INSTRUCTOR';
 
-export const isAdminOrAbove = (user: User | null): boolean =>
-    user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
+export const isAdminOrAbove = (user: User | null, activeRole: Role | null): boolean =>
+    !!user?.is_superadmin || activeRole === 'ADMIN';
 
 export const isAuthenticated = (user: User | null): boolean =>
     !!user;
 
 // ── Route-level permission check ──────────────────────────────────────────────
 
-/**
- * Returns true if the user's role is in the allowed roles list.
- * Used by DashboardLayout and PermissionGuard.
- */
 export const hasRouteAccess = (
     user: User | null,
+    activeRole: Role | null,
     allowedRoles: Role[]
 ): boolean => {
     if (!user) return false;
-    return allowedRoles.includes(user.role);
+    if (user.is_superadmin) return allowedRoles.includes('SUPERADMIN');
+    if (!activeRole) return false;
+    return allowedRoles.includes(activeRole);
 };
 
-// ── Feature-level permission checks ──────────────────────────────────────────
-// Granular checks used inside components to show/hide UI elements.
+// ── Feature-level checks ──────────────────────────────────────────────────────
 
-export const canManageUsers = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canManageUsers = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
-export const canManageCurriculum = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canManageCurriculum = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
-export const canManageCohorts = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canManageCohorts = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
-export const canManageAssessments = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canManageAssessments = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
-export const canManagePlugins = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canManagePlugins = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
-export const canCreateSession = (user: User | null): boolean =>
-    user?.role === 'INSTRUCTOR' || isAdminOrAbove(user);
+export const canCreateSession = (user: User | null, activeRole: Role | null): boolean =>
+    activeRole === 'INSTRUCTOR' || isAdminOrAbove(user, activeRole);
 
-export const canMarkAttendance = (user: User | null): boolean =>
-    user?.role === 'INSTRUCTOR' || isAdminOrAbove(user);
+export const canMarkAttendance = (user: User | null, activeRole: Role | null): boolean =>
+    activeRole === 'INSTRUCTOR' || isAdminOrAbove(user, activeRole);
 
-export const canViewReports = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canViewReports = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
 export const canManageRequests = (user: User | null): boolean =>
-    !!user; // all authenticated roles
+    !!user;
 
-export const canManageAnnouncements = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canManageAnnouncements = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
 export const canViewAnnouncements = (user: User | null): boolean =>
-    !!user; // all authenticated roles
+    !!user;
 
-export const canBulkUploadStudents = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canBulkUploadStudents = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
-export const canDeleteRecords = (user: User | null): boolean =>
-    isAdminOrAbove(user);
+export const canDeleteRecords = (user: User | null, activeRole: Role | null): boolean =>
+    isAdminOrAbove(user, activeRole);
 
 export const canAccessSuperAdminPanel = (user: User | null): boolean =>
-    isSuperAdmin(user);
+    !!user?.is_superadmin;

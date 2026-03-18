@@ -44,7 +44,7 @@ interface AcademicNavProps {
 
 export function AcademicNav({ active }: AcademicNavProps) {
     const { user } = useAuth();
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
+    const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
 
     const tab = (href: string, label: string, key: NavTab) => (
         <Link

@@ -26,7 +26,7 @@ export default function TopicDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { user } = useAuth();
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
+    const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
     const topicId = Number(params.topicId);
 
     const { topic, loading: topicLoading } = useTopicDetail(topicId);
