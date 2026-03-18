@@ -4,7 +4,7 @@ import { apiClient } from '@/app/core/api/client';
 import {
     Announcement, AnnouncementFeedback,
     AnnouncementFormData, UnreadResponse
-} from '../types/announcements.ts/announcements';
+} from '../types/announcements';
 
 export const announcementAPI = {
     getAll: async (params?: {

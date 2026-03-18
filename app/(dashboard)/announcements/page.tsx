@@ -200,8 +200,8 @@ function AnnouncementModal({ open, onClose, editing, onCreate, onUpdate }: {
     open: boolean;
     onClose: () => void;
     editing: Announcement | null;
-    onCreate: (data: AnnouncementFormData) => Promise<void>;
-    onUpdate: (id: number, data: Partial<AnnouncementFormData>) => Promise<void>;
+    onCreate: (data: AnnouncementFormData) => Promise<Announcement | void>;
+    onUpdate: (id: number, data: Partial<AnnouncementFormData>) => Promise<Announcement | void>;
 }) {
     const { user, activeRole } = useAuth();
     const [form, setForm] = useState<AnnouncementFormData>(

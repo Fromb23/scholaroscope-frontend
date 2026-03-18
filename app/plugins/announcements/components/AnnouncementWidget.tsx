@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Megaphone, Check, ChevronRight, Globe, Building2 } from 'lucide-react';
 import { useAnnouncements } from '../hooks/useAnnouncements';
 import { announcementAPI } from '../api/announcements';
-import { Announcement } from '../types/announcements.ts/announcements';
+import { Announcement } from '../types/announcements';
 import { Badge } from '@/app/components/ui/Badge';
 import { Card } from '@/app/components/ui/Card';
 
