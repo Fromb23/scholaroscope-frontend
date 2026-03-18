@@ -144,7 +144,7 @@ export interface CohortSubject {
  * This is a SYSTEM-WIDE concept, not CBC-specific
  */
 export interface SessionCohort {
-  is_active: any;
+  is_active: boolean;
   id: number;
   session: number;
   cohort: number;

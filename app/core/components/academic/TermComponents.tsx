@@ -22,7 +22,9 @@ import type { Term, AcademicYear } from '@/app/core/types/academic';
 
 export function formatDate(dateString: string): string {
     return new Date(dateString).toLocaleDateString('en-GB', {
-        day: 'numeric', month: 'short', year: 'numeric',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
     });
 }
 
@@ -57,43 +59,55 @@ interface TermFormModalProps {
 }
 
 export function TermFormModal({
-    isOpen, onClose, editing, academicYears, initialData, onSave,
+    isOpen,
+    onClose,
+    editing,
+    academicYears,
+    initialData,
+    onSave,
 }: TermFormModalProps) {
     const [form, setForm] = useState<TermFormState>(initialData);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Sync form when modal opens with new data
     useEffect(() => {
         setForm(initialData);
         setError(null);
-    }, [isOpen]);
+    }, [isOpen, initialData]);
 
-    const selectedFormYear = academicYears.find(y => String(y.id) === form.academic_year);
+    const selectedFormYear = academicYears.find((y) => String(y.id) === form.academic_year);
     const formYearIsHistorical = selectedFormYear ? !selectedFormYear.is_current : false;
 
     const validate = (): string | null => {
         if (!form.name || !form.academic_year || !form.start_date || !form.end_date)
             return 'All fields are required.';
-        if (form.start_date >= form.end_date)
-            return 'End date must be after start date.';
+        if (form.start_date >= form.end_date) return 'End date must be after start date.';
         return null;
     };
 
     const handleSubmit = async () => {
         const validationError = validate();
-        if (validationError) { setError(validationError); return; }
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
 
-        setSaving(true); setError(null);
+        setSaving(true);
+        setError(null);
         try {
             await onSave(form, editing?.id);
             onClose();
         } catch (err) {
             setError(extractErrorMessage(err as ApiError, 'Failed to save term.'));
-        } finally { setSaving(false); }
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleClose = () => { setError(null); onClose(); };
+    const handleClose = () => {
+        setError(null);
+        onClose();
+    };
 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} title={editing ? 'Edit Term' : 'Add New Term'}>
@@ -103,14 +117,15 @@ export function TermFormModal({
                 {formYearIsHistorical && (
                     <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
                         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                        This academic year is no longer active. The system will reject creating terms in past academic years.
+                        This academic year is no longer active. The system will reject creating terms in past
+                        academic years.
                     </div>
                 )}
 
                 <Input
                     label="Term Name"
                     value={form.name}
-                    onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                     placeholder="e.g. Term 1, First Semester"
                     required
                 />
@@ -118,11 +133,11 @@ export function TermFormModal({
                 <Select
                     label="Academic Year"
                     value={form.academic_year}
-                    onChange={e => setForm(prev => ({ ...prev, academic_year: e.target.value }))}
+                    onChange={(e) => setForm((prev) => ({ ...prev, academic_year: e.target.value }))}
                     required
                     options={[
                         { value: '', label: 'Select Academic Year' },
-                        ...academicYears.map(y => ({
+                        ...academicYears.map((y) => ({
                             value: String(y.id),
                             label: y.is_current ? `${y.name} (Current)` : `${y.name} — Historical`,
                         })),
@@ -134,14 +149,14 @@ export function TermFormModal({
                         label="Start Date"
                         type="date"
                         value={form.start_date}
-                        onChange={e => setForm(prev => ({ ...prev, start_date: e.target.value }))}
+                        onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
                         required
                     />
                     <Input
                         label="End Date"
                         type="date"
                         value={form.end_date}
-                        onChange={e => setForm(prev => ({ ...prev, end_date: e.target.value }))}
+                        onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value }))}
                         required
                     />
                 </div>
@@ -150,13 +165,15 @@ export function TermFormModal({
                     label="Sequence"
                     type="number"
                     value={form.sequence}
-                    onChange={e => setForm(prev => ({ ...prev, sequence: Number(e.target.value) }))}
+                    onChange={(e) => setForm((prev) => ({ ...prev, sequence: Number(e.target.value) }))}
                     min={1}
                     required
                 />
 
                 <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                    <Button variant="secondary" onClick={handleClose} disabled={saving}>Cancel</Button>
+                    <Button variant="secondary" onClick={handleClose} disabled={saving}>
+                        Cancel
+                    </Button>
                     <Button onClick={handleSubmit} disabled={saving || formYearIsHistorical}>
                         {saving ? 'Saving...' : editing ? 'Update Term' : 'Create Term'}
                     </Button>

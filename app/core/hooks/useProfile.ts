@@ -71,7 +71,7 @@ export const useProfile = () => {
         } catch (err: any) {
             const errorData = err.response?.data;
             let errorMessage = 'Failed to update profile';
-            
+
             if (errorData?.detail) {
                 errorMessage = errorData.detail;
             } else if (errorData?.message) {
@@ -82,7 +82,7 @@ export const useProfile = () => {
                     errorMessage = firstValue[0] as string;
                 }
             }
-            
+
             throw new Error(errorMessage);
         }
     };
@@ -109,6 +109,7 @@ export const useProfile = () => {
         changePassword,
     };
 };
+export type ProfileData = UserProfile;
 
 // ---------------------------------------------------------------------------
 // useMyRequests — load the current user's own submitted requests

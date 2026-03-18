@@ -1,27 +1,48 @@
 // ============================================================================
-// app/hooks/useSessions.ts - Updated with server-side search & pagination
+// app/core/hooks/useSessions.ts
+//
+// Owns all session server state and mutations.
+// No API calls outside this file. No any. No business logic in pages.
 // ============================================================================
 
 import { useState, useEffect } from 'react';
-import { sessionAPI, attendanceAPI, cohortSubjectAPI, sessionCohortAPI } from '@/app/core/api/sessions';
+import {
+  sessionAPI,
+  attendanceAPI,
+  cohortSubjectAPI,
+  sessionCohortAPI,
+  SessionQueryParams,
+  AttendanceQueryParams,
+} from '@/app/core/api/sessions';
 import {
   Session,
   SessionDetail,
   AttendanceRecord,
   BulkAttendanceData,
   CohortSubject,
-  SessionCohort
-} from '../types/session';
+  SessionCohort,
+  SessionFormData,
+} from '@/app/core/types/session';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
-// Sessions Hook (unchanged)
-export const useSessions = (params?: {
-  term?: number;
-  cohort_subject?: number;
-  'cohort_subject__cohort'?: number;
-  'cohort_subject__subject'?: number;
-  session_type?: string;
-  session_date?: string;
-}) => {
+// ── Pagination state shape ────────────────────────────────────────────────
+
+interface PaginationState {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+// ── Helper — unwrap paginated or flat response ────────────────────────────
+
+function unwrapList<T>(data: T[] | { results?: T[] }): T[] {
+  return Array.isArray(data) ? data : data?.results ?? [];
+}
+
+// ── useSessions ───────────────────────────────────────────────────────────
+
+export const useSessions = (params?: SessionQueryParams) => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,13 +51,10 @@ export const useSessions = (params?: {
     try {
       setLoading(true);
       const data = await sessionAPI.getAll(params);
-      const sessionArray = Array.isArray(data)
-        ? data
-        : (data as Record<string, any>)?.results ?? [];
-      setSessions(sessionArray);
+      setSessions(unwrapList(data));
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch sessions');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch sessions'));
     } finally {
       setLoading(false);
     }
@@ -47,51 +65,38 @@ export const useSessions = (params?: {
   }, [
     params?.term,
     params?.cohort_subject,
-    params?.['cohort_subject__cohort'],
-    params?.['cohort_subject__subject'],
+    params?.cohort_subject__cohort,
+    params?.cohort_subject__subject,
     params?.session_type,
-    params?.session_date
+    params?.session_date,
   ]);
 
-  const createSession = async (data: {
-    cohort_subject: number;
-    term?: number | null;
-    session_type: string;
-    session_date: string;
-    start_time: string;
-    end_time: string;
-    title?: string;
-    description?: string;
-    venue?: string;
-    created_by: number;
-    auto_create_attendance?: boolean;
-  }) => {
-    try {
-      const newSession = await sessionAPI.create(data);
-      setSessions(prev => [newSession, ...prev]);
-      return newSession;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to create session');
-    }
+  const createSession = async (data: SessionFormData & { created_by: number }): Promise<Session> => {
+    const newSession = await sessionAPI.create(data);
+    setSessions(prev => [newSession, ...prev]);
+    return newSession;
   };
 
-  const updateSession = async (id: number, data: Partial<Session>) => {
-    try {
-      const updated = await sessionAPI.update(id, data);
-      setSessions(prev => prev.map(s => s.id === id ? updated : s));
-      return updated;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update session');
-    }
+  // Creates session + links subtopics in one atomic operation.
+  // Use this instead of calling createSession + topicSessionLinkAPI separately.
+  const createSessionWithLinks = async (
+    data: SessionFormData & { created_by: number },
+    subtopicIds: number[]
+  ): Promise<Session> => {
+    const result = await sessionAPI.createWithLinks({ ...data, subtopic_ids: subtopicIds });
+    setSessions(prev => [result.session, ...prev]);
+    return result.session;
   };
 
-  const deleteSession = async (id: number) => {
-    try {
-      await sessionAPI.delete(id);
-      setSessions(prev => prev.filter(s => s.id !== id));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to delete session');
-    }
+  const updateSession = async (id: number, data: Partial<Session>): Promise<Session> => {
+    const updated = await sessionAPI.update(id, data);
+    setSessions(prev => prev.map(s => s.id === id ? updated : s));
+    return updated;
+  };
+
+  const deleteSession = async (id: number): Promise<void> => {
+    await sessionAPI.delete(id);
+    setSessions(prev => prev.filter(s => s.id !== id));
   };
 
   return {
@@ -100,12 +105,14 @@ export const useSessions = (params?: {
     error,
     refetch: fetchSessions,
     createSession,
+    createSessionWithLinks,
     updateSession,
-    deleteSession
+    deleteSession,
   };
 };
 
-// Today's Sessions Hook (unchanged)
+// ── useTodaySessions ──────────────────────────────────────────────────────
+
 export const useTodaySessions = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,8 +124,8 @@ export const useTodaySessions = () => {
       const data = await sessionAPI.getToday();
       setSessions(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch today\'s sessions');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, "Failed to fetch today's sessions"));
     } finally {
       setLoading(false);
     }
@@ -128,124 +135,87 @@ export const useTodaySessions = () => {
     fetchTodaySessions();
   }, []);
 
-  return {
-    sessions,
-    loading,
-    error,
-    refetch: fetchTodaySessions
-  };
+  return { sessions, loading, error, refetch: fetchTodaySessions };
 };
 
-// Session Detail Hook - UPDATED with server-side search & pagination
+// ── useSessionDetail ──────────────────────────────────────────────────────
+
 export const useSessionDetail = (
   sessionId: number | null,
   searchQuery?: string,
-  page: number = 1,
-  pageSize: number = 10
+  page = 1,
+  pageSize = 10
 ) => {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    pageSize: 10,
-    totalItems: 0,
-    totalPages: 0
+  const [pagination, setPagination] = useState<PaginationState>({
+    currentPage: 1, pageSize: 10, totalItems: 0, totalPages: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSession = async () => {
-    if (!sessionId) {
-      setLoading(false);
-      return;
-    }
+    if (!sessionId) { setLoading(false); return; }
 
     try {
       setLoading(true);
 
-      // Fetch session details
-      const sessionData = await sessionAPI.getById(sessionId);
+      const [sessionData, attendanceData] = await Promise.all([
+        sessionAPI.getById(sessionId),
+        attendanceAPI.getAll({
+          session: sessionId,
+          page,
+          page_size: pageSize,
+          ...(searchQuery ? { search: searchQuery } : {}),
+        } as AttendanceQueryParams),
+      ]);
+
       setSession(sessionData);
 
-      // Fetch attendance with server-side filtering and pagination
-      const attendanceParams: any = {
-        session: sessionId,
-        page: page,
-        page_size: pageSize
-      };
+      const records = unwrapList(attendanceData);
+      const totalItems = Array.isArray(attendanceData)
+        ? records.length
+        : (attendanceData as { count?: number }).count ?? records.length;
 
-      if (searchQuery) {
-        attendanceParams.search = searchQuery;
-      }
-
-      const response = await attendanceAPI.getAll(attendanceParams);
-
-      // Handle paginated response
-      const attendanceData: AttendanceRecord[] = Array.isArray(response)
-        ? response
-        : ((response as Record<string, any>)?.results ?? []);
-
-      setAttendanceRecords(attendanceData);
-
+      setAttendanceRecords(records);
       setPagination({
         currentPage: page,
         pageSize,
-        totalItems: Array.isArray(response)
-          ? attendanceData.length
-          : ((response as Record<string, any>)?.count ?? attendanceData.length),
-        totalPages: Array.isArray(response)
-          ? 1
-          : Math.ceil((((response as Record<string, any>)?.count ?? attendanceData.length) / pageSize))
+        totalItems,
+        totalPages: Math.ceil(totalItems / pageSize),
       });
-
-
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch session details');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch session details'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSession();
-  }, [sessionId, searchQuery, page, pageSize]);
+  useEffect(() => { fetchSession(); }, [sessionId, searchQuery, page, pageSize]);
 
-  const markAttendance = async (attendanceData: BulkAttendanceData) => {
+  const markAttendance = async (data: BulkAttendanceData): Promise<void> => {
     if (!sessionId) return;
-
-    try {
-      await sessionAPI.markAttendance(sessionId, attendanceData);
-      await fetchSession(); // Refresh session data
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to mark attendance');
-    }
+    await sessionAPI.markAttendance(sessionId, data);
+    await fetchSession();
   };
 
-  const reseedAttendance = async () => {
+  const reseedAttendance = async (): Promise<void> => {
     if (!sessionId) return;
-
-    try {
-      await sessionAPI.reseedAttendance(sessionId);
-      await fetchSession(); // Refresh session data
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to reseed attendance');
-    }
+    await sessionAPI.reseedAttendance(sessionId);
+    await fetchSession();
   };
 
   return {
-    session,
-    attendanceRecords,
-    pagination,
-    loading,
-    error,
+    session, attendanceRecords, pagination,
+    loading, error,
     refetch: fetchSession,
-    markAttendance,
-    reseedAttendance
+    markAttendance, reseedAttendance,
   };
 };
 
-// Cohort Sessions Hook (unchanged)
+// ── useCohortSessions ─────────────────────────────────────────────────────
+
 export const useCohortSessions = (
   cohortId: number | null,
   startDate?: string,
@@ -256,84 +226,53 @@ export const useCohortSessions = (
   const [error, setError] = useState<string | null>(null);
 
   const fetchSessions = async () => {
-    if (!cohortId) {
-      setLoading(false);
-      return;
-    }
-
+    if (!cohortId) { setLoading(false); return; }
     try {
       setLoading(true);
       const data = await sessionAPI.getByCohort(cohortId, startDate, endDate);
       setSessions(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch cohort sessions');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort sessions'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSessions();
-  }, [cohortId, startDate, endDate]);
+  useEffect(() => { fetchSessions(); }, [cohortId, startDate, endDate]);
 
-  return {
-    sessions,
-    loading,
-    error,
-    refetch: fetchSessions
-  };
+  return { sessions, loading, error, refetch: fetchSessions };
 };
 
-// Cohort Subjects Hook (unchanged)
+// ── useCohortSubjects ─────────────────────────────────────────────────────
+
 export const useCohortSubjects = (cohortId: number | null) => {
   const [cohortSubjects, setCohortSubjects] = useState<CohortSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCohortSubjects = async () => {
-    if (!cohortId) {
-      setCohortSubjects([]);
-      setLoading(false);
-      return;
-    }
-
+    if (!cohortId) { setCohortSubjects([]); setLoading(false); return; }
     try {
       setLoading(true);
       const data = await cohortSubjectAPI.getByCohort(cohortId);
-      const cohortSubjectsArray = Array.isArray(data)
-        ? data
-        : (data as Record<string, any>)?.results ?? []
-      setCohortSubjects(cohortSubjectsArray);
+      setCohortSubjects(unwrapList(data));
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch cohort subjects');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort subjects'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchCohortSubjects();
-  }, [cohortId]);
+  useEffect(() => { fetchCohortSubjects(); }, [cohortId]);
 
-  return {
-    cohortSubjects,
-    loading,
-    error,
-    refetch: fetchCohortSubjects
-  };
+  return { cohortSubjects, loading, error, refetch: fetchCohortSubjects };
 };
 
-// Attendance Records Hook (unchanged)
-export const useAttendance = (params?: {
-  session?: number;
-  student?: number;
-  status?: string;
-  session__cohort_subject?: number;
-  'session__cohort_subject__cohort'?: number;
-  'session__cohort_subject__subject'?: number;
-}) => {
+// ── useAttendance ─────────────────────────────────────────────────────────
+
+export const useAttendance = (params?: AttendanceQueryParams) => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -342,10 +281,10 @@ export const useAttendance = (params?: {
     try {
       setLoading(true);
       const data = await attendanceAPI.getAll(params);
-      setRecords(data);
+      setRecords(unwrapList(data));
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch attendance records');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance records'));
     } finally {
       setLoading(false);
     }
@@ -358,30 +297,37 @@ export const useAttendance = (params?: {
     params?.student,
     params?.status,
     params?.session__cohort_subject,
-    params?.['session__cohort_subject__cohort'],
-    params?.['session__cohort_subject__subject']
+    params?.session__cohort_subject__cohort,
+    params?.session__cohort_subject__subject,
   ]);
 
-  const updateRecord = async (id: number, data: Partial<AttendanceRecord>) => {
-    try {
-      const updated = await attendanceAPI.update(id, data);
-      setRecords(prev => prev.map(r => r.id === id ? updated : r));
-      return updated;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update attendance');
-    }
+  const updateRecord = async (id: number, data: Partial<AttendanceRecord>): Promise<AttendanceRecord> => {
+    const updated = await attendanceAPI.update(id, data);
+    setRecords(prev => prev.map(r => r.id === id ? updated : r));
+    return updated;
   };
 
-  return {
-    records,
-    loading,
-    error,
-    refetch: fetchRecords,
-    updateRecord
-  };
+  return { records, loading, error, refetch: fetchRecords, updateRecord };
 };
 
-// Student Attendance History Hook (unchanged)
+// ── useStudentAttendanceHistory ───────────────────────────────────────────
+
+interface AttendanceStats {
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  sick: number;
+  unmarked: number;
+  attendance_percentage: number;
+}
+
+interface StudentAttendanceHistory {
+  statistics: AttendanceStats;
+  records: AttendanceRecord[];
+}
+
 export const useStudentAttendanceHistory = (
   studentId: number | null,
   cohortId?: number,
@@ -389,126 +335,92 @@ export const useStudentAttendanceHistory = (
   startDate?: string,
   endDate?: string
 ) => {
-  const [data, setData] = useState<{
-    statistics: {
-      total: number;
-      present: number;
-      absent: number;
-      late: number;
-      excused: number;
-      sick: number;
-      unmarked: number;
-      attendance_percentage: number;
-    };
-    records: AttendanceRecord[];
-  } | null>(null);
+  const [data, setData] = useState<StudentAttendanceHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchHistory = async () => {
-    if (!studentId) {
-      setLoading(false);
-      return;
-    }
-
+    if (!studentId) { setLoading(false); return; }
     try {
       setLoading(true);
-      const result = await attendanceAPI.getStudentHistory(
-        studentId,
-        cohortId,
-        subjectId,
-        startDate,
-        endDate
-      );
-      setData(result);
+      const result = await attendanceAPI.getStudentHistory(studentId, {
+        cohort_id: cohortId,
+        subject_id: subjectId,
+        start_date: startDate,
+        end_date: endDate,
+      });
+      setData(result as StudentAttendanceHistory);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch attendance history');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance history'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchHistory();
-  }, [studentId, cohortId, subjectId, startDate, endDate]);
+  useEffect(() => { fetchHistory(); }, [studentId, cohortId, subjectId, startDate, endDate]);
 
-  return {
-    data,
-    loading,
-    error,
-    refetch: fetchHistory
-  };
+  return { data, loading, error, refetch: fetchHistory };
 };
 
-// Cohort Attendance Summary Hook (unchanged)
+// ── useCohortAttendanceSummary ────────────────────────────────────────────
+
+interface StudentStat {
+  student: number;
+  student__admission_number: string;
+  student__first_name: string;
+  student__last_name: string;
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  sick: number;
+  unmarked: number;
+  attendance_percentage: number;
+}
+
+interface CohortAttendanceSummary {
+  cohort_id: number;
+  subject_id?: number;
+  student_statistics: StudentStat[];
+}
+
 export const useCohortAttendanceSummary = (
   cohortId: number | null,
   subjectId?: number,
   startDate?: string,
   endDate?: string
 ) => {
-  const [data, setData] = useState<{
-    cohort_id: number;
-    subject_id?: number;
-    student_statistics: Array<{
-      student: number;
-      student__admission_number: string;
-      student__first_name: string;
-      student__last_name: string;
-      total: number;
-      present: number;
-      absent: number;
-      late: number;
-      excused: number;
-      sick: number;
-      unmarked: number;
-      attendance_percentage: number;
-    }>;
-  } | null>(null);
+  const [data, setData] = useState<CohortAttendanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSummary = async () => {
-    if (!cohortId) {
-      setLoading(false);
-      return;
-    }
-
+    if (!cohortId) { setLoading(false); return; }
     try {
       setLoading(true);
-      const result = await attendanceAPI.getCohortSummary(
-        cohortId,
-        subjectId,
-        startDate,
-        endDate
-      );
-      setData(result);
+      const result = await attendanceAPI.getCohortSummary(cohortId, {
+        subject_id: subjectId,
+        start_date: startDate,
+        end_date: endDate,
+      });
+      setData(result as CohortAttendanceSummary);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch cohort attendance summary');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort attendance summary'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchSummary();
-  }, [cohortId, subjectId, startDate, endDate]);
+  useEffect(() => { fetchSummary(); }, [cohortId, subjectId, startDate, endDate]);
 
-  return {
-    data,
-    loading,
-    error,
-    refetch: fetchSummary
-  };
+  return { data, loading, error, refetch: fetchSummary };
 };
 
+// ── useSessionCohorts ─────────────────────────────────────────────────────
 
-/**
- * Hook for managing cohorts linked to a session
- * Separates active vs historical cohorts while maintaining backward compatibility
- */
 export const useSessionCohorts = (sessionId: number | null) => {
   const [linkedCohorts, setLinkedCohorts] = useState<SessionCohort[]>([]);
   const [activeCohorts, setActiveCohorts] = useState<SessionCohort[]>([]);
@@ -518,80 +430,40 @@ export const useSessionCohorts = (sessionId: number | null) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchLinkedCohorts = async () => {
-    if (!sessionId) {
-      setLoading(false);
-      return;
-    }
-
+    if (!sessionId) { setLoading(false); return; }
     try {
       setLoading(true);
       const data = await sessionCohortAPI.getLinkedCohorts(sessionId);
-
-      // Maintain backward compatibility
       setLinkedCohorts(data.cohorts);
       setTotalLearners(data.total_learners);
-
-      // New: Separate active and historical
-      // Client-side filtering to separate cohorts
-      setActiveCohorts(
-        data.cohorts.filter(c => c.is_active !== false)
-      );
-      setHistoricalCohorts(
-        data.cohorts.filter(c => c.is_active === false)
-      );
-
+      setActiveCohorts(data.cohorts.filter(c => c.is_active !== false));
+      setHistoricalCohorts(data.cohorts.filter(c => c.is_active === false));
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch linked cohorts');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch linked cohorts'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchLinkedCohorts();
-  }, [sessionId]);
+  useEffect(() => { fetchLinkedCohorts(); }, [sessionId]);
 
-  const linkCohort = async (cohortId: number) => {
+  const linkCohort = async (cohortId: number): Promise<void> => {
     if (!sessionId) return;
-
-    try {
-      const newLink = await sessionCohortAPI.linkCohort(sessionId, { cohort_id: cohortId });
-      // Optimistic update
-      setLinkedCohorts(prev => [...prev, newLink]);
-      // Refresh to get accurate server state
-      await fetchLinkedCohorts();
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to link cohort');
-    }
+    await sessionCohortAPI.linkCohort(sessionId, { cohort_id: cohortId });
+    await fetchLinkedCohorts();
   };
 
-  const unlinkCohort = async (cohortId: number) => {
+  const unlinkCohort = async (cohortId: number): Promise<void> => {
     if (!sessionId) return;
-
-    try {
-      await sessionCohortAPI.unlinkCohort(sessionId, cohortId);
-      // Optimistic update
-      setLinkedCohorts(prev => prev.filter(c => c.cohort !== cohortId));
-      // Refresh to get accurate server state (soft-delete moves to historical)
-      await fetchLinkedCohorts();
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to unlink cohort');
-    }
+    await sessionCohortAPI.unlinkCohort(sessionId, cohortId);
+    await fetchLinkedCohorts();
   };
 
   return {
-    // Backward compatible exports (existing code continues to work)
-    linkedCohorts,
-    totalLearners,
-    loading,
-    error,
+    linkedCohorts, activeCohorts, historicalCohorts,
+    totalLearners, loading, error,
     refetch: fetchLinkedCohorts,
-    linkCohort,
-    unlinkCohort,
-
-    // New exports for components that need active/historical separation
-    activeCohorts,
-    historicalCohorts
+    linkCohort, unlinkCohort,
   };
 };

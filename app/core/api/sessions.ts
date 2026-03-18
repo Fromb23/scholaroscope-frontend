@@ -1,8 +1,8 @@
 // ============================================================================
 // app/core/api/sessions.ts
 //
-// ONLY CHANGE: createWithLinks added to sessionAPI.
-// Every existing method is untouched.
+// Pure I/O boundary — no logic, no state, no transformation.
+// All methods accept typed params and return typed responses only.
 // ============================================================================
 
 import { apiClient } from './client';
@@ -15,168 +15,169 @@ import {
   CohortSubject,
   LinkCohortRequest,
   SessionCohortsResponse,
-  SessionCohort
+  SessionCohort,
+  SessionFormData,
 } from '../types/session';
 import { TopicSessionLink } from '../types/topics';
 
-// Sessions API
+// ── Shared response shapes ────────────────────────────────────────────────
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+// ── Query param types ─────────────────────────────────────────────────────
+
+export interface SessionQueryParams {
+  term?: number;
+  cohort_subject?: number;
+  cohort_subject__cohort?: number;
+  cohort_subject__subject?: number;
+  session_type?: string;
+  session_date?: string;
+  created_by?: string;
+}
+
+export interface AttendanceQueryParams {
+  session?: number;
+  student?: number;
+  status?: string;
+  session__term?: number;
+  session__cohort_subject?: number;
+  session__cohort_subject__cohort?: number;
+  session__cohort_subject__subject?: number;
+  session__session_date?: string;
+  page?: number;
+  page_size?: number;
+  search?: string;
+}
+
+export interface CreateWithLinksResponse {
+  session: Session;
+  links_created: number;
+  links: TopicSessionLink[];
+}
+
+interface DateRangeParams {
+  start_date?: string;
+  end_date?: string;
+}
+
+interface StudentHistoryParams extends DateRangeParams {
+  cohort_id?: number;
+  subject_id?: number;
+}
+
+interface CohortSummaryParams extends DateRangeParams {
+  subject_id?: number;
+}
+
+// ── Sessions API ──────────────────────────────────────────────────────────
+
 export const sessionAPI = {
-  getAll: async (params?: {
-    term?: number;
-    cohort_subject?: number;
-    'cohort_subject__cohort'?: number;
-    'cohort_subject__subject'?: number;
-    session_type?: string;
-    session_date?: string;
-    created_by?: string;
-  }) => {
-    const response = await apiClient.get<Session[]>('/sessions/', { params });
-    return response.data;
+  getAll: async (params?: SessionQueryParams): Promise<Session[] | PaginatedResponse<Session>> => {
+    const res = await apiClient.get<Session[] | PaginatedResponse<Session>>('/sessions/', { params });
+    return res.data;
   },
 
-  getById: async (id: number) => {
-    const response = await apiClient.get<SessionDetail>(`/sessions/${id}/`);
-    return response.data;
+  getById: async (id: number): Promise<SessionDetail> => {
+    const res = await apiClient.get<SessionDetail>(`/sessions/${id}/`);
+    return res.data;
   },
 
-  getToday: async () => {
-    const response = await apiClient.get<Session[]>('/sessions/today/');
-    return response.data;
+  getToday: async (): Promise<Session[]> => {
+    const res = await apiClient.get<Session[]>('/sessions/today/');
+    return res.data;
   },
 
-  getUpcoming: async () => {
-    const response = await apiClient.get<Session[]>('/sessions/upcoming/');
-    return response.data;
+  getUpcoming: async (): Promise<Session[]> => {
+    const res = await apiClient.get<Session[]>('/sessions/upcoming/');
+    return res.data;
   },
 
-  getByDateRange: async (startDate: string, endDate: string) => {
-    const response = await apiClient.get<Session[]>('/sessions/by_date_range/', {
-      params: { start_date: startDate, end_date: endDate }
+  getByDateRange: async (startDate: string, endDate: string): Promise<Session[]> => {
+    const res = await apiClient.get<Session[]>('/sessions/by_date_range/', {
+      params: { start_date: startDate, end_date: endDate },
     });
-    return response.data;
+    return res.data;
   },
 
-  getByCohort: async (cohortId: number, startDate?: string, endDate?: string) => {
-    const params: any = { cohort_id: cohortId };
+  getByCohort: async (cohortId: number, startDate?: string, endDate?: string): Promise<Session[]> => {
+    const params: { cohort_id: number } & DateRangeParams = { cohort_id: cohortId };
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
-
-    const response = await apiClient.get<Session[]>('/sessions/by_cohort/', { params });
-    return response.data;
+    const res = await apiClient.get<Session[]>('/sessions/by_cohort/', { params });
+    return res.data;
   },
 
-  getBySubject: async (subjectId: number, cohortId?: number) => {
-    const params: any = { subject_id: subjectId };
+  getBySubject: async (subjectId: number, cohortId?: number): Promise<Session[]> => {
+    const params: { subject_id: number; cohort_id?: number } = { subject_id: subjectId };
     if (cohortId) params.cohort_id = cohortId;
-
-    const response = await apiClient.get<Session[]>('/sessions/by_subject/', { params });
-    return response.data;
+    const res = await apiClient.get<Session[]>('/sessions/by_subject/', { params });
+    return res.data;
   },
 
-  getByCohortSubject: async (cohortSubjectId: number) => {
-    const response = await apiClient.get<Session[]>('/sessions/by_cohort_subject/', {
-      params: { cohort_subject_id: cohortSubjectId }
+  getByCohortSubject: async (cohortSubjectId: number): Promise<Session[]> => {
+    const res = await apiClient.get<Session[]>('/sessions/by_cohort_subject/', {
+      params: { cohort_subject_id: cohortSubjectId },
     });
-    return response.data;
+    return res.data;
   },
 
-  create: async (data: {
-    cohort_subject: number;
-    term?: number | null;
-    session_type: string;
-    session_date: string;
-    start_time: string;
-    end_time: string;
-    title?: string;
-    description?: string;
-    venue?: string;
-    created_by: number;
-    auto_create_attendance?: boolean;
-  }) => {
-    const response = await apiClient.post<Session>('/sessions/', data);
-    return response.data;
+  create: async (data: SessionFormData & { created_by: number }): Promise<Session> => {
+    const res = await apiClient.post<Session>('/sessions/', data);
+    return res.data;
   },
 
-  // ── NEW ──────────────────────────────────────────────────────────────────
-  // Creates a session then links subtopics in one call.
-  // The service layer handles link creation after the session is committed.
-  // subtopic_ids is optional — omit or pass [] for CBC sessions or when
-  // the instructor will link subtopics later from the session detail page.
-
-  createWithLinks: async (data: {
-    cohort_subject: number;
-    term?: number | null;
-    session_type: string;
-    session_date: string;
-    start_time: string;
-    end_time: string;
-    title?: string;
-    description?: string;
-    venue?: string;
-    created_by?: string;
-    auto_create_attendance?: boolean;
-    subtopic_ids?: number[];
-  }) => {
-    const response = await apiClient.post<{
-      session: Session;
-      links_created: number;
-      links: TopicSessionLink[];
-    }>('/sessions/create_with_links/', data);
-    return response.data;
+  createWithLinks: async (
+    data: SessionFormData & { created_by?: number; subtopic_ids?: number[] }
+  ): Promise<CreateWithLinksResponse> => {
+    const res = await apiClient.post<CreateWithLinksResponse>('/sessions/create_with_links/', data);
+    return res.data;
   },
 
-  // ─────────────────────────────────────────────────────────────────────────
-
-  update: async (id: number, data: Partial<Session>) => {
-    const response = await apiClient.patch<Session>(`/sessions/${id}/`, data);
-    return response.data;
+  update: async (id: number, data: Partial<Session>): Promise<Session> => {
+    const res = await apiClient.patch<Session>(`/sessions/${id}/`, data);
+    return res.data;
   },
 
-  delete: async (id: number) => {
+  delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/sessions/${id}/`);
   },
 
-  getAttendanceSummary: async (id: number) => {
-    const response = await apiClient.get<AttendanceSummary>(
-      `/sessions/${id}/attendance_summary/`
-    );
-    return response.data;
+  getAttendanceSummary: async (id: number): Promise<AttendanceSummary> => {
+    const res = await apiClient.get<AttendanceSummary>(`/sessions/${id}/attendance_summary/`);
+    return res.data;
   },
 
-  markAttendance: async (id: number, attendanceData: BulkAttendanceData) => {
-    console.log("Attendance at session level", attendanceData);
-    const response = await apiClient.post(
-      `/sessions/${id}/mark_attendance/`,
-      attendanceData
-    );
-    return response.data;
+  markAttendance: async (id: number, data: BulkAttendanceData): Promise<void> => {
+    await apiClient.post(`/sessions/${id}/mark_attendance/`, data);
   },
 
-  reseedAttendance: async (id: number) => {
-    const response = await apiClient.post(`/sessions/${id}/reseed_attendance/`);
-    return response.data;
-  }
+  reseedAttendance: async (id: number): Promise<void> => {
+    await apiClient.post(`/sessions/${id}/reseed_attendance/`);
+  },
 };
 
-// Attendance API
+// ── Attendance API ────────────────────────────────────────────────────────
+
 export const attendanceAPI = {
-  getAll: async (params?: {
-    session?: number;
-    student?: number;
-    status?: string;
-    session__term?: number;
-    session__cohort_subject?: number;
-    'session__cohort_subject__cohort'?: number;
-    'session__cohort_subject__subject'?: number;
-    session__session_date?: string;
-  }) => {
-    const response = await apiClient.get<AttendanceRecord[]>('/attendance/', { params });
-    return response.data;
+  getAll: async (
+    params?: AttendanceQueryParams
+  ): Promise<AttendanceRecord[] | PaginatedResponse<AttendanceRecord>> => {
+    const res = await apiClient.get<AttendanceRecord[] | PaginatedResponse<AttendanceRecord>>(
+      '/attendance/',
+      { params }
+    );
+    return res.data;
   },
 
-  getById: async (id: number) => {
-    const response = await apiClient.get<AttendanceRecord>(`/sessions/attendance/${id}/`);
-    return response.data;
+  getById: async (id: number): Promise<AttendanceRecord> => {
+    const res = await apiClient.get<AttendanceRecord>(`/sessions/attendance/${id}/`);
+    return res.data;
   },
 
   create: async (data: {
@@ -185,97 +186,73 @@ export const attendanceAPI = {
     status: string;
     notes?: string;
     marked_by: string;
-  }) => {
-    const response = await apiClient.post<AttendanceRecord>('/sessions/attendance/', data);
-    return response.data;
+  }): Promise<AttendanceRecord> => {
+    const res = await apiClient.post<AttendanceRecord>('/sessions/attendance/', data);
+    return res.data;
   },
 
-  update: async (id: number, data: Partial<AttendanceRecord>) => {
-    const response = await apiClient.patch<AttendanceRecord>(`/sessions/attendance/${id}/`, data);
-    return response.data;
+  update: async (id: number, data: Partial<AttendanceRecord>): Promise<AttendanceRecord> => {
+    const res = await apiClient.patch<AttendanceRecord>(`/sessions/attendance/${id}/`, data);
+    return res.data;
   },
 
-  delete: async (id: number) => {
+  delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/sessions/attendance/${id}/`);
   },
 
-  bulkMark: async (data: BulkAttendanceData & { session: number }) => {
-    const response = await apiClient.post('/sessions/attendance/bulk_mark/', data);
-    return response.data;
+  bulkMark: async (data: BulkAttendanceData & { session: number }): Promise<void> => {
+    await apiClient.post('/sessions/attendance/bulk_mark/', data);
   },
 
-  getStudentHistory: async (
-    studentId: number,
-    cohortId?: number,
-    subjectId?: number,
-    startDate?: string,
-    endDate?: string
-  ) => {
-    const params: any = { student_id: studentId };
-    if (cohortId) params.cohort_id = cohortId;
-    if (subjectId) params.subject_id = subjectId;
-    if (startDate) params.start_date = startDate;
-    if (endDate) params.end_date = endDate;
-
-    const response = await apiClient.get('/attendance/student-history/', { params });
-    return response.data;
+  getStudentHistory: async (studentId: number, params?: StudentHistoryParams) => {
+    const res = await apiClient.get('/attendance/student-history/', {
+      params: { student_id: studentId, ...params },
+    });
+    return res.data;
   },
 
   getSessionReport: async (sessionId: number) => {
-    const response = await apiClient.get('/sessions/attendance/session_report/', {
-      params: { session_id: sessionId }
+    const res = await apiClient.get('/sessions/attendance/session_report/', {
+      params: { session_id: sessionId },
     });
-    return response.data;
+    return res.data;
   },
 
-  getCohortSummary: async (
-    cohortId: number,
-    subjectId?: number,
-    startDate?: string,
-    endDate?: string
-  ) => {
-    const params: any = { cohort_id: cohortId };
-    if (subjectId) params.subject_id = subjectId;
-    if (startDate) params.start_date = startDate;
-    if (endDate) params.end_date = endDate;
-
-    const response = await apiClient.get('/sessions/attendance/cohort_summary/', { params });
-    return response.data;
-  }
+  getCohortSummary: async (cohortId: number, params?: CohortSummaryParams) => {
+    const res = await apiClient.get('/sessions/attendance/cohort_summary/', {
+      params: { cohort_id: cohortId, ...params },
+    });
+    return res.data;
+  },
 };
 
-// Cohort Subjects API
+// ── Cohort Subjects API ───────────────────────────────────────────────────
+
 export const cohortSubjectAPI = {
-  getByCohort: async (cohortId: number) => {
-    const response = await apiClient.get<CohortSubject[]>(
+  getByCohort: async (cohortId: number): Promise<CohortSubject[] | PaginatedResponse<CohortSubject>> => {
+    const res = await apiClient.get<CohortSubject[] | PaginatedResponse<CohortSubject>>(
       `/cohort-subjects/?cohort=${cohortId}`
     );
-    return response.data;
+    return res.data;
   },
 
-  getById: async (cohortSubjectId: number) => {
-    const response = await apiClient.get<CohortSubject>(
-      `/cohort-subjects/${cohortSubjectId}/`
-    );
-    return response.data;
-  }
+  getById: async (id: number): Promise<CohortSubject> => {
+    const res = await apiClient.get<CohortSubject>(`/cohort-subjects/${id}/`);
+    return res.data;
+  },
 };
+
+// ── Session Cohort API ────────────────────────────────────────────────────
 
 export const sessionCohortAPI = {
   getLinkedCohorts: async (sessionId: number): Promise<SessionCohortsResponse> => {
-    const response = await apiClient.get<SessionCohortsResponse>(
-      `/sessions/${sessionId}/cohorts/`
-    );
-    console.log("Linked cohorts", response.data);
-    return response.data;
+    const res = await apiClient.get<SessionCohortsResponse>(`/sessions/${sessionId}/cohorts/`);
+    return res.data;
   },
 
   linkCohort: async (sessionId: number, data: LinkCohortRequest): Promise<SessionCohort> => {
-    const response = await apiClient.post<SessionCohort>(
-      `/sessions/${sessionId}/cohorts/link/`,
-      data
-    );
-    return response.data;
+    const res = await apiClient.post<SessionCohort>(`/sessions/${sessionId}/cohorts/link/`, data);
+    return res.data;
   },
 
   unlinkCohort: async (sessionId: number, cohortId: number): Promise<void> => {
@@ -283,7 +260,7 @@ export const sessionCohortAPI = {
   },
 
   getSessionLearners: async (sessionId: number) => {
-    const response = await apiClient.get(`/sessions/${sessionId}/learners/`);
-    return response.data;
-  }
+    const res = await apiClient.get(`/sessions/${sessionId}/learners/`);
+    return res.data;
+  },
 };

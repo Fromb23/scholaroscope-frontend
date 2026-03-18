@@ -50,6 +50,8 @@ const eslintConfig = defineConfig([
     },
 
     rules: {
+      "react-hooks/exhaustive-deps": "error",
+      "react-hooks/set-state-in-effect": "off",
       "boundaries/element-types": [
         "error",
         {
