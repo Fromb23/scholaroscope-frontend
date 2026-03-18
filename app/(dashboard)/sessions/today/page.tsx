@@ -2,62 +2,40 @@
 
 // ============================================================================
 // app/(dashboard)/sessions/today/page.tsx
+//
+// Responsibility: fetch data via hook, compose components, render.
+// No logic. No API calls. No transformations.
 // ============================================================================
 
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Clock, CheckCircle, Users, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, CheckCircle, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { ErrorState } from '@/app/components/ui/ErrorState';
 import { SessionCard } from '@/app/core/components/sessions/SessionCard';
-import { getSessionStatus } from '@/app/core/components/sessions/SessionStatusBadge';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
+import { categorizeSessions, calcAvgAttendance } from '@/app/utils/sessionUtils';
 
 export default function TodaySessionsPage() {
     const { sessions, loading, error } = useTodaySessions();
 
+    if (loading) return <LoadingSpinner />;
+    if (error) return <ErrorState message={error} />;
+
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    const ongoing = sessions.filter(s => getSessionStatus(s, currentMinutes) === 'ongoing');
-    const upcoming = sessions.filter(s => getSessionStatus(s, currentMinutes) === 'upcoming');
-    const completed = sessions.filter(s => getSessionStatus(s, currentMinutes) === 'completed');
+    const { ongoing, upcoming, completed } = categorizeSessions(sessions, currentMinutes);
 
     const totalMarked = sessions.filter(
         s => s.attendance_count.total > 0 && s.attendance_count.unmarked === 0
     ).length;
-
-    const avgAttendance = sessions.length > 0
-        ? sessions.reduce((sum, s) => {
-            const { total, present } = s.attendance_count;
-            return sum + (total > 0 ? (present / total) * 100 : 0);
-        }, 0) / sessions.length
-        : 0;
-
-    if (loading) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="text-center">
-                    <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">Error loading sessions</h3>
-                    <p className="mt-1 text-sm text-gray-500">{error}</p>
-                </div>
-            </div>
-        );
-    }
+    const avgAttendance = calcAvgAttendance(sessions);
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-4">
                 <Link href="/sessions">
                     <Button variant="ghost" size="sm">
@@ -76,7 +54,6 @@ export default function TodaySessionsPage() {
                 </p>
             </div>
 
-            {/* Stats */}
             <div className="grid gap-4 md:grid-cols-4">
                 <StatsCard title="Total Sessions" value={sessions.length} icon={Calendar} color="blue" />
                 <StatsCard title="Ongoing" value={ongoing.length} icon={CheckCircle} color="green" />
@@ -84,7 +61,6 @@ export default function TodaySessionsPage() {
                 <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
             </div>
 
-            {/* No sessions */}
             {sessions.length === 0 && (
                 <Card>
                     <div className="py-12 text-center">
@@ -95,7 +71,6 @@ export default function TodaySessionsPage() {
                 </Card>
             )}
 
-            {/* Ongoing */}
             {ongoing.length > 0 && (
                 <Card>
                     <div className="p-6">
@@ -105,20 +80,14 @@ export default function TodaySessionsPage() {
                             <Badge variant="success">{ongoing.length}</Badge>
                         </div>
                         <div className="space-y-3">
-                            {ongoing.map(session => (
-                                <SessionCard
-                                    key={session.id}
-                                    session={session}
-                                    variant="ongoing"
-                                    currentMinutes={currentMinutes}
-                                />
+                            {ongoing.map(s => (
+                                <SessionCard key={s.id} session={s} variant="ongoing" currentMinutes={currentMinutes} />
                             ))}
                         </div>
                     </div>
                 </Card>
             )}
 
-            {/* Upcoming */}
             {upcoming.length > 0 && (
                 <Card>
                     <div className="p-6">
@@ -128,20 +97,14 @@ export default function TodaySessionsPage() {
                             <Badge variant="info">{upcoming.length}</Badge>
                         </div>
                         <div className="space-y-3">
-                            {upcoming.map(session => (
-                                <SessionCard
-                                    key={session.id}
-                                    session={session}
-                                    variant="upcoming"
-                                    currentMinutes={currentMinutes}
-                                />
+                            {upcoming.map(s => (
+                                <SessionCard key={s.id} session={s} variant="upcoming" currentMinutes={currentMinutes} />
                             ))}
                         </div>
                     </div>
                 </Card>
             )}
 
-            {/* Completed */}
             {completed.length > 0 && (
                 <Card>
                     <div className="p-6">
@@ -151,20 +114,14 @@ export default function TodaySessionsPage() {
                             <Badge variant="default">{completed.length}</Badge>
                         </div>
                         <div className="space-y-3">
-                            {completed.map(session => (
-                                <SessionCard
-                                    key={session.id}
-                                    session={session}
-                                    variant="completed"
-                                    currentMinutes={currentMinutes}
-                                />
+                            {completed.map(s => (
+                                <SessionCard key={s.id} session={s} variant="completed" currentMinutes={currentMinutes} />
                             ))}
                         </div>
                     </div>
                 </Card>
             )}
 
-            {/* Summary */}
             {sessions.length > 0 && (
                 <Card>
                     <div className="p-6">
