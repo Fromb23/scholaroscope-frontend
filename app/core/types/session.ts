@@ -2,8 +2,6 @@
 // app/types/session.ts - Updated Session Types
 // ============================================================================
 
-import { ReactNode } from 'react';
-
 export enum SessionType {
   LESSON = 'LESSON',
   PRACTICAL = 'PRACTICAL',
@@ -112,8 +110,8 @@ export interface SessionFormData {
   term: number | null;
   session_type: string;
   session_date: string;
-  start_time: string | null;
-  end_time: string | null;
+  start_time: string;
+  end_time: string;
   title: string;
   description: string;
   venue: string;

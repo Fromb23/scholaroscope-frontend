@@ -10,7 +10,7 @@ import {
     ChevronRight,
     BookOpen,
 } from 'lucide-react';
-import { topicAPI, topicSessionLinkAPI } from '@/app/core/api/topics';
+import { topicAPI, subtopicAPI, topicSessionLinkAPI } from '@/app/core/api/topics';
 import { Topic, Subtopic, TopicSessionLink } from '@/app/core/types/topics';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -50,7 +50,6 @@ function SubtopicRow({
                     : 'bg-white border border-gray-100 hover:border-gray-200'
                 }`}
         >
-            {/* Status icon */}
             <div className="shrink-0">
                 {isCovered ? (
                     <CheckCircle className="h-5 w-5 text-green-500" />
@@ -61,7 +60,6 @@ function SubtopicRow({
                 )}
             </div>
 
-            {/* Code + name */}
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-gray-500">{subtopic.code}</span>
@@ -74,21 +72,15 @@ function SubtopicRow({
                 )}
             </div>
 
-            {/* Action — always visible, but covered state is locked */}
             <div className="shrink-0">
                 {isCovered ? (
-                    // Permanently locked — no button ever
                     <Badge variant="success" size="sm">
                         <CheckCircle className="h-3 w-3 mr-1 inline" />
                         Covered
                     </Badge>
                 ) : readOnly ? (
-                    // Read-only and not covered — show planned or nothing
-                    isLinked ? (
-                        <Badge variant="info" size="sm">Planned</Badge>
-                    ) : null
+                    isLinked ? <Badge variant="info" size="sm">Planned</Badge> : null
                 ) : isLinked ? (
-                    // Linked, not covered, editable — can mark covered
                     <Button
                         size="sm"
                         variant="primary"
@@ -102,7 +94,6 @@ function SubtopicRow({
                         )}
                     </Button>
                 ) : (
-                    // Not linked, not covered, editable — can add
                     <Button
                         size="sm"
                         variant="ghost"
@@ -212,33 +203,28 @@ export function SessionSubtopicLinker({ sessionId, subjectId, readOnly = false }
         const load = async () => {
             setLoading(true);
             try {
-                const [topicsData, linksData] = await Promise.all([
+                const [topicsData, subtopicsData, linksData] = await Promise.all([
                     topicAPI.getAll({ subject: subjectId }),
+                    subtopicAPI.getAll({ topic__subject: subjectId }),
                     topicSessionLinkAPI.getAll({ session: sessionId }),
                 ]);
 
-                const topicsArray = Array.isArray(topicsData)
-                    ? topicsData
-                    : (topicsData as any)?.results ?? [];
+                const topicsArray = topicsData;
 
-                // ── FIX: unwrap paginated links response ──────────────────
-                const linksArray = Array.isArray(linksData)
-                    ? linksData
-                    : (linksData as any)?.results ?? [];
+                const subtopicsArray = subtopicsData;
+
+                const linksArray = linksData;
+
+                // Group subtopics by topic id client-side
+                const subtopicMap: Record<number, Subtopic[]> = {};
+                for (const sub of subtopicsArray) {
+                    if (!subtopicMap[sub.topic]) subtopicMap[sub.topic] = [];
+                    subtopicMap[sub.topic].push(sub);
+                }
 
                 setTopics(topicsArray);
-                setLinks(linksArray);
-
-                const subtopicMap: Record<number, Subtopic[]> = {};
-                await Promise.all(
-                    topicsArray.map(async (topic: Topic) => {
-                        const subs = await topicAPI.getSubtopics(topic.id);
-                        subtopicMap[topic.id] = Array.isArray(subs)
-                            ? subs
-                            : (subs as any)?.results ?? [];
-                    })
-                );
                 setSubtopicsByTopic(subtopicMap);
+                setLinks(linksArray);
             } catch (err) {
                 console.error('Failed to load session subtopic data', err);
             } finally {
@@ -342,7 +328,7 @@ export function SessionSubtopicLinker({ sessionId, subjectId, readOnly = false }
                 <p className="text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                     <strong>Add</strong> subtopics you plan to cover in this session. After teaching,
                     click <strong>Mark Covered</strong> to record coverage. Covered subtopics update
-                    your cohort's progress tracker permanently.
+                    your cohort&apos;s progress tracker permanently.
                 </p>
             )}
 

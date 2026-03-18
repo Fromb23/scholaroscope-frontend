@@ -21,23 +21,24 @@ import {
     TopicFormData,
     SubtopicFormData,
 } from '@/app/core/types/topics';
+import { PaginatedResponse } from '@/app/core/types/api';
 
 // ── Topics ────────────────────────────────────────────────────────────────
 
 export const topicAPI = {
     getAll: async (params?: TopicQueryParams) => {
-        const response = await apiClient.get<Topic[]>('/topics/', { params });
-        return response.data;
+        const response = await apiClient.get<PaginatedResponse<Topic>>('/topics/', { params });
+        return response.data.results;
     },
 
     getById: async (id: number) => {
         const response = await apiClient.get<TopicDetail>(`/topics/${id}/`);
-        return response.data;
+        return response.data.results;
     },
 
     getSubtopics: async (topicId: number) => {
-        const response = await apiClient.get<Subtopic[]>(`/topics/${topicId}/subtopics/`);
-        return response.data;
+        const response = await apiClient.get<PaginatedResponse<Subtopic>>(`/topics/${topicId}/subtopics/`);
+        return response.data.results;
     },
 
     create: async (data: TopicFormData) => {
@@ -87,12 +88,13 @@ export const subtopicAPI = {
 
 export const topicSessionLinkAPI = {
     getAll: async (params?: { session?: number; subtopic?: number; covered?: boolean }) => {
-        const response = await apiClient.get<TopicSessionLink[]>('/topic-session-links/', { params });
-        return response.data;
+        const response = await apiClient.get<PaginatedResponse<TopicSessionLink>>('/topic-session-links/', { params });
+        return response.data.results;
     },
 
     create: async (data: { session: number; subtopic: number; notes?: string }) => {
         const response = await apiClient.post<TopicSessionLink>('/topic-session-links/', data);
+        console.log("Created TopicSessionLink:", response.data);
         return response.data;
     },
 
