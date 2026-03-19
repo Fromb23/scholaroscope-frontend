@@ -9,6 +9,7 @@ import type {
   OrgMembership,
   RegisterPayload,
   RegisterResponse,
+  SuspendedOrg,
 } from '@/app/core/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
@@ -84,14 +85,37 @@ export const authAPI = {
   // POST /api/users/register/
   // Self-service personal workspace signup — no auth required
   register: async (payload: RegisterPayload): Promise<RegisterResponse> => {
+    const token = getToken();
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch(`${API_URL}/users/register/`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw Object.assign(new Error('Registration failed'), { data, status: res.status });
+    }
+    return res.json();
+  },
+  getSuspendedWorkspaces: async (): Promise<SuspendedOrg[]> => {
+    const res = await fetch(`${API_URL}/users/suspended_workspaces/`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch suspended workspaces');
+    return res.json();
+  },
+  restoreWorkspace: async (orgId: number): Promise<SwitchOrgResponse> => {
+    const res = await fetch(`${API_URL}/users/restore_workspace/`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ org_id: orgId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw Object.assign(new Error('Failed to restore workspace'), { data });
     }
     return res.json();
   },

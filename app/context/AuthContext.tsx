@@ -123,6 +123,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     localStorage.setItem('access_token', res.access);
     localStorage.setItem('refresh_token', res.refresh);
+
+    // All orgs suspended — redirect to recovery before loading anything
+    if (res.requires_workspace_recovery) {
+      persist('active_org', null);
+      persist('memberships', res.memberships ?? []);
+      const profile = await authAPI.getProfile();
+      persist('user', profile);
+      setUser(profile);
+      setActiveOrg(null);
+      setMemberships(res.memberships ?? []);
+      setLoading(false);
+      window.location.href = '/register?mode=new_workspace&reason=suspended';
+      return;
+    }
+
     persist('active_org', res.active_org ?? null);
     persist('memberships', res.memberships ?? []);
 

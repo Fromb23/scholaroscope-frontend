@@ -1,16 +1,17 @@
-// components/layout/Header.tsx
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2 } from 'lucide-react';
+import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2, Plus } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { useSidebar } from '@/app/context/SidebarContext';
 
-export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
+export default function Header() {
     const { user, activeOrg, activeRole, memberships, logout, switchOrg } = useAuth();
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const { toggleSidebar } = useSidebar();
     const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
     const [switching, setSwitching] = useState<number | null>(null);
     const router = useRouter();
@@ -29,8 +30,6 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
         try {
             await switchOrg(orgId);
             setOrgDropdownOpen(false);
-            // activeRole is updated by switchOrg — navigate to the new role's home
-            // Use a full reload so all context re-hydrates cleanly
             window.location.href = activeRole
                 ? roleHomeRoute[activeRole] ?? '/dashboard'
                 : '/dashboard';
@@ -41,12 +40,13 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
         }
     };
 
-    const showSwitcher = memberships.length > 1;
+    // Superadmins never see workspace controls
+    const showWorkspaceControl = user && !user.is_superadmin;
 
     return (
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:px-6">
             <button
-                onClick={onMenuClick}
+                onClick={toggleSidebar}
                 className="rounded-lg p-2 hover:bg-gray-100 lg:hidden"
             >
                 <Menu className="h-6 w-6 text-gray-600" />
@@ -54,8 +54,8 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
 
             <div className="ml-auto flex items-center gap-3">
 
-                {/* Workspace switcher */}
-                {showSwitcher && activeOrg && (
+                {/* Workspace control — always visible for non-superadmin */}
+                {showWorkspaceControl && (
                     <div className="relative">
                         <button
                             onClick={() => setOrgDropdownOpen(!orgDropdownOpen)}
@@ -63,7 +63,7 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                         >
                             <Building2 className="h-4 w-4 text-gray-500" />
                             <span className="hidden max-w-[140px] truncate font-medium text-gray-700 md:block">
-                                {activeOrg.name}
+                                {activeOrg?.name ?? 'Select Workspace'}
                             </span>
                             <ChevronDown className="h-3 w-3 text-gray-400" />
                         </button>
@@ -78,8 +78,10 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                                     <p className="px-4 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
                                         Workspaces
                                     </p>
+
+                                    {/* Existing memberships */}
                                     {memberships.map((m) => {
-                                        const isActive = m.organization.id === activeOrg.id;
+                                        const isActive = m.organization.id === activeOrg?.id;
                                         const isLoading = switching === m.organization.id;
                                         return (
                                             <button
@@ -112,6 +114,22 @@ export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
                                             </button>
                                         );
                                     })}
+
+                                    {/* Always-present: create new workspace */}
+                                    <div className="border-t border-gray-100 mt-1 pt-1">
+                                        <button
+                                            onClick={() => {
+                                                setOrgDropdownOpen(false);
+                                                router.push('/register?mode=new_workspace');
+                                            }}
+                                            className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50"
+                                        >
+                                            <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                                <Plus className="h-3 w-3 text-blue-600" />
+                                            </div>
+                                            <span className="font-medium">New Workspace</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </>
                         )}

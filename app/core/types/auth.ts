@@ -45,6 +45,7 @@ export interface LoginResponse {
   message: string;
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
+  requires_workspace_recovery?: boolean;
 }
 
 export interface LoginCredentials {
@@ -63,8 +64,8 @@ export interface SwitchOrgResponse {
 export interface RegisterPayload {
   first_name?: string;
   last_name?: string;
-  email: string;
-  password: string;
+  email?: string;
+  password?: string;
   workspace_name?: string;
   invite_code?: string;
 }
@@ -77,5 +78,13 @@ export interface RegisterResponse {
     id: number;
     name: string;
     type: OrgType;
+    slug: string;
   };
+}
+
+export interface SuspendedOrg {
+  id: number;
+  name: string;
+  slug: string;
+  org_type: OrgType;
 }
