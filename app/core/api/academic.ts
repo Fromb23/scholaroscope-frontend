@@ -259,7 +259,6 @@ export const cohortSubjectAPI = {
   getAll: async (params?: {
     cohort?: number | string;
     subject?: number | string;
-    organization?: number | string;
   }) => {
     const response = await apiClient.get<CohortSubject[]>('/cohort-subjects/', { params });
     return response.data;

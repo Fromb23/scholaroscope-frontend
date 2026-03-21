@@ -25,7 +25,7 @@ export const globalUsersAPI = {
     },
 
     // POST /api/users/
-    create: async (data: UserCreatePayload): Promise<GlobalUser> => {
+    create: async (data: UserCreatePayload & { organization_id?: number }): Promise<GlobalUser> => {
         const response = await apiClient.post<GlobalUser>('/users/', data);
         return response.data;
     },
@@ -62,5 +62,11 @@ export const globalUsersAPI = {
     getStatistics: async (): Promise<GlobalUserStats> => {
         const response = await apiClient.get<GlobalUserStats>('/users/statistics/');
         return response.data;
+    },
+    addToOrg: async (userId: number, organizationId: number, role: string): Promise<void> => {
+        await apiClient.post(`/users/${userId}/add_to_org/`, {
+            organization_id: organizationId,
+            role,
+        });
     },
 };

@@ -88,7 +88,6 @@ export interface TopicQueryParams {
     subject__curriculum?: number;
     subject__curriculum__curriculum_type?: string;
     search?: string;
-    organization?: number;
 }
 
 export interface SubtopicQueryParams {
@@ -96,7 +95,6 @@ export interface SubtopicQueryParams {
     topic__subject?: number;
     topic__subject__curriculum?: number;
     search?: string;
-    organization?: number;
 }
 
 // ── Form payloads ─────────────────────────────────────────────────────────

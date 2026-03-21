@@ -26,10 +26,12 @@ export const hasRouteAccess = (
     allowedRoles: Role[]
 ): boolean => {
     if (!user) return false;
-    if (user.is_superadmin) return allowedRoles.includes('SUPERADMIN');
+    if (user.is_superadmin) return true;
     if (!activeRole) return false;
+    if (allowedRoles.includes('SUPERADMIN') && !allowedRoles.includes(activeRole)) return false;
     return allowedRoles.includes(activeRole);
 };
+
 
 // ── Feature-level checks ──────────────────────────────────────────────────────
 

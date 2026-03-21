@@ -7,7 +7,7 @@
 // No inline modals. No console.log. No any. Memoized derived data.
 // ============================================================================
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Layers } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
@@ -33,8 +33,12 @@ export default function TopicsPage() {
     const [editTarget, setEditTarget] = useState<Topic | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Topic | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
+    const [pageError, setPageError] = useState<string | null>(null);
 
     const { topics, loading, error, createTopic, updateTopic, deleteTopic } = useTopics(selectedSubjectId);
+    useEffect(() => {
+        if (error) setPageError(error);
+    }, [error]);
     const { subjects: allSubjects } = useSubjects();
 
     // Filter CBE subjects — Subject type has curriculum_type field
@@ -45,7 +49,7 @@ export default function TopicsPage() {
 
     const subjectOptions = useMemo(() => subjects.map(s => ({
         value: s.id,
-        label: `${s.code} – ${s.name}`,
+        label: `${s.code} – ${s.name}${s.level && s.level !== 'all' ? ` (${s.level})` : ''}`,
     })), [subjects]);
 
     // Client-side search (server handles subject filter)
@@ -189,7 +193,7 @@ export default function TopicsPage() {
                 </select>
             </Card>
 
-            {error && <ErrorBanner message={error} onDismiss={() => { }} />}
+            {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
             <DataTable<Topic>
                 data={filtered}

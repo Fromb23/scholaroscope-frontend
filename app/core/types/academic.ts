@@ -36,18 +36,20 @@ export interface Term {
   created_at: string;
 }
 
-// Curriculum Types
-export enum CurriculumType {
-  EIGHT_FOUR_FOUR = '8-4-4',
-  CBC = 'CBC',
-  IGCSE = 'IGCSE',
-  CUSTOM = 'CUSTOM'
-}
+export const CURRICULUM_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Select curriculum type' },
+  { value: '8-4-4', label: '8-4-4' },
+  { value: 'CBE', label: 'CBE' },
+  { value: 'IGCSE', label: 'IGCSE' },
+  { value: 'CUSTOM', label: 'Custom' },
+];
+
+export type CurriculumType = typeof CURRICULUM_TYPE_OPTIONS[number]['value'];
 
 export interface Curriculum {
   id: number;
   name: string;
-  curriculum_type: string;
+  curriculum_type: CurriculumType;
   curriculum_type_display: string;
   description: string;
   is_active: boolean;
@@ -61,7 +63,7 @@ export interface Subject {
   id: number;
   curriculum: number;
   curriculum_name: string;
-  curriculum_type: string;
+  curriculum_type: CurriculumType;
   code: string;
   name: string;
   level: string;
@@ -128,7 +130,7 @@ export interface TermFormData {
 
 export interface CurriculumFormData {
   name: string;
-  curriculum_type: string;
+  curriculum_type: CurriculumType;
   description: string;
   is_active: boolean;
 }

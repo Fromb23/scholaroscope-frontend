@@ -3,6 +3,7 @@
 
 import { ReactNode } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface TenantGuardProps {
     children: ReactNode;
@@ -16,15 +17,16 @@ interface TenantGuardProps {
  */
 export function TenantGuard({ children, fallback = null }: TenantGuardProps) {
     const { user, activeOrg, loading } = useAuth();
+    const router = useRouter();
 
     if (loading) return null;
     if (!user) return null;
-
-    // Superadmin — no org required
     if (user.is_superadmin) return <>{children}</>;
 
-    // Regular user — must have active org
-    if (!activeOrg) return <>{fallback}</>;
+    if (!activeOrg) {
+        router.replace('/register?mode=new_workspace&reason=suspended');
+        return null;
+    }
 
     return <>{children}</>;
 }

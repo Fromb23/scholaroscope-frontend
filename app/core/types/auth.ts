@@ -2,7 +2,7 @@
 import { ReactNode } from 'react';
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
-export type OrgType = 'INSTITUTION' | 'PERSONAL';
+export type OrgType = 'INSTITUTION' | 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
 
 export interface User {
   id: number;
@@ -68,6 +68,7 @@ export interface RegisterPayload {
   password?: string;
   workspace_name?: string;
   invite_code?: string;
+  org_type?: OrgType;
 }
 
 export interface RegisterResponse {

@@ -173,26 +173,25 @@ export const useOrganizationUsers = (id: number | null) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!id) {
+    const fetchUsers = async () => {
+        if (!id) { setLoading(false); return; }
+        try {
+            setLoading(true);
+            const data = await organizationAPI.getUsers(id);
+            const usersArray = Array.isArray(data) ? data : (data as { results: OrgUser[] }).results ?? [];
+            setUsers(usersArray);
+            setError(null);
+        } catch (err: unknown) {
+            const e = err as { message?: string };
+            setError(e.message || 'Failed to fetch users');
+        } finally {
             setLoading(false);
-            return;
         }
-        const fetch = async () => {
-            try {
-                setLoading(true);
-                const data = await organizationAPI.getUsers(id);
-                const usersArray = Array.isArray(data) ? data : (data as any).results ?? [];
-                setUsers(usersArray);
-                setError(null);
-            } catch (err: any) {
-                setError(err.message || 'Failed to fetch users');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetch();
+    };
+
+    useEffect(() => {
+        fetchUsers();
     }, [id]);
 
-    return { users, loading, error };
+    return { users, loading, error, refetch: fetchUsers };
 };

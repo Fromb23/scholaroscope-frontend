@@ -36,7 +36,11 @@ export default function DashboardLayout({
         if (loading) return;
         if (!user) { router.replace('/login'); return; }
         if (user.is_superadmin) return;
-        if (activeRole === null) return;
+
+        if (activeRole === null) {
+            router.replace('/register?mode=new_workspace&reason=suspended');
+            return;
+        }
 
         const matchedRule = routeRules.find((rule) => rule.pattern.test(pathname));
         if (!matchedRule) return;
@@ -45,7 +49,7 @@ export default function DashboardLayout({
         }
     }, [loading, user, activeRole, pathname, router]);
 
-    if (loading || !user || (!user.is_superadmin && activeRole === null)) {
+    if (loading || !user) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <div className="text-center">

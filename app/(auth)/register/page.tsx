@@ -18,6 +18,15 @@ const ROLE_LABEL: Record<string, string> = {
     INSTRUCTOR: 'Instructor',
 };
 
+type RegisterFormData = {
+    org_type: string;
+    workspace_name: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    password: string;
+};
+
 function RegisterForm() {
     const router = useRouter();
     const {
@@ -266,6 +275,20 @@ function RegisterForm() {
                                     placeholder="e.g. Sunrise Academy"
                                     error={fieldErrors.workspace_name}
                                 />
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Workspace Type
+                                    </label>
+                                    <select
+                                        value={form.org_type}
+                                        onChange={e => setField('org_type', e.target.value as RegisterFormData['org_type'])}
+                                        className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="PERSONAL">Personal</option>
+                                        <option value="SCHOOL">School / Institution</option>
+                                        <option value="BUSINESS">Business</option>
+                                    </select>
+                                </div>
                                 <p className="text-xs text-gray-400 -mt-2">
                                     This becomes your new organization name
                                 </p>

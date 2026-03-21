@@ -36,7 +36,6 @@ export const useTopics = (subjectId?: number) => {
             setLoading(true);
             const params: TopicQueryParams = {};
             if (subjectId) params.subject = subjectId;
-            if (organizationId) params.organization = organizationId;
 
             const data = await topicAPI.getAll(params);
             const topicsArray = Array.isArray(data)
@@ -53,15 +52,20 @@ export const useTopics = (subjectId?: number) => {
 
     useEffect(() => {
         fetchTopics();
-    }, [subjectId, organizationId]);
+    }, [subjectId]);
 
     const createTopic = async (data: TopicFormData) => {
         try {
-            const newTopic = await topicAPI.create(data);
+            const { sequence, ...payload } = data;
+            const newTopic = await topicAPI.create(payload as TopicFormData);
             setTopics(prev => [...prev, newTopic].sort((a, b) => a.sequence - b.sequence));
             return newTopic;
         } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to create topic');
+            throw new Error(
+                err.response?.data?.non_field_errors?.[0] ||
+                err.response?.data?.message ||
+                'Failed to create topic'
+            );
         }
     };
 
@@ -139,7 +143,6 @@ export const useSubtopics = (topicId?: number) => {
             setLoading(true);
             const params: Record<string, any> = {};
             if (topicId) params.topic = topicId;
-            if (organizationId) params.organization = organizationId;
 
             const data = await subtopicAPI.getAll(params);
             const arr = Array.isArray(data) ? data : (data as any)?.results ?? [];
@@ -154,17 +157,22 @@ export const useSubtopics = (topicId?: number) => {
 
     useEffect(() => {
         fetchSubtopics();
-    }, [topicId, organizationId]);
+    }, [topicId]);
 
     const createSubtopic = async (data: SubtopicFormData) => {
         try {
-            const newSubtopic = await subtopicAPI.create(data);
+            const { sequence, ...payload } = data;
+            const newSubtopic = await subtopicAPI.create(payload as SubtopicFormData);
             setSubtopics(prev =>
                 [...prev, newSubtopic].sort((a, b) => a.sequence - b.sequence)
             );
             return newSubtopic;
         } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to create subtopic');
+            throw new Error(
+                err.response?.data?.non_field_errors?.[0] ||
+                err.response?.data?.message ||
+                'Failed to create subtopic'
+            );
         }
     };
 

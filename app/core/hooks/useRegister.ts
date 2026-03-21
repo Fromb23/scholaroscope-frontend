@@ -11,6 +11,7 @@ export interface RegisterForm {
     email: string;
     password: string;
     workspace_name: string;
+    org_type: 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
 }
 
 export interface RegisterFieldErrors {
@@ -50,6 +51,7 @@ export function useRegister() {
 
     const [form, setForm] = useState<RegisterForm>({
         first_name: '', last_name: '', email: '', password: '', workspace_name: '',
+        org_type: 'PERSONAL',
     });
     const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
     const [submitting, setSubmitting] = useState(false);
@@ -81,7 +83,9 @@ export function useRegister() {
 
     const setField = (key: keyof RegisterForm, value: string) => {
         setForm(f => ({ ...f, [key]: value }));
-        if (fieldErrors[key]) setFieldErrors(e => ({ ...e, [key]: undefined }));
+        if (key in fieldErrors && fieldErrors[key as keyof RegisterFieldErrors]) {
+            setFieldErrors(e => ({ ...e, [key as keyof RegisterFieldErrors]: undefined }));
+        }
     };
 
     const validate = (): boolean => {
@@ -127,7 +131,7 @@ export function useRegister() {
 
         try {
             if (isNewWorkspaceFlow || isSuspendedRecovery) {
-                const res = await authAPI.register({ workspace_name: form.workspace_name });
+                const res = await authAPI.register({ workspace_name: form.workspace_name, org_type: form.org_type });
                 localStorage.setItem('access_token', res.access);
                 localStorage.setItem('refresh_token', res.refresh);
                 // Persist org context so AuthContext hydrates correctly on reload
@@ -161,7 +165,7 @@ export function useRegister() {
                     await authAPI.register({ email: form.email, password: form.password, invite_code: inviteToken! });
                 } else {
                     const res = await authAPI.register({
-                        first_name: form.first_name, last_name: form.last_name,
+                        first_name: form.first_name, last_name: form.last_name, org_type: form.org_type,
                         email: form.email, password: form.password, invite_code: inviteToken!,
                     });
                     localStorage.setItem('access_token', res.access);
@@ -176,6 +180,7 @@ export function useRegister() {
                 first_name: form.first_name, last_name: form.last_name,
                 email: form.email, password: form.password,
                 workspace_name: form.workspace_name,
+                org_type: form.org_type,
             });
             setSuccess(true);
             setTimeout(() => router.replace('/dashboard'), 1500);
