@@ -12,12 +12,12 @@ import {
   AttendanceRecord,
   AttendanceSummary,
   BulkAttendanceData,
-  CohortSubject,
   LinkCohortRequest,
   SessionCohortsResponse,
   SessionCohort,
   SessionFormData,
 } from '../types/session';
+import { CohortSubject } from '../types/academic';
 import { TopicSessionLink } from '../types/topics';
 
 // ── Shared response shapes ────────────────────────────────────────────────
@@ -159,6 +159,14 @@ export const sessionAPI = {
 
   reseedAttendance: async (id: number): Promise<void> => {
     await apiClient.post(`/sessions/${id}/reseed_attendance/`);
+  },
+  start: async (id: number): Promise<SessionDetail> => {
+    const res = await apiClient.post<SessionDetail>(`/sessions/${id}/start/`);
+    return res.data;
+  },
+  complete: async (id: number): Promise<SessionDetail> => {
+    const res = await apiClient.post<SessionDetail>(`/sessions/${id}/complete/`);
+    return res.data;
   },
 };
 

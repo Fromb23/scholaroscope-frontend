@@ -9,20 +9,20 @@ import { useState, useEffect } from 'react';
 import {
   sessionAPI,
   attendanceAPI,
-  cohortSubjectAPI,
   sessionCohortAPI,
   SessionQueryParams,
   AttendanceQueryParams,
 } from '@/app/core/api/sessions';
+import { cohortSubjectAPI } from '@/app/core/api/academic';
 import {
   Session,
   SessionDetail,
   AttendanceRecord,
   BulkAttendanceData,
-  CohortSubject,
   SessionCohort,
   SessionFormData,
 } from '@/app/core/types/session';
+import { CohortSubject } from '@/app/core/types/academic';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 // ── Pagination state shape ────────────────────────────────────────────────
@@ -206,11 +206,23 @@ export const useSessionDetail = (
     await fetchSession();
   };
 
+  const startSession = async (): Promise<void> => {
+    if (!sessionId) return;
+    const updated = await sessionAPI.start(sessionId);
+    setSession(updated);
+  };
+
+  const completeSession = async (): Promise<void> => {
+    if (!sessionId) return;
+    const updated = await sessionAPI.complete(sessionId);
+    setSession(updated);
+  };
+
   return {
     session, attendanceRecords, pagination,
     loading, error,
     refetch: fetchSession,
-    markAttendance, reseedAttendance,
+    markAttendance, reseedAttendance, completeSession, startSession,
   };
 };
 

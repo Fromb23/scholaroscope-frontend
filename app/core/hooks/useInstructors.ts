@@ -4,8 +4,8 @@
 // ============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { instructorsAPI, InstructorStats, InstructorProfile } from '@/app/core/api/instructors';
-import { GlobalUser, UserCreatePayload, UserUpdatePayload } from '@/app/core/types/globalUsers';
+import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
+import { GlobalUser, UserCreatePayload, InstructorStats, UserUpdatePayload } from '@/app/core/types/globalUsers';
 
 // ── useInstructors: list + full CRUD + activate/deactivate + reset password ──
 
@@ -48,12 +48,12 @@ export const useInstructors = () => {
             const apiErr = err as APIErrorResponse;
             const message = err instanceof Error && 'response' in err
                 ? apiErr.response?.data?.email?.[0] ||
-                  apiErr.response?.data?.password?.[0] ||
-                  apiErr.response?.data?.detail ||
-                  'Failed to create instructor'
+                apiErr.response?.data?.password?.[0] ||
+                apiErr.response?.data?.detail ||
+                'Failed to create instructor'
                 : err instanceof Error
-                ? err.message
-                : 'Failed to create instructor';
+                    ? err.message
+                    : 'Failed to create instructor';
             throw new Error(message);
         }
     };
@@ -76,8 +76,8 @@ export const useInstructors = () => {
             const message = err instanceof Error && 'response' in err
                 ? apiErr.response?.data?.detail || 'Failed to update instructor'
                 : err instanceof Error
-                ? err.message
-                : 'Failed to update instructor';
+                    ? err.message
+                    : 'Failed to update instructor';
             throw new Error(message);
         }
     };
@@ -99,8 +99,8 @@ export const useInstructors = () => {
             const message = err instanceof Error && 'response' in err
                 ? apiErr.response?.data?.detail || 'Failed to delete instructor'
                 : err instanceof Error
-                ? err.message
-                : 'Failed to delete instructor';
+                    ? err.message
+                    : 'Failed to delete instructor';
             throw new Error(message);
         }
     };
@@ -128,8 +128,8 @@ export const useInstructors = () => {
             const message = err instanceof Error && 'response' in err
                 ? apiErr.response?.data?.detail || 'Failed to change status'
                 : err instanceof Error
-                ? err.message
-                : 'Failed to change status';
+                    ? err.message
+                    : 'Failed to change status';
             throw new Error(message);
         }
     };
@@ -150,8 +150,8 @@ export const useInstructors = () => {
             const message = err instanceof Error && 'response' in err
                 ? apiErr.response?.data?.detail || 'Failed to reset password'
                 : err instanceof Error
-                ? err.message
-                : 'Failed to reset password';
+                    ? err.message
+                    : 'Failed to reset password';
             throw new Error(message);
         }
     };
@@ -171,7 +171,7 @@ export const useInstructorDetail = (id: number | null) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    
+
 
     const fetchDetail = useCallback(async () => {
         if (!id) return;
@@ -191,13 +191,13 @@ export const useInstructorDetail = (id: number | null) => {
 
     const assignCohort = async (cohortId: number) => {
         if (!id) return;
-        await instructorsAPI.assignToCohort(id, cohortId);
+        await instructorsAPI.assignToCohortSubject(id, cohortId);
         await fetchDetail();
     };
 
     const unassignCohort = async (cohortId: number) => {
         if (!id) return;
-        await instructorsAPI.unassignFromCohort(id, cohortId);
+        await instructorsAPI.unassignFromCohortSubject(id, cohortId);
         await fetchDetail();
     };
 

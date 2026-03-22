@@ -154,4 +154,28 @@ export const cohortsAPI = {
     });
     return data;
   },
+  // Add inside cohortsAPI object
+  getSyllabusProgress: async (cohortId: number) => {
+    const { data } = await apiClient.get(`/cohorts/${cohortId}/syllabus_progress/`);
+    return data as {
+      cohort_id: number;
+      cohort_name: string;
+      academic_year: string;
+      subjects: Array<{
+        cohort_subject_id: number;
+        subject_id: number;
+        subject_name: string;
+        subject_code: string;
+        level: string;
+        covered: number;
+        total: number;
+        percentage: number;
+      }>;
+      overall: {
+        covered: number;
+        total: number;
+        percentage: number;
+      };
+    };
+  },
 };

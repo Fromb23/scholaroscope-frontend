@@ -38,12 +38,19 @@ export default function SessionDetailPage() {
         loading,
         markAttendance,
         refetch,
+        startSession,
+        completeSession,
     } = useSessionDetail(sessionId, searchQuery, currentPage, pageSize);
 
     const { activeCohorts, historicalCohorts } = useSessionCohorts(sessionId);
 
     const isHistorical = session ? !session.is_current_year : false;
     const isCBC = session?.curriculum_type === 'CBE';
+    const sessionStatus = session?.status ?? 'SCHEDULED';
+    const isCompleted = sessionStatus === 'COMPLETED';
+    const isInProgress = sessionStatus === 'IN_PROGRESS';
+    const isScheduled = sessionStatus === 'SCHEDULED';
+    const isReadOnly = isHistorical || isCompleted;
     const isMerged = useMemo(
         () => (activeCohorts?.length ?? 0) + (historicalCohorts?.length ?? 0) > 1,
         [activeCohorts, historicalCohorts]
@@ -96,7 +103,31 @@ export default function SessionDetailPage() {
 
                 <div className="flex items-center gap-2">
                     <Badge variant="blue">{session.session_type_display}</Badge>
-                    {!isHistorical && (
+
+                    {isScheduled && <Badge variant="default">Scheduled</Badge>}
+                    {isInProgress && <Badge variant="yellow">In Progress</Badge>}
+                    {isCompleted && <Badge variant="green">Completed</Badge>}
+
+                    {!isHistorical && isScheduled && (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={async () => { await startSession(); }}
+                        >
+                            Start Session
+                        </Button>
+                    )}
+                    {!isHistorical && isInProgress && (
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={async () => { await completeSession(); }}
+                        >
+                            Complete Session
+                        </Button>
+                    )}
+
+                    {!isHistorical && !isCompleted && (
                         <Link href={`/sessions/${session.id}/edit`}>
                             <Button variant="secondary" size="sm">
                                 <Edit className="h-4 w-4 mr-1.5" />Edit
@@ -154,11 +185,11 @@ export default function SessionDetailPage() {
                         loading={loading}
                         saving={saving}
                         saveError={saveError}
-                        readOnly={isHistorical}
                         pagination={pagination}
                         onUpdateStatus={updateStatus}
                         onUpdateNotes={updateNotes}
                         onMarkAll={markAll}
+                        readOnly={isReadOnly}
                         onSave={async () => { await save(); refetch(); }}
                         onDismissError={dismissError}
                         onSearch={q => { setSearchQuery(q); setCurrentPage(1); }}
@@ -178,7 +209,7 @@ export default function SessionDetailPage() {
                         <SessionSubtopicLinker
                             sessionId={session.id}
                             subjectId={session.subject_id}
-                            readOnly={isHistorical || session.status === 'COMPLETED'}
+                            readOnly={isReadOnly}
                         />
                     </div>
                 </Card>

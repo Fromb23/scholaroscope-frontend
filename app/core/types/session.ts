@@ -126,18 +126,18 @@ export interface AttendanceFormData {
 }
 
 // Helper type for cohort-subject selection
-export interface CohortSubject {
-  id: number;
-  cohort: number;
-  cohort_name: string;
-  cohort_level: string;
-  subject: number;
-  subject_name: string;
-  subject_code: string;
-  curriculum_name: string;
-  is_compulsory: boolean;
-  curriculum_type: string;
-}
+// export interface CohortSubject {
+//   id: number;
+//   cohort: number;
+//   cohort_name: string;
+//   cohort_level: string;
+//   subject: number;
+//   subject_name: string;
+//   subject_code: string;
+//   curriculum_name: string;
+//   is_compulsory: boolean;
+//   curriculum_type: string;
+// }
 
 /**
  * Represents a link between a session and a cohort (many-to-many)

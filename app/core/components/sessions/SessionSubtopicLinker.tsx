@@ -209,11 +209,17 @@ export function SessionSubtopicLinker({ sessionId, subjectId, readOnly = false }
                     topicSessionLinkAPI.getAll({ session: sessionId }),
                 ]);
 
-                const topicsArray = topicsData;
+                const topicsArray = Array.isArray(topicsData)
+                    ? topicsData
+                    : (topicsData as { results?: Topic[] })?.results ?? [];
 
-                const subtopicsArray = subtopicsData;
+                const subtopicsArray = Array.isArray(subtopicsData)
+                    ? subtopicsData
+                    : (subtopicsData as { results?: Subtopic[] })?.results ?? [];
 
-                const linksArray = linksData;
+                const linksArray = Array.isArray(linksData)
+                    ? linksData
+                    : (linksData as { results?: TopicSessionLink[] })?.results ?? [];
 
                 // Group subtopics by topic id client-side
                 const subtopicMap: Record<number, Subtopic[]> = {};

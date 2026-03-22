@@ -11,6 +11,7 @@ import {
   CohortDetail,
   TermQueryParams
 } from '@/app/core/types/academic';
+import { PaginatedResponse } from './sessions';
 
 interface CurriculumQuery {
   organization?: number;
@@ -278,8 +279,33 @@ export const cohortSubjectAPI = {
     const response = await apiClient.patch<CohortSubject>(`/cohort-subjects/${id}/`, data);
     return response.data;
   },
+  getByCohort: async (cohortId: number): Promise<CohortSubject[] | PaginatedResponse<CohortSubject>> => {
+    const res = await apiClient.get<CohortSubject[] | PaginatedResponse<CohortSubject>>(
+      `/cohort-subjects/?cohort=${cohortId}`
+    );
+    return res.data;
+  },
 
   delete: async (id: number) => {
     await apiClient.delete(`/cohort-subjects/${id}/`);
+  },
+  getUnattended: async (): Promise<{
+    id: number;
+    cohort_name: string;
+    subject_name: string;
+    has_active_instructor: boolean;
+  }[]> => {
+    const response = await apiClient.get('/cohort-subjects/');
+    const data = Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results: unknown[] })?.results ?? [];
+    return (data as { has_active_instructor: boolean }[]).filter(
+      cs => !cs.has_active_instructor
+    ) as {
+      id: number;
+      cohort_name: string;
+      subject_name: string;
+      has_active_instructor: boolean;
+    }[];
   },
 };

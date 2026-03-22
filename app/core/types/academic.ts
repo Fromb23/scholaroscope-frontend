@@ -164,3 +164,57 @@ export interface TermQueryParams {
   academic_year?: number
   organization?: number
 }
+
+export interface TeachingAssignment {
+  cohort_subject_id: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  level: string;
+  academic_year: string;
+  is_current_year: boolean;
+  curriculum_type: string;
+  covered: number;
+  total: number;
+  start_date: string;
+  percentage: number;
+}
+
+export interface SyllabusProgress {
+  cohort_id: number;
+  cohort_name: string;
+  academic_year: string;
+  subjects: SubjectProgress[];
+  overall: { covered: number; total: number; percentage: number };
+}
+
+export interface SubjectProgress {
+  cohort_subject_id: number;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  level: string;
+  covered: number;
+  total: number;
+  percentage: number;
+}
+
+export interface HistoryEntry {
+  log_id: number;
+  cohort_subject_id: number;
+  cohort_name: string;
+  subject_name: string;
+  subject_code: string;
+  academic_year: string;
+  organization_id: number;
+  organization_name: string;
+  assigned_at: string;
+  unassigned_at: string | null;
+  is_active: boolean;
+  duration_days: number;
+  end_reason: string | null;
+  assigned_by: string | null;
+  unassigned_by: string | null;
+}

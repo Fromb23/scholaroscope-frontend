@@ -82,3 +82,47 @@ export const ROLE_LABELS: Record<UserRole, string> = {
     ADMIN: 'Admin',
     INSTRUCTOR: 'Instructor',
 };
+
+export interface AvailableCohortSubject {
+    id: number;
+    cohort: number;
+    cohort_name: string;
+    subject: number;
+    subject_name: string;
+    subject_code: string;
+    is_compulsory: boolean;
+    academic_year_name?: string;  // optional — not in serializer yet
+}
+
+export interface CohortAssignModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    instructorId: number;
+    instructorName: string;
+}
+
+export interface CohortAssignModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    instructorId: number;
+    instructorName: string;
+}
+
+export interface InstructorStats {
+    total: number;
+    active: number;
+    inactive: number;
+    assigned_to_cohort: number;
+    unassigned: number;
+}
+
+export interface CohortAssignment {
+    cohort_subject_id: number;
+    cohort_id: number;
+    cohort_name: string;
+    subject_id: number;
+    subject_name: string;
+    academic_year: string;
+    start_date: string;
+    role: string;
+}
