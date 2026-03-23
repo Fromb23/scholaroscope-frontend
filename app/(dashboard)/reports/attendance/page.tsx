@@ -1,14 +1,21 @@
 'use client';
 
+// ============================================================================
+// app/(dashboard)/reports/attendance/page.tsx — render only
+// ============================================================================
+
 import { useState } from 'react';
+import { Calendar, Users, Activity, TrendingUp } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Select } from '@/app/components/ui/Select';
-import { Badge } from '@/app/components/ui/Badge';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
+import { AttendanceBar } from '@/app/core/components/reports/AttendanceBar';
 import { useAttendanceSummaries } from '@/app/core/hooks/useReporting';
-import { Calendar, TrendingUp, Users, Activity } from 'lucide-react';
+import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCohorts } from '@/app/core/hooks/useCohorts';
 
 export default function AttendanceReportPage() {
     const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
@@ -16,109 +23,94 @@ export default function AttendanceReportPage() {
 
     const { terms, loading: termsLoading } = useTerms();
     const { cohorts, loading: cohortsLoading } = useCohorts();
-    const { summaries, loading } = useAttendanceSummaries({
-        term: selectedTerm || undefined,
-        cohort: selectedCohort
+    const { summaries, loading, error } = useAttendanceSummaries({
+        term: selectedTerm ?? undefined,
+        cohort: selectedCohort,
     });
 
-    const getAttendanceBadgeVariant = (percentage: number): 'success' | 'info' | 'warning' | 'danger' => {
-        if (percentage >= 90) return 'success';
-        if (percentage >= 75) return 'info';
-        if (percentage >= 60) return 'warning';
-        return 'danger';
-    };
+    const totalSessions = summaries.reduce((s, r) => s + r.total_sessions, 0);
+    const avgAttendance = summaries.length
+        ? summaries.reduce((s, r) => s + r.attendance_percentage, 0) / summaries.length
+        : 0;
+    const atRisk = summaries.filter(s => s.attendance_percentage < 75).length;
 
     return (
         <div className="space-y-6">
+
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Attendance Reports</h1>
-                    <p className="mt-2 text-gray-600">Participation metrics & session tracking</p>
+                    <h1 className="text-2xl font-semibold text-gray-900">Attendance Reports</h1>
+                    <p className="text-gray-500 mt-1">Session participation metrics per student and subject.</p>
                 </div>
-                <Calendar className="h-8 w-8 text-blue-600" />
+                <Calendar className="h-7 w-7 text-indigo-600" />
             </div>
 
-            {/* Summary Stats */}
-            {summaries && summaries.length > 0 && (
-                <div className="grid gap-4 md:grid-cols-4">
-                    <StatsCard
-                        title="Total Records"
-                        value={summaries.length}
-                        icon={Users}
-                        color="blue"
-                    />
-                    <StatsCard
-                        title="Avg Attendance"
-                        value={`${(summaries.reduce((acc, s) => acc + s.attendance_percentage, 0) / summaries.length).toFixed(1)}%`}
-                        icon={Activity}
-                        color="green"
-                    />
-                    <StatsCard
-                        title="Total Sessions"
-                        value={summaries.reduce((acc, s) => acc + s.total_sessions, 0)}
-                        icon={TrendingUp}
-                        color="purple"
-                    />
-                    <StatsCard
-                        title="Present Days"
-                        value={summaries.reduce((acc, s) => acc + s.present_count, 0)}
-                        icon={Calendar}
-                        color="indigo"
-                    />
+            {/* Stats — only when data exists */}
+            {summaries.length > 0 && (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <StatsCard title="Records" value={summaries.length} icon={Users} color="blue" />
+                    <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Activity} color="green" />
+                    <StatsCard title="Total Sessions" value={totalSessions} icon={TrendingUp} color="purple" />
+                    <StatsCard title="At Risk (<75%)" value={atRisk} icon={Calendar} color="red" />
                 </div>
             )}
 
             {/* Filters */}
             <Card>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid md:grid-cols-2 gap-4">
                     <Select
                         label="Term"
-                        value={selectedTerm?.toString() || ''}
-                        onChange={(e) => setSelectedTerm(e.target.value ? Number(e.target.value) : null)}
-                        options={[
-                            { value: '', label: 'Select term...' },
-                            ...terms.map(term => ({
-                                value: String(term.id),
-                                label: `${term.academic_year_name} — ${term.name}`
-                            }))
-                        ]}
+                        value={selectedTerm?.toString() ?? ''}
+                        onChange={e => setSelectedTerm(e.target.value ? Number(e.target.value) : null)}
                         disabled={termsLoading}
+                        options={[
+                            { value: '', label: 'Select term…' },
+                            ...terms.map(t => ({
+                                value: String(t.id),
+                                label: `${t.academic_year_name} — ${t.name}`,
+                            })),
+                        ]}
                     />
                     <Select
-                        label="Cohort (Optional)"
-                        value={selectedCohort?.toString() || ''}
-                        onChange={(e) => setSelectedCohort(e.target.value ? Number(e.target.value) : undefined)}
-                        options={[
-                            { value: '', label: 'All cohorts...' },
-                            ...cohorts.map(cohort => ({
-                                value: String(cohort.id),
-                                label: cohort.name
-                            }))
-                        ]}
+                        label="Cohort (optional)"
+                        value={selectedCohort?.toString() ?? ''}
+                        onChange={e => setSelectedCohort(e.target.value ? Number(e.target.value) : undefined)}
                         disabled={cohortsLoading}
+                        options={[
+                            { value: '', label: 'All cohorts' },
+                            ...cohorts.map(c => ({ value: String(c.id), label: c.name })),
+                        ]}
                     />
                 </div>
             </Card>
 
-            {/* Attendance Table */}
-            {loading ? (
+            {error && <ErrorBanner message={error} onDismiss={() => { }} />}
+            {loading && <LoadingSpinner />}
+
+            {/* Empty state */}
+            {!loading && !selectedTerm && (
                 <Card>
-                    <div className="py-12 text-center">
-                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                        <p className="mt-2 text-gray-600">Loading attendance data...</p>
+                    <div className="py-16 text-center">
+                        <Calendar className="mx-auto h-12 w-12 text-gray-300" />
+                        <p className="mt-3 text-sm text-gray-500">Select a term to view attendance data.</p>
                     </div>
                 </Card>
-            ) : summaries && summaries.length > 0 ? (
+            )}
+
+            {/* Table */}
+            {!loading && selectedTerm && summaries.length > 0 && (
                 <Card>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Detailed Attendance Records</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-gray-900">Attendance Records</h3>
+                        <span className="text-xs text-gray-500">{summaries.length} records</span>
+                    </div>
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Student</TableHead>
                                 <TableHead>Subject</TableHead>
-                                <TableHead>Total</TableHead>
+                                <TableHead>Sessions</TableHead>
                                 <TableHead>Present</TableHead>
                                 <TableHead>Absent</TableHead>
                                 <TableHead>Late</TableHead>
@@ -126,63 +118,46 @@ export default function AttendanceReportPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {summaries.map((summary) => (
-                                <TableRow key={summary.id}>
+                            {summaries.map(s => (
+                                <TableRow key={s.id}>
                                     <TableCell>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{summary.student_name}</p>
-                                            <p className="text-sm text-gray-500">{summary.student_admission}</p>
-                                        </div>
+                                        <p className="font-medium text-gray-900">{s.student_name}</p>
+                                        <p className="text-xs text-gray-500">{s.student_admission}</p>
                                     </TableCell>
                                     <TableCell>
-                                        <div>
-                                            <p className="font-medium text-gray-900">{summary.subject_name}</p>
-                                            <p className="text-sm text-gray-500">{summary.subject_code}</p>
-                                        </div>
+                                        <p className="font-medium text-gray-900">{s.subject_name}</p>
+                                        <p className="text-xs text-gray-500">{s.subject_code}</p>
+                                    </TableCell>
+                                    <TableCell>{s.total_sessions}</TableCell>
+                                    <TableCell>
+                                        <span className="text-green-600 font-medium">{s.present_count}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="font-medium text-gray-700">{summary.total_sessions}</span>
+                                        <span className="text-red-600 font-medium">{s.absent_count}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="font-medium text-green-600">{summary.present_count}</span>
+                                        <span className="text-yellow-600 font-medium">{s.late_count}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="font-medium text-red-600">{summary.absent_count}</span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="font-medium text-yellow-600">{summary.late_count}</span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-24 bg-gray-200 rounded-full h-2">
-                                                <div
-                                                    className={`h-2 rounded-full ${summary.attendance_percentage >= 90 ? 'bg-green-600' :
-                                                        summary.attendance_percentage >= 75 ? 'bg-blue-600' :
-                                                            summary.attendance_percentage >= 60 ? 'bg-yellow-600' :
-                                                                'bg-red-600'
-                                                        }`}
-                                                    style={{ width: `${summary.attendance_percentage}%` }}
-                                                />
-                                            </div>
-                                            <Badge variant={getAttendanceBadgeVariant(summary.attendance_percentage)}>
-                                                {summary.attendance_percentage.toFixed(0)}%
-                                            </Badge>
-                                        </div>
+                                        <AttendanceBar percentage={s.attendance_percentage} />
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </Card>
-            ) : (
+            )}
+
+            {/* No data after filter */}
+            {!loading && selectedTerm && summaries.length === 0 && (
                 <Card>
                     <div className="py-12 text-center">
-                        <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No Data Available</h3>
-                        <p className="mt-1 text-sm text-gray-500">Select a term to view attendance summaries</p>
+                        <Calendar className="mx-auto h-10 w-10 text-gray-300" />
+                        <p className="mt-2 text-sm text-gray-500">No attendance data for this selection.</p>
                     </div>
                 </Card>
             )}
+
         </div>
     );
 }

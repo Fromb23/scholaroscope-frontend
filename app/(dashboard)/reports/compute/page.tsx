@@ -1,343 +1,247 @@
-// ============================================================================
-// app/(dashboard)/reports/compute/page.tsx - Final Version
-// Uses useComputedGrades from useGradePolicies hook
-// All existing logic preserved
-// ============================================================================
-
 'use client';
 
+// ============================================================================
+// app/(dashboard)/reports/compute/page.tsx — render only
+// ============================================================================
+
 import { useState } from 'react';
+import Link from 'next/link';
+import { Settings, Play, CheckCircle, AlertCircle, Loader, Zap } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import {
     useAttendanceSummaries,
     useGradeSummaries,
     useCohortSummaries,
     useSubjectSummaries,
-    useAssessmentTypeSummaries
+    useAssessmentTypeSummaries,
 } from '@/app/core/hooks/useReporting';
-import { useComputedGrades } from '@/app/core/hooks/useGradePolicies'; // NEW IMPORT
-import { Settings, Play, CheckCircle, AlertCircle, Loader, Zap } from 'lucide-react';
-import Link from 'next/link';
+import { useComputedGrades } from '@/app/core/hooks/useGradePolicies';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+
+interface ComputeResult { success: boolean; message: string; }
 
 export default function ComputePage() {
     const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
     const [computing, setComputing] = useState<string | null>(null);
-    const [results, setResults] = useState<{ [key: string]: { success: boolean; message: string } }>({});
+    const [results, setResults] = useState<Record<string, ComputeResult>>({});
+    const [globalError, setGlobalError] = useState<string | null>(null);
 
     const { terms, loading: termsLoading } = useTerms();
-
-    // EXISTING: Legacy computation hooks (unchanged)
     const { computeSummaries: computeAttendance } = useAttendanceSummaries();
     const { computeSummaries: computeGrades } = useGradeSummaries();
     const { computeSummaries: computeCohorts } = useCohortSummaries();
     const { computeSummaries: computeSubjects } = useSubjectSummaries();
     const { computeSummaries: computeAssessmentTypes } = useAssessmentTypeSummaries();
-
-    // NEW: Policy-based computation from useGradePolicies hook
     const { computeWithPolicy } = useComputedGrades();
 
-    // EXISTING: Legacy compute handler (100% unchanged)
-    const handleCompute = async (type: string, computeFn: (termId: number) => Promise<void>) => {
+    const run = async (id: string, fn: () => Promise<void>) => {
         if (!selectedTerm) return;
-
-        setComputing(type);
+        setComputing(id);
         try {
-            await computeFn(selectedTerm);
+            await fn();
+            setResults(prev => ({ ...prev, [id]: { success: true, message: 'Completed successfully' } }));
+        } catch (err) {
             setResults(prev => ({
                 ...prev,
-                [type]: { success: true, message: 'Successfully computed summaries' }
-            }));
-        } catch (error: any) {
-            setResults(prev => ({
-                ...prev,
-                [type]: { success: false, message: error.message || 'Computation failed' }
+                [id]: { success: false, message: extractErrorMessage(err as ApiError, 'Computation failed') },
             }));
         } finally {
             setComputing(null);
         }
     };
 
-    // EXISTING: Batch compute all handler (100% unchanged)
     const handleComputeAll = async () => {
         if (!selectedTerm) return;
-
-        const operations = [
-            { type: 'attendance', fn: computeAttendance },
-            { type: 'grades', fn: computeGrades },
-            { type: 'cohorts', fn: computeCohorts },
-            { type: 'subjects', fn: computeSubjects },
-            { type: 'assessments', fn: computeAssessmentTypes }
-        ];
-
         setComputing('all');
-
-        for (const op of operations) {
+        const ops = [
+            { id: 'attendance', fn: () => computeAttendance(selectedTerm) },
+            { id: 'grades', fn: () => computeGrades(selectedTerm) },
+            { id: 'cohorts', fn: () => computeCohorts(selectedTerm) },
+            { id: 'subjects', fn: () => computeSubjects(selectedTerm) },
+            { id: 'assessments', fn: () => computeAssessmentTypes(selectedTerm) },
+        ];
+        for (const op of ops) {
             try {
-                await op.fn(selectedTerm);
+                await op.fn();
+                setResults(prev => ({ ...prev, [op.id]: { success: true, message: 'Completed' } }));
+            } catch (err) {
                 setResults(prev => ({
                     ...prev,
-                    [op.type]: { success: true, message: 'Successfully computed' }
-                }));
-            } catch (error: any) {
-                setResults(prev => ({
-                    ...prev,
-                    [op.type]: { success: false, message: error.message || 'Failed' }
+                    [op.id]: { success: false, message: extractErrorMessage(err as ApiError, 'Failed') },
                 }));
             }
         }
-
         setComputing(null);
     };
 
-    // NEW: Policy-based computation handler
-    const handleComputeWithPolicy = async () => {
-        if (!selectedTerm) return;
+    const COMPUTE_OPTIONS = [
+        { id: 'attendance', title: 'Attendance Summaries', description: 'Recompute from session records', fn: () => computeAttendance(selectedTerm!) },
+        { id: 'grades', title: 'Grade Summaries', description: 'Recompute from assessment scores', fn: () => computeGrades(selectedTerm!) },
+        { id: 'cohorts', title: 'Cohort Summaries', description: 'Recompute cohort-level aggregates', fn: () => computeCohorts(selectedTerm!) },
+        { id: 'subjects', title: 'Subject Summaries', description: 'Recompute subject statistics', fn: () => computeSubjects(selectedTerm!) },
+        { id: 'assessments', title: 'Assessment Type Summaries', description: 'Recompute assessment breakdowns', fn: () => computeAssessmentTypes(selectedTerm!) },
+    ] as const;
 
-        setComputing('policy');
-        try {
-            // Calls POST /api/reports/computed-grades/compute_with_policy/
-            await computeWithPolicy(selectedTerm);
-
-            setResults(prev => ({
-                ...prev,
-                policy: {
-                    success: true,
-                    message: 'Successfully computed grades using policies'
-                }
-            }));
-        } catch (error: any) {
-            setResults(prev => ({
-                ...prev,
-                policy: {
-                    success: false,
-                    message: error.message || 'Policy computation failed'
-                }
-            }));
-        } finally {
-            setComputing(null);
-        }
-    };
-
-    // EXISTING: Compute options (100% unchanged)
-    const computeOptions = [
-        {
-            id: 'attendance',
-            title: 'Attendance Summaries',
-            description: 'Recompute attendance statistics from session records',
-            icon: '📊',
-            compute: () => handleCompute('attendance', computeAttendance)
-        },
-        {
-            id: 'grades',
-            title: 'Grade Summaries',
-            description: 'Recompute grade statistics from assessment scores',
-            icon: '📈',
-            compute: () => handleCompute('grades', computeGrades)
-        },
-        {
-            id: 'cohorts',
-            title: 'Cohort Summaries',
-            description: 'Recompute cohort-level aggregates',
-            icon: '👥',
-            compute: () => handleCompute('cohorts', computeCohorts)
-        },
-        {
-            id: 'subjects',
-            title: 'Subject Summaries',
-            description: 'Recompute subject performance statistics',
-            icon: '📚',
-            compute: () => handleCompute('subjects', computeSubjects)
-        },
-        {
-            id: 'assessments',
-            title: 'Assessment Type Summaries',
-            description: 'Recompute assessment type breakdowns',
-            icon: '📝',
-            compute: () => handleCompute('assessments', computeAssessmentTypes)
-        }
-    ];
+    const successCount = Object.values(results).filter(r => r.success).length;
+    const failCount = Object.values(results).filter(r => !r.success).length;
 
     return (
         <div className="space-y-6">
-            {/* EXISTING: Header (unchanged) */}
-            <div className="flex items-center justify-between">
+
+            {/* Header */}
+            <div className="flex items-start justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Compute Controls</h1>
-                    <p className="mt-2 text-gray-600">Recompute summaries and batch processing</p>
+                    <h1 className="text-2xl font-semibold text-gray-900">Compute Controls</h1>
+                    <p className="text-gray-500 mt-1">
+                        Trigger grade computation and recompute summaries for a term.
+                    </p>
                 </div>
-                <Settings className="h-8 w-8 text-blue-600" />
+                <Settings className="h-7 w-7 text-gray-500" />
             </div>
 
-            {/* EXISTING: Term Selection (unchanged) */}
+            {globalError && <ErrorBanner message={globalError} onDismiss={() => setGlobalError(null)} />}
+
+            {/* Term selector */}
             <Card>
                 <Select
                     label="Select Term"
-                    value={selectedTerm?.toString() || ''}
-                    onChange={(e) => setSelectedTerm(e.target.value ? Number(e.target.value) : null)}
-                    options={[
-                        { value: '', label: 'Select a term...' },
-                        ...terms.map(term => ({
-                            value: String(term.id),
-                            label: `${term.academic_year_name} — ${term.name}`
-                        }))
-                    ]}
+                    value={selectedTerm?.toString() ?? ''}
+                    onChange={e => {
+                        setSelectedTerm(e.target.value ? Number(e.target.value) : null);
+                        setResults({});
+                    }}
                     disabled={termsLoading}
+                    options={[
+                        { value: '', label: 'Select a term…' },
+                        ...terms.map(t => ({
+                            value: String(t.id),
+                            label: `${t.academic_year_name} — ${t.name}`,
+                        })),
+                    ]}
                 />
             </Card>
 
-            {/* NEW: Policy-Based Computation Section */}
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            {/* Policy-based computation */}
+            <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50
+                            border border-blue-200 p-5">
                 <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                            <Zap className="h-6 w-6 text-white" />
-                        </div>
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600">
+                        <Zap className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">
+                        <h3 className="font-semibold text-gray-900 mb-1">
                             Policy-Based Grade Computation
                         </h3>
-                        <p className="text-sm text-gray-600 mb-4">
-                            Compute grades using flexible computation policies. Supports weighted averages,
-                            drop lowest CAT, papers averaging, and custom formulas.
+                        <p className="text-sm text-gray-600 mb-3">
+                            Compute grades using your configured policies — weighted averages,
+                            custom scales, required components, and grading bands.
                         </p>
                         <div className="flex items-center gap-3">
                             <Button
-                                onClick={handleComputeWithPolicy}
+                                onClick={() => run('policy', () => computeWithPolicy(selectedTerm!))}
                                 disabled={!selectedTerm || computing === 'policy'}
                             >
-                                {computing === 'policy' ? (
-                                    <>
-                                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                                        Computing with Policies...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Zap className="mr-2 h-4 w-4" />
-                                        Compute with Policies
-                                    </>
-                                )}
+                                {computing === 'policy'
+                                    ? <><Loader className="h-4 w-4 mr-1.5 animate-spin" />Computing…</>
+                                    : <><Zap className="h-4 w-4 mr-1.5" />Compute with Policies</>
+                                }
                             </Button>
                             <Link href="/reports/grade-policies">
-                                <Button variant="ghost" size="sm">
-                                    <Settings className="mr-2 h-4 w-4" />
-                                    Manage Policies
+                                <Button variant="secondary" size="sm">
+                                    <Settings className="h-4 w-4 mr-1.5" />Manage Policies
                                 </Button>
                             </Link>
                         </div>
                         {results.policy && (
-                            <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${results.policy.success
-                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-red-50 text-red-700 border border-red-200'
-                                }`}>
-                                {results.policy.success ? (
-                                    <CheckCircle className="h-4 w-4" />
-                                ) : (
-                                    <AlertCircle className="h-4 w-4" />
-                                )}
-                                <span className="text-sm font-medium">{results.policy.message}</span>
-                            </div>
+                            <ResultBanner result={results.policy} />
                         )}
                     </div>
                 </div>
-            </Card>
+            </div>
 
-            {/* EXISTING: Legacy Compute Options (100% unchanged) */}
+            {/* Individual compute options */}
             <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Legacy Computation Methods</h2>
-                <div className="grid gap-4 md:grid-cols-2">
-                    {computeOptions.map((option) => (
-                        <Card key={option.id} className="hover:shadow-lg transition-shadow">
-                            <div className="flex items-start gap-3 mb-4">
-                                <div className="text-3xl">{option.icon}</div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-gray-900">{option.title}</h3>
-                                    <p className="text-sm text-gray-600">{option.description}</p>
+                <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
+                    Summary Recomputation
+                </h2>
+                <div className="grid gap-3 md:grid-cols-2">
+                    {COMPUTE_OPTIONS.map(opt => (
+                        <Card key={opt.id}>
+                            <div className="flex items-start justify-between mb-3">
+                                <div>
+                                    <p className="font-medium text-gray-900">{opt.title}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{opt.description}</p>
                                 </div>
                             </div>
-
                             <Button
-                                onClick={option.compute}
-                                disabled={!selectedTerm || computing === option.id || computing === 'all'}
+                                onClick={() => run(opt.id, opt.fn)}
+                                disabled={!selectedTerm || computing === opt.id || computing === 'all'}
+                                variant="secondary"
+                                size="sm"
                                 className="w-full"
                             >
-                                {computing === option.id ? (
-                                    <>
-                                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                                        Computing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Play className="mr-2 h-4 w-4" />
-                                        Compute
-                                    </>
-                                )}
+                                {computing === opt.id
+                                    ? <><Loader className="h-3 w-3 mr-1.5 animate-spin" />Computing…</>
+                                    : <><Play className="h-3 w-3 mr-1.5" />Compute</>
+                                }
                             </Button>
-
-                            {results[option.id] && (
-                                <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${results[option.id].success
-                                    ? 'bg-green-50 text-green-700 border border-green-200'
-                                    : 'bg-red-50 text-red-700 border border-red-200'
-                                    }`}>
-                                    {results[option.id].success ? (
-                                        <CheckCircle className="h-4 w-4" />
-                                    ) : (
-                                        <AlertCircle className="h-4 w-4" />
-                                    )}
-                                    <span className="text-sm font-medium">{results[option.id].message}</span>
-                                </div>
-                            )}
+                            {results[opt.id] && <ResultBanner result={results[opt.id]} />}
                         </Card>
                     ))}
                 </div>
             </div>
 
-            {/* EXISTING: Batch Compute All (100% unchanged) */}
-            <Card className="bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200">
-                <div className="mb-4">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Batch Compute All (Legacy)</h3>
-                    <p className="text-gray-600">
-                        Recompute all legacy summaries in sequence for the selected term
-                    </p>
+            {/* Batch all */}
+            <Card>
+                <div className="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 className="font-semibold text-gray-900">Compute All Summaries</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            Runs all five summary computations in sequence.
+                        </p>
+                    </div>
+                    {Object.keys(results).length > 0 && (
+                        <div className="flex gap-2">
+                            {successCount > 0 && <Badge variant="green">{successCount} ok</Badge>}
+                            {failCount > 0 && <Badge variant="red">{failCount} failed</Badge>}
+                        </div>
+                    )}
                 </div>
                 <Button
                     onClick={handleComputeAll}
                     disabled={!selectedTerm || computing !== null}
-                    size="lg"
                     className="w-full md:w-auto"
                 >
-                    {computing === 'all' ? (
-                        <>
-                            <Loader className="mr-2 h-5 w-5 animate-spin" />
-                            Computing All...
-                        </>
-                    ) : (
-                        <>
-                            <Play className="mr-2 h-5 w-5" />
-                            Compute All Summaries
-                        </>
-                    )}
+                    {computing === 'all'
+                        ? <><Loader className="h-4 w-4 mr-1.5 animate-spin" />Computing All…</>
+                        : <><Play className="h-4 w-4 mr-1.5" />Compute All</>
+                    }
                 </Button>
-
-                {/* EXISTING: Batch Results Summary (unchanged) */}
-                {Object.keys(results).length > 0 && (
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <h4 className="text-sm font-semibold text-gray-900 mb-3">Results Summary</h4>
-                        <div className="flex gap-4">
-                            <Badge variant="success">
-                                ✓ {Object.values(results).filter(r => r.success).length} Successful
-                            </Badge>
-                            <Badge variant="danger">
-                                ✗ {Object.values(results).filter(r => !r.success).length} Failed
-                            </Badge>
-                        </div>
-                    </div>
-                )}
             </Card>
+
+        </div>
+    );
+}
+
+// ── Small helper component ────────────────────────────────────────────────
+
+function ResultBanner({ result }: { result: { success: boolean; message: string } }) {
+    return (
+        <div className={`mt-3 p-2.5 rounded-lg flex items-center gap-2 text-sm
+            ${result.success
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-red-50   text-red-700   border border-red-200'
+            }`}>
+            {result.success
+                ? <CheckCircle className="h-4 w-4 shrink-0" />
+                : <AlertCircle className="h-4 w-4 shrink-0" />
+            }
+            {result.message}
         </div>
     );
 }

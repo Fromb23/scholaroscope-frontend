@@ -203,13 +203,11 @@ export const reportsAPI = {
     return response.data;
   },
 
-  getSubjectAnalysis: async (termId: number, subjectId?: number) => {
-    const params: any = { term_id: termId };
+  getSubjectAnalysis: async (termId: number, subjectId?: number): Promise<SubjectAnalysis> => {
+    const params: Record<string, number> = { term_id: termId };
     if (subjectId) params.subject_id = subjectId;
-
     const response = await apiClient.get<SubjectAnalysis>(
-      '/reporting/reports/subject_analysis/',
-      { params }
+      '/reporting/reports/subject_analysis/', { params }
     );
     return response.data;
   },
@@ -239,7 +237,6 @@ export const policyAPI = {
   },
 
   createGradePolicy: async (payload: Partial<GradePolicy>) => {
-    console.log("Reporting payload going to the server", payload);
     const { data } = await apiClient.post<GradePolicy>('/reporting/grade-policies/', payload);
     return data;
   },
