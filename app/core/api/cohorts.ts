@@ -2,6 +2,7 @@
 // app/api/cohorts.ts - Cohorts API Calls
 // ============================================================================
 
+import { CohortSubject } from '../types/academic';
 import { apiClient } from './client';
 
 export interface Cohort {
@@ -131,9 +132,8 @@ export const cohortsAPI = {
     return data;
   },
 
-  // Get cohort subjects
-  getCohortSubjects: async (id: number) => {
-    const { data } = await apiClient.get(`/cohort-subjects/?cohort=${id}`);
+  getCohortSubjects: async (id: number): Promise<CohortSubject[]> => {
+    const { data } = await apiClient.get<CohortSubject[]>(`/cohort-subjects/?cohort=${id}`);
     return data;
   },
 

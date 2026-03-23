@@ -7,7 +7,8 @@ import {
   RubricScaleDetail,
   RubricLevel,
   BulkScoreData,
-  AssessmentStatistics
+  AssessmentStatistics,
+  StudentScoresResponse
 } from '../types/assessment';
 
 // Rubric Scale API
@@ -103,8 +104,7 @@ export const assessmentAPI = {
     return response.data;
   },
 
-  create: async (data: Partial<Assessment>) => {
-    console.log("Creating assessment client endpoint", data);
+  create: async (data: Partial<Assessment>): Promise<Assessment> => {
     const response = await apiClient.post<Assessment>('/assessments/', data);
     return response.data;
   },
@@ -114,8 +114,16 @@ export const assessmentAPI = {
     return response.data;
   },
 
-  delete: async (id: number) => {
+  delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/assessments/${id}/`);
+  },
+  activate: async (id: number): Promise<Assessment> => {
+    const response = await apiClient.post<Assessment>(`/assessments/${id}/activate/`);
+    return response.data;
+  },
+  finalize: async (id: number): Promise<Assessment> => {
+    const response = await apiClient.post<Assessment>(`/assessments/${id}/finalize/`);
+    return response.data;
   },
 
   getLeaderboard: async (id: number, limit: number = 10) => {
@@ -180,11 +188,17 @@ export const assessmentScoreAPI = {
     return response.data;
   },
 
-  getStudentScores: async (studentId: number, termId?: number) => {
-    const params: any = { student_id: studentId };
+  getStudentScores: async (
+    studentId: number,
+    termId?: number,
+    cohortId?: number
+  ): Promise<StudentScoresResponse> => {
+    const params: Record<string, number> = { student_id: studentId };
     if (termId) params.term_id = termId;
-
-    const response = await apiClient.get('/scores/student_scores/', { params });
+    if (cohortId) params.cohort_id = cohortId;
+    const response = await apiClient.get<StudentScoresResponse>(
+      '/scores/student_scores/', { params }
+    );
     return response.data;
-  }
+  },
 };

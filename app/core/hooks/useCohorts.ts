@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { cohortsAPI, Cohort, CohortDetail, CohortStats } from '../api/cohorts';
-import { Subject } from '../types/academic';
+import { CohortSubject, Subject } from '../types/academic';
 import { StudentDetail } from '../types/student';
 
 export function useCohorts(filters?: {
@@ -210,7 +210,7 @@ export function useCohortStudents(cohortId?: number) {
 }
 
 export function useCohortSubjects(cohortId?: number) {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<CohortSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -227,7 +227,7 @@ export function useCohortSubjects(cohortId?: number) {
       setLoading(true);
       setError(null);
       const data = await cohortsAPI.getCohortSubjects(cohortId);
-      setSubjects(data);
+      setSubjects(Array.isArray(data) ? data : (data as { results?: CohortSubject[] }).results ?? []);
     } catch (err: any) {
       setError(err.message);
       setSubjects([]);

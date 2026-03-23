@@ -1,3 +1,5 @@
+// app/core/types/assessment.ts
+
 export enum AssessmentType {
   CAT = 'CAT',
   TEST = 'TEST',
@@ -6,17 +8,22 @@ export enum AssessmentType {
   PROJECT = 'PROJECT',
   ASSIGNMENT = 'ASSIGNMENT',
   PRACTICAL = 'PRACTICAL',
-  COMPETENCY = 'COMPETENCY'
+  COMPETENCY = 'COMPETENCY',
 }
 
 export enum EvaluationType {
   NUMERIC = 'NUMERIC',
   RUBRIC = 'RUBRIC',
   DESCRIPTIVE = 'DESCRIPTIVE',
-  COMPETENCY = 'COMPETENCY'
+  COMPETENCY = 'COMPETENCY',
 }
 
-// Rubric Scale
+export enum AssessmentStatus {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  FINALIZED = 'FINALIZED',
+}
+
 export interface RubricLevel {
   id: number;
   rubric_scale: number;
@@ -42,7 +49,6 @@ export interface RubricScaleDetail extends RubricScale {
   levels: RubricLevel[];
 }
 
-// Assessment (updated to use cohort_subject)
 export interface Assessment {
   id: number;
   term: number | null;
@@ -63,10 +69,31 @@ export interface Assessment {
   rubric_scale_name: string | null;
   assessment_date: string | null;
   description: string;
-  weight: number;
+  status: AssessmentStatus;
+  status_display: string;
   scores_count: number;
   created_at: string;
   created_by: string;
+}
+
+export interface AssessmentScore {
+  id: number;
+  assessment: number;
+  assessment_name: string;
+  subject_name: string;
+  student: number;
+  student_name: string;
+  student_admission: string;
+  score: number | null;
+  total_marks: number;
+  percentage: number | null;
+  rubric_level: number | null;
+  rubric_level_label: string | null;
+  rubric_level_code: string | null;
+  comments: string;
+  submitted_at: string | null;
+  graded_at: string;
+  graded_by: string;
 }
 
 export interface AssessmentStatistics {
@@ -105,27 +132,6 @@ export interface AssessmentDetail extends Assessment {
   rubric_levels: RubricLevel[];
 }
 
-// Assessment Score
-export interface AssessmentScore {
-  id: number;
-  assessment: number;
-  assessment_name: string;
-  subject_name: string;
-  student: number;
-  student_name: string;
-  student_admission: string;
-  score: number | null;
-  total_marks: number;
-  percentage: number | null;
-  rubric_level: number | null;
-  rubric_level_label: string | null;
-  rubric_level_code: string | null;
-  comments: string;
-  submitted_at: string | null;
-  graded_at: string;
-  graded_by: string;
-}
-
 export interface BulkScoreData {
   assessment: number;
   scores: {
@@ -138,7 +144,6 @@ export interface BulkScoreData {
   scored_by: string;
 }
 
-// Form Data Types (updated to use cohort_subject)
 export interface AssessmentFormData {
   cohort_subject: number;
   term: number | null;
@@ -149,21 +154,59 @@ export interface AssessmentFormData {
   rubric_scale: number | null;
   assessment_date: string | null;
   description: string;
-  weight: number;
+  status: AssessmentStatus;
 }
 
-export interface RubricScaleFormData {
-  curriculum: number;
-  name: string;
-  description: string;
-  is_active: boolean;
+export interface StudentScoresResponse {
+  statistics: {
+    average: number;
+    count: number;
+  };
+  scores: AssessmentScore[];
 }
 
-export interface RubricLevelFormData {
-  rubric_scale: number;
-  code: string;
+// ── Derived helpers (pure functions — no API calls) ───────────────────────
+
+export interface GradeInfo {
+  grade: string;
   label: string;
-  description: string;
-  numeric_value: number;
-  sequence: number;
+  percentage: string;
+  color: 'success' | 'info' | 'warning' | 'danger';
+}
+
+export function calculateGrade(
+  score: number | null | undefined,
+  totalMarks: number
+): GradeInfo | null {
+  if (score == null || !totalMarks) return null;
+  const pct = (score / totalMarks) * 100;
+  if (pct >= 80) return { grade: 'A', label: 'Excellent', percentage: pct.toFixed(1), color: 'success' };
+  if (pct >= 70) return { grade: 'B', label: 'Very Good', percentage: pct.toFixed(1), color: 'info' };
+  if (pct >= 60) return { grade: 'C', label: 'Good', percentage: pct.toFixed(1), color: 'info' };
+  if (pct >= 50) return { grade: 'D', label: 'Satisfactory', percentage: pct.toFixed(1), color: 'warning' };
+  return { grade: 'E', label: 'Poor Performance', percentage: pct.toFixed(1), color: 'danger' };
+}
+
+export interface ScoreStats {
+  average: number;
+  highest: number;
+  lowest: number;
+  scored: number;
+  total: number;
+  completion: number;
+}
+
+export function calculateScoreStats(scores: AssessmentScore[]): ScoreStats {
+  if (!scores.length) return { average: 0, highest: 0, lowest: 0, scored: 0, total: 0, completion: 0 };
+  const valid = scores.filter(s => s.score != null).map(s => s.score as number);
+  const scored = valid.length;
+  const total = scores.length;
+  return {
+    average: scored ? valid.reduce((a, b) => a + b, 0) / scored : 0,
+    highest: scored ? Math.max(...valid) : 0,
+    lowest: scored ? Math.min(...valid) : 0,
+    scored,
+    total,
+    completion: total ? Math.round((scored / total) * 100) : 0,
+  };
 }
