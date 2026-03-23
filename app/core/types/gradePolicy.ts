@@ -1,6 +1,5 @@
-/**
- * Aggregation method for computing final grades
- */
+// app/core/types/gradePolicy.ts
+
 export type AggregationMethod =
     | 'AVERAGE_PLUS_EXAM'
     | 'WEIGHTED'
@@ -9,47 +8,28 @@ export type AggregationMethod =
     | 'EXAM_ONLY'
     | 'CUSTOM';
 
-/**
- * Method for combining assessment scores within a category
- */
-export type CombineMethod =
-    | 'AVERAGE'
-    | 'SUM'
-    | 'WEIGHTED_AVERAGE'
-    | 'BEST_OF'
-    | 'DROP_LOWEST';
+export type GradeStatus = 'FINAL' | 'PROVISIONAL' | 'INCOMPLETE';
 
-/**
- * Assessment category configuration
- */
+export interface GradingBand {
+    min: number;
+    max?: number;
+    grade: string;
+    label?: string;
+}
+
 export interface AssessmentCategoryConfig {
     id?: number;
     assessment_type: string;
     weight: number;
     cap?: number | null;
-    combine_method: CombineMethod;
+    combine_method: string;
     sequence: number;
 }
 
-/**
- * Policy context - defines where the policy applies
- */
-export interface PolicyContext {
-    cohort_subject?: number | null;
-    cohort?: number | null;
-    curriculum?: number | null;
-    term?: number | null;
-}
-
-/**
- * Grade computation policy
- */
 export interface GradePolicy {
     id: number;
     name: string;
     description?: string;
-
-    // Context
     cohort_subject?: number | null;
     cohort_subject_name?: string | null;
     cohort?: number | null;
@@ -58,35 +38,24 @@ export interface GradePolicy {
     curriculum_name?: string | null;
     term?: number | null;
     term_name?: string | null;
-
-    // Computation rules
     aggregation_method: AggregationMethod;
     default_weighting: Record<string, number>;
-
-    // Advanced options
+    required_components: string[];
+    grading_scale: GradingBand[];
     drop_lowest_cat: boolean;
     cap_cat_score?: number | null;
     cap_exam_score?: number | null;
-
-    // Status
     is_active: boolean;
     is_default: boolean;
-
-    // Category configurations
+    is_frozen?: boolean;
     category_configs?: AssessmentCategoryConfig[];
-
-    // Metadata
     created_at: string;
     updated_at: string;
-    created_by?: number;
-    created_by_name?: string;
+    created_by?: number | null;
+    created_by_name?: string | null;
 }
 
-/**
- * Computed grade result
- */
 export interface ComputedGradeDTO {
-    policy_id: number;
     id: number;
     student: number;
     student_name: string;
@@ -99,51 +68,19 @@ export interface ComputedGradeDTO {
     subject_code: string;
     policy?: number | null;
     policy_name?: string | null;
+    policy_version?: number | null;
     component_scores: Record<string, number>;
     final_score: number;
     letter_grade: string;
+    letter_label: string;
+    grade_status: GradeStatus;
     computation_timestamp: string;
     computation_details: {
         method: AggregationMethod;
         log: string[];
-        scores_by_type: Record<string, number[]>;
     };
 }
 
-/**
- * Response from compute operation
- */
-export interface ComputeResponse {
-    detail: string;
-    term: string;
-    errors?: string[] | null;
-}
-
-/**
- * Grade comparison data
- */
-export interface GradeComparison {
-    total_computed: number;
-    total_legacy: number;
-    differences: GradeDifference[];
-    average_difference: number;
-}
-
-/**
- * Individual grade difference
- */
-export interface GradeDifference {
-    student_name: string;
-    subject_name: string;
-    computed_score: number;
-    legacy_score: number;
-    difference: number;
-    policy_name?: string;
-}
-
-/**
- * Payload for creating/updating a policy
- */
 export interface GradePolicyPayload {
     name: string;
     description?: string;
@@ -152,7 +89,9 @@ export interface GradePolicyPayload {
     curriculum?: number | null;
     term?: number | null;
     aggregation_method: AggregationMethod;
-    default_weighting?: Record<string, number>;
+    default_weighting: Record<string, number>;
+    required_components: string[];
+    grading_scale: GradingBand[];
     drop_lowest_cat?: boolean;
     cap_cat_score?: number | null;
     cap_exam_score?: number | null;
@@ -161,9 +100,6 @@ export interface GradePolicyPayload {
     category_configs?: Omit<AssessmentCategoryConfig, 'id'>[];
 }
 
-/**
- * Filters for fetching policies
- */
 export interface PolicyFilters {
     cohort_subject?: number;
     cohort?: number;
@@ -172,9 +108,6 @@ export interface PolicyFilters {
     is_active?: boolean;
 }
 
-/**
- * Context filters for policy lookup
- */
 export interface PolicyContextFilters {
     cohort_subject_id?: number;
     cohort_id?: number;
@@ -182,9 +115,6 @@ export interface PolicyContextFilters {
     term_id?: number;
 }
 
-/**
- * Filters for fetching computed grades
- */
 export interface ComputedGradeFilters {
     student?: number;
     term?: number;
@@ -192,11 +122,14 @@ export interface ComputedGradeFilters {
     policy?: number;
 }
 
-/**
- * Payload for computing grades with policy
- */
 export interface ComputeGradesPayload {
     term_id: number;
     cohort_id?: number;
     policy_id?: number;
+}
+
+export interface ComputeResponse {
+    detail: string;
+    term: string;
+    errors?: string[] | null;
 }
