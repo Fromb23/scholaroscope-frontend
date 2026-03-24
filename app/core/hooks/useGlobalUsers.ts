@@ -38,16 +38,17 @@ export const useGlobalUsers = () => {
         fetchUsers();
     }, []);
 
-    const createUser = async (data: UserCreatePayload) => {
+    const createUser = async (data: UserCreatePayload & { organization_id?: number }) => {
         try {
             const newUser = await globalUsersAPI.create(data);
             setUsers(prev => [newUser, ...prev]);
             return newUser;
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { email?: string[]; password?: string[]; message?: string } } };
             const msg =
-                err.response?.data?.email?.[0] ||
-                err.response?.data?.password?.[0] ||
-                err.response?.data?.message ||
+                e.response?.data?.email?.[0] ||
+                e.response?.data?.password?.[0] ||
+                e.response?.data?.message ||
                 'Failed to create user';
             throw new Error(msg);
         }
@@ -77,7 +78,7 @@ export const useGlobalUsers = () => {
             const updated = activate
                 ? await globalUsersAPI.activate(id)
                 : await globalUsersAPI.deactivate(id);
-            setUsers(prev => prev.map(u => (u.id === id ? updated.user ?? updated : u)));
+            setUsers(prev => prev.map(u => (u.id === id ? updated : u)));
             return updated;
         } catch (err: any) {
             throw new Error(err.response?.data?.message || 'Failed to change user status');

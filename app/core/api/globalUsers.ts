@@ -3,6 +3,7 @@
 // Mirrors: UserViewSet endpoints — superadmin sees all users across all orgs
 // ============================================================================
 
+import { HistoryEntry, TeachingAssignment } from '../types/academic';
 import { apiClient } from './client';
 import {
     GlobalUser,
@@ -25,7 +26,7 @@ export const globalUsersAPI = {
     },
 
     // POST /api/users/
-    create: async (data: UserCreatePayload): Promise<GlobalUser> => {
+    create: async (data: UserCreatePayload & { organization_id?: number }): Promise<GlobalUser> => {
         const response = await apiClient.post<GlobalUser>('/users/', data);
         return response.data;
     },
@@ -61,6 +62,29 @@ export const globalUsersAPI = {
     // GET /api/users/statistics/
     getStatistics: async (): Promise<GlobalUserStats> => {
         const response = await apiClient.get<GlobalUserStats>('/users/statistics/');
+        return response.data;
+    },
+    addToOrg: async (userId: number, organizationId: number, role: string): Promise<void> => {
+        await apiClient.post(`/users/${userId}/add_to_org/`, {
+            organization_id: organizationId,
+            role,
+        });
+    },
+    // Add inside globalUsersAPI object
+    getMyTeachingLoad: async (): Promise<{
+        instructor_id: number;
+        organization: string | null;
+        total_assigned: number;
+        assignments: TeachingAssignment[];
+    }> => {
+        const response = await apiClient.get('/users/my_teaching_load/');
+        return response.data;
+    },
+    getMyTeachingHistory: async (): Promise<{
+        instructor_id: number;
+        history: HistoryEntry[];
+    }> => {
+        const response = await apiClient.get('/users/my_teaching_history/');
         return response.data;
     },
 };

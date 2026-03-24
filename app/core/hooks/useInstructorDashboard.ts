@@ -12,8 +12,9 @@ import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useAssessments, useAssessmentScores } from '@/app/core/hooks/useAssessments';
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import type { Session } from '@/app/core/types/session';
-import type { Cohort } from '@/app/core/types/academic';
+import type { Cohort, TeachingAssignment, HistoryEntry } from '@/app/core/types/academic';
 import type { DashboardAlert } from './useAdminDashboard';
+import { globalUsersAPI } from '../api/globalUsers';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ export interface InstructorMetrics {
 function computeInstructorMetrics(
     students: { id: number; status?: string }[],
     assessments: { assessment_date?: string | null }[],
-    scores: { score?: number | null; rubric_level?: string | null; assessment?: unknown }[],
+    scores: { score?: number | null; rubric_level?: number | null; assessment?: unknown }[],
     sessions: Session[]
 ): InstructorMetrics {
     const now = new Date();
@@ -137,8 +138,11 @@ function generateInstructorAlerts(metrics: InstructorMetrics): DashboardAlert[] 
 
 export function useInstructorDashboard() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
+    const [teachingLoad, setTeachingLoad] = useState<TeachingAssignment[]>([]);
+    const [teachingLoadLoading, setTeachingLoadLoading] = useState(true);
+    const [teachingHistory, setTeachingHistory] = useState<HistoryEntry[]>([]);
 
-    const { students, loading: studentsLoading, refetch: refetchStudents } = useStudents();
+    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents();
     const { cohorts, loading: cohortsLoading } = useCohorts();
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
     const { currentTerm, loading: termLoading } = useCurrentTerm();
@@ -149,7 +153,7 @@ export function useInstructorDashboard() {
     const { scores, loading: scoresLoading } = useAssessmentScores();
 
     const isLoading = studentsLoading || cohortsLoading || sessionsLoading ||
-        assessmentsLoading || scoresLoading || termLoading || yearLoading;
+        assessmentsLoading || scoresLoading || termLoading || yearLoading || teachingLoadLoading;
 
     const metrics = useMemo(
         () => computeInstructorMetrics(students, assessments, scores, sessions),
@@ -160,6 +164,19 @@ export function useInstructorDashboard() {
         () => generateInstructorAlerts(metrics),
         [metrics]
     );
+
+    useEffect(() => {
+        globalUsersAPI.getMyTeachingLoad()
+            .then(data => setTeachingLoad(data.assignments))
+            .catch(() => setTeachingLoad([]))
+            .finally(() => setTeachingLoadLoading(false));
+    }, []);
+
+    useEffect(() => {
+        globalUsersAPI.getMyTeachingHistory()
+            .then(data => setTeachingHistory(data.history))
+            .catch(() => setTeachingHistory([]));
+    }, []);
 
     const refresh = useCallback(async () => {
         await Promise.all([
@@ -185,5 +202,7 @@ export function useInstructorDashboard() {
         lastRefresh,
         isLoading,
         refresh,
+        teachingLoad,
+        teachingHistory,
     };
 }

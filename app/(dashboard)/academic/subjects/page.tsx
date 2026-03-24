@@ -31,12 +31,14 @@ export default function SubjectsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editing, setEditing] = useState<Subject | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
+    const [addingLevelTo, setAddingLevelTo] = useState<Subject | null>(null);
 
     const grouped = useMemo(() => groupSubjects(subjects, search), [subjects, search]);
 
-    const openCreate = () => { setEditing(null); setIsModalOpen(true); };
-    const openEdit = (s: Subject) => { setEditing(s); setIsModalOpen(true); };
-    const closeModal = () => { setIsModalOpen(false); setEditing(null); };
+    const openCreate = () => { setEditing(null); setAddingLevelTo(null); setIsModalOpen(true); };
+    const openAddLevel = (s: Subject) => { setEditing(null); setAddingLevelTo(s); setIsModalOpen(true); };
+    const openEdit = (s: Subject) => { setEditing(s); setAddingLevelTo(null); setIsModalOpen(true); };
+    const closeModal = () => { setIsModalOpen(false); setEditing(null); setAddingLevelTo(null); };
 
     const handleSave = async (data: SubjectFormData, editingId?: number) => {
         if (editingId) {
@@ -125,6 +127,7 @@ export default function SubjectsPage() {
                             subjectGroups={subjectGroups}
                             onEdit={openEdit}
                             onDelete={handleDelete}
+                            onAddLevel={openAddLevel}
                         />
                     ))}
                 </div>
@@ -137,6 +140,7 @@ export default function SubjectsPage() {
                 curricula={curricula}
                 onSave={handleSave}
                 defaultCurriculumId={curricula[0]?.id ?? 0}
+                addingLevelTo={addingLevelTo}
             />
         </div>
     );

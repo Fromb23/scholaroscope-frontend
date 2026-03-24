@@ -80,7 +80,7 @@ export default function InstructorProgressPage() {
 
     const handleToggle = () =>
         withSubmit(async () => {
-            await instructorsAPI.update(instructorId, { is_active: !instructor!.is_active });
+            await (instructor?.is_active ? instructorsAPI.deactivate(instructorId) : instructorsAPI.activate(instructorId));
             await refetch();
         },
             `Instructor ${instructor?.is_active ? 'deactivated' : 'activated'}`,
@@ -156,7 +156,7 @@ export default function InstructorProgressPage() {
                             <span className="text-xs text-gray-400 italic">No cohorts assigned</span>
                         )}
                         {instructor.cohort_assignments?.map(a => (
-                            <Badge key={a.cohort_id} variant="info" size="sm">
+                            <Badge key={a.cohort_subject_id} variant="info" size="sm">
                                 <GraduationCap className="h-3 w-3 mr-1 inline" />{a.cohort_name}
                             </Badge>
                         ))}

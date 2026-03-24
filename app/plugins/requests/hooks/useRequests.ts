@@ -22,7 +22,7 @@ export const useRequests = (params?: Record<string, string>) => {
             setRequests(arr);
             setError(null);
         } catch (err: any) {
-            setError(err.message || 'Failed to fetch requests');
+            setError(err.detail || 'Failed to fetch requests');
         } finally {
             setLoading(false);
         }
@@ -84,7 +84,7 @@ export const useRequestDetail = (id: number | null) => {
             setRequest(data);
             setError(null);
         } catch (err: any) {
-            setError(err.message || 'Failed to fetch request');
+            setError(err.detail || 'Failed to fetch request');
         } finally {
             setLoading(false);
         }

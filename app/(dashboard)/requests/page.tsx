@@ -20,7 +20,7 @@ import {
 
 export default function RequestsPage() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const { requests, loading, error, refetch, reviewRequest, deleteRequest } = useRequests();
 
     const isAdmin = activeRole === 'ADMIN';

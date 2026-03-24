@@ -137,8 +137,8 @@ export default function SystemHealthPage() {
     const suspendedOrgs = organizations.filter(o => !o.is_active).length;
     const activeUsers = users.filter(u => u.is_active).length;
     const inactiveUsers = users.filter(u => !u.is_active).length;
-    const admins = users.filter(u => u.role === 'ADMIN').length;
-    const instructors = users.filter(u => u.role === 'INSTRUCTOR').length;
+    const admins = users.filter(u => !u.is_superadmin && u.role === 'ADMIN').length;
+    const instructors = users.filter(u => !u.is_superadmin && u.role === 'INSTRUCTOR').length;
 
     // Health score: weighted % of active orgs + active users
     const healthScore = organizations.length > 0 && users.length > 0

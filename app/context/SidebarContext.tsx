@@ -35,11 +35,9 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const openSidebar = () => {
-        if (isMobileView) return; // prevent open on mobile
         setIsSidebarOpen(true);
     };
     const closeSidebar = () => {
-        if (isMobileView) return; // prevent close on mobile
         setIsSidebarOpen(false);
     };
     const toggleSidebar = () => setIsSidebarOpen(prev => !prev);

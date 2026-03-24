@@ -13,10 +13,12 @@ import {
     AlertCircle, Clock, Bell, RefreshCw, Inbox,
     Activity, FileBarChart, Settings, Zap, ChevronRight,
     BarChart3,
+    BookOpen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { DashboardAlert, DashboardMetrics } from '@/app/core/hooks/useAdminDashboard';
 import type { Session } from '@/app/core/types/session';
+import { SyllabusProgress } from '../../types/academic';
 
 // ── DashboardHeader ───────────────────────────────────────────────────────
 
@@ -522,6 +524,61 @@ export function PendingApprovals() {
                     </div>
                 ))}
             </div>
+        </div>
+    );
+}
+
+
+interface SyllabusProgressCardProps {
+    progress: SyllabusProgress[];
+}
+
+export function SyllabusProgressCard({ progress }: SyllabusProgressCardProps) {
+    const router = useRouter();
+
+    if (progress.length === 0) return null;
+
+    return (
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl">
+                    <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Syllabus Coverage</h3>
+            </div>
+            <div className="space-y-4">
+                {progress.map(cohort => (
+                    <div key={cohort.cohort_id} className="border border-gray-100 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="font-bold text-gray-900 text-sm">{cohort.cohort_name}</p>
+                            <span className="text-sm font-bold text-teal-600">
+                                {cohort.overall.percentage}%
+                            </span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-3">
+                            <div
+                                className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full"
+                                style={{ width: `${cohort.overall.percentage}%` }}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            {cohort.subjects.map(s => (
+                                <div key={s.cohort_subject_id}
+                                    className="flex items-center justify-between text-xs text-gray-500">
+                                    <span>{s.subject_name} ({s.level})</span>
+                                    <span className="font-medium">{s.percentage}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <button
+                onClick={() => router.push('/academic/progress')}
+                className="w-full mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
+            >
+                View Full Progress
+            </button>
         </div>
     );
 }

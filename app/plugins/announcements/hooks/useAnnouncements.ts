@@ -1,6 +1,8 @@
-// app/plugins/announcements/hooks/useAnnouncements.ts
-
 'use client';
+
+// ============================================================================
+// app/plugins/announcements/hooks/useAnnouncements.ts
+// ============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { announcementAPI } from '../api/announcements';
@@ -21,8 +23,8 @@ export const useAnnouncements = () => {
             const data = await announcementAPI.getAll();
             setAnnouncements(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch announcements');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch announcements');
         } finally {
             setLoading(false);
         }
@@ -54,6 +56,13 @@ export const useAnnouncements = () => {
         );
     };
 
+    const submitFeedback = async (id: number, response: string) => {
+        await announcementAPI.submitFeedback(id, response);
+        setAnnouncements(prev =>
+            prev.map(a => a.id === id ? { ...a, has_feedback: true } : a)
+        );
+    };
+
     return {
         announcements,
         loading,
@@ -63,6 +72,7 @@ export const useAnnouncements = () => {
         update,
         remove,
         markRead,
+        submitFeedback,
     };
 };
 

@@ -7,9 +7,10 @@
 // No any. No alert(). No API calls.
 // ============================================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     BookOpen, Edit2, Trash2, ChevronDown, ChevronRight,
+    Plus,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -71,9 +72,10 @@ interface SubjectNameGroupProps {
     levels: Subject[];
     onEdit: (s: Subject) => void;
     onDelete: (id: number) => void;
+    onAddLevel: (s: Subject) => void;
 }
 
-export function SubjectNameGroup({ name, levels, onEdit, onDelete }: SubjectNameGroupProps) {
+export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }: SubjectNameGroupProps) {
     const [open, setOpen] = useState(true);
 
     return (
@@ -91,6 +93,14 @@ export function SubjectNameGroup({ name, levels, onEdit, onDelete }: SubjectName
                 <Badge variant="default" size="sm">
                     {levels.length} level{levels.length !== 1 ? 's' : ''}
                 </Badge>
+                <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); onAddLevel(levels[0]); }}
+                    className="p-1 rounded-md text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors"
+                    title="Add level"
+                >
+                    <Plus className="h-3.5 w-3.5" />
+                </button>
             </button>
 
             {open && (
@@ -137,10 +147,11 @@ interface CurriculumGroupProps {
     subjectGroups: Map<string, Subject[]>;
     onEdit: (s: Subject) => void;
     onDelete: (id: number) => void;
+    onAddLevel: (s: Subject) => void;
 }
 
 export function CurriculumGroup({
-    curriculumName, curriculumType, subjectGroups, onEdit, onDelete,
+    curriculumName, curriculumType, subjectGroups, onEdit, onDelete, onAddLevel,
 }: CurriculumGroupProps) {
     const [open, setOpen] = useState(true);
     const totalSubjects = Array.from(subjectGroups.values()).flat().length;
@@ -173,6 +184,7 @@ export function CurriculumGroup({
                             levels={levels}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            onAddLevel={onAddLevel}
                         />
                     ))}
                 </div>
@@ -190,10 +202,11 @@ interface SubjectFormModalProps {
     curricula: Curriculum[];
     onSave: (data: SubjectFormData, editingId?: number) => Promise<void>;
     defaultCurriculumId: number;
+    addingLevelTo: Subject | null;
 }
 
 export function SubjectFormModal({
-    isOpen, onClose, editing, curricula, onSave, defaultCurriculumId,
+    isOpen, onClose, editing, curricula, onSave, defaultCurriculumId, addingLevelTo,
 }: SubjectFormModalProps) {
     const [form, setForm] = useState<SubjectFormData>(() => editing
         ? { curriculum: editing.curriculum, code: editing.code, name: editing.name, level: editing.level ?? '', description: editing.description }
@@ -203,8 +216,16 @@ export function SubjectFormModal({
     const [error, setError] = useState<string | null>(null);
 
     // Sync form when editing changes
-    useState(() => {
-        if (editing) {
+    useEffect(() => {
+        if (addingLevelTo) {
+            setForm({
+                curriculum: addingLevelTo.curriculum,
+                code: addingLevelTo.code,
+                name: addingLevelTo.name,
+                level: '',
+                description: '',
+            });
+        } else if (editing) {
             setForm({
                 curriculum: editing.curriculum,
                 code: editing.code,
@@ -216,7 +237,7 @@ export function SubjectFormModal({
             setForm({ curriculum: defaultCurriculumId, code: '', name: '', level: '', description: '' });
         }
         setError(null);
-    });
+    }, [editing, isOpen, addingLevelTo]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -232,13 +253,20 @@ export function SubjectFormModal({
     const handleClose = () => { setError(null); onClose(); };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title={editing ? 'Edit Subject' : 'Create Subject'}>
+        <Modal isOpen={isOpen} onClose={handleClose} title={
+            addingLevelTo
+                ? `Add Level — ${addingLevelTo.name}`
+                : editing
+                    ? 'Edit Subject'
+                    : 'Create Subject'
+        }>
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
                 <Select
                     label="Curriculum"
                     value={form.curriculum.toString()}
+                    disabled={!!addingLevelTo || !!editing}
                     onChange={e => setForm(prev => ({ ...prev, curriculum: Number(e.target.value) }))}
                     required
                     options={[
@@ -255,6 +283,8 @@ export function SubjectFormModal({
                         label="Subject Code"
                         placeholder="e.g., COMP2025"
                         value={form.code}
+                        disabled={!!addingLevelTo}
+                        readOnly={!!addingLevelTo}
                         onChange={e => setForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
                         required
                     />
@@ -262,6 +292,8 @@ export function SubjectFormModal({
                         label="Subject Name"
                         placeholder="e.g., Computer Studies"
                         value={form.name}
+                        disabled={!!addingLevelTo}
+                        readOnly={!!addingLevelTo}
                         onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                         required
                     />
@@ -291,7 +323,7 @@ export function SubjectFormModal({
                         Cancel
                     </Button>
                     <Button type="submit" disabled={saving}>
-                        {saving ? 'Saving...' : editing ? 'Update Subject' : 'Create Subject'}
+                        {saving ? 'Saving...' : addingLevelTo ? 'Add Level' : editing ? 'Update Subject' : 'Create Subject'}
                     </Button>
                 </div>
             </form>

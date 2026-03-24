@@ -6,22 +6,9 @@
 // ============================================================================
 
 import { apiClient } from './client';
-import { GlobalUser, UserCreatePayload, UserUpdatePayload } from '@/app/core/types/globalUsers';
+import { GlobalUser, UserCreatePayload, UserUpdatePayload, AvailableCohortSubject, InstructorStats, CohortAssignment } from '@/app/core/types/globalUsers';
 
-export interface InstructorStats {
-    total: number;
-    active: number;
-    inactive: number;
-    assigned_to_cohort: number;
-    unassigned: number;
-}
 
-export interface CohortAssignment {
-    cohort_id: number;
-    cohort_name: string;
-    academic_year: string;
-    subject_count: number;
-}
 
 export interface InstructorProfile extends GlobalUser {
     cohort_assignments: CohortAssignment[];
@@ -109,18 +96,53 @@ export const instructorsAPI = {
             return [];
         }
     },
+    getCohortSubjects: async (): Promise<AvailableCohortSubject[]> => {
+        const response = await apiClient.get('/cohort-subjects/');
+        const data = response.data;
+        return Array.isArray(data) ? data : (data as { results: AvailableCohortSubject[] }).results ?? [];
+    },
 
     // POST /api/cohorts/{cohortId}/assign_instructor/
-    assignToCohort: async (instructorId: number, cohortId: number): Promise<void> => {
-        await apiClient.post(`/users/${instructorId}/assign_cohort/`, {
-            cohort_id: cohortId,
+    assignToCohortSubject: async (instructorId: number, cohortSubjectId: number): Promise<void> => {
+        await apiClient.post(`/users/${instructorId}/assign_cohort_subject/`, {
+            cohort_subject_id: cohortSubjectId,
         });
     },
 
-    // POST /api/cohorts/{cohortId}/unassign_instructor/
-    unassignFromCohort: async (instructorId: number, cohortId: number): Promise<void> => {
-        await apiClient.post(`/users/${instructorId}/unassign_cohort/`, {
-            cohort_id: cohortId,
+    unassignFromCohortSubject: async (
+        instructorId: number,
+        cohortSubjectId: number,
+        reason?: string,
+        notes?: string,
+    ): Promise<void> => {
+        await apiClient.post(`/users/${instructorId}/unassign_cohort_subject/`, {
+            cohort_subject_id: cohortSubjectId,
+            reason: reason ?? 'MANUAL',
+            notes: notes ?? '',
         });
+    },
+    getInstructorHistory: async (cohortSubjectId: number) => {
+        const response = await apiClient.get(
+            `/cohort-subjects/${cohortSubjectId}/instructor_history/`
+        );
+        return response.data as {
+            cohort_subject_id: number;
+            subject_name: string;
+            cohort_name: string;
+            has_active_instructor: boolean;
+            history: Array<{
+                log_id: number;
+                user_email: string;
+                user_full_name: string;
+                role: string;
+                assigned_at: string;
+                unassigned_at: string | null;
+                is_active: boolean;
+                duration_days: number;
+                end_reason: string;
+                assigned_by: string | null;
+                unassigned_by: string | null;
+            }>;
+        };
     },
 };

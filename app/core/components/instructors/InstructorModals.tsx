@@ -8,14 +8,14 @@
 // ============================================================================
 
 import { useState, useEffect } from 'react';
-import { AlertCircle, Plus, X } from 'lucide-react';
+import { AlertCircle, Plus, X, Clock } from 'lucide-react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { useInstructorDetail } from '@/app/core/hooks/useInstructors';
 import { instructorsAPI } from '@/app/core/api/instructors';
-import type { UserUpdatePayload } from '@/app/core/types/globalUsers';
+import type { UserUpdatePayload, CohortAssignModalProps, AvailableCohortSubject, CohortAssignment } from '@/app/core/types/globalUsers';
 import type { InstructorProfileExtended } from '@/app/core/hooks/useInstructorProgress';
 
 // ── EditModal ─────────────────────────────────────────────────────────────
@@ -158,65 +158,85 @@ export function DeleteModal({ isOpen, onClose, onConfirm, name, submitting }: De
 
 // ── CohortAssignModal ─────────────────────────────────────────────────────
 
-interface AvailableCohort {
-    id: number;
-    name: string;
-    academic_year: string;
-}
+// ── Types ─────────────────────────────────────────────────────────────────
 
-interface CohortAssignModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    instructorId: number;
-    instructorName: string;
-}
+
 
 export function CohortAssignModal({
     isOpen, onClose, instructorId, instructorName,
 }: CohortAssignModalProps) {
-    const { instructor: detail, loading, assignCohort, unassignCohort } =
+    const { instructor: detail, loading, refetch } =
         useInstructorDetail(isOpen ? instructorId : null);
 
-    const [allCohorts, setAllCohorts] = useState<AvailableCohort[]>([]);
-    const [selectedCohort, setSelectedCohort] = useState('');
+    const [allCohortSubjects, setAllCohortSubjects] = useState<AvailableCohortSubject[]>([]);
+    const [selectedCohortSubject, setSelectedCohortSubject] = useState('');
     const [working, setWorking] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [history, setHistory] = useState<Record<number, {
+        log_id: number;
+        user_full_name: string;
+        assigned_at: string;
+        unassigned_at: string | null;
+        end_reason: string;
+        is_active: boolean;
+    }[]>>({});
+    const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
+    const [unassignReason, setUnassignReason] = useState('MANUAL');
+    const [unassignNotes, setUnassignNotes] = useState('');
+
+
+    const loadHistory = async (cohortSubjectId: number) => {
+        if (expandedHistory === cohortSubjectId) {
+            setExpandedHistory(null);
+            return;
+        }
+        try {
+            const data = await instructorsAPI.getInstructorHistory(cohortSubjectId);
+            setHistory(prev => ({ ...prev, [cohortSubjectId]: data.history }));
+            setExpandedHistory(cohortSubjectId);
+        } catch { /* silent */ }
+    };
 
     useEffect(() => {
-        if (isOpen) {
-            instructorsAPI.getCohorts()
-                .then(setAllCohorts)
-                .catch(() => { });
-        }
+        if (!isOpen) return;
+        instructorsAPI.getCohortSubjects()
+            .then(setAllCohortSubjects)
+            .catch(() => { });
     }, [isOpen]);
 
     const assignedIds = new Set(
-        (detail?.cohort_assignments ?? []).map(a => a.cohort_id)
+        (detail?.cohort_assignments ?? []).map(a => a.cohort_subject_id)
     );
-    const available = allCohorts.filter(c => !assignedIds.has(c.id));
+    const available = allCohortSubjects.filter(cs => !assignedIds.has(cs.id));
 
     const handleAssign = async () => {
-        if (!selectedCohort) return;
+        if (!selectedCohortSubject) return;
         setWorking(true); setError(null);
         try {
-            await assignCohort(Number(selectedCohort));
-            setSelectedCohort('');
+            await instructorsAPI.assignToCohortSubject(instructorId, Number(selectedCohortSubject));
+            setSelectedCohortSubject('');
+            await refetch();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to assign cohort');
+            setError(err instanceof Error ? err.message : 'Failed to assign cohort-subject');
         } finally { setWorking(false); }
     };
 
-    const handleUnassign = async (cohortId: number) => {
+    const handleUnassign = async (cohortSubjectId: number) => {
         setWorking(true); setError(null);
         try {
-            await unassignCohort(cohortId);
+            await instructorsAPI.unassignFromCohortSubject(
+                instructorId, cohortSubjectId, unassignReason, unassignNotes
+            );
+            await refetch();
+            setUnassignReason('MANUAL');
+            setUnassignNotes('');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to unassign cohort');
+            setError(err instanceof Error ? err.message : 'Failed to unassign');
         } finally { setWorking(false); }
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Cohort Assignments — ${instructorName}`} size="md">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Subject Assignments — ${instructorName}`} size="md">
             <div className="space-y-5">
                 {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
@@ -230,23 +250,78 @@ export function CohortAssignModal({
                         </div>
                     ) : (detail?.cohort_assignments?.length ?? 0) === 0 ? (
                         <p className="text-sm text-gray-400 py-3 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                            Not assigned to any cohorts
+                            Not assigned to any subjects
                         </p>
                     ) : (
                         <div className="space-y-2">
                             {detail!.cohort_assignments.map(a => (
-                                <div key={a.cohort_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-900">{a.cohort_name}</p>
-                                        <p className="text-xs text-gray-500">{a.academic_year} · {a.subject_count} subjects</p>
+                                <div key={a.cohort_subject_id} className="rounded-lg border border-gray-200 overflow-hidden">
+                                    <div className="flex items-center justify-between p-3 bg-gray-50">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">{a.subject_name}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {a.cohort_name} · {a.academic_year}
+                                                {a.start_date && (
+                                                    <span className="ml-1 text-teal-600">
+                                                        · since {new Date(a.start_date).toLocaleDateString('en-GB', {
+                                                            day: '2-digit', month: 'short',
+                                                        })}
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => loadHistory(a.cohort_subject_id)}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                                title="View history"
+                                            >
+                                                <Clock className="h-3.5 w-3.5" />
+                                            </button>
+                                            <select
+                                                value={unassignReason}
+                                                onChange={e => setUnassignReason(e.target.value)}
+                                                className="text-xs rounded-lg border border-gray-200 px-2 py-1 text-gray-500 focus:outline-none focus:ring-1 focus:ring-red-400 bg-white"
+                                            >
+                                                <option value="MANUAL">Manual</option>
+                                                <option value="REASSIGNED">Reassigned</option>
+                                                <option value="TERM_END">Term End</option>
+                                                <option value="MEMBERSHIP_REVOKED">Membership Revoked</option>
+                                                <option value="ACCOUNT_DELETED">Account Deleted</option>
+                                            </select>
+                                            <button
+                                                onClick={() => handleUnassign(a.cohort_subject_id)}
+                                                disabled={working}
+                                                className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                                title="Unassign"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={() => handleUnassign(a.cohort_id)}
-                                        disabled={working}
-                                        className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
+                                    {expandedHistory === a.cohort_subject_id && history[a.cohort_subject_id] && (
+                                        <div className="border-t border-gray-100 bg-white px-3 py-2 space-y-1.5">
+                                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">History</p>
+                                            {history[a.cohort_subject_id].map(log => (
+                                                <div key={log.log_id} className="flex items-center justify-between text-xs">
+                                                    <span className={`font-medium ${log.is_active ? 'text-teal-600' : 'text-gray-500'}`}>
+                                                        {log.user_full_name}
+                                                    </span>
+                                                    <span className="text-gray-400">
+                                                        {new Date(log.assigned_at).toLocaleDateString('en-GB', {
+                                                            day: '2-digit', month: 'short',
+                                                        })}
+                                                        {log.unassigned_at && (
+                                                            <> → {new Date(log.unassigned_at).toLocaleDateString('en-GB', {
+                                                                day: '2-digit', month: 'short',
+                                                            })}</>
+                                                        )}
+                                                        {log.is_active && <span className="ml-1 text-teal-500">· active</span>}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -254,29 +329,33 @@ export function CohortAssignModal({
                 </div>
 
                 <div className="border-t border-gray-100 pt-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Assign to Cohort</p>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Assign to Subject</p>
                     {available.length === 0 ? (
-                        <p className="text-sm text-gray-400 text-center py-2">No unassigned cohorts available</p>
+                        <p className="text-sm text-gray-400 text-center py-2">
+                            {allCohortSubjects.length === 0
+                                ? 'No cohort-subjects available'
+                                : 'All subjects already assigned'}
+                        </p>
                     ) : (
                         <div className="flex gap-2">
                             <select
-                                value={selectedCohort}
-                                onChange={e => setSelectedCohort(e.target.value)}
+                                value={selectedCohortSubject}
+                                onChange={e => setSelectedCohortSubject(e.target.value)}
                                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                                <option value="">Select cohort...</option>
-                                {available.map(c => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name} ({c.academic_year})
+                                <option value="">Select subject...</option>
+                                {available.map(cs => (
+                                    <option key={cs.id} value={cs.id}>
+                                        {cs.cohort_name} — {cs.subject_name} ({cs.academic_year_name})
                                     </option>
                                 ))}
                             </select>
                             <Button
                                 variant="primary"
                                 onClick={handleAssign}
-                                disabled={!selectedCohort || working}
+                                disabled={!selectedCohortSubject || working}
                             >
-                                <Plus className="h-4 w-4" />Assign
+                                <Plus className="h-4 w-4" /> Assign
                             </Button>
                         </div>
                     )}

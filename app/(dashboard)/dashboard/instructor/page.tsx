@@ -16,7 +16,10 @@ import {
     MyRequestsCard,
     CBCProgressCard,
     TeachingStats,
+    TeachingLoadCard,
+    TeachingHistoryCard,
 } from '@/app/core/components/dashboard/InstructorDashboardWidgets';
+
 
 export default function InstructorDashboard() {
     const router = useRouter();
@@ -25,7 +28,7 @@ export default function InstructorDashboard() {
     const {
         metrics, alerts, sessions, cohorts,
         currentTerm, currentYear,
-        lastRefresh, isLoading, refresh,
+        lastRefresh, isLoading, refresh, teachingLoad, teachingHistory
     } = useInstructorDashboard();
 
     useEffect(() => {
@@ -52,6 +55,8 @@ export default function InstructorDashboard() {
             <InstructorKeyMetrics metrics={metrics} />
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">
+                    <TeachingLoadCard assignments={teachingLoad} />
+                    <TeachingHistoryCard history={teachingHistory} />
                     <TodayScheduleCard sessions={sessions} />
                     <LearnersAtRisk
                         frequentlyAbsent={metrics.attendance.frequentlyAbsent}
@@ -72,7 +77,7 @@ export default function InstructorDashboard() {
             </div>
             <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-2xl p-6 border border-green-200">
                 <p className="text-center text-gray-700">
-                    <span className="font-bold text-green-600">🚀 More Features Coming Soon:</span>{' '}
+                    <span className="font-bold text-green-600">More Features Coming Soon:</span>{' '}
                     Learner progress tracking, personalized teaching insights, lesson planning tools,
                     and collaborative features.
                 </p>

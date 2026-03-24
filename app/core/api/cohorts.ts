@@ -2,6 +2,7 @@
 // app/api/cohorts.ts - Cohorts API Calls
 // ============================================================================
 
+import { CohortSubject } from '../types/academic';
 import { apiClient } from './client';
 
 export interface Cohort {
@@ -15,6 +16,8 @@ export interface Cohort {
   academic_year_name: string;
   student_count: number;
   is_active: boolean;
+  subjects_count: number;
+  is_current_year: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -129,9 +132,8 @@ export const cohortsAPI = {
     return data;
   },
 
-  // Get cohort subjects
-  getCohortSubjects: async (id: number) => {
-    const { data } = await apiClient.get(`/cohort-subjects/?cohort=${id}`);
+  getCohortSubjects: async (id: number): Promise<CohortSubject[]> => {
+    const { data } = await apiClient.get<CohortSubject[]>(`/cohort-subjects/?cohort=${id}`);
     return data;
   },
 
@@ -151,5 +153,29 @@ export const cohortsAPI = {
       subject_id: subjectId
     });
     return data;
+  },
+  // Add inside cohortsAPI object
+  getSyllabusProgress: async (cohortId: number) => {
+    const { data } = await apiClient.get(`/cohorts/${cohortId}/syllabus_progress/`);
+    return data as {
+      cohort_id: number;
+      cohort_name: string;
+      academic_year: string;
+      subjects: Array<{
+        cohort_subject_id: number;
+        subject_id: number;
+        subject_name: string;
+        subject_code: string;
+        level: string;
+        covered: number;
+        total: number;
+        percentage: number;
+      }>;
+      overall: {
+        covered: number;
+        total: number;
+        percentage: number;
+      };
+    };
   },
 };

@@ -33,7 +33,7 @@ const EMPTY: FormData = {
 
 export default function NewRequestPage() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeOrg, activeRole } = useAuth();
 
     const [form, setForm] = useState<FormData>(EMPTY);
     const [errors, setErrors] = useState<Partial<FormData>>({});
@@ -117,7 +117,7 @@ export default function NewRequestPage() {
     // ── Destination label ─────────────────────────────────────────────────────
     const destinationLabel = isAdmin
         ? 'SuperAdmin (Platform Level)'
-        : `${user?.organization_name ?? 'Your Organization'} Admin`;
+        : `${activeOrg?.name ?? 'Your Organization'} Admin`;
 
     const destinationColor = isAdmin
         ? 'bg-purple-50 border-purple-200 text-purple-800'

@@ -14,13 +14,14 @@ import { Input } from '@/app/components/ui/Input';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
-import type { Curriculum } from '@/app/core/types/academic';
+import { CURRICULUM_TYPE_OPTIONS, type Curriculum, type CurriculumType } from '@/app/core/types/academic';
+import { Select } from '@/app/components/ui/Select';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
 export interface CurriculumFormData {
     name: string;
-    curriculum_type: string;
+    curriculum_type: CurriculumType;
     description: string;
     is_active: boolean;
 }
@@ -89,16 +90,26 @@ export function CurriculumFormModal({ isOpen, onClose, editing, onSave }: Curric
                 <Input
                     label="Curriculum Code"
                     value={form.curriculum_type}
-                    onChange={e => setForm(prev => ({ ...prev, curriculum_type: e.target.value }))}
+                    onChange={e => setForm(prev => ({ ...prev, curriculum_type: e.target.value as CurriculumType }))}
                     placeholder="e.g., CBC, 8-4-4"
                     required
                 />
-
                 <Input
                     label="Curriculum Name"
                     value={form.name}
                     onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="e.g., Competency Based Curriculum"
+                    placeholder="e.g., Competency-Based Curriculum"
+                    required
+                />
+
+                <Select
+                    label="Curriculum Type"
+                    value={form.curriculum_type}
+                    onChange={e => setForm(prev => ({
+                        ...prev,
+                        curriculum_type: e.target.value as CurriculumType,
+                    }))}
+                    options={CURRICULUM_TYPE_OPTIONS}
                     required
                 />
 

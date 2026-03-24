@@ -18,6 +18,7 @@ import type {
   RegisterPayload,
   Role,
 } from '@/app/core/types/auth';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AuthContextType {
   user: User | null;
@@ -75,6 +76,7 @@ function resolveActiveRole(
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(() => restore<User>('user'));
   const [activeOrg, setActiveOrg] = useState<ActiveOrg | null>(() =>
     restore<ActiveOrg>('active_org')
@@ -82,10 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [memberships, setMemberships] = useState<OrgMembership[]>(
     () => restore<OrgMembership[]>('memberships') ?? []
   );
-  const [loading, setLoading] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    return !!localStorage.getItem('access_token');
-  });
+  const [loading, setLoading] = useState(true);
 
   // Derived — never stored, always computed
   const activeRole = useMemo(
@@ -123,6 +122,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     localStorage.setItem('access_token', res.access);
     localStorage.setItem('refresh_token', res.refresh);
+
+    // All orgs suspended — redirect to recovery before loading anything
+    if (res.requires_workspace_recovery) {
+      persist('active_org', null);
+      persist('memberships', res.memberships ?? []);
+      const profile = await authAPI.getProfile();
+      persist('user', profile);
+      setUser(profile);
+      setActiveOrg(null);
+      setMemberships(res.memberships ?? []);
+      setLoading(false);
+      window.location.href = '/register?mode=new_workspace&reason=suspended';
+      return;
+    }
+
     persist('active_org', res.active_org ?? null);
     persist('memberships', res.memberships ?? []);
 
@@ -157,11 +171,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setActiveOrg(res.active_org);
     setMemberships(res.memberships ?? memberships);
+    queryClient.clear();
 
     const updatedUser = await authAPI.getProfile();
     persist('user', updatedUser);
     setUser(updatedUser);
-  }, [memberships]);
+  }, [memberships, queryClient]);
 
   const register = useCallback(async (payload: RegisterPayload) => {
     const res = await authAPI.register(payload);

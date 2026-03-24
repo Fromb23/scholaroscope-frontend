@@ -32,8 +32,8 @@ interface CohortGroup {
 }
 
 export default function TopicsBrowserPage() {
-    const { user } = useAuth();
-    const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
+    const { user, activeRole } = useAuth();
+    const isAdmin = activeRole === 'ADMIN' || !!user?.is_superadmin;
 
     const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find(y => y.is_current), [academicYears]);

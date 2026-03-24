@@ -6,7 +6,8 @@
 // ============================================================================
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { instructorsAPI, InstructorProfile, CohortAssignment } from '@/app/core/api/instructors';
+import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
+import { CohortAssignment } from '@/app/core/types/globalUsers';
 import { sessionAPI } from '@/app/core/api/sessions';
 import type { Session } from '@/app/core/types/session';
 

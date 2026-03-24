@@ -22,7 +22,7 @@ import {
 } from '@/app/core/components/academic/AcademicProgressComponents';
 
 export default function AcademicProgressPage() {
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
 
     const { academicYears } = useAcademicYears();

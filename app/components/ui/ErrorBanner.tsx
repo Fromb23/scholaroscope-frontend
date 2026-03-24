@@ -1,13 +1,7 @@
+// app/components/ui/ErrorBanner.tsx
 'use client';
 
-// ============================================================================
-// app/components/ui/ErrorBanner.tsx
-//
-// Inline dismissible error banner.
-// Use for form-level or section-level errors (not full-page).
-// For full-page errors use ErrorState instead.
-// ============================================================================
-
+import { useEffect } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 
 interface ErrorBannerProps {
@@ -16,6 +10,11 @@ interface ErrorBannerProps {
 }
 
 export function ErrorBanner({ message, onDismiss }: ErrorBannerProps) {
+    useEffect(() => {
+        const timer = setTimeout(onDismiss, 4000);
+        return () => clearTimeout(timer);
+    }, [message, onDismiss]);
+
     return (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />

@@ -1,32 +1,19 @@
-// ============================================================================
-// app/hooks/useGradePolicies.ts
-// Grade Computation Policy Hooks
-// ============================================================================
+// app/core/hooks/useGradePolicies.ts
 
 import { useState, useEffect } from 'react';
-import { policyAPI } from '@/app/core/api/reporting';
-import { ReportFilters } from '../types/reporting';
-import { GradePolicy, ComputedGradeDTO } from '@/app/core/types/gradePolicy';
+import { gradePolicyAPI } from '@/app/core/api/gradePolicy';
+import {
+    GradePolicy,
+    GradePolicyPayload,
+    ComputedGradeDTO,
+    PolicyFilters,
+    PolicyContextFilters,
+    ComputedGradeFilters,
+} from '@/app/core/types/gradePolicy';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
-interface PolicyFilters {
-    cohort_subject?: number;
-    cohort?: number;
-    curriculum?: number;
-    term?: number;
-    is_active?: boolean;
-}
+// ── useGradePolicies ──────────────────────────────────────────────────────
 
-interface PolicyContextFilters {
-    cohort_subject_id?: number;
-    cohort_id?: number;
-    curriculum_id?: number;
-    term_id?: number;
-}
-
-/**
- * Hook for managing grade computation policies
- * @param filters - Optional filters for fetching policies
- */
 export function useGradePolicies(filters?: PolicyFilters) {
     const [policies, setPolicies] = useState<GradePolicy[]>([]);
     const [loading, setLoading] = useState(true);
@@ -36,284 +23,332 @@ export function useGradePolicies(filters?: PolicyFilters) {
         try {
             setLoading(true);
             setError(null);
-
-            const response = await policyAPI.getGradePolicies(filters as ReportFilters);
-            const policiesArray = Array.isArray(response)
-                ? response
-                : (response as { results?: GradePolicy[] }).results ?? []
-            setPolicies(policiesArray);
+            setPolicies(await gradePolicyAPI.getAll(filters));
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to fetch policies';
-            setError(message);
-            console.error('Error fetching policies:', err);
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch policies'));
         } finally {
             setLoading(false);
         }
     };
 
-    const getPolicyForContext = async (context: PolicyContextFilters): Promise<GradePolicy | null> => {
-        try {
-            return await policyAPI.getPolicyForContext(context as ReportFilters);
-        } catch (err) {
-            console.error('Error getting policy for context:', err);
-            throw err;
-        }
-    };
-
-    const createPolicy = async (policyData: Partial<GradePolicy>): Promise<GradePolicy> => {
-        try {
-            const response = await policyAPI.createGradePolicy(policyData);
-            await fetchPolicies();
-            return response;
-        } catch (err) {
-            console.error('Error creating policy:', err);
-            throw err;
-        }
-    };
-
-    const updatePolicy = async (id: number, policyData: Partial<GradePolicy>): Promise<GradePolicy> => {
-        try {
-            const response = await policyAPI.updateGradePolicy(id, policyData);
-            await fetchPolicies();
-            return response;
-        } catch (err) {
-            console.error('Error updating policy:', err);
-            throw err;
-        }
-    };
-
-    const deletePolicy = async (id: number): Promise<void> => {
-        try {
-            await policyAPI.deleteGradePolicy(id);
-            await fetchPolicies();
-        } catch (err) {
-            console.error('Error deleting policy:', err);
-            throw err;
-        }
-    };
-
-    const duplicatePolicy = async (id: number): Promise<GradePolicy> => {
-        try {
-            const response = await policyAPI.duplicateGradePolicy(id);
-            await fetchPolicies();
-            return response;
-        } catch (err) {
-            console.error('Error duplicating policy:', err);
-            throw err;
-        }
-    };
-
     useEffect(() => {
         fetchPolicies();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         filters?.cohort_subject,
         filters?.cohort,
         filters?.curriculum,
         filters?.term,
-        filters?.is_active
+        filters?.is_active,
     ]);
 
+    const createPolicy = async (payload: GradePolicyPayload): Promise<GradePolicy> => {
+        const created = await gradePolicyAPI.create(payload);
+        setPolicies(prev => [created, ...prev]);
+        return created;
+    };
+
+    const updatePolicy = async (
+        id: number,
+        payload: Partial<GradePolicyPayload>
+    ): Promise<GradePolicy> => {
+        const updated = await gradePolicyAPI.update(id, payload);
+        setPolicies(prev => prev.map(p => p.id === id ? updated : p));
+        return updated;
+    };
+
+    const deletePolicy = async (id: number): Promise<void> => {
+        await gradePolicyAPI.delete(id);
+        setPolicies(prev => prev.filter(p => p.id !== id));
+    };
+
+    const getForContext = async (
+        ctx: PolicyContextFilters
+    ): Promise<GradePolicy | null> => {
+        try {
+            return await gradePolicyAPI.getForContext(ctx);
+        } catch {
+            return null;
+        }
+    };
+
     return {
-        policies,
-        loading,
-        error,
+        policies, loading, error,
         refetch: fetchPolicies,
-        getPolicyForContext,
-        createPolicy,
-        updatePolicy,
-        deletePolicy,
-        duplicatePolicy
+        createPolicy, updatePolicy, deletePolicy, getForContext,
     };
 }
 
-interface ComputedGradeFilters {
-    student?: number;
-    term?: number;
-    cohort_subject?: number;
-    policy?: number;
+// ── useCreatePolicyForm ───────────────────────────────────────────────────
+
+export interface GradingBandDraft {
+    min: string;
+    max: string;
+    grade: string;
+    label: string;
 }
 
-/**
- * Hook for managing computed grades (with policies)
- * @param filters - Optional filters for fetching computed grades
- */
+export interface WeightEntry {
+    type: string;
+    weight: string;
+}
+
+export interface PolicyFormState {
+    name: string;
+    description: string;
+    cohort_subject: number | null;
+    cohort: number | null;
+    curriculum: number | null;
+    term: number | null;
+    aggregation_method: string;
+    weight_entries: WeightEntry[];
+    required_components: string[];
+    grading_scale: GradingBandDraft[];
+    drop_lowest_cat: boolean;
+    cap_cat_score: string;
+    cap_exam_score: string;
+    is_active: boolean;
+    is_default: boolean;
+}
+
+interface FormErrors {
+    name?: string;
+    aggregation_method?: string;
+    weight_entries?: string;
+    grading_scale?: string;
+    [key: string]: string | undefined;
+}
+
+const DEFAULT_FORM: PolicyFormState = {
+    name: '',
+    description: '',
+    cohort_subject: null,
+    cohort: null,
+    curriculum: null,
+    term: null,
+    aggregation_method: 'WEIGHTED',
+    weight_entries: [
+        { type: 'CAT', weight: '40' },
+        { type: 'MAIN_EXAM', weight: '60' },
+    ],
+    required_components: [],
+    grading_scale: [
+        { min: '80', max: '100', grade: 'A', label: 'Excellent' },
+        { min: '60', max: '79', grade: 'B', label: 'Good' },
+        { min: '50', max: '59', grade: 'C', label: 'Average' },
+        { min: '40', max: '49', grade: 'D', label: 'Below Average' },
+        { min: '0', max: '39', grade: 'E', label: 'Fail' },
+    ],
+    drop_lowest_cat: false,
+    cap_cat_score: '',
+    cap_exam_score: '',
+    is_active: true,
+    is_default: false,
+};
+
+export function useCreatePolicyForm(
+    onSuccess: (policy: GradePolicy) => void,
+    editingPolicy?: GradePolicy | null,
+) {
+    const [form, setForm] = useState<PolicyFormState>(
+        editingPolicy ? policyToForm(editingPolicy) : DEFAULT_FORM
+    );
+    const [errors, setErrors] = useState<FormErrors>({});
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    const setField = <K extends keyof PolicyFormState>(
+        field: K, value: PolicyFormState[K]
+    ) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+        if (field in errors) {
+            setErrors(prev => { const e = { ...prev }; delete e[field as string]; return e; });
+        }
+    };
+
+    const addWeightEntry = () =>
+        setField('weight_entries', [...form.weight_entries, { type: 'CAT', weight: '0' }]);
+
+    const removeWeightEntry = (i: number) =>
+        setField('weight_entries', form.weight_entries.filter((_, idx) => idx !== i));
+
+    const updateWeightEntry = (i: number, field: keyof WeightEntry, value: string) =>
+        setField('weight_entries', form.weight_entries.map((e, idx) =>
+            idx === i ? { ...e, [field]: value } : e
+        ));
+
+    const addGradingBand = () =>
+        setField('grading_scale', [...form.grading_scale, { min: '0', max: '0', grade: '', label: '' }]);
+
+    const removeGradingBand = (i: number) =>
+        setField('grading_scale', form.grading_scale.filter((_, idx) => idx !== i));
+
+    const updateGradingBand = (i: number, field: keyof GradingBandDraft, value: string) =>
+        setField('grading_scale', form.grading_scale.map((b, idx) =>
+            idx === i ? { ...b, [field]: value } : b
+        ));
+
+    const toggleRequiredComponent = (type: string) => {
+        const current = form.required_components;
+        setField('required_components',
+            current.includes(type)
+                ? current.filter(c => c !== type)
+                : [...current, type]
+        );
+    };
+
+    const validate = (): boolean => {
+        const e: FormErrors = {};
+        if (!form.name.trim()) e.name = 'Policy name is required';
+        if (!form.aggregation_method) e.aggregation_method = 'Aggregation method is required';
+
+        if (['WEIGHTED', 'AVERAGE_PLUS_EXAM'].includes(form.aggregation_method)) {
+            const total = form.weight_entries.reduce(
+                (sum, e) => sum + (parseFloat(e.weight) || 0), 0
+            );
+            if (Math.abs(total - 100) > 0.01) {
+                e.weight_entries = `Weights must sum to 100, got ${total}`;
+            }
+        }
+
+        if (form.grading_scale.length > 0) {
+            const mins = form.grading_scale.map(b => b.min);
+            if (new Set(mins).size !== mins.length) {
+                e.grading_scale = 'Grading bands must have unique min values';
+            }
+            for (const band of form.grading_scale) {
+                if (!band.grade.trim()) {
+                    e.grading_scale = 'Each grading band must have a grade';
+                    break;
+                }
+            }
+        }
+
+        setErrors(e);
+        return Object.keys(e).length === 0;
+    };
+
+    const submit = async (): Promise<void> => {
+        if (!validate()) return;
+        setSaving(true);
+        setSaveError(null);
+
+        try {
+            const payload: GradePolicyPayload = {
+                name: form.name,
+                description: form.description || undefined,
+                cohort_subject: form.cohort_subject,
+                cohort: form.cohort,
+                curriculum: form.curriculum,
+                term: form.term,
+                aggregation_method: form.aggregation_method as GradePolicyPayload['aggregation_method'],
+                default_weighting: Object.fromEntries(
+                    form.weight_entries.map(e => [e.type, parseFloat(e.weight) || 0])
+                ),
+                required_components: form.required_components,
+                grading_scale: form.grading_scale.map(b => ({
+                    min: parseFloat(b.min) || 0,
+                    max: parseFloat(b.max) || 100,
+                    grade: b.grade,
+                    label: b.label || undefined,
+                })),
+                drop_lowest_cat: form.drop_lowest_cat,
+                cap_cat_score: form.cap_cat_score ? parseFloat(form.cap_cat_score) : null,
+                cap_exam_score: form.cap_exam_score ? parseFloat(form.cap_exam_score) : null,
+                is_active: form.is_active,
+                is_default: form.is_default,
+            };
+
+            let result: GradePolicy;
+            if (editingPolicy) {
+                result = await gradePolicyAPI.update(editingPolicy.id, payload);
+            } else {
+                result = await gradePolicyAPI.create(payload);
+            }
+            onSuccess(result);
+        } catch (err) {
+            setSaveError(extractErrorMessage(err as ApiError, 'Failed to save policy'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const reset = () => {
+        setForm(editingPolicy ? policyToForm(editingPolicy) : DEFAULT_FORM);
+        setErrors({});
+        setSaveError(null);
+    };
+
+    return {
+        form, errors, saving, saveError,
+        setField,
+        addWeightEntry, removeWeightEntry, updateWeightEntry,
+        addGradingBand, removeGradingBand, updateGradingBand,
+        toggleRequiredComponent,
+        submit, reset,
+        dismissError: () => setSaveError(null),
+    };
+}
+
+// ── useComputedGrades ─────────────────────────────────────────────────────
+
 export function useComputedGrades(filters?: ComputedGradeFilters) {
     const [grades, setGrades] = useState<ComputedGradeDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const fetchGrades = async () => {
+        const hasFilter = filters && Object.values(filters).some(v => v !== undefined);
+        if (!hasFilter) { setLoading(false); return; }
         try {
             setLoading(true);
             setError(null);
-
-            const response = await policyAPI.getComputedGrades(filters as ReportFilters);
-            setGrades(Array.isArray(response) ? response : []);
+            setGrades(await gradePolicyAPI.getComputedGrades(filters));
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to fetch computed grades';
-            setError(message);
-            console.error('Error fetching computed grades:', err);
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch computed grades'));
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchGrades();
+    }, [filters?.student, filters?.term, filters?.cohort_subject, filters?.policy]);
 
     const computeWithPolicy = async (
-        termId: number,
-        cohortId?: number,
-        policyId?: number
+        termId: number, cohortId?: number, policyId?: number
     ): Promise<void> => {
-        try {
-            await policyAPI.computeGradesWithPolicy({
-                term_id: termId,
-                cohort_id: cohortId,
-                policy_id: policyId
-            });
-            await fetchGrades();
-        } catch (err) {
-            console.error('Error computing grades with policy:', err);
-            throw err;
-        }
+        await gradePolicyAPI.computeWithPolicy({ term_id: termId, cohort_id: cohortId, policy_id: policyId });
+        await fetchGrades();
     };
 
-    const getGradesByStudent = async (studentId: number): Promise<ComputedGradeDTO[]> => {
-        try {
-            return await policyAPI.getComputedGradesByStudent(studentId);
-        } catch (err) {
-            console.error('Error getting grades by student:', err);
-            throw err;
-        }
-    };
+    return { grades, loading, error, refetch: fetchGrades, computeWithPolicy };
+}
 
-    useEffect(() => {
-        const shouldFetch =
-            filters?.student !== undefined ||
-            filters?.term !== undefined ||
-            filters?.cohort_subject !== undefined ||
-            filters?.policy !== undefined;
+// ── Helper — convert existing policy to form state ────────────────────────
 
-        if (shouldFetch) {
-            fetchGrades();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [
-        filters?.student,
-        filters?.term,
-        filters?.cohort_subject,
-        filters?.policy
-    ]);
-
+function policyToForm(policy: GradePolicy): PolicyFormState {
     return {
-        grades,
-        loading,
-        error,
-        refetch: fetchGrades,
-        computeWithPolicy,
-        getGradesByStudent
-    };
-}
-
-interface GradeComparison {
-    total_computed: number;
-    total_legacy: number;
-    differences: GradeDifference[];
-    average_difference: number;
-}
-
-interface GradeDifference {
-    student_name: string;
-    subject_name: string;
-    computed_score: number;
-    legacy_score: number;
-    difference: number;
-    policy_name?: string;
-}
-
-/**
- * Hook for comparing computed grades vs legacy grades
- * @param termId - Term ID to compare
- * @param cohortId - Optional cohort ID filter
- */
-export function useGradeComparison(termId?: number, cohortId?: number) {
-    const [comparison, setComparison] = useState<GradeComparison | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchComparison = async () => {
-        if (!termId) return;
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            const filters: ReportFilters & Record<string, unknown> = { term: termId };
-            if (cohortId) {
-                filters['cohort_subject__cohort'] = cohortId;
-            }
-
-            const [computedGrades, legacyGrades] = await Promise.all([
-                policyAPI.getComputedGrades(filters),
-                // Assuming you have a getGradeSummaries function in your reporting API
-                // If not, you'll need to add it
-                fetch(`/api/reporting/grade-summaries/?${new URLSearchParams(filters as Record<string, string>)}`).then(r => r.json())
-            ]);
-
-            const computed = Array.isArray(computedGrades) ? computedGrades : [];
-            const legacy = Array.isArray(legacyGrades) ? legacyGrades : legacyGrades.results || [];
-
-            const differences: GradeDifference[] = [];
-
-            computed.forEach((comp) => {
-                const leg = legacy.find((l: unknown) => {
-                    const legacyGrade = l as { student: number; cohort_subject: number; weighted_average: number };
-                    return legacyGrade.student === comp.student &&
-                        legacyGrade.cohort_subject === comp.cohort_subject;
-                });
-
-                if (leg) {
-                    const diff = Math.abs(comp.final_score - leg.weighted_average);
-                    if (diff > 0.1) {
-                        differences.push({
-                            student_name: comp.student_name,
-                            subject_name: comp.subject_name,
-                            computed_score: comp.final_score,
-                            legacy_score: leg.weighted_average,
-                            difference: diff,
-                            policy_name: comp.policy_id ? 'Policy Applied' : undefined
-                        });
-                    }
-                }
-            });
-
-            setComparison({
-                total_computed: computed.length,
-                total_legacy: legacy.length,
-                differences: differences.sort((a, b) => b.difference - a.difference),
-                average_difference: differences.length > 0
-                    ? differences.reduce((sum, d) => sum + d.difference, 0) / differences.length
-                    : 0
-            });
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to fetch comparison';
-            setError(message);
-            console.error('Error fetching comparison:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (termId) {
-            fetchComparison();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [termId, cohortId]);
-
-    return {
-        comparison,
-        loading,
-        error,
-        refetch: fetchComparison
+        name: policy.name,
+        description: policy.description ?? '',
+        cohort_subject: policy.cohort_subject ?? null,
+        cohort: policy.cohort ?? null,
+        curriculum: policy.curriculum ?? null,
+        term: policy.term ?? null,
+        aggregation_method: policy.aggregation_method,
+        weight_entries: Object.entries(policy.default_weighting ?? {}).map(
+            ([type, weight]) => ({ type, weight: String(weight) })
+        ),
+        required_components: policy.required_components ?? [],
+        grading_scale: (policy.grading_scale ?? []).map(b => ({
+            min: String(b.min),
+            max: String(b.max ?? ''),
+            grade: b.grade,
+            label: b.label ?? '',
+        })),
+        drop_lowest_cat: policy.drop_lowest_cat ?? false,
+        cap_cat_score: policy.cap_cat_score != null ? String(policy.cap_cat_score) : '',
+        cap_exam_score: policy.cap_exam_score != null ? String(policy.cap_exam_score) : '',
+        is_active: policy.is_active,
+        is_default: policy.is_default,
     };
 }

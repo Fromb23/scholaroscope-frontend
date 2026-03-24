@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Session } from '@/app/core/types/session';
-import type { Cohort } from '@/app/core/types/academic';
+import type { Cohort, HistoryEntry, TeachingAssignment } from '@/app/core/types/academic';
 import type { InstructorMetrics } from '@/app/core/hooks/useInstructorDashboard';
 import type { DashboardAlert } from '@/app/core/hooks/useAdminDashboard';
 
@@ -540,6 +540,131 @@ export function TeachingStats({ attendance, sessions, assessments }: TeachingSta
                     <span className="text-sm font-medium text-gray-700">Upcoming Assessments</span>
                     <span className="text-lg font-bold text-amber-600">{assessments}</span>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// ── TeachingLoadCard ─────────────────────────────────────────────────────
+
+interface TeachingLoadCardProps {
+    assignments: TeachingAssignment[];
+}
+
+export function TeachingLoadCard({ assignments }: TeachingLoadCardProps) {
+    const router = useRouter();
+    const currentYear = assignments.filter(a => a.is_current_year);
+
+    return (
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl">
+                        <BookOpen className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">My Teaching Load</h3>
+                </div>
+                <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs font-bold rounded-full">
+                    {currentYear.length} subject{currentYear.length !== 1 ? 's' : ''}
+                </span>
+            </div>
+
+            {currentYear.length === 0 ? (
+                <div className="py-8 text-center">
+                    <BookOpen className="w-10 w-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No subjects assigned yet</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {currentYear.map(a => (
+                        <div
+                            key={a.cohort_subject_id}
+                            onClick={() => router.push(`/academic/topics/browser`)}
+                            className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 rounded-xl border border-teal-200 transition-all hover:scale-[1.02] cursor-pointer"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm">{a.subject_name}</p>
+                                    <p className="text-xs text-gray-500">
+                                        {a.cohort_name} · {a.level}
+                                        {a.start_date && (
+                                            <span className="ml-1 text-teal-500">
+                                                · since {new Date(a.start_date).toLocaleDateString('en-GB', {
+                                                    day: '2-digit', month: 'short',
+                                                })}
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+                                <span className="text-sm font-bold text-teal-600">{a.percentage}%</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full transition-all duration-500"
+                                    style={{ width: `${a.percentage}%` }}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">{a.covered} / {a.total} subtopics covered</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── TeachingHistoryCard ───────────────────────────────────────────────────
+
+interface TeachingHistoryCardProps {
+    history: HistoryEntry[];
+}
+
+export function TeachingHistoryCard({ history }: TeachingHistoryCardProps) {
+    const past = history.filter(h => !h.is_active);
+    if (past.length === 0) return null;
+
+    return (
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-gray-500 to-slate-600 rounded-xl">
+                    <Clock className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Teaching History</h3>
+                <span className="ml-auto px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full">
+                    {past.length} past
+                </span>
+            </div>
+            <div className="space-y-2">
+                {past.slice(0, 5).map((h, index) => (
+                    <div key={h.log_id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-300 font-mono">#{past.length - index}</span>
+                                    <p className="text-sm font-medium text-gray-900 truncate">{h.subject_name}</p>
+                                </div>
+                                <p className="text-xs text-gray-500">{h.cohort_name} · {h.academic_year}</p>
+                                <p className="text-xs text-blue-500 mt-0.5">{h.organization_name}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                                <p className="text-xs text-gray-400">
+                                    {new Date(h.assigned_at).toLocaleDateString('en-GB', {
+                                        day: '2-digit', month: 'short', year: '2-digit',
+                                    })}
+                                    {h.unassigned_at && (
+                                        <> → {new Date(h.unassigned_at).toLocaleDateString('en-GB', {
+                                            day: '2-digit', month: 'short', year: '2-digit',
+                                        })}</>
+                                    )}
+                                </p>
+                                <p className="text-xs text-gray-300 mt-0.5">{h.duration_days}d</p>
+                                {h.end_reason && (
+                                    <p className="text-xs text-orange-400 mt-0.5">{h.end_reason}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );

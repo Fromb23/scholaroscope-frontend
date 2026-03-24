@@ -8,7 +8,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { pluginAPI, InstalledPlugin } from '@/app/core/api/plugins';
+import { pluginAPI } from '@/app/core/api/plugins';
+import { InstalledPlugin } from '@/app/core/types/plugins';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
 interface UsePluginsReturn {

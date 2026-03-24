@@ -63,7 +63,11 @@ export function TopicFormModal({
             return;
         }
         setError(null);
-        await onSubmit(form);
+        try {
+            await onSubmit(form);
+        } catch (err: any) {
+            setError(err?.message || 'Failed to save topic.');
+        }
     };
 
     return (

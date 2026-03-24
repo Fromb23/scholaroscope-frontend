@@ -1,6 +1,7 @@
-import { ReactNode } from "react";
+// app/core/types/reporting.ts
 
-// Attendance Summary
+import { ComputedGradeDTO } from './gradePolicy';
+
 export interface AttendanceSummary {
   id: number;
   student: number;
@@ -21,11 +22,7 @@ export interface AttendanceSummary {
   last_updated: string;
 }
 
-// Grade Summary
 export interface GradeSummary {
-  letter_grade: ReactNode;
-  highest_score: any;
-  lowest_score: any;
   id: number;
   student: number;
   student_name: string;
@@ -37,16 +34,16 @@ export interface GradeSummary {
   subject_name: string;
   subject_code: string;
   total_assessments: number;
-  average_score: number;
-  weighted_average: number;
+  average_score: number | null;
+  weighted_average: number | null;
   final_grade: string;
   cat_average: number | null;
   exam_average: number | null;
   project_average: number | null;
+  is_stale: boolean;
   last_updated: string;
 }
 
-// Cohort Summary
 export interface CohortSummary {
   id: number;
   cohort: number;
@@ -66,7 +63,6 @@ export interface CohortSummary {
   last_updated: string;
 }
 
-// Subject Summary
 export interface SubjectSummary {
   id: number;
   cohort_subject: number;
@@ -86,7 +82,6 @@ export interface SubjectSummary {
   last_updated: string;
 }
 
-// Assessment Type Summary
 export interface AssessmentTypeSummary {
   id: number;
   cohort_subject: number;
@@ -101,7 +96,6 @@ export interface AssessmentTypeSummary {
   last_updated: string;
 }
 
-// Dashboard Overview
 export interface DashboardOverview {
   academic_year: string | null;
   current_term: string | null;
@@ -113,86 +107,64 @@ export interface DashboardOverview {
   average_attendance: number | null;
 }
 
-// Student Report Card
-export interface StudentReportCard {
-  cohort: any;
-  summary: any;
-  student: {
-    full_name: ReactNode;
-    id: number;
-    name: string;
-    admission_number: string;
-    cohort: string | null;
-    level: string | null;
-  };
-  term: {
-    id: number;
-    name: string;
-    academic_year: string;
-  };
-  overall_statistics: {
-    average_grade: number | null;
-    average_attendance: number | null;
-    total_subjects: number;
-  };
-  attendance: AttendanceSummary[];
-  grades: GradeSummary[];
+export interface StudentInfo {
+  id: number;
+  name: string;
+  admission_number: string;
+  cohort: string | null;
+  level: string | null;
 }
 
-// Class Summary
+export interface TermInfo {
+  id: number;
+  name: string;
+  academic_year: string;
+}
+
+export interface OverallStats {
+  average_score: number | null;
+  average_attendance: number | null;
+  total_subjects: number;
+}
+
+export interface StudentReportCard {
+  student: StudentInfo;
+  term: TermInfo;
+  overall: OverallStats;
+  grades: (ComputedGradeDTO & { position: number; total_in_class: number })[];
+  attendance: AttendanceSummary[];
+}
+
 export interface ClassSummary {
-  cohort: {
-    id: number;
-    name: string;
-    level: string;
-  };
-  term: {
-    id: number;
-    name: string;
-    academic_year: string;
-  };
+  cohort: { id: number; name: string; level: string };
+  term: TermInfo;
   summary: CohortSummary | null;
   subject_performance: SubjectSummary[];
   total_students: number;
 }
 
-// Subject Analysis
 export interface SubjectAnalysis {
-  term: {
-    id: number;
-    name: string;
-    academic_year: string;
-  };
+  term: TermInfo;
   subject_summaries: SubjectSummary[];
   assessment_type_breakdown: AssessmentTypeSummary[];
 }
 
-// Longitudinal Student Data
-export interface LongitudinalStudentData {
-  term_summaries: any;
-  student: {
-    id: number;
-    name: string;
-    admission_number: string;
-  };
-  terms: {
-    term: {
-      id: number;
-      name: string;
-      academic_year: string;
-    };
-    grades: GradeSummary[];
-    attendance: AttendanceSummary[];
-  }[];
+export interface LongitudinalTermData {
+  term: TermInfo;
+  grades: GradeSummary[];
+  attendance: AttendanceSummary[];
 }
 
-// Compute Response
+export interface LongitudinalStudentData {
+  student: StudentInfo;
+  terms: LongitudinalTermData[];
+}
+
 export interface ComputeResponse {
   detail: string;
   term?: string;
 }
 
-// Filter params
 export interface ReportFilters {
   student?: number;
   term?: number;
@@ -200,45 +172,3 @@ export interface ReportFilters {
   subject?: number;
   cohort_subject?: number;
 }
-
-// export interface GradePolicy {
-//   cohort_subject_name: any;
-//   cohort_name: any;
-//   curriculum_name: any;
-//   id: number;
-//   name: string;
-//   description: string;
-//   aggregation_method: string;
-//   default_weighting: Record<string, number>;
-//   drop_lowest_cat: boolean;
-//   cap_cat_score: number | null;
-//   cap_exam_score: number | null;
-//   is_active: boolean;
-//   is_default: boolean;
-//   context: {
-//     cohort_subject?: number | null;
-//     cohort?: number | null;
-//     curriculum?: number | null;
-//     term?: number | null;
-//   };
-//   created_at: string;
-//   updated_at: string;
-// }
-
-// export interface ComputedGradeDTO {
-//   id: number;
-//   student: number;
-//   student_name: string;
-//   student_admission: string;
-//   term: number;
-//   term_name: string;
-//   cohort_subject: number;
-//   cohort_name: string;
-//   subject_name: string;
-//   final_score: number;
-//   letter_grade: string;
-//   component_scores: Record<string, number>;
-//   policy_id: number | null;
-//   computation_details: Record<string, any>;
-//   computation_timestamp: string;
-// }

@@ -13,6 +13,9 @@ import { useAssessments, useAssessmentScores } from '@/app/core/hooks/useAssessm
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import type { Session } from '@/app/core/types/session';
 import type { Assessment, AssessmentScore } from '@/app/core/types/assessment';
+import { SyllabusProgress } from '../types/academic';
+import { cohortsAPI } from '../api/cohorts';
+import { cohortSubjectAPI } from '../api/academic';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -103,7 +106,9 @@ function computeMetrics(
 
     const needsSupport = scores.filter(s => {
         if (!s.score || !s.assessment) return false;
-        const pct = (s.score / (s.assessment as unknown as Assessment).total_marks) * 100;
+        const totalMarks = (s.assessment as unknown as Assessment).total_marks;
+        if (!totalMarks) return false;
+        const pct = (s.score / totalMarks) * 100;
         return pct < 50;
     }).length;
 
@@ -161,8 +166,14 @@ function generateAlerts(metrics: DashboardMetrics): DashboardAlert[] {
 
 export function useAdminDashboard() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
+    const [syllabusProgress, setSyllabusProgress] = useState<SyllabusProgress[]>([]);
+    const [unattendedSubjects, setUnattendedSubjects] = useState<{
+        cohort_subject_id: number;
+        cohort_name: string;
+        subject_name: string;
+    }[]>([]);
 
-    const { students, loading: studentsLoading, refetch: refetchStudents } = useStudents();
+    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents();
     const { cohorts, loading: cohortsLoading } = useCohorts();
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
     const { currentTerm, loading: termLoading } = useCurrentTerm();
@@ -194,6 +205,27 @@ export function useAdminDashboard() {
         setLastRefresh(new Date());
     }, [refetchStudents, refetchSessions, refetchAssessments]);
 
+    useEffect(() => {
+        if (!cohorts.length) return;
+        const currentCohorts = cohorts.filter(c => c.is_current_year);
+        Promise.all(
+            currentCohorts.map(c => cohortsAPI.getSyllabusProgress(c.id))
+        ).then(results => setSyllabusProgress(results))
+            .catch(() => setSyllabusProgress([]));
+    }, [cohorts]);
+
+    useEffect(() => {
+        cohortSubjectAPI.getUnattended()
+            .then(data => setUnattendedSubjects(
+                data.map(cs => ({
+                    cohort_subject_id: cs.id,
+                    cohort_name: cs.cohort_name,
+                    subject_name: cs.subject_name,
+                }))
+            ))
+            .catch(() => { });
+    }, []);
+
     // Auto-refresh every 5 minutes
     useEffect(() => {
         const interval = setInterval(refresh, 5 * 60 * 1000);
@@ -210,5 +242,7 @@ export function useAdminDashboard() {
         lastRefresh,
         isLoading,
         refresh,
+        syllabusProgress,
+        unattendedSubjects
     };
 }

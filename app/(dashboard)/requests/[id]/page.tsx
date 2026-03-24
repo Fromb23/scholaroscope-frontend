@@ -15,13 +15,13 @@ import { RequestDetailPanel } from '@/app/plugins/requests/components/RequestSha
 export default function RequestDetailPage() {
     const router = useRouter();
     const params = useParams();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const id = Number(params.id);
 
     const { request, loading, error, addComment, reviewRequest } = useRequestDetail(id);
 
     const isAdmin = activeRole === 'ADMIN';
-    const isSuperAdmin = user?.is_superadmin;
+    const isSuperAdmin = !!user?.is_superadmin;
     const canReview = isAdmin || isSuperAdmin;
 
     const handleReview = async (action: 'approve' | 'reject' | 'review', note: string) => {

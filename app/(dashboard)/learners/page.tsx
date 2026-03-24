@@ -15,7 +15,7 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 
 export default function LearnersPage() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('');

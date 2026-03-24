@@ -451,7 +451,6 @@ export const useCohortSubjects = (cohortId?: number) => {
       try {
         const params: Record<string, string> = {};
         if (cohortId) params.cohort = String(cohortId);
-        if (organizationId) params.organization = String(organizationId);
 
         const data = await cohortSubjectAPI.getAll(params);
         const arr = Array.isArray(data) ? data : (data as any)?.results ?? [];
