@@ -9,10 +9,10 @@ import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import {
-    StatsBar, OrgFormModal, DeleteModal,
+    StatsBar, OrgFormModal, DeleteModal, SuspendModal,
     OrgTableRow, OrgFilters,
 } from '@/app/core/components/superadmin/OrgListComponents';
-import type { Organization, PlanType } from '@/app/core/types/organization';
+import type { Organization, PlanType, SuspensionReason } from '@/app/core/types/organization';
 import type { OrgFormData } from '@/app/core/components/superadmin/OrgListComponents';
 
 export default function OrganizationsPage() {
@@ -20,7 +20,7 @@ export default function OrganizationsPage() {
     const {
         organizations, loading, error, refetch,
         createOrganization, updateOrganization,
-        deleteOrganization, toggleOrganizationActive,
+        deleteOrganization, suspendOrganization, unsuspendOrganization,
     } = useOrganizations();
 
     const [search, setSearch] = useState('');
@@ -30,6 +30,7 @@ export default function OrganizationsPage() {
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Organization | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Organization | null>(null);
+    const [suspendTarget, setSuspendTarget] = useState<Organization | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
 
@@ -39,9 +40,7 @@ export default function OrganizationsPage() {
             org.name.toLowerCase().includes(q) ||
             org.code.toLowerCase().includes(q) ||
             org.email.toLowerCase().includes(q);
-        const matchStatus = statusFilter === 'all' ||
-            (statusFilter === 'active' && org.is_active) ||
-            (statusFilter === 'suspended' && !org.is_active);
+        const matchStatus = statusFilter === 'all' || org.status === statusFilter;
         const matchPlan = planFilter === 'all' || org.plan_type === planFilter;
         return matchSearch && matchStatus && matchPlan;
     }), [organizations, search, statusFilter, planFilter]);
@@ -84,9 +83,15 @@ export default function OrganizationsPage() {
             setEditTarget(null);
         });
 
-    const handleToggleActive = (org: Organization) =>
+    const handleSuspend = (reason: SuspensionReason) =>
         withSubmit(async () => {
-            await toggleOrganizationActive(org.id, !org.is_active);
+            await suspendOrganization(suspendTarget!.id, reason);
+            setSuspendTarget(null);
+        });
+
+    const handleUnsuspend = (org: Organization) =>
+        withSubmit(async () => {
+            await unsuspendOrganization(org.id);
         });
 
     const handleDelete = () =>
@@ -107,7 +112,8 @@ export default function OrganizationsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Organizations</h1>
                     <p className="text-sm text-gray-500 mt-1">Manage all institutions on the platform</p>
                 </div>
-                <Button onClick={() => { setActionError(null); setCreateOpen(true); }}
+                <Button
+                    onClick={() => { setActionError(null); setCreateOpen(true); }}
                     className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2">
                     <Plus className="h-4 w-4" /> New Organization
                 </Button>
@@ -143,7 +149,7 @@ export default function OrganizationsPage() {
                         <tbody className="divide-y divide-gray-100">
                             {filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center">
+                                    <td colSpan={8} className="px-6 py-12 text-center">
                                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                                         <p className="text-sm font-medium text-gray-500">
                                             {search || statusFilter !== 'all' || planFilter !== 'all'
@@ -166,7 +172,8 @@ export default function OrganizationsPage() {
                                         org={org}
                                         onView={o => router.push(`/superadmin/organizations/${o.id}`)}
                                         onEdit={o => { setActionError(null); setEditTarget(o); }}
-                                        onToggleActive={handleToggleActive}
+                                        onSuspend={o => { setActionError(null); setSuspendTarget(o); }}
+                                        onUnsuspend={handleUnsuspend}
                                         onDelete={o => { setActionError(null); setDeleteTarget(o); }}
                                     />
                                 ))
@@ -208,6 +215,14 @@ export default function OrganizationsPage() {
                     mode="edit"
                 />
             )}
+
+            <SuspendModal
+                isOpen={!!suspendTarget}
+                onClose={() => setSuspendTarget(null)}
+                onConfirm={handleSuspend}
+                organization={suspendTarget}
+                submitting={submitting}
+            />
 
             <DeleteModal
                 isOpen={!!deleteTarget}

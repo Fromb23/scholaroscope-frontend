@@ -18,6 +18,14 @@ function LoginForm() {
     const orgName = searchParams.get('org');
 
     useEffect(() => {
+        if (searchParams.get('reason') === 'suspended') {
+            setError(
+                'Your organization has been suspended. Contact your administrator, who should reach out to platform support.'
+            );
+        }
+    }, []);
+
+    useEffect(() => {
         const inviteEmail = searchParams.get('email');
         if (inviteEmail) setEmail(inviteEmail);
     }, []);

@@ -4,7 +4,9 @@
 // ============================================================================
 
 export type PlanType = 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
-export type OrgType  = 'INSTITUTION' | 'PERSONAL';
+export type OrgType = 'INSTITUTION' | 'PERSONAL';
+export type OrgStatus = 'ACTIVE' | 'SUSPENDED';
+export type SuspensionReason = 'USER_REQUESTED' | 'POLICY_VIOLATION' | 'PAYMENT_ISSUE' | 'ADMIN_ACTION';
 
 export interface Organization {
     id: number;
@@ -21,6 +23,8 @@ export interface Organization {
     member_count: number;
     created_at: string;
     updated_at: string;
+    status: OrgStatus;
+    suspension_reason?: SuspensionReason | null;
 }
 
 export interface OrganizationCreatePayload {
@@ -83,4 +87,21 @@ export const PLAN_COLORS: Record<PlanType, 'default' | 'info' | 'purple' | 'oran
     BASIC: 'info',
     PREMIUM: 'purple',
     ENTERPRISE: 'orange',
+};
+
+export const ORG_STATUS_LABELS: Record<OrgStatus, string> = {
+    ACTIVE: 'Active',
+    SUSPENDED: 'Suspended',
+};
+
+export const ORG_STATUS_COLORS: Record<OrgStatus, 'success' | 'danger'> = {
+    ACTIVE: 'success',
+    SUSPENDED: 'danger',
+};
+
+export const SUSPENSION_REASON_LABELS: Record<SuspensionReason, string> = {
+    USER_REQUESTED: 'User Requested',
+    POLICY_VIOLATION: 'Policy Violation',
+    PAYMENT_ISSUE: 'Payment Issue',
+    ADMIN_ACTION: 'Admin Action',
 };

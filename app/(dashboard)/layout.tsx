@@ -1,4 +1,3 @@
-// app/(dashboard)/layout.tsx - remove useState, use context via Header
 'use client';
 
 import { useEffect } from 'react';
@@ -23,11 +22,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
 }
 
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, activeRole, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
@@ -38,11 +33,11 @@ export default function DashboardLayout({
         if (user.is_superadmin) return;
 
         if (activeRole === null) {
-            router.replace('/register?mode=new_workspace&reason=suspended');
+            router.replace('/login?reason=suspended');
             return;
         }
 
-        const matchedRule = routeRules.find((rule) => rule.pattern.test(pathname));
+        const matchedRule = routeRules.find(rule => rule.pattern.test(pathname));
         if (!matchedRule) return;
         if (!matchedRule.allowedRoles.includes(activeRole)) {
             router.replace(roleHomeRoute[activeRole]);

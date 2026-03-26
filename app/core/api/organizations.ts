@@ -10,6 +10,7 @@ import {
     OrganizationUpdatePayload,
     OrganizationStats,
     OrgUser,
+    SuspensionReason,
 } from '@/app/core/types/organization';
 
 export const organizationAPI = {
@@ -37,16 +38,25 @@ export const organizationAPI = {
         return response.data;
     },
 
-    // DELETE /api/organizations/{id}/
     delete: async (id: number): Promise<void> => {
         await apiClient.delete(`/organizations/${id}/`);
     },
 
-    // POST /api/organizations/{id}/ with is_active toggle
-    // Suspend = set is_active: false | Activate = set is_active: true
-    toggleActive: async (id: number, is_active: boolean): Promise<Organization> => {
+    suspend: async (id: number, suspension_reason: SuspensionReason): Promise<{ message: string; reason: string }> => {
+        const response = await apiClient.post(`/organizations/${id}/suspend/`, {
+            suspension_reason,
+        });
+        return response.data;
+    },
+
+    unsuspend: async (id: number): Promise<{ message: string }> => {
+        const response = await apiClient.post(`/organizations/${id}/unsuspend/`);
+        return response.data;
+    },
+
+    changePlan: async (id: number, plan_type: string): Promise<Organization> => {
         const response = await apiClient.patch<Organization>(`/organizations/${id}/`, {
-            is_active,
+            plan_type,
         });
         return response.data;
     },

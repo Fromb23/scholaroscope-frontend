@@ -7,7 +7,7 @@ import {
     useOrganizationUsers,
 } from '@/app/core/hooks/useOrganizations';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
-import type { OrganizationUpdatePayload } from '@/app/core/types/organization';
+import type { OrganizationUpdatePayload, SuspensionReason } from '@/app/core/types/organization';
 
 export function useOrganizationDetailPage(id: number) {
     const router = useRouter();
@@ -41,20 +41,33 @@ export function useOrganizationDetailPage(id: number) {
         }
     };
 
-    const handleToggleActive = async () => {
+    const handleSuspend = async (reason: SuspensionReason): Promise<void> => {
         if (!organization) return;
         setActionError(null);
         try {
-            const updated = await organizationAPI.toggleActive(id, !organization.is_active);
-            setOrganization(updated);
-            showSuccess(`Organization ${updated.is_active ? 'activated' : 'suspended'}`);
+            await organizationAPI.suspend(id, reason);
+            setOrganization({ ...organization, status: 'SUSPENDED', suspension_reason: reason });
+            showSuccess('Organization suspended');
         } catch (err: unknown) {
-            const e = err as { message?: string };
-            setActionError(e.message || 'Status change failed');
+            const e = err as { response?: { data?: { error?: string } }; message?: string };
+            setActionError(e.response?.data?.error || e.message || 'Suspend failed');
         }
     };
 
-    const handleDelete = async () => {
+    const handleUnsuspend = async (): Promise<void> => {
+        if (!organization) return;
+        setActionError(null);
+        try {
+            await organizationAPI.unsuspend(id);
+            setOrganization({ ...organization, status: 'ACTIVE', suspension_reason: null });
+            showSuccess('Organization reactivated');
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { error?: string } }; message?: string };
+            setActionError(e.response?.data?.error || e.message || 'Unsuspend failed');
+        }
+    };
+
+    const handleDelete = async (): Promise<void> => {
         setSubmitting(true);
         setActionError(null);
         try {
@@ -67,7 +80,7 @@ export function useOrganizationDetailPage(id: number) {
         }
     };
 
-    const addExistingUser = async (userId: number, organizationId: number, role: string) => {
+    const addExistingUser = async (userId: number, organizationId: number, role: string): Promise<void> => {
         try {
             await globalUsersAPI.addToOrg(userId, organizationId, role);
             await refetchUsers();
@@ -88,6 +101,6 @@ export function useOrganizationDetailPage(id: number) {
         users, usersLoading,
         submitting, actionError, actionSuccess,
         setActionError,
-        handleEdit, handleToggleActive, handleDelete, addExistingUser,
+        handleEdit, handleSuspend, handleUnsuspend, handleDelete, addExistingUser,
     };
 }
