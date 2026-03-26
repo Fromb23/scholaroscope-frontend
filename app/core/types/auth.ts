@@ -2,6 +2,11 @@
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
 export type OrgType = 'INSTITUTION' | 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
+export interface SuspendedNotice {
+  org: string;
+  message: string;
+}
+
 
 export interface User {
   id: number;
@@ -45,6 +50,7 @@ export interface LoginResponse {
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
   requires_workspace_recovery?: boolean;
+  suspended_notice?: SuspendedNotice;
 }
 
 export interface LoginCredentials {

@@ -43,12 +43,19 @@ function LoginForm() {
             }
             window.location.href = '/dashboard';
         } catch (err: unknown) {
-            const e = err as { response?: { data?: { non_field_errors?: string[] } }; data?: { error?: { message?: string } } };
-            setError(
-                e?.data?.error?.message ||
-                e?.response?.data?.non_field_errors?.[0] ||
-                'Login failed. Please try again.'
-            );
+            const e = err as { data?: Record<string, unknown>; message?: string };
+            const errorCode = e?.data?.error as string | undefined;
+
+            if (errorCode === 'suspended') {
+                setError((e?.data?.message as string) ?? 'Your organization has been suspended.');
+            } else {
+                setError(
+                    (e?.data?.non_field_errors as string[])?.[0] ||
+                    (e?.data?.detail as string) ||
+                    e?.message ||
+                    'Login failed. Please try again.'
+                );
+            }
         } finally {
             setLoading(false);
         }

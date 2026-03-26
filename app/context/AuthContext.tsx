@@ -17,6 +17,7 @@ import type {
   OrgMembership,
   RegisterPayload,
   Role,
+  SuspendedNotice,
 } from '@/app/core/types/auth';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -32,6 +33,8 @@ interface AuthContextType {
   switchOrg: (organizationId: number) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   acceptInvite: (inviteToken: string, email: string, password: string) => Promise<void>;
+  suspendedNotice: SuspendedNotice | null;
+  clearSuspendedNotice: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -51,7 +54,7 @@ function restore<T>(key: string): T | null {
 }
 
 function clearStorage() {
-  ['access_token', 'refresh_token', 'user', 'active_org', 'memberships'].forEach(
+  ['access_token', 'refresh_token', 'user', 'active_org', 'memberships', 'suspended_notice'].forEach(
     (k) => localStorage.removeItem(k)
   );
 }
@@ -84,6 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const [memberships, setMemberships] = useState<OrgMembership[]>(
     () => restore<OrgMembership[]>('memberships') ?? []
+  );
+  const [suspendedNotice, setSuspendedNotice] = useState<SuspendedNotice | null>(
+    () => restore<SuspendedNotice>('suspended_notice')
   );
   const [loading, setLoading] = useState(true);
 
@@ -147,7 +153,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile);
     setActiveOrg(res.active_org ?? null);
     setMemberships(res.memberships ?? []);
+    if (res.suspended_notice) {
+      persist('suspended_notice', res.suspended_notice);
+      setSuspendedNotice(res.suspended_notice);
+    } else {
+      localStorage.removeItem('suspended_notice');
+      setSuspendedNotice(null);
+    }
     setLoading(false);
+  }, []);
+
+  const clearSuspendedNotice = useCallback(() => {
+    localStorage.removeItem('suspended_notice');
+    setSuspendedNotice(null);
   }, []);
 
   const logout = useCallback(async () => {
@@ -256,6 +274,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         switchOrg,
         register,
         acceptInvite,
+        suspendedNotice,
+        clearSuspendedNotice,
       }}
     >
       {children}
