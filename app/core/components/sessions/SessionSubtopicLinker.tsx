@@ -123,6 +123,8 @@ interface TopicGroupProps {
     onMarkCovered: (linkId: number) => Promise<void>;
     actionsInProgress: Set<number>;
     readOnly: boolean;
+    isOpen: boolean;
+    onToggle: () => void;
 }
 
 function TopicGroup({
@@ -133,8 +135,9 @@ function TopicGroup({
     onMarkCovered,
     actionsInProgress,
     readOnly,
+    onToggle,
+    isOpen,
 }: TopicGroupProps) {
-    const [open, setOpen] = useState(true);
 
     const coveredCount = subtopics.filter(s =>
         links.find(l => l.subtopic === s.id && l.covered)
@@ -147,10 +150,10 @@ function TopicGroup({
         <div className="border border-gray-200 rounded-xl overflow-hidden">
             <button
                 type="button"
-                onClick={() => setOpen(v => !v)}
+                onClick={() => onToggle()}
                 className="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
             >
-                {open
+                {isOpen
                     ? <ChevronDown className="h-4 w-4 text-blue-600 shrink-0" />
                     : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
                 }
@@ -167,7 +170,7 @@ function TopicGroup({
                 </div>
             </button>
 
-            {open && (
+            {isOpen && (
                 <div className="p-3 space-y-2">
                     {subtopics.length === 0 ? (
                         <p className="text-sm text-gray-400 text-center py-3">No subtopics</p>
@@ -196,6 +199,14 @@ export function SessionSubtopicLinker({ sessionId, subjectId, readOnly = false }
     const [links, setLinks] = useState<TopicSessionLink[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionsInProgress, setActionsInProgress] = useState<Set<number>>(new Set());
+    const [openTopics, setOpenTopics] = useState<Set<number>>(() => {
+        try {
+            const stored = localStorage.getItem(`session-${sessionId}-open-topics`);
+            return stored ? new Set(JSON.parse(stored)) : new Set();
+        } catch {
+            return new Set();
+        }
+    });
 
     useEffect(() => {
         if (!subjectId || !sessionId) return;
@@ -205,7 +216,7 @@ export function SessionSubtopicLinker({ sessionId, subjectId, readOnly = false }
             try {
                 const [topicsData, subtopicsData, linksData] = await Promise.all([
                     topicAPI.getAll({ subject: subjectId }),
-                    subtopicAPI.getAll({ topic__subject: subjectId }),
+                    subtopicAPI.getAll({ topic__subject: subjectId, page_size: 1000 }),
                     topicSessionLinkAPI.getAll({ session: sessionId }),
                 ]);
 
@@ -240,6 +251,17 @@ export function SessionSubtopicLinker({ sessionId, subjectId, readOnly = false }
 
         load();
     }, [subjectId, sessionId]);
+
+    const toggleTopic = (topicId: number) => {
+        setOpenTopics(prev => {
+            const next = new Set(prev);
+            next.has(topicId) ? next.delete(topicId) : next.add(topicId);
+            try {
+                localStorage.setItem(`session-${sessionId}-open-topics`, JSON.stringify([...next]));
+            } catch { }
+            return next;
+        });
+    };
 
     const handleLink = async (subtopicId: number) => {
         setActionsInProgress(prev => new Set(prev).add(subtopicId));
@@ -351,6 +373,8 @@ export function SessionSubtopicLinker({ sessionId, subjectId, readOnly = false }
                         onMarkCovered={handleMarkCovered}
                         actionsInProgress={actionsInProgress}
                         readOnly={readOnly}
+                        isOpen={openTopics.has(topic.id)}
+                        onToggle={() => toggleTopic(topic.id)}
                     />
                 ))}
             </div>

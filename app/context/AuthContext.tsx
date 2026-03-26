@@ -24,13 +24,14 @@ interface AuthContextType {
   user: User | null;
   activeOrg: ActiveOrg | null;
   memberships: OrgMembership[];
-  activeRole: Role | null;   // ← derived from activeOrg membership
+  activeRole: Role | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, skipRecovery?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   switchOrg: (organizationId: number) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
+  acceptInvite: (inviteToken: string, email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -70,7 +71,7 @@ function resolveActiveRole(
   if (user.is_superadmin) return 'SUPERADMIN';
   if (!activeOrg) return null;
   const membership = memberships.find(
-    (m) => m.organization.id === activeOrg.id && m.is_active
+    (m) => m.organization.id === activeOrg.id && m.status
   );
   return membership?.role ?? null;
 }
@@ -117,14 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, skipRecovery = false) => {
     const res = await authAPI.login({ email, password });
 
     localStorage.setItem('access_token', res.access);
     localStorage.setItem('refresh_token', res.refresh);
 
-    // All orgs suspended — redirect to recovery before loading anything
-    if (res.requires_workspace_recovery) {
+    if (res.requires_workspace_recovery && !skipRecovery) {
       persist('active_org', null);
       persist('memberships', res.memberships ?? []);
       const profile = await authAPI.getProfile();
@@ -139,10 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     persist('active_org', res.active_org ?? null);
     persist('memberships', res.memberships ?? []);
-
     const profile = await authAPI.getProfile();
     persist('user', profile);
-
     setUser(profile);
     setActiveOrg(res.active_org ?? null);
     setMemberships(res.memberships ?? []);
@@ -195,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       organization: newActiveOrg,
       role: 'ADMIN',
       role_display: 'Admin',
-      is_active: true,
+      status: 'ACTIVE',
       joined_at: new Date().toISOString(),
     };
 
@@ -205,6 +203,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
     setActiveOrg(newActiveOrg);
     setMemberships([membership]);
+    setLoading(false);
+  }, []);
+
+  const acceptInvite = useCallback(async (inviteToken: string, email: string, password: string) => {
+    // Step 1: login to get authenticated
+    const loginRes = await authAPI.login({ email, password });
+    localStorage.setItem('access_token', loginRes.access);
+    localStorage.setItem('refresh_token', loginRes.refresh);
+
+    // Step 2: accept invite — now authenticated
+    const res = await authAPI.register({
+      email,
+      password,
+      invite_code: inviteToken,
+    });
+
+    const newActiveOrg: ActiveOrg = {
+      id: res.organization.id,
+      name: res.organization.name,
+      slug: res.organization.slug ?? '',
+      org_type: res.organization.type,
+    };
+
+    persist('active_org', newActiveOrg);
+    persist('memberships', res.memberships ?? []);
+    persist('user', res.user);
+
+    localStorage.setItem('access_token', res.access);
+    localStorage.setItem('refresh_token', res.refresh);
+
+    setUser(res.user);
+    setActiveOrg(newActiveOrg);
+    setMemberships((res.memberships as OrgMembership[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -221,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         switchOrg,
         register,
+        acceptInvite,
       }}
     >
       {children}

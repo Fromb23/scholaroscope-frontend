@@ -22,6 +22,7 @@ export interface StudentCohortEnrollment {
   enrollment_type: 'PRIMARY' | 'ELECTIVE' | 'REMEDIAL' | 'ADVANCED' | 'TRANSFER';
   enrollment_type_display: string;
   notes: string;
+  end_reason: 'COMPLETED' | 'GRADUATED' | 'TRANSFERRED' | 'WRONG_ASSIGNMENT' | 'WITHDRAWN' | 'PROMOTED' | null;
 }
 
 export interface Student {
@@ -78,9 +79,6 @@ export interface StudentDetail extends Student {
     average_score: number;
     total_assessments: number;
   };
-
-  projects_count: number;
-  evidence_count: number;
 }
 
 export interface StudentFormData {

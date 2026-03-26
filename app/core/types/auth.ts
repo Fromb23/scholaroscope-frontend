@@ -1,5 +1,4 @@
 // app/core/types/auth.ts
-import { ReactNode } from 'react';
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
 export type OrgType = 'INSTITUTION' | 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
@@ -27,7 +26,7 @@ export interface OrgMembership {
   };
   role: Role;
   role_display: string;
-  is_active: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
   joined_at: string;
 }
 
@@ -81,6 +80,7 @@ export interface RegisterResponse {
     type: OrgType;
     slug: string;
   };
+  memberships?: OrgMembership[];
 }
 
 export interface SuspendedOrg {

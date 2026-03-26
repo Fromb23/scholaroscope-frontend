@@ -54,7 +54,7 @@ export const instructorsAPI = {
     },
 
     // DELETE /api/users/{id}/
-    delete: async (id: number): Promise<void> => {
+    remove: async (id: number): Promise<void> => {
         await apiClient.delete(`/users/${id}/`);
     },
 

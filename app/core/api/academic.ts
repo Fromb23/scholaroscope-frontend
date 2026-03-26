@@ -106,7 +106,6 @@ export const curriculumAPI = {
   },
 
   create: async (data: Partial<Curriculum>) => {
-    console.log("Data to create curricula", data);
     const response = await apiClient.post<Curriculum>('/curricula/', data);
     return response.data;
   },
@@ -163,7 +162,6 @@ export interface CohortQueryParams extends ListQueryParams {
 }
 export const cohortAPI = {
   getAll: async (params?: CohortQueryParams) => {
-    console.log("Params in  cohort", params);
     const response = await apiClient.get<Cohort[]>('/cohorts/', { params });
     return response.data;
   },

@@ -95,6 +95,7 @@ export interface SubtopicQueryParams {
     topic__subject?: number;
     topic__subject__curriculum?: number;
     search?: string;
+    page_size?: number;
 }
 
 // ── Form payloads ─────────────────────────────────────────────────────────
