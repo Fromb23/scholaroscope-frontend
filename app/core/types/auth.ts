@@ -100,4 +100,5 @@ export interface MeContextResponse {
   membership_version: number;
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
+  suspended_notice: SuspendedNotice | null;
 }

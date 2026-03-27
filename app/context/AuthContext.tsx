@@ -136,7 +136,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('membership_version', String(ctx.membership_version));
         setActiveOrg(ctx.active_org);
         setMemberships(ctx.memberships);
-        setMembershipVersion(ctx.membership_version);
+        if (ctx.suspended_notice) {
+          persist('suspended_notice', ctx.suspended_notice);
+          setSuspendedNotice(ctx.suspended_notice);
+        } else {
+          localStorage.removeItem('suspended_notice');
+          setSuspendedNotice(null);
+        }
       } catch {
       }
     };
