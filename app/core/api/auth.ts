@@ -10,6 +10,7 @@ import type {
   RegisterPayload,
   RegisterResponse,
   SuspendedOrg,
+  MeContextResponse,
 } from '@/app/core/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
@@ -120,6 +121,16 @@ export const authAPI = {
       const data = await res.json().catch(() => ({}));
       throw Object.assign(new Error('Failed to restore workspace'), { data });
     }
+    return res.json();
+  },
+  meContext: async (): Promise<MeContextResponse> => {
+    const res = await fetch(`${API_URL}/users/me_context/`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch context');
     return res.json();
   },
 };

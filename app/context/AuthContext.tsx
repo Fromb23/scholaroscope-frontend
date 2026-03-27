@@ -88,6 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [memberships, setMemberships] = useState<OrgMembership[]>(
     () => restore<OrgMembership[]>('memberships') ?? []
   );
+  const [membershipVersion, setMembershipVersion] = useState<number>(
+    () => Number(localStorage.getItem('membership_version') ?? 0)
+  );
   const [suspendedNotice, setSuspendedNotice] = useState<SuspendedNotice | null>(
     () => restore<SuspendedNotice>('suspended_notice')
   );
@@ -124,6 +127,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
+  useEffect(() => {
+    const handleMismatch = async () => {
+      try {
+        const ctx = await authAPI.meContext();
+        persist('active_org', ctx.active_org);
+        persist('memberships', ctx.memberships);
+        localStorage.setItem('membership_version', String(ctx.membership_version));
+        setActiveOrg(ctx.active_org);
+        setMemberships(ctx.memberships);
+        setMembershipVersion(ctx.membership_version);
+      } catch {
+      }
+    };
+    window.addEventListener('membership-version-mismatch', handleMismatch);
+    return () => window.removeEventListener('membership-version-mismatch', handleMismatch);
+  }, []);
+
   const login = useCallback(async (email: string, password: string, skipRecovery = false) => {
     const res = await authAPI.login({ email, password });
 
@@ -153,6 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile);
     setActiveOrg(res.active_org ?? null);
     setMemberships(res.memberships ?? []);
+    const version = (res as unknown as { membership_version?: number }).membership_version ?? 0;
+    localStorage.setItem('membership_version', String(version));
+    setMembershipVersion(version);
     if (res.suspended_notice) {
       persist('suspended_notice', res.suspended_notice);
       setSuspendedNotice(res.suspended_notice);

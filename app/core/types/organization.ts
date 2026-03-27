@@ -44,7 +44,16 @@ export interface OrganizationUpdatePayload {
     address?: string;
     logo?: string;
     plan_type?: PlanType;
+    org_type?: OrgType;
     is_active?: boolean;
+}
+export interface OrgFormData {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    plan_type: PlanType;
+    org_type: OrgType;
 }
 
 export interface OrganizationStats {

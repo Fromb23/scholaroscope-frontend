@@ -23,9 +23,30 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle auth errors
+
 apiClient.interceptors.response.use(
   (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+apiClient.interceptors.response.use(
+  (response) => {
+    const serverVersion = response.headers['x-membership-version'];
+    if (serverVersion) {
+      const storedVersion = localStorage.getItem('membership_version') ?? '0';
+      if (serverVersion !== storedVersion) {
+        localStorage.setItem('membership_version', serverVersion);
+        window.dispatchEvent(new CustomEvent('membership-version-mismatch'));
+      }
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('access_token');

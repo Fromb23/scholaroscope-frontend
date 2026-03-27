@@ -95,3 +95,9 @@ export interface SuspendedOrg {
   slug: string;
   org_type: OrgType;
 }
+
+export interface MeContextResponse {
+  membership_version: number;
+  active_org: ActiveOrg | null;
+  memberships: OrgMembership[];
+}

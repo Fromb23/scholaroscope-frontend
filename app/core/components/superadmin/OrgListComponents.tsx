@@ -12,7 +12,7 @@ import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import type {
-    Organization, OrgType, PlanType, SuspensionReason,
+    Organization, OrgFormData, SuspensionReason,
 } from '@/app/core/types/organization';
 import {
     PLAN_LABELS, PLAN_COLORS,
@@ -47,14 +47,7 @@ export function StatsBar({ organizations }: StatsBarProps) {
 
 // ── OrgFormData ───────────────────────────────────────────────────────────
 
-export interface OrgFormData {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-    plan_type: PlanType;
-    org_type: OrgType;
-}
+
 
 export const EMPTY_FORM: OrgFormData = {
     name: '', email: '', phone: '', address: '',
