@@ -10,9 +10,9 @@ import Header from '@/app/components/layout/Header';
 import { AlertTriangle } from 'lucide-react';
 import { SuspendedNotice } from '../core/types/auth';
 
-function DashboardContent({ children, notice, onDismissNotice }: {
+function DashboardContent({ children, notices, onDismissNotice }: {
     children: React.ReactNode;
-    notice: SuspendedNotice | null;
+    notices: SuspendedNotice[];
     onDismissNotice: () => void;
 }) {
     return (
@@ -20,7 +20,7 @@ function DashboardContent({ children, notice, onDismissNotice }: {
             <Sidebar />
             <div className="flex flex-1 flex-col overflow-hidden">
                 <Header />
-                {notice && <SuspendedNoticeBanner notice={notice} onDismiss={onDismissNotice} />}
+                {notices.length > 0 && <SuspendedNoticeBanner notices={notices} onDismiss={onDismissNotice} />}
                 <main className="flex-1 overflow-y-auto p-4 lg:p-6">
                     {children}
                 </main>
@@ -30,7 +30,7 @@ function DashboardContent({ children, notice, onDismissNotice }: {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { user, activeRole, loading, suspendedNotice, clearSuspendedNotice } = useAuth();
+    const { user, activeRole, loading, suspendedNotices, clearSuspendedNotices } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
 
@@ -64,30 +64,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <SidebarProvider>
-            <DashboardContent notice={suspendedNotice} onDismissNotice={clearSuspendedNotice}>
+            <DashboardContent notices={suspendedNotices} onDismissNotice={clearSuspendedNotices}>
                 {children}
             </DashboardContent>
         </SidebarProvider>
     );
 }
 
-function SuspendedNoticeBanner({ notice, onDismiss }: { notice: SuspendedNotice; onDismiss: () => void }) {
+function SuspendedNoticeBanner({ notices, onDismiss }: { notices: SuspendedNotice[]; onDismiss: () => void }) {
+    if (notices.length === 0) return null;
     return (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
             <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800">
-                        <strong>{notice.org}</strong> has been suspended.
-                    </p>
-                    <p className="text-xs text-yellow-700 mt-0.5">{notice.message}</p>
+                <div className="flex-1 space-y-1">
+                    {notices.map((notice, i) => (
+                        <p key={i} className={`text-sm text-yellow-800 ${i > 0 ? 'mt-1' : ''}`}>
+                            {notice.message}
+                        </p>
+                    ))}
                 </div>
-                <button
-                    onClick={onDismiss}
-                    className="text-yellow-500 hover:text-yellow-700 text-sm font-medium"
-                >
-                    ✕
-                </button>
+                <button onClick={onDismiss} className="text-yellow-500 hover:text-yellow-700 text-sm font-medium">✕</button>
             </div>
         </div>
     );

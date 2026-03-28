@@ -50,7 +50,7 @@ export interface LoginResponse {
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
   requires_workspace_recovery?: boolean;
-  suspended_notice?: SuspendedNotice;
+  suspended_notices?: SuspendedNotice[];
 }
 
 export interface LoginCredentials {
@@ -98,7 +98,8 @@ export interface SuspendedOrg {
 
 export interface MeContextResponse {
   membership_version: number;
+  state: string;
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
-  suspended_notice: SuspendedNotice | null;
+  suspended_orgs: { org: string; role: string }[];
 }

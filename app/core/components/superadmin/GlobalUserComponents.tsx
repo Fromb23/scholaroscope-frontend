@@ -5,6 +5,7 @@ import {
     Shield, UserCog, GraduationCap, AlertTriangle,
     Mail, Phone, Building2, Power, PowerOff,
     Pencil, Trash2, KeyRound,
+    Network,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -15,6 +16,7 @@ import Modal from '@/app/components/ui/Modal';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import type {
     GlobalUser, UserCreatePayload, UserUpdatePayload, UserRole,
+    UserOrgMembership,
 } from '@/app/core/types/globalUsers';
 import { ROLE_COLORS } from '@/app/core/types/globalUsers';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -304,10 +306,11 @@ interface UsersTableProps {
     onToggleActive: (user: GlobalUser) => void;
     onDelete: (user: GlobalUser) => void;
     onAddToOrg: (user: GlobalUser) => void;
+    onViewMemberships: (user: GlobalUser) => void;
 }
 
 export function UsersTable({
-    users, onEdit, onReset, onToggleActive, onDelete, onAddToOrg,
+    users, onEdit, onReset, onToggleActive, onDelete, onAddToOrg, onViewMemberships,
 }: UsersTableProps) {
     const columns: Column<GlobalUser>[] = [
         {
@@ -388,6 +391,11 @@ export function UsersTable({
                         className="p-1.5 rounded-lg text-gray-500 hover:bg-purple-50 hover:text-purple-600 transition-colors"
                         title="Add to organization">
                         <Building2 className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => onViewMemberships(row)}
+                        className="p-1.5 rounded-lg text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                        title="View memberships">
+                        <Network className="h-4 w-4" />
                     </button>
                     <button onClick={() => onToggleActive(row)}
                         className={`p-1.5 rounded-lg transition-colors ${row.is_active
@@ -509,6 +517,74 @@ export function AddToOrgModal({
                         className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500">
                         {submitting ? 'Adding...' : 'Add to Organization'}
                     </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+// ── UserMembershipsModal ──────────────────────────────────────────────────
+
+interface UserMembershipsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    user: GlobalUser | null;
+    memberships: UserOrgMembership[];
+    loading: boolean;
+    onRemove: (organizationId: number) => Promise<void>;
+    removing: number | null;
+}
+
+export function UserMembershipsModal({
+    isOpen, onClose, user, memberships, loading, onRemove, removing,
+
+}: UserMembershipsModalProps) {
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Memberships — ${user?.full_name ?? ''}`} size="md">
+            <div className="space-y-3">
+                {loading ? (
+                    <div className="py-8 flex justify-center">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
+                    </div>
+                ) : memberships.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-6">No memberships found.</p>
+                ) : (
+                    memberships.map((m, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50">
+                            <div className="flex items-center gap-3">
+                                <Building2 className="h-4 w-4 text-gray-400 shrink-0" />
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">{m.organization.name}</p>
+                                    <p className="text-xs text-gray-500">{m.role_display}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Badge variant={m.organization.status === 'ACTIVE' ? 'success' : 'danger'}>
+                                    {m.organization.status}
+                                </Badge>
+                                <Badge variant={m.status === 'ACTIVE' ? 'info' : 'default'}>
+                                    {m.status}
+                                </Badge>
+                                {m.status === 'ACTIVE' && (
+                                    <button
+                                        onClick={() => onRemove(m.organization.id)}
+                                        disabled={removing === m.organization.id}
+                                        className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                                        title="Remove from org"
+                                    >
+                                        {removing === m.organization.id
+                                            ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+                                            : <Trash2 className="h-4 w-4" />
+                                        }
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                    ))
+                )}
+                <div className="flex justify-end pt-2">
+                    <Button variant="secondary" onClick={onClose}>Close</Button>
                 </div>
             </div>
         </Modal>

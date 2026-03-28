@@ -126,3 +126,38 @@ export interface CohortAssignment {
     start_date: string;
     role: string;
 }
+
+export interface GlobalUser {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    is_superadmin: boolean;
+    is_active: boolean;
+    phone: string;
+    profile_image?: string;
+    date_joined: string;
+    last_login: string | null;
+    membership_status?: MembershipStatus | null;
+    role?: UserRole;
+    role_display?: string;
+    organization?: number | null;
+    organization_name?: string | null;
+    organization_code?: string | null;
+    membership_version: number;
+}
+
+export interface UserOrgMembership {
+    role: MemberRole;
+    role_display: string;
+    organization: {
+        id: number;
+        name: string;
+        slug: string;
+        org_type: string;
+        status: string;
+    };
+    status: MembershipStatus;
+    joined_at: string;
+}

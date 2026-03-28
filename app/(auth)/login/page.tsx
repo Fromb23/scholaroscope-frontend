@@ -20,7 +20,7 @@ function LoginForm() {
     useEffect(() => {
         if (searchParams.get('reason') === 'suspended') {
             setError(
-                'Your organization has been suspended. Contact your administrator, who should reach out to platform support.'
+                'Your organization has been suspended. Contact your administrator for more information.'
             );
         }
     }, []);
@@ -29,6 +29,50 @@ function LoginForm() {
         const inviteEmail = searchParams.get('email');
         if (inviteEmail) setEmail(inviteEmail);
     }, []);
+
+    // ADD before handleSubmit
+    const resolveErrorMessage = (data: Record<string, unknown>): string => {
+        const state = data?.state as string;
+        const errorCode = data?.error as string;
+
+        if (errorCode === 'suspended' || state === 'ONLY_SUSPENDED') {
+            const orgs = (data?.suspended_orgs as { org: string; role: string }[]) ?? [];
+            return orgs.map(o =>
+                o.role === 'ADMIN'
+                    ? `'${o.org}' has been suspended. Contact platform support.`
+                    : `'${o.org}' has been suspended. Contact your organization administrator.`
+            ).join('\n');
+        }
+
+        if (errorCode === 'revoked' || state === 'ONLY_REVOKED') {
+            const orgs = (data?.revoked_orgs as { org: string }[]) ?? [];
+            return orgs.map(o =>
+                `Your access to '${o.org}' has been revoked. Contact your organization administrator.`
+            ).join('\n');
+        }
+
+        if (errorCode === 'mixed_inactive' || state === 'MIXED_INACTIVE') {
+            const suspended = (data?.suspended_orgs as { org: string; role: string }[]) ?? [];
+            const revoked = (data?.revoked_orgs as { org: string }[]) ?? [];
+            const lines = [
+                ...suspended.map(o =>
+                    o.role === 'ADMIN'
+                        ? `'${o.org}' has been suspended. Contact platform support.`
+                        : `'${o.org}' has been suspended. Contact your organization administrator.`
+                ),
+                ...revoked.map(o =>
+                    `Your access to '${o.org}' has been revoked. Contact your organization administrator.`
+                ),
+            ];
+            return lines.join('\n');
+        }
+
+        if (errorCode === 'no_org') {
+            return 'No active organization found. Contact your administrator.';
+        }
+
+        return (data?.non_field_errors as string[])?.[0] || 'Login failed. Please try again.';
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,18 +88,8 @@ function LoginForm() {
             window.location.href = '/dashboard';
         } catch (err: unknown) {
             const e = err as { data?: Record<string, unknown>; message?: string };
-            const errorCode = e?.data?.error as string | undefined;
-
-            if (errorCode === 'suspended') {
-                setError((e?.data?.message as string) ?? 'Your organization has been suspended.');
-            } else {
-                setError(
-                    (e?.data?.non_field_errors as string[])?.[0] ||
-                    (e?.data?.detail as string) ||
-                    e?.message ||
-                    'Login failed. Please try again.'
-                );
-            }
+            const data = e?.data ?? {};
+            setError(resolveErrorMessage(data) || e?.message || 'Login failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -82,7 +116,9 @@ function LoginForm() {
 
                     {error && (
                         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
-                            {error}
+                            {error.split('\n').map((line, i) => (
+                                <p key={i} className={i > 0 ? 'mt-1' : ''}>{line}</p>
+                            ))}
                         </div>
                     )}
 
