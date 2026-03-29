@@ -46,7 +46,7 @@ export const usePlugins = (): UsePluginsReturn => {
 
     const hasPlugin = useCallback(
         (key: string): boolean => {
-            return plugins.some(p => p.key === key && p.is_active);
+            return plugins.some(p => p.key === key && p.is_active && p.is_available);
         },
         [plugins]
     );
