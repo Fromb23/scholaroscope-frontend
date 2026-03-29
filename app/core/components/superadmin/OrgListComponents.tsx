@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
     Building2, Eye, Pencil, Trash2, PowerOff,
     Power, Users, AlertTriangle, Search,
@@ -12,8 +11,14 @@ import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
-import type { Organization, OrgType, PlanType } from '@/app/core/types/organization';
-import { PLAN_LABELS, PLAN_COLORS } from '@/app/core/types/organization';
+import type {
+    Organization, OrgFormData, SuspensionReason,
+} from '@/app/core/types/organization';
+import {
+    PLAN_LABELS, PLAN_COLORS,
+    ORG_STATUS_COLORS, ORG_STATUS_LABELS,
+    SUSPENSION_REASON_LABELS,
+} from '@/app/core/types/organization';
 
 // ── StatsBar ──────────────────────────────────────────────────────────────
 
@@ -21,7 +26,7 @@ interface StatsBarProps { organizations: Organization[] }
 
 export function StatsBar({ organizations }: StatsBarProps) {
     const total = organizations.length;
-    const active = organizations.filter(o => o.is_active).length;
+    const active = organizations.filter(o => o.status === 'ACTIVE').length;
     const suspended = total - active;
 
     return (
@@ -42,14 +47,7 @@ export function StatsBar({ organizations }: StatsBarProps) {
 
 // ── OrgFormData ───────────────────────────────────────────────────────────
 
-export interface OrgFormData {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-    plan_type: PlanType;
-    org_type: OrgType;
-}
+
 
 export const EMPTY_FORM: OrgFormData = {
     name: '', email: '', phone: '', address: '',
@@ -150,8 +148,7 @@ export function OrgFormModal({
                         className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500">
                         {submitting
                             ? mode === 'create' ? 'Creating...' : 'Saving...'
-                            : mode === 'create' ? 'Create Organization' : 'Save Changes'
-                        }
+                            : mode === 'create' ? 'Create Organization' : 'Save Changes'}
                     </Button>
                 </div>
             </div>
@@ -194,17 +191,75 @@ export function DeleteModal({ isOpen, onClose, onConfirm, organization, submitti
     );
 }
 
+// ── SuspendModal ──────────────────────────────────────────────────────────
+
+interface SuspendModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (reason: SuspensionReason) => Promise<void>;
+    organization: Organization | null;
+    submitting: boolean;
+}
+
+export function SuspendModal({ isOpen, onClose, onConfirm, organization, submitting }: SuspendModalProps) {
+    const [reason, setReason] = useState<SuspensionReason>('ADMIN_ACTION');
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Suspend Organization" size="sm">
+            <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-medium text-yellow-800">
+                            Suspend <strong>{organization?.name}</strong>?
+                        </p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                            Members will lose access immediately. Memberships are preserved
+                            and access resumes on unsuspend.
+                        </p>
+                    </div>
+                </div>
+                <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Suspension Reason</p>
+                    <select
+                        value={reason}
+                        onChange={e => setReason(e.target.value as SuspensionReason)}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    >
+                        {(Object.keys(SUSPENSION_REASON_LABELS) as SuspensionReason[]).map(r => (
+                            <option key={r} value={r}>{SUSPENSION_REASON_LABELS[r]}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex justify-end gap-3">
+                    <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
+                    <Button
+                        onClick={() => onConfirm(reason)}
+                        disabled={submitting}
+                        className="bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 text-white"
+                    >
+                        {submitting ? 'Suspending...' : 'Suspend Organization'}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
 // ── OrgTableRow ───────────────────────────────────────────────────────────
 
 interface OrgTableRowProps {
     org: Organization;
     onView: (org: Organization) => void;
     onEdit: (org: Organization) => void;
-    onToggleActive: (org: Organization) => void;
+    onSuspend: (org: Organization) => void;
+    onUnsuspend: (org: Organization) => void;
     onDelete: (org: Organization) => void;
 }
 
-export function OrgTableRow({ org, onView, onEdit, onToggleActive, onDelete }: OrgTableRowProps) {
+export function OrgTableRow({ org, onView, onEdit, onSuspend, onUnsuspend, onDelete }: OrgTableRowProps) {
+    const isSuspended = org.status === 'SUSPENDED';
+
     return (
         <tr className="hover:bg-gray-50 transition-colors">
             <td className="px-6 py-4">
@@ -240,9 +295,16 @@ export function OrgTableRow({ org, onView, onEdit, onToggleActive, onDelete }: O
                 </div>
             </td>
             <td className="px-6 py-4">
-                <Badge variant={org.is_active ? 'success' : 'danger'}>
-                    {org.is_active ? 'Active' : 'Suspended'}
-                </Badge>
+                <div className="space-y-1">
+                    <Badge variant={ORG_STATUS_COLORS[org.status]}>
+                        {ORG_STATUS_LABELS[org.status]}
+                    </Badge>
+                    {isSuspended && org.suspension_reason && (
+                        <p className="text-xs text-gray-400">
+                            {SUSPENSION_REASON_LABELS[org.suspension_reason]}
+                        </p>
+                    )}
+                </div>
             </td>
             <td className="px-6 py-4 text-sm text-gray-500">
                 {new Date(org.created_at).toLocaleDateString('en-GB', {
@@ -261,13 +323,14 @@ export function OrgTableRow({ org, onView, onEdit, onToggleActive, onDelete }: O
                         title="Edit">
                         <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => onToggleActive(org)}
-                        className={`p-1.5 rounded-lg transition-colors ${org.is_active
-                            ? 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'
-                            : 'text-gray-500 hover:bg-green-50 hover:text-green-600'
+                    <button
+                        onClick={() => isSuspended ? onUnsuspend(org) : onSuspend(org)}
+                        className={`p-1.5 rounded-lg transition-colors ${isSuspended
+                            ? 'text-gray-500 hover:bg-green-50 hover:text-green-600'
+                            : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'
                             }`}
-                        title={org.is_active ? 'Suspend' : 'Activate'}>
-                        {org.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                        title={isSuspended ? 'Unsuspend' : 'Suspend'}>
+                        {isSuspended ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
                     </button>
                     <button onClick={() => onDelete(org)}
                         className="p-1.5 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
@@ -311,8 +374,8 @@ export function OrgFilters({
                 <select value={statusFilter} onChange={e => onStatusChange(e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="suspended">Suspended</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="SUSPENDED">Suspended</option>
                 </select>
                 <select value={planFilter} onChange={e => onPlanChange(e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">

@@ -2,7 +2,8 @@
 // Mirrors: apps/users/models.py User + UserSerializer + MembershipSerializer
 
 export type MemberRole = 'ADMIN' | 'INSTRUCTOR';
-export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR'; // kept for RouteAccess compat
+export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+export type MembershipStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface GlobalUser {
     id: number;
@@ -16,8 +17,7 @@ export interface GlobalUser {
     profile_image?: string;
     date_joined: string;
     last_login: string | null;
-    // Legacy fields — only present if backend includes them
-    // Will be null/undefined for new model
+    membership_status?: 'ACTIVE' | 'INACTIVE' | null;
     role?: 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
     role_display?: string;
     organization?: number | null;
@@ -35,7 +35,7 @@ export interface UserMembership {
         slug: string;
         org_type: string;
     };
-    is_active: boolean;
+    status: MembershipStatus;
     joined_at: string;
 }
 
@@ -125,4 +125,39 @@ export interface CohortAssignment {
     academic_year: string;
     start_date: string;
     role: string;
+}
+
+export interface GlobalUser {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    is_superadmin: boolean;
+    is_active: boolean;
+    phone: string;
+    profile_image?: string;
+    date_joined: string;
+    last_login: string | null;
+    membership_status?: MembershipStatus | null;
+    role?: UserRole;
+    role_display?: string;
+    organization?: number | null;
+    organization_name?: string | null;
+    organization_code?: string | null;
+    membership_version: number;
+}
+
+export interface UserOrgMembership {
+    role: MemberRole;
+    role_display: string;
+    organization: {
+        id: number;
+        name: string;
+        slug: string;
+        org_type: string;
+        status: string;
+    };
+    status: MembershipStatus;
+    joined_at: string;
 }

@@ -21,8 +21,10 @@ import {
     DeleteSubtopicModal,
 } from '@/app/core/components/topics/SubtopicModals';
 import type { Subtopic, SubtopicFormData } from '@/app/core/types/topics';
+import { useBackNavigation } from '@/app/core/hooks/useBackNavigation';
 
 export default function TopicDetailPage() {
+    const goBack = useBackNavigation('/academic/topics');
     const params = useParams();
     const router = useRouter();
     const { user, activeRole } = useAuth();
@@ -112,7 +114,7 @@ export default function TopicDetailPage() {
         return (
             <div className="text-center py-20">
                 <p className="text-gray-500">Topic not found.</p>
-                <Button variant="ghost" className="mt-4" onClick={() => router.push('/academic/topics')}>
+                <Button variant="ghost" className="mt-4" onClick={goBack}>
                     Back to Topics
                 </Button>
             </div>
@@ -124,10 +126,7 @@ export default function TopicDetailPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4">
-                <button
-                    onClick={() => router.push('/academic/topics')}
-                    className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
+                <button onClick={goBack} className="text-gray-500 hover:text-gray-700 transition-colors">
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="flex-1">

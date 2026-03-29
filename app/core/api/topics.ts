@@ -94,7 +94,6 @@ export const topicSessionLinkAPI = {
 
     create: async (data: { session: number; subtopic: number; notes?: string }) => {
         const response = await apiClient.post<TopicSessionLink>('/topic-session-links/', data);
-        console.log("Created TopicSessionLink:", response.data);
         return response.data;
     },
 

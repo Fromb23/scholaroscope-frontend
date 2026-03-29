@@ -1,32 +1,34 @@
 // ============================================================================
-// app/types/auditLogs.ts
-// Ready for when backend implements audit logging
+// app/plugins/platform/audit/types/auditLogs.ts
 // ============================================================================
 
 export type AuditAction =
     | 'CREATE' | 'UPDATE' | 'DELETE'
     | 'LOGIN' | 'LOGOUT'
     | 'ACTIVATE' | 'DEACTIVATE'
-    | 'ASSIGN' | 'UNASSIGN';
+    | 'ASSIGN' | 'UNASSIGN'
+    | 'SUSPEND' | 'UNSUSPEND';
 
 export type AuditResource =
-    | 'USER' | 'ORGANIZATION' | 'COHORT' | 'SUBJECT'
-    | 'ACADEMIC_YEAR' | 'TERM' | 'ASSESSMENT' | 'SESSION';
+    | 'USER' | 'ORGANIZATION' | 'MEMBERSHIP'
+    | 'COHORT' | 'SUBJECT' | 'ACADEMIC_YEAR'
+    | 'TERM' | 'ASSESSMENT' | 'SESSION'
+    | 'PLUGIN' | 'REQUEST';
 
 export interface AuditLog {
     id: number;
-    actor_id: number;
+    actor: number | null;
     actor_email: string;
     actor_name: string;
     actor_role: string;
-    organization_id: number | null;
-    organization_name: string | null;
+    organization: number | null;
+    organization_name: string;
     action: AuditAction;
     resource_type: AuditResource;
     resource_id: number | null;
     resource_name: string;
-    details: Record<string, any>;
-    ip_address: string;
+    details: Record<string, unknown>;
+    ip_address: string | null;
     timestamp: string;
 }
 
@@ -34,9 +36,17 @@ export interface AuditLogFilters {
     search?: string;
     action?: string;
     resource_type?: string;
-    organization_id?: number;
+    organization?: number;
     date_from?: string;
     date_to?: string;
+}
+
+export interface AuditStats {
+    total: number;
+    today: number;
+    last_7_days: number;
+    by_action: Record<string, number>;
+    by_resource: Record<string, number>;
 }
 
 export const ACTION_COLORS: Record<AuditAction, 'success' | 'info' | 'danger' | 'warning' | 'default'> = {
@@ -49,4 +59,6 @@ export const ACTION_COLORS: Record<AuditAction, 'success' | 'info' | 'danger' | 
     DEACTIVATE: 'warning',
     ASSIGN: 'info',
     UNASSIGN: 'warning',
+    SUSPEND: 'danger',
+    UNSUSPEND: 'success',
 };

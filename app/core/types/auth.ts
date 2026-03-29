@@ -1,8 +1,12 @@
 // app/core/types/auth.ts
-import { ReactNode } from 'react';
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
 export type OrgType = 'INSTITUTION' | 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
+export interface SuspendedNotice {
+  org: string;
+  message: string;
+}
+
 
 export interface User {
   id: number;
@@ -27,7 +31,7 @@ export interface OrgMembership {
   };
   role: Role;
   role_display: string;
-  is_active: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
   joined_at: string;
 }
 
@@ -46,6 +50,7 @@ export interface LoginResponse {
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
   requires_workspace_recovery?: boolean;
+  suspended_notices?: SuspendedNotice[];
 }
 
 export interface LoginCredentials {
@@ -81,6 +86,7 @@ export interface RegisterResponse {
     type: OrgType;
     slug: string;
   };
+  memberships?: OrgMembership[];
 }
 
 export interface SuspendedOrg {
@@ -88,4 +94,12 @@ export interface SuspendedOrg {
   name: string;
   slug: string;
   org_type: OrgType;
+}
+
+export interface MeContextResponse {
+  membership_version: number;
+  state: string;
+  active_org: ActiveOrg | null;
+  memberships: OrgMembership[];
+  suspended_orgs: { org: string; role: string }[];
 }

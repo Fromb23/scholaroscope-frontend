@@ -1,3 +1,5 @@
+'use client';
+
 // ============================================================================
 // app/core/hooks/usePlugins.ts
 //
@@ -5,18 +7,15 @@
 // Used by Sidebar to conditionally render plugin nav sections.
 // ============================================================================
 
-'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import { pluginAPI } from '@/app/core/api/plugins';
-import { InstalledPlugin } from '@/app/core/types/plugins';
+import type { InstalledPlugin } from '@/app/core/types/plugins';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
 interface UsePluginsReturn {
     plugins: InstalledPlugin[];
     loading: boolean;
     error: string | null;
-    // True if plugin is installed AND active
     hasPlugin: (key: string) => boolean;
     refetch: () => void;
 }
@@ -33,21 +32,19 @@ export const usePlugins = (): UsePluginsReturn => {
             const data = await pluginAPI.getInstalled();
             setPlugins(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch plugins');
+        } catch (err: unknown) {
+            const e = err as { message?: string };
+            setError(e.message || 'Failed to fetch plugins');
         } finally {
             setLoading(false);
         }
     }, [organizationId]);
 
-    useEffect(() => {
-        fetch();
-    }, [fetch]);
+    useEffect(() => { fetch(); }, [fetch]);
 
     const hasPlugin = useCallback(
-        (key: string): boolean => {
-            return plugins.some(p => p.key === key && p.is_active);
-        },
+        (key: string): boolean =>
+            plugins.some(p => p.key === key && p.is_active && p.is_available),
         [plugins]
     );
 

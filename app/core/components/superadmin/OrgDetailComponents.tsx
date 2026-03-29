@@ -7,6 +7,7 @@ import {
     Mail, Phone, MapPin, Hash, Globe, Calendar,
     Users,
     Plus,
+    AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -14,8 +15,8 @@ import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/Card';
-import type { Organization, OrgUser, OrganizationStats, PlanType } from '@/app/core/types/organization';
-import { PLAN_LABELS as PlanLabels, PLAN_COLORS as PlanColors } from '@/app/core/types/organization';
+import type { Organization, OrgUser, OrganizationStats, OrgFormData, OrganizationUpdatePayload, SuspensionReason } from '@/app/core/types/organization';
+import { PLAN_LABELS as PlanLabels, PLAN_COLORS as PlanColors, SUSPENSION_REASON_LABELS } from '@/app/core/types/organization';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { GlobalUser } from '../../types/globalUsers';
 
@@ -113,6 +114,20 @@ export function OrgOverviewTab({ organization, onChangePlan }: OrgOverviewTabPro
                         value={new Date(organization.updated_at).toLocaleDateString('en-GB', {
                             day: '2-digit', month: 'long', year: 'numeric',
                         })} />
+
+                    {organization.status === 'SUSPENDED' && (
+                        <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+                            <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Suspension Reason</p>
+                                <p className="text-sm text-yellow-700 mt-0.5">
+                                    {organization.suspension_reason
+                                        ? SUSPENSION_REASON_LABELS[organization.suspension_reason]
+                                        : '—'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
             <Card>
@@ -238,18 +253,10 @@ export function OrgUsersTab({ users, loading, onAddExisting }: OrgUsersTabProps)
 
 // ── EditModal ─────────────────────────────────────────────────────────────────
 
-interface OrgFormData {
-    name: string;
-    email: string;
-    phone: string;
-    address: string;
-    plan_type: PlanType;
-}
-
 interface EditModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: OrgFormData) => Promise<boolean>;
+    onSubmit: (data: OrganizationUpdatePayload) => Promise<boolean>;
     org: Organization;
     submitting: boolean;
 }
@@ -261,6 +268,7 @@ export function EditModal({ isOpen, onClose, onSubmit, org, submitting }: EditMo
         phone: org.phone,
         address: org.address,
         plan_type: org.plan_type,
+        org_type: org.org_type,
     });
     const [errors, setErrors] = useState<Partial<OrgFormData>>({});
 
@@ -279,7 +287,14 @@ export function EditModal({ isOpen, onClose, onSubmit, org, submitting }: EditMo
 
     const handleSubmit = async () => {
         if (!validate()) return;
-        const ok = await onSubmit(form);
+        const ok = await onSubmit({
+            name: form.name,
+            email: form.email || undefined,
+            phone: form.phone || undefined,
+            address: form.address || undefined,
+            plan_type: form.plan_type,
+            org_type: form.org_type,
+        });
         if (ok) onClose();
     };
 
@@ -303,6 +318,13 @@ export function EditModal({ isOpen, onClose, onSubmit, org, submitting }: EditMo
                         { value: 'BASIC', label: 'Basic' },
                         { value: 'PREMIUM', label: 'Premium' },
                         { value: 'ENTERPRISE', label: 'Enterprise' },
+                    ]}
+                />
+                <Select label="Organization Type" value={form.org_type}
+                    onChange={e => handleChange('org_type', e.target.value)}
+                    options={[
+                        { value: 'INSTITUTION', label: 'Institution' },
+                        { value: 'PERSONAL', label: 'Personal Workspace' },
                     ]}
                 />
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -426,6 +448,61 @@ export function AddToOrgModal({
                     <Button onClick={handleSubmit} disabled={submitting}
                         className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500">
                         {submitting ? 'Adding...' : 'Add to Organization'}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+// ── SuspendModal ──────────────────────────────────────────────────────────────
+
+interface SuspendModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (reason: SuspensionReason) => Promise<void>;
+    organization: Organization | null;
+    submitting: boolean;
+}
+
+export function SuspendModal({ isOpen, onClose, onConfirm, organization, submitting }: SuspendModalProps) {
+    const [reason, setReason] = useState<SuspensionReason>('ADMIN_ACTION');
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Suspend Organization" size="sm">
+            <div className="space-y-4">
+                <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-100">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-medium text-yellow-800">
+                            Suspend <strong>{organization?.name}</strong>?
+                        </p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                            Members lose access immediately. Memberships are preserved
+                            and access resumes on unsuspend.
+                        </p>
+                    </div>
+                </div>
+                <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Suspension Reason</p>
+                    <select
+                        value={reason}
+                        onChange={e => setReason(e.target.value as SuspensionReason)}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    >
+                        {(Object.keys(SUSPENSION_REASON_LABELS) as SuspensionReason[]).map(r => (
+                            <option key={r} value={r}>{SUSPENSION_REASON_LABELS[r]}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex justify-end gap-3">
+                    <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
+                    <Button
+                        onClick={() => onConfirm(reason)}
+                        disabled={submitting}
+                        className="bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 text-white"
+                    >
+                        {submitting ? 'Suspending...' : 'Suspend Organization'}
                     </Button>
                 </div>
             </div>

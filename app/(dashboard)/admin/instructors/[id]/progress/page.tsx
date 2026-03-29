@@ -1,12 +1,5 @@
 'use client';
 
-// ============================================================================
-// app/(dashboard)/admin/instructors/[id]/progress/page.tsx
-//
-// Responsibility: fetch via hook, handle modal state, compose components.
-// No direct API calls. No any. No inline component definitions.
-// ============================================================================
-
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -23,6 +16,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { instructorsAPI } from '@/app/core/api/instructors';
 import { useInstructorProgress } from '@/app/core/hooks/useInstructorProgress';
+import { useBackNavigation } from '@/app/core/hooks/useBackNavigation';
 import {
     EditModal,
     ResetPasswordModal,
@@ -39,6 +33,7 @@ export default function InstructorProgressPage() {
     const params = useParams();
     const router = useRouter();
     const instructorId = Number(params.id);
+    const goBack = useBackNavigation('/admin/instructors');
 
     const {
         instructor, sessions, loading, error,
@@ -78,21 +73,24 @@ export default function InstructorProgressPage() {
             setResetOpen(false);
         }, 'Password reset successfully', 'Failed to reset password');
 
-    const handleToggle = () =>
+    const handleToggle = () => {
+        const isActive = instructor?.is_active && instructor?.membership_status !== 'INACTIVE';
         withSubmit(async () => {
-            await (instructor?.is_active ? instructorsAPI.deactivate(instructorId) : instructorsAPI.activate(instructorId));
+            await (isActive
+                ? instructorsAPI.deactivate(instructorId)
+                : instructorsAPI.activate(instructorId));
             await refetch();
         },
-            `Instructor ${instructor?.is_active ? 'deactivated' : 'activated'}`,
-            'Failed to update status');
+            `Instructor ${isActive ? 'deactivated' : 'activated'}`,
+            'Failed to update status'
+        );
+    };
 
     const handleDelete = () =>
         withSubmit(async () => {
-            await instructorsAPI.delete(instructorId);
+            await instructorsAPI.remove(instructorId);
             router.push('/admin/instructors');
-        }, 'Deleted', 'Failed to delete instructor');
-
-    // ── Guards ────────────────────────────────────────────────────────────
+        }, 'Instructor removed from organization', 'Failed to remove instructor');
 
     if (loading) return <LoadingSpinner message="Loading instructor..." />;
 
@@ -101,14 +99,12 @@ export default function InstructorProgressPage() {
             <div className="text-center">
                 <AlertCircle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">{error ?? 'Instructor not found'}</p>
-                <Link href="/admin/instructors">
-                    <Button variant="secondary" className="mt-3">Back</Button>
-                </Link>
+                <Button variant="secondary" className="mt-3" onClick={goBack}>Back</Button>
             </div>
         </div>
     );
 
-    // ── Render ────────────────────────────────────────────────────────────
+    const isEffectivelyActive = instructor.is_active && instructor.membership_status !== 'INACTIVE';
 
     const attendanceItems = [
         { label: 'Total Records', value: attendanceStats.total, color: 'text-gray-900' },
@@ -119,11 +115,9 @@ export default function InstructorProgressPage() {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
-            <Link href="/admin/instructors">
-                <Button variant="ghost" size="sm">
-                    <ArrowLeft className="h-4 w-4 mr-2" />Back to Instructors
-                </Button>
-            </Link>
+            <Button variant="ghost" size="sm" onClick={goBack}>
+                <ArrowLeft className="h-4 w-4 mr-2" />Back to Instructors
+            </Button>
 
             {feedback && (
                 <div className={`flex items-center gap-2 p-3 rounded-lg text-sm border ${feedback.type === 'success'
@@ -146,8 +140,8 @@ export default function InstructorProgressPage() {
                 <div className="flex-1">
                     <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-2xl font-bold text-gray-900">{instructor.full_name}</h1>
-                        <Badge variant={instructor.is_active ? 'success' : 'danger'}>
-                            {instructor.is_active ? 'Active' : 'Inactive'}
+                        <Badge variant={isEffectivelyActive ? 'success' : 'danger'}>
+                            {isEffectivelyActive ? 'Active' : 'Inactive'}
                         </Badge>
                     </div>
                     <p className="text-gray-500 text-sm mt-1">{instructor.email}</p>
@@ -174,9 +168,9 @@ export default function InstructorProgressPage() {
                     </Button>
                     <Button
                         size="sm" variant="secondary" onClick={handleToggle}
-                        className={instructor.is_active ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}
+                        className={isEffectivelyActive ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}
                     >
-                        {instructor.is_active
+                        {isEffectivelyActive
                             ? <><PowerOff className="h-3.5 w-3.5 mr-1" />Deactivate</>
                             : <><Power className="h-3.5 w-3.5 mr-1" />Activate</>
                         }
@@ -271,7 +265,6 @@ export default function InstructorProgressPage() {
                 </div>
             </Card>
 
-            {/* Modals */}
             <EditModal
                 isOpen={editOpen}
                 onClose={() => setEditOpen(false)}

@@ -11,6 +11,7 @@ import {
     OrganizationUpdatePayload,
     OrganizationStats,
     OrgUser,
+    SuspensionReason,
 } from '@/app/core/types/organization';
 
 // ---------------------------------------------------------------------------
@@ -78,14 +79,28 @@ export const useOrganizations = () => {
         }
     };
 
-    const toggleOrganizationActive = async (id: number, is_active: boolean) => {
+    const suspendOrganization = async (id: number, reason: SuspensionReason) => {
         try {
-            const updated = await organizationAPI.toggleActive(id, is_active);
-            setOrganizations(prev => prev.map(o => (o.id === id ? updated : o)));
-            return updated;
+            await organizationAPI.suspend(id, reason);
+            setOrganizations(prev => prev.map(o =>
+                o.id === id ? { ...o, status: 'SUSPENDED' as const, suspension_reason: reason } : o
+            ));
         } catch (err: any) {
             throw new Error(
-                err.response?.data?.message || 'Failed to update organization status'
+                err.response?.data?.error || 'Failed to suspend organization'
+            );
+        }
+    };
+
+    const unsuspendOrganization = async (id: number) => {
+        try {
+            await organizationAPI.unsuspend(id);
+            setOrganizations(prev => prev.map(o =>
+                o.id === id ? { ...o, status: 'ACTIVE' as const, suspension_reason: undefined } : o
+            ));
+        } catch (err: any) {
+            throw new Error(
+                err.response?.data?.error || 'Failed to unsuspend organization'
             );
         }
     };
@@ -98,7 +113,8 @@ export const useOrganizations = () => {
         createOrganization,
         updateOrganization,
         deleteOrganization,
-        toggleOrganizationActive,
+        unsuspendOrganization,
+        suspendOrganization,
     };
 };
 

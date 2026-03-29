@@ -10,6 +10,7 @@ import type {
   RegisterPayload,
   RegisterResponse,
   SuspendedOrg,
+  MeContextResponse,
 } from '@/app/core/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
@@ -26,16 +27,19 @@ function authHeaders(): HeadersInit {
 }
 
 export const authAPI = {
-  // ─── Login ────────────────────────────────────────────────────────────────
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     const res = await fetch(`${API_URL}/users/login/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
-    if (!res.ok) throw new Error('Login failed');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw Object.assign(new Error(data?.message || 'Login failed'), { data, status: res.status });
+    }
     return res.json();
   },
+
 
   // ─── Logout ───────────────────────────────────────────────────────────────
   logout: async (): Promise<void> => {
@@ -117,6 +121,16 @@ export const authAPI = {
       const data = await res.json().catch(() => ({}));
       throw Object.assign(new Error('Failed to restore workspace'), { data });
     }
+    return res.json();
+  },
+  meContext: async (): Promise<MeContextResponse> => {
+    const res = await fetch(`${API_URL}/users/me_context/`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch context');
     return res.json();
   },
 };

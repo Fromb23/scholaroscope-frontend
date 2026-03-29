@@ -17,10 +17,12 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import {
     OrgStats, OrgOverviewTab, OrgUsersTab,
-    EditModal, DeleteModal, AddToOrgModal,
+    EditModal, DeleteModal, AddToOrgModal, SuspendModal,
 } from '@/app/core/components/superadmin/OrgDetailComponents';
 import type { TabId } from '@/app/core/components/superadmin/OrgDetailComponents';
 import { useGlobalUsers } from '@/app/core/hooks/useGlobalUsers';
+import { ORG_STATUS_COLORS, ORG_STATUS_LABELS } from '@/app/core/types/organization';
+import type { SuspensionReason } from '@/app/core/types/organization';
 
 // ── Dynamic academic tab pages ────────────────────────────────────────────────
 
@@ -61,17 +63,18 @@ export default function OrganizationDetailPage() {
         users, usersLoading,
         submitting, actionError, actionSuccess,
         setActionError,
-        handleEdit, handleToggleActive, handleDelete,
+        handleEdit, handleSuspend, handleUnsuspend, handleDelete,
         addExistingUser,
     } = useOrganizationDetailPage(id);
 
     const [activeTab, setActiveTab] = useState<TabId>('overview');
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
-    const { users: allUsers } = useGlobalUsers();
+    const [suspendOpen, setSuspendOpen] = useState(false);
     const [addUserOpen, setAddUserOpen] = useState(false);
     const [addUserSubmitting, setAddUserSubmitting] = useState(false);
 
+    const { users: allUsers } = useGlobalUsers();
 
     const handleAddExistingUser = async (userId: number, organizationId: number, role: string) => {
         setAddUserSubmitting(true);
@@ -82,8 +85,15 @@ export default function OrganizationDetailPage() {
         }
     };
 
+    const onSuspendConfirm = async (reason: SuspensionReason) => {
+        await handleSuspend(reason);
+        setSuspendOpen(false);
+    };
+
     if (loading) return <LoadingSpinner />;
     if (error || !organization) return <ErrorState message={error ?? 'Organization not found'} />;
+
+    const isSuspended = organization.status === 'SUSPENDED';
 
     return (
         <div className="space-y-6">
@@ -91,7 +101,8 @@ export default function OrganizationDetailPage() {
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => router.push('/superadmin/organizations')}
+                    <button
+                        onClick={() => router.push('/superadmin/organizations')}
                         className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
                         <ArrowLeft className="h-4 w-4" />
                     </button>
@@ -105,8 +116,8 @@ export default function OrganizationDetailPage() {
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-2xl font-bold text-gray-900">{organization.name}</h1>
-                                <Badge variant={organization.is_active ? 'success' : 'danger'}>
-                                    {organization.is_active ? 'Active' : 'Suspended'}
+                                <Badge variant={ORG_STATUS_COLORS[organization.status]}>
+                                    {ORG_STATUS_LABELS[organization.status]}
                                 </Badge>
                             </div>
                             <p className="text-sm text-gray-500 mt-0.5 font-mono">
@@ -121,13 +132,19 @@ export default function OrganizationDetailPage() {
                         onClick={() => { setActionError(null); setEditOpen(true); }}>
                         <Pencil className="h-3.5 w-3.5" /> Edit
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={handleToggleActive}
-                        className={`gap-1.5 ${organization.is_active ? 'text-yellow-700 hover:bg-yellow-50' : 'text-green-700 hover:bg-green-50'}`}>
-                        {organization.is_active
-                            ? <><PowerOff className="h-3.5 w-3.5" /> Suspend</>
-                            : <><Power className="h-3.5 w-3.5" /> Activate</>
-                        }
-                    </Button>
+                    {isSuspended ? (
+                        <Button variant="secondary" size="sm"
+                            onClick={() => { setActionError(null); handleUnsuspend(); }}
+                            className="gap-1.5 text-green-700 hover:bg-green-50">
+                            <Power className="h-3.5 w-3.5" /> Unsuspend
+                        </Button>
+                    ) : (
+                        <Button variant="secondary" size="sm"
+                            onClick={() => { setActionError(null); setSuspendOpen(true); }}
+                            className="gap-1.5 text-yellow-700 hover:bg-yellow-50">
+                            <PowerOff className="h-3.5 w-3.5" /> Suspend
+                        </Button>
+                    )}
                     <Button variant="danger" size="sm" className="gap-1.5"
                         onClick={() => { setActionError(null); setDeleteOpen(true); }}>
                         <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -181,10 +198,27 @@ export default function OrganizationDetailPage() {
             </div>
 
             {/* Modals */}
-            <EditModal isOpen={editOpen} onClose={() => setEditOpen(false)}
-                onSubmit={handleEdit} org={organization} submitting={submitting} />
-            <DeleteModal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}
-                onConfirm={handleDelete} orgName={organization.name} submitting={submitting} />
+            <EditModal
+                isOpen={editOpen}
+                onClose={() => setEditOpen(false)}
+                onSubmit={handleEdit}
+                org={organization}
+                submitting={submitting}
+            />
+            <SuspendModal
+                isOpen={suspendOpen}
+                onClose={() => setSuspendOpen(false)}
+                onConfirm={onSuspendConfirm}
+                organization={organization}
+                submitting={submitting}
+            />
+            <DeleteModal
+                isOpen={deleteOpen}
+                onClose={() => setDeleteOpen(false)}
+                onConfirm={handleDelete}
+                orgName={organization.name}
+                submitting={submitting}
+            />
             <AddToOrgModal
                 isOpen={addUserOpen}
                 onClose={() => setAddUserOpen(false)}

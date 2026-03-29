@@ -10,6 +10,7 @@ import {
     UserCreatePayload,
     UserUpdatePayload,
     GlobalUserStats,
+    UserOrgMembership,
 } from '@/app/core/types/globalUsers';
 
 export const globalUsersAPI = {
@@ -86,5 +87,14 @@ export const globalUsersAPI = {
     }> => {
         const response = await apiClient.get('/users/my_teaching_history/');
         return response.data;
+    },
+    getMemberships: async (id: number): Promise<UserOrgMembership[]> => {
+        const response = await apiClient.get<UserOrgMembership[]>(`/users/${id}/memberships/`);
+        return response.data;
+    },
+    removeFromOrg: async (userId: number, organizationId: number): Promise<void> => {
+        await apiClient.post(`/users/${userId}/remove_from_org/`, {
+            organization_id: organizationId,
+        });
     },
 };

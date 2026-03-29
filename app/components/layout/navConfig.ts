@@ -12,6 +12,7 @@ import {
     Building2, Settings, ShieldCheck, Activity, FileText, AlertCircle,
     Inbox, UserCog, TrendingUp, Database, Clock, Target,
     CalendarDays, Layers, Megaphone,
+    Puzzle,
 } from 'lucide-react';
 import type { Role } from '@/app/core/types/auth';
 
@@ -84,6 +85,7 @@ export const SUPERADMIN_NAV: NavigationConfig = {
         { name: 'Organizations', href: '/superadmin/organizations', icon: Building2 },
         { name: 'Announcements', href: '/announcements', icon: Megaphone },
         { name: 'Global Users', href: '/superadmin/users', icon: UserCog },
+        { name: 'Plugin Registry', href: '/superadmin/plugins', icon: Puzzle },
         { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },
         { name: 'System Settings', href: '/superadmin/settings', icon: Settings },
         { name: 'Audit Logs', href: '/superadmin/audit', icon: FileText },

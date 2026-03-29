@@ -72,6 +72,10 @@ export function useRegister() {
         setInviteLoading(true);
         validateInviteToken(inviteToken)
             .then(data => {
+                if (data.user_exists) {
+                    router.replace(`/login?invite=${inviteToken}&org=${encodeURIComponent(data.organization)}`);
+                    return;
+                }
                 setInvite(data);
                 if (data.email) setForm(f => ({ ...f, email: data.email }));
             })
@@ -150,7 +154,7 @@ export function useRegister() {
                     },
                     role: 'ADMIN',
                     role_display: 'Admin',
-                    is_active: true,
+                    status: 'ACTIVE',
                     joined_at: new Date().toISOString(),
                 }]));
                 setSuccess(true);

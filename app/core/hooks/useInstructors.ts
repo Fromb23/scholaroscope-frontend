@@ -84,7 +84,7 @@ export const useInstructors = () => {
 
     const deleteInstructor = async (id: number) => {
         try {
-            await instructorsAPI.delete(id);
+            await instructorsAPI.remove(id);
             setInstructors(prev => prev.filter(i => i.id !== id));
         } catch (err: unknown) {
             interface APIErrorResponse {
@@ -111,7 +111,12 @@ export const useInstructors = () => {
                 ? await instructorsAPI.activate(id)
                 : await instructorsAPI.deactivate(id);
             const resolved = (typeof updated === 'object' && updated !== null && 'user' in updated)
-                ? (updated as { user: GlobalUser }).user
+                ? {
+                    ...(updated as { user: GlobalUser }).user,
+                    is_active: (updated as { membership_status?: string }).membership_status === 'INACTIVE'
+                        ? false
+                        : (updated as { user: GlobalUser }).user.is_active,
+                }
                 : updated;
             setInstructors(prev => prev.map(i => i.id === id ? resolved : i));
             return resolved;

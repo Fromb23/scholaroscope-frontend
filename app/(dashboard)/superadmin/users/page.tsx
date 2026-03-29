@@ -12,15 +12,16 @@ import {
     CreateUserModal, EditUserModal,
     ResetPasswordModal, DeleteUserModal,
     AddToOrgModal,
+    UserMembershipsModal,
 } from '@/app/core/components/superadmin/GlobalUserComponents';
-import type { GlobalUser, UserCreatePayload, UserUpdatePayload } from '@/app/core/types/globalUsers';
+import type { GlobalUser, UserCreatePayload, UserOrgMembership, UserUpdatePayload } from '@/app/core/types/globalUsers';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
 
 export default function GlobalUsersPage() {
     const {
         users, loading, error, refetch,
         createUser, updateUser, deleteUser,
-        toggleUserActive, resetPassword,
+        toggleUserActive, resetPassword, getUserMemberships, removeFromOrg,
     } = useGlobalUsers();
     const { organizations } = useOrganizations();
 
@@ -38,6 +39,10 @@ export default function GlobalUsersPage() {
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
     const [addToOrgTarget, setAddToOrgTarget] = useState<GlobalUser | null>(null);
     const [addToOrgSubmitting, setAddToOrgSubmitting] = useState(false);
+    const [membershipsTarget, setMembershipsTarget] = useState<GlobalUser | null>(null);
+    const [membershipsData, setMembershipsData] = useState<UserOrgMembership[]>([]);
+    const [membershipsLoading, setMembershipsLoading] = useState(false);
+    const [removingOrgId, setRemovingOrgId] = useState<number | null>(null);
 
     const showSuccess = (msg: string) => {
         setActionSuccess(msg);
@@ -105,6 +110,34 @@ export default function GlobalUsersPage() {
             setActionError(err instanceof Error ? err.message : 'Failed to add user.');
         } finally {
             setAddToOrgSubmitting(false);
+        }
+    };
+
+    const handleViewMemberships = async (user: GlobalUser) => {
+        setMembershipsTarget(user);
+        setMembershipsLoading(true);
+        try {
+            const data = await getUserMemberships(user.id);
+            setMembershipsData(data);
+        } catch {
+            setMembershipsData([]);
+        } finally {
+            setMembershipsLoading(false);
+        }
+    };
+    const handleRemoveFromOrg = async (organizationId: number) => {
+        if (!membershipsTarget) return;
+        setRemovingOrgId(organizationId);
+        try {
+            await removeFromOrg(membershipsTarget.id, organizationId);
+            // Refresh memberships list
+            const updated = await getUserMemberships(membershipsTarget.id);
+            setMembershipsData(updated);
+            showSuccess('User removed from organization');
+        } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to remove from organization');
+        } finally {
+            setRemovingOrgId(null);
         }
     };
 
@@ -186,6 +219,7 @@ export default function GlobalUsersPage() {
                 onAddToOrg={u => setAddToOrgTarget(u)}
                 onToggleActive={handleToggleActive}
                 onDelete={u => { setActionError(null); setDeleteTarget(u); }}
+                onViewMemberships={handleViewMemberships}
             />
 
             <CreateUserModal
@@ -230,6 +264,15 @@ export default function GlobalUsersPage() {
                 onConfirm={handleDelete}
                 userName={deleteTarget?.full_name ?? ''}
                 submitting={submitting}
+            />
+            <UserMembershipsModal
+                isOpen={!!membershipsTarget}
+                onClose={() => { setMembershipsTarget(null); setMembershipsData([]); }}
+                user={membershipsTarget}
+                memberships={membershipsData}
+                loading={membershipsLoading}
+                onRemove={handleRemoveFromOrg}
+                removing={removingOrgId}
             />
         </div>
     );
