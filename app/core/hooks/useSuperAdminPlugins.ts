@@ -36,7 +36,7 @@ export const usePlatformPlugins = () => {
             return res;
         } catch (err: unknown) {
             const e = err as { response?: { data?: { detail?: string } } };
-            throw new Error(e.response?.data?.detail || 'Failed to toggle availability');
+            throw new Error(e.response?.data?.detail || 'Failed to toggle');
         }
     };
 
@@ -51,7 +51,37 @@ export const usePlatformPlugins = () => {
         }
     };
 
-    return { plugins, loading, error, refetch: fetchPlugins, toggleAvailability, syncManifest };
+    const installGlobally = async (id: number) => {
+        try {
+            const res = await pluginAPI.installGlobally(id);
+            setPlugins(prev => prev.map(p =>
+                p.id === id ? { ...p, is_available: true } : p
+            ));
+            return res;
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { detail?: string } } };
+            throw new Error(e.response?.data?.detail || 'Failed to install globally');
+        }
+    };
+
+    const uninstallGlobally = async (id: number) => {
+        try {
+            const res = await pluginAPI.uninstallGlobally(id);
+            setPlugins(prev => prev.map(p =>
+                p.id === id ? { ...p, is_available: false } : p
+            ));
+            return res;
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { detail?: string } } };
+            throw new Error(e.response?.data?.detail || 'Failed to uninstall globally');
+        }
+    };
+
+    return {
+        plugins, loading, error, refetch: fetchPlugins,
+        toggleAvailability, syncManifest,
+        installGlobally, uninstallGlobally,
+    };
 };
 
 export const usePluginInstallations = (pluginId: number | null) => {

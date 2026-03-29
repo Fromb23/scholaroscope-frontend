@@ -6,7 +6,7 @@ import { apiClient } from './client';
 import type { Plugin, InstalledPlugin } from '@/app/core/types/plugins';
 
 export const pluginAPI = {
-    // ── Registry (Platform) ───────────────────────────────────────────────
+    // ── Registry ──────────────────────────────────────────────────────────
 
     getAll: async (): Promise<Plugin[]> => {
         const response = await apiClient.get<Plugin[]>('/plugins/');
@@ -30,17 +30,24 @@ export const pluginAPI = {
         return response.data;
     },
 
-    getInstallations: async (id: number, state?: string): Promise<InstalledPlugin[]> => {
-        const response = await apiClient.get<InstalledPlugin[]>(
-            `/plugins/${id}/installations/`,
-            { params: state ? { state } : {} }
-        );
+    installGlobally: async (id: number): Promise<{ message: string; installed_count: number }> => {
+        const response = await apiClient.post(`/plugins/${id}/install_globally/`);
+        return response.data;
+    },
+
+    uninstallGlobally: async (id: number): Promise<{ message: string; removed_count: number }> => {
+        const response = await apiClient.post(`/plugins/${id}/uninstall_globally/`);
+        return response.data;
+    },
+
+    getInstallations: async (id: number): Promise<InstalledPlugin[]> => {
+        const response = await apiClient.get<InstalledPlugin[]>(`/plugins/${id}/installations/`);
         return Array.isArray(response.data)
             ? response.data
             : (response.data as { results: InstalledPlugin[] }).results ?? [];
     },
 
-    // ── Installed plugins (per org) ───────────────────────────────────────
+    // ── Installed plugins (org-scoped, used by admins) ────────────────────
 
     getInstalled: async (organizationId?: number): Promise<InstalledPlugin[]> => {
         const response = await apiClient.get<InstalledPlugin[]>(
@@ -51,27 +58,19 @@ export const pluginAPI = {
             ? response.data
             : (response.data as { results: InstalledPlugin[] }).results ?? [];
     },
-
-    getAllInstallations: async (filters?: { organization?: number; state?: string; plugin?: string }): Promise<InstalledPlugin[]> => {
-        const response = await apiClient.get<InstalledPlugin[]>(
-            '/installed-plugins/all/',
-            { params: filters }
-        );
-        return Array.isArray(response.data)
-            ? response.data
-            : (response.data as { results: InstalledPlugin[] }).results ?? [];
-    },
-
-    install: async (pluginKey: string, organizationId: number): Promise<InstalledPlugin> => {
-        const response = await apiClient.post<InstalledPlugin>('/installed-plugins/install/', {
-            plugin_key: pluginKey,
-            organization_id: organizationId,
-        });
+    getUninstallImpact: async (id: number): Promise<{
+        plugin_name: string;
+        plugin_key: string;
+        is_core: boolean;
+        is_third_party: boolean;
+        active_count: number;
+        disabled_count: number;
+        total_affected: number;
+        active_orgs: { id: number; name: string }[];
+        disabled_orgs: { id: number; name: string }[];
+    }> => {
+        const response = await apiClient.get(`/plugins/${id}/uninstall_impact/`);
         return response.data;
-    },
-
-    uninstall: async (installedPluginId: number): Promise<void> => {
-        await apiClient.delete(`/installed-plugins/${installedPluginId}/`);
     },
 
     toggle: async (installedPluginId: number): Promise<InstalledPlugin> => {

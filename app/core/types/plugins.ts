@@ -20,6 +20,16 @@ export interface Plugin {
     is_manifest_stale: boolean;
     is_third_party: boolean;
     created_at: string;
+    installation_count: number;
+}
+
+export interface UninstallImpact {
+    plugin_name: string;
+    active_count: number;
+    disabled_count: number;
+    total_affected: number;
+    active_orgs: { id: number; name: string }[];
+    disabled_orgs: { id: number; name: string }[];
 }
 
 export interface InstalledPlugin {

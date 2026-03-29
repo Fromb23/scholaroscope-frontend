@@ -9,20 +9,22 @@ import { Card } from '@/app/components/ui/Card';
 import {
     PluginStatsBar, PluginTableRow,
     PluginDetailModal, InstallationsModal,
+    UninstallConfirmModal,
 } from '@/app/core/components/superadmin/PluginComponents';
-import type { Plugin } from '@/app/core/types/plugins';
+import type { Plugin, UninstallImpact } from '@/app/core/types/plugins';
+import { pluginAPI } from '@/app/core/api/plugins';
 
 export default function PluginsPage() {
     const {
         plugins, loading, error, refetch,
-        toggleAvailability, syncManifest,
+        syncManifest, installGlobally, uninstallGlobally,
     } = usePlatformPlugins();
 
     const [search, setSearch] = useState('');
     const [sourceFilter, setSourceFilter] = useState('all');
-    const [availableFilter, setAvailableFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
 
-    const [togglingId, setTogglingId] = useState<number | null>(null);
+    const [actingId, setActingId] = useState<number | null>(null);
     const [syncingId, setSyncingId] = useState<number | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -30,8 +32,15 @@ export default function PluginsPage() {
     const [detailPlugin, setDetailPlugin] = useState<Plugin | null>(null);
     const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
     const [installationsOpen, setInstallationsOpen] = useState(false);
+    const [impactData, setImpactData] = useState<UninstallImpact | null>(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const [pendingPlugin, setPendingPlugin] = useState<Plugin | null>(null);
 
-    const { installations, loading: installationsLoading } = usePluginInstallations(
+    const {
+        installations,
+        loading: installationsLoading,
+    } = usePluginInstallations(
         installationsOpen ? selectedPlugin?.id ?? null : null
     );
 
@@ -45,25 +54,12 @@ export default function PluginsPage() {
         return (
             (!search || p.name.toLowerCase().includes(q) || p.key.toLowerCase().includes(q)) &&
             (sourceFilter === 'all' || p.source === sourceFilter) &&
-            (availableFilter === 'all' ||
-                (availableFilter === 'available' && p.is_available) ||
-                (availableFilter === 'unavailable' && !p.is_available)
+            (statusFilter === 'all' ||
+                (statusFilter === 'installed' && p.is_available) ||
+                (statusFilter === 'not_installed' && !p.is_available)
             )
         );
-    }), [plugins, search, sourceFilter, availableFilter]);
-
-    const handleToggle = async (plugin: Plugin) => {
-        setTogglingId(plugin.id);
-        setActionError(null);
-        try {
-            const res = await toggleAvailability(plugin.id);
-            showSuccess(res.message);
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to toggle');
-        } finally {
-            setTogglingId(null);
-        }
-    };
+    }), [plugins, search, sourceFilter, statusFilter]);
 
     const handleSync = async (plugin: Plugin) => {
         setSyncingId(plugin.id);
@@ -72,9 +68,55 @@ export default function PluginsPage() {
             await syncManifest(plugin.id);
             showSuccess(`${plugin.name} manifest synced`);
         } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to sync');
+            setActionError(err instanceof Error ? err.message : 'Sync failed');
         } finally {
             setSyncingId(null);
+        }
+    };
+
+    const handleInstallGlobally = async (plugin: Plugin) => {
+        setActingId(plugin.id);
+        setActionError(null);
+        try {
+            const res = await installGlobally(plugin.id);
+            showSuccess(res.message);
+        } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Install failed');
+        } finally {
+            setActingId(null);
+        }
+    };
+
+    const handleUninstallGlobally = async (plugin: Plugin) => {
+        setActingId(plugin.id);
+        setActionError(null);
+        try {
+            // Step 1 — fetch impact
+            const impact = await pluginAPI.getUninstallImpact(plugin.id);
+            setImpactData(impact);
+            setPendingPlugin(plugin);
+            setConfirmOpen(true);
+        } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Failed to fetch impact');
+        } finally {
+            setActingId(null);
+        }
+    };
+
+
+    const handleConfirmUninstall = async () => {
+        if (!pendingPlugin) return;
+        setConfirming(true);
+        try {
+            const res = await uninstallGlobally(pendingPlugin.id);
+            showSuccess(res.message);
+            setConfirmOpen(false);
+            setPendingPlugin(null);
+            setImpactData(null);
+        } catch (err: unknown) {
+            setActionError(err instanceof Error ? err.message : 'Uninstall failed');
+        } finally {
+            setConfirming(false);
         }
     };
 
@@ -89,18 +131,15 @@ export default function PluginsPage() {
     return (
         <div className="space-y-6">
 
-            {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">Plugin Registry</h1>
                 <p className="text-sm text-gray-500 mt-1">
-                    Platform-level plugin catalogue — {plugins.length} plugins registered
+                    Install plugins globally — all org admins see installed plugins and choose to enable them
                 </p>
             </div>
 
-            {/* Stats */}
             <PluginStatsBar plugins={plugins} />
 
-            {/* Feedback */}
             {actionError && (
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -114,7 +153,6 @@ export default function PluginsPage() {
                 </div>
             )}
 
-            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -136,23 +174,22 @@ export default function PluginsPage() {
                     <option value="third_party">Third Party</option>
                 </select>
                 <select
-                    value={availableFilter}
-                    onChange={e => setAvailableFilter(e.target.value)}
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                    <option value="all">All Availability</option>
-                    <option value="available">Available</option>
-                    <option value="unavailable">Disabled</option>
+                    <option value="all">All Status</option>
+                    <option value="installed">Installed</option>
+                    <option value="not_installed">Not Installed</option>
                 </select>
             </div>
 
-            {/* Table */}
             <Card className="p-0 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
                             <tr className="border-b border-gray-200 bg-gray-50">
-                                {['Plugin', 'Source', 'Version', 'Availability', 'Type', 'Manifest', 'Actions'].map(h => (
+                                {['Plugin', 'Source', 'Version', 'Status', 'Type', 'Manifest', 'Actions'].map(h => (
                                     <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                         {h}
                                     </th>
@@ -165,7 +202,7 @@ export default function PluginsPage() {
                                     <td colSpan={7} className="px-6 py-12 text-center">
                                         <Puzzle className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                                         <p className="text-sm text-gray-500">
-                                            {search || sourceFilter !== 'all' || availableFilter !== 'all'
+                                            {search || sourceFilter !== 'all' || statusFilter !== 'all'
                                                 ? 'No plugins match your filters'
                                                 : 'No plugins registered yet'
                                             }
@@ -177,12 +214,13 @@ export default function PluginsPage() {
                                     <PluginTableRow
                                         key={plugin.id}
                                         plugin={plugin}
-                                        onToggle={handleToggle}
-                                        onSync={handleSync}
                                         onView={setDetailPlugin}
                                         onViewInstallations={handleViewInstallations}
-                                        toggling={togglingId === plugin.id}
+                                        onSync={handleSync}
+                                        onInstallGlobally={handleInstallGlobally}
+                                        onUninstallGlobally={handleUninstallGlobally}
                                         syncing={syncingId === plugin.id}
+                                        acting={actingId === plugin.id}
                                     />
                                 ))
                             )}
@@ -198,15 +236,15 @@ export default function PluginsPage() {
                 )}
             </Card>
 
-            {/* Modals */}
             <PluginDetailModal
                 plugin={detailPlugin}
                 isOpen={!!detailPlugin}
                 onClose={() => setDetailPlugin(null)}
-                onToggle={handleToggle}
                 onSync={handleSync}
-                toggling={togglingId === detailPlugin?.id}
+                onInstallGlobally={handleInstallGlobally}
+                onUninstallGlobally={handleUninstallGlobally}
                 syncing={syncingId === detailPlugin?.id}
+                acting={actingId === detailPlugin?.id}
             />
 
             <InstallationsModal
@@ -215,6 +253,14 @@ export default function PluginsPage() {
                 loading={installationsLoading}
                 isOpen={installationsOpen}
                 onClose={() => { setInstallationsOpen(false); setSelectedPlugin(null); }}
+            />
+
+            <UninstallConfirmModal
+                impact={impactData}
+                isOpen={confirmOpen}
+                onClose={() => { setConfirmOpen(false); setPendingPlugin(null); setImpactData(null); }}
+                onConfirm={handleConfirmUninstall}
+                confirming={confirming}
             />
 
         </div>
