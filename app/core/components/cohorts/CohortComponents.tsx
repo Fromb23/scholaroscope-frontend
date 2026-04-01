@@ -8,7 +8,7 @@
 // needs cohort detail (not yet in a hook).
 // ============================================================================
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Check, X, BookOpen, ChevronDown, ChevronRight,
 } from 'lucide-react';
@@ -274,7 +274,13 @@ export function CohortFormModal({
     const [subjectPanelOpen, setSubjectPanelOpen] = useState(false);
 
     // Sync when initialData changes (open/close)
-    useState(() => { setFormData(initialData); setFormError(null); setSubjectPanelOpen(false); });
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(initialData);
+            setFormError(null);
+            setSubjectPanelOpen(false);
+        }
+    }, [isOpen]);
 
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {

@@ -1,21 +1,34 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Building2, AlertTriangle } from 'lucide-react';
+import {
+    Plus, Building2, AlertTriangle,
+    Eye, Pencil, Power, PowerOff, Trash2, Users,
+} from 'lucide-react';
 import { useOrganizations } from '@/app/core/hooks/useOrganizations';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { DataTable, Column } from '@/app/components/ui/Table';
+import { useSubmitHandler } from '@/app/core/hooks/useSubmitHandler';
+import { useModalState, useFlagModal } from '@/app/core/hooks/useModalState';
+import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import {
     StatsBar, OrgFormModal, DeleteModal, SuspendModal,
-    OrgTableRow, OrgFilters,
 } from '@/app/core/components/superadmin/OrgListComponents';
-import type { Organization, PlanType, SuspensionReason } from '@/app/core/types/organization';
-import type { OrgFormData } from '@/app/core/components/superadmin/OrgListComponents';
+import type { Organization, PlanType, SuspensionReason, OrgFormData } from '@/app/core/types/organization';
+import {
+    PLAN_LABELS, PLAN_COLORS,
+    ORG_STATUS_COLORS, ORG_STATUS_LABELS,
+    SUSPENSION_REASON_LABELS,
+} from '@/app/core/types/organization';
 
-export default function OrganizationsPage() {
+type OrgRow = Organization & Record<string, unknown>;
+
+function OrganizationsPageInner() {
     const router = useRouter();
     const {
         organizations, loading, error, refetch,
@@ -23,40 +36,33 @@ export default function OrganizationsPage() {
         deleteOrganization, suspendOrganization, unsuspendOrganization,
     } = useOrganizations();
 
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [planFilter, setPlanFilter] = useState('all');
+    const [filters, updateFilters] = usePersistedFilters<{
+        search: string;
+        status: string;
+        plan: string;
+    }>('/superadmin/organizations', {
+        search: '',
+        status: 'all',
+        plan: 'all',
+    });
 
-    const [createOpen, setCreateOpen] = useState(false);
-    const [editTarget, setEditTarget] = useState<Organization | null>(null);
-    const [deleteTarget, setDeleteTarget] = useState<Organization | null>(null);
-    const [suspendTarget, setSuspendTarget] = useState<Organization | null>(null);
-    const [submitting, setSubmitting] = useState(false);
-    const [actionError, setActionError] = useState<string | null>(null);
+    const createModal = useFlagModal();
+    const editModal = useModalState<Organization>();
+    const deleteModal = useModalState<Organization>();
+    const suspendModal = useModalState<Organization>();
+
+    const { submitting, actionError, setActionError, withSubmit } = useSubmitHandler();
 
     const filtered = useMemo(() => organizations.filter(org => {
-        const q = search.toLowerCase();
-        const matchSearch = !search ||
+        const q = filters.search.toLowerCase();
+        const matchSearch = !filters.search ||
             org.name.toLowerCase().includes(q) ||
             org.code.toLowerCase().includes(q) ||
             org.email.toLowerCase().includes(q);
-        const matchStatus = statusFilter === 'all' || org.status === statusFilter;
-        const matchPlan = planFilter === 'all' || org.plan_type === planFilter;
+        const matchStatus = filters.status === 'all' || org.status === filters.status;
+        const matchPlan = filters.plan === 'all' || org.plan_type === filters.plan;
         return matchSearch && matchStatus && matchPlan;
-    }), [organizations, search, statusFilter, planFilter]);
-
-    // ── Handlers ──────────────────────────────────────────────────────────
-
-    const withSubmit = async (fn: () => Promise<void>) => {
-        setSubmitting(true);
-        setActionError(null);
-        try { await fn(); }
-        catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'An error occurred');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    }), [organizations, filters]);
 
     const handleCreate = (data: OrgFormData) =>
         withSubmit(async () => {
@@ -68,25 +74,25 @@ export default function OrganizationsPage() {
                 plan_type: data.plan_type as PlanType,
                 org_type: data.org_type,
             });
-            setCreateOpen(false);
+            createModal.close();
         });
 
     const handleEdit = (data: OrgFormData) =>
         withSubmit(async () => {
-            await updateOrganization(editTarget!.id, {
+            await updateOrganization(editModal.target!.id, {
                 name: data.name,
                 email: data.email || undefined,
                 phone: data.phone || undefined,
                 address: data.address || undefined,
                 plan_type: data.plan_type as PlanType,
             });
-            setEditTarget(null);
+            editModal.close();
         });
 
     const handleSuspend = (reason: SuspensionReason) =>
         withSubmit(async () => {
-            await suspendOrganization(suspendTarget!.id, reason);
-            setSuspendTarget(null);
+            await suspendOrganization(suspendModal.target!.id, reason);
+            suspendModal.close();
         });
 
     const handleUnsuspend = (org: Organization) =>
@@ -96,11 +102,140 @@ export default function OrganizationsPage() {
 
     const handleDelete = () =>
         withSubmit(async () => {
-            await deleteOrganization(deleteTarget!.id);
-            setDeleteTarget(null);
+            await deleteOrganization(deleteModal.target!.id);
+            deleteModal.close();
         });
 
-    // ── Render ─────────────────────────────────────────────────────────────
+    const columns: Column<OrgRow>[] = [
+        {
+            key: 'name',
+            header: 'Organization',
+            render: org => (
+                <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                        {org.logo
+                            ? <img src={org.logo as string} alt={org.name} className="h-9 w-9 rounded-lg object-cover" />
+                            : <Building2 className="h-4 w-4 text-purple-600" />
+                        }
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-900">{org.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">{org.code}</p>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            key: 'email',
+            header: 'Contact',
+            render: org => (
+                <div>
+                    <p className="text-sm text-gray-700">{org.email || '—'}</p>
+                    <p className="text-xs text-gray-500">{org.phone || '—'}</p>
+                </div>
+            ),
+        },
+        {
+            key: 'plan_type',
+            header: 'Plan',
+            render: org => (
+                <Badge variant={PLAN_COLORS[org.plan_type]}>
+                    {PLAN_LABELS[org.plan_type]}
+                </Badge>
+            ),
+        },
+        {
+            key: 'org_type',
+            header: 'Type',
+            render: org => (
+                <Badge variant={org.org_type === 'INSTITUTION' ? 'blue' : 'purple'}>
+                    {org.org_type === 'INSTITUTION' ? 'Institution' : 'Personal'}
+                </Badge>
+            ),
+        },
+        {
+            key: 'member_count',
+            header: 'Users',
+            render: org => (
+                <div className="flex items-center gap-1.5 text-sm text-gray-700">
+                    <Users className="h-3.5 w-3.5 text-gray-400" />
+                    {org.member_count}
+                </div>
+            ),
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            render: org => (
+                <div className="space-y-1">
+                    <Badge variant={ORG_STATUS_COLORS[org.status]}>
+                        {ORG_STATUS_LABELS[org.status]}
+                    </Badge>
+                    {org.status === 'SUSPENDED' && org.suspension_reason && (
+                        <p className="text-xs text-gray-400">
+                            {SUSPENSION_REASON_LABELS[org.suspension_reason as SuspensionReason]}
+                        </p>
+                    )}
+                </div>
+            ),
+        },
+        {
+            key: 'created_at',
+            header: 'Created',
+            render: org => (
+                <span className="text-sm text-gray-500">
+                    {new Date(org.created_at).toLocaleDateString('en-GB', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                    })}
+                </span>
+            ),
+        },
+        {
+            key: 'actions',
+            header: '',
+            render: org => (
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => router.push(`/superadmin/organizations/${org.id}`)}
+                        className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                        title="View details"
+                    >
+                        <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => { setActionError(null); editModal.open(org); }}
+                        className="p-1.5 rounded-lg text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                        title="Edit"
+                    >
+                        <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => org.status === 'SUSPENDED'
+                            ? handleUnsuspend(org)
+                            : (() => { setActionError(null); suspendModal.open(org); })()
+                        }
+                        className={`p-1.5 rounded-lg transition-colors ${org.status === 'SUSPENDED'
+                            ? 'text-gray-500 hover:bg-green-50 hover:text-green-600'
+                            : 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600'
+                            }`}
+                        title={org.status === 'SUSPENDED' ? 'Unsuspend' : 'Suspend'}
+                    >
+                        {org.status === 'SUSPENDED'
+                            ? <Power className="h-4 w-4" />
+                            : <PowerOff className="h-4 w-4" />
+                        }
+                    </button>
+                    <button
+                        onClick={() => { setActionError(null); deleteModal.open(org); }}
+                        className="p-1.5 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Delete"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
+                </div>
+            ),
+        },
+    ];
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -113,8 +248,9 @@ export default function OrganizationsPage() {
                     <p className="text-sm text-gray-500 mt-1">Manage all institutions on the platform</p>
                 </div>
                 <Button
-                    onClick={() => { setActionError(null); setCreateOpen(true); }}
-                    className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2">
+                    onClick={() => { setActionError(null); createModal.open(); }}
+                    className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2"
+                >
                     <Plus className="h-4 w-4" /> New Organization
                 </Button>
             </div>
@@ -129,58 +265,50 @@ export default function OrganizationsPage() {
                 </div>
             )}
 
-            <OrgFilters
-                search={search} statusFilter={statusFilter} planFilter={planFilter}
-                onSearch={setSearch} onStatusChange={setStatusFilter} onPlanChange={setPlanFilter}
-            />
+            {/* Filters */}
+            <Card className="p-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                        type="text"
+                        placeholder="Search by name, code or email..."
+                        value={filters.search}
+                        onChange={e => updateFilters({ search: e.target.value })}
+                        className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <select
+                        value={filters.status}
+                        onChange={e => updateFilters({ status: e.target.value })}
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                        <option value="all">All Statuses</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="SUSPENDED">Suspended</option>
+                    </select>
+                    <select
+                        value={filters.plan}
+                        onChange={e => updateFilters({ plan: e.target.value })}
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                        <option value="all">All Plans</option>
+                        <option value="FREE">Free</option>
+                        <option value="BASIC">Basic</option>
+                        <option value="PREMIUM">Premium</option>
+                        <option value="ENTERPRISE">Enterprise</option>
+                    </select>
+                </div>
+            </Card>
 
             <Card className="p-0 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-gray-200 bg-gray-50">
-                                {['Organization', 'Contact', 'Plan', 'Type', 'Users', 'Status', 'Created', 'Actions'].map(h => (
-                                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {filtered.length === 0 ? (
-                                <tr>
-                                    <td colSpan={8} className="px-6 py-12 text-center">
-                                        <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-sm font-medium text-gray-500">
-                                            {search || statusFilter !== 'all' || planFilter !== 'all'
-                                                ? 'No organizations match your filters'
-                                                : 'No organizations yet'
-                                            }
-                                        </p>
-                                        {!search && statusFilter === 'all' && planFilter === 'all' && (
-                                            <button onClick={() => setCreateOpen(true)}
-                                                className="mt-2 text-sm text-purple-600 hover:text-purple-700 font-medium">
-                                                Create your first organization →
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ) : (
-                                filtered.map(org => (
-                                    <OrgTableRow
-                                        key={org.id}
-                                        org={org}
-                                        onView={o => router.push(`/superadmin/organizations/${o.id}`)}
-                                        onEdit={o => { setActionError(null); setEditTarget(o); }}
-                                        onSuspend={o => { setActionError(null); setSuspendTarget(o); }}
-                                        onUnsuspend={handleUnsuspend}
-                                        onDelete={o => { setActionError(null); setDeleteTarget(o); }}
-                                    />
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <DataTable
+                    data={filtered as OrgRow[]}
+                    columns={columns}
+                    enableSearch={false}
+                    emptyMessage={
+                        filters.search || filters.status !== 'all' || filters.plan !== 'all'
+                            ? 'No organizations match your filters'
+                            : 'No organizations yet'
+                    }
+                />
                 {filtered.length > 0 && (
                     <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
                         <p className="text-xs text-gray-500">
@@ -191,25 +319,25 @@ export default function OrganizationsPage() {
             </Card>
 
             <OrgFormModal
-                isOpen={createOpen}
-                onClose={() => setCreateOpen(false)}
+                isOpen={createModal.isOpen}
+                onClose={createModal.close}
                 onSubmit={handleCreate}
                 submitting={submitting}
                 mode="create"
             />
 
-            {editTarget && (
+            {editModal.target && (
                 <OrgFormModal
-                    isOpen={!!editTarget}
-                    onClose={() => setEditTarget(null)}
+                    isOpen={editModal.isOpen}
+                    onClose={editModal.close}
                     onSubmit={handleEdit}
                     initialData={{
-                        name: editTarget.name,
-                        email: editTarget.email,
-                        phone: editTarget.phone,
-                        address: editTarget.address,
-                        plan_type: editTarget.plan_type,
-                        org_type: editTarget.org_type,
+                        name: editModal.target.name,
+                        email: editModal.target.email,
+                        phone: editModal.target.phone,
+                        address: editModal.target.address,
+                        plan_type: editModal.target.plan_type,
+                        org_type: editModal.target.org_type,
                     }}
                     submitting={submitting}
                     mode="edit"
@@ -217,20 +345,28 @@ export default function OrganizationsPage() {
             )}
 
             <SuspendModal
-                isOpen={!!suspendTarget}
-                onClose={() => setSuspendTarget(null)}
+                isOpen={suspendModal.isOpen}
+                onClose={suspendModal.close}
                 onConfirm={handleSuspend}
-                organization={suspendTarget}
+                organization={suspendModal.target}
                 submitting={submitting}
             />
 
             <DeleteModal
-                isOpen={!!deleteTarget}
-                onClose={() => setDeleteTarget(null)}
+                isOpen={deleteModal.isOpen}
+                onClose={deleteModal.close}
                 onConfirm={handleDelete}
-                organization={deleteTarget}
+                organization={deleteModal.target}
                 submitting={submitting}
             />
         </div>
+    );
+}
+
+export default function OrganizationsPage() {
+    return (
+        <Suspense fallback={<LoadingSpinner />}>
+            <OrganizationsPageInner />
+        </Suspense>
     );
 }

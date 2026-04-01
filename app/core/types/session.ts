@@ -185,3 +185,51 @@ export interface SessionWithCohorts {
   linked_cohorts: SessionCohort[];
   total_learners: number;
 }
+
+// ── Pagination ────────────────────────────────────────────────────────────
+
+export interface PaginationState {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+// ── Attendance stats ──────────────────────────────────────────────────────
+
+export interface AttendanceStats {
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  sick: number;
+  unmarked: number;
+  attendance_percentage: number;
+}
+
+export interface StudentAttendanceHistory {
+  statistics: AttendanceStats;
+  records: AttendanceRecord[];
+}
+
+export interface StudentStat {
+  student: number;
+  student__admission_number: string;
+  student__first_name: string;
+  student__last_name: string;
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  sick: number;
+  unmarked: number;
+  attendance_percentage: number;
+}
+
+export interface CohortAttendanceSummary {
+  cohort_id: number;
+  subject_id?: number;
+  student_statistics: StudentStat[];
+}

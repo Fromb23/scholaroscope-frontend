@@ -28,8 +28,7 @@ export const routeRules: RouteRule[] = [
     { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/cbc\/authoring/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/projects/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/schemes/, allowedRoles: ['ADMIN'] },
+
 
     // INSTRUCTOR ONLY
     { pattern: /^\/dashboard\/instructor/, allowedRoles: ['INSTRUCTOR'] },

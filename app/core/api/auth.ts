@@ -1,6 +1,6 @@
 // app/core/api/auth.ts
-// Updated for GAP 1: multi-org membership + workspace switching + self-service signup
 
+import { apiClient } from './client';
 import type {
   User,
   LoginResponse,
@@ -15,16 +15,7 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
 
-function getToken(): string | null {
-  return localStorage.getItem('access_token');
-}
-
-function authHeaders(): HeadersInit {
-  return {
-    'Authorization': `Bearer ${getToken()}`,
-    'Content-Type': 'application/json',
-  };
-}
+// ── Unauthenticated endpoints — native fetch to avoid 401 interceptor loop ──
 
 export const authAPI = {
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
@@ -40,59 +31,10 @@ export const authAPI = {
     return res.json();
   },
 
-
-  // ─── Logout ───────────────────────────────────────────────────────────────
-  logout: async (): Promise<void> => {
-    await fetch(`${API_URL}/users/logout/`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-  },
-
-  // ─── Profile ──────────────────────────────────────────────────────────────
-  getProfile: async (): Promise<User> => {
-    const res = await fetch(`${API_URL}/users/profile/`, {
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to get profile');
-    return res.json();
-  },
-
-  // ─── Memberships ──────────────────────────────────────────────────────────
-  // GET /api/users/memberships/
-  // Returns all active org memberships for the authenticated user
-  getMemberships: async (): Promise<OrgMembership[]> => {
-    const res = await fetch(`${API_URL}/users/memberships/`, {
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to get memberships');
-    return res.json();
-  },
-
-  // ─── Switch Org ───────────────────────────────────────────────────────────
-  // POST /api/users/switch_org/
-  // Issues a new token pair scoped to the requested org
-  switchOrg: async (organizationId: number): Promise<SwitchOrgResponse> => {
-    const res = await fetch(`${API_URL}/users/switch_org/`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ organization_id: organizationId }),
-    });
-    if (!res.ok) {
-      if (res.status === 403) throw new Error('No membership in this organization');
-      throw new Error('Failed to switch organization');
-    }
-    return res.json();
-  },
-
-  // ─── Register ─────────────────────────────────────────────────────────────
-  // POST /api/users/register/
-  // Self-service personal workspace signup — no auth required
   register: async (payload: RegisterPayload): Promise<RegisterResponse> => {
-    const token = getToken();
+    const token = localStorage.getItem('access_token');
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-
     const res = await fetch(`${API_URL}/users/register/`, {
       method: 'POST',
       headers,
@@ -104,33 +46,45 @@ export const authAPI = {
     }
     return res.json();
   },
-  getSuspendedWorkspaces: async (): Promise<SuspendedOrg[]> => {
-    const res = await fetch(`${API_URL}/users/suspended_workspaces/`, {
-      headers: authHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to fetch suspended workspaces');
-    return res.json();
+
+  // ── Authenticated endpoints — apiClient (interceptor handles 401) ─────────
+
+  logout: async (): Promise<void> => {
+    await apiClient.post('/users/logout/');
   },
+
+  getProfile: async (): Promise<User> => {
+    const res = await apiClient.get<User>('/users/profile/');
+    return res.data;
+  },
+
+  getMemberships: async (): Promise<OrgMembership[]> => {
+    const res = await apiClient.get<OrgMembership[]>('/users/memberships/');
+    return res.data;
+  },
+
+  switchOrg: async (organizationId: number): Promise<SwitchOrgResponse> => {
+    const res = await apiClient.post<SwitchOrgResponse>('/users/switch_org/', { organization_id: organizationId });
+    return res.data;
+  },
+
+  getSuspendedWorkspaces: async (): Promise<SuspendedOrg[]> => {
+    const res = await apiClient.get<SuspendedOrg[]>('/users/suspended_workspaces/');
+    return res.data;
+  },
+
   restoreWorkspace: async (orgId: number): Promise<SwitchOrgResponse> => {
-    const res = await fetch(`${API_URL}/users/restore_workspace/`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ org_id: orgId }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
+    try {
+      const res = await apiClient.post<SwitchOrgResponse>('/users/restore_workspace/', { org_id: orgId });
+      return res.data;
+    } catch (err) {
+      const data = (err as { response?: { data?: object } }).response?.data ?? {};
       throw Object.assign(new Error('Failed to restore workspace'), { data });
     }
-    return res.json();
   },
+
   meContext: async (): Promise<MeContextResponse> => {
-    const res = await fetch(`${API_URL}/users/me_context/`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-      },
-    });
-    if (!res.ok) throw new Error('Failed to fetch context');
-    return res.json();
+    const res = await apiClient.get<MeContextResponse>('/users/me_context/');
+    return res.data;
   },
 };

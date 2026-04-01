@@ -72,7 +72,9 @@ export default function StrandDetailPage() {
         setExpanded(new Set([id]));
         learningOutcomeAPI.getAll({ sub_strand: id })
             .then(outcomes => setOutcomeCache(prev => ({ ...prev, [id]: outcomes })))
-            .catch(() => { });
+            .catch(() => {
+                setOutcomeCache(prev => ({ ...prev, [strand.sub_strands[0].id]: [] }));
+            });
     }, [strand]);
 
     // ---------------------------------------------------------------

@@ -21,18 +21,13 @@ import {
   BulkAttendanceData,
   SessionCohort,
   SessionFormData,
+  PaginationState,
+  StudentAttendanceHistory,
+  CohortAttendanceSummary,
 } from '@/app/core/types/session';
 import { CohortSubject } from '@/app/core/types/academic';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
-// ── Pagination state shape ────────────────────────────────────────────────
-
-interface PaginationState {
-  currentPage: number;
-  pageSize: number;
-  totalItems: number;
-  totalPages: number;
-}
 
 // ── Helper — unwrap paginated or flat response ────────────────────────────
 
@@ -324,21 +319,6 @@ export const useAttendance = (params?: AttendanceQueryParams) => {
 
 // ── useStudentAttendanceHistory ───────────────────────────────────────────
 
-interface AttendanceStats {
-  total: number;
-  present: number;
-  absent: number;
-  late: number;
-  excused: number;
-  sick: number;
-  unmarked: number;
-  attendance_percentage: number;
-}
-
-interface StudentAttendanceHistory {
-  statistics: AttendanceStats;
-  records: AttendanceRecord[];
-}
 
 export const useStudentAttendanceHistory = (
   studentId: number | null,
@@ -375,29 +355,7 @@ export const useStudentAttendanceHistory = (
   return { data, loading, error, refetch: fetchHistory };
 };
 
-// ── useCohortAttendanceSummary ────────────────────────────────────────────
-
-interface StudentStat {
-  student: number;
-  student__admission_number: string;
-  student__first_name: string;
-  student__last_name: string;
-  total: number;
-  present: number;
-  absent: number;
-  late: number;
-  excused: number;
-  sick: number;
-  unmarked: number;
-  attendance_percentage: number;
-}
-
-interface CohortAttendanceSummary {
-  cohort_id: number;
-  subject_id?: number;
-  student_statistics: StudentStat[];
-}
-
+// ── useCohortAttendanceSummary ───────────────────────────────────────────
 export const useCohortAttendanceSummary = (
   cohortId: number | null,
   subjectId?: number,

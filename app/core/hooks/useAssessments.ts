@@ -19,13 +19,13 @@ import {
   BulkScoreData,
   StudentScoresResponse,
 } from '../types/assessment';
+import { PaginatedResponse } from '@/app/core/types/api';
 import { ApiError, extractErrorMessage } from '../types/errors';
 
 // ── Helper ────────────────────────────────────────────────────────────────
 
-interface Paginated<T> { results?: T[]; count?: number; }
 
-function unwrapList<T>(data: T[] | Paginated<T>): T[] {
+function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
   return Array.isArray(data) ? data : data?.results ?? [];
 }
 
@@ -172,7 +172,7 @@ export const useAssessmentScores = (params?: {
       const data = await assessmentScoreAPI.getAll(params);
       setScores(unwrapList(data));
       setTotalItems(
-        Array.isArray(data) ? data.length : (data as Paginated<AssessmentScore>).count ?? 0
+        Array.isArray(data) ? data.length : (data as PaginatedResponse<AssessmentScore>).count ?? 0
       );
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch scores'));
