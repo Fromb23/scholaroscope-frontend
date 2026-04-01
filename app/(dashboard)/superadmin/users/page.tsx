@@ -7,6 +7,9 @@ import { useOrganizations } from '@/app/core/hooks/useOrganizations';
 import { Button } from '@/app/components/ui/Button';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { useSubmitHandler } from '@/app/core/hooks/useSubmitHandler';
+import { useModalState, useFlagModal } from '@/app/core/hooks/useModalState';
+import { useListFilters } from '@/app/core/hooks/useListFilters';
 import {
     StatsBar, UsersTable,
     CreateUserModal, EditUserModal,
@@ -25,65 +28,52 @@ export default function GlobalUsersPage() {
     } = useGlobalUsers();
     const { organizations } = useOrganizations();
 
-    const [roleFilter, setRoleFilter] = useState('all');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [orgFilter, setOrgFilter] = useState('all');
-    const [search, setSearch] = useState('');
+    const { filters, setFilter } = useListFilters({
+        role: 'all',
+        status: 'all',
+        org: 'all',
+        search: '',
+    });
 
-    const [createOpen, setCreateOpen] = useState(false);
-    const [editTarget, setEditTarget] = useState<GlobalUser | null>(null);
-    const [resetTarget, setResetTarget] = useState<GlobalUser | null>(null);
-    const [deleteTarget, setDeleteTarget] = useState<GlobalUser | null>(null);
-    const [submitting, setSubmitting] = useState(false);
-    const [actionError, setActionError] = useState<string | null>(null);
-    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-    const [addToOrgTarget, setAddToOrgTarget] = useState<GlobalUser | null>(null);
+    const createModal = useFlagModal();
+    const editModal = useModalState<GlobalUser>();
+    const resetModal = useModalState<GlobalUser>();
+    const deleteModal = useModalState<GlobalUser>();
+    const addToOrgModal = useModalState<GlobalUser>();
+    const membershipsModal = useModalState<GlobalUser>();
+
+    const { submitting, actionError, actionSuccess, setActionError, withSubmit, showSuccess } = useSubmitHandler();
+
     const [addToOrgSubmitting, setAddToOrgSubmitting] = useState(false);
-    const [membershipsTarget, setMembershipsTarget] = useState<GlobalUser | null>(null);
     const [membershipsData, setMembershipsData] = useState<UserOrgMembership[]>([]);
     const [membershipsLoading, setMembershipsLoading] = useState(false);
     const [removingOrgId, setRemovingOrgId] = useState<number | null>(null);
 
-    const showSuccess = (msg: string) => {
-        setActionSuccess(msg);
-        setTimeout(() => setActionSuccess(null), 3000);
-    };
-
     const filtered = useMemo(() => users.filter(u => {
-        const q = search.toLowerCase();
-        const matchSearch = !search ||
+        const q = filters.search.toLowerCase();
+        const matchSearch = !filters.search ||
             u.full_name.toLowerCase().includes(q) ||
             u.email.toLowerCase().includes(q) ||
             (u.organization_name ?? '').toLowerCase().includes(q);
-        const matchRole = roleFilter === 'all' || u.role === roleFilter;
-        const matchStatus = statusFilter === 'all' ||
-            (statusFilter === 'active' && u.is_active) ||
-            (statusFilter === 'inactive' && !u.is_active);
-        const matchOrg = orgFilter === 'all' || String(u.organization ?? '') === orgFilter;
+        const matchRole = filters.role === 'all' || u.role === filters.role;
+        const matchStatus = filters.status === 'all' ||
+            (filters.status === 'active' && u.is_active) ||
+            (filters.status === 'inactive' && !u.is_active);
+        const matchOrg = filters.org === 'all' || String(u.organization ?? '') === filters.org;
         return matchSearch && matchRole && matchStatus && matchOrg;
-    }), [users, search, roleFilter, statusFilter, orgFilter]);
-
-    // ── Handlers ──────────────────────────────────────────────────────────
-
-    const withSubmit = async (fn: () => Promise<void>) => {
-        setSubmitting(true);
-        setActionError(null);
-        try { await fn(); }
-        catch (err) { setActionError(err instanceof Error ? err.message : 'An error occurred'); }
-        finally { setSubmitting(false); }
-    };
+    }), [users, filters]);
 
     const handleCreate = (data: UserCreatePayload & { organization_id?: number }) =>
         withSubmit(async () => {
             await createUser(data);
-            setCreateOpen(false);
+            createModal.close();
             showSuccess('User created successfully');
         });
 
     const handleEdit = (data: UserUpdatePayload) =>
         withSubmit(async () => {
-            await updateUser(editTarget!.id, data);
-            setEditTarget(null);
+            await updateUser(editModal.target!.id, data);
+            editModal.close();
             showSuccess('User updated successfully');
         });
 
@@ -95,8 +85,8 @@ export default function GlobalUsersPage() {
 
     const handleResetPassword = (password: string) =>
         withSubmit(async () => {
-            await resetPassword(resetTarget!.id, password);
-            setResetTarget(null);
+            await resetPassword(resetModal.target!.id, password);
+            resetModal.close();
             showSuccess('Password reset successfully');
         });
 
@@ -105,8 +95,8 @@ export default function GlobalUsersPage() {
         try {
             await globalUsersAPI.addToOrg(userId, organizationId, role);
             showSuccess('User added to organization successfully');
-            setAddToOrgTarget(null);
-        } catch (err: unknown) {
+            addToOrgModal.close();
+        } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to add user.');
         } finally {
             setAddToOrgSubmitting(false);
@@ -114,7 +104,7 @@ export default function GlobalUsersPage() {
     };
 
     const handleViewMemberships = async (user: GlobalUser) => {
-        setMembershipsTarget(user);
+        membershipsModal.open(user);
         setMembershipsLoading(true);
         try {
             const data = await getUserMemberships(user.id);
@@ -125,16 +115,16 @@ export default function GlobalUsersPage() {
             setMembershipsLoading(false);
         }
     };
+
     const handleRemoveFromOrg = async (organizationId: number) => {
-        if (!membershipsTarget) return;
+        if (!membershipsModal.target) return;
         setRemovingOrgId(organizationId);
         try {
-            await removeFromOrg(membershipsTarget.id, organizationId);
-            // Refresh memberships list
-            const updated = await getUserMemberships(membershipsTarget.id);
+            await removeFromOrg(membershipsModal.target.id, organizationId);
+            const updated = await getUserMemberships(membershipsModal.target.id);
             setMembershipsData(updated);
             showSuccess('User removed from organization');
-        } catch (err: unknown) {
+        } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to remove from organization');
         } finally {
             setRemovingOrgId(null);
@@ -143,12 +133,10 @@ export default function GlobalUsersPage() {
 
     const handleDelete = () =>
         withSubmit(async () => {
-            await deleteUser(deleteTarget!.id);
-            setDeleteTarget(null);
+            await deleteUser(deleteModal.target!.id);
+            deleteModal.close();
             showSuccess('User deleted successfully');
         });
-
-    // ── Render ─────────────────────────────────────────────────────────────
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -162,8 +150,10 @@ export default function GlobalUsersPage() {
                         Manage users across all organizations — {users.length} total
                     </p>
                 </div>
-                <Button onClick={() => { setActionError(null); setCreateOpen(true); }}
-                    className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2">
+                <Button
+                    onClick={() => { setActionError(null); createModal.open(); }}
+                    className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2"
+                >
                     <Plus className="h-4 w-4" />New User
                 </Button>
             </div>
@@ -184,20 +174,20 @@ export default function GlobalUsersPage() {
             )}
 
             <div className="flex flex-col sm:flex-row gap-3">
-                <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+                <select value={filters.role} onChange={e => setFilter('role', e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="all">All Roles</option>
                     <option value="SUPERADMIN">Super Admin</option>
                     <option value="ADMIN">Admin</option>
                     <option value="INSTRUCTOR">Instructor</option>
                 </select>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                <select value={filters.status} onChange={e => setFilter('status', e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="all">All Statuses</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                 </select>
-                <select value={orgFilter} onChange={e => setOrgFilter(e.target.value)}
+                <select value={filters.org} onChange={e => setFilter('org', e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="all">All Organizations</option>
                     {organizations.map(o => (
@@ -205,8 +195,8 @@ export default function GlobalUsersPage() {
                     ))}
                 </select>
                 <input
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    value={filters.search}
+                    onChange={e => setFilter('search', e.target.value)}
                     placeholder="Search by name, email or organization..."
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
@@ -214,61 +204,63 @@ export default function GlobalUsersPage() {
 
             <UsersTable
                 users={filtered}
-                onEdit={u => { setActionError(null); setEditTarget(u); }}
-                onReset={u => { setActionError(null); setResetTarget(u); }}
-                onAddToOrg={u => setAddToOrgTarget(u)}
+                onEdit={u => { setActionError(null); editModal.open(u); }}
+                onReset={u => { setActionError(null); resetModal.open(u); }}
+                onAddToOrg={u => addToOrgModal.open(u)}
                 onToggleActive={handleToggleActive}
-                onDelete={u => { setActionError(null); setDeleteTarget(u); }}
+                onDelete={u => { setActionError(null); deleteModal.open(u); }}
                 onViewMemberships={handleViewMemberships}
             />
 
             <CreateUserModal
-                isOpen={createOpen}
-                onClose={() => setCreateOpen(false)}
+                isOpen={createModal.isOpen}
+                onClose={createModal.close}
                 onSubmit={handleCreate}
                 submitting={submitting}
                 organizations={organizations}
             />
 
-            {editTarget && (
+            {editModal.target && (
                 <EditUserModal
-                    isOpen={!!editTarget}
-                    onClose={() => setEditTarget(null)}
+                    isOpen={editModal.isOpen}
+                    onClose={editModal.close}
                     onSubmit={handleEdit}
-                    user={editTarget}
+                    user={editModal.target}
                     submitting={submitting}
                 />
             )}
 
-            {resetTarget && (
+            {resetModal.target && (
                 <ResetPasswordModal
-                    isOpen={!!resetTarget}
-                    onClose={() => setResetTarget(null)}
+                    isOpen={resetModal.isOpen}
+                    onClose={resetModal.close}
                     onSubmit={handleResetPassword}
-                    userName={resetTarget.full_name}
+                    userName={resetModal.target.full_name}
                     submitting={submitting}
                 />
             )}
+
             <AddToOrgModal
-                isOpen={!!addToOrgTarget}
-                onClose={() => setAddToOrgTarget(null)}
+                isOpen={addToOrgModal.isOpen}
+                onClose={addToOrgModal.close}
                 onSubmit={handleAddToOrg}
-                user={addToOrgTarget}
+                user={addToOrgModal.target}
                 organizations={organizations}
                 submitting={addToOrgSubmitting}
             />
 
             <DeleteUserModal
-                isOpen={!!deleteTarget}
-                onClose={() => setDeleteTarget(null)}
+                isOpen={deleteModal.isOpen}
+                onClose={deleteModal.close}
                 onConfirm={handleDelete}
-                userName={deleteTarget?.full_name ?? ''}
+                userName={deleteModal.target?.full_name ?? ''}
                 submitting={submitting}
             />
+
             <UserMembershipsModal
-                isOpen={!!membershipsTarget}
-                onClose={() => { setMembershipsTarget(null); setMembershipsData([]); }}
-                user={membershipsTarget}
+                isOpen={membershipsModal.isOpen}
+                onClose={() => { membershipsModal.close(); setMembershipsData([]); }}
+                user={membershipsModal.target}
                 memberships={membershipsData}
                 loading={membershipsLoading}
                 onRemove={handleRemoveFromOrg}

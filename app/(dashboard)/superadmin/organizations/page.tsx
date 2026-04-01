@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Building2, AlertTriangle } from 'lucide-react';
 import { useOrganizations } from '@/app/core/hooks/useOrganizations';
@@ -8,12 +8,14 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { useSubmitHandler } from '@/app/core/hooks/useSubmitHandler';
+import { useModalState, useFlagModal } from '@/app/core/hooks/useModalState';
+import { useListFilters } from '@/app/core/hooks/useListFilters';
 import {
     StatsBar, OrgFormModal, DeleteModal, SuspendModal,
     OrgTableRow, OrgFilters,
 } from '@/app/core/components/superadmin/OrgListComponents';
-import type { Organization, PlanType, SuspensionReason } from '@/app/core/types/organization';
-import type { OrgFormData } from '@/app/core/components/superadmin/OrgListComponents';
+import type { Organization, PlanType, SuspensionReason, OrgFormData } from '@/app/core/types/organization';
 
 export default function OrganizationsPage() {
     const router = useRouter();
@@ -23,40 +25,29 @@ export default function OrganizationsPage() {
         deleteOrganization, suspendOrganization, unsuspendOrganization,
     } = useOrganizations();
 
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [planFilter, setPlanFilter] = useState('all');
+    const { filters, setFilter } = useListFilters({
+        search: '',
+        status: 'all',
+        plan: 'all',
+    });
 
-    const [createOpen, setCreateOpen] = useState(false);
-    const [editTarget, setEditTarget] = useState<Organization | null>(null);
-    const [deleteTarget, setDeleteTarget] = useState<Organization | null>(null);
-    const [suspendTarget, setSuspendTarget] = useState<Organization | null>(null);
-    const [submitting, setSubmitting] = useState(false);
-    const [actionError, setActionError] = useState<string | null>(null);
+    const createModal = useFlagModal();
+    const editModal = useModalState<Organization>();
+    const deleteModal = useModalState<Organization>();
+    const suspendModal = useModalState<Organization>();
+
+    const { submitting, actionError, setActionError, withSubmit } = useSubmitHandler();
 
     const filtered = useMemo(() => organizations.filter(org => {
-        const q = search.toLowerCase();
-        const matchSearch = !search ||
+        const q = filters.search.toLowerCase();
+        const matchSearch = !filters.search ||
             org.name.toLowerCase().includes(q) ||
             org.code.toLowerCase().includes(q) ||
             org.email.toLowerCase().includes(q);
-        const matchStatus = statusFilter === 'all' || org.status === statusFilter;
-        const matchPlan = planFilter === 'all' || org.plan_type === planFilter;
+        const matchStatus = filters.status === 'all' || org.status === filters.status;
+        const matchPlan = filters.plan === 'all' || org.plan_type === filters.plan;
         return matchSearch && matchStatus && matchPlan;
-    }), [organizations, search, statusFilter, planFilter]);
-
-    // ── Handlers ──────────────────────────────────────────────────────────
-
-    const withSubmit = async (fn: () => Promise<void>) => {
-        setSubmitting(true);
-        setActionError(null);
-        try { await fn(); }
-        catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'An error occurred');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    }), [organizations, filters]);
 
     const handleCreate = (data: OrgFormData) =>
         withSubmit(async () => {
@@ -68,25 +59,25 @@ export default function OrganizationsPage() {
                 plan_type: data.plan_type as PlanType,
                 org_type: data.org_type,
             });
-            setCreateOpen(false);
+            createModal.close();
         });
 
     const handleEdit = (data: OrgFormData) =>
         withSubmit(async () => {
-            await updateOrganization(editTarget!.id, {
+            await updateOrganization(editModal.target!.id, {
                 name: data.name,
                 email: data.email || undefined,
                 phone: data.phone || undefined,
                 address: data.address || undefined,
                 plan_type: data.plan_type as PlanType,
             });
-            setEditTarget(null);
+            editModal.close();
         });
 
     const handleSuspend = (reason: SuspensionReason) =>
         withSubmit(async () => {
-            await suspendOrganization(suspendTarget!.id, reason);
-            setSuspendTarget(null);
+            await suspendOrganization(suspendModal.target!.id, reason);
+            suspendModal.close();
         });
 
     const handleUnsuspend = (org: Organization) =>
@@ -96,11 +87,9 @@ export default function OrganizationsPage() {
 
     const handleDelete = () =>
         withSubmit(async () => {
-            await deleteOrganization(deleteTarget!.id);
-            setDeleteTarget(null);
+            await deleteOrganization(deleteModal.target!.id);
+            deleteModal.close();
         });
-
-    // ── Render ─────────────────────────────────────────────────────────────
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -113,7 +102,7 @@ export default function OrganizationsPage() {
                     <p className="text-sm text-gray-500 mt-1">Manage all institutions on the platform</p>
                 </div>
                 <Button
-                    onClick={() => { setActionError(null); setCreateOpen(true); }}
+                    onClick={() => { setActionError(null); createModal.open(); }}
                     className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2">
                     <Plus className="h-4 w-4" /> New Organization
                 </Button>
@@ -130,8 +119,12 @@ export default function OrganizationsPage() {
             )}
 
             <OrgFilters
-                search={search} statusFilter={statusFilter} planFilter={planFilter}
-                onSearch={setSearch} onStatusChange={setStatusFilter} onPlanChange={setPlanFilter}
+                search={filters.search}
+                statusFilter={filters.status}
+                planFilter={filters.plan}
+                onSearch={v => setFilter('search', v)}
+                onStatusChange={v => setFilter('status', v)}
+                onPlanChange={v => setFilter('plan', v)}
             />
 
             <Card className="p-0 overflow-hidden">
@@ -152,13 +145,13 @@ export default function OrganizationsPage() {
                                     <td colSpan={8} className="px-6 py-12 text-center">
                                         <Building2 className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                                         <p className="text-sm font-medium text-gray-500">
-                                            {search || statusFilter !== 'all' || planFilter !== 'all'
+                                            {filters.search || filters.status !== 'all' || filters.plan !== 'all'
                                                 ? 'No organizations match your filters'
                                                 : 'No organizations yet'
                                             }
                                         </p>
-                                        {!search && statusFilter === 'all' && planFilter === 'all' && (
-                                            <button onClick={() => setCreateOpen(true)}
+                                        {!filters.search && filters.status === 'all' && filters.plan === 'all' && (
+                                            <button onClick={createModal.open}
                                                 className="mt-2 text-sm text-purple-600 hover:text-purple-700 font-medium">
                                                 Create your first organization →
                                             </button>
@@ -171,10 +164,10 @@ export default function OrganizationsPage() {
                                         key={org.id}
                                         org={org}
                                         onView={o => router.push(`/superadmin/organizations/${o.id}`)}
-                                        onEdit={o => { setActionError(null); setEditTarget(o); }}
-                                        onSuspend={o => { setActionError(null); setSuspendTarget(o); }}
+                                        onEdit={o => { setActionError(null); editModal.open(o); }}
+                                        onSuspend={o => { setActionError(null); suspendModal.open(o); }}
                                         onUnsuspend={handleUnsuspend}
-                                        onDelete={o => { setActionError(null); setDeleteTarget(o); }}
+                                        onDelete={o => { setActionError(null); deleteModal.open(o); }}
                                     />
                                 ))
                             )}
@@ -191,25 +184,25 @@ export default function OrganizationsPage() {
             </Card>
 
             <OrgFormModal
-                isOpen={createOpen}
-                onClose={() => setCreateOpen(false)}
+                isOpen={createModal.isOpen}
+                onClose={createModal.close}
                 onSubmit={handleCreate}
                 submitting={submitting}
                 mode="create"
             />
 
-            {editTarget && (
+            {editModal.target && (
                 <OrgFormModal
-                    isOpen={!!editTarget}
-                    onClose={() => setEditTarget(null)}
+                    isOpen={editModal.isOpen}
+                    onClose={editModal.close}
                     onSubmit={handleEdit}
                     initialData={{
-                        name: editTarget.name,
-                        email: editTarget.email,
-                        phone: editTarget.phone,
-                        address: editTarget.address,
-                        plan_type: editTarget.plan_type,
-                        org_type: editTarget.org_type,
+                        name: editModal.target.name,
+                        email: editModal.target.email,
+                        phone: editModal.target.phone,
+                        address: editModal.target.address,
+                        plan_type: editModal.target.plan_type,
+                        org_type: editModal.target.org_type,
                     }}
                     submitting={submitting}
                     mode="edit"
@@ -217,18 +210,18 @@ export default function OrganizationsPage() {
             )}
 
             <SuspendModal
-                isOpen={!!suspendTarget}
-                onClose={() => setSuspendTarget(null)}
+                isOpen={suspendModal.isOpen}
+                onClose={suspendModal.close}
                 onConfirm={handleSuspend}
-                organization={suspendTarget}
+                organization={suspendModal.target}
                 submitting={submitting}
             />
 
             <DeleteModal
-                isOpen={!!deleteTarget}
-                onClose={() => setDeleteTarget(null)}
+                isOpen={deleteModal.isOpen}
+                onClose={deleteModal.close}
                 onConfirm={handleDelete}
-                organization={deleteTarget}
+                organization={deleteModal.target}
                 submitting={submitting}
             />
         </div>
