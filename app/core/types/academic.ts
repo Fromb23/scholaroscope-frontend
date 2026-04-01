@@ -105,6 +105,7 @@ export interface CohortSubject {
   subject_name: string;
   subject_code: string;
   curriculum_name: string;
+  curriculum_type: CurriculumType;
   is_compulsory: boolean;
 }
 

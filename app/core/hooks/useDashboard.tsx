@@ -1,12 +1,14 @@
 // ============================================================================
-// app/hooks/useDashboard.ts - Custom Hook for Dashboard Data
+// app/core/hooks/useDashboard.tsx
 // ============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { learnersAPI } from '@/app/core/api/learners';
 import { sessionAPI } from '@/app/core/api/sessions';
 import { assessmentAPI, assessmentScoreAPI } from '@/app/core/api/assessments';
-import { cohortAPI, termAPI, academicYearAPI } from '@/app/core/api/academic';
+import { Assessment, AssessmentScore } from '@/app/core/types/assessment';
+import { Session } from '@/app/core/types/session';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 export interface DashboardMetrics {
   students: {
@@ -20,11 +22,7 @@ export interface DashboardMetrics {
     weekRate: number;
     monthRate: number;
     trend: number;
-    lowPerformingCohorts: Array<{
-      id: number;
-      name: string;
-      rate: number;
-    }>;
+    lowPerformingCohorts: Array<{ id: number; name: string; rate: number }>;
   };
   sessions: {
     today: number;
@@ -40,12 +38,7 @@ export interface DashboardMetrics {
   performance: {
     classAverage: number;
     trend: number;
-    topPerformers: Array<{
-      id: number;
-      name: string;
-      score: number;
-      admissionNo: string;
-    }>;
+    topPerformers: Array<{ id: number; name: string; score: number; admissionNo: string }>;
     needsSupport: number;
   };
 }
@@ -61,75 +54,108 @@ export function useDashboard() {
       setLoading(true);
       setError(null);
 
-      // Fetch all required data
-      const [
-        studentsResponse,
-        cohortsResponse,
-        todaySessionsResponse,
-        currentTermResponse,
-        assessmentsResponse,
-      ] = await Promise.allSettled([
-        learnersAPI.getStudents(),
-        cohortAPI.getAll(),
-        sessionAPI.getToday(),
-        termAPI.getCurrent(),
-        assessmentAPI.getAll(),
-      ]);
+      const [studentsResponse, todaySessionsResponse, assessmentsResponse] =
+        await Promise.allSettled([
+          learnersAPI.getStudents(),
+          sessionAPI.getToday(),
+          assessmentAPI.getAll(),
+        ]);
 
-      // Process students data
-      const students = studentsResponse.status === 'fulfilled'
-        ? studentsResponse.value.results || []
-        : [];
+      const students: { status: string }[] =
+        studentsResponse.status === 'fulfilled'
+          ? studentsResponse.value.results ?? []
+          : [];
 
-      const activeStudents = students.filter((s: any) => s.status === 'ACTIVE');
-      const inactiveStudents = students.filter((s: any) => s.status !== 'ACTIVE');
+      const todaySessions: Session[] =
+        todaySessionsResponse.status === 'fulfilled'
+          ? todaySessionsResponse.value
+          : [];
 
-      // Process sessions
-      const todaySessions = todaySessionsResponse.status === 'fulfilled'
-        ? todaySessionsResponse.value
-        : [];
+      const assessments: Assessment[] =
+        assessmentsResponse.status === 'fulfilled'
+          ? assessmentsResponse.value
+          : [];
 
-      // Process assessments
-      const assessments = assessmentsResponse.status === 'fulfilled'
-        ? assessmentsResponse.value
-        : [];
+      // Attendance — parallel via Promise.allSettled, not sequential loop
+      const attendanceResults = await Promise.allSettled(
+        todaySessions.map((s) => sessionAPI.getAttendanceSummary(s.id))
+      );
 
-      // Calculate attendance metrics
-      const attendanceMetrics = await calculateAttendanceMetrics(todaySessions);
+      let totalPresent = 0;
+      let totalExpected = 0;
+      attendanceResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          totalPresent += result.value.present_count ?? 0;
+          totalExpected += result.value.total_students ?? 0;
+        }
+      });
 
-      // Calculate assessment metrics
-      const assessmentMetrics = await calculateAssessmentMetrics(assessments);
+      const todayRate =
+        totalExpected > 0
+          ? Math.round((totalPresent / totalExpected) * 1000) / 10
+          : 0;
 
-      // Build final metrics
-      const dashboardMetrics: DashboardMetrics = {
+      // Assessment metrics
+      const now = new Date();
+      const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      const pending = assessments.filter((a) => !a.assessment_date).length;
+
+      const upcoming = assessments.filter((a) => {
+        if (!a.assessment_date) return false;
+        const d = new Date(a.assessment_date);
+        return d > now && d <= nextWeek;
+      }).length;
+
+      const completed = assessments.filter((a) => {
+        if (!a.assessment_date) return false;
+        return new Date(a.assessment_date) <= now;
+      }).length;
+
+      let needsGrading = 0;
+      try {
+        const scores: AssessmentScore[] = await assessmentScoreAPI.getAll();
+        needsGrading = scores.filter(
+          (s) => s.score == null && s.rubric_level == null
+        ).length;
+      } catch {
+        // non-critical — dashboard still renders without this count
+      }
+
+      setMetrics({
         students: {
           total: students.length,
-          active: activeStudents.length,
-          inactive: inactiveStudents.length,
-          trend: 0, // Calculate from historical data if available
+          active: students.filter((s) => s.status === 'ACTIVE').length,
+          inactive: students.filter((s) => s.status !== 'ACTIVE').length,
+          trend: 0,
         },
-        attendance: attendanceMetrics,
+        attendance: {
+          todayRate,
+          weekRate: 0,
+          monthRate: 0,
+          trend: 0,
+          lowPerformingCohorts: [],
+        },
         sessions: {
           today: todaySessions.length,
-          thisWeek: 0, // Fetch from API if needed
-          upcoming: todaySessions.filter((s: any) =>
-            new Date(s.session_date + ' ' + s.start_time) > new Date()
+          thisWeek: 0,
+          upcoming: todaySessions.filter(
+            (s) => s.start_time != null &&
+              new Date(`${s.session_date} ${s.start_time}`) > now
           ).length,
         },
-        assessments: assessmentMetrics,
+        assessments: { pending, upcoming, needsGrading, completed },
         performance: {
-          classAverage: 0, // Calculate from assessment scores
+          classAverage: 0,
           trend: 0,
           topPerformers: [],
           needsSupport: 0,
         },
-      };
+      });
 
-      setMetrics(dashboardMetrics);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error('Dashboard fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      setError(extractErrorMessage(err as ApiError, 'Failed to load dashboard'));
     } finally {
       setLoading(false);
     }
@@ -137,79 +163,9 @@ export function useDashboard() {
 
   useEffect(() => {
     fetchMetrics();
-
-    // Auto-refresh every 5 minutes
     const interval = setInterval(fetchMetrics, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchMetrics]);
 
-  return {
-    metrics,
-    loading,
-    error,
-    lastUpdated,
-    refresh: fetchMetrics,
-  };
+  return { metrics, loading, error, lastUpdated, refresh: fetchMetrics };
 }
-
-// Helper functions
-async function calculateAttendanceMetrics(sessions: any[]) {
-  let totalPresent = 0;
-  let totalExpected = 0;
-
-  for (const session of sessions) {
-    try {
-      const summary = await sessionAPI.getAttendanceSummary(session.id);
-      totalPresent += summary.present_count || 0;
-      totalExpected += summary.total_students || 0;
-    } catch (error) {
-      console.error(`Failed to get attendance for session ${session.id}`, error);
-    }
-  }
-
-  const todayRate = totalExpected > 0 ? (totalPresent / totalExpected) * 100 : 0;
-
-  return {
-    todayRate: Math.round(todayRate * 10) / 10,
-    weekRate: 0, // Implement week calculation
-    monthRate: 0, // Implement month calculation
-    trend: 0,
-    lowPerformingCohorts: [],
-  };
-}
-
-async function calculateAssessmentMetrics(assessments: any[]) {
-  const today = new Date();
-  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-  const pending = assessments.filter(a => !a.assessment_date).length;
-
-  const upcoming = assessments.filter(a => {
-    if (!a.assessment_date) return false;
-    const date = new Date(a.assessment_date);
-    return date > today && date <= nextWeek;
-  }).length;
-
-  const completed = assessments.filter(a => {
-    if (!a.assessment_date) return false;
-    const date = new Date(a.assessment_date);
-    return date <= today;
-  }).length;
-
-  let needsGrading = 0;
-  try {
-    // Get ungraded scores across all assessments
-    const scores = await assessmentScoreAPI.getAll();
-    needsGrading = scores.filter(s => !s.score && !s.rubric_level).length;
-  } catch (error) {
-    console.error('Failed to calculate grading needs', error);
-  }
-
-  return {
-    pending,
-    upcoming,
-    needsGrading,
-    completed,
-  };
-}
-

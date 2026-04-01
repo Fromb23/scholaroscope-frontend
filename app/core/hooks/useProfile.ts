@@ -1,15 +1,14 @@
 // ============================================================================
 // app/hooks/useProfile.ts
 // Wraps the /api/users/profile/ and /api/requests/ endpoints
-// for the profile page — follows the same pattern as useOrganizations.ts
 // ============================================================================
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/app/core/api/client';
 import { requestsAPI } from '@/app/plugins/requests/api/requests';
 import { Request, RequestType, RequestCreatePayload } from '@/app/plugins/requests/types/requests';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
-// The full profile shape returned by GET /api/users/profile/
 export interface UserProfile {
     id: number;
     email: string;
@@ -40,7 +39,7 @@ export interface ChangePasswordPayload {
 }
 
 // ---------------------------------------------------------------------------
-// useProfile — load + update the current user's own profile
+// useProfile
 // ---------------------------------------------------------------------------
 export const useProfile = () => {
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -53,8 +52,8 @@ export const useProfile = () => {
             const response = await apiClient.get<UserProfile>('/users/profile/');
             setProfile(response.data);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to load profile');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to load profile'));
         } finally {
             setLoading(false);
         }
@@ -68,52 +67,26 @@ export const useProfile = () => {
         try {
             const response = await apiClient.patch<UserProfile>('/users/profile/', data);
             setProfile(response.data);
-        } catch (err: any) {
-            const errorData = err.response?.data;
-            let errorMessage = 'Failed to update profile';
-
-            if (errorData?.detail) {
-                errorMessage = errorData.detail;
-            } else if (errorData?.message) {
-                errorMessage = errorData.message;
-            } else if (errorData && typeof errorData === 'object') {
-                const firstValue = Object.values(errorData)[0];
-                if (Array.isArray(firstValue) && firstValue.length > 0) {
-                    errorMessage = firstValue[0] as string;
-                }
-            }
-
-            throw new Error(errorMessage);
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update profile'));
         }
     };
 
     const changePassword = async (data: ChangePasswordPayload): Promise<void> => {
         try {
             await apiClient.post('/users/change_password/', data);
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.detail ||
-                err.response?.data?.old_password?.[0] ||
-                err.response?.data?.new_password?.[0] ||
-                'Failed to change password'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to change password'));
         }
     };
 
-    return {
-        profile,
-        loading,
-        error,
-        refetch: fetchProfile,
-        updateProfile,
-        changePassword,
-    };
+    return { profile, loading, error, refetch: fetchProfile, updateProfile, changePassword };
 };
+
 export type ProfileData = UserProfile;
 
 // ---------------------------------------------------------------------------
-// useMyRequests — load the current user's own submitted requests
-// Used on the profile page to show request history
+// useMyRequests
 // ---------------------------------------------------------------------------
 export const useMyRequests = () => {
     const [requests, setRequests] = useState<Request[]>([]);
@@ -123,12 +96,11 @@ export const useMyRequests = () => {
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            // The backend already scopes to the current user for INSTRUCTOR role
             const data = await requestsAPI.getAll();
             setRequests(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to load requests');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to load requests'));
         } finally {
             setLoading(false);
         }
@@ -155,33 +127,16 @@ export const useMyRequests = () => {
             });
             setRequests(prev => [newRequest, ...prev]);
             return newRequest;
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.request_type?.[0] ||
-                err.response?.data?.non_field_errors?.[0] ||
-                err.response?.data?.detail ||
-                'Failed to submit deletion request'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to submit deletion request'));
         }
     };
 
-    // Check if there is already a pending deletion request of a given type
     const hasPendingDeletion = (
         type: Extract<RequestType, 'ACCOUNT_DELETION' | 'ORG_DELETION'>
     ): boolean =>
         Array.isArray(requests) &&
-        requests.some(
-            r =>
-                r.request_type === type &&
-                ['PENDING', 'IN_REVIEW'].includes(r.status)
-        );
+        requests.some(r => r.request_type === type && ['PENDING', 'IN_REVIEW'].includes(r.status));
 
-    return {
-        requests,
-        loading,
-        error,
-        refetch: fetchRequests,
-        submitDeletionRequest,
-        hasPendingDeletion,
-    };
+    return { requests, loading, error, refetch: fetchRequests, submitDeletionRequest, hasPendingDeletion };
 };

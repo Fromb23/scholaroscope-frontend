@@ -2,11 +2,6 @@
 // core/hooks/useTopics.ts
 //
 // Hooks for Topic / Subtopic / Coverage.
-// Follows useAcademic.ts pattern exactly:
-//   - useState + useEffect per resource
-//   - organizationId from OrganizationContext
-//   - CRUD methods returned alongside state
-//   - errors thrown with err.response?.data?.message fallback
 // ============================================================================
 
 import { useState, useEffect } from 'react';
@@ -22,6 +17,7 @@ import {
     TopicQueryParams,
 } from '@/app/core/types/topics';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 // ── useTopics ─────────────────────────────────────────────────────────────
 
@@ -36,15 +32,11 @@ export const useTopics = (subjectId?: number) => {
             setLoading(true);
             const params: TopicQueryParams = {};
             if (subjectId) params.subject = subjectId;
-
             const data = await topicAPI.getAll(params);
-            const topicsArray = Array.isArray(data)
-                ? data
-                : (data as any)?.results ?? [];
-            setTopics(topicsArray);
+            setTopics(Array.isArray(data) ? data : (data as { results?: Topic[] })?.results ?? []);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch topics');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch topics'));
         } finally {
             setLoading(false);
         }
@@ -60,12 +52,8 @@ export const useTopics = (subjectId?: number) => {
             const newTopic = await topicAPI.create(payload as TopicFormData);
             setTopics(prev => [...prev, newTopic].sort((a, b) => a.sequence - b.sequence));
             return newTopic;
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.non_field_errors?.[0] ||
-                err.response?.data?.message ||
-                'Failed to create topic'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to create topic'));
         }
     };
 
@@ -74,8 +62,8 @@ export const useTopics = (subjectId?: number) => {
             const updated = await topicAPI.update(id, data);
             setTopics(prev => prev.map(t => t.id === id ? updated : t));
             return updated;
-        } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to update topic');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update topic'));
         }
     };
 
@@ -83,20 +71,12 @@ export const useTopics = (subjectId?: number) => {
         try {
             await topicAPI.delete(id);
             setTopics(prev => prev.filter(t => t.id !== id));
-        } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to delete topic');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete topic'));
         }
     };
 
-    return {
-        topics,
-        loading,
-        error,
-        refetch: fetchTopics,
-        createTopic,
-        updateTopic,
-        deleteTopic,
-    };
+    return { topics, loading, error, refetch: fetchTopics, createTopic, updateTopic, deleteTopic };
 };
 
 // ── useTopicDetail ────────────────────────────────────────────────────────
@@ -107,25 +87,20 @@ export const useTopicDetail = (topicId: number | null) => {
     const [error, setError] = useState<string | null>(null);
 
     const fetchTopic = async () => {
-        if (!topicId) {
-            setLoading(false);
-            return;
-        }
+        if (!topicId) { setLoading(false); return; }
         try {
             setLoading(true);
             const data = await topicAPI.getById(topicId) as TopicDetail;
             setTopic(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch topic details');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch topic details'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchTopic();
-    }, [topicId]);
+    useEffect(() => { fetchTopic(); }, [topicId]);
 
     return { topic, loading, error, refetch: fetchTopic };
 };
@@ -141,38 +116,28 @@ export const useSubtopics = (topicId?: number) => {
     const fetchSubtopics = async () => {
         try {
             setLoading(true);
-            const params: Record<string, any> = {};
+            const params: Record<string, number> = {};
             if (topicId) params.topic = topicId;
-
             const data = await subtopicAPI.getAll(params);
-            const arr = Array.isArray(data) ? data : (data as any)?.results ?? [];
-            setSubtopics(arr);
+            setSubtopics(Array.isArray(data) ? data : (data as { results?: Subtopic[] })?.results ?? []);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch subtopics');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch subtopics'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchSubtopics();
-    }, [topicId]);
+    useEffect(() => { fetchSubtopics(); }, [topicId]);
 
     const createSubtopic = async (data: SubtopicFormData) => {
         try {
             const { sequence, ...payload } = data;
             const newSubtopic = await subtopicAPI.create(payload as SubtopicFormData);
-            setSubtopics(prev =>
-                [...prev, newSubtopic].sort((a, b) => a.sequence - b.sequence)
-            );
+            setSubtopics(prev => [...prev, newSubtopic].sort((a, b) => a.sequence - b.sequence));
             return newSubtopic;
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.non_field_errors?.[0] ||
-                err.response?.data?.message ||
-                'Failed to create subtopic'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to create subtopic'));
         }
     };
 
@@ -181,8 +146,8 @@ export const useSubtopics = (topicId?: number) => {
             const updated = await subtopicAPI.update(id, data);
             setSubtopics(prev => prev.map(s => s.id === id ? updated : s));
             return updated;
-        } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to update subtopic');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update subtopic'));
         }
     };
 
@@ -190,20 +155,12 @@ export const useSubtopics = (topicId?: number) => {
         try {
             await subtopicAPI.delete(id);
             setSubtopics(prev => prev.filter(s => s.id !== id));
-        } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to delete subtopic');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete subtopic'));
         }
     };
 
-    return {
-        subtopics,
-        loading,
-        error,
-        refetch: fetchSubtopics,
-        createSubtopic,
-        updateSubtopic,
-        deleteSubtopic,
-    };
+    return { subtopics, loading, error, refetch: fetchSubtopics, createSubtopic, updateSubtopic, deleteSubtopic };
 };
 
 // ── useCoverageProgress ───────────────────────────────────────────────────
@@ -214,25 +171,20 @@ export const useCoverageProgress = (cohortSubjectId: number | null) => {
     const [error, setError] = useState<string | null>(null);
 
     const fetchProgress = async () => {
-        if (!cohortSubjectId) {
-            setLoading(false);
-            return;
-        }
+        if (!cohortSubjectId) { setLoading(false); return; }
         try {
             setLoading(true);
             const data = await subtopicCoverageAPI.getProgress(cohortSubjectId);
             setProgress(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch coverage progress');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch coverage progress'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchProgress();
-    }, [cohortSubjectId]);
+    useEffect(() => { fetchProgress(); }, [cohortSubjectId]);
 
     return { progress, loading, error, refetch: fetchProgress };
 };

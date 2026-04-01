@@ -1,12 +1,7 @@
-// ============================================================================
-// apps/core/hooks/useAuditLogs.ts
-// ============================================================================
-
 import { useState, useEffect, useCallback } from 'react';
 import { auditAPI } from '@/app/core/api/audit';
-import type {
-    AuditLog, AuditLogFilters, AuditStats,
-} from '@/app/plugins/platform/audit/types/auditLogs';
+import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/platform/audit/types/auditLogs';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 export const useAuditLogs = (filters?: AuditLogFilters) => {
     const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -17,11 +12,10 @@ export const useAuditLogs = (filters?: AuditLogFilters) => {
         try {
             setLoading(true);
             const data = await auditAPI.getAll(filters);
-            setLogs(Array.isArray(data) ? data : (data as { results: AuditLog[] }).results ?? []);
+            setLogs(Array.isArray(data) ? data : (data as { results?: AuditLog[] }).results ?? []);
             setError(null);
-        } catch (err: unknown) {
-            const e = err as { message?: string };
-            setError(e.message || 'Failed to fetch audit logs');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch audit logs'));
         } finally {
             setLoading(false);
         }
@@ -41,8 +35,7 @@ export const useAuditStats = () => {
         auditAPI.getStats()
             .then(data => { setStats(data); setError(null); })
             .catch((err: unknown) => {
-                const e = err as { message?: string };
-                setError(e.message || 'Failed to fetch stats');
+                setError(extractErrorMessage(err as ApiError, 'Failed to fetch stats'));
             })
             .finally(() => setLoading(false));
     }, []);

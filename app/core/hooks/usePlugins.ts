@@ -1,16 +1,10 @@
 'use client';
 
-// ============================================================================
-// app/core/hooks/usePlugins.ts
-//
-// Fetches org's installed plugins and exposes hasPlugin(key) helper.
-// Used by Sidebar to conditionally render plugin nav sections.
-// ============================================================================
-
 import { useState, useEffect, useCallback } from 'react';
 import { pluginAPI } from '@/app/core/api/plugins';
 import type { InstalledPlugin } from '@/app/core/types/plugins';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 interface UsePluginsReturn {
     plugins: InstalledPlugin[];
@@ -32,9 +26,8 @@ export const usePlugins = (): UsePluginsReturn => {
             const data = await pluginAPI.getInstalled();
             setPlugins(data);
             setError(null);
-        } catch (err: unknown) {
-            const e = err as { message?: string };
-            setError(e.message || 'Failed to fetch plugins');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch plugins'));
         } finally {
             setLoading(false);
         }
@@ -43,8 +36,7 @@ export const usePlugins = (): UsePluginsReturn => {
     useEffect(() => { fetch(); }, [fetch]);
 
     const hasPlugin = useCallback(
-        (key: string): boolean =>
-            plugins.some(p => p.key === key && p.is_active && p.is_available),
+        (key: string): boolean => plugins.some(p => p.key === key && p.is_active && p.is_available),
         [plugins]
     );
 

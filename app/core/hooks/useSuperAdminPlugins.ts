@@ -1,10 +1,7 @@
-// ============================================================================
-// app/core/hooks/useSuperAdminPlugins.ts
-// ============================================================================
-
 import { useState, useEffect, useCallback } from 'react';
 import { pluginAPI } from '@/app/core/api/plugins';
 import type { Plugin, InstalledPlugin } from '@/app/core/types/plugins';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 export const usePlatformPlugins = () => {
     const [plugins, setPlugins] = useState<Plugin[]>([]);
@@ -17,9 +14,8 @@ export const usePlatformPlugins = () => {
             const data = await pluginAPI.getAll();
             setPlugins(data);
             setError(null);
-        } catch (err: unknown) {
-            const e = err as { message?: string };
-            setError(e.message || 'Failed to fetch plugins');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch plugins'));
         } finally {
             setLoading(false);
         }
@@ -30,13 +26,10 @@ export const usePlatformPlugins = () => {
     const toggleAvailability = async (id: number) => {
         try {
             const res = await pluginAPI.toggleAvailability(id);
-            setPlugins(prev => prev.map(p =>
-                p.id === id ? { ...p, is_available: res.is_available } : p
-            ));
+            setPlugins(prev => prev.map(p => p.id === id ? { ...p, is_available: res.is_available } : p));
             return res;
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { detail?: string } } };
-            throw new Error(e.response?.data?.detail || 'Failed to toggle');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to toggle'));
         }
     };
 
@@ -45,42 +38,34 @@ export const usePlatformPlugins = () => {
             const updated = await pluginAPI.syncManifest(id);
             setPlugins(prev => prev.map(p => p.id === id ? updated : p));
             return updated;
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { detail?: string } } };
-            throw new Error(e.response?.data?.detail || 'Failed to sync manifest');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to sync manifest'));
         }
     };
 
     const installGlobally = async (id: number) => {
         try {
             const res = await pluginAPI.installGlobally(id);
-            setPlugins(prev => prev.map(p =>
-                p.id === id ? { ...p, is_available: true } : p
-            ));
+            setPlugins(prev => prev.map(p => p.id === id ? { ...p, is_available: true } : p));
             return res;
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { detail?: string } } };
-            throw new Error(e.response?.data?.detail || 'Failed to install globally');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to install globally'));
         }
     };
 
     const uninstallGlobally = async (id: number) => {
         try {
             const res = await pluginAPI.uninstallGlobally(id);
-            setPlugins(prev => prev.map(p =>
-                p.id === id ? { ...p, is_available: false } : p
-            ));
+            setPlugins(prev => prev.map(p => p.id === id ? { ...p, is_available: false } : p));
             return res;
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { detail?: string } } };
-            throw new Error(e.response?.data?.detail || 'Failed to uninstall globally');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to uninstall globally'));
         }
     };
 
     return {
         plugins, loading, error, refetch: fetchPlugins,
-        toggleAvailability, syncManifest,
-        installGlobally, uninstallGlobally,
+        toggleAvailability, syncManifest, installGlobally, uninstallGlobally,
     };
 };
 
@@ -96,9 +81,8 @@ export const usePluginInstallations = (pluginId: number | null) => {
             const data = await pluginAPI.getInstallations(pluginId);
             setInstallations(data);
             setError(null);
-        } catch (err: unknown) {
-            const e = err as { message?: string };
-            setError(e.message || 'Failed to fetch installations');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch installations'));
         } finally {
             setLoading(false);
         }

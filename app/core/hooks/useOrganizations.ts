@@ -1,6 +1,5 @@
 // ============================================================================
 // app/hooks/useOrganizations.ts
-// Mirrors the exact pattern of useAcademicYears / useCurricula hooks
 // ============================================================================
 
 import { useState, useEffect } from 'react';
@@ -13,9 +12,10 @@ import {
     OrgUser,
     SuspensionReason,
 } from '@/app/core/types/organization';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 // ---------------------------------------------------------------------------
-// useOrganizations — list, create, update, delete, toggle active
+// useOrganizations
 // ---------------------------------------------------------------------------
 export const useOrganizations = () => {
     const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -26,31 +26,24 @@ export const useOrganizations = () => {
         try {
             setLoading(true);
             const data = await organizationAPI.getAll();
-            const orgsArray = Array.isArray(data) ? data : (data as any).results ?? [];
-            setOrganizations(orgsArray);
+            setOrganizations(Array.isArray(data) ? data : (data as { results?: Organization[] }).results ?? []);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch organizations');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch organizations'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchOrganizations();
-    }, []);
+    useEffect(() => { fetchOrganizations(); }, []);
 
     const createOrganization = async (data: OrganizationCreatePayload) => {
         try {
             const newOrg = await organizationAPI.create(data);
             setOrganizations(prev => [newOrg, ...prev]);
             return newOrg;
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.name?.[0] ||
-                err.response?.data?.message ||
-                'Failed to create organization'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to create organization'));
         }
     };
 
@@ -59,12 +52,8 @@ export const useOrganizations = () => {
             const updated = await organizationAPI.update(id, data);
             setOrganizations(prev => prev.map(o => (o.id === id ? updated : o)));
             return updated;
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.name?.[0] ||
-                err.response?.data?.message ||
-                'Failed to update organization'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update organization'));
         }
     };
 
@@ -72,10 +61,8 @@ export const useOrganizations = () => {
         try {
             await organizationAPI.delete(id);
             setOrganizations(prev => prev.filter(o => o.id !== id));
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.message || 'Failed to delete organization'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete organization'));
         }
     };
 
@@ -85,10 +72,8 @@ export const useOrganizations = () => {
             setOrganizations(prev => prev.map(o =>
                 o.id === id ? { ...o, status: 'SUSPENDED' as const, suspension_reason: reason } : o
             ));
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.error || 'Failed to suspend organization'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to suspend organization'));
         }
     };
 
@@ -98,28 +83,20 @@ export const useOrganizations = () => {
             setOrganizations(prev => prev.map(o =>
                 o.id === id ? { ...o, status: 'ACTIVE' as const, suspension_reason: undefined } : o
             ));
-        } catch (err: any) {
-            throw new Error(
-                err.response?.data?.error || 'Failed to unsuspend organization'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to unsuspend organization'));
         }
     };
 
     return {
-        organizations,
-        loading,
-        error,
-        refetch: fetchOrganizations,
-        createOrganization,
-        updateOrganization,
-        deleteOrganization,
-        unsuspendOrganization,
-        suspendOrganization,
+        organizations, loading, error, refetch: fetchOrganizations,
+        createOrganization, updateOrganization, deleteOrganization,
+        suspendOrganization, unsuspendOrganization,
     };
 };
 
 // ---------------------------------------------------------------------------
-// useOrganizationDetail — single org by id
+// useOrganizationDetail
 // ---------------------------------------------------------------------------
 export const useOrganizationDetail = (id: number | null) => {
     const [organization, setOrganization] = useState<Organization | null>(null);
@@ -127,31 +104,26 @@ export const useOrganizationDetail = (id: number | null) => {
     const [error, setError] = useState<string | null>(null);
 
     const fetchOrganization = async () => {
-        if (!id) {
-            setLoading(false);
-            return;
-        }
+        if (!id) { setLoading(false); return; }
         try {
             setLoading(true);
             const data = await organizationAPI.getById(id);
             setOrganization(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.message || 'Failed to fetch organization');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch organization'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchOrganization();
-    }, [id]);
+    useEffect(() => { fetchOrganization(); }, [id]);
 
     return { organization, loading, error, refetch: fetchOrganization, setOrganization };
 };
 
 // ---------------------------------------------------------------------------
-// useOrganizationStats — stats for a single org
+// useOrganizationStats
 // ---------------------------------------------------------------------------
 export const useOrganizationStats = (id: number | null) => {
     const [stats, setStats] = useState<OrganizationStats | null>(null);
@@ -159,18 +131,15 @@ export const useOrganizationStats = (id: number | null) => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!id) {
-            setLoading(false);
-            return;
-        }
+        if (!id) { setLoading(false); return; }
         const fetch = async () => {
             try {
                 setLoading(true);
                 const data = await organizationAPI.getStatistics(id);
                 setStats(data);
                 setError(null);
-            } catch (err: any) {
-                setError(err.message || 'Failed to fetch statistics');
+            } catch (err) {
+                setError(extractErrorMessage(err as ApiError, 'Failed to fetch statistics'));
             } finally {
                 setLoading(false);
             }
@@ -182,7 +151,7 @@ export const useOrganizationStats = (id: number | null) => {
 };
 
 // ---------------------------------------------------------------------------
-// useOrganizationUsers — users list for a single org
+// useOrganizationUsers
 // ---------------------------------------------------------------------------
 export const useOrganizationUsers = (id: number | null) => {
     const [users, setUsers] = useState<OrgUser[]>([]);
@@ -194,20 +163,16 @@ export const useOrganizationUsers = (id: number | null) => {
         try {
             setLoading(true);
             const data = await organizationAPI.getUsers(id);
-            const usersArray = Array.isArray(data) ? data : (data as { results: OrgUser[] }).results ?? [];
-            setUsers(usersArray);
+            setUsers(Array.isArray(data) ? data : (data as { results?: OrgUser[] }).results ?? []);
             setError(null);
-        } catch (err: unknown) {
-            const e = err as { message?: string };
-            setError(e.message || 'Failed to fetch users');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch users'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchUsers();
-    }, [id]);
+    useEffect(() => { fetchUsers(); }, [id]);
 
     return { users, loading, error, refetch: fetchUsers };
 };
