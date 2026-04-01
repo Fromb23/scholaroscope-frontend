@@ -39,17 +39,16 @@ export default function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const hasCBC = hasPlugin('cbc');
-  const hasProjects = hasPlugin('projects');
 
   // ── Build nav config ──────────────────────────────────────────────────
 
   const navConfig = useMemo<NavigationConfig>(() => {
     if (!user) return { primary: [] };
     if (user.is_superadmin) return SUPERADMIN_NAV;
-    if (activeRole === 'ADMIN') return getAdminNav(hasCBC, hasProjects, unreadCount);
+    if (activeRole === 'ADMIN') return getAdminNav(hasCBC, unreadCount);
     if (activeRole === 'INSTRUCTOR') return getInstructorNav(hasCBC, unreadCount);
     return { primary: [] };
-  }, [user, activeRole, hasCBC, hasProjects, unreadCount]);
+  }, [user, activeRole, hasCBC, unreadCount]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
   const colors = ROLE_COLORS[resolvedRole] ?? ROLE_COLORS.ADMIN;

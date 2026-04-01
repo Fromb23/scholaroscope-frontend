@@ -7,8 +7,8 @@
 
 import type { LucideIcon } from 'lucide-react';
 import {
-    LayoutDashboard, Users, BookOpen, Calendar, CalendarRange,
-    ClipboardCheck, FolderKanban, Award, FileBarChart, GraduationCap,
+    LayoutDashboard, Users, BookOpen, Calendar,
+    ClipboardCheck, Award, FileBarChart, GraduationCap,
     Building2, Settings, ShieldCheck, Activity, FileText, AlertCircle,
     Inbox, UserCog, TrendingUp, Database, Clock, Target,
     CalendarDays, Layers, Megaphone,
@@ -98,7 +98,6 @@ export const SUPERADMIN_NAV: NavigationConfig = {
 
 export function getAdminNav(
     hasCBC: boolean,
-    hasProjects: boolean,
     unreadAnnouncements: number,
 ): NavigationConfig {
     return {
@@ -126,7 +125,6 @@ export function getAdminNav(
             },
             { name: 'Instructors', href: '/admin/instructors', icon: UserCog },
             { name: 'Learners', href: '/learners', icon: Users },
-            { name: 'Schemes of Work', href: '/schemes', icon: CalendarRange },
             { name: 'Sessions', href: '/sessions', icon: Calendar },
             {
                 name: 'Assessments', href: '/assessments', icon: ClipboardCheck,
@@ -144,9 +142,6 @@ export function getAdminNav(
                     { name: 'Browser', href: '/cbc/browser', icon: BookOpen },
                     { name: 'Teaching', href: '/cbc/teaching', icon: Target },
                 ],
-            }] : []),
-            ...(hasProjects ? [{
-                name: 'Projects', href: '/projects', icon: FolderKanban,
             }] : []),
             {
                 name: 'Reports', href: '/reports', icon: FileBarChart,
@@ -197,7 +192,6 @@ export function getInstructorNav(
                     { name: 'Needs Grading', href: '/assessments?status=pending', icon: AlertCircle },
                 ],
             },
-            { name: 'Schemes of Work', href: '/schemes', icon: CalendarRange },
             ...(hasCBC ? [{
                 name: 'CBC Teaching', href: '/cbc/teaching', icon: Award,
                 children: [
