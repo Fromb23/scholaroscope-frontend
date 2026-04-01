@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useGlobalUsers } from '@/app/core/hooks/useGlobalUsers';
 import { useOrganizations } from '@/app/core/hooks/useOrganizations';
@@ -9,26 +10,31 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { useSubmitHandler } from '@/app/core/hooks/useSubmitHandler';
 import { useModalState, useFlagModal } from '@/app/core/hooks/useModalState';
-import { useListFilters } from '@/app/core/hooks/useListFilters';
+import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import {
     StatsBar, UsersTable,
     CreateUserModal, EditUserModal,
     ResetPasswordModal, DeleteUserModal,
     AddToOrgModal,
-    UserMembershipsModal,
 } from '@/app/core/components/superadmin/GlobalUserComponents';
-import type { GlobalUser, UserCreatePayload, UserOrgMembership, UserUpdatePayload } from '@/app/core/types/globalUsers';
+import type { GlobalUser, UserCreatePayload, UserUpdatePayload } from '@/app/core/types/globalUsers';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
 
-export default function GlobalUsersPage() {
+function GlobalUsersPageInner() {
+    const router = useRouter();
     const {
         users, loading, error, refetch,
         createUser, updateUser, deleteUser,
-        toggleUserActive, resetPassword, getUserMemberships, removeFromOrg,
+        toggleUserActive, resetPassword,
     } = useGlobalUsers();
     const { organizations } = useOrganizations();
 
-    const { filters, setFilter } = useListFilters({
+    const [filters, updateFilters] = usePersistedFilters<{
+        role: string;
+        status: string;
+        org: string;
+        search: string;
+    }>('/superadmin/users', {
         role: 'all',
         status: 'all',
         org: 'all',
@@ -40,14 +46,9 @@ export default function GlobalUsersPage() {
     const resetModal = useModalState<GlobalUser>();
     const deleteModal = useModalState<GlobalUser>();
     const addToOrgModal = useModalState<GlobalUser>();
-    const membershipsModal = useModalState<GlobalUser>();
 
     const { submitting, actionError, actionSuccess, setActionError, withSubmit, showSuccess } = useSubmitHandler();
-
     const [addToOrgSubmitting, setAddToOrgSubmitting] = useState(false);
-    const [membershipsData, setMembershipsData] = useState<UserOrgMembership[]>([]);
-    const [membershipsLoading, setMembershipsLoading] = useState(false);
-    const [removingOrgId, setRemovingOrgId] = useState<number | null>(null);
 
     const filtered = useMemo(() => users.filter(u => {
         const q = filters.search.toLowerCase();
@@ -103,34 +104,6 @@ export default function GlobalUsersPage() {
         }
     };
 
-    const handleViewMemberships = async (user: GlobalUser) => {
-        membershipsModal.open(user);
-        setMembershipsLoading(true);
-        try {
-            const data = await getUserMemberships(user.id);
-            setMembershipsData(data);
-        } catch {
-            setMembershipsData([]);
-        } finally {
-            setMembershipsLoading(false);
-        }
-    };
-
-    const handleRemoveFromOrg = async (organizationId: number) => {
-        if (!membershipsModal.target) return;
-        setRemovingOrgId(organizationId);
-        try {
-            await removeFromOrg(membershipsModal.target.id, organizationId);
-            const updated = await getUserMemberships(membershipsModal.target.id);
-            setMembershipsData(updated);
-            showSuccess('User removed from organization');
-        } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to remove from organization');
-        } finally {
-            setRemovingOrgId(null);
-        }
-    };
-
     const handleDelete = () =>
         withSubmit(async () => {
             await deleteUser(deleteModal.target!.id);
@@ -174,20 +147,20 @@ export default function GlobalUsersPage() {
             )}
 
             <div className="flex flex-col sm:flex-row gap-3">
-                <select value={filters.role} onChange={e => setFilter('role', e.target.value)}
+                <select value={filters.role} onChange={e => updateFilters({ role: e.target.value })}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="all">All Roles</option>
                     <option value="SUPERADMIN">Super Admin</option>
                     <option value="ADMIN">Admin</option>
                     <option value="INSTRUCTOR">Instructor</option>
                 </select>
-                <select value={filters.status} onChange={e => setFilter('status', e.target.value)}
+                <select value={filters.status} onChange={e => updateFilters({ status: e.target.value })}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="all">All Statuses</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                 </select>
-                <select value={filters.org} onChange={e => setFilter('org', e.target.value)}
+                <select value={filters.org} onChange={e => updateFilters({ org: e.target.value })}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="all">All Organizations</option>
                     {organizations.map(o => (
@@ -196,7 +169,7 @@ export default function GlobalUsersPage() {
                 </select>
                 <input
                     value={filters.search}
-                    onChange={e => setFilter('search', e.target.value)}
+                    onChange={e => updateFilters({ search: e.target.value })}
                     placeholder="Search by name, email or organization..."
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
@@ -209,7 +182,7 @@ export default function GlobalUsersPage() {
                 onAddToOrg={u => addToOrgModal.open(u)}
                 onToggleActive={handleToggleActive}
                 onDelete={u => { setActionError(null); deleteModal.open(u); }}
-                onViewMemberships={handleViewMemberships}
+                onViewMemberships={u => router.push(`/superadmin/users/${u.id}`)}
             />
 
             <CreateUserModal
@@ -256,16 +229,14 @@ export default function GlobalUsersPage() {
                 userName={deleteModal.target?.full_name ?? ''}
                 submitting={submitting}
             />
-
-            <UserMembershipsModal
-                isOpen={membershipsModal.isOpen}
-                onClose={() => { membershipsModal.close(); setMembershipsData([]); }}
-                user={membershipsModal.target}
-                memberships={membershipsData}
-                loading={membershipsLoading}
-                onRemove={handleRemoveFromOrg}
-                removing={removingOrgId}
-            />
         </div>
+    );
+}
+
+export default function GlobalUsersPage() {
+    return (
+        <Suspense fallback={<LoadingSpinner />}>
+            <GlobalUsersPageInner />
+        </Suspense>
     );
 }

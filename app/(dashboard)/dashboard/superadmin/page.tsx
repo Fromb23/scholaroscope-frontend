@@ -3,14 +3,12 @@
 import { useRouter } from 'next/navigation';
 import {
     Building2, Users, Activity, AlertCircle,
-    Globe, Database, ShieldCheck, FileText,
-    Clock, Zap, BarChart3, RefreshCw,
+    Globe, ShieldCheck, FileText, Zap, BarChart3, RefreshCw,
     CheckCircle2, XCircle, Settings,
 } from 'lucide-react';
 import { useOrganizations } from '@/app/core/hooks/useOrganizations';
-import { useGlobalUsers, useGlobalUserStats } from '@/app/core/hooks/useGlobalUsers';
+import { useGlobalUserStats } from '@/app/core/hooks/useGlobalUsers';
 import { usePlatformHealth } from '@/app/core/hooks/usePlatformHealth';
-import { useAuditLogs } from '@/app/core/hooks/useAuditLogs';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Organization } from '@/app/core/types/organization';
 
@@ -20,7 +18,6 @@ export default function SuperAdminDashboard() {
     const { organizations, loading: orgsLoading, refetch: refetchOrgs } = useOrganizations();
     const { stats: userStats, loading: userStatsLoading } = useGlobalUserStats();
     const { health, loading: healthLoading, refetch: refetchHealth } = usePlatformHealth();
-    const { logs: auditLogs, loading: auditLoading } = useAuditLogs();
 
     const loading = orgsLoading || userStatsLoading || healthLoading;
 
