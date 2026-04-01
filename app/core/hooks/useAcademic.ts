@@ -185,12 +185,12 @@ export const useCurrentTerm = () => {
   const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { organizationId } = useOrganizationContext();
 
   const fetchCurrentTerm = async () => {
     try {
       setLoading(true);
       const params: { organization?: number } = {};
-      const { organizationId } = useOrganizationContext();
       if (organizationId) {
         params.organization = organizationId;
       }
@@ -207,7 +207,7 @@ export const useCurrentTerm = () => {
 
   useEffect(() => {
     fetchCurrentTerm();
-  }, []);
+  }, [organizationId]);
 
   return {
     currentTerm,

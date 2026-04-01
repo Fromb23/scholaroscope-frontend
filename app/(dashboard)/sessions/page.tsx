@@ -19,6 +19,7 @@ import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { groupBy } from '@/app/utils/groupBy';
 import { Fragment } from 'react';
+import { ErrorState } from '@/app/components/ui/ErrorState';
 
 export default function SessionsOverview() {
     const router = useRouter();
@@ -26,7 +27,7 @@ export default function SessionsOverview() {
     const [selectedCohort, setSelectedCohort] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
 
-    const { sessions, loading } = useSessions({
+    const { sessions, loading, error, refetch } = useSessions({
         term: selectedTerm,
         'cohort_subject__cohort': selectedCohort,
         session_type: selectedType
@@ -251,214 +252,218 @@ export default function SessionsOverview() {
             </Card>
 
             {/* Sessions Grouped by Cohort */}
-            {loading ? (
-                <div className="py-12 text-center">
-                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                    <p className="mt-2 text-gray-600">Loading sessions...</p>
-                </div>
-            ) : sessions.length === 0 ? (
-                <Card>
+            {error ? (
+                <ErrorState message={error} onRetry={refetch} />
+            ) :
+                loading ? (
                     <div className="py-12 text-center">
-                        <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions found</h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {selectedTerm || selectedCohort || selectedType
-                                ? 'Try adjusting your filters'
-                                : 'Get started by creating a new session'}
-                        </p>
-                        {!selectedTerm && !selectedCohort && !selectedType && (
-                            <Link href="/sessions/new">
-                                <Button className="mt-4">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create Session
-                                </Button>
-                            </Link>
-                        )}
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                        <p className="mt-2 text-gray-600">Loading sessions...</p>
                     </div>
-                </Card>
-            ) : (
-                <div className="space-y-4">
-                    {Array.from(grouped.entries()).map(([cohortId, group]) => {
-                        const isCollapsed = collapsedGroups.has(cohortId);
+                ) : sessions.length === 0 ? (
+                    <Card>
+                        <div className="py-12 text-center">
+                            <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions found</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                                {selectedTerm || selectedCohort || selectedType
+                                    ? 'Try adjusting your filters'
+                                    : 'Get started by creating a new session'}
+                            </p>
+                            {!selectedTerm && !selectedCohort && !selectedType && (
+                                <Link href="/sessions/new">
+                                    <Button className="mt-4">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Create Session
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
+                    </Card>
+                ) : (
+                    <div className="space-y-4">
+                        {Array.from(grouped.entries()).map(([cohortId, group]) => {
+                            const isCollapsed = collapsedGroups.has(cohortId);
 
-                        // Aggregate stats for the cohort group
-                        const groupTotal = group.items.reduce((sum, s) => sum + s.attendance_count.total, 0);
-                        const groupPresent = group.items.reduce((sum, s) => sum + s.attendance_count.present, 0);
-                        const groupPercentage = groupTotal > 0 ? Math.round((groupPresent / groupTotal) * 100) : 0;
+                            // Aggregate stats for the cohort group
+                            const groupTotal = group.items.reduce((sum, s) => sum + s.attendance_count.total, 0);
+                            const groupPresent = group.items.reduce((sum, s) => sum + s.attendance_count.present, 0);
+                            const groupPercentage = groupTotal > 0 ? Math.round((groupPresent / groupTotal) * 100) : 0;
 
-                        return (
-                            <Card key={`group-${cohortId}`} className="overflow-hidden">
-                                {/* Cohort Header - Clickable */}
-                                <div
-                                    onClick={() => toggleGroup(cohortId)}
-                                    className="cursor-pointer select-none bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all p-5 border-b border-blue-200"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            {/* Toggle Icon */}
-                                            <div className="p-2 bg-white rounded-lg shadow-sm">
-                                                {isCollapsed
-                                                    ? <ChevronRight className="h-5 w-5 text-blue-600" />
-                                                    : <ChevronDown className="h-5 w-5 text-blue-600" />
-                                                }
+                            return (
+                                <Card key={`group-${cohortId}`} className="overflow-hidden">
+                                    {/* Cohort Header - Clickable */}
+                                    <div
+                                        onClick={() => toggleGroup(cohortId)}
+                                        className="cursor-pointer select-none bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all p-5 border-b border-blue-200"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                {/* Toggle Icon */}
+                                                <div className="p-2 bg-white rounded-lg shadow-sm">
+                                                    {isCollapsed
+                                                        ? <ChevronRight className="h-5 w-5 text-blue-600" />
+                                                        : <ChevronDown className="h-5 w-5 text-blue-600" />
+                                                    }
+                                                </div>
+
+                                                {/* Cohort Info */}
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
+                                                        {group.label}
+                                                        <Badge variant="blue" size="sm">
+                                                            {group.items.length} session{group.items.length !== 1 ? 's' : ''}
+                                                        </Badge>
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600 mt-1">
+                                                        Click to {isCollapsed ? 'expand' : 'collapse'} sessions
+                                                    </p>
+                                                </div>
                                             </div>
 
-                                            {/* Cohort Info */}
-                                            <div>
-                                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
-                                                    {group.label}
-                                                    <Badge variant="blue" size="sm">
-                                                        {group.items.length} session{group.items.length !== 1 ? 's' : ''}
-                                                    </Badge>
-                                                </h3>
-                                                <p className="text-sm text-gray-600 mt-1">
-                                                    Click to {isCollapsed ? 'expand' : 'collapse'} sessions
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Attendance Summary */}
-                                        <div className="flex items-center gap-6">
-                                            <div className="text-right">
-                                                <div className="text-sm text-gray-600">Total Attendance</div>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-2xl font-bold text-gray-900">
-                                                        {groupPresent}/{groupTotal}
-                                                    </span>
-                                                    <Badge variant={getAttendanceColor(groupPercentage)} size="lg">
-                                                        {groupPercentage}%
-                                                    </Badge>
+                                            {/* Attendance Summary */}
+                                            <div className="flex items-center gap-6">
+                                                <div className="text-right">
+                                                    <div className="text-sm text-gray-600">Total Attendance</div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-2xl font-bold text-gray-900">
+                                                            {groupPresent}/{groupTotal}
+                                                        </span>
+                                                        <Badge variant={getAttendanceColor(groupPercentage)} size="lg">
+                                                            {groupPercentage}%
+                                                        </Badge>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Sessions Table - Hidden when collapsed */}
-                                {!isCollapsed && (
-                                    <div className="bg-white">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Date & Time</TableHead>
-                                                    <TableHead>Subject</TableHead>
-                                                    <TableHead>Cohorts</TableHead>
-                                                    <TableHead>Type</TableHead>
-                                                    <TableHead>Venue</TableHead>
-                                                    <TableHead>Attendance</TableHead>
-                                                    <TableHead>Actions</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {group.items.map((session) => {
-                                                    const { total, present } = session.attendance_count;
-                                                    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-                                                    const isMerged = session.linked_cohorts && session.linked_cohorts.length > 1;
+                                    {/* Sessions Table - Hidden when collapsed */}
+                                    {!isCollapsed && (
+                                        <div className="bg-white">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Date & Time</TableHead>
+                                                        <TableHead>Subject</TableHead>
+                                                        <TableHead>Cohorts</TableHead>
+                                                        <TableHead>Type</TableHead>
+                                                        <TableHead>Venue</TableHead>
+                                                        <TableHead>Attendance</TableHead>
+                                                        <TableHead>Actions</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {group.items.map((session) => {
+                                                        const { total, present } = session.attendance_count;
+                                                        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+                                                        const isMerged = session.linked_cohorts && session.linked_cohorts.length > 1;
 
-                                                    return (
-                                                        <TableRow
-                                                            key={session.id}
-                                                            onClick={() => router.push(`/sessions/${session.id}`)}
-                                                            className="hover:bg-blue-50 transition-colors"
-                                                        >
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="p-2 bg-blue-100 rounded-lg">
-                                                                        <Calendar className="h-4 w-4 text-blue-600" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="font-medium text-gray-900">
-                                                                            {new Date(session.session_date).toLocaleDateString('en-US', {
-                                                                                weekday: 'short',
-                                                                                month: 'short',
-                                                                                day: 'numeric'
-                                                                            })}
+                                                        return (
+                                                            <TableRow
+                                                                key={session.id}
+                                                                onClick={() => router.push(`/sessions/${session.id}`)}
+                                                                className="hover:bg-blue-50 transition-colors"
+                                                            >
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="p-2 bg-blue-100 rounded-lg">
+                                                                            <Calendar className="h-4 w-4 text-blue-600" />
                                                                         </div>
-                                                                        <div className="text-sm text-gray-500 flex items-center gap-1">
-                                                                            <Clock className="h-3 w-3" />
-                                                                            {session.start_time} - {session.end_time}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="p-2 bg-green-100 rounded-lg">
-                                                                        <BookOpen className="h-4 w-4 text-green-600" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <div className="font-medium text-gray-900">{session.subject_name}</div>
-                                                                        <div className="text-sm text-gray-500">{session.subject_code}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {isMerged ? (
-                                                                    <div className="space-y-1">
-                                                                        <Badge variant="purple" size="sm">
-                                                                            <Layers className="w-3 h-3 mr-1" />
-                                                                            {session.linked_cohorts.length} cohorts
-                                                                        </Badge>
-                                                                        <div className="text-xs text-gray-500">
-                                                                            {session.linked_cohorts.slice(0, 2).map(c => c.cohort_name).join(', ')}
-                                                                            {session.linked_cohorts.length > 2 && ` +${session.linked_cohorts.length - 2}`}
+                                                                        <div>
+                                                                            <div className="font-medium text-gray-900">
+                                                                                {new Date(session.session_date).toLocaleDateString('en-US', {
+                                                                                    weekday: 'short',
+                                                                                    month: 'short',
+                                                                                    day: 'numeric'
+                                                                                })}
+                                                                            </div>
+                                                                            <div className="text-sm text-gray-500 flex items-center gap-1">
+                                                                                <Clock className="h-3 w-3" />
+                                                                                {session.start_time} - {session.end_time}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-                                                                ) : (
-                                                                    <div>
-                                                                        <div className="font-medium text-gray-900">{session.cohort_name}</div>
-                                                                        <div className="text-sm text-gray-500">{session.cohort_level}</div>
-                                                                    </div>
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge variant="blue">{session.session_type_display}</Badge>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                                    <MapPin className="h-4 w-4 text-gray-400" />
-                                                                    {session.venue || '-'}
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div>
-                                                                        <div className="text-sm font-medium text-gray-900">
-                                                                            {present}/{total}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="p-2 bg-green-100 rounded-lg">
+                                                                            <BookOpen className="h-4 w-4 text-green-600" />
                                                                         </div>
-                                                                        <Badge variant={getAttendanceColor(percentage)} size="sm">
-                                                                            {percentage}%
-                                                                        </Badge>
+                                                                        <div>
+                                                                            <div className="font-medium text-gray-900">{session.subject_name}</div>
+                                                                            <div className="text-sm text-gray-500">{session.subject_code}</div>
+                                                                        </div>
                                                                     </div>
-                                                                    {percentage === 100 && (
-                                                                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {isMerged ? (
+                                                                        <div className="space-y-1">
+                                                                            <Badge variant="purple" size="sm">
+                                                                                <Layers className="w-3 h-3 mr-1" />
+                                                                                {session.linked_cohorts.length} cohorts
+                                                                            </Badge>
+                                                                            <div className="text-xs text-gray-500">
+                                                                                {session.linked_cohorts.slice(0, 2).map(c => c.cohort_name).join(', ')}
+                                                                                {session.linked_cohorts.length > 2 && ` +${session.linked_cohorts.length - 2}`}
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div>
+                                                                            <div className="font-medium text-gray-900">{session.cohort_name}</div>
+                                                                            <div className="text-sm text-gray-500">{session.cohort_level}</div>
+                                                                        </div>
                                                                     )}
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Button
-                                                                    variant="primary"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        router.push(`/sessions/${session.id}`);
-                                                                    }}
-                                                                >
-                                                                    View Details
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    );
-                                                })}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                )}
-                            </Card>
-                        );
-                    })}
-                </div>
-            )}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Badge variant="blue">{session.session_type_display}</Badge>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                                        <MapPin className="h-4 w-4 text-gray-400" />
+                                                                        {session.venue || '-'}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div>
+                                                                            <div className="text-sm font-medium text-gray-900">
+                                                                                {present}/{total}
+                                                                            </div>
+                                                                            <Badge variant={getAttendanceColor(percentage)} size="sm">
+                                                                                {percentage}%
+                                                                            </Badge>
+                                                                        </div>
+                                                                        {percentage === 100 && (
+                                                                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Button
+                                                                        variant="primary"
+                                                                        size="sm"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            router.push(`/sessions/${session.id}`);
+                                                                        }}
+                                                                    >
+                                                                        View Details
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )}
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )
+            }
 
             {/* Pagination info */}
             {sessions.length > 0 && (
