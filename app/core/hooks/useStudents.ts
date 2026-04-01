@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { learnersAPI } from '../api/learners';
 import { Student, StudentStats, StudentDetail } from '../types/student';
+import { ApiError, extractErrorMessage } from '../types/errors';
 
 // ── useStudents ───────────────────────────────────────────────────────────
 
@@ -63,10 +64,9 @@ export function useStudents(filters?: StudentsFilters) {
           totalPages: 1,
         });
       }
-    } catch (err: unknown) {
+    } catch (err) {
       if (controller.signal.aborted) return;
-      const e = err as { message?: string };
-      setError(e.message ?? 'Failed to load students');
+      setError(extractErrorMessage(err as ApiError, 'Failed to load students'));
       setStudents([]);
       setPagination({ currentPage: 1, pageSize: 10, totalItems: 0, totalPages: 0 });
     } finally {
@@ -104,9 +104,8 @@ export function useStudent(id: number) {
       setError(null);
       const data = await learnersAPI.getStudent(id);
       setStudent(data);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e.message ?? 'Failed to load student');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to load student'));
       setStudent(null);
     } finally {
       setLoading(false);
@@ -123,9 +122,9 @@ export function useStudent(id: number) {
     try {
       await fn();
       await loadStudent();
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setActionError(e.message ?? 'Action failed');
+    } catch (err) {
+      const message = extractErrorMessage(err as ApiError, 'Action failed');
+      setActionError(message);
       throw err;
     } finally {
       setActionLoading(false);
@@ -165,9 +164,8 @@ export function useStudentStats() {
       setError(null);
       const data = await learnersAPI.getStatistics();
       setStats(data);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e.message ?? 'Failed to load stats');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to load stats'));
       setStats(null);
     } finally {
       setLoading(false);
@@ -193,9 +191,8 @@ export function useStudentsByCohort(cohortId?: number) {
       setError(null);
       const data = await learnersAPI.getStudentsByCohort(cohortId);
       setStudents(data);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e.message ?? 'Failed to load students');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to load students'));
       setStudents([]);
     } finally {
       setLoading(false);
@@ -222,9 +219,8 @@ export function useMultiCohortStudents() {
       setError(null);
       const data = await learnersAPI.getMultiCohortStudents();
       setStudents(data);
-    } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e.message ?? 'Failed to load students');
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to load students'));
       setStudents([]);
     } finally {
       setLoading(false);

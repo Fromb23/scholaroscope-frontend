@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { cohortsAPI, Cohort, CohortDetail, CohortStats } from '../api/cohorts';
 import { CohortSubject, Subject } from '../types/academic';
 import { StudentDetail } from '../types/student';
+import { ApiError, extractErrorMessage } from '../types/errors';
 
 export function useCohorts(filters?: {
   curriculum?: number;
@@ -28,8 +29,8 @@ export function useCohorts(filters?: {
       setError(null);
       const data = await cohortsAPI.getCohorts(filters);
       setCohorts(Array.isArray(data) ? data : data.results ?? []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohorts'));
       setCohorts([]);
     } finally {
       setLoading(false);
@@ -45,9 +46,7 @@ export function useCohort(id: number) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      loadCohort();
-    }
+    if (id) loadCohort();
   }, [id]);
 
   const loadCohort = async () => {
@@ -56,8 +55,8 @@ export function useCohort(id: number) {
       setError(null);
       const data = await cohortsAPI.getCohort(id);
       setCohort(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort'));
       setCohort(null);
     } finally {
       setLoading(false);
@@ -82,8 +81,8 @@ export function useActiveCohorts() {
       setError(null);
       const data = await cohortsAPI.getActiveCohorts();
       setCohorts(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch active cohorts'));
       setCohorts([]);
     } finally {
       setLoading(false);
@@ -99,21 +98,18 @@ export function useCohortsByCurriculum(curriculumId?: number) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (curriculumId) {
-      loadCohorts();
-    }
+    if (curriculumId) loadCohorts();
   }, [curriculumId]);
 
   const loadCohorts = async () => {
     if (!curriculumId) return;
-
     try {
       setLoading(true);
       setError(null);
       const data = await cohortsAPI.getCohortsByCurriculum(curriculumId);
       setCohorts(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohorts by curriculum'));
       setCohorts([]);
     } finally {
       setLoading(false);
@@ -129,21 +125,18 @@ export function useCohortsByAcademicYear(academicYearId?: number) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (academicYearId) {
-      loadCohorts();
-    }
+    if (academicYearId) loadCohorts();
   }, [academicYearId]);
 
   const loadCohorts = async () => {
     if (!academicYearId) return;
-
     try {
       setLoading(true);
       setError(null);
       const data = await cohortsAPI.getCohortsByAcademicYear(academicYearId);
       setCohorts(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohorts by academic year'));
       setCohorts([]);
     } finally {
       setLoading(false);
@@ -168,8 +161,8 @@ export function useCohortStats() {
       setError(null);
       const data = await cohortsAPI.getStatistics();
       setStats(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort stats'));
       setStats(null);
     } finally {
       setLoading(false);
@@ -185,21 +178,18 @@ export function useCohortStudents(cohortId?: number) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (cohortId) {
-      loadStudents();
-    }
+    if (cohortId) loadStudents();
   }, [cohortId]);
 
   const loadStudents = async () => {
     if (!cohortId) return;
-
     try {
       setLoading(true);
       setError(null);
       const data = await cohortsAPI.getCohortStudents(cohortId);
       setStudents(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort students'));
       setStudents([]);
     } finally {
       setLoading(false);
@@ -215,21 +205,18 @@ export function useCohortSubjects(cohortId?: number) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (cohortId) {
-      loadSubjects();
-    }
+    if (cohortId) loadSubjects();
   }, [cohortId]);
 
   const loadSubjects = async () => {
     if (!cohortId) return;
-
     try {
       setLoading(true);
       setError(null);
       const data = await cohortsAPI.getCohortSubjects(cohortId);
       setSubjects(Array.isArray(data) ? data : (data as { results?: CohortSubject[] }).results ?? []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort subjects'));
       setSubjects([]);
     } finally {
       setLoading(false);

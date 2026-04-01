@@ -1,6 +1,5 @@
 // ============================================================================
 // app/hooks/useGlobalUsers.ts
-// Mirrors the exact hook pattern used across the codebase
 // ============================================================================
 
 import { useState, useEffect } from 'react';
@@ -12,9 +11,10 @@ import {
     GlobalUserStats,
     UserOrgMembership,
 } from '@/app/core/types/globalUsers';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 // ---------------------------------------------------------------------------
-// useGlobalUsers — list, create, update, delete, activate/deactivate
+// useGlobalUsers
 // ---------------------------------------------------------------------------
 export const useGlobalUsers = () => {
     const [users, setUsers] = useState<GlobalUser[]>([]);
@@ -25,34 +25,24 @@ export const useGlobalUsers = () => {
         try {
             setLoading(true);
             const data = await globalUsersAPI.getAll();
-            const usersArray = Array.isArray(data) ? data : (data as { results: GlobalUser[] }).results ?? [];
-            setUsers(usersArray);
+            setUsers(Array.isArray(data) ? data : (data as { results?: GlobalUser[] }).results ?? []);
             setError(null);
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { message?: string } } };
-            throw new Error(e.response?.data?.message || '...');
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch users'));
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
+    useEffect(() => { fetchUsers(); }, []);
 
     const createUser = async (data: UserCreatePayload & { organization_id?: number }) => {
         try {
             const newUser = await globalUsersAPI.create(data);
             setUsers(prev => [newUser, ...prev]);
             return newUser;
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { email?: string[]; password?: string[]; message?: string } } };
-            throw new Error(
-                e.response?.data?.email?.[0] ||
-                e.response?.data?.password?.[0] ||
-                e.response?.data?.message ||
-                'Failed to create user'
-            );
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to create user'));
         }
     };
 
@@ -61,9 +51,8 @@ export const useGlobalUsers = () => {
             const updated = await globalUsersAPI.update(id, data);
             setUsers(prev => prev.map(u => (u.id === id ? updated : u)));
             return updated;
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { message?: string } } };
-            throw new Error(e.response?.data?.message || 'Failed to update user');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update user'));
         }
     };
 
@@ -71,8 +60,8 @@ export const useGlobalUsers = () => {
         try {
             await globalUsersAPI.delete(id);
             setUsers(prev => prev.filter(u => u.id !== id));
-        } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to delete user');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete user'));
         }
     };
 
@@ -83,49 +72,41 @@ export const useGlobalUsers = () => {
                 : await globalUsersAPI.deactivate(id);
             setUsers(prev => prev.map(u => (u.id === id ? updated : u)));
             return updated;
-        } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to change user status');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to change user status'));
         }
     };
 
     const resetPassword = async (id: number, new_password: string) => {
         try {
             await globalUsersAPI.resetPassword(id, new_password);
-        } catch (err: any) {
-            throw new Error(err.response?.data?.message || 'Failed to reset password');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to reset password'));
         }
     };
 
     const getUserMemberships = async (id: number): Promise<UserOrgMembership[]> => {
-        const response = await globalUsersAPI.getMemberships(id);
-        return response;
+        return await globalUsersAPI.getMemberships(id);
     };
+
     const removeFromOrg = async (userId: number, organizationId: number): Promise<void> => {
         try {
             await globalUsersAPI.removeFromOrg(userId, organizationId);
-        } catch (err: unknown) {
-            const e = err as { response?: { data?: { detail?: string } } };
-            throw new Error(e.response?.data?.detail || 'Failed to remove from organization');
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to remove from organization'));
         }
     };
 
     return {
-        users,
-        loading,
-        error,
-        refetch: fetchUsers,
-        createUser,
-        updateUser,
-        deleteUser,
-        toggleUserActive,
-        resetPassword,
-        getUserMemberships,
-        removeFromOrg,
+        users, loading, error, refetch: fetchUsers,
+        createUser, updateUser, deleteUser,
+        toggleUserActive, resetPassword,
+        getUserMemberships, removeFromOrg,
     };
 };
 
 // ---------------------------------------------------------------------------
-// useGlobalUserStats — platform-wide user statistics
+// useGlobalUserStats
 // ---------------------------------------------------------------------------
 export const useGlobalUserStats = () => {
     const [stats, setStats] = useState<GlobalUserStats | null>(null);
@@ -139,8 +120,8 @@ export const useGlobalUserStats = () => {
                 const data = await globalUsersAPI.getStatistics();
                 setStats(data);
                 setError(null);
-            } catch (err: any) {
-                setError(err.message || 'Failed to fetch statistics');
+            } catch (err) {
+                setError(extractErrorMessage(err as ApiError, 'Failed to fetch statistics'));
             } finally {
                 setLoading(false);
             }
