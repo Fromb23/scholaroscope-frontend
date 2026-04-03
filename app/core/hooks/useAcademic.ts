@@ -276,7 +276,7 @@ export const useSubjects = (curriculumId?: number) => {
   const fetchSubjects = async () => {
     try {
       setLoading(true);
-      const params: Record<string, string> = {};
+      const params: Record<string, string> = { page_size: '1000' };
       if (curriculumId) params.curriculum = String(curriculumId);
       if (organizationId) params.organization = String(organizationId);
       const data = await subjectAPI.getAll(params);

@@ -7,6 +7,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useSidebar } from '@/app/context/SidebarContext';
+import { NotificationBell } from '@/app/components/layout/NotificationBell';
 
 export default function Header() {
     const { user, activeOrg, activeRole, memberships, logout, switchOrg } = useAuth();
@@ -79,7 +80,6 @@ export default function Header() {
                                         Workspaces
                                     </p>
 
-                                    {/* Existing memberships */}
                                     {memberships.map((m) => {
                                         const isActive = m.organization.id === activeOrg?.id;
                                         const isLoading = switching === m.organization.id;
@@ -91,14 +91,11 @@ export default function Header() {
                                                 className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 disabled:opacity-60"
                                             >
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <div className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-blue-100' : 'bg-gray-100'
-                                                        }`}>
-                                                        <Building2 className={`h-3 w-3 ${isActive ? 'text-blue-600' : 'text-gray-500'
-                                                            }`} />
+                                                    <div className={`h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                                                        <Building2 className={`h-3 w-3 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
                                                     </div>
                                                     <div className="min-w-0 text-left">
-                                                        <p className={`truncate font-medium ${isActive ? 'text-blue-700' : 'text-gray-700'
-                                                            }`}>
+                                                        <p className={`truncate font-medium ${isActive ? 'text-blue-700' : 'text-gray-700'}`}>
                                                             {m.organization.name}
                                                         </p>
                                                         <p className="text-xs text-gray-400 capitalize">
@@ -115,7 +112,6 @@ export default function Header() {
                                         );
                                     })}
 
-                                    {/* Always-present: create new workspace */}
                                     <div className="border-t border-gray-100 mt-1 pt-1">
                                         <button
                                             onClick={() => {
@@ -135,6 +131,9 @@ export default function Header() {
                         )}
                     </div>
                 )}
+
+                {/* Notification bell */}
+                <NotificationBell />
 
                 {/* User dropdown */}
                 <div className="relative">
