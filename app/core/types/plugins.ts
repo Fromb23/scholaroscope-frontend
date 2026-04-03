@@ -77,3 +77,101 @@ export const STATE_LABELS: Record<PluginState, string> = {
     grace_period: 'Grace Period',
     uninstalled: 'Uninstalled',
 };
+
+// Add to core/types/plugins.ts
+
+export interface CurriculumSubjectEntry {
+    code: string;
+    name: string;
+    level?: string;
+    description?: string;
+}
+
+export interface CurriculumCatalog {
+    manifest_url: string;
+    count: number;
+    subjects: CurriculumSubjectEntry[];
+}
+
+export interface SeedCurriculumPayload {
+    installed_plugin_id: number;
+    selections: SubjectSelection[];
+}
+
+export interface SeedCurriculumResult {
+    seeded: {
+        code: string;
+        subject: string;
+        level: string;
+        subject_created: boolean;
+        topics: number;
+        subtopics: number;
+    }[];
+    skipped: { code: string; reason: string }[];
+    errors: { code: string; reason: string }[];
+}
+
+export interface RegisterSubjectPayload {
+    manifest_url: string;
+    code: string;
+    level?: string;
+}
+
+export interface RegisteredSubject {
+    subject_id: number;
+    code: string;
+    name: string;
+    level: string;
+    created: boolean;
+}
+
+export interface CurriculumSubtopicEntry {
+    code: string;
+    name: string;
+    sequence: number;
+    registered: boolean;
+}
+
+export interface CurriculumTopicEntry {
+    code: string;
+    name: string;
+    sequence: number;
+    registered: boolean;
+    subtopics: CurriculumSubtopicEntry[];
+}
+
+export interface CurriculumSubjectDetail {
+    code: string;
+    name: string;
+    level: string;
+    description: string;
+    topics: CurriculumTopicEntry[];
+    error?: string;
+}
+
+export interface CurriculumCatalogDetail {
+    count: number;
+    subjects: CurriculumSubjectGroup[];
+}
+
+export interface SubjectSelection {
+    code: string;
+    topics?: string[];
+    subtopics?: Record<string, string[]>;
+}
+
+export interface CurriculumLevelEntry {
+    code: string;
+    level: string;
+    description: string;
+    registered: boolean;
+    topics: CurriculumTopicEntry[];
+    error?: string;
+}
+
+export interface CurriculumSubjectGroup {
+    name: string;
+    levels: CurriculumLevelEntry[];
+    all_registered: boolean;
+    any_registered: boolean;
+}

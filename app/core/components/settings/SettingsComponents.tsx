@@ -7,9 +7,9 @@
 // No any. Typed props. Reuses ErrorBanner and InlineAlert.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
-    Puzzle, Check, X, Power, PowerOff, AlertCircle,
+    Puzzle, Check, X, Power, PowerOff, ChevronRight, BookOpen,
     Clock, UserCheck, Ban, Plus, Trash2, Mail,
     Copy, CheckCheck, ChevronDown, Link,
 } from 'lucide-react';
@@ -22,7 +22,10 @@ import Modal from '@/app/components/ui/Modal';
 import { pluginAPI } from '@/app/core/api/plugins';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
-import { InstalledPlugin } from '../../types/plugins';
+import {
+    CurriculumCatalogDetail, InstalledPlugin,
+    SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
+} from '../../types/plugins';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -396,40 +399,74 @@ interface InstalledPluginCardProps {
 }
 
 export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPluginCardProps) {
+    const [curriculumOpen, setCurriculumOpen] = useState(false);
+    const [modalKey, setModalKey] = useState(0);
+
+    // Plugin has curriculum contribution if key contains 'curriculum' or '844' or 'cbc'
+    // In production this would come from manifest.contributes.curriculum
+    const hasCurriculum = plugin.key.includes('curriculum') ||
+        plugin.key.includes('844') ||
+        plugin.key.includes('igcse');
+
     return (
-        <div className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${plugin.is_active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
-            }`}>
-            <div className="flex items-start gap-4">
-                <div className={`p-2.5 rounded-xl shrink-0 ${plugin.is_active ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                    <Puzzle className={`h-5 w-5 ${plugin.is_active ? 'text-blue-600' : 'text-gray-400'}`} />
-                </div>
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900">{plugin.name}</h3>
-                        <Badge variant="default" size="sm" className="font-mono">{plugin.version}</Badge>
-                        {plugin.is_core && <Badge variant="info" size="sm">Core</Badge>}
-                        {plugin.is_active
-                            ? <Badge variant="green" size="sm">Active</Badge>
-                            : <Badge variant="default" size="sm">Inactive</Badge>
-                        }
+        <>
+            <div className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${plugin.is_active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
+                }`}>
+                <div className="flex items-start gap-4">
+                    <div className={`p-2.5 rounded-xl shrink-0 ${plugin.is_active ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                        <Puzzle className={`h-5 w-5 ${plugin.is_active ? 'text-blue-600' : 'text-gray-400'}`} />
                     </div>
-                    <p className="text-xs text-gray-500 max-w-md">{plugin.description}</p>
-                    <p className="text-xs text-gray-400 mt-1 font-mono">key: {plugin.key}</p>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-sm font-semibold text-gray-900">{plugin.name}</h3>
+                            <Badge variant="default" size="sm" className="font-mono">{plugin.version}</Badge>
+                            {plugin.is_core && <Badge variant="info" size="sm">Core</Badge>}
+                            {plugin.is_active
+                                ? <Badge variant="green" size="sm">Active</Badge>
+                                : <Badge variant="default" size="sm">Inactive</Badge>
+                            }
+                        </div>
+                        <p className="text-xs text-gray-500 max-w-md">{plugin.description}</p>
+                        <p className="text-xs text-gray-400 mt-1 font-mono">key: {plugin.key}</p>
+
+                        {/* Curriculum management button */}
+                        {hasCurriculum && plugin.is_active && (
+                            <button
+                                onClick={() => {
+                                    setModalKey(k => k + 1);
+                                    setCurriculumOpen(true);
+                                }}
+                                className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                                <BookOpen className="h-3.5 w-3.5" />
+                                Manage Curriculum
+                                <ChevronRight className="h-3 w-3" />
+                            </button>
+                        )}
+                    </div>
                 </div>
+                {!plugin.is_core && (
+                    <button
+                        onClick={() => onToggle(plugin.id)}
+                        disabled={toggling}
+                        className={`p-2 rounded-lg transition-colors shrink-0 ml-4 ${plugin.is_active
+                            ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+                            : 'text-gray-400 hover:bg-green-50 hover:text-green-600'
+                            }`}
+                    >
+                        {plugin.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    </button>
+                )}
             </div>
-            {!plugin.is_core && (
-                <button
-                    onClick={() => onToggle(plugin.id)}
-                    disabled={toggling}
-                    className={`p-2 rounded-lg transition-colors shrink-0 ml-4 ${plugin.is_active
-                        ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
-                        : 'text-gray-400 hover:bg-green-50 hover:text-green-600'
-                        }`}
-                >
-                    {plugin.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                </button>
-            )}
-        </div>
+
+            <CurriculumSelectionModal
+                key={modalKey}
+                isOpen={curriculumOpen}
+                onClose={() => setCurriculumOpen(false)}
+                installedPluginId={plugin.id}
+                pluginName={plugin.name}
+            />
+        </>
     );
 }
 
@@ -498,5 +535,519 @@ export function PluginsTab() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// ── CurriculumSelectionModal ──────────────────────────────────────────────
+
+interface CurriculumSelectionModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    installedPluginId: number;
+    pluginName: string;
+}
+
+export function CurriculumSelectionModal({
+    isOpen,
+    onClose,
+    installedPluginId,
+    pluginName,
+}: CurriculumSelectionModalProps) {
+    const [catalog, setCatalog] = useState<CurriculumCatalogDetail | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [seeding, setSeeding] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [result, setResult] = useState<{ added: number; removed: number } | null>(null);
+
+    // levelCode → Set<topicCode>
+    const [checkedTopics, setCheckedTopics] = useState<Record<string, Set<string>>>({});
+    // "levelCode-topicCode" → Set<subtopicCode>
+    const [checkedSubtopics, setCheckedSubtopics] = useState<Record<string, Set<string>>>({});
+    // snapshots for diffing
+    const [snapTopics, setSnapTopics] = useState<Record<string, Set<string>>>({});
+    const [snapSubtopics, setSnapSubtopics] = useState<Record<string, Set<string>>>({});
+
+    const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+    const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
+    const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+
+    const clone = (obj: Record<string, Set<string>>) =>
+        Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, new Set(v)]));
+
+    const applyData = (data: CurriculumCatalogDetail) => {
+        setCatalog(data);
+        const t: Record<string, Set<string>> = {};
+        const s: Record<string, Set<string>> = {};
+        data.subjects.forEach(group => {
+            group.levels.forEach(level => {
+                // key: levelCode → registered topic codes
+                t[level.code] = new Set(
+                    level.topics.filter(x => x.registered).map(x => x.code)
+                );
+                level.topics.forEach(topic => {
+                    // key: "levelCode-topicCode" → registered subtopic codes
+                    const sk = `${level.code}-${topic.code}`;
+                    s[sk] = new Set(
+                        topic.subtopics.filter(x => x.registered).map(x => x.code)
+                    );
+                });
+            });
+        });
+        setCheckedTopics(t);
+        setCheckedSubtopics(s);
+        setSnapTopics(clone(t));
+        setSnapSubtopics(clone(s));
+    };
+
+    useEffect(() => {
+        if (!isOpen) {
+            setCatalog(null);
+            setCheckedTopics({});
+            setCheckedSubtopics({});
+            setSnapTopics({});
+            setSnapSubtopics({});
+            setExpandedSubjects(new Set());
+            setExpandedLevels(new Set());
+            setExpandedTopics(new Set());
+            setError(null);
+            setResult(null);
+            return;
+        }
+        setLoading(true);
+        pluginAPI.catalogDetail(installedPluginId)
+            .then(applyData)
+            .catch(() => setError('Could not load curriculum.'))
+            .finally(() => setLoading(false));
+    }, [isOpen, installedPluginId]);
+
+    const toggleLevel = (lk: string, topics: CurriculumTopicEntry[]) => {
+        const cur = checkedTopics[lk] ?? new Set();
+        const selectAll = cur.size < topics.length;
+        setCheckedTopics(prev => ({
+            ...prev,
+            [lk]: selectAll ? new Set(topics.map(t => t.code)) : new Set(),
+        }));
+        const newSubs = { ...checkedSubtopics };
+        topics.forEach(t => {
+            const sk = `${lk}-${t.code}`;
+            newSubs[sk] = selectAll
+                ? new Set(t.subtopics.map(s => s.code))
+                : new Set();
+        });
+        setCheckedSubtopics(newSubs);
+    };
+
+    const toggleTopic = (lk: string, tc: string, subtopics: CurriculumSubtopicEntry[]) => {
+        const sk = `${lk}-${tc}`;
+        const current = new Set(checkedTopics[lk] ?? []);
+        if (current.has(tc)) {
+            current.delete(tc);
+            // keep subtopic state — don't clear, diff handles removal
+        } else {
+            current.add(tc);
+            setCheckedSubtopics(prev => ({
+                ...prev,
+                [sk]: new Set(subtopics.map(s => s.code)),
+            }));
+        }
+        setCheckedTopics(prev => ({ ...prev, [lk]: current }));
+    };
+
+    const toggleSubtopic = (lk: string, tc: string, sc: string) => {
+        const sk = `${lk}-${tc}`;
+        const current = new Set(checkedSubtopics[sk] ?? []);
+        current.has(sc) ? current.delete(sc) : current.add(sc);
+        setCheckedSubtopics(prev => ({ ...prev, [sk]: current }));
+    };
+
+    const diff = useMemo(() => {
+        if (!catalog) return {
+            toAdd: [] as SubjectSelection[],
+            toRemove: {} as Record<string, { topicCodes: string[]; subtopicCodes: string[] }>,
+            addCount: 0,
+            removeCount: 0,
+        };
+
+        const toAdd: SubjectSelection[] = [];
+        const toRemove: Record<string, { topicCodes: string[]; subtopicCodes: string[] }> = {};
+        let addCount = 0;
+        let removeCount = 0;
+
+        catalog.subjects.forEach(group => {
+            group.levels.forEach(level => {
+                const lk = level.code;
+                const curT = checkedTopics[lk] ?? new Set();
+                const snapT = snapTopics[lk] ?? new Set();
+                const addTopics: string[] = [];
+                const removeTopics: string[] = [];
+                const addSubs: Record<string, string[]> = {};
+                const removeSubs: Record<string, string[]> = {};
+
+                level.topics.forEach(topic => {
+                    const tc = topic.code;
+                    const sk = `${lk}-${tc}`;
+                    const nowT = curT.has(tc);
+                    const wasT = snapT.has(tc);
+                    const curS = checkedSubtopics[sk] ?? new Set();
+                    const snapS = snapSubtopics[sk] ?? new Set();
+
+                    if (nowT && !wasT) {
+                        // new topic — add with selected subtopics
+                        addTopics.push(tc);
+                        addSubs[tc] = topic.subtopics
+                            .filter(s => curS.has(s.code))
+                            .map(s => s.code);
+                        addCount += 1;
+                    } else if (!nowT && wasT) {
+                        // removed topic
+                        removeTopics.push(tc);
+                        removeCount += 1;
+                    } else if (nowT && wasT) {
+                        // unchanged topic — diff subtopics
+                        topic.subtopics.forEach(sub => {
+                            const sc = sub.code;
+                            const nowS = curS.has(sc);
+                            const wasS = snapS.has(sc);
+                            if (nowS && !wasS) {
+                                if (!addSubs[tc]) addSubs[tc] = [];
+                                addSubs[tc].push(sc);
+                                addCount += 1;
+                            } else if (!nowS && wasS) {
+                                if (!removeSubs[tc]) removeSubs[tc] = [];
+                                removeSubs[tc].push(sc);
+                                removeCount += 1;
+                            }
+                        });
+                    }
+                });
+
+                // additions — new topics + new subtopics in existing topics
+                const subAddKeys = Object.keys(addSubs).filter(k => !addTopics.includes(k));
+                const allAddTopics = [...addTopics, ...subAddKeys];
+                if (allAddTopics.length > 0) {
+                    toAdd.push({ code: lk, topics: allAddTopics, subtopics: addSubs });
+                }
+
+                // removals
+                const flatRemoveSubs = Object.values(removeSubs).flat();
+                if (removeTopics.length > 0 || flatRemoveSubs.length > 0) {
+                    toRemove[lk] = {
+                        topicCodes: removeTopics,
+                        subtopicCodes: flatRemoveSubs,
+                    };
+                }
+            });
+        });
+
+        return { toAdd, toRemove, addCount, removeCount };
+    }, [catalog, checkedTopics, checkedSubtopics, snapTopics, snapSubtopics]);
+
+    const hasChanges = diff.addCount > 0 || diff.removeCount > 0;
+
+    const handleSave = async () => {
+        if (!hasChanges) return;
+        setSeeding(true);
+        setError(null);
+        try {
+            let removedTopics = 0;
+            let removedSubtopics = 0;
+            let addedCount = 0;
+
+            for (const [subjectCode, removal] of Object.entries(diff.toRemove)) {
+                const res = await pluginAPI.unregisterByCode({
+                    subject_code: subjectCode,
+                    topic_codes: removal.topicCodes,
+                    subtopic_codes: removal.subtopicCodes,
+                });
+                removedTopics += res.removed_topics.length;
+                removedSubtopics += res.removed_subtopics.length;
+            }
+
+            if (diff.toAdd.length > 0) {
+                const res = await pluginAPI.seedCurriculum({
+                    installed_plugin_id: installedPluginId,
+                    selections: diff.toAdd,
+                });
+                addedCount = res.seeded.reduce((acc, s) => acc + s.topics + s.subtopics, 0);
+            }
+
+            setResult({ added: addedCount, removed: removedTopics + removedSubtopics });
+        } catch {
+            setError('Operation failed. Please try again.');
+        } finally {
+            setSeeding(false);
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`${pluginName} — Manage Curriculum`} size="lg">
+            <div className="space-y-4">
+
+                {/* Result */}
+                {result && (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+                            <Check className="h-4 w-4 text-green-600 shrink-0" />
+                            <div className="text-sm text-green-700 space-y-0.5">
+                                {result.added > 0 && (
+                                    <p>✅ {result.added} new item{result.added !== 1 ? 's' : ''} added to your curriculum.</p>
+                                )}
+                                {result.removed > 0 && (
+                                    <p>🗑 {result.removed} item{result.removed !== 1 ? 's' : ''} removed from your curriculum.</p>
+                                )}
+                                {result.added === 0 && result.removed === 0 && (
+                                    <p>No changes were made.</p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                            <Button variant="secondary" onClick={() => {
+                                setResult(null);
+                                setLoading(true);
+                                pluginAPI.catalogDetail(installedPluginId)
+                                    .then(applyData)
+                                    .catch(() => setError('Could not reload.'))
+                                    .finally(() => setLoading(false));
+                            }}>
+                                Continue Editing
+                            </Button>
+                            <Button variant="primary" onClick={onClose}>Done</Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading */}
+                {!result && loading && (
+                    <LoadingSpinner fullScreen={false} message="Loading curriculum..." />
+                )}
+
+                {/* Error */}
+                {!result && !loading && error && (
+                    <ErrorBanner message={error} onDismiss={() => setError(null)} />
+                )}
+
+                {/* Tree */}
+                {!result && !loading && catalog && (
+                    <>
+                        <div className="flex items-center gap-4 text-xs">
+                            <span className="flex items-center gap-1 text-gray-500">
+                                <span className="h-3 w-3 rounded border-2 border-blue-600 bg-blue-600 inline-block" />
+                                Registered
+                            </span>
+                            <span className="flex items-center gap-1 text-gray-500">
+                                <span className="h-3 w-3 rounded border-2 border-gray-300 inline-block" />
+                                Not registered
+                            </span>
+                            {hasChanges && (
+                                <span className="ml-auto text-amber-600 font-medium text-xs">
+                                    {diff.addCount > 0 && `+${diff.addCount} to add`}
+                                    {diff.addCount > 0 && diff.removeCount > 0 && ' · '}
+                                    {diff.removeCount > 0 && `−${diff.removeCount} to remove`}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                            {catalog.subjects.map(group => {
+                                const gExp = expandedSubjects.has(group.name);
+                                return (
+                                    <div key={group.name} className="border border-gray-200 rounded-xl overflow-hidden">
+
+                                        {/* Subject group header */}
+                                        <button
+                                            onClick={() => setExpandedSubjects(prev => {
+                                                const n = new Set(prev);
+                                                n.has(group.name) ? n.delete(group.name) : n.add(group.name);
+                                                return n;
+                                            })}
+                                            className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 text-left"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-semibold text-gray-900">{group.name}</span>
+                                                <span className="text-xs text-gray-400">
+                                                    {group.levels.length} level{group.levels.length !== 1 ? 's' : ''}
+                                                </span>
+                                                {group.all_registered && (
+                                                    <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">
+                                                        All registered
+                                                    </span>
+                                                )}
+                                                {group.any_registered && !group.all_registered && (
+                                                    <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">
+                                                        Partial
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${gExp ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        {/* Levels */}
+                                        {gExp && (
+                                            <div className="divide-y divide-gray-100">
+                                                {group.levels.map(level => {
+                                                    const lk = level.code;
+                                                    const lExp = expandedLevels.has(lk);
+                                                    const selT = checkedTopics[lk]?.size ?? 0;
+                                                    const totalT = level.topics.length;
+                                                    const lChk = selT === totalT && totalT > 0;
+                                                    const lPart = selT > 0 && selT < totalT;
+
+                                                    return (
+                                                        <div key={lk}>
+                                                            <div className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={lChk}
+                                                                    ref={el => { if (el) el.indeterminate = lPart; }}
+                                                                    onChange={() => toggleLevel(lk, level.topics)}
+                                                                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                                                />
+                                                                <button
+                                                                    onClick={() => setExpandedLevels(prev => {
+                                                                        const n = new Set(prev);
+                                                                        n.has(lk) ? n.delete(lk) : n.add(lk);
+                                                                        return n;
+                                                                    })}
+                                                                    className="flex-1 flex items-center justify-between text-left"
+                                                                >
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-sm font-medium text-gray-800">{level.level}</span>
+                                                                        <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{level.code}</span>
+                                                                        {level.registered && (
+                                                                            <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">
+                                                                                Registered
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs text-gray-400">{selT}/{totalT} topics</span>
+                                                                        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${lExp ? 'rotate-180' : ''}`} />
+                                                                    </div>
+                                                                </button>
+                                                            </div>
+
+                                                            {/* Topics */}
+                                                            {lExp && (
+                                                                <div className="border-t border-gray-100 bg-gray-50">
+                                                                    {level.topics.map(topic => {
+                                                                        const tc = topic.code;
+                                                                        const sk = `${lk}-${tc}`;
+                                                                        const tKey = `${lk}__${tc}`;
+                                                                        const tExp = expandedTopics.has(tKey);
+                                                                        const tChk = checkedTopics[lk]?.has(tc) ?? false;
+                                                                        const curS = checkedSubtopics[sk] ?? new Set();
+                                                                        const selS = curS.size;
+                                                                        const totalS = topic.subtopics.length;
+                                                                        const sPart = selS > 0 && selS < totalS;
+                                                                        const snapT = snapTopics[lk]?.has(tc) ?? false;
+                                                                        const isNew = tChk && !snapT;
+                                                                        const isRemoved = !tChk && snapT;
+
+                                                                        return (
+                                                                            <div key={tc} className={`border-b border-gray-100 last:border-0 ${isRemoved ? 'opacity-50' : ''}`}>
+                                                                                <div className="flex items-center gap-3 px-8 py-2.5 hover:bg-gray-100">
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        checked={tChk}
+                                                                                        ref={el => { if (el) el.indeterminate = !tChk && sPart; }}
+                                                                                        onChange={() => toggleTopic(lk, tc, topic.subtopics)}
+                                                                                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                                                                    />
+                                                                                    <button
+                                                                                        onClick={() => setExpandedTopics(prev => {
+                                                                                            const n = new Set(prev);
+                                                                                            n.has(tKey) ? n.delete(tKey) : n.add(tKey);
+                                                                                            return n;
+                                                                                        })}
+                                                                                        className="flex-1 flex items-center justify-between text-left"
+                                                                                    >
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="text-sm text-gray-700">{topic.name}</span>
+                                                                                            {topic.registered && !isRemoved && (
+                                                                                                <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">Added</span>
+                                                                                            )}
+                                                                                            {isNew && (
+                                                                                                <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">New</span>
+                                                                                            )}
+                                                                                            {isRemoved && (
+                                                                                                <span className="text-xs text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">Will remove</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="text-xs text-gray-400">{selS}/{totalS}</span>
+                                                                                            <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform ${tExp ? 'rotate-180' : ''}`} />
+                                                                                        </div>
+                                                                                    </button>
+                                                                                </div>
+
+                                                                                {/* Subtopics */}
+                                                                                {tExp && (
+                                                                                    <div className="bg-white">
+                                                                                        {topic.subtopics.map(sub => {
+                                                                                            const sc = sub.code;
+                                                                                            const sChk = curS.has(sc);
+                                                                                            const snapS = snapSubtopics[sk] ?? new Set();
+                                                                                            const sSnap = snapS.has(sc);
+                                                                                            const sNew = sChk && !sSnap;
+                                                                                            const sRemoved = !sChk && sSnap;
+                                                                                            return (
+                                                                                                <label
+                                                                                                    key={sc}
+                                                                                                    className={`flex items-center gap-3 px-12 py-2 hover:bg-blue-50 cursor-pointer ${sRemoved ? 'opacity-50' : ''}`}
+                                                                                                >
+                                                                                                    <input
+                                                                                                        type="checkbox"
+                                                                                                        checked={sChk}
+                                                                                                        onChange={() => toggleSubtopic(lk, tc, sc)}
+                                                                                                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                                                                                                    />
+                                                                                                    <span className="text-xs text-gray-700">{sub.name}</span>
+                                                                                                    <span className="ml-auto flex items-center gap-1">
+                                                                                                        {sub.registered && !sRemoved && <span className="text-xs text-green-500">✓ Added</span>}
+                                                                                                        {sNew && <span className="text-xs text-blue-500">+ New</span>}
+                                                                                                        {sRemoved && <span className="text-xs text-red-500">− Remove</span>}
+                                                                                                    </span>
+                                                                                                </label>
+                                                                                            );
+                                                                                        })}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                            <p className="text-xs text-gray-400">
+                                {hasChanges
+                                    ? `${diff.addCount > 0 ? `+${diff.addCount} to add` : ''}${diff.addCount > 0 && diff.removeCount > 0 ? ' · ' : ''}${diff.removeCount > 0 ? `−${diff.removeCount} to remove` : ''}`
+                                    : 'No changes'
+                                }
+                            </p>
+                            <div className="flex gap-3">
+                                <Button variant="secondary" onClick={onClose} disabled={seeding}>Cancel</Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleSave}
+                                    disabled={seeding || !hasChanges}
+                                >
+                                    {seeding ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+        </Modal>
     );
 }
