@@ -67,12 +67,12 @@ export default function OutcomeInSessionPage() {
                 setLoading(true);
 
                 // 1. Fetch the learning outcome (curriculum data)
-                const outcomeResponse = await apiClient.get(`/learning-outcomes/${learningOutcomeId}/`);
+                const outcomeResponse = await apiClient.get(`/cbc/learning-outcomes/${learningOutcomeId}/`);
                 setLearningOutcome(outcomeResponse.data);
 
                 // 2. Fetch all outcome sessions for this session
                 const sessionOutcomesResponse = await apiClient.get(
-                    `/outcome-sessions/by_session/?session_id=${sessionId}`
+                    `/cbc/outcome-sessions/by_session/?session_id=${sessionId}`
                 );
 
                 // 3. Find the specific OutcomeSession that links this learning outcome to this session
@@ -100,7 +100,7 @@ export default function OutcomeInSessionPage() {
         try {
             // CORRECT: Use OutcomeSession endpoint with the join table ID
             const response = await apiClient.patch(
-                `/outcome-sessions/${outcomeSession.id}/mark_covered/`,
+                `/cbc/outcome-sessions/${outcomeSession.id}/mark_covered/`,
                 { notes }
             );
             setOutcomeSession(response.data);
@@ -116,7 +116,7 @@ export default function OutcomeInSessionPage() {
         try {
             // CORRECT: Use OutcomeSession endpoint, NOT learning-outcomes
             const response = await apiClient.patch(
-                `/outcome-sessions/${outcomeSession.id}/mark_covered/`,
+                `/cbc/outcome-sessions/${outcomeSession.id}/mark_covered/`,
                 { notes }
             );
             setOutcomeSession(response.data);

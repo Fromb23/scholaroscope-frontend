@@ -108,14 +108,17 @@ export default function ManageSubStrandsPage() {
             render: r => (
                 <div className="flex items-center justify-end gap-1">
                     <Link href={`/cbc/authoring/sub-strands/${r.id}`}
+                        onClick={e => e.stopPropagation()}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <ChevronRight className="h-4 w-4" />
                     </Link>
-                    <button onClick={() => startEdit(r)}
+                    <button
+                        onClick={e => { e.stopPropagation(); startEdit(r); }}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => setDeleteId(r.id)}
+                    <button
+                        onClick={e => { e.stopPropagation(); setDeleteId(r.id); }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="h-4 w-4" />
                     </button>
@@ -254,9 +257,9 @@ export default function ManageSubStrandsPage() {
                         {subStrands.length > 0 && <Badge variant="blue" size="sm">{subStrands.length}</Badge>}
                     </h2>
                 </div>
-                <DataTable
-                    data={subStrands}
-                    columns={columns}
+                <DataTable<SubStrand & Record<string, unknown>>
+                    data={subStrands as (SubStrand & Record<string, unknown>)[]}
+                    columns={columns as Column<SubStrand & Record<string, unknown>>[]}
                     loading={isLoading}
                     enableSearch
                     enableSort

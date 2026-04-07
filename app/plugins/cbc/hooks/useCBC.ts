@@ -29,6 +29,7 @@ import type {
   LearningOutcome,
   StrandDetail,
   TeachingSession,
+  EvidenceRecord,
 } from '@/app/plugins/cbc/types/cbc';
 
 // ============================================================================
@@ -212,15 +213,21 @@ export const useDeleteOutcome = () => {
 // Evidence
 // ============================================================================
 
+type ApiList<T> = T[] | { results: T[]; count: number };
+
+// Updated useEvidence
 export const useEvidence = (params?: {
   student?: number;
   learning_outcome?: number;
   source_type?: string;
   source_id?: number;
 }) =>
-  useQuery({
+  useQuery<EvidenceRecord[]>({
     queryKey: cbcKeys.evidence.list(params),
-    queryFn: () => evidenceAPI.getAll(params),
+    queryFn: async (): Promise<EvidenceRecord[]> => {
+      const data = await evidenceAPI.getAll(params) as ApiList<EvidenceRecord>;
+      return Array.isArray(data) ? data : data.results ?? [];
+    },
     enabled: !!(params?.student || params?.learning_outcome),
     staleTime: 2 * 60 * 1000,
   });
