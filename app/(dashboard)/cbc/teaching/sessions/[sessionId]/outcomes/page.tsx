@@ -1,230 +1,189 @@
-// ============================================================================
-// app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/page.tsx
-// Manage Outcomes for Session - Core Teaching Page
-// ============================================================================
-
 'use client';
+// app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/page.tsx
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-    ArrowLeft,
-    Plus,
-    CheckCircle,
-    Circle,
-    Trash2,
-    FileText,
-    Target,
-    BookOpen
+    ArrowLeft, Plus, CheckCircle, Circle, Trash2,
+    FileText, Target, BookOpen, Users,
 } from 'lucide-react';
-import { useTeachingSession, useOutcomeSessions } from '@/app/plugins/cbc/hooks/useCBC';
+import {
+    useTeachingSession, useOutcomeSessions,
+    useMarkOutcomeCovered, useRemoveOutcomeLink, useSessionSummary,
+} from '@/app/plugins/cbc/hooks/useCBC';
+import {
+    CBCNav, CBCBreadcrumb, CBCError, CBCLoading,
+    SessionStatusBadge,
+} from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { Input } from '@/app/components/ui/Input';
 
 export default function SessionOutcomesPage() {
-    const params = useParams();
-    const router = useRouter();
-    const sessionId = Number(params.sessionId);
-    console.log("Rendering session id from params", sessionId);
+    const { sessionId: raw } = useParams<{ sessionId: string }>();
+    const sessionId = Number(raw);
 
-    const { session, loading: sessionLoading } = useTeachingSession(sessionId);
-    const { links, loading: linksLoading, markCovered, removeLink } = useOutcomeSessions(sessionId);
-    console.log("Viewing content of links", links);
+    const { data: session, isLoading: sessionLoading, error: sessionError } =
+        useTeachingSession(sessionId);
+    const { data: links = [], isLoading: linksLoading, error: linksError, refetch } =
+        useOutcomeSessions(sessionId);
+    const { data: summary } = useSessionSummary(sessionId);
 
-    const [marking, setMarking] = useState<number | null>(null);
-    const [removing, setRemoving] = useState<number | null>(null);
+    const markCovered = useMarkOutcomeCovered();
+    const removeLink = useRemoveOutcomeLink();
+
     const [editingNotes, setEditingNotes] = useState<number | null>(null);
     const [notesValue, setNotesValue] = useState('');
 
-    const handleToggleCovered = async (linkId: number, currentStatus: boolean, currentNotes: string) => {
-        if (currentStatus) {
-            // Already covered - optionally show notes editor
+    const handleToggleCovered = async (linkId: number, covered: boolean, notes: string) => {
+        if (covered) {
             setEditingNotes(linkId);
-            setNotesValue(currentNotes);
+            setNotesValue(notes);
             return;
         }
-
-        setMarking(linkId);
-        try {
-            await markCovered(linkId);
-        } catch (err) {
-            console.error('Failed to mark covered:', err);
-        } finally {
-            setMarking(null);
-        }
+        await markCovered.mutateAsync({ id: linkId });
     };
 
     const handleSaveNotes = async (linkId: number) => {
-        setMarking(linkId);
-        try {
-            await markCovered(linkId, notesValue);
-            setEditingNotes(null);
-            setNotesValue('');
-        } catch (err) {
-            console.error('Failed to save notes:', err);
-        } finally {
-            setMarking(null);
-        }
+        await markCovered.mutateAsync({ id: linkId, notes: notesValue });
+        setEditingNotes(null);
     };
 
-    const handleRemoveLink = async (linkId: number) => {
+    const handleRemove = async (linkId: number) => {
         if (!confirm('Remove this outcome from the session?')) return;
-
-        setRemoving(linkId);
-        try {
-            await removeLink(linkId);
-        } catch (err) {
-            console.error('Failed to remove link:', err);
-        } finally {
-            setRemoving(null);
-        }
+        await removeLink.mutateAsync(linkId);
     };
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    };
-
-    if (sessionLoading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                    <p className="text-sm text-gray-500">Loading session...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!session) {
-        return (
-            <div className="py-20 text-center">
-                <p className="text-gray-500">Session not found</p>
-                <Link href="/cbc/teaching">
-                    <Button variant="primary" size="sm" className="mt-4">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Teaching
-                    </Button>
-                </Link>
-            </div>
-        );
-    }
 
     const coveredCount = links.filter(l => l.covered).length;
-    const pendingCount = links.length - coveredCount;
+    const progress = links.length > 0 ? Math.round((coveredCount / links.length) * 100) : 0;
+
+    if (sessionLoading) return <CBCLoading />;
+    if (sessionError || !session) return (
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCError error={sessionError ?? 'Session not found'} />
+        </div>
+    );
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
-            {/* CBC nav */}
-            <nav className="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-                <Link href="/cbc/authoring" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Authoring
-                </Link>
-                <Link href="/cbc/browser" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Browser
-                </Link>
-                <Link href="/cbc/progress" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Progress
-                </Link>
-                <Link href="/cbc/teaching" className="flex-1 text-center text-sm font-semibold text-white bg-blue-600 rounded-lg py-2.5 shadow-sm">
-                    Teaching
-                </Link>
-            </nav>
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCBreadcrumb segments={[
+                { label: 'Teaching', href: '/cbc/teaching' },
+                { label: 'Sessions', href: '/cbc/teaching/sessions' },
+                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
+                { label: 'Outcomes' },
+            ]} />
 
-            {/* Breadcrumb */}
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Link href="/cbc/teaching" className="hover:text-blue-600">Teaching</Link>
-                <span>→</span>
-                <Link href="/cbc/teaching/sessions" className="hover:text-blue-600">Sessions</Link>
-                <span>→</span>
-                <Link href={`/cbc/teaching/sessions/${sessionId}`} className="hover:text-blue-600">
-                    {session.subject_name}
-                </Link>
-                <span>→</span>
-                <span className="text-gray-900 font-medium">Outcomes</span>
-            </div>
-
-            {/* Session Header */}
+            {/* Session header */}
             <Card className="shadow-sm">
-                <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50
+            rounded-xl border border-blue-100 shrink-0">
                         <BookOpen className="h-7 w-7 text-blue-600" />
                     </div>
-                    <div className="flex-1">
-                        <h1 className="text-xl font-bold text-gray-900 mb-1">
-                            {session.subject_name || 'General Session'}
-                        </h1>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap mb-1">
+                            <h1 className="text-xl font-bold text-gray-900">
+                                {session.subject_name ?? 'General Session'}
+                            </h1>
+                            <SessionStatusBadge status={session.status} />
+                        </div>
                         <p className="text-gray-600 mb-2">{session.cohort_name}</p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                            <span>{formatDate(session.session_date)}</span>
-                            <span>•</span>
-                            <div className="flex items-center gap-2">
-                                <Badge variant="blue" size="sm">{links.length} outcomes</Badge>
-                                <Badge variant="green" size="sm">{coveredCount} covered</Badge>
-                                {pendingCount > 0 && (
-                                    <Badge variant="default" size="sm">{pendingCount} pending</Badge>
-                                )}
-                            </div>
+                        <p className="text-sm text-gray-500">
+                            {new Date(session.session_date).toLocaleDateString('en-GB', {
+                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                            })}
+                        </p>
+                    </div>
+                    {/* Tab nav */}
+                    <div className="flex gap-2 shrink-0">
+                        <span className="px-3 py-1.5 bg-blue-600 text-white text-sm
+              font-medium rounded-lg">
+                            Outcomes
+                        </span>
+                        <Link href={`/cbc/teaching/sessions/${sessionId}/learners`}
+                            className="px-3 py-1.5 text-gray-600 text-sm font-medium
+                hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5">
+                            <Users className="h-4 w-4" />
+                            Learners
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Coverage progress bar */}
+                {links.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="flex items-center justify-between text-sm mb-2">
+                            <span className="text-gray-600">
+                                {coveredCount} of {links.length} outcomes covered
+                            </span>
+                            <span className="font-semibold text-blue-600">{progress}%</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                                style={{ width: `${progress}%` }}
+                            />
                         </div>
                     </div>
-                    <Link href={`/cbc/teaching/sessions/${sessionId}`}>
-                        <Button variant="ghost" size="sm">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Session
-                        </Button>
-                    </Link>
-                </div>
+                )}
+
+                {/* Summary stats if available */}
+                {summary && (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                        <Badge variant="blue" size="sm">
+                            {summary.evidence.total_records} evidence records
+                        </Badge>
+                        <Badge variant="purple" size="sm">
+                            {summary.evidence.students_with_evidence} students observed
+                        </Badge>
+                    </div>
+                )}
             </Card>
 
-            {/* Outcomes List */}
-            <Card className="shadow-sm">
+            {linksError && <CBCError error={linksError} onRetry={refetch} />}
+
+            {/* Outcomes list */}
+            <Card>
                 <div className="flex items-center justify-between mb-5">
                     <div>
                         <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                             <Target className="h-5 w-5 text-blue-600" />
                             Linked Outcomes
+                            {links.length > 0 && <Badge variant="blue" size="sm">{links.length}</Badge>}
                         </h2>
                         <p className="text-sm text-gray-500 mt-1">
-                            Mark outcomes as covered and add session notes
+                            Mark outcomes as covered and record evidence per learner
                         </p>
                     </div>
                     <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`}>
                         <Button variant="primary" size="md">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Outcomes
+                            <Plus className="h-4 w-4 mr-2" />Add Outcomes
                         </Button>
                     </Link>
                 </div>
 
                 {linksLoading ? (
-                    <div className="py-12 text-center">
-                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                        <p className="mt-2 text-sm text-gray-500">Loading outcomes...</p>
-                    </div>
+                    <CBCLoading message="Loading outcomes…" />
                 ) : links.length === 0 ? (
                     <div className="py-16 text-center">
                         <Target className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                         <p className="text-gray-500 mb-1">No outcomes linked yet</p>
                         <p className="text-sm text-gray-400 mb-4">
-                            Start by adding curriculum outcomes to this session
+                            Add curriculum outcomes to track what was taught
                         </p>
                         <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`}>
                             <Button variant="primary" size="md">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Outcomes
+                                <Plus className="mr-2 h-4 w-4" />Add Outcomes
                             </Button>
                         </Link>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {links.map((link) => (
+                        {links.map(link => (
                             <div
                                 key={link.id}
                                 className={`border rounded-xl p-5 transition-all ${link.covered
@@ -233,36 +192,33 @@ export default function SessionOutcomesPage() {
                                     }`}
                             >
                                 <div className="flex items-start gap-4">
-                                    {/* Coverage Toggle */}
+                                    {/* Toggle */}
                                     <button
                                         onClick={() => handleToggleCovered(link.id, link.covered, link.notes)}
-                                        disabled={marking === link.id}
+                                        disabled={markCovered.isPending}
                                         className="mt-1 shrink-0"
-                                        title={link.covered ? 'Covered' : 'Mark as covered'}
                                     >
-                                        {link.covered ? (
-                                            <CheckCircle className="h-6 w-6 text-green-600" />
-                                        ) : (
-                                            <Circle className="h-6 w-6 text-gray-300 hover:text-blue-600 transition-colors" />
-                                        )}
+                                        {link.covered
+                                            ? <CheckCircle className="h-6 w-6 text-green-600" />
+                                            : <Circle className="h-6 w-6 text-gray-300 hover:text-blue-600 transition-colors" />
+                                        }
                                     </button>
 
-                                    {/* Outcome Details */}
                                     <div className="flex-1 min-w-0">
+                                        {/* Outcome info */}
                                         <div className="flex items-start justify-between gap-4 mb-2">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <Badge variant="purple" size="md" className="font-mono font-semibold">
                                                     {link.learning_outcome_code}
                                                 </Badge>
-                                                <span className="text-xs text-gray-500">
+                                                <span className="text-xs text-gray-500 hidden sm:inline">
                                                     {link.strand_name} → {link.sub_strand_name}
                                                 </span>
                                             </div>
                                             <button
-                                                onClick={() => handleRemoveLink(link.id)}
-                                                disabled={removing === link.id}
-                                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                title="Remove from session"
+                                                onClick={() => handleRemove(link.id)}
+                                                disabled={removeLink.isPending}
+                                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
@@ -272,68 +228,50 @@ export default function SessionOutcomesPage() {
                                             {link.learning_outcome_description}
                                         </p>
 
-                                        {/* Notes Section */}
+                                        {/* Notes */}
                                         {editingNotes === link.id ? (
                                             <div className="space-y-2">
                                                 <Input
-                                                    label="Session Notes"
+                                                    label="Session notes"
                                                     value={notesValue}
-                                                    onChange={(e) => setNotesValue(e.target.value)}
-                                                    placeholder="Add notes about how this outcome was covered..."
+                                                    onChange={e => setNotesValue(e.target.value)}
+                                                    placeholder="How was this outcome covered?"
                                                 />
                                                 <div className="flex gap-2">
-                                                    <Button
-                                                        variant="primary"
-                                                        size="sm"
+                                                    <Button variant="primary" size="sm"
                                                         onClick={() => handleSaveNotes(link.id)}
-                                                        disabled={marking === link.id}
-                                                    >
+                                                        disabled={markCovered.isPending}>
                                                         Save Notes
                                                     </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            setEditingNotes(null);
-                                                            setNotesValue('');
-                                                        }}
-                                                    >
+                                                    <Button variant="ghost" size="sm"
+                                                        onClick={() => setEditingNotes(null)}>
                                                         Cancel
                                                     </Button>
                                                 </div>
                                             </div>
                                         ) : link.notes ? (
                                             <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                                <p className="text-sm text-gray-700 italic">
-                                                    {link.notes}
-                                                </p>
+                                                <p className="text-sm text-gray-700 italic">{link.notes}</p>
                                                 <button
-                                                    onClick={() => {
-                                                        setEditingNotes(link.id);
-                                                        setNotesValue(link.notes);
-                                                    }}
-                                                    className="text-xs text-blue-600 hover:underline mt-1"
-                                                >
+                                                    onClick={() => { setEditingNotes(link.id); setNotesValue(link.notes); }}
+                                                    className="text-xs text-blue-600 hover:underline mt-1">
                                                     Edit notes
                                                 </button>
                                             </div>
                                         ) : link.covered && (
                                             <button
-                                                onClick={() => {
-                                                    setEditingNotes(link.id);
-                                                    setNotesValue('');
-                                                }}
-                                                className="text-sm text-blue-600 hover:underline"
-                                            >
+                                                onClick={() => { setEditingNotes(link.id); setNotesValue(''); }}
+                                                className="text-sm text-blue-600 hover:underline">
                                                 + Add session notes
                                             </button>
                                         )}
 
-                                        {/* Evidence Link */}
+                                        {/* Evidence link */}
                                         <div className="mt-3 pt-3 border-t border-gray-100">
                                             <Link
                                                 href={`/cbc/teaching/sessions/${sessionId}/outcomes/${link.learning_outcome}`}
-                                                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+                                                className="inline-flex items-center gap-2 text-sm text-blue-600
+                          hover:text-blue-700 font-medium"
                                             >
                                                 <FileText className="h-4 w-4" />
                                                 Record Evidence

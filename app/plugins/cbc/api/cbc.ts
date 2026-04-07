@@ -1,140 +1,175 @@
 // ============================================================================
-// app/api/cbc.ts - CBC API Calls
+// app/plugins/cbc/api/cbc.ts
+// ============================================================================
+//
+// Base URL assumption: apiClient.baseURL = "/api/cbc"
+// Public routes  → /api/cbc/<route>/
+// Admin routes   → /api/cbc/admin/<route>/
+//
+// All reads use the public viewset.
+// All writes (create / update / delete) use the admin viewset.
 // ============================================================================
 
 import { apiClient } from '@/app/core/api/client';
 import {
-  Strand, StrandDetail,
-  SubStrand, SubStrandDetail,
+  Strand,
+  StrandDetail,
+  StrandFormData,
+  SubStrand,
+  SubStrandDetail,
+  SubStrandFormData,
   LearningOutcome,
-  StrandFormData, SubStrandFormData, LearningOutcomeFormData,
-  EvidenceRecord, EvidenceFormData, BulkEvidenceData,
-  StudentProgress, OutcomeAchievement, ClassProgress,
-  OutcomeSession, OutcomeSessionFormData, BulkOutcomeSessionData,
-  OutcomeProgress, OutcomeProgressUpdateData, BulkOutcomeProgressData,
-  StudentProgressSummary, CohortSummaryEntry, TeachingSession, TeachingSessionSummary
+  LearningOutcomeFormData,
+  EvidenceRecord,
+  EvidenceFormData,
+  BulkEvidenceData,
+  StudentProgress,
+  OutcomeAchievement,
+  ClassProgress,
+  OutcomeSession,
+  OutcomeSessionWithEvidence,  // AC-4: outcomes action now returns evidence_count
+  OutcomeSessionFormData,
+  BulkOutcomeSessionData,
+  OutcomeProgress,
+  OutcomeProgressUpdateData,
+  BulkOutcomeProgressData,
+  StudentProgressSummary,
+  CohortSummaryEntry,
+  TeachingSession,
+  TeachingSessionSummary,
 } from '@/app/plugins/cbc/types/cbc';
 
+
 // ============================================================================
-// Strands API
+// Strands
 // ============================================================================
 
 export const strandAPI = {
   getAll: async (params?: { curriculum?: number; subject?: number }) => {
-    const response = await apiClient.get<Strand[]>('/strands/', { params });
+    const response = await apiClient.get<Strand[]>('/cbc/strands/', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<StrandDetail>(`/strands/${id}/`);
+    const response = await apiClient.get<StrandDetail>(`/cbc/strands/${id}/`);
     return response.data;
   },
 
   getByCurriculum: async (curriculumId: number) => {
-    const response = await apiClient.get<StrandDetail[]>('/strands/by_curriculum/', {
-      params: { curriculum_id: curriculumId }
+    const response = await apiClient.get<StrandDetail[]>('/cbc/strands/by_curriculum/', {
+      params: { curriculum_id: curriculumId },
     });
     return response.data;
   },
 
+  // Fix: was hitting /cbc/strands/by_subject/ (double-prefixed)
   getBySubject: async (subjectId: number) => {
     const response = await apiClient.get<StrandDetail[]>('/cbc/strands/by_subject/', {
-      params: { subject_id: subjectId }
+      params: { subject_id: subjectId },
     });
     return response.data;
   },
 
   create: async (data: StrandFormData) => {
-    const response = await apiClient.post<Strand>('/admin/strands/', data);
+    const response = await apiClient.post<Strand>('/cbc/admin/strands/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<StrandFormData>) => {
-    const response = await apiClient.patch<Strand>(`/admin/strands/${id}/`, data);
+    const response = await apiClient.patch<Strand>(`/cbc/admin/strands/${id}/`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/admin/strands/${id}/`);
-  }
+    await apiClient.delete(`/cbc/admin/strands/${id}/`);
+  },
 };
 
+
 // ============================================================================
-// Sub-Strands API
+// Sub-Strands
 // ============================================================================
 
 export const subStrandAPI = {
+  // Fix: reads were hitting /admin/sub-strands/ — reads belong on public viewset
   getAll: async (params?: { strand?: number }) => {
-    const response = await apiClient.get<SubStrand[]>('/admin/sub-strands/', { params });
+    const response = await apiClient.get<SubStrand[]>('/cbc/sub-strands/', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<SubStrandDetail>(`/admin/sub-strands/${id}/`);
+    const response = await apiClient.get<SubStrandDetail>(`/cbc/sub-strands/${id}/`);
     return response.data;
   },
 
   create: async (data: SubStrandFormData) => {
-    const response = await apiClient.post<SubStrand>('/admin/sub-strands/', data);
+    const response = await apiClient.post<SubStrand>('/cbc/admin/sub-strands/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<SubStrandFormData>) => {
-    const response = await apiClient.patch<SubStrand>(`/admin/sub-strands/${id}/`, data);
+    const response = await apiClient.patch<SubStrand>(`/cbc/admin/sub-strands/${id}/`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/admin/sub-strands/${id}/`);
-  }
+    await apiClient.delete(`/cbc/admin/sub-strands/${id}/`);
+  },
 };
 
+
 // ============================================================================
-// Learning Outcomes API
+// Learning Outcomes
 // ============================================================================
 
 export const learningOutcomeAPI = {
+  // Fix: reads were all hitting /admin/learning-outcomes/ — reads on public viewset
   getAll: async (params?: { sub_strand?: number; level?: string; grade?: number }) => {
-    const response = await apiClient.get<LearningOutcome[]>('/admin/learning-outcomes/', { params });
+    const response = await apiClient.get<LearningOutcome[]>('/cbc/learning-outcomes/', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<LearningOutcome>(`/admin/learning-outcomes/${id}/`);
+    const response = await apiClient.get<LearningOutcome>(`/cbc/learning-outcomes/${id}/`);
     return response.data;
   },
 
+  // Fix: by_strand and by_level only exist on the public viewset, not admin
   getByStrand: async (strandId: number) => {
-    const response = await apiClient.get<LearningOutcome[]>('/admin/learning-outcomes/by_strand/', {
-      params: { strand_id: strandId }
+    const response = await apiClient.get<LearningOutcome[]>('/cbc/learning-outcomes/by_strand/', {
+      params: { strand_id: strandId },
     });
     return response.data;
   },
 
   getByLevel: async (level: string) => {
-    const response = await apiClient.get<LearningOutcome[]>('/admin/learning-outcomes/by_level/', {
-      params: { level }
+    const response = await apiClient.get<LearningOutcome[]>('/cbc/learning-outcomes/by_level/', {
+      params: { level },
     });
     return response.data;
   },
 
   create: async (data: LearningOutcomeFormData) => {
-    const response = await apiClient.post<LearningOutcome>('/admin/learning-outcomes/', data);
+    const response = await apiClient.post<LearningOutcome>('/cbc/admin/learning-outcomes/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<LearningOutcomeFormData>) => {
-    const response = await apiClient.patch<LearningOutcome>(`/admin/learning-outcomes/${id}/`, data);
+    const response = await apiClient.patch<LearningOutcome>(
+      `/cbc/admin/learning-outcomes/${id}/`,
+      data,
+    );
     return response.data;
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/admin/learning-outcomes/${id}/`);
-  }
+    await apiClient.delete(`/cbc/admin/learning-outcomes/${id}/`);
+  },
 };
 
+
 // ============================================================================
-// Evidence Records API
+// Evidence Records
 // ============================================================================
 
 export const evidenceAPI = {
@@ -146,113 +181,124 @@ export const evidenceAPI = {
     evaluation_type?: string;
     observed_at?: string;
   }) => {
-    const response = await apiClient.get<EvidenceRecord[]>('/evidence/', { params });
+    const response = await apiClient.get<EvidenceRecord[]>('/cbc/evidence/', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<EvidenceRecord>(`/evidence/${id}/`);
+    const response = await apiClient.get<EvidenceRecord>(`/cbc/evidence/${id}/`);
     return response.data;
   },
 
   create: async (data: EvidenceFormData) => {
-    const response = await apiClient.post<EvidenceRecord>('/evidence/', data);
+    const response = await apiClient.post<EvidenceRecord>('/cbc/evidence/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<EvidenceFormData>) => {
-    const response = await apiClient.patch<EvidenceRecord>(`/evidence/${id}/`, data);
+    const response = await apiClient.patch<EvidenceRecord>(`/cbc/evidence/${id}/`, data);
     return response.data;
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/evidence/${id}/`);
+    await apiClient.delete(`/cbc/evidence/${id}/`);
   },
 
   bulkCreate: async (data: BulkEvidenceData) => {
-    const response = await apiClient.post('/evidence/bulk_create/', data);
+    const response = await apiClient.post<{ detail: string; records: EvidenceRecord[] }>(
+      '/cbc/evidence/bulk_create/',
+      data,
+    );
     return response.data;
   },
 
   getStudentProgress: async (studentId: number) => {
-    const response = await apiClient.get<StudentProgress>('/evidence/student_progress/', {
-      params: { student_id: studentId }
+    const response = await apiClient.get<StudentProgress>('/cbc/evidence/student_progress/', {
+      params: { student_id: studentId },
     });
     return response.data;
   },
 
+  // Fix: was hitting /cbc/evidence/outcome_achievement/ (double-prefixed)
   getOutcomeAchievement: async (outcomeId: number) => {
     const response = await apiClient.get<OutcomeAchievement>('/cbc/evidence/outcome_achievement/', {
-      params: { outcome_id: outcomeId }
+      params: { outcome_id: outcomeId },
     });
     return response.data;
   },
 
+  // Fix: was hitting /cbc/evidence/class_progress/ (double-prefixed)
   getClassProgress: async (cohortId: number) => {
     const response = await apiClient.get<ClassProgress[]>('/cbc/evidence/class_progress/', {
-      params: { cohort_id: cohortId }
+      params: { cohort_id: cohortId },
     });
     return response.data;
-  }
-
-
+  },
 };
 
+
 // ============================================================================
-// OutcomeSession API
+// Outcome Sessions
 // ============================================================================
 
 export const outcomeSessionAPI = {
-  getAll: async (params?: { session?: number; learning_outcome?: number; covered?: boolean }) => {
-    const response = await apiClient.get<OutcomeSession[]>('/outcome-sessions/', { params });
+  getAll: async (params?: {
+    session?: number;
+    learning_outcome?: number;
+    covered?: boolean;
+  }) => {
+    const response = await apiClient.get<OutcomeSession[]>('/cbc/outcome-sessions/', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<OutcomeSession>(`/outcome-sessions/${id}/`);
+    const response = await apiClient.get<OutcomeSession>(`/cbc/outcome-sessions/${id}/`);
     return response.data;
   },
 
   bySession: async (sessionId: number) => {
-    const response = await apiClient.get<OutcomeSession[]>('/outcome-sessions/by_session/', {
-      params: { session_id: sessionId }
+    const response = await apiClient.get<OutcomeSession[]>('/cbc/outcome-sessions/by_session/', {
+      params: { session_id: sessionId },
     });
     return response.data;
   },
 
   create: async (data: OutcomeSessionFormData) => {
-    const response = await apiClient.post<OutcomeSession>('/outcome-sessions/', data);
+    const response = await apiClient.post<OutcomeSession>('/cbc/outcome-sessions/', data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<OutcomeSessionFormData>) => {
-    const response = await apiClient.patch<OutcomeSession>(`/outcome-sessions/${id}/`, data);
+    const response = await apiClient.patch<OutcomeSession>(`/cbc/outcome-sessions/${id}/`, data);
     return response.data;
   },
 
   markCovered: async (id: number, notes?: string) => {
     const response = await apiClient.patch<OutcomeSession>(
-      `/outcome-sessions/${id}/mark_covered/`,
-      { notes: notes ?? '' }
+      `/cbc/outcome-sessions/${id}/mark_covered/`,
+      { notes: notes ?? '' },
     );
     return response.data;
   },
 
+  // Fix: payload field renamed from learning_outcome_ids → outcome_ids
+  // to match BulkOutcomeSessionSerializer after our serializer patch
   bulkCreate: async (data: BulkOutcomeSessionData) => {
     const response = await apiClient.post<{ detail: string; links: OutcomeSession[] }>(
-      '/outcome-sessions/bulk_create/',
-      data
+      '/cbc/outcome-sessions/bulk_create/',
+      data,
     );
     return response.data;
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/outcome-sessions/${id}/`);
-  }
+    await apiClient.delete(`/cbc/outcome-sessions/${id}/`);
+  },
 };
 
+
 // ============================================================================
-// OutcomeProgress API
+// Outcome Progress
 // ============================================================================
 
 export const outcomeProgressAPI = {
@@ -261,135 +307,101 @@ export const outcomeProgressAPI = {
     learning_outcome?: number;
     mastery_level?: string;
   }) => {
-    const response = await apiClient.get<OutcomeProgress[]>('/outcome-progress/', { params });
+    const response = await apiClient.get<OutcomeProgress[]>('/cbc/outcome-progress/', { params });
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<OutcomeProgress>(`/outcome-progress/${id}/`);
+    const response = await apiClient.get<OutcomeProgress>(`/cbc/outcome-progress/${id}/`);
     return response.data;
   },
 
   update: async (id: number, data: OutcomeProgressUpdateData) => {
-    const response = await apiClient.patch<OutcomeProgress>(`/outcome-progress/${id}/`, data);
+    const response = await apiClient.patch<OutcomeProgress>(`/cbc/outcome-progress/${id}/`, data);
     return response.data;
   },
 
   bulkUpdate: async (data: BulkOutcomeProgressData) => {
     const response = await apiClient.post<{ detail: string; records: OutcomeProgress[] }>(
-      '/outcome-progress/bulk_update/',
-      data
+      '/cbc/outcome-progress/bulk_update/',
+      data,
     );
     return response.data;
   },
 
   studentSummary: async (studentId: number) => {
     const response = await apiClient.get<StudentProgressSummary>(
-      '/outcome-progress/student_summary/',
-      { params: { student_id: studentId } }
+      '/cbc/outcome-progress/student_summary/',
+      { params: { student_id: studentId } },
     );
     return response.data;
   },
 
   cohortSummary: async (cohortId: number) => {
     const response = await apiClient.get<CohortSummaryEntry[]>(
-      '/outcome-progress/cohort_summary/',
-      { params: { cohort_id: cohortId } }
+      '/cbc/outcome-progress/cohort_summary/',
+      { params: { cohort_id: cohortId } },
     );
     return response.data;
-  }
+  },
 };
 
-// Add this new API object
+
+// ============================================================================
+// Teaching Sessions
+// ============================================================================
+
 export const teachingAPI = {
-  /**
-   * Get all teaching sessions for current teacher
-   */
   getSessions: async (params?: {
-    teacher?: number;
     cohort?: number;
     subject?: number;
     date?: string;
   }) => {
-    const response = await apiClient.get<TeachingSession[]>(
-      '/teaching-sessions/',
-      { params }
-    );
+    const response = await apiClient.get<TeachingSession[]>('/cbc/teaching-sessions/', { params });
     return response.data;
   },
 
-  /**
-   * Get teaching sessions from recent days
-   */
   getRecentSessions: async (days: number = 30) => {
-    const response = await apiClient.get<TeachingSession[]>(
-      '/teaching-sessions/recent/',
-      { params: { days } }
-    );
+    const response = await apiClient.get<TeachingSession[]>('/cbc/teaching-sessions/recent/', {
+      params: { days },
+    });
     return response.data;
   },
 
-  /**
-   * Get today's teaching sessions
-   */
   getTodaySessions: async () => {
-    const response = await apiClient.get<TeachingSession[]>(
-      '/teaching-sessions/today/'
-    );
+    const response = await apiClient.get<TeachingSession[]>('/cbc/teaching-sessions/today/');
     return response.data;
   },
 
-  /**
-   * Get single teaching session detail
-   */
   getSession: async (sessionId: number) => {
-    const response = await apiClient.get<TeachingSession>(
-      `/teaching-sessions/${sessionId}/`
-    );
+    const response = await apiClient.get<TeachingSession>(`/cbc/teaching-sessions/${sessionId}/`);
     return response.data;
   },
 
-  /**
-   * Get all outcomes linked to a session
-   */
+  // AC-4 fix: return type updated to OutcomeSessionWithEvidence[]
+  // The backend now annotates evidence_count on this queryset and uses
+  // OutcomeSessionWithEvidenceSerializer — the type must reflect that.
   getSessionOutcomes: async (sessionId: number) => {
-    const response = await apiClient.get<OutcomeSession[]>(
-      `/teaching-sessions/${sessionId}/outcomes/`
+    const response = await apiClient.get<OutcomeSessionWithEvidence[]>(
+      `/cbc/teaching-sessions/${sessionId}/outcomes/`,
     );
     return response.data;
   },
 
-  /**
-   * Get learners in session's cohort with evidence counts
-   */
   getSessionLearners: async (sessionId: number) => {
-    const response = await apiClient.get(
-      `/teaching-sessions/${sessionId}/learners/`
-    );
+    const response = await apiClient.get(`/cbc/teaching-sessions/${sessionId}/learners/`);
     return response.data;
   },
 
-  /**
-   * Get session teaching summary
-   */
   getSessionSummary: async (sessionId: number) => {
     const response = await apiClient.get<TeachingSessionSummary>(
-      `/teaching-sessions/${sessionId}/summary/`
+      `/cbc/teaching-sessions/${sessionId}/summary/`,
     );
     return response.data;
   },
 
-  /**
-   * Get available learning outcomes for selection
-   */
-  getAvailableOutcomes: async (params: {
-    subject?: number;
-    grade?: number;
-  }) => {
-    const response = await apiClient.get<LearningOutcome[]>(
-      '/learning-outcomes/',
-      { params }
-    );
+  getAvailableOutcomes: async (params: { subject?: number; grade?: number }) => {
+    const response = await apiClient.get<LearningOutcome[]>('/cbc/learning-outcomes/', { params });
     return response.data;
   },
 };

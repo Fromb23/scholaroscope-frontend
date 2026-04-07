@@ -1,61 +1,40 @@
-// ============================================================================
-// app/(dashboard)/cbc/progress/learner/[studentId]/page.tsx — Student Progress - REDESIGNED
-// ============================================================================
-
 'use client';
+// app/(dashboard)/cbc/progress/learner/[studentId]/page.tsx
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-    ArrowLeft,
-    Award,
-    Target,
-    TrendingUp,
-    ChevronDown,
-    ChevronRight,
-    User,
-    AlertCircle,
-    CheckCircle
+    ArrowLeft, Award, Target, TrendingUp,
+    ChevronDown, ChevronRight, User, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import { useOutcomeProgressSummary, useOutcomeProgress } from '@/app/plugins/cbc/hooks/useCBC';
+import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
+import {
+    CBCNav, CBCBreadcrumb, CBCError, CBCLoading,
+    StrandProgressRow, MasteryBadge, MasteryDistributionLegend,
+} from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
-import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import {
-    StrandProgressRow,
-    MasteryBadge,
-    MasteryDistributionLegend,
-} from '@/app/plugins/cbc/components/CBCComponents';
 
 export default function StudentProgressPage() {
-    const params = useParams();
-    const studentId = Number(params.studentId);
+    const { studentId: raw } = useParams<{ studentId: string }>();
+    const studentId = Number(raw);
+    const { expandedStrands, toggleStrand } = useCBCContext();
 
-    // Strand-grouped summary from cache
-    const { summary, loading: summaryLoading } = useOutcomeProgressSummary(studentId);
-    // Raw per-outcome records (for expanded detail rows)
-    const { records, loading: recordsLoading } = useOutcomeProgress(studentId);
+    const { data: summary, isLoading: summaryLoading, error: summaryError, refetch } =
+        useOutcomeProgressSummary(studentId);
+    const { data: records = [], isLoading: recordsLoading } =
+        useOutcomeProgress(studentId);
 
-    // Which strands are expanded
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-    const toggleStrand = (code: string) => {
-        setExpanded(prev => {
-            const next = new Set(prev);
-            next.has(code) ? next.delete(code) : next.add(code);
-            return next;
-        });
-    };
-
-    // Index raw records by strand_name for quick lookup in expanded rows.
+    // Index raw records by strand code for detail rows
     const recordsByStrand = useMemo(() => {
-        if (!summary) return {};
+        if (!summary) return {} as Record<string, typeof records>;
         const map: Record<string, typeof records> = {};
         for (const strand of summary.strand_summary) {
             map[strand.strand_code] = records.filter(r =>
-                r.learning_outcome_code.toUpperCase().includes(strand.strand_code.toUpperCase())
+                r.learning_outcome_code.toUpperCase().startsWith(strand.strand_code.toUpperCase())
             );
         }
         return map;
@@ -66,75 +45,34 @@ export default function StudentProgressPage() {
         [summary]
     );
 
-    // ---------------------------------------------------------------
-    if (summaryLoading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                    <p className="text-sm text-gray-500">Loading progress data...</p>
-                </div>
-            </div>
-        );
-    }
+    if (summaryLoading) return (
+        <div className="space-y-6"><CBCNav /><CBCLoading message="Loading progress data…" /></div>
+    );
 
-    if (!summary) {
-        return (
-            <div className="py-20 text-center max-w-md mx-auto">
-                <User className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                <p className="text-lg font-medium text-gray-900 mb-1">Progress data not found</p>
-                <p className="text-sm text-gray-500 mb-4">Unable to load progress data for this learner.</p>
-                <Link href="/learners">
-                    <Button variant="primary">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Learners
-                    </Button>
-                </Link>
-            </div>
-        );
-    }
+    if (summaryError || !summary) return (
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCError error={summaryError ?? 'Progress data not found'} onRetry={refetch} />
+        </div>
+    );
 
     return (
-        <div className="space-y-6 max-w-6xl mx-auto">
-            {/* CBC nav */}
-            <nav className="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-                <Link
-                    href="/cbc/authoring"
-                    className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors"
-                >
-                    Authoring
-                </Link>
-                <Link
-                    href="/cbc/browser"
-                    className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors"
-                >
-                    Browser
-                </Link>
-                <Link
-                    href="/cbc/progress"
-                    className="flex-1 text-center text-sm font-semibold text-white bg-blue-600 rounded-lg py-2.5 shadow-sm"
-                >
-                    Progress
-                </Link>
-                <Link
-                    href="/cbc/teaching"
-                    className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors"
-                >
-                    Teaching
-                </Link>
-            </nav>
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCBreadcrumb segments={[
+                { label: 'Progress', href: '/cbc/progress' },
+                { label: summary.student.name },
+            ]} />
 
-            {/* Back */}
             <Link href={`/learners/${studentId}`}>
-                <Button variant="ghost" size="md" className="hover:bg-gray-100">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Learner Profile
+                <Button variant="ghost" size="md">
+                    <ArrowLeft className="mr-2 h-4 w-4" />Back to Learner Profile
                 </Button>
             </Link>
 
             {/* Student banner */}
-            <Card className="shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
-                <div className="flex items-center justify-between">
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-white rounded-xl shadow-sm">
                             <User className="h-8 w-8 text-blue-600" />
@@ -146,7 +84,7 @@ export default function StudentProgressPage() {
                             </p>
                         </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                         <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
                             Overall Mastery
                         </p>
@@ -161,57 +99,47 @@ export default function StudentProgressPage() {
             </Card>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatsCard
-                    title="Total Outcomes"
-                    value={summary.total_outcomes}
-                    icon={Target}
-                    color="blue"
-                />
-                <StatsCard
-                    title="Mastered"
-                    value={summary.total_mastered}
-                    icon={Award}
-                    color="green"
-                />
-                <StatsCard
-                    title="Mastery Rate"
-                    value={`${summary.overall_mastery_percentage}%`}
-                    icon={TrendingUp}
-                    color="purple"
-                />
+            <div className="grid grid-cols-3 gap-4">
+                {[
+                    { title: 'Total Outcomes', value: summary.total_outcomes, color: 'text-blue-600' },
+                    { title: 'Mastered', value: summary.total_mastered, color: 'text-emerald-600' },
+                    { title: 'Mastery Rate', value: `${summary.overall_mastery_percentage}%`, color: 'text-purple-600' },
+                ].map(s => (
+                    <Card key={s.title} className="text-center">
+                        <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
+                        <div className="text-sm text-gray-500 mt-1">{s.title}</div>
+                    </Card>
+                ))}
             </div>
 
-            {/* Strand progress — expandable */}
-            <Card className="shadow-sm">
-                <div className="flex items-center justify-between mb-2">
+            {/* Strand progress */}
+            <Card>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                             <Target className="h-5 w-5 text-blue-600" />
                             Progress by Strand
                         </h2>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Click any strand to view detailed per-outcome mastery
-                        </p>
+                        <p className="text-sm text-gray-500 mt-1">Click any strand for per-outcome detail</p>
                     </div>
                     <MasteryDistributionLegend />
                 </div>
 
-                <div className="mt-5 space-y-2">
+                <div className="space-y-2">
                     {summary.strand_summary.map(strand => {
-                        const isOpen = expanded.has(strand.strand_code);
-                        const detailRows = isOpen && !recordsLoading ? (recordsByStrand[strand.strand_code] ?? []) : [];
+                        const isOpen = expandedStrands.has(strand.strand_code);
+                        const detailRows = isOpen && !recordsLoading
+                            ? (recordsByStrand[strand.strand_code] ?? [])
+                            : [];
 
                         return (
-                            <div
-                                key={strand.strand_code}
-                                className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors"
-                            >
-                                {/* Toggle button wrapping the strand row */}
+                            <div key={strand.strand_code}
+                                className="border border-gray-200 rounded-xl overflow-hidden
+                  hover:border-gray-300 transition-colors">
                                 <button
                                     type="button"
                                     onClick={() => toggleStrand(strand.strand_code)}
-                                    className="w-full text-left hover:bg-gray-50 rounded-t-xl transition-colors p-4"
+                                    className="w-full text-left hover:bg-gray-50 p-4 transition-colors"
                                 >
                                     <div className="flex items-center gap-3 mb-3">
                                         <div className="shrink-0">
@@ -223,9 +151,6 @@ export default function StudentProgressPage() {
                                         <Badge variant="blue" size="md" className="font-mono">
                                             {strand.strand_code}
                                         </Badge>
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Click to {isOpen ? 'collapse' : 'expand'} details
-                                        </span>
                                     </div>
                                     <StrandProgressRow
                                         strandCode={strand.strand_code}
@@ -237,14 +162,10 @@ export default function StudentProgressPage() {
                                     />
                                 </button>
 
-                                {/* Expanded: per-outcome table */}
                                 {isOpen && (
                                     <div className="border-t border-gray-100 bg-white p-4">
                                         {recordsLoading ? (
-                                            <div className="py-8 text-center">
-                                                <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mb-2" />
-                                                <p className="text-sm text-gray-500">Loading outcomes...</p>
-                                            </div>
+                                            <CBCLoading message="Loading outcomes…" />
                                         ) : detailRows.length === 0 ? (
                                             <p className="text-sm text-gray-500 italic py-4 text-center">
                                                 No outcome progress records yet for this strand
@@ -254,14 +175,14 @@ export default function StudentProgressPage() {
                                                 <table className="w-full text-sm">
                                                     <thead>
                                                         <tr className="bg-gray-50 text-left">
-                                                            <th className="px-4 py-3 font-medium text-gray-600 text-xs uppercase">Code</th>
-                                                            <th className="px-4 py-3 font-medium text-gray-600 text-xs uppercase">Mastery Level</th>
-                                                            <th className="px-4 py-3 font-medium text-gray-600 text-xs uppercase text-right">Evidence</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-gray-600 uppercase">Code</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-gray-600 uppercase">Mastery</th>
+                                                            <th className="px-4 py-3 text-xs font-medium text-gray-600 uppercase text-right">Evidence</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-100">
-                                                        {detailRows.map((row) => (
-                                                            <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                                                        {detailRows.map(row => (
+                                                            <tr key={row.id} className="hover:bg-gray-50">
                                                                 <td className="px-4 py-3">
                                                                     <Badge variant="indigo" size="sm" className="font-mono">
                                                                         {row.learning_outcome_code}
@@ -272,7 +193,7 @@ export default function StudentProgressPage() {
                                                                 </td>
                                                                 <td className="px-4 py-3 text-right">
                                                                     <Badge variant="default" size="sm">
-                                                                        {row.evidence_count} item{row.evidence_count !== 1 ? 's' : ''}
+                                                                        {row.evidence_count}
                                                                     </Badge>
                                                                 </td>
                                                             </tr>
@@ -291,43 +212,38 @@ export default function StudentProgressPage() {
 
             {/* Focus areas */}
             {weakStrands.length === 0 ? (
-                <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 shadow-sm">
+                <Card className="border-emerald-200 bg-emerald-50">
                     <div className="flex items-start gap-4">
                         <div className="p-3 bg-emerald-100 rounded-xl shrink-0">
                             <CheckCircle className="h-6 w-6 text-emerald-600" />
                         </div>
                         <div>
-                            <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                Excellent Progress!
-                            </h3>
+                            <h3 className="font-semibold text-gray-900 text-lg mb-1">Excellent Progress!</h3>
                             <p className="text-sm text-gray-700">
-                                All strands are at or above 50% mastery. Continue with evidence collection and assessments to maintain this momentum.
+                                All strands are at or above 50% mastery.
                             </p>
                         </div>
                     </div>
                 </Card>
             ) : (
-                <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">
+                <Card className="border-amber-200 bg-amber-50">
                     <div className="flex items-start gap-4">
                         <div className="p-3 bg-amber-100 rounded-xl shrink-0">
                             <AlertCircle className="h-6 w-6 text-amber-600" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                Focus Areas
-                            </h3>
+                            <h3 className="font-semibold text-gray-900 text-lg mb-1">Focus Areas</h3>
                             <p className="text-sm text-gray-700 mb-4">
-                                These strands need attention. Consider targeted support or additional evidence collection.
+                                These strands need attention.
                             </p>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {weakStrands.map(s => (
-                                    <div
-                                        key={s.strand_code}
-                                        className="flex items-center gap-3 p-3 bg-white border border-amber-200 rounded-lg"
-                                    >
+                                    <div key={s.strand_code}
+                                        className="flex items-center gap-3 p-3 bg-white
+                      border border-amber-200 rounded-lg">
                                         <div className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" />
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
+                                            <div className="flex items-center gap-2 mb-0.5">
                                                 <Badge variant="orange" size="sm" className="font-mono">
                                                     {s.strand_code}
                                                 </Badge>
@@ -335,7 +251,7 @@ export default function StudentProgressPage() {
                                             </div>
                                             <p className="text-sm text-gray-600">
                                                 <span className="font-semibold text-amber-700">{s.completion_percentage}%</span>
-                                                {' '}mastery — {s.mastered_count} of {s.total_outcomes} outcomes mastered
+                                                {' '}— {s.mastered_count} of {s.total_outcomes} outcomes mastered
                                             </p>
                                         </div>
                                     </div>

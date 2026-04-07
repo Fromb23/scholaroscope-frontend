@@ -1,6 +1,9 @@
-// ============================================================================
-// app/types/cbc.ts - CBC Types
-// ============================================================================
+// app/plugins/cbc/types/cbc.ts
+// Aligned to backend after service layer refactor.
+// Removed: recorded_by (dropped from all serializers)
+//          code/sequence from form types (server-generated)
+//          learning_outcome_ids → outcome_ids
+//          TeachingSession fields that don't exist on Session model
 
 // ============================================================================
 // Structural layer
@@ -12,10 +15,10 @@ export interface Strand {
   curriculum_name: string;
   subject: number | null;
   subject_name: string | null;
-  code: string;
+  code: string;             // read-only — server generated
   name: string;
   description: string;
-  sequence: number;
+  sequence: number;         // read-only — server generated
   sub_strands_count: number;
 }
 
@@ -27,10 +30,10 @@ export interface SubStrand {
   id: number;
   strand: number;
   strand_name: string;
-  code: string;
+  code: string;             // read-only — server generated
   name: string;
   description: string;
-  sequence: number;
+  sequence: number;         // read-only — server generated
   outcomes_count: number;
 }
 
@@ -45,11 +48,35 @@ export interface LearningOutcome {
   strand_name: string;
   grade: number | null;
   grade_name: string | null;
-  code: string;
+  code: string;             // read-only — server generated
   description: string;
   level: string;
   evidence_count: number;
   created_at: string;
+}
+
+// ============================================================================
+// Form data — code + sequence intentionally absent (server-generated)
+// ============================================================================
+
+export interface StrandFormData {
+  curriculum: number;
+  subject?: number | null;
+  name: string;
+  description?: string;
+}
+
+export interface SubStrandFormData {
+  strand: number;
+  name: string;
+  description?: string;
+}
+
+export interface LearningOutcomeFormData {
+  sub_strand: number;
+  grade?: number | null;
+  description: string;
+  level?: string;
 }
 
 // ============================================================================
@@ -80,7 +107,7 @@ export interface EvidenceRecord {
   narrative: string;
   observed_at: string;
   recorded_at: string;
-  recorded_by: string;
+  recorded_by: number | null;   // FK id — never sent from client
   created_at: string;
 }
 
@@ -94,14 +121,14 @@ export interface EvidenceFormData {
   rubric_level?: number | null;
   narrative?: string;
   observed_at: string;
-  recorded_by: string;
+  // recorded_by intentionally absent — injected from request.user on server
 }
 
 export interface BulkEvidenceData {
   learning_outcome: number;
   evidence_records: Array<{
     student_id: number;
-    evaluation_type: string;
+    evaluation_type: EvaluationType;
     numeric_score?: number;
     rubric_level_id?: number;
     narrative?: string;
@@ -109,19 +136,15 @@ export interface BulkEvidenceData {
   source_type: SourceType;
   source_id?: number | null;
   observed_at: string;
-  recorded_by: string;
+  // recorded_by intentionally absent
 }
 
 // ============================================================================
-// Legacy progress shapes (evidenceAPI actions — kept for compatibility)
+// Progress shapes — evidenceAPI actions
 // ============================================================================
 
 export interface StudentProgress {
-  student: {
-    id: number;
-    name: string;
-    admission_number: string;
-  };
+  student: { id: number; name: string; admission_number: string };
   strand_progress: Array<{
     strand_code: string;
     strand_name: string;
@@ -154,36 +177,7 @@ export interface ClassProgress {
 }
 
 // ============================================================================
-// Structural form data
-// ============================================================================
-
-export interface StrandFormData {
-  curriculum: number;
-  subject?: number | null;
-  code: string;
-  name: string;
-  description?: string;
-  sequence: number;
-}
-
-export interface SubStrandFormData {
-  strand: number;
-  code: string;
-  name: string;
-  description?: string;
-  sequence: number;
-}
-
-export interface LearningOutcomeFormData {
-  sub_strand: number;
-  grade?: number | null;
-  code: string;
-  description: string;
-  level?: string;
-}
-
-// ============================================================================
-// OutcomeSession — session ↔ outcome link (delivery layer)
+// OutcomeSession
 // ============================================================================
 
 export interface OutcomeSession {
@@ -199,6 +193,10 @@ export interface OutcomeSession {
   created_at: string;
 }
 
+export interface OutcomeSessionWithEvidence extends OutcomeSession {
+  evidence_count: number;
+}
+
 export interface OutcomeSessionFormData {
   session: number;
   learning_outcome: number;
@@ -208,11 +206,11 @@ export interface OutcomeSessionFormData {
 
 export interface BulkOutcomeSessionData {
   session: number;
-  learning_outcome_ids: number[];
+  outcome_ids: number[];    // was learning_outcome_ids — renamed in serializer patch
 }
 
 // ============================================================================
-// OutcomeProgress — cached mastery state (progress layer)
+// OutcomeProgress
 // ============================================================================
 
 export type MasteryLevel = 'NOT_STARTED' | 'EMERGING' | 'MEETING' | 'EXCEEDING';
@@ -238,14 +236,11 @@ export interface OutcomeProgressUpdateData {
 
 export interface BulkOutcomeProgressData {
   student: number;
-  updates: Array<{
-    learning_outcome: number;
-    mastery_level: MasteryLevel;
-  }>;
+  updates: Array<{ learning_outcome: number; mastery_level: MasteryLevel }>;
 }
 
 // ============================================================================
-// Summary response shapes (OutcomeProgress custom actions)
+// Summary shapes
 // ============================================================================
 
 export interface MasteryDistribution {
@@ -265,11 +260,7 @@ export interface StrandMasterySummary {
 }
 
 export interface StudentProgressSummary {
-  student: {
-    id: number;
-    name: string;
-    admission_number: string;
-  };
+  student: { id: number; name: string; admission_number: string };
   strand_summary: StrandMasterySummary[];
   total_outcomes: number;
   total_mastered: number;
@@ -285,48 +276,42 @@ export interface CohortSummaryEntry {
   mastery_percentage: number;
 }
 
-// Teaching Session (extends base Session type)
+// ============================================================================
+// TeachingSession — aligned to actual Session model fields
+// ============================================================================
+
+export type SessionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED';
+
 export interface TeachingSession {
-  session_date: string;
   id: number;
-  cohort: number;
+  cohort_subject: number;
+  // Denormalised from cohort_subject for display
   cohort_name: string;
-  subject: number | null;
   subject_name: string | null;
-  teacher: number;
-  teacher_name: string;
-  date: string;
+  organization: number;
+  session_type: string;
+  status: SessionStatus;
+  session_date: string;
+  start_time: string | null;
+  end_time: string | null;
   title: string;
-  notes: string;
-  status: 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
-  outcome_links_count: number;
+  description: string;
+  venue: string;
+  created_by: number | null;
   created_at: string;
-  updated_at: string;
+  // Annotated by backend
+  outcome_links_count?: number;
 }
 
-// Session summary for teaching dashboard
 export interface TeachingSessionSummary {
   session_id: number;
-  date: string;
+  session_date: string;
   cohort: string | null;
   subject: string | null;
-  outcomes: {
-    total: number;
-    covered: number;
-    pending: number;
-  };
-  evidence: {
-    total_records: number;
-    students_with_evidence: number;
-  };
+  outcomes: { total: number; covered: number; pending: number };
+  evidence: { total_records: number; students_with_evidence: number };
 }
 
-// Extended OutcomeSession with evidence count
-export interface OutcomeSessionWithEvidence extends OutcomeSession {
-  evidence_count: number;
-}
-
-// Learner with session-specific evidence count
 export interface SessionLearner {
   id: number;
   admission_number: string;

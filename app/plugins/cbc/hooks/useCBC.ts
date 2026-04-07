@@ -1,8 +1,9 @@
-// ============================================================================
-// app/hooks/useCBC.ts - CBC Data Hooks
-// ============================================================================
+// app/plugins/cbc/hooks/useCBC.ts
+// React Query hooks for the CBC plugin.
+// All server state is managed here — pages/components only call these hooks.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
 import {
   strandAPI,
   subStrandAPI,
@@ -12,714 +13,402 @@ import {
   outcomeProgressAPI,
   teachingAPI,
 } from '@/app/plugins/cbc/api/cbc';
-import {
-  Strand, StrandDetail,
+import type {
+  StrandFormData,
+  SubStrandFormData,
+  LearningOutcomeFormData,
+  EvidenceFormData,
+  BulkEvidenceData,
+  BulkOutcomeSessionData,
+  BulkOutcomeProgressData,
+  OutcomeProgressUpdateData,
+  MasteryLevel,
+  SessionLearner,
+  Strand,
   SubStrand,
   LearningOutcome,
-  EvidenceRecord,
-  StudentProgress, ClassProgress,
-  OutcomeSession,
-  OutcomeProgress,
-  StudentProgressSummary,
-  CohortSummaryEntry,
-  BulkOutcomeProgressData,
+  StrandDetail,
   TeachingSession,
-  TeachingSessionSummary,
-  SessionLearner,
-  EvaluationType,
 } from '@/app/plugins/cbc/types/cbc';
 
 // ============================================================================
-// Existing hooks
+// Structural — Strands
 // ============================================================================
 
-export const useStrands = (params?: { curriculum?: number; subject?: number }) => {
-  const [strands, setStrands] = useState<Strand[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStrands = async () => {
-    try {
-      setLoading(true);
+export const useStrands = (params?: { curriculum?: number; subject?: number }) =>
+  useQuery<Strand[]>({
+    queryKey: cbcKeys.strands.list(params),
+    queryFn: async () => {
       const data = await strandAPI.getAll(params);
-      const strandsArray = Array.isArray(data)
-        ? data
-        : (data as any).results ?? [];
-      setStrands(strandsArray);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch strands');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return Array.isArray(data) ? data : (data as any).results ?? [];
+    },
+    enabled: true,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    fetchStrands();
-  }, [params?.curriculum, params?.subject]);
+export const useStrandDetail = (id: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.strands.detail(id!),
+    queryFn: () => strandAPI.getById(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const createStrand = async (data: any) => {
-    try {
-      const newStrand = await strandAPI.create(data);
-      setStrands(prev => [...prev, newStrand]);
-      return newStrand;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to create strand');
-    }
-  };
-
-  const updateStrand = async (id: number, data: any) => {
-    try {
-      const updated = await strandAPI.update(id, data);
-      setStrands(prev => prev.map(s => s.id === id ? updated : s));
-      return updated;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update strand');
-    }
-  };
-
-  const deleteStrand = async (id: number) => {
-    try {
-      await strandAPI.delete(id);
-      setStrands(prev => prev.filter(s => s.id !== id));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to delete strand');
-    }
-  };
-
-  return { strands, loading, error, refetch: fetchStrands, createStrand, updateStrand, deleteStrand };
+export const useStrandsByCurriculum = (curriculumId: number | null) =>
+  useQuery<StrandDetail[]>({
+    queryKey: cbcKeys.strands.byCurriculum(curriculumId!),
+    queryFn: async () => {
+      const data = await strandAPI.getByCurriculum(curriculumId!);
+      return Array.isArray(data) ? data : (data as any).results ?? [];
+    },
+    enabled: !!curriculumId,
+    staleTime: 5 * 60 * 1000,
+  });
+export const useCreateStrand = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: StrandFormData) => strandAPI.create(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cbcKeys.strands.all }),
+  });
 };
 
-export const useStrandDetail = (strandId: number | null) => {
-  const [strand, setStrand] = useState<StrandDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!strandId) { setLoading(false); return; }
-    const fetchStrand = async () => {
-      try {
-        setLoading(true);
-        const data = await strandAPI.getById(strandId);
-        setStrand(data);
-        setError(null);
-      } catch (err: any) {
-        console.log("Error", error);
-        setError(err.message || 'Failed to fetch strand details');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStrand();
-  }, [strandId]);
-
-  return { strand, loading, error };
+export const useUpdateStrand = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<StrandFormData> }) =>
+      strandAPI.update(id, data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.strands.all });
+      qc.invalidateQueries({ queryKey: cbcKeys.strands.detail(id) });
+    },
+  });
 };
 
-export const useSubStrands = (strandId?: number) => {
-  const [subStrands, setSubStrands] = useState<SubStrand[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const useDeleteStrand = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => strandAPI.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cbcKeys.strands.all }),
+  });
+};
 
-  const fetchSubStrands = async () => {
-    try {
-      setLoading(true);
+// ============================================================================
+// Structural — SubStrands
+// ============================================================================
+
+export const useSubStrands = (strandId?: number) =>
+  useQuery<SubStrand[]>({
+    queryKey: cbcKeys.subStrands.list(strandId),
+    queryFn: async () => {
       const data = await subStrandAPI.getAll(strandId ? { strand: strandId } : undefined);
-      setSubStrands(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch sub-strands');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return Array.isArray(data) ? data : (data as any).results ?? [];
+    },
+    enabled: !!strandId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => { fetchSubStrands(); }, [strandId]);
+export const useSubStrandDetail = (id: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.subStrands.detail(id!),
+    queryFn: () => subStrandAPI.getById(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const createSubStrand = async (data: any) => {
-    try {
-      const newSubStrand = await subStrandAPI.create(data);
-      setSubStrands(prev => [...prev, newSubStrand].sort((a, b) => a.sequence - b.sequence));
-      return newSubStrand;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to create sub-strand');
-    }
-  };
-
-  const updateSubStrand = async (id: number, data: any) => {
-    try {
-      const updated = await subStrandAPI.update(id, data);
-      setSubStrands(prev => prev.map(s => s.id === id ? updated : s));
-      return updated;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update sub-strand');
-    }
-  };
-
-  const deleteSubStrand = async (id: number) => {
-    try {
-      await subStrandAPI.delete(id);
-      setSubStrands(prev => prev.filter(s => s.id !== id));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to delete sub-strand');
-    }
-  };
-
-  return { subStrands, loading, error, refetch: fetchSubStrands, createSubStrand, updateSubStrand, deleteSubStrand };
+export const useCreateSubStrand = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: SubStrandFormData) => subStrandAPI.create(data),
+    onSuccess: (_, { strand }) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.subStrands.list(strand) });
+      qc.invalidateQueries({ queryKey: cbcKeys.strands.all });
+    },
+  });
 };
 
-export const useLearningOutcomes = (params?: { sub_strand?: number; level?: string }) => {
-  const [outcomes, setOutcomes] = useState<LearningOutcome[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const useUpdateSubStrand = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<SubStrandFormData> }) =>
+      subStrandAPI.update(id, data),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.subStrands.list(updated.strand) });
+      qc.invalidateQueries({ queryKey: cbcKeys.subStrands.detail(updated.id) });
+    },
+  });
+};
 
-  const fetchOutcomes = async () => {
-    try {
-      setLoading(true);
+export const useDeleteSubStrand = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => subStrandAPI.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cbcKeys.subStrands.all }),
+  });
+};
+
+// ============================================================================
+// Structural — Learning Outcomes
+// ============================================================================
+
+export const useLearningOutcomes = (params?: { sub_strand?: number; level?: string }) =>
+  useQuery<LearningOutcome[]>({
+    queryKey: cbcKeys.outcomes.list(params),
+    queryFn: async () => {
       const data = await learningOutcomeAPI.getAll(params);
-      const learningOutcomeArray = Array.isArray(data)
-        ? data
-        : (data as any).results ?? []
-      setOutcomes(learningOutcomeArray);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch learning outcomes');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return Array.isArray(data) ? data : (data as any).results ?? [];
+    },
+    enabled: !!params?.sub_strand,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => { fetchOutcomes(); }, [params?.sub_strand, params?.level]);
+export const useLearningOutcomeDetail = (id: number | null) =>
+  useQuery<LearningOutcome>({
+    queryKey: cbcKeys.outcomes.detail(id!),
+    queryFn: () => learningOutcomeAPI.getById(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const createOutcome = async (data: any) => {
-    try {
-      const newOutcome = await learningOutcomeAPI.create(data);
-      setOutcomes(prev => [...prev, newOutcome]);
-      return newOutcome;
-    } catch (err: any) {
-      console.log("Error", err);
-      throw new Error(err.response?.data?.code || 'Failed to create learning outcome');
-    }
-  };
+export const useOutcomesByStrand = (strandId: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.outcomes.byStrand(strandId!),
+    queryFn: () => learningOutcomeAPI.getByStrand(strandId!),
+    enabled: !!strandId,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const updateOutcome = async (id: number, data: any) => {
-    try {
-      const updated = await learningOutcomeAPI.update(id, data);
-      setOutcomes(prev => prev.map(o => o.id === id ? updated : o));
-      return updated;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update learning outcome');
-    }
-  };
-
-  const deleteOutcome = async (id: number) => {
-    try {
-      await learningOutcomeAPI.delete(id);
-      setOutcomes(prev => prev.filter(o => o.id !== id));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to delete learning outcome');
-    }
-  };
-
-  return { outcomes, loading, error, refetch: fetchOutcomes, createOutcome, updateOutcome, deleteOutcome };
+export const useCreateOutcome = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: LearningOutcomeFormData) => learningOutcomeAPI.create(data),
+    onSuccess: (_, { sub_strand }) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomes.list({ sub_strand }) });
+      qc.invalidateQueries({ queryKey: cbcKeys.subStrands.all });
+    },
+  });
 };
+
+export const useUpdateOutcome = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<LearningOutcomeFormData> }) =>
+      learningOutcomeAPI.update(id, data),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomes.list({ sub_strand: updated.sub_strand }) });
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomes.detail(updated.id) });
+    },
+  });
+};
+
+export const useDeleteOutcome = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => learningOutcomeAPI.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cbcKeys.outcomes.all }),
+  });
+};
+
+// ============================================================================
+// Evidence
+// ============================================================================
 
 export const useEvidence = (params?: {
   student?: number;
   learning_outcome?: number;
   source_type?: string;
-}) => {
-  const [evidence, setEvidence] = useState<EvidenceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  source_id?: number;
+}) =>
+  useQuery({
+    queryKey: cbcKeys.evidence.list(params),
+    queryFn: () => evidenceAPI.getAll(params),
+    enabled: !!(params?.student || params?.learning_outcome),
+    staleTime: 2 * 60 * 1000,
+  });
 
-  const fetchEvidence = async () => {
-    try {
-      setLoading(true);
-      const data = await evidenceAPI.getAll(params);
-      setEvidence(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch evidence');
-    } finally {
-      setLoading(false);
-    }
-  };
+export const useStudentProgress = (studentId: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.evidence.studentProgress(studentId!),
+    queryFn: () => evidenceAPI.getStudentProgress(studentId!),
+    enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => { fetchEvidence(); }, [params?.student, params?.learning_outcome, params?.source_type]);
+export const useClassProgress = (cohortId: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.evidence.classProgress(cohortId!),
+    queryFn: () => evidenceAPI.getClassProgress(cohortId!),
+    enabled: !!cohortId,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  const createEvidence = async (data: any) => {
-    try {
-      const newEvidence = await evidenceAPI.create(data);
-      setEvidence(prev => [newEvidence, ...prev]);
-      return newEvidence;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to create evidence');
-    }
-  };
-
-  const updateEvidence = async (id: number, data: any) => {
-    try {
-      const updated = await evidenceAPI.update(id, data);
-      setEvidence(prev => prev.map(e => e.id === id ? updated : e));
-      return updated;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update evidence');
-    }
-  };
-
-  const deleteEvidence = async (id: number) => {
-    try {
-      await evidenceAPI.delete(id);
-      setEvidence(prev => prev.filter(e => e.id !== id));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to delete evidence');
-    }
-  };
-
-  return { evidence, loading, error, refetch: fetchEvidence, createEvidence, updateEvidence, deleteEvidence };
-};
-
-export const useStudentProgress = (studentId: number | null) => {
-  const [progress, setProgress] = useState<StudentProgress | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!studentId) { setLoading(false); return; }
-    const fetchProgress = async () => {
-      try {
-        setLoading(true);
-        const data = await evidenceAPI.getStudentProgress(studentId);
-        setProgress(data);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch student progress');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProgress();
-  }, [studentId]);
-
-  return { progress, loading, error };
-};
-
-export const useClassProgress = (cohortId: number | null) => {
-  const [progress, setProgress] = useState<ClassProgress[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!cohortId) { setLoading(false); return; }
-    const fetchProgress = async () => {
-      try {
-        setLoading(true);
-        const data = await evidenceAPI.getClassProgress(cohortId);
-        setProgress(data);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch class progress');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProgress();
-  }, [cohortId]);
-
-  return { progress, loading, error };
-};
-
-// ============================================================================
-// New hooks — OutcomeSession & OutcomeProgress
-// ============================================================================
-
-/**
- * All OutcomeSession links scoped to a single session.
- * Exposes bulkTag (add multiple outcomes), markCovered, removeLink.
- * Used by: Session Detail → CBC Outcomes tab.
- */
-export const useOutcomeSessions = (sessionId: number | null) => {
-  const [links, setLinks] = useState<OutcomeSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!sessionId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      setLinks(await outcomeSessionAPI.bySession(sessionId));
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch outcome links');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  const bulkTag = async (outcomeIds: number[]) => {
-    if (!sessionId) return;
-    try {
-      const res = await outcomeSessionAPI.bulkCreate({
-        session: sessionId,
-        learning_outcome_ids: outcomeIds,
+export const useCreateEvidence = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: EvidenceFormData) => evidenceAPI.create(data),
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.evidence.all });
+      qc.invalidateQueries({
+        queryKey: cbcKeys.evidence.studentProgress(created.student),
       });
-      const existingIds = new Set(links.map(l => l.id));
-      const fresh = res.links.filter((l: OutcomeSession) => !existingIds.has(l.id));
-      setLinks(prev => [...prev, ...fresh]);
-      return res;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.detail || 'Failed to tag outcomes');
-    }
-  };
-
-  const markCovered = async (linkId: number, notes?: string) => {
-    try {
-      const updated = await outcomeSessionAPI.markCovered(linkId, notes);
-      setLinks(prev => prev.map(l => l.id === linkId ? updated : l));
-      return updated;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.detail || 'Failed to mark covered');
-    }
-  };
-
-  const removeLink = async (linkId: number) => {
-    try {
-      await outcomeSessionAPI.delete(linkId);
-      setLinks(prev => prev.filter(l => l.id !== linkId));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.detail || 'Failed to remove link');
-    }
-  };
-
-  return { links, loading, error, refetch: fetch, bulkTag, markCovered, removeLink };
+    },
+  });
 };
 
-/**
- * Strand-grouped mastery summary for one student.
- * Reads the OutcomeProgress cache via student_summary action.
- * Used by: Student Progress page.
- */
-export const useOutcomeProgressSummary = (studentId: number | null) => {
-  const [summary, setSummary] = useState<StudentProgressSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!studentId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      setSummary(await outcomeProgressAPI.studentSummary(studentId));
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch progress summary');
-    } finally {
-      setLoading(false);
-    }
-  }, [studentId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { summary, loading, error, refetch: fetch };
+export const useBulkCreateEvidence = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkEvidenceData) => evidenceAPI.bulkCreate(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cbcKeys.evidence.all }),
+  });
 };
 
-/**
- * Cohort-wide mastery summary — one row per student.
- * Reads the OutcomeProgress cache via cohort_summary action.
- * Used by: Cohort Progress page.
- */
-export const useCohortSummary = (cohortId: number | null) => {
-  const [entries, setEntries] = useState<CohortSummaryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// ============================================================================
+// OutcomeSessions
+// ============================================================================
 
-  const fetch = useCallback(async () => {
-    if (!cohortId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      setEntries(await outcomeProgressAPI.cohortSummary(cohortId));
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch cohort summary');
-    } finally {
-      setLoading(false);
-    }
-  }, [cohortId]);
+export const useOutcomeSessions = (sessionId: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.outcomeSessions.bySession(sessionId!),
+    queryFn: () => outcomeSessionAPI.bySession(sessionId!),
+    enabled: !!sessionId,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { entries, loading, error, refetch: fetch };
+export const useBulkTagOutcomes = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkOutcomeSessionData) => outcomeSessionAPI.bulkCreate(data),
+    onSuccess: (_, { session }) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.bySession(session) });
+      qc.invalidateQueries({ queryKey: cbcKeys.teachingSessions.summary(session) });
+    },
+  });
 };
 
-/**
- * Raw OutcomeProgress rows for a student.
- * Used when you need per-outcome mastery detail (expanded rows on student page).
- * Also exposes bulkUpdate for teacher mastery adjustments.
- */
-export const useOutcomeProgress = (studentId: number | null) => {
-  const [records, setRecords] = useState<OutcomeProgress[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!studentId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      setRecords(await outcomeProgressAPI.getAll({ student: studentId }));
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch outcome progress');
-    } finally {
-      setLoading(false);
-    }
-  }, [studentId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  const bulkUpdate = async (payload: BulkOutcomeProgressData) => {
-    try {
-      await outcomeProgressAPI.bulkUpdate(payload);
-      await fetch(); // re-sync after write
-    } catch (err: any) {
-      throw new Error(err.response?.data?.detail || 'Failed to update progress');
-    }
-  };
-
-  return { records, loading, error, refetch: fetch, bulkUpdate };
+export const useMarkOutcomeCovered = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes?: string }) =>
+      outcomeSessionAPI.markCovered(id, notes),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({
+        queryKey: cbcKeys.outcomeSessions.bySession(updated.session),
+      });
+    },
+  });
 };
 
-/**
- * Get teaching sessions for current teacher
- * Used by: Teaching dashboard, session list page
- */
-export const useTeachingSessions = (params?: {
-  teacher?: number;
-  cohort?: number;
-  subject?: number;
-  recent?: boolean;
-  days?: number;
-}) => {
-  const [sessions, setSessions] = useState<TeachingSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    try {
-      setLoading(true);
-      let data: TeachingSession[];
-
-      if (params?.recent) {
-        data = await teachingAPI.getRecentSessions(params.days);
-      } else {
-        data = await teachingAPI.getSessions(params);
-      }
-
-      setSessions(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch teaching sessions');
-    } finally {
-      setLoading(false);
-    }
-  }, [params?.teacher, params?.cohort, params?.subject, params?.recent, params?.days]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { sessions, loading, error, refetch: fetch };
+export const useRemoveOutcomeLink = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => outcomeSessionAPI.delete(id),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all }),
+  });
 };
 
-/**
- * Get today's teaching sessions
- * Used by: Teaching dashboard homepage
- */
-export const useTodaySessions = () => {
-  const [sessions, setSessions] = useState<TeachingSession[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// ============================================================================
+// OutcomeProgress
+// ============================================================================
 
-  const fetch = useCallback(async () => {
-    try {
-      setLoading(true);
+export const useOutcomeProgress = (studentId: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.outcomeProgress.student(studentId!),
+    queryFn: () => outcomeProgressAPI.getAll({ student: studentId! }),
+    enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useOutcomeProgressSummary = (studentId: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.outcomeProgress.studentSummary(studentId!),
+    queryFn: () => outcomeProgressAPI.studentSummary(studentId!),
+    enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useCohortSummary = (cohortId: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.outcomeProgress.cohortSummary(cohortId!),
+    queryFn: () => outcomeProgressAPI.cohortSummary(cohortId!),
+    enabled: !!cohortId,
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useBulkUpdateProgress = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkOutcomeProgressData) => outcomeProgressAPI.bulkUpdate(data),
+    onSuccess: (_, { student }) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomeProgress.student(student) });
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomeProgress.studentSummary(student) });
+    },
+  });
+};
+
+// ============================================================================
+// Teaching Sessions
+// ============================================================================
+
+export const useTeachingSessions = (params?: { cohort?: number; subject?: number }) =>
+  useQuery<TeachingSession[]>({
+    queryKey: cbcKeys.teachingSessions.list(params),
+    queryFn: async () => {
+      const data = await teachingAPI.getSessions(params);
+      return Array.isArray(data) ? data : (data as any).results ?? [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useTodaySessions = () =>
+  useQuery<TeachingSession[]>({
+    queryKey: cbcKeys.teachingSessions.today,
+    queryFn: async () => {
       const data = await teachingAPI.getTodaySessions();
-      setSessions(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch today\'s sessions');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return Array.isArray(data) ? data : (data as any).results ?? [];
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
 
-  useEffect(() => { fetch(); }, [fetch]);
+export const useRecentSessions = (days = 7) =>
+  useQuery<TeachingSession[]>({
+    queryKey: cbcKeys.teachingSessions.recent(days),
+    queryFn: async () => {
+      const data = await teachingAPI.getRecentSessions(days);
+      return Array.isArray(data) ? data : (data as any).results ?? [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
 
-  return { sessions, loading, error, refetch: fetch };
-};
+export const useTeachingSession = (id: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.teachingSessions.detail(id!),
+    queryFn: () => teachingAPI.getSession(id!),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
 
-/**
- * Get single teaching session detail
- * Used by: Session workspace page
- */
-export const useTeachingSession = (sessionId: number | null) => {
-  const [session, setSession] = useState<TeachingSession | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const useSessionSummary = (id: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.teachingSessions.summary(id!),
+    queryFn: () => teachingAPI.getSessionSummary(id!),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  const fetch = useCallback(async () => {
-    if (!sessionId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      const data = await teachingAPI.getSession(sessionId);
-      setSession(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch session');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId]);
+export const useSessionLearners = (id: number | null) =>
+  useQuery<SessionLearner[]>({
+    queryKey: cbcKeys.teachingSessions.learners(id!),
+    queryFn: () => teachingAPI.getSessionLearners(id!),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { session, loading, error, refetch: fetch };
-};
-
-/**
- * Get session teaching summary
- * Used by: Session workspace header
- */
-export const useSessionSummary = (sessionId: number | null) => {
-  const [summary, setSummary] = useState<TeachingSessionSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!sessionId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      const data = await teachingAPI.getSessionSummary(sessionId);
-      setSummary(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch session summary');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { summary, loading, error, refetch: fetch };
-};
-
-/**
- * Get learners in session's cohort
- * Used by: Evidence capture page
- */
-export const useSessionLearners = (sessionId: number | null) => {
-  const [learners, setLearners] = useState<SessionLearner[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!sessionId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      const data = await teachingAPI.getSessionLearners(sessionId);
-      setLearners(data);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch learners');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { learners, loading, error, refetch: fetch };
-};
-
-
-export const useSessionEvidence = (
-  learningOutcomeId: number,
-  sessionId: number
-) => {
-  const [evidenceRecords, setEvidenceRecords] =
-    useState<Map<number, EvidenceRecord[]>>(new Map());
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // 🔹 Fetch evidence
-  const fetchEvidence = async () => {
-    if (!learningOutcomeId || !sessionId) return;
-
-    setLoading(true);
-    try {
-      const data = await evidenceAPI.getAll({
-        learning_outcome: learningOutcomeId,
-        source_type: 'SESSION',
-        source_id: sessionId,
-      });
-
-      const grouped = new Map<number, EvidenceRecord[]>();
-      data.forEach((record) => {
-        if (!grouped.has(record.student)) {
-          grouped.set(record.student, []);
-        }
-        grouped.get(record.student)!.push(record);
-      });
-
-      setEvidenceRecords(grouped);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🔹 Create evidence
-  const createEvidence = async (args: {
-    studentId: number;
-    evaluationType: EvaluationType;
-    numericScore: number | null;
-    narrative: string;
-    observedAt: string;
-  }) => {
-    setSaving(true);
-    try {
-      const record = await evidenceAPI.create({
-        student: args.studentId,
-        learning_outcome: learningOutcomeId,
-        source_type: 'SESSION',
-        source_id: sessionId,
-        evaluation_type: args.evaluationType,
-        numeric_score: args.evaluationType === 'NUMERIC'
-          ? args.numericScore
-          : null,
-        narrative: args.narrative,
-        observed_at: args.observedAt,
-        recorded_by: ''
-      });
-
-      // ✅ OPTION 2: Refetch all evidence instead of optimistic update
-      // This ensures no duplicates and always shows the server state
-      await fetchEvidence();
-
-      return record;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchEvidence();
-  }, [learningOutcomeId, sessionId]);
-
-  return {
-    evidenceRecords,
-    loading,
-    saving,
-    fetchEvidence,
-    createEvidence,
-  };
-};
+export const useSessionOutcomes = (id: number | null) =>
+  useQuery({
+    queryKey: cbcKeys.teachingSessions.outcomes(id!),
+    queryFn: () => teachingAPI.getSessionOutcomes(id!),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });

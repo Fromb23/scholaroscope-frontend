@@ -51,7 +51,7 @@ export default function OutcomeInSessionPage() {
     const learningOutcomeId = Number(params.learningOutcomeId);
     console.log("learning outcomeId", learningOutcomeId);
 
-    const { session } = useTeachingSession(sessionId);
+    const { data: session } = useTeachingSession(sessionId);
 
     // Separate state for curriculum data and session data
     const [learningOutcome, setLearningOutcome] = useState<LearningOutcome | null>(null);

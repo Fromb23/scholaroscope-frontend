@@ -19,6 +19,7 @@ import {
 } from '../types/session';
 import { CohortSubject } from '../types/academic';
 import { TopicSessionLink } from '../types/topics';
+import { SessionLearner } from '@/app/plugins/cbc/types/cbc';
 
 // ── Shared response shapes ────────────────────────────────────────────────
 
@@ -268,7 +269,7 @@ export const sessionCohortAPI = {
   },
 
   getSessionLearners: async (sessionId: number) => {
-    const res = await apiClient.get(`/sessions/${sessionId}/learners/`);
+    const res = await apiClient.get<SessionLearner[]>(`/cbc/teaching-sessions/${sessionId}/learners/`);
     return res.data;
   },
 };

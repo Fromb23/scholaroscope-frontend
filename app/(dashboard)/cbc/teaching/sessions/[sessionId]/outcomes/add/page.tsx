@@ -1,332 +1,318 @@
-// ============================================================================
-// app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx
-// Curriculum Outcome Selector - Add to Session
-// ============================================================================
-
 'use client';
+// app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-    ArrowLeft,
-    Plus,
-    Search,
-    ChevronDown,
-    ChevronRight,
-    Target,
-    Check
+    ArrowLeft, Search, ChevronDown, ChevronRight, Target, Check,
 } from 'lucide-react';
-import { useTeachingSession, useOutcomeSessions, useLearningOutcomes } from '@/app/plugins/cbc/hooks/useCBC';
+import {
+    useTeachingSession, useOutcomeSessions, useBulkTagOutcomes,
+    useStrandsByCurriculum, useLearningOutcomes,
+} from '@/app/plugins/cbc/hooks/useCBC';
+import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
+import {
+    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, extractErrorMessage,
+} from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
-import { groupBy } from '@/app/utils/groupBy';
+import type { LearningOutcome } from '@/app/plugins/cbc/types/cbc';
 
-export default function AddOutcomesPage() {
-    const params = useParams();
-    const router = useRouter();
-    const sessionId = Number(params.sessionId);
+// ── Per-sub-strand outcome list — fetched lazily when strand is expanded ──
 
-    const { session, loading: sessionLoading } = useTeachingSession(sessionId);
-    const { links, bulkTag } = useOutcomeSessions(sessionId);
-    const { outcomes, loading: outcomesLoading } = useLearningOutcomes();
+function SubStrandOutcomeList({
+    subStrandId,
+    subStrandName,
+    linkedIds,
+    selectedIds,
+    onToggle,
+}: {
+    subStrandId: number;
+    subStrandName: string;
+    linkedIds: Set<number>;
+    selectedIds: Set<number>;
+    onToggle: (id: number) => void;
+}) {
+    const { data: outcomes = [], isLoading } = useLearningOutcomes({ sub_strand: subStrandId });
 
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const [searchQuery, setSearchQuery] = useState('');
-    const [expandedStrands, setExpandedStrands] = useState<Set<string>>(new Set());
-    const [adding, setAdding] = useState(false);
-
-    // Already linked outcome IDs
-    const linkedIds = useMemo(() => new Set(links.map(l => l.learning_outcome)), [links]);
-
-    // Filter and group outcomes
-    const filteredOutcomes = useMemo(() => {
-        let filtered = outcomes;
-
-        // Filter by search
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(o =>
-                o.code.toLowerCase().includes(query) ||
-                o.description.toLowerCase().includes(query) ||
-                o.strand_name.toLowerCase().includes(query) ||
-                o.sub_strand_name.toLowerCase().includes(query)
-            );
-        }
-
-        return filtered;
-    }, [outcomes, searchQuery]);
-
-    // Group by strand → sub-strand
-    const groupedByStrand = useMemo(() => {
-        const groups = new Map<string, Map<string, typeof outcomes>>();
-
-        filteredOutcomes.forEach(outcome => {
-            const strandKey = `${outcome.strand_name}`;
-            const subStrandKey = `${outcome.sub_strand_name}`;
-
-            if (!groups.has(strandKey)) {
-                groups.set(strandKey, new Map());
-            }
-
-            const strandGroup = groups.get(strandKey)!;
-            if (!strandGroup.has(subStrandKey)) {
-                strandGroup.set(subStrandKey, []);
-            }
-
-            strandGroup.get(subStrandKey)!.push(outcome);
-        });
-
-        return groups;
-    }, [filteredOutcomes]);
-
-    const toggleStrand = (strandName: string) => {
-        setExpandedStrands(prev => {
-            const next = new Set(prev);
-            next.has(strandName) ? next.delete(strandName) : next.add(strandName);
-            return next;
-        });
-    };
-
-    const toggleOutcome = (outcomeId: number) => {
-        if (linkedIds.has(outcomeId)) return; // Can't select already linked
-
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            next.has(outcomeId) ? next.delete(outcomeId) : next.add(outcomeId);
-            return next;
-        });
-    };
-
-    const selectAll = () => {
-        const availableIds = filteredOutcomes
-            .filter(o => !linkedIds.has(o.id))
-            .map(o => o.id);
-        setSelectedIds(new Set(availableIds));
-    };
-
-    const clearSelection = () => {
-        setSelectedIds(new Set());
-    };
-
-    const handleAddOutcomes = async () => {
-        if (selectedIds.size === 0) return;
-
-        setAdding(true);
-        try {
-            await bulkTag(Array.from(selectedIds));
-            router.push(`/cbc/teaching/sessions/${sessionId}/outcomes`);
-        } catch (err) {
-            console.error('Failed to add outcomes:', err);
-            alert('Failed to add outcomes. Please try again.');
-        } finally {
-            setAdding(false);
-        }
-    };
-
-    if (sessionLoading || outcomesLoading) {
+    if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                    <p className="text-sm text-gray-500">Loading...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!session) {
-        return (
-            <div className="py-20 text-center">
-                <p className="text-gray-500">Session not found</p>
+            <div className="py-4 text-center">
+                <div className="inline-block h-4 w-4 animate-spin rounded-full
+          border-2 border-blue-600 border-t-transparent" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
-            {/* CBC nav */}
-            <nav className="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-                <Link href="/cbc/authoring" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Authoring
-                </Link>
-                <Link href="/cbc/browser" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Browser
-                </Link>
-                <Link href="/cbc/progress" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Progress
-                </Link>
-                <Link href="/cbc/teaching" className="flex-1 text-center text-sm font-semibold text-white bg-blue-600 rounded-lg py-2.5 shadow-sm">
-                    Teaching
-                </Link>
-            </nav>
+        <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2 px-4">{subStrandName}</h4>
+            <div className="space-y-1.5 px-4 pb-3">
+                {outcomes.map(outcome => {
+                    const linked = linkedIds.has(outcome.id);
+                    const selected = selectedIds.has(outcome.id);
+                    return (
+                        <button
+                            key={outcome.id}
+                            onClick={() => !linked && onToggle(outcome.id)}
+                            disabled={linked}
+                            className={`w-full text-left p-3 rounded-lg border transition-all ${linked ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed' :
+                                selected ? 'border-blue-500 bg-blue-50' :
+                                    'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                                }`}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className="mt-0.5 shrink-0">
+                                    {linked ? (
+                                        <div className="h-5 w-5 rounded flex items-center justify-center bg-gray-200">
+                                            <Check className="h-3 w-3 text-gray-500" />
+                                        </div>
+                                    ) : selected ? (
+                                        <div className="h-5 w-5 rounded border-2 border-blue-500 bg-blue-500
+                      flex items-center justify-center">
+                                            <Check className="h-3 w-3 text-white" />
+                                        </div>
+                                    ) : (
+                                        <div className="h-5 w-5 rounded border-2 border-gray-300" />
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                        <Badge variant="purple" size="sm" className="font-mono shrink-0">
+                                            {outcome.code}
+                                        </Badge>
+                                        {linked && <Badge variant="green" size="sm">Already Linked</Badge>}
+                                    </div>
+                                    <p className="text-sm text-gray-700">{outcome.description}</p>
+                                </div>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────
+
+export default function AddOutcomesPage() {
+    const { sessionId: raw } = useParams<{ sessionId: string }>();
+    const sessionId = Number(raw);
+    const router = useRouter();
+    const { expandedSubStrands, toggleSubStrand } = useCBCContext();
+
+    const { data: session, isLoading: sessionLoading, error: sessionError } =
+        useTeachingSession(sessionId);
+    const { data: links = [] } = useOutcomeSessions(sessionId);
+    const bulkTag = useBulkTagOutcomes();
+
+    // Use session's curriculum — derived from cohort_subject
+    // We need strands for this session's curriculum — stored on session as organization FK
+    // The session doesn't directly expose curriculum_id, so we fetch all strands
+    // filtered by the session context once loaded.
+    // For now we use selectedCurriculumId from context if set, else show a prompt.
+    const { selectedCurriculumId } = useCBCContext();
+    const { data: strands = [], isLoading: strandsLoading } = useStrandsByCurriculum(
+        selectedCurriculumId
+    );
+
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [search, setSearch] = useState('');
+    const [tagError, setTagError] = useState<string | null>(null);
+
+    const linkedIds = useMemo(() => new Set(links.map(l => l.learning_outcome)), [links]);
+
+    const toggleOutcome = (id: number) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    // Filter strands by search (against strand name)
+    const visibleStrands = useMemo(() => {
+        if (!search.trim()) return strands;
+        const q = search.toLowerCase();
+        return strands.filter(
+            s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)
+        );
+    }, [strands, search]);
+
+    const handleAdd = async () => {
+        if (selectedIds.size === 0) return;
+        setTagError(null);
+        try {
+            await bulkTag.mutateAsync({
+                session: sessionId,
+                outcome_ids: Array.from(selectedIds),
+            });
+            router.push(`/cbc/teaching/sessions/${sessionId}/outcomes`);
+        } catch (e) {
+            setTagError(extractErrorMessage(e));
+        }
+    };
+
+    if (sessionLoading) return (
+        <div className="space-y-6"><CBCNav /><CBCLoading /></div>
+    );
+
+    if (sessionError || !session) return (
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCError error={sessionError ?? 'Session not found'} />
+        </div>
+    );
+
+    return (
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCBreadcrumb segments={[
+                { label: 'Teaching', href: '/cbc/teaching' },
+                { label: 'Sessions', href: '/cbc/teaching/sessions' },
+                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
+                { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: 'Add' },
+            ]} />
 
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Add Curriculum Outcomes</h1>
-                    <p className="text-gray-500 mt-1">
-                        Select learning outcomes to link to this session
-                    </p>
+                    <h1 className="text-2xl font-bold text-gray-900">Add Learning Outcomes</h1>
+                    <p className="text-gray-500 mt-1">Select outcomes to link to this session</p>
                 </div>
                 <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`}>
                     <Button variant="ghost" size="md">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Cancel
+                        <ArrowLeft className="mr-2 h-4 w-4" />Cancel
                     </Button>
                 </Link>
             </div>
 
-            {/* Selection Summary */}
-            <Card className="shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-                <div className="flex items-center justify-between">
+            {/* Selection summary + action */}
+            <Card className="bg-blue-50 border-blue-200">
+                <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                        <p className="text-sm text-gray-600 mb-1">Selected Outcomes</p>
-                        <p className="text-3xl font-bold text-blue-600">
-                            {selectedIds.size}
-                        </p>
+                        <p className="text-sm text-gray-600 mb-0.5">Selected</p>
+                        <p className="text-3xl font-bold text-blue-600">{selectedIds.size}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         {selectedIds.size > 0 && (
-                            <Button variant="ghost" size="sm" onClick={clearSelection}>
+                            <Button variant="ghost" size="sm"
+                                onClick={() => setSelectedIds(new Set())}>
                                 Clear
                             </Button>
                         )}
-                        {filteredOutcomes.length > linkedIds.size && (
-                            <Button variant="ghost" size="sm" onClick={selectAll}>
-                                Select All Available
-                            </Button>
-                        )}
-                        <Button
-                            variant="primary"
-                            size="md"
-                            onClick={handleAddOutcomes}
-                            disabled={selectedIds.size === 0 || adding}
-                        >
-                            {adding ? 'Adding...' : `Add ${selectedIds.size} Outcome${selectedIds.size !== 1 ? 's' : ''}`}
+                        <Button variant="primary" size="md"
+                            onClick={handleAdd}
+                            disabled={selectedIds.size === 0 || bulkTag.isPending}>
+                            {bulkTag.isPending
+                                ? 'Adding…'
+                                : `Add ${selectedIds.size} Outcome${selectedIds.size !== 1 ? 's' : ''}`}
                         </Button>
                     </div>
                 </div>
+                {tagError && (
+                    <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200
+            rounded-lg p-3">
+                        {tagError}
+                    </p>
+                )}
             </Card>
 
             {/* Search */}
-            <Card className="shadow-sm">
+            <Card>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                         type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search by code, description, strand, or sub-strand..."
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search by strand name or code…"
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm
+              focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
+                {!selectedCurriculumId && (
+                    <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200
+            rounded-lg p-3">
+                        Select a curriculum in the Browser or Authoring section first so outcomes load correctly.
+                    </p>
+                )}
             </Card>
 
-            {/* Outcomes Tree */}
-            <Card className="shadow-sm">
+            {/* Outcome tree */}
+            <Card>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Target className="h-5 w-5 text-blue-600" />
                     Curriculum Outcomes
-                    <Badge variant="default" size="sm" className="ml-2">
-                        {filteredOutcomes.length - linkedIds.size} available
-                    </Badge>
                 </h2>
 
-                {groupedByStrand.size === 0 ? (
-                    <div className="py-12 text-center text-gray-500">
-                        No outcomes found
+                {strandsLoading ? (
+                    <CBCLoading />
+                ) : visibleStrands.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500 text-sm">
+                        No strands found — select a curriculum first
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {Array.from(groupedByStrand.entries()).map(([strandName, subStrands]) => {
-                            const isExpanded = expandedStrands.has(strandName);
-                            const strandOutcomes = Array.from(subStrands.values()).flat();
-                            const availableCount = strandOutcomes.filter(o => !linkedIds.has(o.id)).length;
-
-                            return (
-                                <div key={strandName} className="border border-gray-200 rounded-lg overflow-hidden">
-                                    {/* Strand Header */}
-                                    <button
-                                        onClick={() => toggleStrand(strandName)}
-                                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            {isExpanded ? (
-                                                <ChevronDown className="h-5 w-5 text-gray-500" />
-                                            ) : (
-                                                <ChevronRight className="h-5 w-5 text-gray-500" />
-                                            )}
-                                            <span className="font-semibold text-gray-900">{strandName}</span>
-                                            <Badge variant="blue" size="sm">
-                                                {availableCount} available
-                                            </Badge>
-                                        </div>
-                                    </button>
-
-                                    {/* Sub-strands & Outcomes */}
-                                    {isExpanded && (
-                                        <div className="p-4 space-y-4 bg-white">
-                                            {Array.from(subStrands.entries()).map(([subStrandName, outcomes]) => (
-                                                <div key={subStrandName}>
-                                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                                        {subStrandName}
-                                                    </h4>
-                                                    <div className="space-y-2 pl-4">
-                                                        {outcomes.map(outcome => {
-                                                            const isLinked = linkedIds.has(outcome.id);
-                                                            const isSelected = selectedIds.has(outcome.id);
-
-                                                            return (
-                                                                <button
-                                                                    key={outcome.id}
-                                                                    onClick={() => toggleOutcome(outcome.id)}
-                                                                    disabled={isLinked}
-                                                                    className={`w-full text-left p-3 rounded-lg border transition-all ${isLinked
-                                                                        ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                                                                        : isSelected
-                                                                            ? 'border-blue-500 bg-blue-50'
-                                                                            : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                                                                        }`}
-                                                                >
-                                                                    <div className="flex items-start gap-3">
-                                                                        <div className="mt-0.5">
-                                                                            {isLinked ? (
-                                                                                <Check className="h-5 w-5 text-gray-400" />
-                                                                            ) : isSelected ? (
-                                                                                <Check className="h-5 w-5 text-blue-600" />
-                                                                            ) : (
-                                                                                <div className="h-5 w-5 border-2 border-gray-300 rounded" />
-                                                                            )}
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center gap-2 mb-1">
-                                                                                <Badge variant="purple" size="sm" className="font-mono">
-                                                                                    {outcome.code}
-                                                                                </Badge>
-                                                                                {isLinked && (
-                                                                                    <Badge variant="green" size="sm">
-                                                                                        Already Linked
-                                                                                    </Badge>
-                                                                                )}
-                                                                            </div>
-                                                                            <p className="text-sm text-gray-700">
-                                                                                {outcome.description}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                        {visibleStrands.map(strand => (
+                            <div key={strand.id}
+                                className="border border-gray-200 rounded-xl overflow-hidden">
+                                {/* Strand header — toggle all sub-strands */}
+                                <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="blue" size="md" className="font-mono">{strand.code}</Badge>
+                                        <span className="font-semibold text-gray-900">{strand.name}</span>
+                                    </div>
+                                    <Badge variant="default" size="sm">
+                                        {strand.sub_strands_count} sub-strand{strand.sub_strands_count !== 1 ? 's' : ''}
+                                    </Badge>
                                 </div>
-                            );
-                        })}
+
+                                {/* Sub-strands */}
+                                <div className="divide-y divide-gray-100 bg-white">
+                                    {strand.sub_strands.map(ss => {
+                                        const isExpanded = expandedSubStrands.has(ss.id);
+                                        return (
+                                            <div key={ss.id}>
+                                                <button
+                                                    onClick={() => toggleSubStrand(ss.id)}
+                                                    className="w-full flex items-center justify-between px-4 py-3
+                            hover:bg-gray-50 transition-colors text-left"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        {isExpanded
+                                                            ? <ChevronDown className="h-4 w-4 text-blue-600" />
+                                                            : <ChevronRight className="h-4 w-4 text-gray-400" />
+                                                        }
+                                                        <Badge variant="purple" size="sm" className="font-mono">
+                                                            {ss.code}
+                                                        </Badge>
+                                                        <span className="text-sm font-medium text-gray-800">{ss.name}</span>
+                                                    </div>
+                                                    <span className="text-xs text-gray-400">{ss.outcomes_count} outcomes</span>
+                                                </button>
+
+                                                {isExpanded && (
+                                                    <div className="bg-gray-50/50 border-t border-gray-100 py-2">
+                                                        <SubStrandOutcomeList
+                                                            subStrandId={ss.id}
+                                                            subStrandName={ss.name}
+                                                            linkedIds={linkedIds}
+                                                            selectedIds={selectedIds}
+                                                            onToggle={toggleOutcome}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </Card>

@@ -1,508 +1,284 @@
-// ============================================================================
-// app/(dashboard)/cbc/authoring/strands/[strandId]/page.tsx
-// Sub-Strand Management for a single Strand (Admin) - REDESIGNED
-// ============================================================================
-
 'use client';
+// app/(dashboard)/cbc/authoring/strands/[strandId]/page.tsx
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Plus, Pencil, Trash2, ChevronRight, Layers, X } from 'lucide-react';
 import {
-    ArrowLeft,
-    Plus,
-    Pencil,
-    Trash2,
-    Check,
-    X,
-    ChevronRight,
-    Layers
-} from 'lucide-react';
-
+    useStrandDetail, useSubStrands,
+    useCreateSubStrand, useUpdateSubStrand, useDeleteSubStrand,
+} from '@/app/plugins/cbc/hooks/useCBC';
+import {
+    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, CBCEmpty, extractErrorMessage,
+} from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import { DataTable, Column } from '@/app/components/ui/Table';
+import type { SubStrand, SubStrandFormData } from '@/app/plugins/cbc/types/cbc';
 
-import { subStrandAPI } from '@/app/plugins/cbc/api/cbc';
-
-import { SubStrand, SubStrandFormData } from '@/app/plugins/cbc/types/cbc';
+const EMPTY_FORM: Partial<SubStrandFormData> = { name: '', description: '' };
 
 export default function ManageSubStrandsPage() {
-    const params = useParams();
+    const { strandId: raw } = useParams<{ strandId: string }>();
+    const strandId = Number(raw);
     const router = useRouter();
-    const strandId = Number(params.strandId);
 
-    // ------------------------------------------------------------------
-    // Data state
-    // ------------------------------------------------------------------
-    const [subStrands, setSubStrands] = useState<SubStrand[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: strand, isLoading: strandLoading, error: strandError } = useStrandDetail(strandId);
+    const { data: subStrands = [], isLoading, error, refetch } = useSubStrands(strandId);
 
-    type SubStrandWithIndex = {
-        [key: string]: unknown;
-    } & SubStrand;
+    const createMutation = useCreateSubStrand();
+    const updateMutation = useUpdateSubStrand();
+    const deleteMutation = useDeleteSubStrand();
 
-    // ------------------------------------------------------------------
-    // Create state
-    // ------------------------------------------------------------------
     const [showCreate, setShowCreate] = useState(false);
-    const [createForm, setCreateForm] = useState<Partial<SubStrandFormData>>({
-        code: '',
-        name: '',
-        description: '',
-        sequence: 1,
-    });
-    const [creating, setCreating] = useState(false);
+    const [createForm, setCreateForm] = useState<Partial<SubStrandFormData>>(EMPTY_FORM);
     const [createError, setCreateError] = useState<string | null>(null);
 
-    // ------------------------------------------------------------------
-    // Edit state
-    // ------------------------------------------------------------------
     const [editId, setEditId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<Partial<SubStrandFormData>>({});
-    const [editing, setEditing] = useState(false);
     const [editError, setEditError] = useState<string | null>(null);
 
-    // ------------------------------------------------------------------
-    // Delete state
-    // ------------------------------------------------------------------
     const [deleteId, setDeleteId] = useState<number | null>(null);
-    const [deleting, setDeleting] = useState(false);
 
-    // ------------------------------------------------------------------
-    // Fetch sub-strands
-    // ------------------------------------------------------------------
-    const fetchSubStrands = async () => {
-        setLoading(true);
-        try {
-            const data = await subStrandAPI.getAll({ strand: strandId });
-            const subStrandArray = Array.isArray(data)
-                ? data
-                : (data && typeof data === 'object' && 'results' in data) ? (data as any).results ?? [] : []
-            setSubStrands(subStrandArray);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (!Number.isNaN(strandId)) fetchSubStrands();
-    }, [strandId]);
-
-    // ------------------------------------------------------------------
-    // Handlers
-    // ------------------------------------------------------------------
     const handleCreate = async () => {
-        if (!createForm.code || !createForm.name) return;
-        setCreating(true);
+        if (!createForm.name) return;
         setCreateError(null);
-
         try {
-            const created = await subStrandAPI.create({
-                ...createForm,
-                strand: strandId,
-            } as SubStrandFormData);
-
-            setSubStrands(prev => [...prev, created]);
+            await createMutation.mutateAsync({
+                strand: strandId, name: createForm.name,
+                description: createForm.description ?? '',
+            });
             setShowCreate(false);
-            setCreateForm({ code: '', name: '', description: '', sequence: 1 });
-        } catch (err: any) {
-            setCreateError(err.message || 'Failed to create');
-        } finally {
-            setCreating(false);
-        }
+            setCreateForm(EMPTY_FORM);
+        } catch (e) { setCreateError(extractErrorMessage(e)); }
     };
 
     const startEdit = (ss: SubStrand) => {
         setEditId(ss.id);
-        setEditForm({
-            code: ss.code,
-            name: ss.name,
-            description: ss.description,
-            sequence: ss.sequence,
-        });
+        setEditForm({ name: ss.name, description: ss.description });
         setEditError(null);
     };
 
     const saveEdit = async () => {
         if (!editId) return;
-        setEditing(true);
         setEditError(null);
-
         try {
-            const updated = await subStrandAPI.update(editId, editForm);
-            setSubStrands(prev =>
-                prev.map(s => (s.id === editId ? updated : s))
-            );
+            await updateMutation.mutateAsync({ id: editId, data: editForm });
             setEditId(null);
-        } catch (err: any) {
-            setEditError(err.message || 'Failed to update');
-        } finally {
-            setEditing(false);
-        }
+        } catch (e) { setEditError(extractErrorMessage(e)); }
     };
 
     const confirmDelete = async () => {
         if (!deleteId) return;
-        setDeleting(true);
-
         try {
-            await subStrandAPI.delete(deleteId);
-            setSubStrands(prev => prev.filter(s => s.id !== deleteId));
+            await deleteMutation.mutateAsync(deleteId);
             setDeleteId(null);
-        } finally {
-            setDeleting(false);
-        }
+        } catch { setDeleteId(null); }
     };
 
-    // ------------------------------------------------------------------
-    // Table columns configuration
-    // ------------------------------------------------------------------
     const columns: Column<SubStrand>[] = [
         {
-            key: 'code',
-            header: 'Code',
-            sortable: true,
-            render: (row) => (
-                <Badge variant="indigo" size="md" className="font-mono font-semibold">
-                    {row.code}
-                </Badge>
-            ),
-            className: 'font-medium'
+            key: 'code', header: 'Code', sortable: true,
+            render: r => <Badge variant="indigo" size="md" className="font-mono">{r.code}</Badge>,
         },
         {
-            key: 'name',
-            header: 'Sub-Strand Name',
-            sortable: true,
-            render: (row) => (
-                <div className="flex flex-col">
-                    <span className="font-medium text-gray-900">{row.name}</span>
-                    {row.description && (
-                        <span className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                            {row.description}
-                        </span>
-                    )}
+            key: 'name', header: 'Sub-Strand', sortable: true,
+            render: r => (
+                <div>
+                    <p className="font-medium text-gray-900">{r.name}</p>
+                    {r.description && <p className="text-xs text-gray-500 line-clamp-1">{r.description}</p>}
                 </div>
-            )
-        },
-        {
-            key: 'sequence',
-            header: 'Sequence',
-            sortable: true,
-            render: (row) => (
-                <Badge variant="default" size="sm">
-                    #{row.sequence}
-                </Badge>
             ),
-            headerClassName: 'text-center',
-            className: 'text-center'
         },
         {
-            key: 'actions',
-            header: 'Actions',
-            render: (row) => (
-                <div className="flex items-center justify-end gap-2">
-                    <Link
-                        href={`/cbc/authoring/sub-strands/${row.id}`}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Manage learning outcomes"
-                    >
+            key: 'outcomes_count', header: 'Outcomes', sortable: true,
+            render: r => (
+                <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-sm font-medium">{r.outcomes_count}</span>
+                </div>
+            ),
+            headerClassName: 'text-center', className: 'text-center',
+        },
+        {
+            key: 'actions', header: '',
+            render: r => (
+                <div className="flex items-center justify-end gap-1">
+                    <Link href={`/cbc/authoring/sub-strands/${r.id}`}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <ChevronRight className="h-4 w-4" />
                     </Link>
-                    <button
-                        onClick={() => startEdit(row)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Edit sub-strand"
-                    >
+                    <button onClick={() => startEdit(r)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <Pencil className="h-4 w-4" />
                     </button>
-                    <button
-                        onClick={() => setDeleteId(row.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete sub-strand"
-                    >
+                    <button onClick={() => setDeleteId(r.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="h-4 w-4" />
                     </button>
                 </div>
             ),
-            className: 'text-right'
-        }
+            className: 'w-28',
+        },
     ];
 
-    // ------------------------------------------------------------------
-    // Render
-    // ------------------------------------------------------------------
+    if (strandLoading) return <CBCLoading />;
+    if (strandError || !strand) return (
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCError error={strandError ?? 'Strand not found'} />
+        </div>
+    );
+
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
-            {/* CBC nav */}
-            <nav className="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-                <Link
-                    href="/cbc/authoring"
-                    className="flex-1 text-center text-sm font-semibold text-white bg-blue-600 rounded-lg py-2.5 shadow-sm"
-                >
-                    Authoring
-                </Link>
-                <Link
-                    href="/cbc/browser"
-                    className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors"
-                >
-                    Browser
-                </Link>
-                <Link
-                    href="/cbc/progress"
-                    className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors"
-                >
-                    Progress
-                </Link>
-                <Link
-                    href="/cbc/teaching"
-                    className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors"
-                >
-                    Teaching
-                </Link>
-            </nav>
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCBreadcrumb segments={[
+                { label: 'Authoring', href: '/cbc/authoring' },
+                { label: 'Strands', href: '/cbc/authoring/strands' },
+                { label: strand.name },
+            ]} />
 
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link
-                        href="/cbc/authoring/strands"
-                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                    <Link href="/cbc/authoring/strands"
+                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
                         <ArrowLeft className="h-5 w-5" />
                     </Link>
+                    <div className="p-2.5 bg-blue-100 rounded-lg">
+                        <Layers className="h-6 w-6 text-blue-600" />
+                    </div>
                     <div>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-blue-100 rounded-lg">
-                                <Layers className="h-6 w-6 text-blue-600" />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900">
-                                    Manage Sub-Strands
-                                </h1>
-                                <p className="text-sm text-gray-500 mt-0.5">
-                                    Define sub-strands under this strand
-                                </p>
-                            </div>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="blue" size="md" className="font-mono">{strand.code}</Badge>
+                            <h1 className="text-xl font-bold text-gray-900">{strand.name}</h1>
                         </div>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                            {strand.subject_name ?? strand.curriculum_name}
+                        </p>
                     </div>
                 </div>
-                <Button
-                    variant="primary"
-                    size="md"
-                    onClick={() => setShowCreate(true)}
-                    className="shadow-sm"
-                >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Sub-Strand
+                <Button variant="primary" size="md"
+                    onClick={() => { setShowCreate(true); setCreateError(null); }}>
+                    <Plus className="h-4 w-4 mr-2" />Add Sub-Strand
                 </Button>
             </div>
 
+            {error && <CBCError error={error} onRetry={refetch} />}
+
             {/* Create form */}
             {showCreate && (
-                <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm">
+                <Card className="border-blue-200 bg-blue-50/50">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                             <div className="p-1.5 bg-blue-600 rounded-lg">
                                 <Plus className="h-4 w-4 text-white" />
                             </div>
-                            Create New Sub-Strand
+                            New Sub-Strand
                         </h3>
-                        <button
-                            onClick={() => setShowCreate(false)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors"
-                        >
+                        <button onClick={() => setShowCreate(false)}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Input
-                            label="Code"
-                            placeholder="e.g., SS.1"
-                            value={createForm.code ?? ''}
-                            onChange={e => setCreateForm(p => ({ ...p, code: e.target.value }))}
-                        />
-                        <Input
-                            label="Name"
-                            placeholder="Sub-strand name"
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Input label="Name *" placeholder="Sub-strand name"
                             value={createForm.name ?? ''}
-                            onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
-                        />
-                        <Input
-                            label="Sequence"
-                            type="number"
-                            placeholder="1"
-                            value={createForm.sequence?.toString() ?? '1'}
-                            onChange={e =>
-                                setCreateForm(p => ({ ...p, sequence: Number(e.target.value) }))
-                            }
-                        />
-                    </div>
-                    <div className="mt-4">
-                        <Input
-                            label="Description (Optional)"
-                            placeholder="Brief description of this sub-strand..."
+                            onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))} />
+                        <Input label="Description (optional)"
                             value={createForm.description ?? ''}
-                            onChange={e =>
-                                setCreateForm(p => ({ ...p, description: e.target.value }))
-                            }
-                        />
+                            onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))} />
                     </div>
                     {createError && (
-                        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-sm text-red-600">{createError}</p>
-                        </div>
+                        <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                            {createError}
+                        </p>
                     )}
                     <div className="flex gap-3 mt-5">
-                        <Button
-                            variant="primary"
-                            size="md"
+                        <Button variant="primary" size="md"
                             onClick={handleCreate}
-                            disabled={creating || !createForm.code || !createForm.name}
-                            className="shadow-sm"
-                        >
-                            {creating ? 'Creating…' : 'Create Sub-Strand'}
+                            disabled={createMutation.isPending || !createForm.name}>
+                            {createMutation.isPending ? 'Creating…' : 'Create Sub-Strand'}
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="md"
-                            onClick={() => setShowCreate(false)}
-                        >
-                            Cancel
-                        </Button>
+                        <Button variant="ghost" size="md" onClick={() => setShowCreate(false)}>Cancel</Button>
                     </div>
                 </Card>
             )}
 
-            {/* Edit inline form */}
+            {/* Edit form */}
             {editId !== null && (
-                <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 shadow-sm">
+                <Card className="border-purple-200 bg-purple-50/50">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                             <div className="p-1.5 bg-purple-600 rounded-lg">
                                 <Pencil className="h-4 w-4 text-white" />
                             </div>
                             Edit Sub-Strand
                         </h3>
-                        <button
-                            onClick={() => setEditId(null)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors"
-                        >
+                        <button onClick={() => setEditId(null)}
+                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Input
-                            label="Code"
-                            value={editForm.code ?? ''}
-                            onChange={e => setEditForm(p => ({ ...p, code: e.target.value }))}
-                        />
-                        <Input
-                            label="Name"
-                            value={editForm.name ?? ''}
-                            onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                        />
-                        <Input
-                            label="Sequence"
-                            type="number"
-                            value={editForm.sequence?.toString() ?? '0'}
-                            onChange={e => setEditForm(p => ({ ...p, sequence: Number(e.target.value) }))}
-                        />
-                    </div>
-                    <div className="mt-4">
-                        <Input
-                            label="Description (Optional)"
-                            value={editForm.description ?? ''}
-                            onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Input label="Name *" value={editForm.name ?? ''}
+                            onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} />
+                        <Input label="Description" value={editForm.description ?? ''}
+                            onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} />
                     </div>
                     {editError && (
-                        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-sm text-red-600">{editError}</p>
-                        </div>
+                        <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                            {editError}
+                        </p>
                     )}
                     <div className="flex gap-3 mt-5">
-                        <Button
-                            variant="primary"
-                            size="md"
-                            onClick={saveEdit}
-                            disabled={editing}
-                            className="shadow-sm"
-                        >
-                            <Check className="h-4 w-4 mr-2" />
-                            {editing ? 'Saving…' : 'Save Changes'}
+                        <Button variant="primary" size="md"
+                            onClick={saveEdit} disabled={updateMutation.isPending}>
+                            {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="md"
-                            onClick={() => setEditId(null)}
-                        >
-                            Cancel
-                        </Button>
+                        <Button variant="ghost" size="md" onClick={() => setEditId(null)}>Cancel</Button>
                     </div>
                 </Card>
             )}
 
-            {/* DataTable */}
-            <Card className="shadow-sm">
+            {/* Table */}
+            <Card>
                 <div className="mb-4">
                     <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                         <Layers className="h-5 w-5 text-blue-600" />
                         Sub-Strands
-                        <Badge variant="blue" size="sm" className="ml-2">
-                            {subStrands.length}
-                        </Badge>
+                        {subStrands.length > 0 && <Badge variant="blue" size="sm">{subStrands.length}</Badge>}
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Manage and organize sub-strands for this strand
-                    </p>
                 </div>
-
                 <DataTable
-                    data={subStrands as unknown as SubStrandWithIndex[]}
+                    data={subStrands}
                     columns={columns}
-                    loading={loading}
-                    enableSearch={true}
-                    enableSort={true}
-                    searchPlaceholder="Search sub-strands by code or name..."
-                    emptyMessage="No sub-strands found. Click 'Add Sub-Strand' to create one."
-                    onRowClick={(row) => router.push(`/cbc/authoring/sub-strands/${row.id}`)}
+                    loading={isLoading}
+                    enableSearch
+                    enableSort
+                    searchPlaceholder="Search sub-strands…"
+                    emptyMessage="No sub-strands yet."
+                    onRowClick={r => router.push(`/cbc/authoring/sub-strands/${r.id}`)}
                 />
             </Card>
 
-            {/* Delete modal */}
-            <Modal
-                isOpen={deleteId !== null}
-                onClose={() => setDeleteId(null)}
-                title="Delete Sub-Strand"
-                size="sm"
-            >
+            <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)}
+                title="Delete Sub-Strand" size="sm">
                 <div className="space-y-4">
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                         <p className="text-sm text-red-800">
-                            This action cannot be undone. This will permanently delete this sub-strand and all associated learning outcomes.
+                            This will permanently delete the sub-strand and all its learning outcomes.
                         </p>
                     </div>
                     <div className="flex justify-end gap-3">
-                        <Button
-                            variant="ghost"
-                            size="md"
-                            onClick={() => setDeleteId(null)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="danger"
-                            size="md"
-                            onClick={confirmDelete}
-                            disabled={deleting}
-                        >
-                            {deleting ? 'Deleting…' : 'Delete Sub-Strand'}
+                        <Button variant="ghost" size="md" onClick={() => setDeleteId(null)}>Cancel</Button>
+                        <Button variant="danger" size="md"
+                            onClick={confirmDelete} disabled={deleteMutation.isPending}>
+                            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
                         </Button>
                     </div>
                 </div>
