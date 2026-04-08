@@ -12,6 +12,8 @@ import {
   outcomeSessionAPI,
   outcomeProgressAPI,
   teachingAPI,
+  bulkEvidenceAPI,
+  rubricScaleAPI,
 } from '@/app/plugins/cbc/api/cbc';
 import type {
   StrandFormData,
@@ -30,6 +32,8 @@ import type {
   StrandDetail,
   TeachingSession,
   EvidenceRecord,
+  BulkClassEvidenceData,
+  RubricScale,
 } from '@/app/plugins/cbc/types/cbc';
 
 // ============================================================================
@@ -201,6 +205,15 @@ export const useUpdateOutcome = () => {
   });
 };
 
+/*************  ✨ Windsurf Command ⭐  *************/
+/**
+ * Delete a learning outcome by its ID.
+ *
+ * Upon success, invalidate the learning outcomes list query.
+ *
+ * @returns {UseMutationResult} A React Query mutation result.
+ */
+/*******  d1d96650-9b1b-4745-8283-c4b9059fc434  *******/
 export const useDeleteOutcome = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -419,3 +432,27 @@ export const useSessionOutcomes = (id: number | null) =>
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
   });
+
+export const useSessionRubricScale = (sessionId: number | null) =>
+  useQuery<RubricScale>({
+    queryKey: ['cbc', 'rubric-scale', sessionId],
+    queryFn: async (): Promise<RubricScale> =>
+      rubricScaleAPI.getForSession(sessionId!),
+    enabled: !!sessionId,
+    staleTime: 10 * 60 * 1000,
+  });
+
+export const useBulkCreateClassEvidence = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BulkClassEvidenceData) =>
+      bulkEvidenceAPI.createForClass(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: cbcKeys.evidence.list({
+          learning_outcome: variables.learning_outcome,
+        }),
+      });
+    },
+  });
+};

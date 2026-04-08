@@ -319,3 +319,68 @@ export interface SessionLearner {
   last_name: string;
   session_evidence_count: number;
 }
+export interface RubricLevel {
+  id: number;
+  code: string;
+  label: string;
+  description: string;
+  numeric_value: number;
+  sequence: number;
+}
+
+export interface RubricScale {
+  id: number;
+  name: string;
+  description: string;
+  is_active: boolean;
+  levels: RubricLevel[];
+}
+
+export interface StudentEntry {
+  student_id: number;
+  rubric_level?: number | null;
+  narrative?: string;
+}
+
+export interface BulkClassEvidenceData {
+  learning_outcome: number;
+  session_id: number;
+  observed_at: string;
+  evaluation_type: 'RUBRIC' | 'DESCRIPTIVE';
+  default_rubric_level?: number | null;
+  default_narrative?: string;
+  student_entries: StudentEntry[];
+}
+
+export interface RubricLevel {
+  id: number;
+  code: string;
+  label: string;
+  description: string;
+  numeric_value: number;
+  sequence: number;
+}
+
+export interface RubricScale {
+  id: number;
+  name: string;
+  description: string;
+  is_active: boolean;
+  levels: RubricLevel[];
+}
+
+export interface StudentEntry {
+  student_id: number;
+  rubric_level?: number | null;
+  narrative?: string;
+}
+
+export interface BulkClassEvidenceData {
+  learning_outcome: number;
+  session_id: number;
+  observed_at: string;
+  evaluation_type: 'RUBRIC' | 'DESCRIPTIVE';
+  default_rubric_level?: number | null;
+  default_narrative?: string;
+  student_entries: StudentEntry[];
+}

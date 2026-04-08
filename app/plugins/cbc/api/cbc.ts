@@ -37,6 +37,8 @@ import {
   CohortSummaryEntry,
   TeachingSession,
   TeachingSessionSummary,
+  RubricScale,
+  BulkClassEvidenceData,
 } from '@/app/plugins/cbc/types/cbc';
 
 
@@ -403,5 +405,23 @@ export const teachingAPI = {
   getAvailableOutcomes: async (params: { subject?: number; grade?: number }) => {
     const response = await apiClient.get<LearningOutcome[]>('/cbc/learning-outcomes/', { params });
     return response.data;
+  },
+};
+export const rubricScaleAPI = {
+  getForSession: async (sessionId: number): Promise<RubricScale> => {
+    const res = await apiClient.get<RubricScale>(
+      `/cbc/teaching-sessions/${sessionId}/rubric-scale/`
+    );
+    return res.data;
+  },
+};
+
+export const bulkEvidenceAPI = {
+  createForClass: async (data: BulkClassEvidenceData): Promise<{ detail: string; records: EvidenceRecord[] }> => {
+    const res = await apiClient.post<{ detail: string; records: EvidenceRecord[] }>(
+      '/cbc/evidence/bulk_create_class/',
+      data,
+    );
+    return res.data;
   },
 };
