@@ -39,6 +39,11 @@ import {
   TeachingSessionSummary,
   RubricScale,
   BulkClassEvidenceData,
+  CompetencyDistribution,
+  CBCProgressSummary,
+  StrandOutcomeDistribution,
+  OutcomeLearner,
+  OutcomeConfidence
 } from '@/app/plugins/cbc/types/cbc';
 
 
@@ -236,6 +241,13 @@ export const evidenceAPI = {
     });
     return response.data;
   },
+  studentConfidence: async (studentId: number) => {
+    const response = await apiClient.get<OutcomeConfidence[]>(
+      '/cbc/evidence/student_confidence/',
+      { params: { student_id: studentId } },
+    );
+    return response.data;
+  },
 };
 
 
@@ -327,6 +339,45 @@ export const outcomeProgressAPI = {
     const response = await apiClient.post<{ detail: string; records: OutcomeProgress[] }>(
       '/cbc/outcome-progress/bulk_update/',
       data,
+    );
+    return response.data;
+  },
+  cbcProgressSummary: async (params: { cohort_id: number; subject_id: number }) => {
+    const response = await apiClient.get<CBCProgressSummary>(
+      '/cbc/outcome-progress/cbc_progress_summary/',
+      { params },
+    );
+    return response.data;
+  },
+
+  outcomeDistribution: async (params: {
+    learning_outcome_id: number;
+    cohort_id: number;
+  }) => {
+    const response = await apiClient.get<CompetencyDistribution>(
+      '/cbc/outcome-progress/outcome_distribution/',
+      { params },
+    );
+    return response.data;
+  },
+  strandOutcomeDistribution: async (params: {
+    strand_id: number;
+    cohort_id: number;
+  }) => {
+    const response = await apiClient.get<StrandOutcomeDistribution[]>(
+      '/cbc/outcome-progress/strand_outcome_distribution/',
+      { params },
+    );
+    return response.data;
+  },
+  outcomeLearners: async (params: {
+    learning_outcome_id: number;
+    cohort_id: number;
+    levels?: string;
+  }) => {
+    const response = await apiClient.get<OutcomeLearner[]>(
+      '/cbc/outcome-progress/outcome_learners/',
+      { params },
     );
     return response.data;
   },

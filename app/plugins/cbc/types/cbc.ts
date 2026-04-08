@@ -213,7 +213,6 @@ export interface BulkOutcomeSessionData {
 // OutcomeProgress
 // ============================================================================
 
-export type MasteryLevel = 'NOT_STARTED' | 'EMERGING' | 'MEETING' | 'EXCEEDING';
 
 export interface OutcomeProgress {
   id: number;
@@ -245,7 +244,8 @@ export interface BulkOutcomeProgressData {
 
 export interface MasteryDistribution {
   NOT_STARTED: number;
-  EMERGING: number;
+  BELOW: number;
+  APPROACHING: number;
   MEETING: number;
   EXCEEDING: number;
 }
@@ -383,4 +383,64 @@ export interface BulkClassEvidenceData {
   default_rubric_level?: number | null;
   default_narrative?: string;
   student_entries: StudentEntry[];
+}
+
+
+export type MasteryLevel =
+  | 'NOT_STARTED'
+  | 'BELOW'
+  | 'APPROACHING'
+  | 'MEETING'
+  | 'EXCEEDING';
+
+export interface CompetencyDistribution {
+  NOT_STARTED: number;
+  BELOW: number;
+  APPROACHING: number;
+  MEETING: number;
+  EXCEEDING: number;
+}
+
+export interface CoverageSummary {
+  covered: number;
+  total: number;
+  percent: number;
+}
+
+export interface CBCProgressSummary {
+  coverage: CoverageSummary;
+  competency: CompetencyDistribution;
+  attention_needed: number;
+  avg_score: number;
+}
+
+export interface StrandOutcomeDistribution {
+  outcome_id: number;
+  outcome_code: string;
+  description: string;
+  sub_strand_id: number;
+  sub_strand_name: string;
+  distribution: CompetencyDistribution;
+}
+
+export interface OutcomeLearner {
+  student_id: number;
+  student_name: string;
+  admission_number: string;
+  mastery_level: MasteryLevel;
+  evidence_count: number;
+  last_evaluated_at: string | null;
+}
+
+export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE';
+
+export interface OutcomeConfidence {
+  outcome_id: number;
+  outcome_code: string;
+  mastery_level: MasteryLevel;
+  evidence_count: number;
+  confidence: ConfidenceLevel;
+  source_types: string[];
+  has_assessment: boolean;
+  has_override: boolean;
 }

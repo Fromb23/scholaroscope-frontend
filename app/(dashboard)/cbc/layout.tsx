@@ -1,5 +1,6 @@
 // app/(dashboard)/cbc/layout.tsx
 import { CBCProvider } from '@/app/plugins/cbc/context/CBCContext';
+import '@/app/plugins/cbc/registry/learnerExtension';
 
 export default function CBCLayout({ children }: { children: React.ReactNode }) {
     return (

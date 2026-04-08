@@ -23,8 +23,6 @@ import type {
   BulkEvidenceData,
   BulkOutcomeSessionData,
   BulkOutcomeProgressData,
-  OutcomeProgressUpdateData,
-  MasteryLevel,
   SessionLearner,
   Strand,
   SubStrand,
@@ -34,6 +32,11 @@ import type {
   EvidenceRecord,
   BulkClassEvidenceData,
   RubricScale,
+  CompetencyDistribution,
+  CBCProgressSummary,
+  StrandOutcomeDistribution,
+  OutcomeLearner,
+  OutcomeConfidence
 } from '@/app/plugins/cbc/types/cbc';
 
 // ============================================================================
@@ -346,6 +349,39 @@ export const useCohortSummary = (cohortId: number | null) =>
     staleTime: 2 * 60 * 1000,
   });
 
+export const useCBCProgressSummary = (params: {
+  cohort_id: number | null;
+  subject_id: number | null;
+}) =>
+  useQuery<CBCProgressSummary>({
+    queryKey: cbcKeys.outcomeProgress.cbcSummary(params.cohort_id!, params.subject_id!),
+    queryFn: () =>
+      outcomeProgressAPI.cbcProgressSummary({
+        cohort_id: params.cohort_id!,
+        subject_id: params.subject_id!,
+      }),
+    enabled: !!params.cohort_id && !!params.subject_id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useOutcomeDistribution = (params: {
+  learning_outcome_id: number | null;
+  cohort_id: number | null;
+}) =>
+  useQuery<CompetencyDistribution>({
+    queryKey: cbcKeys.outcomeProgress.distribution(
+      params.learning_outcome_id!,
+      params.cohort_id!,
+    ),
+    queryFn: () =>
+      outcomeProgressAPI.outcomeDistribution({
+        learning_outcome_id: params.learning_outcome_id!,
+        cohort_id: params.cohort_id!,
+      }),
+    enabled: !!params.learning_outcome_id && !!params.cohort_id,
+    staleTime: 2 * 60 * 1000,
+  });
+
 export const useBulkUpdateProgress = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -447,3 +483,50 @@ export const useBulkCreateClassEvidence = () => {
     },
   });
 };
+
+export const useStrandOutcomeDistribution = (params: {
+  strand_id: number | null;
+  cohort_id: number | null;
+}) =>
+  useQuery<StrandOutcomeDistribution[]>({
+    queryKey: cbcKeys.outcomeProgress.strandDistribution(
+      params.strand_id!,
+      params.cohort_id!,
+    ),
+    queryFn: () =>
+      outcomeProgressAPI.strandOutcomeDistribution({
+        strand_id: params.strand_id!,
+        cohort_id: params.cohort_id!,
+      }),
+    enabled: !!params.strand_id && !!params.cohort_id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useOutcomeLearners = (params: {
+  learning_outcome_id: number | null;
+  cohort_id: number | null;
+  levels?: string;
+}) =>
+  useQuery<OutcomeLearner[]>({
+    queryKey: cbcKeys.outcomeProgress.outcomeLearners(
+      params.learning_outcome_id!,
+      params.cohort_id!,
+      params.levels,
+    ),
+    queryFn: () =>
+      outcomeProgressAPI.outcomeLearners({
+        learning_outcome_id: params.learning_outcome_id!,
+        cohort_id: params.cohort_id!,
+        levels: params.levels,
+      }),
+    enabled: !!params.learning_outcome_id && !!params.cohort_id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useStudentConfidence = (studentId: number | null) =>
+  useQuery<OutcomeConfidence[]>({
+    queryKey: cbcKeys.evidence.studentConfidence(studentId!),
+    queryFn: () => evidenceAPI.studentConfidence(studentId!),
+    enabled: !!studentId,
+    staleTime: 2 * 60 * 1000,
+  });

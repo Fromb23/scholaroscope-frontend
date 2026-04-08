@@ -83,21 +83,27 @@ export const MASTERY_CONFIG: Record<
         bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-300',
         segment: 'bg-gray-300', label: 'Not Started',
     },
-    EMERGING: {
+    BELOW: {
+        bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300',
+        segment: 'bg-red-400', label: 'Below Expectation',
+    },
+    APPROACHING: {
         bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300',
-        segment: 'bg-amber-400', label: 'Emerging',
+        segment: 'bg-amber-400', label: 'Approaching Expectation',
     },
     MEETING: {
         bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300',
-        segment: 'bg-blue-500', label: 'Meeting',
+        segment: 'bg-blue-500', label: 'Meeting Expectation',
     },
     EXCEEDING: {
         bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300',
-        segment: 'bg-emerald-500', label: 'Exceeding',
+        segment: 'bg-emerald-500', label: 'Exceeding Expectation',
     },
 };
 
-const MASTERY_ORDER: MasteryLevel[] = ['NOT_STARTED', 'EMERGING', 'MEETING', 'EXCEEDING'];
+const MASTERY_ORDER: MasteryLevel[] = [
+    'NOT_STARTED', 'BELOW', 'APPROACHING', 'MEETING', 'EXCEEDING',
+];
 
 export function MasteryBadge({
     level,

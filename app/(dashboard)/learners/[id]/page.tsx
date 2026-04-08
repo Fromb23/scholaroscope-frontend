@@ -42,6 +42,8 @@ const END_REASON_LABELS: Record<string, string> = {
     COMPLETED: 'Completed', GRADUATED: 'Graduated', TRANSFERRED: 'Transferred',
     WRONG_ASSIGNMENT: 'Wrong Assignment', WITHDRAWN: 'Withdrawn', PROMOTED: 'Promoted',
 };
+import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
+import '@/app/plugins/cbc/registry/learnerExtension';
 
 function calculateAge(dob?: string): string {
     if (!dob) return 'N/A';
@@ -90,6 +92,16 @@ export default function LearnerDetailPage() {
         () => student?.enrollments.filter(e => !e.is_active) ?? [],
         [student]
     );
+
+
+    const curriculaTypes = activeEnrollments.map(
+        e => e.curriculum_type ?? ''
+    ).filter(Boolean);
+
+    const slotExtensions = getLearnerProfileExtensions({
+        studentId,
+        curricula: curriculaTypes,
+    });
 
     const handleDelete = async () => {
         await deleteStudent();
@@ -375,6 +387,13 @@ export default function LearnerDetailPage() {
                         </div>
                     </div>
                 </Card>
+            )}
+            {slotExtensions.length > 0 && (
+                <div className="space-y-4">
+                    {slotExtensions.map(ext => (
+                        <ext.component key={ext.key} studentId={studentId} />
+                    ))}
+                </div>
             )}
 
             {/* Enrollment History */}

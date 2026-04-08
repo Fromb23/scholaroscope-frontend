@@ -36,6 +36,8 @@ export const cbcKeys = {
             ['cbc', 'evidence', 'class-progress', cohortId] as const,
         outcomeAchievement: (outcomeId: number) =>
             ['cbc', 'evidence', 'outcome-achievement', outcomeId] as const,
+        studentConfidence: (studentId: number) =>
+            ['cbc', 'evidence', 'confidence', studentId] as const,
     },
 
     // OutcomeSession
@@ -54,6 +56,14 @@ export const cbcKeys = {
             ['cbc', 'outcome-progress', 'student-summary', studentId] as const,
         cohortSummary: (cohortId: number) =>
             ['cbc', 'outcome-progress', 'cohort-summary', cohortId] as const,
+        cbcSummary: (cohortId: number, subjectId: number) =>
+            ['cbc', 'outcome-progress', 'cbc-summary', cohortId, subjectId] as const,
+        distribution: (outcomeId: number, cohortId: number) =>
+            ['cbc', 'outcome-progress', 'distribution', outcomeId, cohortId] as const,
+        strandDistribution: (strandId: number, cohortId: number) =>
+            ['cbc', 'outcome-progress', 'strand-distribution', strandId, cohortId] as const,
+        outcomeLearners: (outcomeId: number, cohortId: number, levels?: string) =>
+            ['cbc', 'outcome-progress', 'learners', outcomeId, cohortId, levels] as const,
     },
 
     // Teaching sessions

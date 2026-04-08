@@ -16,6 +16,7 @@ export interface StudentCohortEnrollment {
   cohort_name: string;
   cohort_level: string;
   curriculum_name: string;
+  curriculum_type: string;
   enrolled_date: string;
   completion_date?: string;
   is_active: boolean;

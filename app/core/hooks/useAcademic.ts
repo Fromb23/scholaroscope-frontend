@@ -415,6 +415,22 @@ export const useCohorts = (filters?: CohortFilters) => {
 
   return { cohorts, loading, error, refetch: fetchCohorts, createCohort, updateCohort, deleteCohort };
 };
+export const useCohort = (cohortId: number | null) => {
+  const [cohort, setCohort] = useState<CohortDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cohortId) return;
+    setLoading(true);
+    cohortAPI.getById(cohortId)
+      .then(data => { setCohort(data); setError(null); })
+      .catch(err => setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort')))
+      .finally(() => setLoading(false));
+  }, [cohortId]);
+
+  return { cohort, loading, error };
+};
 
 // ── useCohortDetail ───────────────────────────────────────────────────────
 

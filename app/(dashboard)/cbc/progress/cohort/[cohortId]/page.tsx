@@ -1,91 +1,54 @@
 'use client';
-// app/(dashboard)/cbc/progress/cohort/[cohortId]/page.tsx
 
-import { useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, Target, TrendingUp, Award, AlertCircle } from 'lucide-react';
-import { useCohortSummary } from '@/app/plugins/cbc/hooks/useCBC';
+import { ArrowLeft, Users, Target, BookOpen, AlertCircle } from 'lucide-react';
+import { useCBCProgressSummary } from '@/app/plugins/cbc/hooks/useCBC';
+import { useCohort, useSubjects } from '@/app/core/hooks/useAcademic';
 import {
     CBCNav, CBCBreadcrumb, CBCError, CBCLoading,
+    MasteryBadge, MASTERY_CONFIG,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
-import { DataTable, Column } from '@/app/components/ui/Table';
-import type { CohortSummaryEntry } from '@/app/plugins/cbc/types/cbc';
+import { Select } from '@/app/components/ui/Select';
+import type { MasteryLevel } from '@/app/plugins/cbc/types/cbc';
+import type { Subject } from '@/app/core/types/academic';
 
-function masteryVariant(pct: number) {
-    if (pct >= 80) return 'green';
-    if (pct >= 60) return 'blue';
-    if (pct >= 40) return 'yellow';
-    if (pct > 0) return 'red';
-    return 'default';
-}
+const MASTERY_LEVELS: MasteryLevel[] = [
+    'NOT_STARTED', 'BELOW', 'APPROACHING', 'MEETING', 'EXCEEDING',
+];
 
 export default function CohortProgressPage() {
     const { cohortId: raw } = useParams<{ cohortId: string }>();
     const cohortId = Number(raw);
-    const router = useRouter();
 
-    const { data: entries = [], isLoading, error, refetch } =
-        useCohortSummary(cohortId);
+    const { cohort, loading: cohortLoading } = useCohort(cohortId);
+    const { subjects = [] } = useSubjects(cohort?.curriculum ?? undefined);
 
-    const stats = useMemo(() => {
-        if (entries.length === 0) return { avg: 0, highest: 0, atRisk: 0 };
-        const avg = entries.reduce((s, e) => s + e.mastery_percentage, 0) / entries.length;
-        return {
-            avg: Math.round(avg * 10) / 10,
-            highest: Math.max(...entries.map(e => e.mastery_percentage)),
-            atRisk: entries.filter(e => e.mastery_percentage < 40).length,
-        };
-    }, [entries]);
+    const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
 
-    const atRiskStudents = useMemo(
-        () => entries.filter(e => e.mastery_percentage < 40),
-        [entries]
-    );
+    // Auto-select if only one subject
+    useEffect(() => {
+        if (subjects.length === 1 && selectedSubjectId === null) {
+            setSelectedSubjectId(subjects[0].id);
+        }
+    }, [subjects, selectedSubjectId]);
 
-    const columns: Column<CohortSummaryEntry>[] = [
-        {
-            key: 'student_name', header: 'Learner', sortable: true,
-            render: r => (
-                <div>
-                    <div className="font-medium text-gray-900">{r.student_name}</div>
-                    <div className="text-xs text-gray-500">{r.admission_number}</div>
-                </div>
-            ),
-        },
-        {
-            key: 'mastery_percentage', header: 'Mastery', sortable: true,
-            render: r => (
-                <Badge variant={masteryVariant(r.mastery_percentage) as any} size="md" className="font-semibold">
-                    {r.mastery_percentage}%
-                </Badge>
-            ),
-            headerClassName: 'text-center', className: 'text-center',
-        },
-        {
-            key: 'mastered_outcomes', header: 'Progress', sortable: true,
-            render: r => (
-                <span className="text-sm text-gray-600">
-                    <span className="font-semibold text-gray-900">{r.mastered_outcomes}</span>
-                    {' / '}{r.total_outcomes}
-                </span>
-            ),
-            headerClassName: 'text-right', className: 'text-right',
-        },
-    ];
+    const { data: summary, isLoading, error, refetch } = useCBCProgressSummary({
+        cohort_id: cohortId,
+        subject_id: selectedSubjectId,
+    });
 
-    if (isLoading) return (
-        <div className="space-y-6"><CBCNav /><CBCLoading message="Loading cohort progress…" /></div>
-    );
+    const totalLearners = useMemo(() => {
+        if (!summary) return 0;
+        return Object.values(summary.competency).reduce((a, b) => a + b, 0);
+    }, [summary]);
 
-    if (error) return (
-        <div className="space-y-6">
-            <CBCNav />
-            <CBCError error={error} onRetry={refetch} />
-        </div>
+    if (cohortLoading) return (
+        <div className="space-y-6"><CBCNav /><CBCLoading message="Loading cohort…" /></div>
     );
 
     return (
@@ -102,110 +65,167 @@ export default function CohortProgressPage() {
                 </Button>
             </Link>
 
-            {/* Header */}
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl">
                     <Users className="h-8 w-8 text-purple-600" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Cohort Competency Progress</h1>
-                    <p className="text-gray-500 mt-1">Mastery overview for all learners in this cohort</p>
-                </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                    { title: 'Learners', value: entries.length, color: 'text-blue-600' },
-                    { title: 'Avg Mastery', value: `${stats.avg}%`, color: 'text-purple-600' },
-                    { title: 'Highest', value: `${stats.highest}%`, color: 'text-emerald-600' },
-                    { title: 'At Risk (<40%)', value: stats.atRisk, color: 'text-red-600' },
-                ].map(s => (
-                    <Card key={s.title} className="text-center">
-                        <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
-                        <div className="text-sm text-gray-500 mt-1">{s.title}</div>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Legend */}
-            <Card className="bg-gray-50">
-                <p className="text-sm font-medium text-gray-700 mb-3">Mastery Level Guide</p>
-                <div className="flex flex-wrap gap-4">
-                    {[
-                        { label: 'Exceeding (≥80%)', variant: 'green' },
-                        { label: 'Meeting (60–79%)', variant: 'blue' },
-                        { label: 'Emerging (40–59%)', variant: 'yellow' },
-                        { label: 'At Risk (1–39%)', variant: 'red' },
-                        { label: 'Not Started (0%)', variant: 'default' },
-                    ].map(item => (
-                        <div key={item.label} className="flex items-center gap-2">
-                            <Badge variant={item.variant as any} size="sm">Sample</Badge>
-                            <span className="text-xs text-gray-600">{item.label}</span>
-                        </div>
-                    ))}
-                </div>
-            </Card>
-
-            {/* Table */}
-            <Card>
-                <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Users className="h-5 w-5 text-blue-600" />
-                        Learner Performance
-                        <Badge variant="blue" size="sm">{entries.length}</Badge>
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Click a learner to view their detailed progress
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        Cohort Competency Progress
+                    </h1>
+                    <p className="text-gray-500 mt-1">
+                        {cohort?.name ?? `Cohort ${cohortId}`}
                     </p>
                 </div>
-                <DataTable<CohortSummaryEntry & Record<string, unknown>>
-                    data={entries as (CohortSummaryEntry & Record<string, unknown>)[]}
-                    columns={columns}
-                    loading={isLoading}
-                    enableSearch
-                    enableSort
-                    searchPlaceholder="Search learners…"
-                    emptyMessage="No learners found in this cohort"
-                    onRowClick={r => router.push(`/cbc/progress/learner/${r.student_id}`)}
-                    pagination={{
-                        currentPage: 1, pageSize: 25,
-                        totalItems: entries.length,
-                        totalPages: Math.ceil(entries.length / 25),
-                    }}
-                />
-            </Card>
+            </div>
 
-            {/* At-risk callout */}
-            {stats.atRisk > 0 && (
-                <Card className="border-amber-200 bg-amber-50">
-                    <div className="flex items-start gap-4">
-                        <div className="p-3 bg-amber-100 rounded-xl shrink-0">
-                            <AlertCircle className="h-6 w-6 text-amber-600" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                {stats.atRisk} Learner{stats.atRisk !== 1 ? 's' : ''} Need Support
-                            </h3>
-                            <p className="text-sm text-gray-700 mb-3">
-                                Below 40% mastery — may benefit from targeted support.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {atRiskStudents.map(e => (
-                                    <Link key={e.student_id}
-                                        href={`/cbc/progress/learner/${e.student_id}`}>
-                                        <Badge variant="orange" size="md"
-                                            className="cursor-pointer hover:bg-orange-200 transition-colors">
-                                            {e.student_name}
-                                            <span className="ml-1.5 text-xs opacity-75">({e.mastery_percentage}%)</span>
-                                        </Badge>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+            {/* Subject filter — only show if multiple subjects */}
+            {subjects.length > 1 && (
+                <Card>
+                    <Select
+                        label="Subject"
+                        value={selectedSubjectId?.toString() ?? ''}
+                        onChange={e => setSelectedSubjectId(
+                            e.target.value ? Number(e.target.value) : null
+                        )}
+                        options={[
+                            { value: '', label: 'Select a subject' },
+                            ...subjects.map((s: Subject) => ({
+                                value: String(s.id), label: s.name,
+                            })),
+                        ]}
+                    />
                 </Card>
             )}
+
+            {!selectedSubjectId ? (
+                <Card className="py-12 text-center">
+                    <BookOpen className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                    <p className="text-gray-500">Select a subject to view progress</p>
+                </Card>
+            ) : isLoading ? (
+                <CBCLoading message="Computing competency data…" />
+            ) : error ? (
+                <CBCError error={error} onRetry={refetch} />
+            ) : summary ? (
+                <>
+                    {/* Coverage stats */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {[
+                            {
+                                label: 'Outcomes Covered',
+                                value: `${summary.coverage.covered}/${summary.coverage.total}`,
+                                color: 'text-blue-600',
+                            },
+                            {
+                                label: 'Coverage',
+                                value: `${summary.coverage.percent}%`,
+                                color: 'text-purple-600',
+                            },
+                            {
+                                label: 'Avg Score',
+                                value: `${summary.avg_score}/4`,
+                                color: 'text-emerald-600',
+                            },
+                            {
+                                label: 'Need Attention',
+                                value: summary.attention_needed,
+                                color: 'text-red-500',
+                            },
+                        ].map(s => (
+                            <Card key={s.label} className="text-center">
+                                <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
+                                <div className="text-sm text-gray-500 mt-1">{s.label}</div>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Competency distribution bar chart */}
+                    <Card>
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center
+                            gap-2 mb-5">
+                            <Target className="h-5 w-5 text-purple-600" />
+                            Competency Distribution
+                            <Badge variant="blue" size="sm">{totalLearners} learners</Badge>
+                        </h2>
+
+                        {/* Stacked bar */}
+                        <div className="flex h-8 rounded-lg overflow-hidden mb-4">
+                            {MASTERY_LEVELS.map(level => {
+                                const count = summary.competency[level];
+                                const pct = totalLearners > 0
+                                    ? count / totalLearners * 100
+                                    : 0;
+                                if (pct === 0) return null;
+                                return (
+                                    <div
+                                        key={level}
+                                        className={`${MASTERY_CONFIG[level].segment}
+                                            transition-all duration-500`}
+                                        style={{ width: `${pct}%` }}
+                                        title={`${MASTERY_CONFIG[level].label}: ${count}`}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        {/* Per-level rows */}
+                        <div className="space-y-3">
+                            {MASTERY_LEVELS.map(level => {
+                                const count = summary.competency[level];
+                                const pct = totalLearners > 0
+                                    ? Math.round(count / totalLearners * 100)
+                                    : 0;
+                                const cfg = MASTERY_CONFIG[level];
+                                return (
+                                    <div key={level} className="flex items-center gap-4">
+                                        <div className="w-44 shrink-0">
+                                            <MasteryBadge level={level} size="sm" />
+                                        </div>
+                                        <div className="flex-1 bg-gray-100 rounded-full h-3
+                                            overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all
+                                                    duration-500 ${cfg.segment}`}
+                                                style={{ width: `${pct}%` }}
+                                            />
+                                        </div>
+                                        <div className="w-24 text-right shrink-0">
+                                            <span className="font-semibold text-gray-900">
+                                                {count}
+                                            </span>
+                                            <span className="text-gray-400 text-sm ml-1">
+                                                ({pct}%)
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
+
+                    {/* Attention callout */}
+                    {summary.attention_needed > 0 && (
+                        <Card className="border-amber-200 bg-amber-50">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-amber-100 rounded-xl shrink-0">
+                                    <AlertCircle className="h-6 w-6 text-amber-600" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-gray-900 text-lg mb-1">
+                                        {summary.attention_needed} learner
+                                        {summary.attention_needed !== 1 ? 's' : ''} need support
+                                    </h3>
+                                    <p className="text-sm text-gray-700">
+                                        Below Expectation or Not Started —
+                                        consider targeted intervention.
+                                    </p>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+                </>
+            ) : null}
         </div>
     );
 }
