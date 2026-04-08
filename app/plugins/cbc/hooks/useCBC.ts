@@ -205,15 +205,6 @@ export const useUpdateOutcome = () => {
   });
 };
 
-/*************  ✨ Windsurf Command ⭐  *************/
-/**
- * Delete a learning outcome by its ID.
- *
- * Upon success, invalidate the learning outcomes list query.
- *
- * @returns {UseMutationResult} A React Query mutation result.
- */
-/*******  d1d96650-9b1b-4745-8283-c4b9059fc434  *******/
 export const useDeleteOutcome = () => {
   const qc = useQueryClient();
   return useMutation({
