@@ -88,8 +88,7 @@ export default function CBCAuthoringPage() {
                     {selectedCurriculumId && (
                         <Link
                             href="/cbc/authoring/strands"
-                            className="text-sm font-medium text-blue-600 hover:text-blue-700
-                flex items-center gap-1"
+                            className="text-sm font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1"
                         >
                             <Plus className="h-4 w-4" />
                             Manage
@@ -97,12 +96,26 @@ export default function CBCAuthoringPage() {
                     )}
                 </div>
 
-                {isLoading ? (
+                {(isLoading || curriculumLoading) ? (
                     <CBCLoading message="Loading strands…" />
                 ) : !selectedCurriculumId ? (
-                    <p className="text-sm text-gray-500 py-8 text-center">
-                        Select a curriculum above
-                    </p>
+                    <div className="py-12 text-center space-y-3">
+                        <p className="text-sm text-gray-600 font-medium">
+                            No CBC curriculum found for your organisation.
+                        </p>
+                        <p className="text-sm text-gray-400">
+                            Set up your curriculum first, then return here to author strands.
+                        </p>
+                        <Link
+                            href="/academic"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600
+                    text-white text-sm font-medium rounded-lg hover:bg-blue-700
+                    transition-colors"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Go to Academic Setup
+                        </Link>
+                    </div>
                 ) : strands.length === 0 ? (
                     <div className="py-10 text-center">
                         <BookOpen className="mx-auto h-10 w-10 text-gray-300 mb-3" />
@@ -121,11 +134,11 @@ export default function CBCAuthoringPage() {
                                 key={strand.id}
                                 href={`/cbc/authoring/strands/${strand.id}`}
                                 className="flex items-center justify-between py-3 px-2 -mx-2
-                  hover:bg-gray-50 rounded-lg transition-colors group"
+                        hover:bg-gray-50 rounded-lg transition-colors group"
                             >
                                 <div className="flex items-center gap-3 min-w-0">
                                     <span className="text-xs font-mono font-semibold bg-blue-50
-                    text-blue-700 px-2 py-0.5 rounded shrink-0">
+                            text-blue-700 px-2 py-0.5 rounded shrink-0">
                                         {strand.code}
                                     </span>
                                     <span className="font-medium text-gray-900 truncate">{strand.name}</span>
@@ -141,7 +154,7 @@ export default function CBCAuthoringPage() {
                                         {strand.sub_strands_count}
                                     </div>
                                     <ChevronRight className="h-4 w-4 text-gray-400
-                    group-hover:text-blue-600 transition-colors" />
+                            group-hover:text-blue-600 transition-colors" />
                                 </div>
                             </Link>
                         ))}

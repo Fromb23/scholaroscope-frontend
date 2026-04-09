@@ -207,7 +207,9 @@ export function useAdminDashboard() {
 
     useEffect(() => {
         if (!cohorts.length) return;
-        const currentCohorts = cohorts.filter(c => c.is_current_year);
+        const currentCohorts = cohorts.filter(
+            c => c.is_current_year && c.curriculum_type !== 'CBE'
+        );
         Promise.all(
             currentCohorts.map(c => cohortsAPI.getSyllabusProgress(c.id))
         ).then(results => setSyllabusProgress(results))

@@ -406,3 +406,65 @@ export interface OutcomeConfidence {
   has_assessment: boolean;
   has_override: boolean;
 }
+
+export interface CBCTeachingAssignment {
+  cohort_subject_id: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  level: string;
+  academic_year: string;
+  is_current_year: boolean;
+}
+
+export interface MyCBCTeachingLoad {
+  role: 'ADMIN' | 'INSTRUCTOR' | null;
+  organization: string | null;
+  assignments: CBCTeachingAssignment[];
+  total_assigned: number;
+}
+
+export interface CBCSubStrandCatalogEntry {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  sequence: number;
+  registered: boolean;
+}
+
+export interface CBCStrandCatalogEntry {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  sequence: number;
+  registered: boolean;
+  any_registered: boolean;
+  all_registered: boolean;
+  sub_strands: CBCSubStrandCatalogEntry[];
+}
+
+export interface CBCCatalogLevel {
+  level: string;
+  code: string;
+  subject_id: number;
+  registered: boolean;
+  any_registered: boolean;
+  all_registered: boolean;
+  strands: CBCStrandCatalogEntry[];
+}
+
+export interface CBCCatalogSubject {
+  name: string;
+  code: string;
+  levels: CBCCatalogLevel[];
+}
+
+export interface CBCCatalog {
+  curriculum_id: number;
+  curriculum_name: string;
+  subjects: CBCCatalogSubject[];
+}

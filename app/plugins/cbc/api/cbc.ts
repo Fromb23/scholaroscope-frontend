@@ -43,7 +43,9 @@ import {
   CBCProgressSummary,
   StrandOutcomeDistribution,
   OutcomeLearner,
-  OutcomeConfidence
+  OutcomeConfidence,
+  MyCBCTeachingLoad,
+  CBCCatalog,
 } from '@/app/plugins/cbc/types/cbc';
 
 
@@ -469,5 +471,38 @@ export const bulkEvidenceAPI = {
       data,
     );
     return res.data;
+  },
+};
+
+export const cbcTeachingLoadAPI = {
+  myTeachingLoad: async () => {
+    const response = await apiClient.get<MyCBCTeachingLoad>(
+      '/cbc/teaching-sessions/my_teaching_load/'
+    );
+    return response.data;
+  },
+};
+
+export const cbcCatalogAPI = {
+  getCatalog: async () => {
+    const response = await apiClient.get<CBCCatalog>('/cbc/strands/catalog/');
+    return response.data;
+  },
+};
+
+export const cbcSelectionAPI = {
+  registerSubStrands: async (subStrandIds: number[]) => {
+    const response = await apiClient.post<{ registered: number; total_requested: number }>(
+      '/cbc/strands/register_sub_strands/',
+      { sub_strand_ids: subStrandIds },
+    );
+    return response.data;
+  },
+  unregisterSubStrands: async (subStrandIds: number[]) => {
+    const response = await apiClient.post<{ unregistered: number; total_requested: number }>(
+      '/cbc/strands/unregister_sub_strands/',
+      { sub_strand_ids: subStrandIds },
+    );
+    return response.data;
   },
 };

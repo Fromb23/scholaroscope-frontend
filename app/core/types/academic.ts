@@ -86,6 +86,7 @@ export interface Cohort {
   name: string;
   curriculum: number;
   curriculum_name: string;
+  curriculum_type: CurriculumType;
   academic_year: number;
   academic_year_name: string;
   level: string;

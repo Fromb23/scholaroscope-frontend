@@ -19,6 +19,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { DashboardAlert, DashboardMetrics } from '@/app/core/hooks/useAdminDashboard';
 import type { Session } from '@/app/core/types/session';
 import { SyllabusProgress } from '../../types/academic';
+import { useRequests, useRequestStats } from '@/app/plugins/requests/hooks/useRequests';
 
 // ── DashboardHeader ───────────────────────────────────────────────────────
 
@@ -485,12 +486,10 @@ export function SystemOverview({ cohortCount, assessmentCount, studentCount }: S
 
 export function PendingApprovals() {
     const router = useRouter();
+    const { stats } = useRequestStats();
+    const { requests, loading } = useRequests({ status: 'PENDING' });
+    const pendingCount = stats?.pending ?? 0;
 
-    // Hardcoded pending items — replace with useApprovals hook when available
-    const items = [
-        { message: 'John Doe enrollment change request', time: '5 mins ago' },
-        { message: '3 learner status update requests', time: '2 hours ago' },
-    ];
 
     return (
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
@@ -500,7 +499,11 @@ export function PendingApprovals() {
                         <Inbox className="w-5 h-5 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900">Pending Approvals</h3>
-                    <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">5</span>
+                    {pendingCount > 0 && (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
+                            {pendingCount} pending
+                        </span>
+                    )}
                 </div>
                 <button
                     onClick={() => router.push('/requests')}
@@ -509,20 +512,29 @@ export function PendingApprovals() {
                     View All →
                 </button>
             </div>
+
             <div className="space-y-3">
-                {items.map((item, i) => (
-                    <div
-                        key={i}
-                        onClick={() => router.push('/requests')}
-                        className="p-4 bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100 rounded-xl border border-orange-200 transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-between"
-                    >
-                        <div>
-                            <p className="font-medium text-gray-900">{item.message}</p>
-                            <p className="text-xs text-gray-500 mt-1">{item.time}</p>
+                {loading ? (
+                    <p className="text-sm text-gray-400 py-2">Loading…</p>
+                ) : requests.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-2">No pending approvals.</p>
+                ) : (
+                    requests.slice(0, 5).map(req => (
+                        <div
+                            key={req.id}
+                            onClick={() => router.push('/requests')}
+                            className="p-4 bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100 rounded-xl border border-orange-200 transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-between"
+                        >
+                            <div>
+                                <p className="font-medium text-gray-900">{req.title}</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {req.submitted_by_name} · {new Date(req.created_at).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-orange-600" />
                         </div>
-                        <ChevronRight className="w-5 h-5 text-orange-600" />
-                    </div>
-                ))}
+                    ))
+                )}
             </div>
         </div>
     );

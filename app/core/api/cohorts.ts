@@ -12,6 +12,7 @@ export interface Cohort {
   level: string;
   curriculum: number;
   curriculum_name: string;
+  curriculum_type: string;
   academic_year: number;
   academic_year_name: string;
   student_count: number;

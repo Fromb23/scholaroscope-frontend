@@ -26,6 +26,7 @@ import {
     CurriculumCatalogDetail, InstalledPlugin,
     SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
 } from '../../types/plugins';
+import { CBCCurriculumModal } from '@/app/plugins/cbc/components/CBCCurriculumModal';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -402,11 +403,16 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
     const [curriculumOpen, setCurriculumOpen] = useState(false);
     const [modalKey, setModalKey] = useState(0);
 
-    // Plugin has curriculum contribution if key contains 'curriculum' or '844' or 'cbc'
-    // In production this would come from manifest.contributes.curriculum
-    const hasCurriculum = plugin.key.includes('curriculum') ||
+    const isCBC = plugin.key === 'cbc';
+    const hasCurriculum = isCBC ||
+        plugin.key.includes('curriculum') ||
         plugin.key.includes('844') ||
         plugin.key.includes('igcse');
+
+    const openCurriculum = () => {
+        setModalKey(k => k + 1);
+        setCurriculumOpen(true);
+    };
 
     return (
         <>
@@ -429,13 +435,9 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                         <p className="text-xs text-gray-500 max-w-md">{plugin.description}</p>
                         <p className="text-xs text-gray-400 mt-1 font-mono">key: {plugin.key}</p>
 
-                        {/* Curriculum management button */}
                         {hasCurriculum && plugin.is_active && (
                             <button
-                                onClick={() => {
-                                    setModalKey(k => k + 1);
-                                    setCurriculumOpen(true);
-                                }}
+                                onClick={openCurriculum}
                                 className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
                             >
                                 <BookOpen className="h-3.5 w-3.5" />
@@ -459,13 +461,22 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                 )}
             </div>
 
-            <CurriculumSelectionModal
-                key={modalKey}
-                isOpen={curriculumOpen}
-                onClose={() => setCurriculumOpen(false)}
-                installedPluginId={plugin.id}
-                pluginName={plugin.name}
-            />
+            {/* CBC uses its own strand/sub-strand modal */}
+            {isCBC ? (
+                <CBCCurriculumModal
+                    key={modalKey}
+                    isOpen={curriculumOpen}
+                    onClose={() => setCurriculumOpen(false)}
+                />
+            ) : (
+                <CurriculumSelectionModal
+                    key={modalKey}
+                    isOpen={curriculumOpen}
+                    onClose={() => setCurriculumOpen(false)}
+                    installedPluginId={plugin.id}
+                    pluginName={plugin.name}
+                />
+            )}
         </>
     );
 }

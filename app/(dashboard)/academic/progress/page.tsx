@@ -48,7 +48,7 @@ export default function AcademicProgressPage() {
     const { cohorts: allCohorts, loading: cohortsLoading } = useCohorts(
         selectedYearId ? { academic_year: selectedYearId } : undefined
     );
-    const cohorts = allCohorts.filter(c => !c.curriculum_name?.includes('CBC') && !c.curriculum_name?.includes('CBE'));
+    const cohorts = allCohorts.filter(c => c.curriculum_type !== 'CBE');
 
     // Auto-select first cohort for instructors
     useEffect(() => {
