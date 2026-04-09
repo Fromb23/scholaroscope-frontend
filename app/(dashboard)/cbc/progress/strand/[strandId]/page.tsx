@@ -202,12 +202,14 @@ export default function StrandCompetencyOverviewPage() {
     const searchParams = useSearchParams();
     const cohortFromUrl = searchParams.get('cohort');
 
-    const { selectedCohortId, setSelectedCohort } = useCBCContext();
+    const { selectedCohortId, setSelectedCohort, selectedCurriculumId } = useCBCContext();
     const [expandedOutcome, setExpandedOutcome] = useState<number | null>(null);
     const [drillDown, setDrillDown] = useState<DrillDown | null>(null);
 
     const { data: strand, isLoading: strandLoading } = useStrandDetail(strandId);
-    const { cohorts = [] } = useCohorts();
+    const { cohorts = [] } = useCohorts({
+        curriculum: selectedCurriculumId ?? undefined,
+    });
 
     useEffect(() => {
         if (selectedCohortId === null) {

@@ -8,24 +8,15 @@ import { Button } from '@/app/components/ui/Button';
 import { MasteryBadge } from '@/app/plugins/cbc/components/CBCComponents';
 import type { OutcomeConfidence, ConfidenceLevel } from '@/app/plugins/cbc/types/cbc';
 
+
 // ─── Confidence thresholds ────────────────────────────────────────────────────
-
-type ComputedConfidence = 'High' | 'Medium' | 'Low' | 'None';
-
-function computeConfidence(r: OutcomeConfidence): ComputedConfidence {
-    if (r.has_assessment || r.has_override) return 'High';
-    if (r.evidence_count >= 4) return 'High';
-    if (r.evidence_count >= 2) return 'Medium';
-    if (r.evidence_count === 1) return 'Low';
-    return 'None';
-}
-
-function confidenceColor(c: ComputedConfidence): string {
-    if (c === 'High') return 'text-emerald-600';
-    if (c === 'Medium') return 'text-blue-500';
-    if (c === 'Low') return 'text-amber-500';
+function confidenceColor(c: ConfidenceLevel): string {
+    if (c === 'HIGH') return 'text-emerald-600';
+    if (c === 'MEDIUM') return 'text-blue-500';
+    if (c === 'LOW') return 'text-amber-500';
     return 'text-gray-400';
 }
+
 
 // ─── Source label ─────────────────────────────────────────────────────────────
 
@@ -72,16 +63,14 @@ function SourcePip({ level }: { level: ConfidenceLevel }) {
 
 // ─── Overall confidence summary ───────────────────────────────────────────────
 
-function overallConfidence(records: OutcomeConfidence[]): ComputedConfidence {
-    if (records.length === 0) return 'None';
-    const scores: Record<ComputedConfidence, number> = { High: 3, Medium: 2, Low: 1, None: 0 };
-    const avg = records.reduce(
-        (sum, r) => sum + scores[computeConfidence(r)], 0
-    ) / records.length;
-    if (avg >= 2.5) return 'High';
-    if (avg >= 1.5) return 'Medium';
-    if (avg >= 0.5) return 'Low';
-    return 'None';
+function overallConfidence(records: OutcomeConfidence[]): ConfidenceLevel {
+    if (records.length === 0) return 'NONE';
+    const scores: Record<ConfidenceLevel, number> = { HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };
+    const avg = records.reduce((sum, r) => sum + scores[r.confidence], 0) / records.length;
+    if (avg >= 2.5) return 'HIGH';
+    if (avg >= 1.5) return 'MEDIUM';
+    if (avg >= 0.5) return 'LOW';
+    return 'NONE';
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -193,32 +182,29 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
 
                     {/* Outcome rows */}
                     <div className="space-y-1.5">
-                        {records.slice(0, 5).map((r: OutcomeConfidence) => {
-                            const conf = computeConfidence(r);
-                            return (
-                                <div key={r.outcome_id}
-                                    className="flex items-center justify-between py-1.5 px-3
-                                        bg-white rounded-lg border border-gray-100">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <span className="text-xs font-mono text-gray-600 shrink-0">
-                                            {r.outcome_code}
-                                        </span>
-                                        <MasteryBadge level={r.mastery_level} size="sm" />
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0 ml-2">
-                                        <SourcePip level={r.confidence} />
-                                        <span className={`text-xs font-medium
-                                            ${confidenceColor(conf)}`}>
-                                            {conf} confidence
-                                        </span>
-                                        <span className="text-xs text-gray-400">
-                                            {r.evidence_count}{' '}
-                                            {r.evidence_count === 1 ? 'record' : 'records'}
-                                        </span>
-                                    </div>
+                        {records.slice(0, 5).map((r: OutcomeConfidence) => (
+                            <div
+                                key={r.outcome_id}
+                                className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border border-gray-100"
+                            >
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-xs font-mono text-gray-600 shrink-0">
+                                        {r.outcome_code}
+                                    </span>
+                                    <MasteryBadge level={r.mastery_level} size="sm" />
                                 </div>
-                            );
-                        })}
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                    <SourcePip level={r.confidence} />
+                                    <span className={`text-xs font-medium ${confidenceColor(r.confidence)}`}>
+                                        {CONFIDENCE_CONFIG[r.confidence].label}
+                                    </span>
+                                    <span className="text-xs text-gray-400">
+                                        {r.evidence_count}{' '}
+                                        {r.evidence_count === 1 ? 'record' : 'records'}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
                         {records.length > 5 && (
                             <Link
                                 href={`/cbc/progress/learner/${studentId}`}

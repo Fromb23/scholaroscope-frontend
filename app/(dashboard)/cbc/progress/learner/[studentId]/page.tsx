@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -8,7 +8,6 @@ import {
     User, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import { useOutcomeProgressSummary, useOutcomeProgress } from '@/app/plugins/cbc/hooks/useCBC';
-import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import {
     CBCNav, CBCBreadcrumb, CBCError, CBCLoading,
     StrandProgressRow, MasteryBadge, MasteryDistributionLegend,
@@ -21,7 +20,6 @@ import type { OutcomeProgress, StrandMasterySummary } from '@/app/plugins/cbc/ty
 export default function StudentProgressPage() {
     const { studentId: raw } = useParams<{ studentId: string }>();
     const studentId = Number(raw);
-    const { expandedStrands, toggleStrand } = useCBCContext();
 
     const { data: summary, isLoading: summaryLoading, error: summaryError, refetch } =
         useOutcomeProgressSummary(studentId);
@@ -34,6 +32,15 @@ export default function StudentProgressPage() {
             ? recordsRaw
             : (recordsRaw as { results?: OutcomeProgress[] }).results ?? [];
     }, [recordsRaw]);
+
+    const [expandedStrands, setExpandedStrands] = useState<Set<string>>(new Set());
+    const toggleStrand = useCallback((code: string) => {
+        setExpandedStrands(prev => {
+            const next = new Set(prev);
+            next.has(code) ? next.delete(code) : next.add(code);
+            return next;
+        });
+    }, []);
 
     const recordsByStrand = useMemo(() => {
         if (!summary) return {} as Record<string, OutcomeProgress[]>;

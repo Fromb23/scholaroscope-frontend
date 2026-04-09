@@ -17,10 +17,9 @@ import { Badge } from '@/app/components/ui/Badge';
 import { useState } from 'react';
 
 export default function CBCBrowserPage() {
-    const { selectedCurriculumId, selectedSubjectId, setSelectedCurriculum, setSelectedSubject } =
-        useCBCContext();
+    const { selectedCurriculumId, selectedSubjectId, setSelectedSubject } = useCBCContext();
     const [search, setSearch] = useState('');
-    const { curricula = [], subjects = [] } = useAcademic();
+    const { subjects = [] } = useAcademic();
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
         selectedCurriculumId
@@ -64,16 +63,7 @@ export default function CBCBrowserPage() {
                     <Filter className="h-5 w-5 text-gray-400" />
                     <h3 className="text-base font-semibold text-gray-900">Filter</h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Select
-                        label="Curriculum"
-                        value={selectedCurriculumId?.toString() ?? ''}
-                        onChange={e => setSelectedCurriculum(e.target.value ? Number(e.target.value) : null)}
-                        options={[
-                            { value: '', label: 'Select curriculum' },
-                            ...curricula.map((c: any) => ({ value: String(c.id), label: c.name })),
-                        ]}
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Select
                         label="Subject"
                         value={selectedSubjectId?.toString() ?? ''}

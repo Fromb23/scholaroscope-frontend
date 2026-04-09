@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { BookOpen, Target, TrendingUp, Users, Filter, ChevronRight } from 'lucide-react';
 import { useStrandsByCurriculum } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
-import { useCohorts, useCurricula, useSubjects } from '@/app/core/hooks/useAcademic';
+import { useCohorts, useSubjects } from '@/app/core/hooks/useAcademic';
 import {
     CBCNav, CBCError, CBCLoading, CBCEmpty,
 } from '@/app/plugins/cbc/components/CBCComponents';
@@ -19,12 +19,11 @@ import type { Cohort, Curriculum, Subject } from '@/app/core/types/academic';
 export default function CBCProgressPage() {
     const {
         selectedCurriculumId, selectedSubjectId,
-        setSelectedCurriculum, setSelectedSubject, setSelectedCohort,
+        setSelectedSubject, setSelectedCohort,
         selectedCohortId
     } = useCBCContext();
 
-    const { cohorts = [] } = useCohorts();
-    const { curricula = [] } = useCurricula();
+    const { cohorts = [] } = useCohorts({ curriculum: selectedCurriculumId ?? undefined });
     const { subjects = [] } = useSubjects(selectedCurriculumId ?? undefined);
 
     const { data: strands = [], isLoading, error, refetch } =
@@ -73,19 +72,6 @@ export default function CBCProgressPage() {
                     <h3 className="text-base font-semibold text-gray-900">Filter</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select
-                        label="Curriculum"
-                        value={selectedCurriculumId?.toString() ?? ''}
-                        onChange={e => setSelectedCurriculum(
-                            e.target.value ? Number(e.target.value) : null
-                        )}
-                        options={[
-                            { value: '', label: 'Select curriculum' },
-                            ...curricula.map((c: Curriculum) => ({
-                                value: String(c.id), label: c.name,
-                            })),
-                        ]}
-                    />
                     <Select
                         label="Cohort"
                         value={selectedCohortId?.toString() ?? ''}

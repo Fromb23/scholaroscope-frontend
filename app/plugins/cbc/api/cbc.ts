@@ -452,11 +452,6 @@ export const teachingAPI = {
     );
     return response.data;
   },
-
-  getAvailableOutcomes: async (params: { subject?: number; grade?: number }) => {
-    const response = await apiClient.get<LearningOutcome[]>('/cbc/learning-outcomes/', { params });
-    return response.data;
-  },
 };
 export const rubricScaleAPI = {
   getForSession: async (sessionId: number): Promise<RubricScale> => {

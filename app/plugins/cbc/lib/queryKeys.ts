@@ -65,6 +65,10 @@ export const cbcKeys = {
         outcomeLearners: (outcomeId: number, cohortId: number, levels?: string) =>
             ['cbc', 'outcome-progress', 'learners', outcomeId, cohortId, levels] as const,
     },
+    rubricScale: {
+        forSession: (sessionId: number) =>
+            ['cbc', 'rubricScale', 'session', sessionId] as const,
+    },
 
     // Teaching sessions
     teachingSessions: {

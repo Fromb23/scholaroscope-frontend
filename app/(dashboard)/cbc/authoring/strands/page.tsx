@@ -26,8 +26,8 @@ const EMPTY_FORM: Partial<StrandFormData> = { name: '', description: '', subject
 
 export default function ManageStrandsPage() {
     const router = useRouter();
-    const { selectedCurriculumId, setSelectedCurriculum } = useCBCContext();
-    const { curricula = [], subjects = [] } = useAcademic();
+    const { selectedCurriculumId } = useCBCContext();
+    const { subjects = [] } = useAcademic();
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
         selectedCurriculumId ? { curriculum: selectedCurriculumId } : undefined
@@ -150,19 +150,20 @@ export default function ManageStrandsPage() {
                 <div className="flex items-center justify-end gap-1">
                     <Link
                         href={`/cbc/authoring/strands/${r.id}`}
+                        onClick={e => e.stopPropagation()}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Manage sub-strands"
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Link>
                     <button
-                        onClick={() => startEdit(r)}
+                        onClick={e => { e.stopPropagation(); startEdit(r); }}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                         <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                        onClick={() => setDeleteId(r.id)}
+                        onClick={e => { e.stopPropagation(); setDeleteId(r.id); }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
                         <Trash2 className="h-4 w-4" />
@@ -203,23 +204,6 @@ export default function ManageStrandsPage() {
                     </Button>
                 )}
             </div>
-
-            {/* Curriculum filter */}
-            <Card>
-                <div className="flex items-end gap-4 flex-wrap">
-                    <div className="flex-1 min-w-[240px]">
-                        <Select
-                            label="Curriculum"
-                            value={selectedCurriculumId?.toString() ?? ''}
-                            onChange={e => setSelectedCurriculum(e.target.value ? Number(e.target.value) : null)}
-                            options={[
-                                { value: '', label: 'Select Curriculum' },
-                                ...curricula.map((c: any) => ({ value: String(c.id), label: c.name })),
-                            ]}
-                        />
-                    </div>
-                </div>
-            </Card>
 
             {error && <CBCError error={error} onRetry={refetch} />}
 

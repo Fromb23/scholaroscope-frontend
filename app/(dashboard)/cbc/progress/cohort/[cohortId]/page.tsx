@@ -28,7 +28,19 @@ export default function CohortProgressPage() {
     const { cohort, loading: cohortLoading } = useCohort(cohortId);
     const { subjects = [] } = useSubjects(cohort?.curriculum ?? undefined);
 
-    const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+    const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(() => {
+        if (typeof window === 'undefined') return null;
+        try {
+            const raw = localStorage.getItem(`cbc_cohort_subject_${cohortId}`);
+            return raw ? Number(raw) : null;
+        } catch { return null; }
+    });
+    useEffect(() => {
+        if (selectedSubjectId === null) return;
+        try {
+            localStorage.setItem(`cbc_cohort_subject_${cohortId}`, String(selectedSubjectId));
+        } catch { }
+    }, [selectedSubjectId, cohortId]);
 
     // Auto-select if only one subject
     useEffect(() => {

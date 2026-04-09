@@ -1,7 +1,7 @@
 'use client';
 // app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -18,7 +18,6 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
-import type { LearningOutcome } from '@/app/plugins/cbc/types/cbc';
 
 // ── Per-sub-strand outcome list — fetched lazily when strand is expanded ──
 
@@ -102,7 +101,6 @@ export default function AddOutcomesPage() {
     const { sessionId: raw } = useParams<{ sessionId: string }>();
     const sessionId = Number(raw);
     const router = useRouter();
-    const { expandedSubStrands, toggleSubStrand } = useCBCContext();
 
     const { data: session, isLoading: sessionLoading, error: sessionError } =
         useTeachingSession(sessionId);
@@ -124,6 +122,15 @@ export default function AddOutcomesPage() {
     const [tagError, setTagError] = useState<string | null>(null);
 
     const linkedIds = useMemo(() => new Set(links.map(l => l.learning_outcome)), [links]);
+
+    const [expandedSubStrands, setExpandedSubStrands] = useState<Set<number>>(new Set());
+    const toggleSubStrand = useCallback((id: number) => {
+        setExpandedSubStrands(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    }, []);
 
     const toggleOutcome = (id: number) => {
         setSelectedIds(prev => {

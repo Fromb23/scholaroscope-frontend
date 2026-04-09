@@ -6,15 +6,13 @@ import Link from 'next/link';
 import { Settings, BookOpen, Plus, ChevronRight, Layers, Target } from 'lucide-react';
 import { useStrands } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
-import { useAcademic } from '@/app/core/hooks/useAcademic';
 import { CBCNav, CBCError, CBCLoading } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
 
 export default function CBCAuthoringPage() {
-    const { selectedCurriculumId, setSelectedCurriculum } = useCBCContext();
-    const { curricula = [] } = useAcademic();
+    const { selectedCurriculumId, curriculumLoading } = useCBCContext();
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
         selectedCurriculumId ? { curriculum: selectedCurriculumId } : undefined
@@ -54,21 +52,10 @@ export default function CBCAuthoringPage() {
             </div>
 
             {/* Curriculum selector */}
-            <Card>
-                <div className="flex items-end gap-4 flex-wrap">
-                    <div className="flex-1 min-w-[240px]">
-                        <Select
-                            label="Curriculum"
-                            value={selectedCurriculumId?.toString() ?? ''}
-                            onChange={e => setSelectedCurriculum(e.target.value ? Number(e.target.value) : null)}
-                            options={[
-                                { value: '', label: 'Select Curriculum' },
-                                ...curricula.map((c: any) => ({ value: String(c.id), label: c.name })),
-                            ]}
-                        />
-                    </div>
-                </div>
-            </Card>
+            {curriculumLoading && (
+                <p className="text-sm text-gray-400">Loading curriculum…</p>
+            )}
+
 
             {error && <CBCError error={error} onRetry={refetch} />}
 

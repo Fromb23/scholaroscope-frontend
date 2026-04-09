@@ -38,6 +38,7 @@ import type {
   OutcomeLearner,
   OutcomeConfidence
 } from '@/app/plugins/cbc/types/cbc';
+import { toArray } from '@/app/plugins/cbc/lib/apiHelpers';
 
 // ============================================================================
 // Structural — Strands
@@ -48,7 +49,7 @@ export const useStrands = (params?: { curriculum?: number; subject?: number }) =
     queryKey: cbcKeys.strands.list(params),
     queryFn: async () => {
       const data = await strandAPI.getAll(params);
-      return Array.isArray(data) ? data : (data as any).results ?? [];
+      return toArray(data);
     },
     enabled: true,
     staleTime: 5 * 60 * 1000,
@@ -67,7 +68,7 @@ export const useStrandsByCurriculum = (curriculumId: number | null) =>
     queryKey: cbcKeys.strands.byCurriculum(curriculumId!),
     queryFn: async () => {
       const data = await strandAPI.getByCurriculum(curriculumId!);
-      return Array.isArray(data) ? data : (data as any).results ?? [];
+      return toArray(data);
     },
     enabled: !!curriculumId,
     staleTime: 5 * 60 * 1000,
@@ -109,7 +110,7 @@ export const useSubStrands = (strandId?: number) =>
     queryKey: cbcKeys.subStrands.list(strandId),
     queryFn: async () => {
       const data = await subStrandAPI.getAll(strandId ? { strand: strandId } : undefined);
-      return Array.isArray(data) ? data : (data as any).results ?? [];
+      return toArray(data);
     },
     enabled: !!strandId,
     staleTime: 5 * 60 * 1000,
@@ -163,7 +164,7 @@ export const useLearningOutcomes = (params?: { sub_strand?: number; level?: stri
     queryKey: cbcKeys.outcomes.list(params),
     queryFn: async () => {
       const data = await learningOutcomeAPI.getAll(params);
-      return Array.isArray(data) ? data : (data as any).results ?? [];
+      return toArray(data);
     },
     enabled: !!params?.sub_strand,
     staleTime: 5 * 60 * 1000,
@@ -233,7 +234,7 @@ export const useEvidence = (params?: {
     queryKey: cbcKeys.evidence.list(params),
     queryFn: async (): Promise<EvidenceRecord[]> => {
       const data = await evidenceAPI.getAll(params) as ApiList<EvidenceRecord>;
-      return Array.isArray(data) ? data : data.results ?? [];
+      return toArray(data);
     },
     enabled: !!(params?.student || params?.learning_outcome),
     staleTime: 2 * 60 * 1000,
@@ -402,7 +403,7 @@ export const useTeachingSessions = (params?: { cohort?: number; subject?: number
     queryKey: cbcKeys.teachingSessions.list(params),
     queryFn: async () => {
       const data = await teachingAPI.getSessions(params);
-      return Array.isArray(data) ? data : (data as any).results ?? [];
+      return toArray(data);
     },
     staleTime: 2 * 60 * 1000,
   });
@@ -412,7 +413,7 @@ export const useTodaySessions = () =>
     queryKey: cbcKeys.teachingSessions.today,
     queryFn: async () => {
       const data = await teachingAPI.getTodaySessions();
-      return Array.isArray(data) ? data : (data as any).results ?? [];
+      return toArray(data);
     },
     staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
@@ -423,7 +424,7 @@ export const useRecentSessions = (days = 7) =>
     queryKey: cbcKeys.teachingSessions.recent(days),
     queryFn: async () => {
       const data = await teachingAPI.getRecentSessions(days);
-      return Array.isArray(data) ? data : (data as any).results ?? [];
+      return toArray(data);
     },
     staleTime: 2 * 60 * 1000,
   });
@@ -462,9 +463,7 @@ export const useSessionOutcomes = (id: number | null) =>
 
 export const useSessionRubricScale = (sessionId: number | null) =>
   useQuery<RubricScale>({
-    queryKey: ['cbc', 'rubric-scale', sessionId],
-    queryFn: async (): Promise<RubricScale> =>
-      rubricScaleAPI.getForSession(sessionId!),
+    queryKey: cbcKeys.rubricScale.forSession(sessionId!),
     enabled: !!sessionId,
     staleTime: 10 * 60 * 1000,
   });

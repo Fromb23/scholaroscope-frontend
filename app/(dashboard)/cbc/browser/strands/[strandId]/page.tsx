@@ -1,7 +1,7 @@
 'use client';
 // app/(dashboard)/cbc/browser/strands/[strandId]/page.tsx
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -11,7 +11,6 @@ import {
 import {
     useStrandDetail, useLearningOutcomes,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import {
     CBCNav, CBCBreadcrumb, CBCError, CBCLoading,
 } from '@/app/plugins/cbc/components/CBCComponents';
@@ -74,9 +73,16 @@ export default function StrandDetailPage() {
     const { strandId: raw } = useParams<{ strandId: string }>();
     const strandId = Number(raw);
 
-    const { expandedSubStrands, toggleSubStrand } = useCBCContext();
     const { data: strand, isLoading, error, refetch } = useStrandDetail(strandId);
 
+    const [expandedSubStrands, setExpandedSubStrands] = useState<Set<number>>(new Set());
+    const toggleSubStrand = useCallback((id: number) => {
+        setExpandedSubStrands(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    }, []);
     // Auto-expand when there's only one sub-strand
     useEffect(() => {
         if (strand?.sub_strands.length === 1) {

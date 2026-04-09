@@ -4,43 +4,80 @@ import {
     createContext,
     useContext,
     useState,
+    useEffect,
     useCallback,
     type ReactNode,
 } from 'react';
+import { useCBCCurriculum } from '@/app/plugins/cbc/hooks/useCBCCurriculum';
 
-interface CBCUIState {
-    selectedCurriculumId: number | null;
+// ─── Storage ──────────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'cbc_filter_state';
+
+interface PersistedFilterState {
     selectedSubjectId: number | null;
     selectedCohortId: number | null;
-    expandedSubStrands: Set<number>;
-    expandedStrands: Set<string>;
-    activeSessionId: number | null;
 }
 
-interface CBCContextValue extends CBCUIState {
-    setSelectedCurriculum: (id: number | null) => void;
+function loadFromStorage(): PersistedFilterState {
+    if (typeof window === 'undefined') return { selectedSubjectId: null, selectedCohortId: null };
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { selectedSubjectId: null, selectedCohortId: null };
+        const parsed = JSON.parse(raw) as Partial<PersistedFilterState>;
+        return {
+            selectedSubjectId: parsed.selectedSubjectId ?? null,
+            selectedCohortId: parsed.selectedCohortId ?? null,
+        };
+    } catch {
+        return { selectedSubjectId: null, selectedCohortId: null };
+    }
+}
+
+function saveToStorage(state: PersistedFilterState) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+        // quota exceeded or private browsing — fail silently
+    }
+}
+
+// ─── Context ──────────────────────────────────────────────────────────────────
+
+interface CBCFilterContextValue {
+    // Auto-resolved — never null after loading
+    selectedCurriculumId: number | null;
+    curriculumLoading: boolean;
+    isInstalled: boolean;
+    // User selections — persisted
+    selectedSubjectId: number | null;
+    selectedCohortId: number | null;
     setSelectedSubject: (id: number | null) => void;
     setSelectedCohort: (id: number | null) => void;
-    toggleSubStrand: (id: number) => void;
-    toggleStrand: (code: string) => void;
-    setActiveSession: (id: number | null) => void;
-    clearExpanded: () => void;
 }
 
-const CBCContext = createContext<CBCContextValue | null>(null);
+const CBCFilterContext = createContext<CBCFilterContextValue | null>(null);
 
 export function CBCProvider({ children }: { children: ReactNode }) {
-    const [selectedCurriculumId, setSelectedCurriculumId] = useState<number | null>(null);
+    const { cbcCurriculumId, loading: curriculumLoading, isInstalled } = useCBCCurriculum();
+
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
     const [selectedCohortId, setSelectedCohortId] = useState<number | null>(null);
-    const [expandedSubStrands, setExpandedSubStrands] = useState<Set<number>>(new Set());
-    const [expandedStrands, setExpandedStrands] = useState<Set<string>>(new Set());
-    const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+    const [hydrated, setHydrated] = useState(false);
 
-    const setSelectedCurriculum = useCallback((id: number | null) => {
-        setSelectedCurriculumId(id);
-        setSelectedSubjectId(null);
+    // Hydrate subject + cohort from localStorage on mount
+    useEffect(() => {
+        const saved = loadFromStorage();
+        setSelectedSubjectId(saved.selectedSubjectId);
+        setSelectedCohortId(saved.selectedCohortId);
+        setHydrated(true);
     }, []);
+
+    // Persist subject + cohort whenever they change
+    useEffect(() => {
+        if (!hydrated) return;
+        saveToStorage({ selectedSubjectId, selectedCohortId });
+    }, [hydrated, selectedSubjectId, selectedCohortId]);
 
     const setSelectedSubject = useCallback((id: number | null) => {
         setSelectedSubjectId(id);
@@ -50,54 +87,23 @@ export function CBCProvider({ children }: { children: ReactNode }) {
         setSelectedCohortId(id);
     }, []);
 
-    const toggleSubStrand = useCallback((id: number) => {
-        setExpandedSubStrands(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
-    }, []);
-
-    const toggleStrand = useCallback((code: string) => {
-        setExpandedStrands(prev => {
-            const next = new Set(prev);
-            next.has(code) ? next.delete(code) : next.add(code);
-            return next;
-        });
-    }, []);
-
-    const setActiveSession = useCallback((id: number | null) => {
-        setActiveSessionId(id);
-    }, []);
-
-    const clearExpanded = useCallback(() => {
-        setExpandedSubStrands(new Set());
-        setExpandedStrands(new Set());
-    }, []);
-
     return (
-        <CBCContext.Provider value={{
-            selectedCurriculumId,
+        <CBCFilterContext.Provider value={{
+            selectedCurriculumId: cbcCurriculumId,
+            curriculumLoading,
+            isInstalled,
             selectedSubjectId,
             selectedCohortId,
-            expandedSubStrands,
-            expandedStrands,
-            activeSessionId,
-            setSelectedCurriculum,
             setSelectedSubject,
             setSelectedCohort,
-            toggleSubStrand,
-            toggleStrand,
-            setActiveSession,
-            clearExpanded,
         }}>
             {children}
-        </CBCContext.Provider>
+        </CBCFilterContext.Provider>
     );
 }
 
 export function useCBCContext() {
-    const ctx = useContext(CBCContext);
+    const ctx = useContext(CBCFilterContext);
     if (!ctx) throw new Error('useCBCContext must be used inside CBCProvider');
     return ctx;
 }
