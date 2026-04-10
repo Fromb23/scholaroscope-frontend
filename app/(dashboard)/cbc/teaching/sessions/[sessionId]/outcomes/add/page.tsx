@@ -124,6 +124,12 @@ export default function AddOutcomesPage() {
     const linkedIds = useMemo(() => new Set(links.map(l => l.learning_outcome)), [links]);
 
     const [expandedSubStrands, setExpandedSubStrands] = useState<Set<number>>(new Set());
+
+    const visibleBySubject = useMemo(() => {
+        if (!session?.subject_id) return strands;
+        return strands.filter(s => s.subject === session.subject_id);
+    }, [strands, session?.subject_id]);
+
     const toggleSubStrand = useCallback((id: number) => {
         setExpandedSubStrands(prev => {
             const next = new Set(prev);
@@ -142,12 +148,12 @@ export default function AddOutcomesPage() {
 
     // Filter strands by search (against strand name)
     const visibleStrands = useMemo(() => {
-        if (!search.trim()) return strands;
+        if (!search.trim()) return visibleBySubject;
         const q = search.toLowerCase();
-        return strands.filter(
+        return visibleBySubject.filter(
             s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)
         );
-    }, [strands, search]);
+    }, [visibleBySubject, search]);
 
     const handleAdd = async () => {
         if (selectedIds.size === 0) return;
@@ -242,12 +248,6 @@ export default function AddOutcomesPage() {
               focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
-                {!selectedCurriculumId && (
-                    <p className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200
-            rounded-lg p-3">
-                        Select a curriculum in the Browser or Authoring section first so outcomes load correctly.
-                    </p>
-                )}
             </Card>
 
             {/* Outcome tree */}

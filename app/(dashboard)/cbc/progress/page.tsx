@@ -2,19 +2,18 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { BookOpen, Target, TrendingUp, Users, Filter, ChevronRight } from 'lucide-react';
+import { BookOpen, Target, TrendingUp, Users, ChevronRight, Filter } from 'lucide-react';
 import { useStrandsByCurriculum } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import { useCohorts, useSubjects } from '@/app/core/hooks/useAcademic';
 import {
-    CBCNav, CBCError, CBCLoading, CBCEmpty,
+    CBCNav, CBCError, CBCLoading, CBCEmpty, SubjectGroupPicker,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
-import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import type { Cohort, Curriculum, Subject } from '@/app/core/types/academic';
-
+import { Select } from '@/app/components/ui/Select';
+import type { Cohort, Subject } from '@/app/core/types/academic';
 
 export default function CBCProgressPage() {
     const {
@@ -27,7 +26,6 @@ export default function CBCProgressPage() {
 
     const { cohorts = [] } = useCohorts({ curriculum: selectedCurriculumId ?? undefined });
     const { subjects = [] } = useSubjects(selectedCurriculumId ?? undefined);
-
     const { data: strands = [], isLoading, error, refetch } =
         useStrandsByCurriculum(selectedCurriculumId);
 
@@ -44,17 +42,12 @@ export default function CBCProgressPage() {
 
     const visibleStrands = useMemo(() => {
         let result = strands;
-
-        // Restrict to allowed subjects for instructors
         if (!isAdmin && allowedSubjectIds !== null) {
             result = result.filter(s => s.subject && allowedSubjectIds.includes(s.subject));
         }
-
-        // Further filter by selected subject
         if (selectedSubjectId) {
             result = result.filter(s => s.subject === selectedSubjectId);
         }
-
         return result;
     }, [strands, selectedSubjectId, isAdmin, allowedSubjectIds]);
 
@@ -64,10 +57,25 @@ export default function CBCProgressPage() {
         outcomes: visibleStrands.reduce(
             (s, st) => s + st.sub_strands.reduce((a, ss) => a + (ss.outcomes_count ?? 0), 0), 0
         ),
-        subjects: new Set(
-            visibleStrands.filter(s => s.subject).map(s => s.subject)
-        ).size,
+        subjects: new Set(visibleStrands.filter(s => s.subject).map(s => s.subject)).size,
     }), [visibleStrands]);
+
+    if (teachingLoading) return <CBCLoading message="Loading your assignments…" />;
+
+    if (!isAdmin && allowedSubjectIds?.length === 0) {
+        return (
+            <div className="space-y-6">
+                <CBCNav />
+                <Card>
+                    <CBCEmpty
+                        icon={BookOpen}
+                        title="No Subjects Assigned Yet"
+                        description="Contact your administrator to get assigned to a cohort."
+                    />
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -79,145 +87,110 @@ export default function CBCProgressPage() {
                 </div>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">CBC Progress</h1>
-                    <p className="text-gray-500 mt-1">
-                        Track competency emergence across outcomes
-                    </p>
+                    <p className="text-gray-500 mt-1">Track competency emergence across outcomes</p>
                 </div>
             </div>
 
-            <Card>
-                <div className="flex items-center gap-2 mb-4">
-                    <Filter className="h-5 w-5 text-gray-400" />
-                    <h3 className="text-base font-semibold text-gray-900">Filter</h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select
-                        label="Cohort"
-                        value={selectedCohortId?.toString() ?? ''}
-                        onChange={e => setSelectedCohort(
-                            e.target.value ? Number(e.target.value) : null
-                        )}
-                        options={[
-                            { value: '', label: 'All cohorts' },
-                            ...visibleCohorts.map((c: Cohort) => ({
-                                value: String(c.id), label: c.name,
-                            })),
-                        ]}
-                    />
-                    <Select
-                        label="Subject"
-                        value={selectedSubjectId?.toString() ?? ''}
-                        onChange={e => setSelectedSubject(
-                            e.target.value ? Number(e.target.value) : null
-                        )}
-                        options={[
-                            { value: '', label: 'All subjects' },
-                            ...subjectsForCurriculum.map((s: Subject) => ({
-                                value: String(s.id), label: s.name,
-                            })),
-                        ]}
-                    />
-                </div>
-            </Card>
-
-            {error && <CBCError error={error} onRetry={refetch} />}
-
-            {selectedCurriculumId && !error && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <StatsCard title="Strands" value={stats.strands} icon={BookOpen} color="blue" />
-                    <StatsCard title="Sub-Strands" value={stats.subStrands} icon={TrendingUp} color="green" />
-                    <StatsCard title="Outcomes" value={stats.outcomes} icon={Target} color="purple" />
-                    <StatsCard title="Subjects" value={stats.subjects} icon={Users} color="orange" />
-                </div>
-            )}
-
-            <Card>
-                <div className="mb-5">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <Target className="h-5 w-5 text-blue-600" />
-                        Strands
-                        {visibleStrands.length > 0 && (
-                            <Badge variant="blue" size="sm">{visibleStrands.length}</Badge>
-                        )}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Click a strand to explore its sub-strands and learning outcomes
-                    </p>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Sidebar */}
+                <div className="lg:col-span-1 space-y-4">
+                    <Card>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Filter className="h-4 w-4 text-gray-400" />
+                            <h3 className="text-sm font-semibold text-gray-900">Cohort</h3>
+                        </div>
+                        <Select
+                            label=""
+                            value={selectedCohortId?.toString() ?? ''}
+                            onChange={e => setSelectedCohort(e.target.value ? Number(e.target.value) : null)}
+                            options={[
+                                { value: '', label: 'All cohorts' },
+                                ...visibleCohorts.map((c: Cohort) => ({
+                                    value: String(c.id), label: c.name,
+                                })),
+                            ]}
+                        />
+                    </Card>
+                    <Card>
+                        <div className="flex items-center gap-2 mb-3">
+                            <BookOpen className="h-4 w-4 text-gray-400" />
+                            <h3 className="text-sm font-semibold text-gray-900">Subject</h3>
+                        </div>
+                        <SubjectGroupPicker
+                            subjects={subjectsForCurriculum}
+                            selectedSubjectId={selectedSubjectId}
+                            onSelect={setSelectedSubject}
+                        />
+                    </Card>
                 </div>
 
-                {isLoading || teachingLoading ? (
-                    <CBCLoading message='Loading your assignments…' />
-                ) : !isAdmin && !selectedCurriculumId ? (
-                    <CBCEmpty icon={BookOpen} title="No Subjects Assigned yet"
-                        description="Contact your administrator to get assigned to a cohort." />
-                ) : visibleStrands.length === 0 ? (
-                    <CBCEmpty icon={Target} title="No Strands Found"
-                        description="No strands match the selected filters" />
-                ) : (
-                    <div className="space-y-1">
-                        {visibleStrands.map(strand => {
-                            const outcomeCount = strand.sub_strands.reduce(
-                                (s, ss) => s + (ss.outcomes_count ?? 0), 0
-                            );
-                            return (
-                                <Link
-                                    key={strand.id}
-                                    href={`/cbc/progress/strand/${strand.id}?cohort=${selectedCohortId ?? ''}`}
-                                    className="flex items-center justify-between hover:bg-gray-50
-                                        -mx-2 px-2 py-3 rounded-lg transition-colors group"
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <Badge variant="blue" size="sm" className="font-mono shrink-0">
-                                            {strand.code}
-                                        </Badge>
-                                        <span className="font-medium text-gray-900 truncate">
-                                            {strand.name}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-3 shrink-0 ml-4">
-                                        <span className="text-sm text-gray-500">
-                                            {strand.sub_strands.length} sub-strands
-                                            · {outcomeCount} outcomes
-                                        </span>
-                                        <ChevronRight className="h-5 w-5 text-gray-400
-                                            group-hover:text-blue-600 transition-colors" />
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
-            </Card>
+                {/* Content */}
+                <div className="lg:col-span-3 space-y-4">
+                    {selectedCurriculumId && !error && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <StatsCard title="Strands" value={stats.strands} icon={BookOpen} color="blue" />
+                            <StatsCard title="Sub-Strands" value={stats.subStrands} icon={TrendingUp} color="green" />
+                            <StatsCard title="Outcomes" value={stats.outcomes} icon={Target} color="purple" />
+                            <StatsCard title="Subjects" value={stats.subjects} icon={Users} color="orange" />
+                        </div>
+                    )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {([
-                    {
-                        href: '/cbc/browser', icon: BookOpen,
-                        title: 'Curriculum Browser',
-                        desc: 'Explore the full strand → sub-strand → outcome tree',
-                    },
-                    {
-                        href: '/learners', icon: TrendingUp,
-                        title: 'Learner Progress',
-                        desc: 'View mastery levels per student or per cohort',
-                    },
-                ] as const).map(({ href, icon: Icon, title, desc }) => (
-                    <Link key={href} href={href} className="block group">
-                        <Card className="h-full hover:shadow-md transition-all">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-gray-50 rounded-xl shrink-0">
-                                    <Icon className="h-6 w-6 text-gray-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
-                                    <p className="text-sm text-gray-600">{desc}</p>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-gray-400
-                                    group-hover:text-gray-600 transition-colors shrink-0" />
+                    {error && <CBCError error={error} onRetry={refetch} />}
+
+                    <Card>
+                        <div className="mb-4">
+                            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                <Target className="h-5 w-5 text-blue-600" />
+                                Strands
+                                {visibleStrands.length > 0 && (
+                                    <Badge variant="blue" size="sm">{visibleStrands.length}</Badge>
+                                )}
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Click a strand to explore sub-strands and learning outcomes
+                            </p>
+                        </div>
+
+                        {isLoading ? (
+                            <CBCLoading message="Loading strands…" />
+                        ) : visibleStrands.length === 0 ? (
+                            <CBCEmpty icon={Target} title="No Strands Found"
+                                description="No strands match the selected filters" />
+                        ) : (
+                            <div className="space-y-1">
+                                {visibleStrands.map(strand => {
+                                    const outcomeCount = strand.sub_strands.reduce(
+                                        (s, ss) => s + (ss.outcomes_count ?? 0), 0
+                                    );
+                                    return (
+                                        <Link
+                                            key={strand.id}
+                                            href={`/cbc/progress/strand/${strand.id}?cohort=${selectedCohortId ?? ''}`}
+                                            className="flex items-center justify-between hover:bg-gray-50
+                                                -mx-2 px-2 py-3 rounded-lg transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <Badge variant="blue" size="sm" className="font-mono shrink-0">
+                                                    {strand.code}
+                                                </Badge>
+                                                <span className="font-medium text-gray-900 truncate">
+                                                    {strand.name}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3 shrink-0 ml-4">
+                                                <span className="text-sm text-gray-500">
+                                                    {strand.sub_strands.length} sub-strands · {outcomeCount} outcomes
+                                                </span>
+                                                <ChevronRight className="h-5 w-5 text-gray-400
+                                                    group-hover:text-blue-600 transition-colors" />
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
                             </div>
-                        </Card>
-                    </Link>
-                ))}
+                        )}
+                    </Card>
+                </div>
             </div>
         </div>
     );

@@ -1,6 +1,7 @@
 'use client';
 // app/plugins/cbc/components/CBCComponents.tsx
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -356,6 +357,108 @@ export function CBCEmpty({
                 <p className="text-sm text-gray-500 max-w-sm mx-auto mb-4">{description}</p>
             )}
             {action}
+        </div>
+    );
+}
+
+// ============================================================================
+// SubjectGroupPicker — grouped subject selector (subject → grades)
+// ============================================================================
+
+import { useState } from 'react';
+import { ChevronDown, BookOpen } from 'lucide-react';
+import type { Subject } from '@/app/core/types/academic';
+
+export function SubjectGroupPicker({
+    subjects,
+    selectedSubjectId,
+    onSelect,
+}: {
+    subjects: Subject[];
+    selectedSubjectId: number | null;
+    onSelect: (id: number | null) => void;
+}) {
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+    const groups = useMemo(() => {
+        const map: Record<string, Subject[]> = {};
+        subjects.forEach(s => {
+            const base = s.name
+                .replace(/\s+Grade\s+\d+/i, '')
+                .replace(/\s+grade\d+/i, '')
+                .trim();
+            if (!map[base]) map[base] = [];
+            map[base].push(s);
+        });
+        return map;
+    }, [subjects]);
+
+    const toggleGroup = (name: string) => {
+        setExpandedGroups(prev => {
+            const n = new Set(prev);
+            n.has(name) ? n.delete(name) : n.add(name);
+            return n;
+        });
+    };
+
+    return (
+        <div className="space-y-1">
+            <button
+                onClick={() => onSelect(null)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedSubjectId === null
+                    ? 'bg-blue-50 text-blue-700 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+            >
+                All Subjects
+            </button>
+            {Object.entries(groups).map(([groupName, groupSubjects]) => {
+                const expanded = expandedGroups.has(groupName);
+                const hasSelected = groupSubjects.some(s => s.id === selectedSubjectId);
+                return (
+                    <div key={groupName}>
+                        <button
+                            onClick={() => toggleGroup(groupName)}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${hasSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <BookOpen className="h-4 w-4 text-gray-400 shrink-0" />
+                                <span className={`font-medium ${hasSelected ? 'text-blue-700' : 'text-gray-800'}`}>
+                                    {groupName}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                    {groupSubjects.length} level{groupSubjects.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                        </button>
+                        {expanded && (
+                            <div className="ml-4 mt-1 space-y-0.5">
+                                {groupSubjects.map(s => {
+                                    const levelLabel = s.level
+                                        .replace('grade', 'Grade ')
+                                        .replace(/(\d+)/, ' $1')
+                                        .replace(/\s+/, ' ')
+                                        .trim();
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            onClick={() => onSelect(s.id)}
+                                            className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedSubjectId === s.id
+                                                ? 'bg-blue-100 text-blue-700 font-medium'
+                                                : 'text-gray-600 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {levelLabel}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

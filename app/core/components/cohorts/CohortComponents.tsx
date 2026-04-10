@@ -37,10 +37,11 @@ interface CohortSubjectLink {
 interface SubjectPanelProps {
     cohortId: number;
     curriculumId: number;
+    cohortLevel: string;
     isHistorical: boolean;
 }
 
-export function SubjectPanel({ cohortId, curriculumId, isHistorical }: SubjectPanelProps) {
+export function SubjectPanel({ cohortId, curriculumId, cohortLevel, isHistorical }: SubjectPanelProps) {
     const [detail, setDetail] = useState<CohortDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [working, setWorking] = useState(false);
@@ -64,7 +65,12 @@ export function SubjectPanel({ cohortId, curriculumId, isHistorical }: SubjectPa
     useState(() => { loadDetail(); });
 
     const linkedIds = new Set((detail?.subjects ?? []).map((s: CohortSubjectLink) => s.subject));
-    const unlinked = allSubjects.filter(s => !linkedIds.has(s.id));
+    const unlinked = allSubjects.filter(s => {
+        if (linkedIds.has(s.id)) return false;
+        const cohortNorm = cohortLevel.toLowerCase().replace(/\s+/g, '');
+        const subjectNorm = s.level.toLowerCase().replace(/\s+/g, '');
+        return cohortNorm === subjectNorm;
+    });
 
     const handleLink = async (subjectId: number) => {
         setWorking(true); setError(null);
@@ -136,7 +142,7 @@ export function SubjectPanel({ cohortId, curriculumId, isHistorical }: SubjectPa
                         {unlinked.map(s => (
                             <div key={s.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg hover:bg-gray-100 transition-colors">
                                 <div>
-                                    <span className="text-sm font-medium text-gray-900">{s.name}</span>
+                                    <span className="text-sm font-medium text-gray-900">{s.name} - {s.level}</span>
                                     <span className="font-mono text-xs text-gray-400 ml-2">{s.code}</span>
                                 </div>
                                 <button
@@ -384,6 +390,7 @@ export function CohortFormModal({
                                 <SubjectPanel
                                     cohortId={editingCohort.id}
                                     curriculumId={editingCohort.curriculum}
+                                    cohortLevel={editingCohort.level}
                                     isHistorical={!editingCohort.is_current_year}
                                 />
                             </div>

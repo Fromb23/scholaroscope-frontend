@@ -464,6 +464,7 @@ export const useSessionOutcomes = (id: number | null) =>
 export const useSessionRubricScale = (sessionId: number | null) =>
   useQuery<RubricScale>({
     queryKey: cbcKeys.rubricScale.forSession(sessionId!),
+    queryFn: () => rubricScaleAPI.getForSession(sessionId!),
     enabled: !!sessionId,
     staleTime: 10 * 60 * 1000,
   });

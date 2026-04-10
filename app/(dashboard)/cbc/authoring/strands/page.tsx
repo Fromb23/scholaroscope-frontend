@@ -1,5 +1,4 @@
 'use client';
-// app/(dashboard)/cbc/authoring/strands/page.tsx
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -11,7 +10,8 @@ import {
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import { useAcademic } from '@/app/core/hooks/useAcademic';
 import {
-    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, CBCEmpty, extractErrorMessage,
+    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, CBCEmpty,
+    SubjectGroupPicker, extractErrorMessage,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
@@ -26,7 +26,7 @@ const EMPTY_FORM: Partial<StrandFormData> = { name: '', description: '', subject
 
 export default function ManageStrandsPage() {
     const router = useRouter();
-    const { selectedCurriculumId } = useCBCContext();
+    const { selectedCurriculumId, selectedSubjectId, setSelectedSubject } = useCBCContext();
     const { subjects = [] } = useAcademic();
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
@@ -40,21 +40,24 @@ export default function ManageStrandsPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [createForm, setCreateForm] = useState<Partial<StrandFormData>>(EMPTY_FORM);
     const [createError, setCreateError] = useState<string | null>(null);
-
     const [editId, setEditId] = useState<number | null>(null);
     const [editForm, setEditForm] = useState<Partial<StrandFormData>>({});
     const [editError, setEditError] = useState<string | null>(null);
-
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    const filteredSubjects = useMemo(
+    const subjectsForCurriculum = useMemo(
         () => subjects.filter((s: any) => s.curriculum === selectedCurriculumId),
         [subjects, selectedCurriculumId]
     );
 
+    const visibleStrands = useMemo(() => {
+        if (!selectedSubjectId) return strands;
+        return strands.filter(s => s.subject === selectedSubjectId);
+    }, [strands, selectedSubjectId]);
+
     const subjectOptions = [
         { value: '', label: 'None' },
-        ...filteredSubjects.map((s: any) => ({ value: String(s.id), label: s.name })),
+        ...subjectsForCurriculum.map((s: any) => ({ value: String(s.id), label: s.name })),
     ];
 
     const handleCreate = async () => {
@@ -99,7 +102,7 @@ export default function ManageStrandsPage() {
         } catch { setDeleteId(null); }
     };
 
-    const columns: Column<Strand>[] = [
+    const columns: Column<Strand & Record<string, unknown>>[] = [
         {
             key: 'code',
             header: 'Code',
@@ -116,7 +119,7 @@ export default function ManageStrandsPage() {
                 <div>
                     <p className="font-medium text-gray-900">{r.name}</p>
                     {r.description && (
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{r.description}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{r.description as string}</p>
                     )}
                 </div>
             ),
@@ -126,7 +129,7 @@ export default function ManageStrandsPage() {
             header: 'Subject',
             sortable: true,
             render: r => r.subject_name
-                ? <Badge variant="purple" size="sm">{r.subject_name}</Badge>
+                ? <Badge variant="purple" size="sm">{r.subject_name as string}</Badge>
                 : <span className="text-xs text-gray-400">—</span>,
             className: 'text-center',
         },
@@ -137,7 +140,7 @@ export default function ManageStrandsPage() {
             render: r => (
                 <div className="flex items-center justify-center gap-1.5">
                     <Layers className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium">{r.sub_strands_count}</span>
+                    <span className="text-sm font-medium">{r.sub_strands_count as number}</span>
                 </div>
             ),
             headerClassName: 'text-center',
@@ -152,18 +155,17 @@ export default function ManageStrandsPage() {
                         href={`/cbc/authoring/strands/${r.id}`}
                         onClick={e => e.stopPropagation()}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Manage sub-strands"
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Link>
                     <button
-                        onClick={e => { e.stopPropagation(); startEdit(r); }}
+                        onClick={e => { e.stopPropagation(); startEdit(r as unknown as Strand); }}
                         className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                         <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                        onClick={e => { e.stopPropagation(); setDeleteId(r.id); }}
+                        onClick={e => { e.stopPropagation(); setDeleteId(r.id as number); }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
                         <Trash2 className="h-4 w-4" />
@@ -182,7 +184,6 @@ export default function ManageStrandsPage() {
                 { label: 'Strands' },
             ]} />
 
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Link href="/cbc/authoring"
@@ -207,7 +208,6 @@ export default function ManageStrandsPage() {
 
             {error && <CBCError error={error} onRetry={refetch} />}
 
-            {/* Create form */}
             {showCreate && selectedCurriculumId && (
                 <Card className="border-blue-200 bg-blue-50/50">
                     <div className="flex items-center justify-between mb-4">
@@ -251,7 +251,6 @@ export default function ManageStrandsPage() {
                 </Card>
             )}
 
-            {/* Edit form */}
             {editId !== null && (
                 <Card className="border-purple-200 bg-purple-50/50">
                     <div className="flex items-center justify-between mb-4">
@@ -290,36 +289,57 @@ export default function ManageStrandsPage() {
                 </Card>
             )}
 
-            {/* Table */}
-            <Card>
-                <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                        <BookOpen className="h-5 w-5 text-blue-600" />
-                        Curriculum Strands
-                        {strands.length > 0 && <Badge variant="blue" size="sm">{strands.length}</Badge>}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">Click a strand to manage its sub-strands</p>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Sidebar */}
+                <div className="lg:col-span-1">
+                    <Card>
+                        <div className="flex items-center gap-2 mb-3">
+                            <BookOpen className="h-4 w-4 text-gray-400" />
+                            <h3 className="text-sm font-semibold text-gray-900">Subject</h3>
+                        </div>
+                        <SubjectGroupPicker
+                            subjects={subjectsForCurriculum}
+                            selectedSubjectId={selectedSubjectId}
+                            onSelect={setSelectedSubject}
+                        />
+                    </Card>
                 </div>
 
-                {!selectedCurriculumId ? (
-                    <CBCEmpty icon={BookOpen} title="Select a curriculum" description="Choose a curriculum above to view its strands" />
-                ) : isLoading ? (
-                    <CBCLoading />
-                ) : (
-                    <DataTable
-                        data={strands}
-                        columns={columns}
-                        loading={isLoading}
-                        enableSearch
-                        enableSort
-                        searchPlaceholder="Search strands…"
-                        emptyMessage="No strands yet. Click 'Add Strand' to create one."
-                        onRowClick={r => router.push(`/cbc/authoring/strands/${r.id}`)}
-                    />
-                )}
-            </Card>
+                {/* Table */}
+                <div className="lg:col-span-3">
+                    <Card>
+                        <div className="mb-4">
+                            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                <BookOpen className="h-5 w-5 text-blue-600" />
+                                Curriculum Strands
+                                {visibleStrands.length > 0 && (
+                                    <Badge variant="blue" size="sm">{visibleStrands.length}</Badge>
+                                )}
+                            </h2>
+                            <p className="text-sm text-gray-500 mt-1">Click a strand to manage its sub-strands</p>
+                        </div>
 
-            {/* Delete modal */}
+                        {!selectedCurriculumId ? (
+                            <CBCEmpty icon={BookOpen} title="No curriculum"
+                                description="No CBC curriculum found for your organisation." />
+                        ) : isLoading ? (
+                            <CBCLoading />
+                        ) : (
+                            <DataTable<Strand & Record<string, unknown>>
+                                data={visibleStrands.map(s => s as Strand & Record<string, unknown>)}
+                                columns={columns}
+                                loading={isLoading}
+                                enableSearch
+                                enableSort
+                                searchPlaceholder="Search strands…"
+                                emptyMessage="No strands yet. Click 'Add Strand' to create one."
+                                onRowClick={r => router.push(`/cbc/authoring/strands/${r.id as number}`)}
+                            />
+                        )}
+                    </Card>
+                </div>
+            </div>
+
             <Modal isOpen={deleteId !== null} onClose={() => setDeleteId(null)}
                 title="Delete Strand" size="sm">
                 <div className="space-y-4">

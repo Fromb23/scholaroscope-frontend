@@ -1,31 +1,25 @@
 'use client';
-// app/(dashboard)/cbc/authoring/sub-strands/[subStrandId]/page.tsx
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import {
-    ArrowLeft, Plus, Pencil, Trash2, BookOpen, Target, FileText, X,
-} from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, BookOpen, Target, FileText, X } from 'lucide-react';
 import {
     useSubStrandDetail, useLearningOutcomes,
     useCreateOutcome, useUpdateOutcome, useDeleteOutcome,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import { useAcademic } from '@/app/core/hooks/useAcademic';
 import {
     CBCNav, CBCBreadcrumb, CBCError, CBCLoading, extractErrorMessage,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
-import { Select } from '@/app/components/ui/Select';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import type { LearningOutcome, LearningOutcomeFormData } from '@/app/plugins/cbc/types/cbc';
 
-type OutcomeForm = Omit<Partial<LearningOutcomeFormData>, 'sub_strand'>;
-const EMPTY: OutcomeForm = { description: '', grade: null, level: '' };
+type OutcomeForm = Omit<Partial<LearningOutcomeFormData>, 'sub_strand' | 'grade'>;
 
 export default function ManageSubStrandDetailPage() {
     const { subStrandId: raw } = useParams<{ subStrandId: string }>();
@@ -33,14 +27,20 @@ export default function ManageSubStrandDetailPage() {
 
     const { data: subStrand, isLoading: ssLoading, error: ssError } = useSubStrandDetail(subStrandId);
     const { data: outcomes = [], isLoading, error, refetch } = useLearningOutcomes({ sub_strand: subStrandId });
-    const { grades = [] } = useAcademic();
+
+    // Derive level from strand's subject level
+    const inferredLevel = useMemo(() => {
+        if (!subStrand) return '';
+        // strand_name format may carry level info — fall back to empty
+        return '';
+    }, [subStrand]);
 
     const createMutation = useCreateOutcome();
     const updateMutation = useUpdateOutcome();
     const deleteMutation = useDeleteOutcome();
 
     const [showCreate, setShowCreate] = useState(false);
-    const [createForm, setCreateForm] = useState<OutcomeForm>(EMPTY);
+    const [createForm, setCreateForm] = useState<OutcomeForm>({ description: '', level: inferredLevel });
     const [createError, setCreateError] = useState<string | null>(null);
 
     const [editId, setEditId] = useState<number | null>(null);
@@ -49,11 +49,6 @@ export default function ManageSubStrandDetailPage() {
 
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    const gradeOptions = [
-        { value: '', label: 'All Grades' },
-        ...grades.map((g: any) => ({ value: String(g.id), label: g.name })),
-    ];
-
     const handleCreate = async () => {
         if (!createForm.description) return;
         setCreateError(null);
@@ -61,17 +56,17 @@ export default function ManageSubStrandDetailPage() {
             await createMutation.mutateAsync({
                 sub_strand: subStrandId,
                 description: createForm.description,
-                grade: createForm.grade ?? null,
-                level: createForm.level ?? '',
+                grade: null,
+                level: subStrand?.subject_level ?? '',
             });
             setShowCreate(false);
-            setCreateForm(EMPTY);
+            setCreateForm({ description: '', level: inferredLevel });
         } catch (e) { setCreateError(extractErrorMessage(e)); }
     };
 
     const startEdit = (o: LearningOutcome) => {
         setEditId(o.id);
-        setEditForm({ description: o.description, grade: o.grade, level: o.level });
+        setEditForm({ description: o.description, level: o.level });
         setEditError(null);
     };
 
@@ -79,7 +74,13 @@ export default function ManageSubStrandDetailPage() {
         if (!editId) return;
         setEditError(null);
         try {
-            await updateMutation.mutateAsync({ id: editId, data: editForm });
+            await updateMutation.mutateAsync({
+                id: editId,
+                data: {
+                    ...editForm,
+                    level: subStrand?.subject_level ?? '',
+                },
+            });
             setEditId(null);
         } catch (e) { setEditError(extractErrorMessage(e)); }
     };
@@ -92,22 +93,28 @@ export default function ManageSubStrandDetailPage() {
         } catch { setDeleteId(null); }
     };
 
-    const columns: Column<LearningOutcome>[] = [
+    const columns: Column<LearningOutcome & Record<string, unknown>>[] = [
         {
             key: 'code', header: 'Code', sortable: true,
             render: r => (
-                <Badge variant="purple" size="md" className="font-mono font-semibold">{r.code}</Badge>
+                <Badge variant="purple" size="md" className="font-mono font-semibold">
+                    {r.code as string}
+                </Badge>
             ),
         },
         {
             key: 'description', header: 'Learning Outcome',
-            render: r => <p className="text-sm text-gray-900 line-clamp-2 max-w-md">{r.description}</p>,
+            render: r => (
+                <p className="text-sm text-gray-900 line-clamp-2 max-w-md">
+                    {r.description as string}
+                </p>
+            ),
         },
         {
-            key: 'grade', header: 'Grade', sortable: true,
-            render: r => r.grade_name
-                ? <Badge variant="blue" size="sm">{r.grade_name}</Badge>
-                : <span className="text-xs text-gray-400">All</span>,
+            key: 'level', header: 'Level', sortable: true,
+            render: r => r.level
+                ? <Badge variant="blue" size="sm">{r.level as string}</Badge>
+                : <span className="text-xs text-gray-400">—</span>,
             headerClassName: 'text-center', className: 'text-center',
         },
         {
@@ -115,7 +122,7 @@ export default function ManageSubStrandDetailPage() {
             render: r => (
                 <div className="flex items-center justify-center gap-1.5">
                     <FileText className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium">{r.evidence_count}</span>
+                    <span className="text-sm font-medium">{r.evidence_count as number}</span>
                 </div>
             ),
             headerClassName: 'text-center', className: 'text-center',
@@ -124,15 +131,19 @@ export default function ManageSubStrandDetailPage() {
             key: 'actions', header: '',
             render: r => (
                 <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => startEdit(r)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <button
+                        onClick={e => { e.stopPropagation(); startEdit(r as unknown as LearningOutcome); }}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                    >
                         <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => setDeleteId(r.id)}
-                        disabled={r.evidence_count > 0}
+                    <button
+                        onClick={e => { e.stopPropagation(); setDeleteId(r.id as number); }}
+                        disabled={(r.evidence_count as number) > 0}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg
-              disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={r.evidence_count > 0 ? 'Has evidence records' : 'Delete'}>
+                            disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={(r.evidence_count as number) > 0 ? 'Has evidence records' : 'Delete'}
+                    >
                         <Trash2 className="h-4 w-4" />
                     </button>
                 </div>
@@ -156,7 +167,6 @@ export default function ManageSubStrandDetailPage() {
                 { label: subStrand.name },
             ]} />
 
-            {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                     <Link href={`/cbc/authoring/strands/${subStrand.strand}`}
@@ -200,14 +210,6 @@ export default function ManageSubStrandDetailPage() {
                             <X className="h-5 w-5" />
                         </button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Select label="Grade (optional)" value={createForm.grade?.toString() ?? ''}
-                            onChange={e => setCreateForm(p => ({ ...p, grade: e.target.value ? Number(e.target.value) : null }))}
-                            options={gradeOptions} />
-                        <Input label="Level (optional)" placeholder="e.g. Grade 7"
-                            value={createForm.level ?? ''}
-                            onChange={e => setCreateForm(p => ({ ...p, level: e.target.value }))} />
-                    </div>
                     <div className="mt-4">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Description *
@@ -218,7 +220,7 @@ export default function ManageSubStrandDetailPage() {
                             onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))}
                             rows={3}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm
-                focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                         />
                     </div>
                     {createError && (
@@ -253,20 +255,22 @@ export default function ManageSubStrandDetailPage() {
                         </button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Select label="Grade" value={editForm.grade?.toString() ?? ''}
-                            onChange={e => setEditForm(p => ({ ...p, grade: e.target.value ? Number(e.target.value) : null }))}
-                            options={gradeOptions} />
-                        <Input label="Level" value={editForm.level ?? ''}
-                            onChange={e => setEditForm(p => ({ ...p, level: e.target.value }))} />
+                        <Input
+                            label="Level"
+                            value={editForm.level ?? ''}
+                            onChange={e => setEditForm(p => ({ ...p, level: e.target.value }))}
+                        />
                     </div>
                     <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Description *
+                        </label>
                         <textarea
                             value={editForm.description ?? ''}
                             onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
                             rows={3}
                             className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm
-                focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                         />
                     </div>
                     {editError && (
@@ -294,19 +298,20 @@ export default function ManageSubStrandDetailPage() {
                             <Badge variant="blue" size="sm">{outcomes.length}</Badge>
                         </h2>
                         <p className="text-sm text-gray-500 mt-1">
-                            Codes are auto-generated as <span className="font-mono text-xs bg-gray-100 px-1 rounded">
+                            Codes auto-generated as{' '}
+                            <span className="font-mono text-xs bg-gray-100 px-1 rounded">
                                 {subStrand.code}.N
                             </span>
                         </p>
                     </div>
                 </div>
-                <DataTable
-                    data={outcomes}
+                <DataTable<LearningOutcome & Record<string, unknown>>
+                    data={outcomes.map(o => o as LearningOutcome & Record<string, unknown>)}
                     columns={columns}
                     loading={isLoading}
                     enableSearch
                     enableSort
-                    searchPlaceholder="Search outcomes by code or description…"
+                    searchPlaceholder="Search outcomes…"
                     emptyMessage="No outcomes yet. Click 'Add Outcome' to create one."
                 />
             </Card>

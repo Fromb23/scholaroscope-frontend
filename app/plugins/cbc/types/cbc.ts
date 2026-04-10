@@ -39,6 +39,7 @@ export interface SubStrand {
 
 export interface SubStrandDetail extends SubStrand {
   learning_outcomes: LearningOutcome[];
+  subject_level: string | null;
 }
 
 export interface LearningOutcome {
@@ -286,7 +287,6 @@ export type SessionStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'MISSED'
 export interface TeachingSession {
   id: number;
   cohort_subject: number;
-  // Denormalised from cohort_subject for display
   cohort_name: string;
   subject_name: string | null;
   organization: number;
@@ -300,8 +300,9 @@ export interface TeachingSession {
   venue: string;
   created_by: number | null;
   created_at: string;
-  // Annotated by backend
   outcome_links_count?: number;
+  subject_id: number | null;
+  cohort_level: string | null;
 }
 
 export interface TeachingSessionSummary {
