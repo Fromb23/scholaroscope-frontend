@@ -20,7 +20,9 @@ export default function CBCProgressPage() {
     const {
         selectedCurriculumId, selectedSubjectId,
         setSelectedSubject, setSelectedCohort,
-        selectedCohortId
+        selectedCohortId,
+        allowedSubjectIds, allowedCohortIds,
+        isAdmin, teachingLoading,
     } = useCBCContext();
 
     const { cohorts = [] } = useCohorts({ curriculum: selectedCurriculumId ?? undefined });
@@ -29,15 +31,32 @@ export default function CBCProgressPage() {
     const { data: strands = [], isLoading, error, refetch } =
         useStrandsByCurriculum(selectedCurriculumId);
 
-    const subjectsForCurriculum = useMemo(
-        () => subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId),
-        [subjects, selectedCurriculumId],
-    );
+    const subjectsForCurriculum = useMemo(() => {
+        const all = subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId);
+        if (isAdmin || allowedSubjectIds === null) return all;
+        return all.filter((s: Subject) => allowedSubjectIds.includes(s.id));
+    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds]);
+
+    const visibleCohorts = useMemo(() => {
+        if (isAdmin || allowedCohortIds === null) return cohorts;
+        return cohorts.filter((c: Cohort) => allowedCohortIds.includes(c.id));
+    }, [cohorts, isAdmin, allowedCohortIds]);
 
     const visibleStrands = useMemo(() => {
-        if (!selectedSubjectId) return strands;
-        return strands.filter(s => s.subject === selectedSubjectId);
-    }, [strands, selectedSubjectId]);
+        let result = strands;
+
+        // Restrict to allowed subjects for instructors
+        if (!isAdmin && allowedSubjectIds !== null) {
+            result = result.filter(s => s.subject && allowedSubjectIds.includes(s.subject));
+        }
+
+        // Further filter by selected subject
+        if (selectedSubjectId) {
+            result = result.filter(s => s.subject === selectedSubjectId);
+        }
+
+        return result;
+    }, [strands, selectedSubjectId, isAdmin, allowedSubjectIds]);
 
     const stats = useMemo(() => ({
         strands: visibleStrands.length,
@@ -80,7 +99,7 @@ export default function CBCProgressPage() {
                         )}
                         options={[
                             { value: '', label: 'All cohorts' },
-                            ...cohorts.map((c: Cohort) => ({
+                            ...visibleCohorts.map((c: Cohort) => ({
                                 value: String(c.id), label: c.name,
                             })),
                         ]}
@@ -126,11 +145,11 @@ export default function CBCProgressPage() {
                     </p>
                 </div>
 
-                {isLoading ? (
-                    <CBCLoading />
-                ) : !selectedCurriculumId ? (
-                    <CBCEmpty icon={BookOpen} title="Select a Curriculum"
-                        description="Choose a curriculum from the filters above" />
+                {isLoading || teachingLoading ? (
+                    <CBCLoading message='Loading your assignments…' />
+                ) : !isAdmin && !selectedCurriculumId ? (
+                    <CBCEmpty icon={BookOpen} title="No Subjects Assigned yet"
+                        description="Contact your administrator to get assigned to a cohort." />
                 ) : visibleStrands.length === 0 ? (
                     <CBCEmpty icon={Target} title="No Strands Found"
                         description="No strands match the selected filters" />

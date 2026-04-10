@@ -17,30 +17,50 @@ import { Badge } from '@/app/components/ui/Badge';
 import { useState } from 'react';
 
 export default function CBCBrowserPage() {
-    const { selectedCurriculumId, selectedSubjectId, setSelectedSubject } = useCBCContext();
+    const { selectedCurriculumId, selectedSubjectId, setSelectedSubject, allowedSubjectIds, isAdmin, teachingLoading } = useCBCContext();
     const [search, setSearch] = useState('');
     const { subjects = [] } = useAcademic();
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
         selectedCurriculumId
-            ? { curriculum: selectedCurriculumId, ...(selectedSubjectId ? { subject: selectedSubjectId } : {}) }
+            ? {
+                curriculum: selectedCurriculumId,
+                ...(selectedSubjectId
+                    ? { subject: selectedSubjectId }
+                    : (!isAdmin && allowedSubjectIds?.length === 1)
+                        ? { subject: allowedSubjectIds[0] }
+                        : {}
+                ),
+            }
             : undefined
     );
 
-    const subjectsForCurriculum = useMemo(
-        () => subjects.filter((s: any) => s.curriculum === selectedCurriculumId),
-        [subjects, selectedCurriculumId]
-    );
+    const subjectsForCurriculum = useMemo(() => {
+        const all = subjects.filter((s: any) => s.curriculum === selectedCurriculumId);
+        if (isAdmin || allowedSubjectIds === null) return all;
+        return all.filter((s: any) => allowedSubjectIds.includes(s.id));
+    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds]);
 
     const visible = useMemo(() => {
-        if (!search.trim()) return strands;
-        const q = search.toLowerCase();
-        return strands.filter(
-            s => s.code.toLowerCase().includes(q) ||
-                s.name.toLowerCase().includes(q) ||
-                s.description?.toLowerCase().includes(q)
-        );
-    }, [strands, search]);
+        let result = strands;
+
+        // Restrict to allowed subjects for instructors
+        if (!isAdmin && allowedSubjectIds !== null) {
+            result = result.filter(s => s.subject && allowedSubjectIds.includes(s.subject));
+        }
+
+        // Search filter
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            result = result.filter(
+                s => s.code.toLowerCase().includes(q) ||
+                    s.name.toLowerCase().includes(q) ||
+                    s.description?.toLowerCase().includes(q)
+            );
+        }
+
+        return result;
+    }, [strands, search, isAdmin, allowedSubjectIds]);
 
     return (
         <div className="space-y-6">
@@ -101,14 +121,14 @@ export default function CBCBrowserPage() {
             )}
 
             {/* Body */}
-            {isLoading ? (
-                <CBCLoading message="Loading strands…" />
-            ) : !selectedCurriculumId ? (
+            {isLoading || teachingLoading ? (
+                <CBCLoading message="Loading your assignments…" />
+            ) : !isAdmin && !selectedCurriculumId ? (
                 <Card>
                     <CBCEmpty
                         icon={BookOpen}
-                        title="Select a Curriculum"
-                        description="Choose a curriculum from the filter above to explore its strands and learning outcomes"
+                        title="No Subjects Assigned Yet"
+                        description="Contact your administrator to get assigned to a cohort."
                     />
                 </Card>
             ) : visible.length === 0 ? (
@@ -116,7 +136,7 @@ export default function CBCBrowserPage() {
                     <CBCEmpty
                         icon={Search}
                         title="No Strands Found"
-                        description="No strands match your current filters. Try adjusting your search or subject filter."
+                        description="No strands match your current filters."
                     />
                 </Card>
             ) : (

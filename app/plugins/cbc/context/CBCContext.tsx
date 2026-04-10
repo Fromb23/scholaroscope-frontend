@@ -9,6 +9,7 @@ import {
     type ReactNode,
 } from 'react';
 import { useCBCCurriculum } from '@/app/plugins/cbc/hooks/useCBCCurriculum';
+import { useMyCBCTeachingLoad } from '@/app/plugins/cbc/hooks/useCBCTeaching';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -37,15 +38,13 @@ function loadFromStorage(): PersistedFilterState {
 function saveToStorage(state: PersistedFilterState) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-        // quota exceeded or private browsing — fail silently
-    }
+    } catch { }
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 interface CBCFilterContextValue {
-    // Auto-resolved — never null after loading
+    // Auto-resolved curriculum
     selectedCurriculumId: number | null;
     curriculumLoading: boolean;
     isInstalled: boolean;
@@ -54,18 +53,29 @@ interface CBCFilterContextValue {
     selectedCohortId: number | null;
     setSelectedSubject: (id: number | null) => void;
     setSelectedCohort: (id: number | null) => void;
+    // Role-based access
+    isAdmin: boolean;
+    allowedSubjectIds: number[] | null;  // null = admin sees all
+    allowedCohortIds: number[] | null;   // null = admin sees all
+    teachingLoading: boolean;
 }
 
 const CBCFilterContext = createContext<CBCFilterContextValue | null>(null);
 
 export function CBCProvider({ children }: { children: ReactNode }) {
     const { cbcCurriculumId, loading: curriculumLoading, isInstalled } = useCBCCurriculum();
+    const {
+        isAdmin,
+        subjectIds,
+        cohortIds,
+        loading: teachingLoading,
+    } = useMyCBCTeachingLoad();
 
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
     const [selectedCohortId, setSelectedCohortId] = useState<number | null>(null);
     const [hydrated, setHydrated] = useState(false);
 
-    // Hydrate subject + cohort from localStorage on mount
+    // Hydrate from localStorage
     useEffect(() => {
         const saved = loadFromStorage();
         setSelectedSubjectId(saved.selectedSubjectId);
@@ -73,11 +83,26 @@ export function CBCProvider({ children }: { children: ReactNode }) {
         setHydrated(true);
     }, []);
 
-    // Persist subject + cohort whenever they change
+    // Persist on change
     useEffect(() => {
         if (!hydrated) return;
         saveToStorage({ selectedSubjectId, selectedCohortId });
     }, [hydrated, selectedSubjectId, selectedCohortId]);
+
+    // When instructor has no access to persisted subject — clear it
+    useEffect(() => {
+        if (!hydrated || teachingLoading) return;
+        if (!isAdmin && selectedSubjectId !== null) {
+            if (!subjectIds.includes(selectedSubjectId)) {
+                setSelectedSubjectId(null);
+            }
+        }
+        if (!isAdmin && selectedCohortId !== null) {
+            if (!cohortIds.includes(selectedCohortId)) {
+                setSelectedCohortId(null);
+            }
+        }
+    }, [hydrated, teachingLoading, isAdmin, subjectIds, cohortIds]);
 
     const setSelectedSubject = useCallback((id: number | null) => {
         setSelectedSubjectId(id);
@@ -96,6 +121,10 @@ export function CBCProvider({ children }: { children: ReactNode }) {
             selectedCohortId,
             setSelectedSubject,
             setSelectedCohort,
+            isAdmin,
+            allowedSubjectIds: isAdmin ? null : subjectIds,
+            allowedCohortIds: isAdmin ? null : cohortIds,
+            teachingLoading,
         }}>
             {children}
         </CBCFilterContext.Provider>
