@@ -86,6 +86,13 @@ export const SUPERADMIN_NAV: NavigationConfig = {
         { name: 'Announcements', href: '/announcements', icon: Megaphone },
         { name: 'Global Users', href: '/superadmin/users', icon: UserCog },
         { name: 'Plugin Registry', href: '/superadmin/plugins', icon: Puzzle },
+        {
+            name: 'Curriculum Authoring', href: '/cbc/authoring', icon: BookOpen,
+            children: [
+                { name: 'Overview', href: '/cbc/authoring', icon: BookOpen },
+                { name: 'Strands', href: '/cbc/authoring/strands', icon: Layers },
+            ],
+        },
         { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },
         { name: 'System Settings', href: '/superadmin/settings', icon: Settings },
         { name: 'Audit Logs', href: '/superadmin/audit', icon: FileText },
@@ -138,7 +145,6 @@ export function getAdminNav(
                 name: 'CBC Management', href: '/cbc/progress', icon: Award,
                 children: [
                     { name: 'Progress Tracking', href: '/cbc/progress', icon: TrendingUp },
-                    { name: 'Authoring', href: '/cbc/authoring', icon: FileText },
                     { name: 'Browser', href: '/cbc/browser', icon: BookOpen },
                     { name: 'Teaching', href: '/cbc/teaching', icon: Target },
                 ],

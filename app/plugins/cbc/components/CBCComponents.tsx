@@ -12,7 +12,6 @@ import type { MasteryLevel, MasteryDistribution } from '@/app/plugins/cbc/types/
 // ============================================================================
 
 const NAV_ITEMS = [
-    { href: '/cbc/authoring', label: 'Authoring' },
     { href: '/cbc/browser', label: 'Browser' },
     { href: '/cbc/progress', label: 'Progress' },
     { href: '/cbc/teaching', label: 'Teaching' },
