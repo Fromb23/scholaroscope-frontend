@@ -10,6 +10,7 @@ export const routeRules: RouteRule[] = [
     // SUPERADMIN ONLY
     { pattern: /^\/superadmin/, allowedRoles: ['SUPERADMIN'] },
     { pattern: /^\/dashboard\/superadmin/, allowedRoles: ['SUPERADMIN'] },
+    { pattern: /^\/cbc\/authoring/, allowedRoles: ['SUPERADMIN'] },
 
     // ADMIN ONLY
     { pattern: /^\/dashboard\/admin/, allowedRoles: ['ADMIN'] },
@@ -26,9 +27,7 @@ export const routeRules: RouteRule[] = [
     { pattern: /^\/learners\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/assessments\/new$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/cbc\/authoring/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports/, allowedRoles: ['ADMIN'] },
-
 
     // INSTRUCTOR ONLY
     { pattern: /^\/dashboard\/instructor/, allowedRoles: ['INSTRUCTOR'] },
