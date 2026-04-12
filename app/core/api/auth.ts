@@ -102,4 +102,8 @@ export const authAPI = {
     const res = await apiClient.post('/auth/reset-password/', data);
     return res.data;
   },
+  validateResetToken: async (data: { uid: string; token: string }) => {
+    const res = await apiClient.get(`/auth/reset-password/${data.uid}/${data.token}/validate/`);
+    return res.data;
+  },
 };

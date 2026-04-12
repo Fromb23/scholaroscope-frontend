@@ -1,7 +1,7 @@
 // app/(auth)/reset-password/[uid]/[token]/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import { Input } from '@/app/components/ui/Input';
@@ -18,6 +18,8 @@ export default function ResetPasswordPage() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [validating, setValidating] = useState(true);
+    const [tokenValid, setTokenValid] = useState(false);
 
     const validate = () => {
         const e: Record<string, string> = {};
@@ -42,6 +44,41 @@ export default function ResetPasswordPage() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const validateToken = async () => {
+            try {
+                await authAPI.validateResetToken({ uid, token });
+                setTokenValid(true);
+            } catch {
+                setTokenValid(false);
+            } finally {
+                setValidating(false);
+            }
+        };
+        validateToken();
+    }, [uid, token]);
+
+    if (validating) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <p className="text-sm text-gray-500">Validating reset link...</p>
+            </div>
+        );
+    }
+
+    if (!tokenValid) {
+        return (
+            <div className="min-h-screen flex items-center justify-center px-4">
+                <div className="text-center space-y-3">
+                    <p className="text-red-500 text-sm font-medium">This reset link is invalid or has already been used.</p>
+                    <a href="/forgot-password" className="text-blue-600 text-sm block">
+                        Request a new one
+                    </a>
+                </div>
+            </div>
+        );
+    }
 
     if (success) {
         return (
