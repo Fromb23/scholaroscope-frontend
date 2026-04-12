@@ -1,18 +1,14 @@
 'use client';
 
-// ============================================================================
-// app/(dashboard)/admin/settings/page.tsx
-//
-// Responsibility: tab state, compose tab components, render.
-// No inline component definitions. No data fetching.
-// ============================================================================
-
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { Settings, Users, Puzzle } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { MembersTab, PluginsTab } from '@/app/core/components/settings/SettingsComponents';
 
 type Tab = 'general' | 'members' | 'plugins';
+
+const VALID_TABS: Tab[] = ['general', 'members', 'plugins'];
 
 function GeneralTab() {
     return (
@@ -23,8 +19,16 @@ function GeneralTab() {
     );
 }
 
-export default function AdminSettingsPage() {
-    const [activeTab, setActiveTab] = useState<Tab>('members');
+function SettingsContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const tabParam = searchParams.get('tab') as Tab;
+    const activeTab: Tab = VALID_TABS.includes(tabParam) ? tabParam : 'members';
+
+    const setActiveTab = (tab: Tab) => {
+        router.replace(`?tab=${tab}`, { scroll: false });
+    };
 
     const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
         { key: 'general', label: 'General', icon: Settings },
@@ -52,7 +56,7 @@ export default function AdminSettingsPage() {
                                 }`}
                         >
                             <Icon className="h-4 w-4" />
-                            {tab.label}
+                            <span className="hidden sm:inline">{tab.label}</span>
                         </button>
                     );
                 })}
@@ -64,5 +68,13 @@ export default function AdminSettingsPage() {
                 {activeTab === 'plugins' && <PluginsTab />}
             </Card>
         </div>
+    );
+}
+
+export default function AdminSettingsPage() {
+    return (
+        <Suspense fallback={<div className="p-6 text-sm text-gray-400">Loading...</div>}>
+            <SettingsContent />
+        </Suspense>
     );
 }

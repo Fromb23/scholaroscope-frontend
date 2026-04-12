@@ -184,7 +184,7 @@ export default function Sidebar() {
           <div className="border-t border-gray-200 p-4 bg-gray-50">
             <div className="flex items-center justify-between text-xs text-gray-500">
               <div>
-                <p className="font-semibold text-gray-700">ScholaroScope v0.2.0</p>
+                <p className="font-semibold text-gray-700">ScholaroScope v0.5.4</p>
                 <p className="mt-0.5">{ROLE_FOOTER_LABEL[resolvedRole]}</p>
               </div>
               <Activity className="h-4 w-4 text-green-500" />
