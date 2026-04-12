@@ -14,6 +14,7 @@ function ResetPasswordContent() {
     const router = useRouter();
     const uid = searchParams.get('uid') || '';
     const token = searchParams.get('token') || '';
+    console.log('uid:', uid, 'token:', token);
 
     const [form, setForm] = useState({ new_password: '', confirm_password: '' });
     const [errors, setErrors] = useState<Record<string, string>>({});
