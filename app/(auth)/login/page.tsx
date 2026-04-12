@@ -3,8 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { authAPI } from '@/app/core/api/auth';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { useRouter } from 'next/navigation';
 
 function LoginForm() {
     const [email, setEmail] = useState('');
@@ -13,6 +13,7 @@ function LoginForm() {
     const [loading, setLoading] = useState(false);
     const searchParams = useSearchParams();
     const { login, acceptInvite } = useAuth();
+    const router = useRouter();
 
     const inviteToken = searchParams.get('invite');
     const orgName = searchParams.get('org');
@@ -139,9 +140,18 @@ function LoginForm() {
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                Password
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                                    Password
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => router.push('/forgot-password')}
+                                    className="text-xs text-blue-600 hover:text-blue-700"
+                                >
+                                    Forgot password?
+                                </button>
+                            </div>
                             <input
                                 id="password"
                                 type="password"

@@ -87,4 +87,19 @@ export const authAPI = {
     const res = await apiClient.get<MeContextResponse>('/users/me_context/');
     return res.data;
   },
+
+  forgotPassword: async (email: string) => {
+    const res = await apiClient.post('/auth/forgot-password/', { email });
+    return res.data;
+  },
+
+  resetPassword: async (data: {
+    uid: string;
+    token: string;
+    new_password: string;
+    confirm_password: string;
+  }) => {
+    const res = await apiClient.post('/auth/reset-password/', data);
+    return res.data;
+  },
 };
