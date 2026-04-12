@@ -1,20 +1,18 @@
-// app/(auth)/reset-password/page.tsx
+// app/(auth)/reset-password/[uid]/[token]/page.tsx
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
 import { authAPI } from '@/app/core/api/auth';
 
-function ResetPasswordContent() {
-    const searchParams = useSearchParams();
+export default function ResetPasswordPage() {
+    const params = useParams();
     const router = useRouter();
-    const uid = searchParams.get('uid') || '';
-    const token = searchParams.get('token') || '';
-    console.log('uid:', uid, 'token:', token);
+    const uid = params.uid as string;
+    const token = params.token as string;
 
     const [form, setForm] = useState({ new_password: '', confirm_password: '' });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -39,25 +37,11 @@ function ResetPasswordContent() {
             setTimeout(() => router.push('/login'), 3000);
         } catch (err: unknown) {
             const axiosErr = err as { response?: { data?: { error?: string } } };
-            const message = axiosErr?.response?.data?.error || 'Invalid or expired reset link.';
-            setErrors({ general: message });
+            setErrors({ general: axiosErr?.response?.data?.error || 'Invalid or expired reset link.' });
         } finally {
             setLoading(false);
         }
     };
-
-    if (!uid || !token) {
-        return (
-            <div className="min-h-screen flex items-center justify-center px-4">
-                <div className="text-center">
-                    <p className="text-red-500 text-sm">Invalid reset link.</p>
-                    <Link href="/forgot-password" className="text-blue-600 text-sm mt-2 block">
-                        Request a new one
-                    </Link>
-                </div>
-            </div>
-        );
-    }
 
     if (success) {
         return (
@@ -104,13 +88,5 @@ function ResetPasswordContent() {
                 </div>
             </div>
         </div>
-    );
-}
-
-export default function ResetPasswordPage() {
-    return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-            <ResetPasswordContent />
-        </Suspense>
     );
 }
