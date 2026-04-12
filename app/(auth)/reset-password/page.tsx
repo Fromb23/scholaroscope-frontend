@@ -37,7 +37,9 @@ function ResetPasswordContent() {
             setSuccess(true);
             setTimeout(() => router.push('/login'), 3000);
         } catch (err: unknown) {
-            setErrors({ general: err instanceof Error ? err.message : 'Invalid or expired reset link.' });
+            const axiosErr = err as { response?: { data?: { error?: string } } };
+            const message = axiosErr?.response?.data?.error || 'Invalid or expired reset link.';
+            setErrors({ general: message });
         } finally {
             setLoading(false);
         }
