@@ -23,6 +23,7 @@ import Modal from '@/app/components/ui/Modal';
 import { Input } from '@/app/components/ui/Input';
 import { instructorsAPI } from '@/app/core/api/instructors';
 import { UserCreatePayload } from '@/app/core/types/globalUsers';
+import { ErrorState } from '@/app/components/ui/ErrorState';
 
 type ViewMode = 'table' | 'grid';
 
@@ -75,6 +76,7 @@ function CreateInstructorModal({
 }) {
     const [form, setForm] = useState<CreateForm>(EMPTY_CREATE);
     const [errors, setErrors] = useState<Partial<CreateForm>>({});
+    const [apiError, setApiError] = useState<string | null>(null);
     const [showPw, setShowPw] = useState(false);
 
     const set = (f: keyof CreateForm, v: string) => {
@@ -97,13 +99,17 @@ function CreateInstructorModal({
 
     const handleSubmit = async () => {
         if (!validate()) return;
-        await onSubmit({
-            email: form.email, first_name: form.first_name, last_name: form.last_name,
-            role: 'INSTRUCTOR',
-            phone: form.phone || undefined,
-            password: form.password, password2: form.password2,
-        });
-        setForm(EMPTY_CREATE);
+        try {
+            await onSubmit({
+                email: form.email, first_name: form.first_name, last_name: form.last_name,
+                role: 'INSTRUCTOR',
+                phone: form.phone || undefined,
+                password: form.password, password2: form.password2,
+            });
+            setForm(EMPTY_CREATE);
+        } catch (err: unknown) {
+            setApiError(err instanceof Error ? err.message : 'Failed to create instructor');
+        }
     };
 
     return (
@@ -131,6 +137,15 @@ function CreateInstructorModal({
                     <Input label="Confirm Password *" type="password" value={form.password2}
                         onChange={e => set('password2', e.target.value)} error={errors.password2} />
                 </div>
+
+                {/* API-level error — shows only when submit fails */}
+                {apiError && (
+                    <ErrorState
+                        fullScreen={false}
+                        message={apiError}
+                    />
+                )}
+
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                     <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
                     <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
@@ -224,7 +239,7 @@ export default function InstructorManagementPage() {
             setCreateOpen(false);
             flash('Instructor created successfully');
         } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to create instructor');
+            throw err;
         } finally {
             setSubmitting(false);
         }

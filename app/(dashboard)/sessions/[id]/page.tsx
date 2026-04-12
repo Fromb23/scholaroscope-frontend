@@ -82,59 +82,60 @@ export default function SessionDetailPage() {
         <div className="space-y-6">
 
             {/* Header */}
-            <div className="flex justify-between items-start">
-                <div>
-                    <Link href="/sessions">
-                        <Button variant="ghost" size="sm">
-                            <ArrowLeft className="mr-2 h-4 w-4" />Back
-                        </Button>
-                    </Link>
-                    <h1 className="text-2xl font-semibold mt-2 flex items-center gap-2">
-                        {session.subject_name}
-                        {isMerged && (
-                            <Badge variant="purple">
-                                <Layers className="w-3 h-3 mr-1" />Multi-cohort
-                            </Badge>
-                        )}
-                        {isHistorical && <Badge variant="default">Historical</Badge>}
-                    </h1>
-                    <p className="text-gray-500">{session.term_name}</p>
+            <div className="space-y-3">
+                {/* Back */}
+                <Link href="/sessions">
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="mr-2 h-4 w-4" />Back
+                    </Button>
+                </Link>
+
+                {/* Title + badges */}
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-xl font-semibold flex items-center gap-2 flex-wrap">
+                            <span className="truncate">{session.subject_name}</span>
+                            {isMerged && (
+                                <Badge variant="purple">
+                                    <Layers className="w-3 h-3 mr-1" />Multi-cohort
+                                </Badge>
+                            )}
+                            {isHistorical && <Badge variant="default">Historical</Badge>}
+                        </h1>
+                        <p className="text-gray-500 text-sm mt-0.5">{session.term_name}</p>
+                    </div>
+
+                    {/* Status badge — desktop inline, mobile below */}
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                        <Badge variant="blue">{session.session_type_display}</Badge>
+                        {isScheduled && <Badge variant="default">Scheduled</Badge>}
+                        {isInProgress && <Badge variant="yellow">In Progress</Badge>}
+                        {isCompleted && <Badge variant="green">Completed</Badge>}
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Badge variant="blue">{session.session_type_display}</Badge>
-
-                    {isScheduled && <Badge variant="default">Scheduled</Badge>}
-                    {isInProgress && <Badge variant="yellow">In Progress</Badge>}
-                    {isCompleted && <Badge variant="green">Completed</Badge>}
-
-                    {!isHistorical && isScheduled && (
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={async () => { await startSession(); }}
-                        >
-                            Start Session
-                        </Button>
-                    )}
-                    {!isHistorical && isInProgress && (
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={async () => { await completeSession(); }}
-                        >
-                            Complete Session
-                        </Button>
-                    )}
-
-                    {!isHistorical && !isCompleted && (
-                        <Link href={`/sessions/${session.id}/edit`}>
-                            <Button variant="secondary" size="sm">
-                                <Edit className="h-4 w-4 mr-1.5" />Edit
+                {/* Action buttons — own row so they never overflow */}
+                {!isHistorical && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {isScheduled && (
+                            <Button variant="secondary" size="sm" onClick={async () => { await startSession(); }}>
+                                Start Session
                             </Button>
-                        </Link>
-                    )}
-                </div>
+                        )}
+                        {isInProgress && (
+                            <Button variant="primary" size="sm" onClick={async () => { await completeSession(); }}>
+                                Complete Session
+                            </Button>
+                        )}
+                        {!isCompleted && (
+                            <Link href={`/sessions/${session.id}/edit`}>
+                                <Button variant="secondary" size="sm">
+                                    <Edit className="h-4 w-4 mr-1.5" />Edit
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Historical notice */}
@@ -147,7 +148,7 @@ export default function SessionDetailPage() {
 
             {/* Session info */}
             <Card>
-                <div className="p-5 grid md:grid-cols-3 gap-4">
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                         <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
                         {session.session_date}
@@ -165,7 +166,7 @@ export default function SessionDetailPage() {
                 </div>
             </Card>
 
-            {/* Participating cohorts */}
+            {/* rest unchanged */}
             <ParticipatingCohorts
                 sessionId={sessionId}
                 sessionSubjectId={session.cohort_subject}
@@ -173,10 +174,8 @@ export default function SessionDetailPage() {
                 isHistorical={isHistorical}
             />
 
-            {/* Attendance stats */}
             <AttendanceStatsStrip stats={attendanceStats} />
 
-            {/* Attendance table */}
             <Card>
                 <div className="p-5">
                     <AttendanceTable
@@ -198,7 +197,6 @@ export default function SessionDetailPage() {
                 </div>
             </Card>
 
-            {/* Subtopics — non-CBC only */}
             {!isCBC && session.cohort_subject && (
                 <Card>
                     <div className="p-5">

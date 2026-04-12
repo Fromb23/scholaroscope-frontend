@@ -70,13 +70,13 @@ export function AttendanceTable({
             key: 'status',
             header: 'Status',
             render: r => (
-                <div className="flex gap-1.5 flex-wrap">
+                <div className="flex gap-1 flex-nowrap">
                     {STATUSES.map(s => (
                         <button
                             key={s}
                             onClick={() => !readOnly && onUpdateStatus(r.student, s)}
                             disabled={readOnly}
-                            className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${draft[r.student]?.status === s
+                            className={`px-2 py-1 text-xs rounded-lg border transition-colors whitespace-nowrap ${draft[r.student]?.status === s
                                 ? 'border-gray-900 bg-gray-900 text-white'
                                 : 'border-gray-200 hover:border-gray-400'
                                 } ${readOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -122,7 +122,7 @@ export function AttendanceTable({
             )}
 
             {!readOnly && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="secondary" onClick={() => onMarkAll('PRESENT')}>
                         Mark all present
                     </Button>
@@ -132,15 +132,20 @@ export function AttendanceTable({
                 </div>
             )}
 
-            <DataTable
-                data={records as AttendanceWithIndex[]}
-                columns={columns}
-                loading={loading}
-                enableSearch
-                onSearch={q => { onSearch(q); }}
-                pagination={pagination}
-                onPaginationChange={onPaginationChange}
-            />
+            {/* Horizontal scroll wrapper */}
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <div className="min-w-[520px]">
+                    <DataTable
+                        data={records as AttendanceWithIndex[]}
+                        columns={columns}
+                        loading={loading}
+                        enableSearch
+                        onSearch={q => { onSearch(q); }}
+                        pagination={pagination}
+                        onPaginationChange={onPaginationChange}
+                    />
+                </div>
+            </div>
         </div>
     );
 }

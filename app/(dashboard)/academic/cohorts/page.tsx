@@ -26,6 +26,7 @@ import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/Co
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort } from '@/app/core/types/academic';
+import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 type CohortWithIndex = { [key: string]: unknown } & Cohort;
 
@@ -181,11 +182,13 @@ export default function CohortsPage() {
 
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
-            <div className="grid gap-4 md:grid-cols-3">
-                <StatsCard title="Total Cohorts" value={cohorts.length} icon={GraduationCap} color="blue" />
-                <StatsCard title="Total Students" value={totalStudents} icon={Users} color="green" />
-                <StatsCard title="Avg per Cohort" value={cohorts.length > 0 ? Math.round(totalStudents / cohorts.length) : 0} icon={Users} color="yellow" />
-            </div>
+            <DesktopOnly>
+                <div className="grid gap-4 md:grid-cols-3">
+                    <StatsCard title="Total Cohorts" value={cohorts.length} icon={GraduationCap} color="blue" />
+                    <StatsCard title="Total Students" value={totalStudents} icon={Users} color="green" />
+                    <StatsCard title="Avg per Cohort" value={cohorts.length > 0 ? Math.round(totalStudents / cohorts.length) : 0} icon={Users} color="yellow" />
+                </div>
+            </DesktopOnly>
 
             <Card>
                 <div className="flex items-center gap-3">
