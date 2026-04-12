@@ -77,14 +77,16 @@ export interface RegisterPayload {
 }
 
 export interface RegisterResponse {
-  access: string;
-  refresh: string;
-  user: User;
-  organization: {
+  status?: 'pending';
+  message?: string;
+  access?: string;
+  refresh?: string;
+  user?: User;
+  organization?: {
     id: number;
     name: string;
+    slug?: string;
     type: OrgType;
-    slug: string;
   };
   memberships?: OrgMembership[];
 }

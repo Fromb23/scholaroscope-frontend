@@ -1,4 +1,3 @@
-// app/core/hooks/useRegister.ts
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
@@ -58,7 +57,6 @@ export function useRegister() {
     const [apiError, setApiError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    // In useRegister.ts
     useEffect(() => {
         if (!isSuspendedRecovery) return;
         authAPI.getSuspendedWorkspaces()
@@ -66,7 +64,6 @@ export function useRegister() {
             .catch(() => { });
     }, [isSuspendedRecovery]);
 
-    // Validate invite token
     useEffect(() => {
         if (!inviteToken) return;
         setInviteLoading(true);
@@ -134,11 +131,18 @@ export function useRegister() {
         setApiError(null);
 
         try {
+            // ── New workspace or suspended recovery ───────────────────────
             if (isNewWorkspaceFlow || isSuspendedRecovery) {
-                const res = await authAPI.register({ workspace_name: form.workspace_name, org_type: form.org_type });
+                const res = await authAPI.register({
+                    workspace_name: form.workspace_name,
+                    org_type: form.org_type,
+                });
+                if (!res.access || !res.refresh || !res.organization) {
+                    setApiError('Something went wrong. Please try again.');
+                    return;
+                }
                 localStorage.setItem('access_token', res.access);
                 localStorage.setItem('refresh_token', res.refresh);
-                // Persist org context so AuthContext hydrates correctly on reload
                 localStorage.setItem('active_org', JSON.stringify({
                     id: res.organization.id,
                     name: res.organization.name,
@@ -162,16 +166,29 @@ export function useRegister() {
                 return;
             }
 
-            if (isInviteFlow) {
+            // ── Invite flow ───────────────────────────────────────────────
+            if (isInviteFlow && inviteToken) {
                 const isExistingUser = !!invite?.user_exists;
                 if (isExistingUser) {
                     await login(form.email, form.password);
-                    await authAPI.register({ email: form.email, password: form.password, invite_code: inviteToken! });
+                    await authAPI.register({
+                        email: form.email,
+                        password: form.password,
+                        invite_code: inviteToken,
+                    });
                 } else {
                     const res = await authAPI.register({
-                        first_name: form.first_name, last_name: form.last_name, org_type: form.org_type,
-                        email: form.email, password: form.password, invite_code: inviteToken!,
+                        first_name: form.first_name,
+                        last_name: form.last_name,
+                        org_type: form.org_type,
+                        email: form.email,
+                        password: form.password,
+                        invite_code: inviteToken,
                     });
+                    if (!res.access || !res.refresh) {
+                        setApiError('Something went wrong. Please try again.');
+                        return;
+                    }
                     localStorage.setItem('access_token', res.access);
                     localStorage.setItem('refresh_token', res.refresh);
                 }
@@ -180,12 +197,21 @@ export function useRegister() {
                 return;
             }
 
-            await ctxRegister({
-                first_name: form.first_name, last_name: form.last_name,
-                email: form.email, password: form.password,
+            // ── Personal flow (direct signup) ─────────────────────────────
+            const res = await ctxRegister({
+                first_name: form.first_name,
+                last_name: form.last_name,
+                email: form.email,
+                password: form.password,
                 workspace_name: form.workspace_name,
                 org_type: form.org_type,
             });
+
+            if (res.status === 'pending') {
+                setSuccess(true);
+                return;
+            }
+
             setSuccess(true);
             setTimeout(() => router.replace('/dashboard'), 1500);
 
