@@ -22,6 +22,7 @@ import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
 import type { CurriculumFormData } from '@/app/core/components/curricula/CurriculumFormModal';
+import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 export default function CurriculaPage() {
     const { curricula, loading, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
@@ -84,11 +85,13 @@ export default function CurriculaPage() {
 
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
-            <div className="grid gap-4 md:grid-cols-3">
-                <StatsCard title="Total Curricula" value={curricula.length} icon={BookOpen} color="blue" />
-                <StatsCard title="Active" value={activeCurricula.length} icon={CheckCircle} color="green" />
-                <StatsCard title="Inactive" value={inactiveCurricula.length} icon={BookOpen} color="indigo" />
-            </div>
+            <DesktopOnly>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <StatsCard title="Total Curricula" value={curricula.length} icon={BookOpen} />
+                    <StatsCard title="Active Curricula" value={activeCurricula.length} icon={CheckCircle} />
+                    <StatsCard title="Inactive Curricula" value={inactiveCurricula.length} icon={BookOpen} />
+                </div>
+            </DesktopOnly>
 
             {/* Active */}
             <Card>

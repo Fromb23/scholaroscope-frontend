@@ -13,10 +13,10 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
-import { AttendanceBar } from '@/app/core/components/reports/AttendanceBar';
 import { useClassSummary, useSubjectSummaries } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 export default function CohortsReportPage() {
     const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
@@ -120,32 +120,34 @@ export default function CohortsReportPage() {
 
                     {/* Stats */}
                     {summary.summary && (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            <StatsCard
-                                title="Total Students"
-                                value={summary.summary.total_students}
-                                icon={Users}
-                                color="blue"
-                            />
-                            <StatsCard
-                                title="Avg Grade"
-                                value={`${summary.summary.average_grade?.toFixed(1) ?? '—'}%`}
-                                icon={Award}
-                                color="green"
-                            />
-                            <StatsCard
-                                title="Avg Attendance"
-                                value={`${summary.summary.average_attendance?.toFixed(1) ?? '—'}%`}
-                                icon={TrendingUp}
-                                color="indigo"
-                            />
-                            <StatsCard
-                                title="A Grades"
-                                value={summary.summary.grade_a_count}
-                                icon={Award}
-                                color="yellow"
-                            />
-                        </div>
+                        <DesktopOnly>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <StatsCard
+                                    title="Total Students"
+                                    value={summary.summary.total_students}
+                                    icon={Users}
+                                    color="blue"
+                                />
+                                <StatsCard
+                                    title="Avg Grade"
+                                    value={`${summary.summary.average_grade?.toFixed(1) ?? '—'}%`}
+                                    icon={Award}
+                                    color="green"
+                                />
+                                <StatsCard
+                                    title="Avg Attendance"
+                                    value={`${summary.summary.average_attendance?.toFixed(1) ?? '—'}%`}
+                                    icon={TrendingUp}
+                                    color="indigo"
+                                />
+                                <StatsCard
+                                    title="A Grades"
+                                    value={summary.summary.grade_a_count}
+                                    icon={Award}
+                                    color="yellow"
+                                />
+                            </div>
+                        </DesktopOnly>
                     )}
 
                     {/* Grade distribution chart */}

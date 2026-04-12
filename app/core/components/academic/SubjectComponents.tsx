@@ -168,9 +168,16 @@ export function CurriculumGroup({
                     : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
                 }
                 <BookOpen className="h-4 w-4 text-blue-500 shrink-0" />
-                <span className="font-bold text-gray-900 flex-1">{curriculumName}</span>
+
+                {/* mobile: code only, desktop: full name */}
+                <span className="font-bold text-gray-900 flex-1 truncate">
+                    <span className="font-bold text-gray-900 flex-1 min-w-0 truncate">
+                        {curriculumName}
+                    </span>
+                </span>
+
                 <Badge variant="blue" size="sm" className="shrink-0">{curriculumType}</Badge>
-                <span className="text-xs text-gray-400 ml-2">
+                <span className="text-xs text-gray-400 ml-2 hidden sm:inline">
                     {subjectGroups.size} subject{subjectGroups.size !== 1 ? 's' : ''} · {totalSubjects} level{totalSubjects !== 1 ? 's' : ''}
                 </span>
             </button>

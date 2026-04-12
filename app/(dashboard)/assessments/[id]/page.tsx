@@ -32,6 +32,7 @@ import {
     AssessmentStatus,
     calculateScoreStats,
 } from '@/app/core/types/assessment';
+import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 interface ScoreDraft {
     score?: number | null;
@@ -125,24 +126,35 @@ export default function AssessmentDetailPage() {
         <div className="space-y-6">
 
             {/* Header */}
-            <div className="flex justify-between items-start">
-                <div>
-                    <Link href="/assessments">
-                        <Button variant="ghost" size="sm">
-                            <ArrowLeft className="mr-2 h-4 w-4" />Back
-                        </Button>
-                    </Link>
-                    <h1 className="text-2xl font-semibold mt-2 flex items-center gap-2">
-                        {assessment.name}
-                        <Badge variant="blue">{assessment.assessment_type_display}</Badge>
-                        <Badge variant="purple">{assessment.evaluation_type_display}</Badge>
+            <div className="space-y-3">
+                {/* Back */}
+                <Link href="/assessments">
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="mr-2 h-4 w-4" />Back
+                    </Button>
+                </Link>
+
+                {/* Title + status badges */}
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-xl font-semibold flex items-center gap-2 flex-wrap">
+                            <span className="truncate">{assessment.name}</span>
+                            <Badge variant="blue">{assessment.assessment_type_display}</Badge>
+                            <Badge variant="purple">{assessment.evaluation_type_display}</Badge>
+                        </h1>
+                        <p className="text-sm text-gray-500 mt-0.5 truncate">
+                            {assessment.subject_name} — {assessment.cohort_name}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
                         {isDraft && <Badge variant="default">Draft</Badge>}
                         {isActive && <Badge variant="yellow">Active</Badge>}
                         {isFinalized && <Badge variant="green">Finalized</Badge>}
-                    </h1>
-                    <p className="text-gray-500">{assessment.subject_name} — {assessment.cohort_name}</p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Action buttons — own row */}
+                <div className="flex items-center gap-2 flex-wrap">
                     {isDraft && (
                         <Button variant="secondary" size="sm" onClick={handleActivate}>
                             <PlayCircle className="h-4 w-4 mr-1.5" />Activate
@@ -181,7 +193,7 @@ export default function AssessmentDetailPage() {
 
             {/* Assessment info */}
             <Card>
-                <div className="p-5 grid md:grid-cols-4 gap-4">
+                <div className="p-4 flex flex-col sm:flex-row sm:flex-wrap gap-3">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                         <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
                         {assessment.assessment_date
@@ -199,62 +211,69 @@ export default function AssessmentDetailPage() {
                         </div>
                     )}
                     {assessment.description && (
-                        <p className="text-sm text-gray-600 col-span-full pt-3 border-t border-gray-100">
+                        <p className="text-sm text-gray-600 w-full pt-3 border-t border-gray-100">
                             {assessment.description}
                         </p>
                     )}
                 </div>
             </Card>
 
-            {/* Stats */}
+            {/* Stats — desktop only */}
             {assessment.evaluation_type === 'NUMERIC' && (
-                <div className="grid gap-4 md:grid-cols-5">
-                    <StatsCard title="Scored" value={`${stats.scored}/${stats.total}`} icon={ClipboardList} color="blue" />
-                    <StatsCard title="Average" value={stats.average.toFixed(1)} icon={TrendingUp} color="green" />
-                    <StatsCard title="Highest" value={stats.highest} icon={Award} color="yellow" />
-                    <StatsCard title="Lowest" value={stats.lowest} icon={TrendingUp} color="red" />
-                    <StatsCard title="Completion" value={`${stats.completion}%`} icon={ClipboardList} color="purple" />
-                </div>
+                <DesktopOnly>
+                    <div className="grid gap-4 md:grid-cols-5">
+                        <StatsCard title="Scored" value={`${stats.scored}/${stats.total}`} icon={ClipboardList} color="blue" />
+                        <StatsCard title="Average" value={stats.average.toFixed(1)} icon={TrendingUp} color="green" />
+                        <StatsCard title="Highest" value={stats.highest} icon={Award} color="yellow" />
+                        <StatsCard title="Lowest" value={stats.lowest} icon={TrendingUp} color="red" />
+                        <StatsCard title="Completion" value={`${stats.completion}%`} icon={ClipboardList} color="purple" />
+                    </div>
+                </DesktopOnly>
             )}
 
             {/* Score entry */}
             <Card>
-                <div className="p-5">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                <div className="p-4">
+                    <div className="flex items-center justify-between mb-4 gap-3">
+                        <h2 className="text-base font-semibold text-gray-900">
                             {isFinalized ? 'Scores' : 'Enter Scores'}
                         </h2>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 shrink-0">
                             <Button variant="secondary" size="sm"
                                 onClick={() => setExportOpen(true)}
                                 disabled={scores.length === 0}>
-                                <Download className="w-4 h-4 mr-1.5" />Export
+                                <Download className="w-4 h-4 sm:mr-1.5" />
+                                <span className="hidden sm:inline">Export</span>
                             </Button>
                             {!isFinalized && (
-                                <Button onClick={handleSaveScores} disabled={saving}>
-                                    <Save className="w-4 h-4 mr-1.5" />
-                                    {saving ? 'Saving…' : 'Save Scores'}
+                                <Button size="sm" onClick={handleSaveScores} disabled={saving}>
+                                    <Save className="w-4 h-4 sm:mr-1.5" />
+                                    <span className="hidden sm:inline">{saving ? 'Saving…' : 'Save Scores'}</span>
                                 </Button>
                             )}
                         </div>
                     </div>
-                    <AssessmentScoreTable
-                        assessment={assessment}
-                        scores={scores}
-                        draft={draft}
-                        loading={scoresLoading}
-                        readOnly={isFinalized}
-                        onScoreChange={handleScoreChange}
-                        onSearch={setSearchQuery}
-                    />
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[480px]">
+                            <AssessmentScoreTable
+                                assessment={assessment}
+                                scores={scores}
+                                draft={draft}
+                                loading={scoresLoading}
+                                readOnly={isFinalized}
+                                onScoreChange={handleScoreChange}
+                                onSearch={setSearchQuery}
+                            />
+                        </div>
+                    </div>
                 </div>
             </Card>
 
             {/* Grade distribution */}
             {assessment.evaluation_type === 'NUMERIC' && scores.length > 0 && (
                 <Card>
-                    <div className="p-5">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Grade Distribution</h2>
+                    <div className="p-4">
+                        <h2 className="text-base font-semibold text-gray-900 mb-4">Grade Distribution</h2>
                         <AssessmentGradeDistribution
                             scores={scores}
                             totalMarks={assessment.total_marks ?? 100}
@@ -263,7 +282,6 @@ export default function AssessmentDetailPage() {
                 </Card>
             )}
 
-            {/* Export modal */}
             {scores.length > 0 && (
                 <ExportModal
                     open={exportOpen}

@@ -28,6 +28,7 @@ import {
     GroupedSessions,
 } from '@/app/core/components/instructors/InstructorProgressComponents';
 import type { UserUpdatePayload } from '@/app/core/types/globalUsers';
+import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 export default function InstructorProgressPage() {
     const params = useParams();
@@ -133,61 +134,73 @@ export default function InstructorProgressPage() {
             )}
 
             {/* Header */}
-            <div className="flex items-start gap-5">
-                <div className="h-16 w-16 rounded-2xl bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-700 shrink-0">
-                    {instructor.first_name?.charAt(0)}{instructor.last_name?.charAt(0)}
-                </div>
-                <div className="flex-1">
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <h1 className="text-2xl font-bold text-gray-900">{instructor.full_name}</h1>
-                        <Badge variant={isEffectivelyActive ? 'success' : 'danger'}>
-                            {isEffectivelyActive ? 'Active' : 'Inactive'}
-                        </Badge>
+            <div className="space-y-3">
+                {/* Row 1 — avatar + name/email */}
+                <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-2xl bg-blue-100 flex items-center justify-center text-lg font-bold text-blue-700 shrink-0">
+                        {instructor.first_name?.charAt(0)}{instructor.last_name?.charAt(0)}
                     </div>
-                    <p className="text-gray-500 text-sm mt-1">{instructor.email}</p>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {instructor.cohort_assignments?.length === 0 && (
-                            <span className="text-xs text-gray-400 italic">No cohorts assigned</span>
-                        )}
-                        {instructor.cohort_assignments?.map(a => (
-                            <Badge key={a.cohort_subject_id} variant="info" size="sm">
-                                <GraduationCap className="h-3 w-3 mr-1 inline" />{a.cohort_name}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-lg font-bold text-gray-900 truncate">{instructor.full_name}</h1>
+                            <Badge variant={isEffectivelyActive ? 'success' : 'danger'} size="sm">
+                                {isEffectivelyActive ? 'Active' : 'Inactive'}
                             </Badge>
-                        ))}
+                        </div>
+                        <p className="text-gray-500 text-sm truncate">{instructor.email}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+
+                {/* Row 2 — action buttons */}
+                <div className="flex items-center gap-2 flex-wrap">
                     <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
-                        <Pencil className="h-3.5 w-3.5 mr-1" />Edit
+                        <Pencil className="h-3.5 w-3.5 md:mr-1" />
+                        <span className="hidden md:inline">Edit</span>
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => setCohortOpen(true)}>
-                        <BookOpen className="h-3.5 w-3.5 mr-1" />Cohorts
+                        <BookOpen className="h-3.5 w-3.5 md:mr-1" />
+                        <span className="hidden md:inline">Cohorts</span>
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => setResetOpen(true)}>
-                        <KeyRound className="h-3.5 w-3.5 mr-1" />Password
+                        <KeyRound className="h-3.5 w-3.5 md:mr-1" />
+                        <span className="hidden md:inline">Password</span>
                     </Button>
                     <Button
                         size="sm" variant="secondary" onClick={handleToggle}
                         className={isEffectivelyActive ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}
                     >
                         {isEffectivelyActive
-                            ? <><PowerOff className="h-3.5 w-3.5 mr-1" />Deactivate</>
-                            : <><Power className="h-3.5 w-3.5 mr-1" />Activate</>
+                            ? <><PowerOff className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Deactivate</span></>
+                            : <><Power className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Activate</span></>
                         }
                     </Button>
                     <Button size="sm" variant="danger" onClick={() => setDeleteOpen(true)}>
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
+                        <Trash2 className="h-3.5 w-3.5 md:mr-1" />
+                        <span className="hidden md:inline">Delete</span>
                     </Button>
                 </div>
+
+                {/* Row 3 — cohort badges */}
+                {(instructor.cohort_assignments?.length ?? 0) > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {instructor.cohort_assignments?.map(a => (
+                            <Badge key={a.cohort_subject_id} variant="info" size="sm">
+                                <GraduationCap className="h-3 w-3 mr-1 inline" />{a.cohort_name}
+                            </Badge>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatsCard title="Total Sessions" value={sessionStats.total} icon={Calendar} color="blue" />
-                <StatsCard title="This Month" value={sessionStats.thisMonth} icon={Calendar} color="purple" />
-                <StatsCard title="Avg Attendance" value={`${attendanceStats.rate}%`} icon={Users} color="green" />
-                <StatsCard title="Cohorts" value={instructor.cohort_assignments?.length ?? 0} icon={GraduationCap} color="orange" />
-            </div>
+            <DesktopOnly>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <StatsCard title="Total Sessions" value={sessionStats.total} icon={Calendar} color="blue" />
+                    <StatsCard title="This Month" value={sessionStats.thisMonth} icon={Calendar} color="purple" />
+                    <StatsCard title="Avg Attendance" value={`${attendanceStats.rate}%`} icon={Users} color="green" />
+                    <StatsCard title="Cohorts" value={instructor.cohort_assignments?.length ?? 0} icon={GraduationCap} color="orange" />
+                </div>
+            </DesktopOnly>
 
             {/* Attendance */}
             <Card>

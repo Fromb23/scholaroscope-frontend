@@ -11,10 +11,10 @@ import {
     TrendingUp
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
-import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAcademicYears, useCurricula, useCohorts, useTerms } from '@/app/core/hooks/useAcademic';
 import { Badge } from '@/app/components/ui/Badge';
+import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 export default function AcademicOverview() {
     const { academicYears, loading: yearsLoading } = useAcademicYears();
@@ -143,36 +143,38 @@ export default function AcademicOverview() {
             </Card>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatsCard
-                    title="Academic Years"
-                    value={academicYears.length}
-                    icon={Calendar}
-                    trend={{ value: 0, isPositive: true }}
-                    color="blue"
-                />
-                <StatsCard
-                    title="Active Terms"
-                    value={terms.length}
-                    icon={Clock}
-                    trend={{ value: 0, isPositive: true }}
-                    color="green"
-                />
-                <StatsCard
-                    title="Curricula"
-                    value={activeCurricula.length}
-                    icon={BookOpen}
-                    trend={{ value: 0, isPositive: true }}
-                    color="purple"
-                />
-                <StatsCard
-                    title="Total Cohorts"
-                    value={cohorts.length}
-                    icon={Users}
-                    trend={{ value: 0, isPositive: true }}
-                    color="indigo"
-                />
-            </div>
+            <DesktopOnly>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatsCard
+                        title="Academic Years"
+                        value={academicYears.length}
+                        icon={Calendar}
+                        trend={{ value: 0, isPositive: true }}
+                        color="blue"
+                    />
+                    <StatsCard
+                        title="Active Terms"
+                        value={terms.length}
+                        icon={Clock}
+                        trend={{ value: 0, isPositive: true }}
+                        color="green"
+                    />
+                    <StatsCard
+                        title="Curricula"
+                        value={activeCurricula.length}
+                        icon={BookOpen}
+                        trend={{ value: 0, isPositive: true }}
+                        color="purple"
+                    />
+                    <StatsCard
+                        title="Total Cohorts"
+                        value={cohorts.length}
+                        icon={Users}
+                        trend={{ value: 0, isPositive: true }}
+                        color="indigo"
+                    />
+                </div>
+            </DesktopOnly>
 
             {/* Quick Links */}
             <div>
