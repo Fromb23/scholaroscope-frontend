@@ -21,6 +21,7 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import type {
     Announcement,
     AnnouncementFormData,
+    AnnouncementTarget,
     FeedbackType,
 } from '@/app/plugins/announcements/types/announcements';
 
@@ -298,7 +299,7 @@ export function AnnouncementModal({
                     <Select
                         label="Audience"
                         value={form.target_role}
-                        onChange={e => set('target_role', e.target.value)}
+                        onChange={e => set('target_role', e.target.value as AnnouncementTarget)}
                         options={[
                             { value: 'ALL', label: 'All Users' },
                             { value: 'ADMIN', label: 'Admins Only' },

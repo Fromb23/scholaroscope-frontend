@@ -23,7 +23,7 @@ export default function AssessmentsOverview() {
 
     const { assessments, loading } = useAssessments({
         term: selectedTerm,
-        subject: selectedSubject,
+        cohort_subject: selectedSubject,
         assessment_type: selectedType,
         evaluation_type: selectedEvalType
     });

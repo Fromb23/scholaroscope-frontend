@@ -74,6 +74,7 @@ export interface Assessment {
   scores_count: number;
   created_at: string;
   created_by: string;
+  weight: number;
 }
 
 export interface AssessmentScore {
@@ -155,6 +156,7 @@ export interface AssessmentFormData {
   assessment_date: string | null;
   description: string;
   status: AssessmentStatus;
+  weight: number;
 }
 
 export interface StudentScoresResponse {

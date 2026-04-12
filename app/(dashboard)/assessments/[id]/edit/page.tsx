@@ -13,7 +13,7 @@ import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjects } from '@/app/core/hooks/useSessions';
 import { assessmentAPI } from '@/app/core/api/assessments';
-import { AssessmentFormData } from '@/app/core/types/assessment';
+import { AssessmentFormData, AssessmentStatus } from '@/app/core/types/assessment';
 
 export default function EditAssessmentPage() {
     const params = useParams();
@@ -42,6 +42,7 @@ export default function EditAssessmentPage() {
         rubric_scale: null,
         assessment_date: new Date().toISOString().split('T')[0],
         description: '',
+        status: AssessmentStatus.DRAFT,
         weight: 1.0
     });
 
@@ -76,6 +77,7 @@ export default function EditAssessmentPage() {
                 rubric_scale: assessment.rubric_scale,
                 assessment_date: assessment.assessment_date,
                 description: assessment.description,
+                status: assessment.status,
                 weight: assessment.weight
             });
             setLoading(false);

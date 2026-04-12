@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => restore<OrgMembership[]>('memberships') ?? []
   );
   const [membershipVersion, setMembershipVersion] = useState<number>(
-    () => Number(localStorage.getItem('membership_version') ?? 0)
+    () => Number(typeof window !== 'undefined' ? localStorage.getItem('membership_version') ?? 0 : 0)
   );
   const [suspendedNotices, setSuspendedNotices] = useState<SuspendedNotice[]>(
     () => restore<SuspendedNotice[]>('suspended_notices') ?? []
