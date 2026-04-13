@@ -5,7 +5,7 @@
 
 export type PlanType = 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
 export type OrgType = 'INSTITUTION' | 'PERSONAL';
-export type OrgStatus = 'ACTIVE' | 'SUSPENDED';
+export type OrgStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING' | 'REJECTED';
 export type SuspensionReason = 'USER_REQUESTED' | 'POLICY_VIOLATION' | 'PAYMENT_ISSUE' | 'ADMIN_ACTION';
 
 export interface Organization {
@@ -101,11 +101,15 @@ export const PLAN_COLORS: Record<PlanType, 'default' | 'info' | 'purple' | 'oran
 export const ORG_STATUS_LABELS: Record<OrgStatus, string> = {
     ACTIVE: 'Active',
     SUSPENDED: 'Suspended',
+    PENDING: 'Pending Approval',
+    REJECTED: 'Rejected',
 };
 
-export const ORG_STATUS_COLORS: Record<OrgStatus, 'success' | 'danger'> = {
+export const ORG_STATUS_COLORS: Record<OrgStatus, 'success' | 'danger' | 'warning'> = {
     ACTIVE: 'success',
     SUSPENDED: 'danger',
+    PENDING: 'warning',
+    REJECTED: 'danger',
 };
 
 export const SUSPENSION_REASON_LABELS: Record<SuspensionReason, string> = {

@@ -47,10 +47,11 @@ export function useRegister() {
     const [inviteLoading, setInviteLoading] = useState(isInviteFlow);
     const [suspendedOrgs, setSuspendedOrgs] = useState<SuspendedOrg[]>([]);
     const [restoring, setRestoring] = useState<number | null>(null);
+    const [isPending, setIsPending] = useState(false);
 
     const [form, setForm] = useState<RegisterForm>({
         first_name: '', last_name: '', email: '', password: '', workspace_name: '',
-        org_type: 'PERSONAL',
+        org_type: 'SCHOOL',
     });
     const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
     const [submitting, setSubmitting] = useState(false);
@@ -208,6 +209,7 @@ export function useRegister() {
             });
 
             if (res.status === 'pending') {
+                setIsPending(true);
                 setSuccess(true);
                 return;
             }
@@ -271,6 +273,6 @@ export function useRegister() {
         suspendedOrgs, restoring,
         form, fieldErrors, setField,
         submitting, apiError, setApiError, success,
-        handleSubmit, handleRestore, handleLogout,
+        handleSubmit, handleRestore, handleLogout, isPending,
     };
 }

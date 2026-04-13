@@ -64,7 +64,7 @@ export default function OrganizationDetailPage() {
         submitting, actionError, actionSuccess,
         setActionError,
         handleEdit, handleSuspend, handleUnsuspend, handleDelete,
-        addExistingUser,
+        addExistingUser, handleApprove, handleReject,
     } = useOrganizationDetailPage(id);
 
     const [activeTab, setActiveTab] = useState<TabId>('overview');
@@ -73,6 +73,8 @@ export default function OrganizationDetailPage() {
     const [suspendOpen, setSuspendOpen] = useState(false);
     const [addUserOpen, setAddUserOpen] = useState(false);
     const [addUserSubmitting, setAddUserSubmitting] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+    const [rejectOpen, setRejectOpen] = useState(false);
 
     const { users: allUsers } = useGlobalUsers();
 
@@ -99,57 +101,49 @@ export default function OrganizationDetailPage() {
         <div className="space-y-6">
 
             {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => router.push('/superadmin/organizations')}
-                        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
-                        <ArrowLeft className="h-4 w-4" />
-                    </button>
-                    <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                            {organization.logo
-                                ? <img src={organization.logo} alt={organization.name} className="h-12 w-12 rounded-xl object-cover" />
-                                : <Building2 className="h-6 w-6 text-purple-600" />
-                            }
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-bold text-gray-900">{organization.name}</h1>
-                                <Badge variant={ORG_STATUS_COLORS[organization.status]}>
-                                    {ORG_STATUS_LABELS[organization.status]}
-                                </Badge>
-                            </div>
-                            <p className="text-sm text-gray-500 mt-0.5 font-mono">
-                                Code: {organization.code} · Slug: {organization.slug}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button variant="secondary" size="sm" className="gap-1.5"
-                        onClick={() => { setActionError(null); setEditOpen(true); }}>
-                        <Pencil className="h-3.5 w-3.5" /> Edit
-                    </Button>
-                    {isSuspended ? (
-                        <Button variant="secondary" size="sm"
-                            onClick={() => { setActionError(null); handleUnsuspend(); }}
-                            className="gap-1.5 text-green-700 hover:bg-green-50">
-                            <Power className="h-3.5 w-3.5" /> Unsuspend
+            <div className="flex items-center gap-2 flex-shrink-0">
+                {organization.status === 'PENDING' ? (
+                    <>
+                        <Button
+                            variant="secondary" size="sm"
+                            className="gap-1.5 text-green-700 hover:bg-green-50"
+                            onClick={handleApprove}
+                            disabled={submitting}>
+                            <CheckCircle className="h-3.5 w-3.5" /> Approve
                         </Button>
-                    ) : (
-                        <Button variant="secondary" size="sm"
-                            onClick={() => { setActionError(null); setSuspendOpen(true); }}
-                            className="gap-1.5 text-yellow-700 hover:bg-yellow-50">
-                            <PowerOff className="h-3.5 w-3.5" /> Suspend
+                        <Button
+                            variant="danger" size="sm"
+                            className="gap-1.5"
+                            onClick={() => setRejectOpen(true)}
+                            disabled={submitting}>
+                            <Trash2 className="h-3.5 w-3.5" /> Reject
                         </Button>
-                    )}
-                    <Button variant="danger" size="sm" className="gap-1.5"
-                        onClick={() => { setActionError(null); setDeleteOpen(true); }}>
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </Button>
-                </div>
+                    </>
+                ) : (
+                    <>
+                        <Button variant="secondary" size="sm" className="gap-1.5"
+                            onClick={() => { setActionError(null); setEditOpen(true); }}>
+                            <Pencil className="h-3.5 w-3.5" /> Edit
+                        </Button>
+                        {isSuspended ? (
+                            <Button variant="secondary" size="sm"
+                                onClick={() => { setActionError(null); handleUnsuspend(); }}
+                                className="gap-1.5 text-green-700 hover:bg-green-50">
+                                <Power className="h-3.5 w-3.5" /> Unsuspend
+                            </Button>
+                        ) : (
+                            <Button variant="secondary" size="sm"
+                                onClick={() => { setActionError(null); setSuspendOpen(true); }}
+                                className="gap-1.5 text-yellow-700 hover:bg-yellow-50">
+                                <PowerOff className="h-3.5 w-3.5" /> Suspend
+                            </Button>
+                        )}
+                        <Button variant="danger" size="sm" className="gap-1.5"
+                            onClick={() => { setActionError(null); setDeleteOpen(true); }}>
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </Button>
+                    </>
+                )}
             </div>
 
             {/* Feedback */}
@@ -184,6 +178,38 @@ export default function OrganizationDetailPage() {
                         </button>
                     ))}
                 </nav>
+                {rejectOpen && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Reject Organization</h3>
+                            <p className="text-sm text-gray-500 mb-4">
+                                Optionally provide a reason. The owner will be notified by email.
+                            </p>
+                            <textarea
+                                value={rejectReason}
+                                onChange={e => setRejectReason(e.target.value)}
+                                placeholder="Reason for rejection (optional)"
+                                rows={3}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                            />
+                            <div className="flex gap-3 mt-4 justify-end">
+                                <Button variant="secondary" size="sm"
+                                    onClick={() => { setRejectOpen(false); setRejectReason(''); }}>
+                                    Cancel
+                                </Button>
+                                <Button variant="danger" size="sm"
+                                    onClick={async () => {
+                                        await handleReject(rejectReason);
+                                        setRejectOpen(false);
+                                        setRejectReason('');
+                                    }}
+                                    disabled={submitting}>
+                                    Confirm Reject
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Tab content */}

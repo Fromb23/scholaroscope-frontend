@@ -35,7 +35,7 @@ function RegisterForm() {
         suspendedOrgs, restoring,
         form, fieldErrors, setField,
         submitting, apiError, setApiError, success,
-        handleSubmit, handleRestore, handleLogout,
+        handleSubmit, handleRestore, handleLogout, isPending,
     } = useRegister();
 
     // ── Loading ───────────────────────────────────────────────────────────
@@ -71,17 +71,39 @@ function RegisterForm() {
         return (
             <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
                 <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
-                    <div className="h-14 w-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="h-7 w-7 text-green-600" />
+                    <div className={`h-14 w-14 rounded-full flex items-center justify-center mx-auto mb-4 ${isPending ? 'bg-yellow-100' : 'bg-green-100'
+                        }`}>
+                        {isPending
+                            ? <AlertCircle className="h-7 w-7 text-yellow-600" />
+                            : <CheckCircle className="h-7 w-7 text-green-600" />
+                        }
                     </div>
                     <h2 className="text-xl font-semibold text-gray-900">
-                        {isSuspendedRecovery ? 'Workspace restored!' : isInviteFlow ? "You're in!" : 'Workspace created!'}
+                        {isPending
+                            ? 'Application submitted!'
+                            : isSuspendedRecovery
+                                ? 'Workspace restored!'
+                                : isInviteFlow
+                                    ? "You're in!"
+                                    : 'Workspace created!'
+                        }
                     </h2>
                     <p className="text-sm text-gray-500 mt-2">
-                        {isInviteFlow
-                            ? `Welcome to ${invite?.organization}. Redirecting...`
-                            : 'Redirecting to your dashboard...'}
+                        {isPending
+                            ? "Your organization is pending approval. We'll notify you by email once it's approved."
+                            : isInviteFlow
+                                ? `Welcome to ${invite?.organization}. Redirecting...`
+                                : 'Redirecting to your dashboard...'
+                        }
                     </p>
+                    {isPending && (
+                        <button
+                            onClick={() => router.push('/login')}
+                            className="mt-6 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mx-auto"
+                        >
+                            <ArrowLeft className="h-4 w-4" /> Back to login
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -203,13 +225,13 @@ function RegisterForm() {
         ? 'New Workspace'
         : isInviteFlow
             ? (isExistingUser ? 'Accept Invitation' : 'Create Your Account')
-            : 'Create Workspace';
+            : 'Create Your Account';
 
     const subtitle = isNewWorkspaceFlow
         ? 'Add a new workspace to your account'
         : isInviteFlow
             ? (isExistingUser ? 'Sign in to accept this invitation' : 'Fill in your details to join')
-            : 'Start your personal workspace — free forever';
+            : 'Register yourself and your organization on ScholaroScope';
 
     const submitLabel = isNewWorkspaceFlow
         ? 'Create Workspace'
@@ -339,11 +361,25 @@ function RegisterForm() {
                                             label="Workspace Name" id="workspace_name"
                                             value={form.workspace_name}
                                             onChange={e => setField('workspace_name', e.target.value)}
-                                            placeholder="Ada's Tutoring Centre"
+                                            placeholder="e.g. Sunrise Academy"
                                             error={fieldErrors.workspace_name}
                                         />
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Organization Type
+                                            </label>
+                                            <select
+                                                value={form.org_type}
+                                                onChange={e => setField('org_type', e.target.value as RegisterFormData['org_type'])}
+                                                className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="SCHOOL">School / Institution</option>
+                                                <option value="BUSINESS">Business</option>
+                                                <option value="PERSONAL">Personal</option>
+                                            </select>
+                                        </div>
                                         <p className="text-xs text-gray-400 -mt-2">
-                                            This becomes your personal organization name
+                                            This becomes your organization name on ScholaroScope
                                         </p>
                                     </>
                                 )}

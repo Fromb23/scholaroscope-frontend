@@ -74,4 +74,15 @@ export const organizationAPI = {
         const response = await apiClient.get<OrgUser[]>(`/organizations/${id}/users/`);
         return response.data;
     },
+    approve: async (id: number): Promise<{ message: string }> => {
+        const response = await apiClient.post(`/organizations/${id}/approve/`);
+        return response.data;
+    },
+
+    reject: async (id: number, reason?: string): Promise<{ message: string }> => {
+        const response = await apiClient.post(`/organizations/${id}/reject/`, {
+            reason: reason ?? '',
+        });
+        return response.data;
+    },
 };

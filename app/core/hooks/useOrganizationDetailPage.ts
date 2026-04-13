@@ -67,6 +67,32 @@ export function useOrganizationDetailPage(id: number) {
         }
     };
 
+    const handleApprove = async (): Promise<void> => {
+        if (!organization) return;
+        setActionError(null);
+        try {
+            await organizationAPI.approve(id);
+            setOrganization({ ...organization, status: 'ACTIVE' });
+            showSuccess('Organization approved and is now active');
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { error?: string } }; message?: string };
+            setActionError(e.response?.data?.error || e.message || 'Approval failed');
+        }
+    };
+
+    const handleReject = async (reason?: string): Promise<void> => {
+        if (!organization) return;
+        setActionError(null);
+        try {
+            await organizationAPI.reject(id, reason);
+            setOrganization({ ...organization, status: 'REJECTED' });
+            showSuccess('Organization rejected');
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { error?: string } }; message?: string };
+            setActionError(e.response?.data?.error || e.message || 'Rejection failed');
+        }
+    };
+
     const handleDelete = async (): Promise<void> => {
         setSubmitting(true);
         setActionError(null);
@@ -102,5 +128,6 @@ export function useOrganizationDetailPage(id: number) {
         submitting, actionError, actionSuccess,
         setActionError,
         handleEdit, handleSuspend, handleUnsuspend, handleDelete, addExistingUser,
+        handleApprove, handleReject,
     };
 }
