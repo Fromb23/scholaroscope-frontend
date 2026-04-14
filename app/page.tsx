@@ -502,7 +502,7 @@ export default function LandingPage() {
           <Link href="/login">Log In</Link>
           <Link href="/register">Register</Link>
         </div>
-        <p style={{ marginTop: '1rem', fontSize: '.75rem' }}>© 2025 ScholaroScope. All rights reserved.</p>
+        <p style={{ marginTop: '1rem', fontSize: '.75rem' }}>© {new Date().getFullYear()} ScholaroScope. All rights reserved.</p>
       </footer>
     </>
   );
