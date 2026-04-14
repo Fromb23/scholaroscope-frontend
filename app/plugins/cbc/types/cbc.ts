@@ -20,6 +20,7 @@ export interface Strand {
   description: string;
   sequence: number;         // read-only — server generated
   sub_strands_count: number;
+  is_assigned: boolean;
 }
 
 export interface StrandDetail extends Strand {

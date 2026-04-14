@@ -499,7 +499,11 @@ export const cbcSelectionAPI = {
     return response.data;
   },
   unregisterSubStrands: async (subStrandIds: number[]) => {
-    const response = await apiClient.post<{ unregistered: number; total_requested: number }>(
+    const response = await apiClient.post<{
+      hard_deleted: number;
+      soft_unregistered: number;
+      total_requested: number
+    }>(
       '/cbc/strands/unregister_sub_strands/',
       { sub_strand_ids: subStrandIds },
     );

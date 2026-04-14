@@ -39,9 +39,18 @@ export default function CBCBrowserPage() {
 
     const subjectsForCurriculum = useMemo(() => {
         const all = subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId);
-        if (isAdmin || allowedSubjectIds === null) return all;
-        return all.filter((s: Subject) => allowedSubjectIds.includes(s.id));
-    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds]);
+        const filtered = isAdmin || allowedSubjectIds === null
+            ? all
+            : all.filter((s: Subject) => allowedSubjectIds.includes(s.id));
+
+        const subjectIdsWithStrands = new Set(
+            strands
+                .filter(st => st.sub_strands_count > 0)
+                .map(st => st.subject)
+                .filter(Boolean)
+        );
+        return filtered.filter((s: Subject) => subjectIdsWithStrands.has(s.id));
+    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds, strands]);
 
     const visible = useMemo(() => {
         let result = strands;
@@ -56,6 +65,8 @@ export default function CBCBrowserPage() {
                     s.description?.toLowerCase().includes(q)
             );
         }
+
+        result = result.filter(s => s.sub_strands_count > 0);
         return result;
     }, [strands, search, isAdmin, allowedSubjectIds]);
 
@@ -176,6 +187,11 @@ export default function CBCBrowserPage() {
                                                     </span>
                                                     {' '}sub-strand{strand.sub_strands_count !== 1 ? 's' : ''}
                                                 </span>
+                                                {!strand.is_assigned && (
+                                                    <Badge variant="warning" size="sm" className="ml-auto shrink-0">
+                                                        No cohort yet
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </div>
                                     </Card>

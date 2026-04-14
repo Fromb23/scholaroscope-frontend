@@ -319,7 +319,7 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
 
             if (diff.removeSubStrands.length > 0) {
                 const res = await cbcSelectionAPI.unregisterSubStrands(diff.removeSubStrands);
-                unregistered = res.unregistered;
+                unregistered = res.hard_deleted + res.soft_unregistered;
             }
 
             setResult({ added: registered, removed: unregistered });

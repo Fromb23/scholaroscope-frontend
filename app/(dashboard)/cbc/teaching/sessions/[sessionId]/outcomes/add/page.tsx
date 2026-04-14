@@ -126,8 +126,10 @@ export default function AddOutcomesPage() {
     const [expandedSubStrands, setExpandedSubStrands] = useState<Set<number>>(new Set());
 
     const visibleBySubject = useMemo(() => {
-        if (!session?.subject_id) return strands;
-        return strands.filter(s => s.subject === session.subject_id);
+        const base = session?.subject_id
+            ? strands.filter(s => s.subject === session.subject_id)
+            : strands;
+        return base.filter(s => s.sub_strands.length > 0);
     }, [strands, session?.subject_id]);
 
     const toggleSubStrand = useCallback((id: number) => {
@@ -148,10 +150,11 @@ export default function AddOutcomesPage() {
 
     // Filter strands by search (against strand name)
     const visibleStrands = useMemo(() => {
-        if (!search.trim()) return visibleBySubject;
+        if (!search.trim()) return visibleBySubject.filter(s => s.sub_strands.length > 0);
         const q = search.toLowerCase();
         return visibleBySubject.filter(
-            s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)
+            s => (s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))
+                && s.sub_strands.length > 0
         );
     }, [visibleBySubject, search]);
 

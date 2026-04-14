@@ -6,7 +6,7 @@ export const useMyCBCTeachingLoad = () => {
     const { data, isLoading, error } = useQuery<MyCBCTeachingLoad>({
         queryKey: ['cbc', 'my-teaching-load'],
         queryFn: cbcTeachingLoadAPI.myTeachingLoad,
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,
     });
 
     const subjectIds = data?.assignments.map(a => a.subject_id) ?? [];

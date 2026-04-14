@@ -56,3 +56,27 @@ export function useCohortSubjects(academicYearId?: number) {
 
     return { cohortSubjects, loading, error };
 }
+
+export function useCohortSubjectsByCohort(cohortId?: number | null) {
+    const [subjects, setSubjects] = useState<CohortSubjectExtended[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!cohortId) {
+            setSubjects([]);
+            return;
+        }
+        setLoading(true);
+        cohortSubjectAPI.getAll({ cohort: String(cohortId) })
+            .then(data => {
+                const arr = Array.isArray(data)
+                    ? data
+                    : (data as { results?: CohortSubjectExtended[] })?.results ?? [];
+                setSubjects(arr as CohortSubjectExtended[]);
+            })
+            .catch(() => setSubjects([]))
+            .finally(() => setLoading(false));
+    }, [cohortId]);
+
+    return { subjects, loading };
+}

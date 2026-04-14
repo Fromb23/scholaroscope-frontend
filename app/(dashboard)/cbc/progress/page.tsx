@@ -14,6 +14,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { Select } from '@/app/components/ui/Select';
 import type { Cohort, Subject } from '@/app/core/types/academic';
+import { useCohortSubjectsByCohort } from '@/app/core/hooks/useCohortSubjects';
 
 export default function CBCProgressPage() {
     const {
@@ -23,17 +24,18 @@ export default function CBCProgressPage() {
         allowedSubjectIds, allowedCohortIds,
         isAdmin, teachingLoading,
     } = useCBCContext();
+    const { subjects: cohortSubjectLinks } = useCohortSubjectsByCohort(selectedCohortId);
 
     const { cohorts = [] } = useCohorts({ curriculum: selectedCurriculumId ?? undefined });
     const { subjects = [] } = useSubjects(selectedCurriculumId ?? undefined);
     const { data: strands = [], isLoading, error, refetch } =
         useStrandsByCurriculum(selectedCurriculumId);
 
-    const subjectsForCurriculum = useMemo(() => {
-        const all = subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId);
-        if (isAdmin || allowedSubjectIds === null) return all;
-        return all.filter((s: Subject) => allowedSubjectIds.includes(s.id));
-    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds]);
+    const cohortSubjectIds = useMemo(() => {
+        if (!selectedCohortId) return null;
+        // cohort selected — filter by its subjects (empty set = no subjects = show nothing)
+        return new Set(cohortSubjectLinks.map(cs => cs.subject));
+    }, [selectedCohortId, cohortSubjectLinks]);
 
     const visibleCohorts = useMemo(() => {
         if (isAdmin || allowedCohortIds === null) return cohorts;
@@ -42,15 +44,54 @@ export default function CBCProgressPage() {
 
     const visibleStrands = useMemo(() => {
         let result = strands;
+
+        // instructor filter
         if (!isAdmin && allowedSubjectIds !== null) {
             result = result.filter(s => s.subject && allowedSubjectIds.includes(s.subject));
         }
+
+        // cohort filter — narrows to subjects taught to selected cohort
+        if (cohortSubjectIds !== null) {
+            result = result.filter(s => s.subject && cohortSubjectIds.has(s.subject));
+        }
+
+        // subject filter
         if (selectedSubjectId) {
             result = result.filter(s => s.subject === selectedSubjectId);
         }
-        return result;
-    }, [strands, selectedSubjectId, isAdmin, allowedSubjectIds]);
 
+        // hide strands with no registered sub-strands
+        result = result.filter(s => s.sub_strands.length > 0);
+
+        return result;
+    }, [strands, selectedSubjectId, isAdmin, allowedSubjectIds, cohortSubjectIds]);
+
+    const subjectsForCurriculum = useMemo(() => {
+        const all = subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId);
+
+        let filtered = isAdmin || allowedSubjectIds === null
+            ? all
+            : all.filter((s: Subject) => allowedSubjectIds.includes(s.id));
+
+        // cohort selected → only show subjects taught to that cohort
+        if (cohortSubjectIds !== null) {
+            filtered = filtered.filter((s: Subject) => cohortSubjectIds.has(s.id));
+        }
+
+        // only show subjects that have at least one registered strand
+        const subjectIdsWithStrands = new Set(
+            strands
+                .filter(st => st.sub_strands.length > 0)
+                .map(st => st.subject)
+                .filter(Boolean)
+        );
+        return filtered.filter((s: Subject) => subjectIdsWithStrands.has(s.id));
+    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds, cohortSubjectIds, strands]);
+
+    const handleCohortChange = (cohortId: number | null) => {
+        setSelectedCohort(cohortId);
+        setSelectedSubject(null);
+    };
     const stats = useMemo(() => ({
         strands: visibleStrands.length,
         subStrands: visibleStrands.reduce((s, st) => s + st.sub_strands.length, 0),
@@ -102,7 +143,7 @@ export default function CBCProgressPage() {
                         <Select
                             label=""
                             value={selectedCohortId?.toString() ?? ''}
-                            onChange={e => setSelectedCohort(e.target.value ? Number(e.target.value) : null)}
+                            onChange={e => handleCohortChange(e.target.value ? Number(e.target.value) : null)}
                             options={[
                                 { value: '', label: 'All cohorts' },
                                 ...visibleCohorts.map((c: Cohort) => ({
@@ -167,7 +208,7 @@ export default function CBCProgressPage() {
                                             key={strand.id}
                                             href={`/cbc/progress/strand/${strand.id}?cohort=${selectedCohortId ?? ''}`}
                                             className="flex items-center justify-between hover:bg-gray-50
-                                                -mx-2 px-2 py-3 rounded-lg transition-colors group"
+                -mx-2 px-2 py-3 rounded-lg transition-colors group"
                                         >
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <Badge variant="blue" size="sm" className="font-mono shrink-0">
@@ -176,13 +217,18 @@ export default function CBCProgressPage() {
                                                 <span className="font-medium text-gray-900 truncate">
                                                     {strand.name}
                                                 </span>
+                                                {!selectedCohortId && !strand.is_assigned && (
+                                                    <Badge variant="warning" size="sm" className="shrink-0">
+                                                        No cohort yet
+                                                    </Badge>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-3 shrink-0 ml-4">
                                                 <span className="text-sm text-gray-500">
                                                     {strand.sub_strands.length} sub-strands · {outcomeCount} outcomes
                                                 </span>
                                                 <ChevronRight className="h-5 w-5 text-gray-400
-                                                    group-hover:text-blue-600 transition-colors" />
+                    group-hover:text-blue-600 transition-colors" />
                                             </div>
                                         </Link>
                                     );
