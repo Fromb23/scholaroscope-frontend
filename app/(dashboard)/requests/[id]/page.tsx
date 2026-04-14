@@ -22,7 +22,11 @@ export default function RequestDetailPage() {
 
     const isAdmin = activeRole === 'ADMIN';
     const isSuperAdmin = !!user?.is_superadmin;
-    const canReview = isAdmin || isSuperAdmin;
+    const canReview = isSuperAdmin
+        ? request?.submitted_by_role === 'ADMIN'
+        : isAdmin
+            ? request?.submitted_by_role === 'INSTRUCTOR'
+            : false;
 
     const handleReview = async (action: 'approve' | 'reject' | 'review', note: string) => {
         await reviewRequest({ action, resolution_note: note });
