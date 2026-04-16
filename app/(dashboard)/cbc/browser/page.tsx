@@ -13,8 +13,11 @@ import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import { Badge } from '@/app/components/ui/Badge';
 import type { Subject } from '@/app/core/types/academic';
+import { GuidedCohortSetupModal } from '@/app/plugins/cbc/components/GuidedCohortSetupModal';
+import type { Strand } from '@/app/plugins/cbc/types/cbc';
 
 export default function CBCBrowserPage() {
+    const [setupStrand, setSetupStrand] = useState<Strand | null>(null);
     const {
         selectedCurriculumId, selectedSubjectId,
         setSelectedSubject, allowedSubjectIds,
@@ -188,9 +191,14 @@ export default function CBCBrowserPage() {
                                                     {' '}sub-strand{strand.sub_strands_count !== 1 ? 's' : ''}
                                                 </span>
                                                 {!strand.is_assigned && (
-                                                    <Badge variant="warning" size="sm" className="ml-auto shrink-0">
-                                                        No cohort yet
-                                                    </Badge>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); e.preventDefault(); setSetupStrand(strand); }}
+                                                        className="ml-auto shrink-0"
+                                                    >
+                                                        <Badge variant="warning" size="sm" className="cursor-pointer hover:bg-yellow-100">
+                                                            No cohort yet — fix
+                                                        </Badge>
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -201,6 +209,14 @@ export default function CBCBrowserPage() {
                     )}
                 </div>
             </div>
+            {setupStrand && (
+                <GuidedCohortSetupModal
+                    strand={setupStrand}
+                    subjectLevel={setupStrand.subject_level ?? ''}
+                    onComplete={refetch}
+                    onClose={() => setSetupStrand(null)}
+                />
+            )}
         </div>
     );
 }

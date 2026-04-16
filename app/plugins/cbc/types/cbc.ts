@@ -14,6 +14,8 @@ export interface Strand {
   curriculum: number;
   curriculum_name: string;
   subject: number | null;
+  subject_level: string | null;
+  subject_org_id: number | null;
   subject_name: string | null;
   code: string;             // read-only — server generated
   name: string;

@@ -23,6 +23,7 @@ export interface CohortFilters {
   academic_year?: number;
   curriculum?: number;
   organization?: number;
+  level?: string;
 }
 
 // ── useAcademicYears ──────────────────────────────────────────────────────
