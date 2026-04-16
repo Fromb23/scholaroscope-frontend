@@ -265,6 +265,7 @@ export const useCreateEvidence = () => {
       qc.invalidateQueries({
         queryKey: cbcKeys.evidence.studentProgress(created.student),
       });
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all });
     },
   });
 };
@@ -286,7 +287,7 @@ export const useOutcomeSessions = (sessionId: number | null) =>
     queryKey: cbcKeys.outcomeSessions.bySession(sessionId!),
     queryFn: () => outcomeSessionAPI.bySession(sessionId!),
     enabled: !!sessionId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
   });
 
 export const useBulkTagOutcomes = () => {
@@ -480,6 +481,7 @@ export const useBulkCreateClassEvidence = () => {
           learning_outcome: variables.learning_outcome,
         }),
       });
+      queryClient.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all }); // ← add
     },
   });
 };

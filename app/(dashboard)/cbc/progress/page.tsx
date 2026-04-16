@@ -206,7 +206,7 @@ export default function CBCProgressPage() {
                                     return (
                                         <Link
                                             key={strand.id}
-                                            href={`/cbc/progress/strand/${strand.id}?cohort=${selectedCohortId ?? ''}`}
+                                            href={`/cbc/progress/strand/${strand.id}?cohort=${selectedCohortId ?? ''}&subject=${strand.subject ?? ''}`}
                                             className="flex items-center justify-between hover:bg-gray-50
                 -mx-2 px-2 py-3 rounded-lg transition-colors group"
                                         >

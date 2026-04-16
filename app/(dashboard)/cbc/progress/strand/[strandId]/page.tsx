@@ -19,7 +19,6 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
-import { Select } from '@/app/components/ui/Select';
 import type {
     MasteryLevel, StrandOutcomeDistribution,
     CompetencyDistribution, OutcomeLearner,
@@ -211,13 +210,16 @@ export default function StrandCompetencyOverviewPage() {
         curriculum: selectedCurriculumId ?? undefined,
     });
 
+    const subjectFromUrl = searchParams.get('subject');
+
     useEffect(() => {
-        if (selectedCohortId === null) {
+        if (selectedCohortId === null && cohorts.length > 0) {
             if (cohortFromUrl) {
                 setSelectedCohort(Number(cohortFromUrl));
-            } else if (cohorts.length > 0) {
-                setSelectedCohort(cohorts[0].id);
+                return;
             }
+
+            setSelectedCohort(cohorts[0].id);
         }
     }, [cohorts, cohortFromUrl, selectedCohortId, setSelectedCohort]);
 
@@ -283,27 +285,16 @@ export default function StrandCompetencyOverviewPage() {
                 </div>
             </Card>
 
-            {/* Cohort selector */}
-            <Card>
-                <Select
-                    label="Cohort"
-                    value={selectedCohortId?.toString() ?? ''}
-                    onChange={e => setSelectedCohort(
-                        e.target.value ? Number(e.target.value) : null
-                    )}
-                    options={[
-                        { value: '', label: 'Select a cohort' },
-                        ...cohorts.map((c: Cohort) => ({
-                            value: String(c.id), label: c.name,
-                        })),
-                    ]}
-                />
-            </Card>
 
             {!selectedCohortId ? (
                 <Card className="py-12 text-center">
                     <Users className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                    <p className="text-gray-500">Select a cohort to view competency data</p>
+                    <p className="text-gray-500 mb-4">No cohort context — go back and select a cohort first</p>
+                    <Link href="/cbc/progress">
+                        <Button variant="secondary" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Progress
+                        </Button>
+                    </Link>
                 </Card>
             ) : isLoading ? (
                 <CBCLoading message="Computing competency overview…" />

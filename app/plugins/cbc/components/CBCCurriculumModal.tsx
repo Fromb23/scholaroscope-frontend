@@ -323,7 +323,12 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
             }
 
             setResult({ added: registered, removed: unregistered });
-            setSnap(cloneSelection(selection));
+            // refetch catalog to reflect updated registration state
+            const freshData = await cbcCatalogAPI.getCatalog();
+            setCatalog(freshData);
+            const freshSelection = buildInitialSelection(freshData);
+            setSelection(freshSelection);
+            setSnap(cloneSelection(freshSelection));
         } catch {
             setError('Failed to save curriculum selection. Please try again.');
         } finally {
