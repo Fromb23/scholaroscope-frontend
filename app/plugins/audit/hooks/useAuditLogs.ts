@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { auditAPI } from '@/app/core/api/audit';
+import { auditAPI } from '@/app/plugins/audit/api/audit';
 import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/platform/audit/types/auditLogs';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 

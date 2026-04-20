@@ -2,7 +2,7 @@
 // app/core/api/audit.ts
 // ============================================================================
 
-import { apiClient } from './client';
+import { apiClient } from '@/app/core/api/client';
 import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/platform/audit/types/auditLogs';
 
 export const auditAPI = {

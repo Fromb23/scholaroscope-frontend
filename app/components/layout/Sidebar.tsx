@@ -14,7 +14,7 @@ import { Activity } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
-import { useUnreadAnnouncements } from '@/app/plugins/announcements/hooks/useAnnouncements';
+import { useNavBadges } from '@/app/core/registry/navBadges';
 import { NavItem } from './NavItem';
 import {
   SUPERADMIN_NAV,
@@ -34,7 +34,8 @@ export default function Sidebar() {
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
   const { hasPlugin } = usePlugins();
-  const { count: unreadCount } = useUnreadAnnouncements();
+  const badges = useNavBadges();
+  const unreadCount = badges['announcements'] ?? 0;
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 

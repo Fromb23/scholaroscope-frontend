@@ -19,7 +19,6 @@ import {
 } from '../types/session';
 import { CohortSubject } from '../types/academic';
 import { TopicSessionLink } from '../types/topics';
-import { SessionLearner } from '@/app/plugins/cbc/types/cbc';
 
 // ── Shared response shapes ────────────────────────────────────────────────
 
@@ -74,6 +73,14 @@ interface StudentHistoryParams extends DateRangeParams {
 
 interface CohortSummaryParams extends DateRangeParams {
   subject_id?: number;
+}
+
+export interface SessionLearner {
+  id: number;
+  admission_number: string;
+  first_name: string;
+  last_name: string;
+  session_evidence_count: number;
 }
 
 // ── Sessions API ──────────────────────────────────────────────────────────

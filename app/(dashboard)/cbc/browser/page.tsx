@@ -49,7 +49,7 @@ export default function CBCBrowserPage() {
         const subjectIdsWithStrands = new Set(
             strands
                 .filter(st => st.sub_strands_count > 0)
-                .map(st => st.subject)
+                .map(st => st.subject_org_id)
                 .filter(Boolean)
         );
         return filtered.filter((s: Subject) => subjectIdsWithStrands.has(s.id));
@@ -57,8 +57,14 @@ export default function CBCBrowserPage() {
 
     const visible = useMemo(() => {
         let result = strands;
+        console.log('selectedCurriculumId:', selectedCurriculumId);
+        console.log('strands length:', strands.length);
+        console.log('strands sample:', strands[0]);
+        console.log('allowedSubjectIds:', allowedSubjectIds);
+        console.log('isAdmin:', isAdmin);
+
         if (!isAdmin && allowedSubjectIds !== null) {
-            result = result.filter(s => s.subject && allowedSubjectIds.includes(s.subject));
+            result = result.filter(s => s.subject_org_id && allowedSubjectIds.includes(s.subject_org_id));
         }
         if (search.trim()) {
             const q = search.toLowerCase();
@@ -68,7 +74,6 @@ export default function CBCBrowserPage() {
                     s.description?.toLowerCase().includes(q)
             );
         }
-
         result = result.filter(s => s.sub_strands_count > 0);
         return result;
     }, [strands, search, isAdmin, allowedSubjectIds]);

@@ -7,6 +7,11 @@ import { routeRules, roleHomeRoute } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
 import { SidebarProvider } from '@/app/context/SidebarContext';
 import Header from '@/app/components/layout/Header';
+import { RegistrySlotProvider } from '@/app/core/registry/slots';
+import { NavBadgeProvider } from '@/app/core/registry/navBadges';
+import '@/app/plugins/cbc/registry/curriculumModalExtension';
+import '@/app/plugins/cbc/registry/providerExtension';
+import '@/app/plugins/announcements/registry/navBadgeExtension';
 import { AlertTriangle } from 'lucide-react';
 import { SuspendedNotice } from '../core/types/auth';
 
@@ -64,9 +69,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <SidebarProvider>
-            <DashboardContent notices={suspendedNotices} onDismissNotice={clearSuspendedNotices}>
-                {children}
-            </DashboardContent>
+            <NavBadgeProvider>
+                <RegistrySlotProvider>
+                    <DashboardContent notices={suspendedNotices} onDismissNotice={clearSuspendedNotices}>
+                        {children}
+                    </DashboardContent>
+                </RegistrySlotProvider>
+            </NavBadgeProvider>
         </SidebarProvider>
     );
 }

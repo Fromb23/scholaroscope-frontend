@@ -19,7 +19,6 @@ import type { LucideIcon } from 'lucide-react';
 import type { DashboardAlert, DashboardMetrics } from '@/app/core/hooks/useAdminDashboard';
 import type { Session } from '@/app/core/types/session';
 import { SyllabusProgress } from '../../types/academic';
-import { useRequests, useRequestStats } from '@/app/plugins/requests/hooks/useRequests';
 
 // ── DashboardHeader ───────────────────────────────────────────────────────
 
@@ -484,12 +483,21 @@ export function SystemOverview({ cohortCount, assessmentCount, studentCount }: S
 
 // ── PendingApprovals ──────────────────────────────────────────────────────
 
-export function PendingApprovals() {
-    const router = useRouter();
-    const { stats } = useRequestStats();
-    const { requests, loading } = useRequests({ status: 'PENDING' });
-    const pendingCount = stats?.pending ?? 0;
+interface PendingRequest {
+    id: number;
+    title: string;
+    submitted_by_name: string;
+    created_at: string;
+}
 
+interface PendingApprovalsProps {
+    requests: PendingRequest[];
+    loading: boolean;
+    pendingCount: number;
+}
+
+export function PendingApprovals({ requests, loading, pendingCount }: PendingApprovalsProps) {
+    const router = useRouter();
 
     return (
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">

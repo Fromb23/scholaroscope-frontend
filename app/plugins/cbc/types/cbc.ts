@@ -318,14 +318,6 @@ export interface TeachingSessionSummary {
   evidence: { total_records: number; students_with_evidence: number };
 }
 
-export interface SessionLearner {
-  id: number;
-  admission_number: string;
-  first_name: string;
-  last_name: string;
-  session_evidence_count: number;
-}
-
 export interface RubricLevel {
   id: number;
   code: string;
