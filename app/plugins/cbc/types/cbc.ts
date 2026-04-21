@@ -382,6 +382,14 @@ export interface StrandOutcomeDistribution {
   distribution: CompetencyDistribution;
 }
 
+export interface SessionLearner {
+  id: number;
+  first_name: string;
+  last_name: string;
+  admission_number: string;
+  session_evidence_count: number;
+}
+
 export interface OutcomeLearner {
   student_id: number;
   student_name: string;

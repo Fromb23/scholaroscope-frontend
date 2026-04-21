@@ -8,7 +8,8 @@
 // ============================================================================
 
 import { useState } from 'react';
-import { useProfile, useMyRequests } from '@/app/core/hooks/useProfile';
+import { useProfile } from '@/app/core/hooks/useProfile';
+import { useMyRequests } from '@/app/plugins/requests/hooks/useRequests';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import {
