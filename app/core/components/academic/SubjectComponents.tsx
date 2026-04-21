@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import {
     BookOpen, Edit2, Trash2, ChevronDown, ChevronRight,
     Plus,
+    ExternalLink,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -118,6 +119,13 @@ export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }:
                                 </p>
                             )}
                             <div className="flex items-center gap-1 ml-auto shrink-0">
+                                <a
+                                    href={`/academic/subjects/${subject.id}`}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                                    title="View Subject"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
                                 <button
                                     onClick={() => onEdit(subject)}
                                     className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"

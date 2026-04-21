@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAdminDashboard } from '@/app/core/hooks/useAdminDashboard';
+import { useRequests, useRequestStats } from '@/app/plugins/requests/hooks/useRequests';
 import {
     DashboardHeader,
     AlertsBanner,
@@ -29,6 +30,8 @@ export default function AdminDashboard() {
         currentTerm, currentYear,
         lastRefresh, isLoading, refresh, syllabusProgress,
     } = useAdminDashboard();
+    const { requests, loading: requestsLoading } = useRequests({ status: 'PENDING' });
+    const { stats: requestStats } = useRequestStats();
 
     useEffect(() => {
         if (activeRole && activeRole !== 'ADMIN') {
@@ -61,7 +64,11 @@ export default function AdminDashboard() {
 
                 {/* Left column — primary actions */}
                 <div className="xl:col-span-2 space-y-6">
-                    <PendingApprovals />
+                    <PendingApprovals
+                        requests={requests}
+                        loading={requestsLoading}
+                        pendingCount={requestStats?.pending ?? 0}
+                    />
 
                     {/* Attendance + Performance side by side */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

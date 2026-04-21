@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { FileText, Search, Download } from 'lucide-react';
-import { useAuditLogs, useAuditStats } from '@/app/core/hooks/useAuditLogs';
+import { useAuditLogs, useAuditStats } from '@/app/plugins/audit/hooks/useAuditLogs';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';

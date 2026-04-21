@@ -52,6 +52,7 @@ export interface InstalledPlugin {
     installed_at: string;
     uninstalled_at: string | null;
     data_retention_until: string | null;
+    capabilities?: string[];
 }
 
 export const SOURCE_LABELS: Record<PluginSource, string> = {

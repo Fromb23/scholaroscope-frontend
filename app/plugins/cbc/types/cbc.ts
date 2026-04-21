@@ -14,6 +14,8 @@ export interface Strand {
   curriculum: number;
   curriculum_name: string;
   subject: number | null;
+  subject_level: string | null;
+  subject_org_id: number | null;
   subject_name: string | null;
   code: string;             // read-only — server generated
   name: string;
@@ -314,14 +316,6 @@ export interface TeachingSessionSummary {
   subject: string | null;
   outcomes: { total: number; covered: number; pending: number };
   evidence: { total_records: number; students_with_evidence: number };
-}
-
-export interface SessionLearner {
-  id: number;
-  admission_number: string;
-  first_name: string;
-  last_name: string;
-  session_evidence_count: number;
 }
 
 export interface RubricLevel {

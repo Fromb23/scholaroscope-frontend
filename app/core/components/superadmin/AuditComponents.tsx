@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Card } from '@/app/components/ui/Card';
-import type { AuditLog, AuditAction, AuditStats } from '@/app/plugins/platform/audit/types/auditLogs';
-import { ACTION_COLORS } from '@/app/plugins/platform/audit/types/auditLogs';
+import type { AuditLog, AuditAction, AuditStats } from '@/app/core/types/audit';
+import { ACTION_COLORS } from '@/app/core/types/audit';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -5,9 +5,10 @@
 import { useState, useEffect } from 'react';
 import {
     Request, RequestDetail, RequestCreatePayload,
-    RequestReviewPayload, AddCommentPayload, RequestStats,
+    RequestReviewPayload, RequestType, RequestStats,
 } from '@/app/plugins/requests/types/requests';
 import { requestsAPI } from '@/app/plugins/requests/api/requests';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 export const useRequests = (params?: Record<string, string>) => {
     const [requests, setRequests] = useState<Request[]>([]);
@@ -137,4 +138,57 @@ export const useRequestStats = () => {
     }, []);
 
     return { stats, loading };
+};
+
+export const useMyRequests = () => {
+    const [requests, setRequests] = useState<Request[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchRequests = async () => {
+        try {
+            setLoading(true);
+            const data = await requestsAPI.getAll();
+            setRequests(data);
+            setError(null);
+        } catch (err) {
+            setError(extractErrorMessage(err as ApiError, 'Failed to load requests'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRequests();
+    }, []);
+
+    const submitDeletionRequest = async (
+        type: Extract<RequestType, 'ACCOUNT_DELETION' | 'ORG_DELETION'>,
+        reason: string
+    ): Promise<Request> => {
+        const titles: Record<string, string> = {
+            ACCOUNT_DELETION: 'Account Deletion Request',
+            ORG_DELETION: 'Organization Deletion Request',
+        };
+        try {
+            const newRequest = await requestsAPI.create({
+                title: titles[type],
+                description: reason,
+                request_type: type,
+                priority: 'NORMAL' as const,
+            });
+            setRequests(prev => [newRequest, ...prev]);
+            return newRequest;
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to submit deletion request'));
+        }
+    };
+
+    const hasPendingDeletion = (
+        type: Extract<RequestType, 'ACCOUNT_DELETION' | 'ORG_DELETION'>
+    ): boolean =>
+        Array.isArray(requests) &&
+        requests.some(r => r.request_type === type && ['PENDING', 'IN_REVIEW'].includes(r.status));
+
+    return { requests, loading, error, refetch: fetchRequests, submitDeletionRequest, hasPendingDeletion };
 };

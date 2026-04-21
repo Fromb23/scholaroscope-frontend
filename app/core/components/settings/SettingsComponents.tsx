@@ -25,8 +25,8 @@ import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInv
 import {
     CurriculumCatalogDetail, InstalledPlugin,
     SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
-} from '../../types/plugins';
-import { CBCCurriculumModal } from '@/app/plugins/cbc/components/CBCCurriculumModal';
+} from '@/app/core/types/plugins';
+import { getPluginModalSlot } from '@/app/core/registry/pluginModalSlots';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -403,11 +403,7 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
     const [curriculumOpen, setCurriculumOpen] = useState(false);
     const [modalKey, setModalKey] = useState(0);
 
-    const isCBC = plugin.key === 'cbc';
-    const hasCurriculum = isCBC ||
-        plugin.key.includes('curriculum') ||
-        plugin.key.includes('844') ||
-        plugin.key.includes('igcse');
+    const PluginModal = getPluginModalSlot(plugin.key);
 
     const openCurriculum = () => {
         setModalKey(k => k + 1);
@@ -435,7 +431,7 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                         <p className="text-xs text-gray-500 max-w-md">{plugin.description}</p>
                         <p className="text-xs text-gray-400 mt-1 font-mono">key: {plugin.key}</p>
 
-                        {hasCurriculum && plugin.is_active && (
+                        {PluginModal && plugin.is_active && (
                             <button
                                 onClick={openCurriculum}
                                 className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
@@ -461,20 +457,11 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                 )}
             </div>
 
-            {/* CBC uses its own strand/sub-strand modal */}
-            {isCBC ? (
-                <CBCCurriculumModal
+            {PluginModal && (
+                <PluginModal
                     key={modalKey}
                     isOpen={curriculumOpen}
                     onClose={() => setCurriculumOpen(false)}
-                />
-            ) : (
-                <CurriculumSelectionModal
-                    key={modalKey}
-                    isOpen={curriculumOpen}
-                    onClose={() => setCurriculumOpen(false)}
-                    installedPluginId={plugin.id}
-                    pluginName={plugin.name}
                 />
             )}
         </>
