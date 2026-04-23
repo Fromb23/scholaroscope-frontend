@@ -67,8 +67,9 @@ export const useStrandsByCurriculum = (curriculumId: number | null) =>
   useQuery<StrandDetail[]>({
     queryKey: cbcKeys.strands.byCurriculum(curriculumId!),
     queryFn: async () => {
-      const data = await strandAPI.getByCurriculum(curriculumId!);
-      return toArray(data);
+      const visible = await strandAPI.getAll();
+      const visibleStrands = toArray(visible);
+      return Promise.all(visibleStrands.map(strand => strandAPI.getById(strand.id)));
     },
     enabled: !!curriculumId,
     staleTime: 5 * 60 * 1000,

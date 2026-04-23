@@ -127,15 +127,19 @@ export default function AddOutcomesPage() {
 
     const visibleBySubject = useMemo(() => {
         const base = session?.subject_id
-            ? strands.filter(s => s.subject === session.subject_id)
+            ? strands.filter(s => s.subject_org_id === session.subject_id)
             : strands;
         return base.filter(s => s.sub_strands.length > 0);
-    }, [strands, session?.subject_id]);
+    }, [strands, session]);
 
     const toggleSubStrand = useCallback((id: number) => {
         setExpandedSubStrands(prev => {
             const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
             return next;
         });
     }, []);
@@ -143,7 +147,11 @@ export default function AddOutcomesPage() {
     const toggleOutcome = (id: number) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
             return next;
         });
     };

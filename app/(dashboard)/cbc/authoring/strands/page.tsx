@@ -21,6 +21,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import type { Strand, StrandFormData } from '@/app/plugins/cbc/types/cbc';
+import type { Subject } from '@/app/core/types/academic';
 
 const EMPTY_FORM: Partial<StrandFormData> = { name: '', description: '', subject: null };
 
@@ -46,18 +47,18 @@ export default function ManageStrandsPage() {
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
     const subjectsForCurriculum = useMemo(
-        () => subjects.filter((s: any) => s.curriculum === selectedCurriculumId),
+        () => subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId),
         [subjects, selectedCurriculumId]
     );
 
     const visibleStrands = useMemo(() => {
         if (!selectedSubjectId) return strands;
-        return strands.filter(s => s.subject === selectedSubjectId);
+        return strands.filter(s => s.subject_org_id === selectedSubjectId);
     }, [strands, selectedSubjectId]);
 
     const subjectOptions = [
         { value: '', label: 'None' },
-        ...subjectsForCurriculum.map((s: any) => ({ value: String(s.id), label: s.name })),
+        ...subjectsForCurriculum.map((s: Subject) => ({ value: String(s.id), label: s.name })),
     ];
 
     const handleCreate = async () => {
@@ -79,7 +80,11 @@ export default function ManageStrandsPage() {
 
     const startEdit = (strand: Strand) => {
         setEditId(strand.id);
-        setEditForm({ name: strand.name, description: strand.description, subject: strand.subject });
+        setEditForm({
+            name: strand.name,
+            description: strand.description,
+            subject: strand.subject_org_id ?? null,
+        });
         setEditError(null);
     };
 

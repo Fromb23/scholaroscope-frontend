@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   academicYearAPI,
   termAPI,
@@ -18,6 +19,7 @@ import {
 } from '@/app/core/types/academic';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { academicKeys } from '@/app/core/lib/queryKeys';
 
 export interface CohortFilters {
   academic_year?: number;
@@ -34,7 +36,7 @@ export const useAcademicYears = () => {
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
 
-  const fetchAcademicYears = async () => {
+  const fetchAcademicYears = useCallback(async () => {
     try {
       setLoading(true);
       const params: { organization?: number } = {};
@@ -47,9 +49,9 @@ export const useAcademicYears = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
-  useEffect(() => { fetchAcademicYears(); }, [organizationId]);
+  useEffect(() => { fetchAcademicYears(); }, [fetchAcademicYears]);
 
   const createAcademicYear = async (data: Partial<AcademicYear>) => {
     try {
@@ -101,7 +103,7 @@ export const useCurrentAcademicYear = () => {
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
 
-  const fetchCurrentYear = async () => {
+  const fetchCurrentYear = useCallback(async () => {
     try {
       setLoading(true);
       const params: { organization?: number } = {};
@@ -115,9 +117,9 @@ export const useCurrentAcademicYear = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
-  useEffect(() => { fetchCurrentYear(); }, [organizationId]);
+  useEffect(() => { fetchCurrentYear(); }, [fetchCurrentYear]);
 
   return { currentYear, loading, error, refetch: fetchCurrentYear };
 };
@@ -130,7 +132,7 @@ export const useCurrentTerm = () => {
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
 
-  const fetchCurrentTerm = async () => {
+  const fetchCurrentTerm = useCallback(async () => {
     try {
       setLoading(true);
       const params: { organization?: number } = {};
@@ -144,9 +146,9 @@ export const useCurrentTerm = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
-  useEffect(() => { fetchCurrentTerm(); }, [organizationId]);
+  useEffect(() => { fetchCurrentTerm(); }, [fetchCurrentTerm]);
 
   return { currentTerm, loading, error, refetch: fetchCurrentTerm };
 };
@@ -159,7 +161,7 @@ export const useTerms = (academicYearId?: number) => {
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
 
-  const fetchTerms = async () => {
+  const fetchTerms = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, string> = {};
@@ -173,9 +175,9 @@ export const useTerms = (academicYearId?: number) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [academicYearId, organizationId]);
 
-  useEffect(() => { fetchTerms(); }, [academicYearId, organizationId]);
+  useEffect(() => { fetchTerms(); }, [fetchTerms]);
 
   const createTerm = async (data: Partial<Term>) => {
     try {
@@ -212,58 +214,82 @@ export const useTerms = (academicYearId?: number) => {
 // ── useCurricula ──────────────────────────────────────────────────────────
 
 export const useCurricula = () => {
-  const [curricula, setCurricula] = useState<Curriculum[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
-
-  const fetchCurricula = async () => {
-    try {
-      setLoading(true);
+  const qc = useQueryClient();
+  const query = useQuery<Curriculum[], Error>({
+    queryKey: academicKeys.curricula.list(organizationId),
+    queryFn: async () => {
       const params: Record<string, string> = {};
       if (organizationId) params.organization = String(organizationId);
       const data = await curriculumAPI.getAll(params);
-      setCurricula(Array.isArray(data) ? data : (data as { results?: Curriculum[] })?.results ?? []);
-      setError(null);
-    } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch curricula'));
-    } finally {
-      setLoading(false);
-    }
+      return Array.isArray(data)
+        ? data
+        : (data as { results?: Curriculum[] })?.results ?? [];
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: Partial<Curriculum>) => {
+      try {
+        return await curriculumAPI.create(data);
+      } catch (err) {
+        throw new Error(extractErrorMessage(err as ApiError, 'Failed to create curriculum'));
+      }
+    },
+    onSuccess: (created) => {
+      qc.setQueryData<Curriculum[]>(
+        academicKeys.curricula.list(organizationId),
+        (prev = []) => [...prev, created],
+      );
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Curriculum> }) => {
+      try {
+        return await curriculumAPI.update(id, data);
+      } catch (err) {
+        throw new Error(extractErrorMessage(err as ApiError, 'Failed to update curriculum'));
+      }
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<Curriculum[]>(
+        academicKeys.curricula.list(organizationId),
+        (prev = []) => prev.map(c => c.id === updated.id ? updated : c),
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      try {
+        await curriculumAPI.delete(id);
+        return id;
+      } catch (err) {
+        throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete curriculum'));
+      }
+    },
+    onSuccess: (deletedId) => {
+      qc.setQueryData<Curriculum[]>(
+        academicKeys.curricula.list(organizationId),
+        (prev = []) => prev.filter(c => c.id !== deletedId),
+      );
+    },
+  });
+
+  return {
+    curricula: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: async () => {
+      await query.refetch();
+    },
+    createCurriculum: async (data: Partial<Curriculum>) => createMutation.mutateAsync(data),
+    updateCurriculum: async (id: number, data: Partial<Curriculum>) =>
+      updateMutation.mutateAsync({ id, data }),
+    deleteCurriculum: async (id: number) => deleteMutation.mutateAsync(id),
   };
-
-  useEffect(() => { fetchCurricula(); }, [organizationId]);
-
-  const createCurriculum = async (data: Partial<Curriculum>) => {
-    try {
-      const newCurriculum = await curriculumAPI.create(data);
-      setCurricula(prev => [...prev, newCurriculum]);
-      return newCurriculum;
-    } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to create curriculum'));
-    }
-  };
-
-  const updateCurriculum = async (id: number, data: Partial<Curriculum>) => {
-    try {
-      const updated = await curriculumAPI.update(id, data);
-      setCurricula(prev => prev.map(c => c.id === id ? updated : c));
-      return updated;
-    } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to update curriculum'));
-    }
-  };
-
-  const deleteCurriculum = async (id: number) => {
-    try {
-      await curriculumAPI.delete(id);
-      setCurricula(prev => prev.filter(c => c.id !== id));
-    } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete curriculum'));
-    }
-  };
-
-  return { curricula, loading, error, refetch: fetchCurricula, createCurriculum, updateCurriculum, deleteCurriculum };
 };
 
 // ── useSubjects ───────────────────────────────────────────────────────────
@@ -274,7 +300,7 @@ export const useSubjects = (curriculumId?: number) => {
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, string> = { page_size: '1000' };
@@ -288,9 +314,9 @@ export const useSubjects = (curriculumId?: number) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [curriculumId, organizationId]);
 
-  useEffect(() => { fetchSubjects(); }, [curriculumId, organizationId]);
+  useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
 
   const createSubject = async (data: Partial<Subject>) => {
     try {
@@ -362,7 +388,9 @@ export const useCohorts = (filters?: CohortFilters) => {
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
 
-  const fetchCohorts = async () => {
+  const filtersKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
+
+  const fetchCohorts = useCallback(async () => {
     try {
       setLoading(true);
       const data = await cohortAPI.getAll({ ...filters, organization: organizationId || undefined });
@@ -373,9 +401,9 @@ export const useCohorts = (filters?: CohortFilters) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, organizationId]);
 
-  useEffect(() => { fetchCohorts(); }, [JSON.stringify(filters), organizationId]);
+  useEffect(() => { fetchCohorts(); }, [fetchCohorts, filtersKey, organizationId]);
 
   const createCohort = async (data: {
     curriculum: number;
@@ -440,7 +468,7 @@ export const useCohortDetail = (cohortId: number | null) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCohort = async () => {
+  const fetchCohort = useCallback(async () => {
     if (!cohortId) { setLoading(false); return; }
     try {
       setLoading(true);
@@ -452,9 +480,9 @@ export const useCohortDetail = (cohortId: number | null) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cohortId]);
 
-  useEffect(() => { fetchCohort(); }, [cohortId]);
+  useEffect(() => { fetchCohort(); }, [fetchCohort]);
 
   return { cohort, loading, error, refetch: fetchCohort };
 };

@@ -7,7 +7,6 @@ import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import type { Strand } from '@/app/plugins/cbc/types/cbc';
-import { Link } from 'lucide-react';
 import { cohortAPI } from '@/app/core/api/academic';
 
 interface Props {
@@ -43,14 +42,12 @@ export function GuidedCohortSetupModal({ strand, subjectLevel, onComplete, onClo
                 onComplete();
                 onClose();
             }, 2000);
-        } catch (err) {
+        } catch {
             setError('Failed to assign subject to cohort.');
         } finally {
             setSaving(false);
         }
     };
-    console.log('subjectLevel:', subjectLevel);
-    console.log('cohorts:', cohorts);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -86,7 +83,7 @@ export function GuidedCohortSetupModal({ strand, subjectLevel, onComplete, onClo
                                             <Button variant="secondary" size="sm">Create Cohort ↗</Button>
                                         </a>
                                         <Button variant="ghost" size="sm" onClick={refetch}>
-                                            I've created it — refresh
+                                            I&apos;ve created it - refresh
                                         </Button>
                                     </div>
                                 </div>
