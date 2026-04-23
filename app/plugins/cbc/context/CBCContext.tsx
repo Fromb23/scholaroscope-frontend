@@ -8,6 +8,7 @@ import {
     useCallback,
     type ReactNode,
 } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCBCCurriculum } from '@/app/plugins/cbc/hooks/useCBCCurriculum';
 import { useMyCBCTeachingLoad } from '@/app/plugins/cbc/hooks/useCBCTeaching';
 
@@ -41,6 +42,12 @@ function saveToStorage(state: PersistedFilterState) {
     } catch { }
 }
 
+function parseParam(value: string | null): number | null {
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 interface CBCFilterContextValue {
@@ -63,6 +70,9 @@ interface CBCFilterContextValue {
 const CBCFilterContext = createContext<CBCFilterContextValue | null>(null);
 
 export function CBCProvider({ children }: { children: ReactNode }) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { cbcCurriculumId, loading: curriculumLoading, isInstalled } = useCBCCurriculum();
     const {
         isAdmin,
@@ -74,20 +84,87 @@ export function CBCProvider({ children }: { children: ReactNode }) {
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
     const [selectedCohortId, setSelectedCohortId] = useState<number | null>(null);
     const [hydrated, setHydrated] = useState(false);
+    const urlSubjectId = parseParam(searchParams.get('subject'));
+    const urlCohortId = parseParam(searchParams.get('cohort'));
+    const isCBCRoute = pathname.startsWith('/cbc');
 
     // Hydrate from localStorage
     useEffect(() => {
         const saved = loadFromStorage();
-        setSelectedSubjectId(saved.selectedSubjectId);
-        setSelectedCohortId(saved.selectedCohortId);
+        setSelectedSubjectId(urlSubjectId ?? saved.selectedSubjectId);
+        setSelectedCohortId(urlCohortId ?? saved.selectedCohortId);
         setHydrated(true);
-    }, []);
+    }, [urlSubjectId, urlCohortId]);
+
+    // URL navigation is a first-class coordination channel in this app.
+    // When a CBC route carries subject/cohort intent, mirror it into shared state.
+    useEffect(() => {
+        if (!hydrated || !isCBCRoute) return;
+
+        if (urlSubjectId !== null && urlSubjectId !== selectedSubjectId) {
+            setSelectedSubjectId(urlSubjectId);
+        }
+        if (urlCohortId !== null && urlCohortId !== selectedCohortId) {
+            setSelectedCohortId(urlCohortId);
+        }
+        if (searchParams.has('subject') && urlSubjectId === null && selectedSubjectId !== null) {
+            setSelectedSubjectId(null);
+        }
+        if (searchParams.has('cohort') && urlCohortId === null && selectedCohortId !== null) {
+            setSelectedCohortId(null);
+        }
+    }, [
+        hydrated,
+        isCBCRoute,
+        searchParams,
+        selectedSubjectId,
+        selectedCohortId,
+        urlSubjectId,
+        urlCohortId,
+    ]);
 
     // Persist on change
     useEffect(() => {
         if (!hydrated) return;
         saveToStorage({ selectedSubjectId, selectedCohortId });
     }, [hydrated, selectedSubjectId, selectedCohortId]);
+
+    // Keep CBC route URLs aligned with the active filter state so navigation
+    // and refreshes restore the same working context.
+    useEffect(() => {
+        if (!hydrated || !isCBCRoute) return;
+
+        const next = new URLSearchParams(searchParams.toString());
+        const currentSubject = parseParam(searchParams.get('subject'));
+        const currentCohort = parseParam(searchParams.get('cohort'));
+
+        if (selectedSubjectId === null) {
+            next.delete('subject');
+        } else {
+            next.set('subject', String(selectedSubjectId));
+        }
+
+        if (selectedCohortId === null) {
+            next.delete('cohort');
+        } else {
+            next.set('cohort', String(selectedCohortId));
+        }
+
+        if (currentSubject === selectedSubjectId && currentCohort === selectedCohortId) {
+            return;
+        }
+
+        const nextQuery = next.toString();
+        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }, [
+        hydrated,
+        isCBCRoute,
+        pathname,
+        router,
+        searchParams,
+        selectedSubjectId,
+        selectedCohortId,
+    ]);
 
     // When instructor has no access to persisted subject — clear it
     useEffect(() => {
@@ -102,7 +179,15 @@ export function CBCProvider({ children }: { children: ReactNode }) {
                 setSelectedCohortId(null);
             }
         }
-    }, [hydrated, teachingLoading, isAdmin, subjectIds, cohortIds]);
+    }, [
+        hydrated,
+        teachingLoading,
+        isAdmin,
+        subjectIds,
+        cohortIds,
+        selectedSubjectId,
+        selectedCohortId,
+    ]);
 
     const setSelectedSubject = useCallback((id: number | null) => {
         setSelectedSubjectId(id);

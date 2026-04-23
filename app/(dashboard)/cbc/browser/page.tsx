@@ -57,11 +57,6 @@ export default function CBCBrowserPage() {
 
     const visible = useMemo(() => {
         let result = strands;
-        console.log('selectedCurriculumId:', selectedCurriculumId);
-        console.log('strands length:', strands.length);
-        console.log('strands sample:', strands[0]);
-        console.log('allowedSubjectIds:', allowedSubjectIds);
-        console.log('isAdmin:', isAdmin);
 
         if (!isAdmin && allowedSubjectIds !== null) {
             result = result.filter(s => s.subject_org_id && allowedSubjectIds.includes(s.subject_org_id));

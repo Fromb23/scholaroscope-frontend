@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { BookOpen, Check, ChevronDown, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { BookOpen, Check, ChevronDown } from 'lucide-react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { cbcCatalogAPI, cbcSelectionAPI } from '@/app/plugins/cbc/api/cbc';
+import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
+import { academicKeys } from '@/app/core/lib/queryKeys';
 import type {
     CBCCatalog,
     CBCCatalogLevel,
@@ -250,6 +253,7 @@ interface CBCCurriculumModalProps {
 }
 
 export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps) {
+    const queryClient = useQueryClient();
     const [catalog, setCatalog] = useState<CBCCatalog | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -290,7 +294,11 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
         setSelection(prev => {
             const next = cloneSelection(prev);
             const set = next.strands[strandId] ?? new Set<number>();
-            set.has(ssId) ? set.delete(ssId) : set.add(ssId);
+            if (set.has(ssId)) {
+                set.delete(ssId);
+            } else {
+                set.add(ssId);
+            }
             next.strands[strandId] = set;
             return next;
         });
@@ -329,6 +337,10 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
             const freshSelection = buildInitialSelection(freshData);
             setSelection(freshSelection);
             setSnap(cloneSelection(freshSelection));
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: academicKeys.curricula.all }),
+                queryClient.invalidateQueries({ queryKey: cbcKeys.strands.all }),
+            ]);
         } catch {
             setError('Failed to save curriculum selection. Please try again.');
         } finally {
@@ -410,7 +422,11 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
                                         <button
                                             onClick={() => setExpandedSubjects(prev => {
                                                 const n = new Set(prev);
-                                                n.has(subject.code) ? n.delete(subject.code) : n.add(subject.code);
+                                                if (n.has(subject.code)) {
+                                                    n.delete(subject.code);
+                                                } else {
+                                                    n.add(subject.code);
+                                                }
                                                 return n;
                                             })}
                                             className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 text-left"

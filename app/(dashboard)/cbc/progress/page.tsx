@@ -47,17 +47,21 @@ export default function CBCProgressPage() {
 
         // instructor filter
         if (!isAdmin && allowedSubjectIds !== null) {
-            result = result.filter(s => s.subject && allowedSubjectIds.includes(s.subject));
+            result = result.filter(
+                s => s.subject_org_id !== null && allowedSubjectIds.includes(s.subject_org_id)
+            );
         }
 
         // cohort filter — narrows to subjects taught to selected cohort
         if (cohortSubjectIds !== null) {
-            result = result.filter(s => s.subject && cohortSubjectIds.has(s.subject));
+            result = result.filter(
+                s => s.subject_org_id !== null && cohortSubjectIds.has(s.subject_org_id)
+            );
         }
 
         // subject filter
         if (selectedSubjectId) {
-            result = result.filter(s => s.subject === selectedSubjectId);
+            result = result.filter(s => s.subject_org_id === selectedSubjectId);
         }
 
         // hide strands with no registered sub-strands
@@ -82,7 +86,7 @@ export default function CBCProgressPage() {
         const subjectIdsWithStrands = new Set(
             strands
                 .filter(st => st.sub_strands.length > 0)
-                .map(st => st.subject)
+                .map(st => st.subject_org_id)
                 .filter(Boolean)
         );
         return filtered.filter((s: Subject) => subjectIdsWithStrands.has(s.id));
@@ -98,7 +102,11 @@ export default function CBCProgressPage() {
         outcomes: visibleStrands.reduce(
             (s, st) => s + st.sub_strands.reduce((a, ss) => a + (ss.outcomes_count ?? 0), 0), 0
         ),
-        subjects: new Set(visibleStrands.filter(s => s.subject).map(s => s.subject)).size,
+        subjects: new Set(
+            visibleStrands
+                .filter(s => s.subject_org_id !== null)
+                .map(s => s.subject_org_id)
+        ).size,
     }), [visibleStrands]);
 
     if (teachingLoading) return <CBCLoading message="Loading your assignments…" />;
@@ -206,7 +214,7 @@ export default function CBCProgressPage() {
                                     return (
                                         <Link
                                             key={strand.id}
-                                            href={`/cbc/progress/strand/${strand.id}?cohort=${selectedCohortId ?? ''}&subject=${strand.subject ?? ''}`}
+                                            href={`/cbc/progress/strand/${strand.id}?cohort=${selectedCohortId ?? ''}&subject=${strand.subject_org_id ?? ''}`}
                                             className="flex items-center justify-between hover:bg-gray-50
                 -mx-2 px-2 py-3 rounded-lg transition-colors group"
                                         >

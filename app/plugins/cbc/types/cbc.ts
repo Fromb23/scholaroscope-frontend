@@ -11,8 +11,8 @@
 
 export interface Strand {
   id: number;
-  curriculum: number;
-  curriculum_name: string;
+  curriculum: number | null;
+  curriculum_name: string | null;
   subject: number | null;
   subject_level: string | null;
   subject_org_id: number | null;
@@ -455,7 +455,8 @@ export interface CBCStrandCatalogEntry {
 export interface CBCCatalogLevel {
   level: string;
   code: string;
-  subject_id: number;
+  subject_id: number | null;
+  subject_profile_id: number;
   registered: boolean;
   any_registered: boolean;
   all_registered: boolean;
@@ -469,7 +470,7 @@ export interface CBCCatalogSubject {
 }
 
 export interface CBCCatalog {
-  curriculum_id: number;
+  curriculum_id: number | null;
   curriculum_name: string;
   subjects: CBCCatalogSubject[];
 }

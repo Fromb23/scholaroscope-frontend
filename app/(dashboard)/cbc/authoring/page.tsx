@@ -9,9 +9,10 @@ import { CBCNav, CBCError, CBCLoading, CBCEmpty, SubjectGroupPicker } from '@/ap
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { useAcademic } from '@/app/core/hooks/useAcademic';
+import type { Subject } from '@/app/core/types/academic';
 
 export default function CBCAuthoringPage() {
-    const { selectedCurriculumId, selectedSubjectId, setSelectedSubject, curriculumLoading, isAdmin } = useCBCContext();
+    const { selectedCurriculumId, selectedSubjectId, setSelectedSubject, curriculumLoading } = useCBCContext();
     const { subjects = [] } = useAcademic();
 
     const { data: strands = [], isLoading, error, refetch } = useStrands(
@@ -19,19 +20,23 @@ export default function CBCAuthoringPage() {
     );
 
     const subjectsForCurriculum = useMemo(
-        () => subjects.filter((s: any) => s.curriculum === selectedCurriculumId),
+        () => subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId),
         [subjects, selectedCurriculumId]
     );
 
     const visibleStrands = useMemo(() => {
         if (!selectedSubjectId) return strands;
-        return strands.filter(s => s.subject === selectedSubjectId);
+        return strands.filter(s => s.subject_org_id === selectedSubjectId);
     }, [strands, selectedSubjectId]);
 
     const stats = useMemo(() => ({
         strands: visibleStrands.length,
         subStrands: visibleStrands.reduce((s, st) => s + (st.sub_strands_count ?? 0), 0),
-        subjects: new Set(visibleStrands.filter(s => s.subject).map(s => s.subject)).size,
+        subjects: new Set(
+            visibleStrands
+                .filter(s => s.subject_org_id !== null)
+                .map(s => s.subject_org_id)
+        ).size,
     }), [visibleStrands]);
 
     return (
