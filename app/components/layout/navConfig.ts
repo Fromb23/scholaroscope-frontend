@@ -13,8 +13,12 @@ import {
     Inbox, UserCog, TrendingUp, Database, Clock, Target,
     CalendarDays, Layers, Megaphone,
     Puzzle,
+    ChartBarIcon,
+    BookOpenIcon, GraduationCapIcon,
+    BarChart3,
 } from 'lucide-react';
 import type { Role } from '@/app/core/types/auth';
+import { Children } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -106,6 +110,7 @@ export const SUPERADMIN_NAV: NavigationConfig = {
 export function getAdminNav(
     hasCBC: boolean,
     unreadAnnouncements: number,
+    hasCambridge: boolean,
 ): NavigationConfig {
     return {
         primary: [
@@ -149,6 +154,16 @@ export function getAdminNav(
                     { name: 'Teaching', href: '/cbc/teaching', icon: Target },
                 ],
             }] : []),
+            ...(hasCambridge ? [{
+                name: 'Cambridge Management',
+                href: '/cambridge',
+                icon: BookOpen,
+                children: [
+                    { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
+                    { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
+                    { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
+                ],
+            }] : []),
             {
                 name: 'Reports', href: '/reports', icon: FileBarChart,
                 children: [
@@ -176,6 +191,7 @@ export function getAdminNav(
 export function getInstructorNav(
     hasCBC: boolean,
     unreadAnnouncements: number,
+    hasCambridge: boolean,
 ): NavigationConfig {
     return {
         primary: [
@@ -204,6 +220,16 @@ export function getInstructorNav(
                     { name: 'My Sessions', href: '/cbc/teaching/sessions', icon: Target },
                     { name: 'Progress View', href: '/cbc/progress', icon: TrendingUp },
                     { name: 'Browse Outcomes', href: '/cbc/browser', icon: BookOpen },
+                ],
+            }] : []),
+            ...(hasCambridge ? [{
+                name: 'Cambridge Management',
+                href: '/cambridge',
+                icon: BookOpen,
+                children: [
+                    { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
+                    { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
+                    { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
                 ],
             }] : []),
         ],
