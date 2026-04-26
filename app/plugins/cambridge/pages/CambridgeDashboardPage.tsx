@@ -1,32 +1,120 @@
 // ============================================================================
 // app/plugins/cambridge/pages/CambridgeDashboardPage.tsx
-//
-// Cambridge plugin landing page.
-// Shows installation gate or programme overview.
 // ============================================================================
 
 'use client';
 
+import Link from 'next/link';
+import { useState } from 'react';
 import { PermissionGuard } from '@/app/core/guards/PermissionGuard';
 import { TenantGuard } from '@/app/core/guards/TenantGuard';
-import { useCambridgeInstallation } from '../hooks';
+import { Card } from '@/app/components/ui/Card';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import {
+  useCambridgeInstallationStatus,
+  useCambridgeProgrammes,
+  useCambridgeSubjects,
+} from '../hooks';
 
 export default function CambridgeDashboardPage() {
-  const { data: installation, isLoading } = useCambridgeInstallation();
+  const {
+    data: installation,
+    isLoading: installationLoading,
+    error: installationError,
+  } = useCambridgeInstallationStatus();
+  const { data: programmes = [], isLoading: programmesLoading } = useCambridgeProgrammes();
+  const { data: subjects = [], isLoading: subjectsLoading } = useCambridgeSubjects();
+  const [errorVisible, setErrorVisible] = useState(true);
+
+  const enabledProgrammes = programmes.filter((programme) => programme.enabled).length;
+  const enabledSubjects = subjects.filter((subject) => subject.enabled).length;
+  const loading = installationLoading || programmesLoading || subjectsLoading;
 
   return (
     <TenantGuard>
-      <PermissionGuard allowedRoles={['ADMIN', 'INSTRUCTOR']}>
-        {/* TODO: UI implementation */}
-        {isLoading ? (
-  <div>Loading...</div>
-) : !installation ? (
-  <div>Cambridge not installed. Redirect to setup.</div>
-) : !installation.enabled ? (
-  <div>Cambridge installed but disabled.</div>
-) : (
-  <div>Cambridge Dashboard</div>
-)}
+      <PermissionGuard
+        allowedRoles={['ADMIN', 'INSTRUCTOR']}
+        fallback={<p className="text-sm text-gray-600">Cambridge dashboard is not available for this role.</p>}
+      >
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Cambridge Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Installation health, enabled catalogue coverage, and curriculum access links.
+            </p>
+          </div>
+
+          {loading ? <LoadingSpinner fullScreen={false} message="Loading Cambridge dashboard..." /> : null}
+
+          {installationError && errorVisible ? (
+            <ErrorBanner
+              message="Failed to load Cambridge installation data."
+              onDismiss={() => setErrorVisible(false)}
+            />
+          ) : null}
+
+          {!loading && !installation ? (
+            <Card>
+              <h2 className="font-semibold text-gray-900">Cambridge not installed</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                This organization has no Cambridge installation yet.
+              </p>
+              <Link href="/cambridge/setup" className="text-blue-600 text-sm mt-3 inline-block">
+                Open Setup
+              </Link>
+            </Card>
+          ) : null}
+
+          {!loading && installation && !installation.enabled ? (
+            <Card>
+              <h2 className="font-semibold text-gray-900">Cambridge installed but disabled</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Enable the installation in setup before instructors can use subject content.
+              </p>
+              <Link href="/cambridge/setup" className="text-blue-600 text-sm mt-3 inline-block">
+                Manage Setup
+              </Link>
+            </Card>
+          ) : null}
+
+          {!loading && installation && installation.enabled ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Installation</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">Enabled</p>
+                </Card>
+                <Card>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Enabled Programmes</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">{enabledProgrammes}</p>
+                </Card>
+                <Card>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Enabled Subjects</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">{enabledSubjects}</p>
+                </Card>
+              </div>
+
+              <Card>
+                <h2 className="font-semibold text-gray-900">Quick links</h2>
+                <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                  <Link href="/cambridge/setup" className="text-blue-600">
+                    Setup
+                  </Link>
+                  <Link href="/cambridge/authoring/programmes" className="text-blue-600">
+                    Authoring
+                  </Link>
+                  <Link href="/cambridge/subjects" className="text-blue-600">
+                    Subject management
+                  </Link>
+                  <Link href="/cambridge/progress" className="text-blue-600">
+                    Browser & progress
+                  </Link>
+                </div>
+              </Card>
+            </>
+          ) : null}
+        </div>
       </PermissionGuard>
     </TenantGuard>
   );

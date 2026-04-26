@@ -6,24 +6,28 @@
 
 'use client';
 
-import type { CambridgeProgress, ClassProgressEntry } from '../types';
+import type { CambridgeSubjectProgress } from '../types';
+import { Card } from '@/app/components/ui/Card';
 
 interface ProgressCardProps {
-  progress: CambridgeProgress | ClassProgressEntry;
-  variant?: 'student' | 'cohort';
+  progress: CambridgeSubjectProgress;
 }
 
-export function ProgressCard({ progress, variant = 'student' }: ProgressCardProps) {
-  const isStudent = variant === 'student';
-
+export function ProgressCard({ progress }: ProgressCardProps) {
   return (
-    <div>
-      {/* TODO: UI implementation */}
-      <h3>{isStudent ? (progress as CambridgeProgress).student_name : (progress as ClassProgressEntry).student_name}</h3>
-      <p>Overall: {progress.overall_percentage}%</p>
-      {isStudent && (
-        <p>Grade: {(progress as CambridgeProgress).grade ?? 'N/A'}</p>
-      )}
-    </div>
+    <Card className="p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-gray-900">{progress.title}</h3>
+          <p className="text-sm text-gray-500">
+            {progress.programme_code} · {progress.structure_mode}
+          </p>
+        </div>
+        <p className="text-lg font-bold text-blue-700">{progress.progress_percentage.toFixed(1)}%</p>
+      </div>
+      <div className="mt-2 text-sm text-gray-600">
+        {progress.covered_units}/{progress.total_units} units · {progress.status}
+      </div>
+    </Card>
   );
 }

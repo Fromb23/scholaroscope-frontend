@@ -13,12 +13,9 @@ import {
     Inbox, UserCog, TrendingUp, Database, Clock, Target,
     CalendarDays, Layers, Megaphone,
     Puzzle,
-    ChartBarIcon,
-    BookOpenIcon, GraduationCapIcon,
     BarChart3,
 } from 'lucide-react';
 import type { Role } from '@/app/core/types/auth';
-import { Children } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -160,6 +157,8 @@ export function getAdminNav(
                 icon: BookOpen,
                 children: [
                     { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
+                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
+                    { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
                     { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
                     { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
                 ],
@@ -228,6 +227,8 @@ export function getInstructorNav(
                 icon: BookOpen,
                 children: [
                     { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
+                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
+                    { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
                     { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
                     { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
                 ],

@@ -1,0 +1,3 @@
+import CambridgeAuthoringSyllabusChildrenPage from '@/app/plugins/cambridge/pages/CambridgeAuthoringSyllabusChildrenPage';
+
+export default CambridgeAuthoringSyllabusChildrenPage;

@@ -6,42 +6,56 @@
 
 'use client';
 
-import type { ContentArea, Topic, LearningObjective } from '../types';
-
-interface LearningTreeNode {
-  contentArea: ContentArea;
-  topics: Array<{
-    topic: Topic;
-    objectives: LearningObjective[];
-  }>;
-}
+import { useMemo } from 'react';
+import type { CambridgeNormalizedLearningUnit } from '../types';
 
 interface LearningTreeProps {
-  nodes: LearningTreeNode[];
-  onObjectiveClick?: (objective: LearningObjective) => void;
+  units: CambridgeNormalizedLearningUnit[];
 }
 
-export function LearningTree({ nodes, onObjectiveClick }: LearningTreeProps) {
+function buildDepthMap(units: CambridgeNormalizedLearningUnit[]) {
+  const byId = new Map<number, CambridgeNormalizedLearningUnit>();
+  for (const unit of units) {
+    byId.set(unit.id, unit);
+  }
+
+  const depthMap = new Map<number, number>();
+  const getDepth = (unit: CambridgeNormalizedLearningUnit): number => {
+    if (depthMap.has(unit.id)) {
+      return depthMap.get(unit.id) as number;
+    }
+    if (!unit.parent_id) {
+      depthMap.set(unit.id, 0);
+      return 0;
+    }
+    const parent = byId.get(unit.parent_id);
+    const depth = parent ? getDepth(parent) + 1 : 0;
+    depthMap.set(unit.id, depth);
+    return depth;
+  };
+
+  return units.map((unit) => ({
+    unit,
+    depth: getDepth(unit),
+  }));
+}
+
+export function LearningTree({ units }: LearningTreeProps) {
+  const rows = useMemo(() => buildDepthMap(units), [units]);
+
   return (
-    <div>
-      {/* TODO: UI implementation */}
-      {nodes.map((node) => (
-        <div key={node.contentArea.id}>
-          <h3>{node.contentArea.name}</h3>
-          {node.topics.map((t) => (
-            <div key={t.topic.id}>
-              <h4>{t.topic.name}</h4>
-              <ul>
-                {t.objectives.map((obj) => (
-                  <li key={obj.id}>
-                    <button onClick={() => onObjectiveClick?.(obj)}>
-                      {obj.code}: {obj.description}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+    <div className="space-y-2">
+      {rows.map(({ unit, depth }) => (
+        <div
+          key={unit.id}
+          className="rounded-lg border border-gray-200 bg-white p-3"
+          style={{ marginLeft: `${depth * 16}px` }}
+        >
+          <div className="font-medium text-gray-900">{unit.title}</div>
+          <div className="text-xs text-gray-500">{unit.unit_type}</div>
+          {unit.description ? (
+            <p className="mt-1 text-sm text-gray-600">{unit.description}</p>
+          ) : null}
         </div>
       ))}
     </div>

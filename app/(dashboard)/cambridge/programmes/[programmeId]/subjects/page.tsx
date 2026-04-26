@@ -1,0 +1,3 @@
+import CambridgeInstallationProgrammeSubjectsPage from '@/app/plugins/cambridge/pages/CambridgeInstallationProgrammeSubjectsPage';
+
+export default CambridgeInstallationProgrammeSubjectsPage;

@@ -1,0 +1,3 @@
+import CambridgeAuthoringProgrammeSubjectsPage from '@/app/plugins/cambridge/pages/CambridgeAuthoringProgrammeSubjectsPage';
+
+export default CambridgeAuthoringProgrammeSubjectsPage;

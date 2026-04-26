@@ -1,0 +1,3 @@
+import CambridgeInstallationSubjectFrameworksPage from '@/app/plugins/cambridge/pages/CambridgeInstallationSubjectFrameworksPage';
+
+export default CambridgeInstallationSubjectFrameworksPage;
