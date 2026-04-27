@@ -55,7 +55,7 @@ export default function CambridgeInstallationSubjectFrameworksPage() {
               { label: 'Cambridge', href: '/cambridge' },
               { label: 'Setup', href: '/cambridge/setup' },
               programme?.id
-                ? { label: programme.title, href: `/cambridge/programmes/${programme.id}/subjects` }
+                ? { label: programme.title, href: `/cambridge/setup/programmes/${programme.id}/subjects` }
                 : { label: subject?.programme_code ?? 'Programme' },
               { label: subject?.display_name ?? 'Subject' },
               { label: 'Frameworks' },
@@ -71,7 +71,7 @@ export default function CambridgeInstallationSubjectFrameworksPage() {
             </div>
             {programme?.id ? (
               <Link
-                href={`/cambridge/programmes/${programme.id}/subjects`}
+                href={`/cambridge/setup/programmes/${programme.id}/subjects`}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
                 Back to Programme Subjects
@@ -100,7 +100,7 @@ export default function CambridgeInstallationSubjectFrameworksPage() {
                 This subject uses a syllabus structure, not frameworks.
               </p>
               <Link
-                href={`/cambridge/subjects/${subject.id}/syllabuses`}
+                href={`/cambridge/setup/subjects/${subject.id}/syllabuses`}
                 className="mt-3 inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
               >
                 Manage Syllabuses
@@ -137,7 +137,7 @@ export default function CambridgeInstallationSubjectFrameworksPage() {
                           </p>
                         </div>
                         <Link
-                          href={`/cambridge/frameworks/${framework.id}/strands`}
+                          href={`/cambridge/setup/frameworks/${framework.id}/strands`}
                           className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
                         >
                           Manage Strands

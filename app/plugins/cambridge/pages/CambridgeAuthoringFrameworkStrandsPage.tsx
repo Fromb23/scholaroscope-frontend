@@ -20,8 +20,16 @@ import {
   useDeleteCatalogueStrand,
   useUpdateCatalogueStrand,
 } from '../hooks';
+import { CambridgeConfirmModal, CambridgeFormModal } from '../components/CambridgeAuthoringModals';
 import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/CambridgeNavigation';
+import type { CambridgeCatalogueStrand } from '../types';
 import { mutationErrorMessage, nextSortOrder, toPositiveNumber } from './authoringUtils';
+
+const EMPTY_STRAND_FORM = {
+  code: '',
+  name: '',
+  sort_order: '',
+};
 
 export default function CambridgeAuthoringFrameworkStrandsPage() {
   const params = useParams<{ frameworkId: string }>();
@@ -31,11 +39,12 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
   const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    code: '',
-    name: '',
-    sort_order: '',
-  });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingStrand, setEditingStrand] = useState<CambridgeCatalogueStrand | null>(null);
+  const [deletingStrand, setDeletingStrand] = useState<CambridgeCatalogueStrand | null>(null);
+  const [form, setForm] = useState(EMPTY_STRAND_FORM);
+  const [editName, setEditName] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const { data: framework, isLoading: frameworkLoading, error: frameworkError } = useCatalogueFramework(frameworkId);
   const { data: subjectProfile } = useCatalogueSubjectProfile(framework?.subject_profile ?? null);
@@ -58,6 +67,45 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
     } catch (err) {
       setActionError(mutationErrorMessage(err));
     }
+  }
+
+  function resetCreateState() {
+    setCreateModalOpen(false);
+    setForm(EMPTY_STRAND_FORM);
+    setFormErrors({});
+    setActionError(null);
+  }
+
+  function openEditModal(strand: CambridgeCatalogueStrand) {
+    setEditingStrand(strand);
+    setEditName(strand.name);
+    setFormErrors({});
+    setActionError(null);
+  }
+
+  function closeEditModal() {
+    setEditingStrand(null);
+    setEditName('');
+    setFormErrors({});
+    setActionError(null);
+  }
+
+  function validateCreateForm() {
+    const nextErrors: Record<string, string> = {};
+    if (!form.code.trim()) nextErrors.code = 'Strand code is required.';
+    if (!form.name.trim()) nextErrors.name = 'Strand name is required.';
+    if (form.sort_order.trim() && !toPositiveNumber(form.sort_order)) {
+      nextErrors.sort_order = 'Sort order must be a positive number.';
+    }
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  function validateEditForm() {
+    const nextErrors: Record<string, string> = {};
+    if (!editName.trim()) nextErrors.edit_name = 'Strand name is required.';
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   }
 
   return (
@@ -88,14 +136,17 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
                 Step 4: select a framework, then author its strands.
               </p>
             </div>
-            {subjectProfile?.id ? (
-              <Link
-                href={`/cambridge/authoring/subjects/${subjectProfile.id}/frameworks`}
-                className="text-sm text-blue-600 hover:text-blue-700"
-              >
-                Back to Frameworks
-              </Link>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {isAdmin && framework ? <Button onClick={() => setCreateModalOpen(true)}>Create Strand</Button> : null}
+              {subjectProfile?.id ? (
+                <Link
+                  href={`/cambridge/authoring/subjects/${subjectProfile.id}/frameworks`}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Back to Frameworks
+                </Link>
+              ) : null}
+            </div>
           </div>
 
           {loading ? <LoadingSpinner fullScreen={false} message="Loading framework strands..." /> : null}
@@ -141,7 +192,7 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
                             href={`/cambridge/authoring/strands/${strand.id}/children`}
                             className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
                           >
-                            Manage Children
+                            Manage Substrands
                           </Link>
                           {isAdmin ? (
                             <>
@@ -149,16 +200,7 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
                                 size="sm"
                                 variant="ghost"
                                 disabled={updateMutation.isPending}
-                                onClick={() => {
-                                  const nextName = window.prompt('Strand name', strand.name);
-                                  if (!nextName) return;
-                                  runAction(async () => {
-                                    await updateMutation.mutateAsync({
-                                      id: strand.id,
-                                      payload: { name: nextName.trim() },
-                                    });
-                                  });
-                                }}
+                                onClick={() => openEditModal(strand)}
                               >
                                 Edit
                               </Button>
@@ -167,10 +209,8 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
                                 variant="danger"
                                 disabled={deleteMutation.isPending}
                                 onClick={() => {
-                                  if (!window.confirm(`Delete strand "${strand.name}"?`)) return;
-                                  runAction(async () => {
-                                    await deleteMutation.mutateAsync(strand.id);
-                                  });
+                                  setDeletingStrand(strand);
+                                  setActionError(null);
                                 }}
                               >
                                 Delete
@@ -186,57 +226,101 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
             </Card>
           ) : null}
 
-          {isAdmin && framework ? (
-            <Card>
-              <details>
-                <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
-                  Create Strand
-                </summary>
-                <form
-                  className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3"
-                  onSubmit={(event: FormEvent) => {
-                    event.preventDefault();
-                    if (!frameworkId) return;
-                    runAction(async () => {
-                      await createMutation.mutateAsync({
-                        framework: frameworkId,
-                        code: form.code.trim(),
-                        name: form.name.trim(),
-                        sort_order: toPositiveNumber(form.sort_order) ?? suggestedSortOrder,
-                      });
-                      setForm({ code: '', name: '', sort_order: '' });
-                    });
-                  }}
-                >
-                  <Input
-                    label="Strand Code"
-                    value={form.code}
-                    required
-                    onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value.toUpperCase() }))}
-                  />
-                  <Input
-                    label="Strand Name"
-                    value={form.name}
-                    required
-                    onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                  />
-                  <Input
-                    label={`Sort Order (default ${suggestedSortOrder})`}
-                    value={form.sort_order}
-                    onChange={(event) => setForm((prev) => ({ ...prev, sort_order: event.target.value }))}
-                  />
-                  <div className="md:col-span-3">
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending || !form.code.trim() || !form.name.trim()}
-                    >
-                      {createMutation.isPending ? 'Creating...' : 'Create Strand'}
-                    </Button>
-                  </div>
-                </form>
-              </details>
-            </Card>
-          ) : null}
+          <CambridgeFormModal
+            isOpen={createModalOpen}
+            onClose={resetCreateState}
+            title="Create Strand"
+            description={`Create a strand under this framework. Sort order defaults to ${suggestedSortOrder} if left blank.`}
+            submitLabel="Create Strand"
+            submitting={createMutation.isPending}
+            errorMessage={actionError}
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              if (!frameworkId || !validateCreateForm()) return;
+              runAction(async () => {
+                await createMutation.mutateAsync({
+                  framework: frameworkId,
+                  code: form.code.trim(),
+                  name: form.name.trim(),
+                  sort_order: toPositiveNumber(form.sort_order) ?? suggestedSortOrder,
+                });
+                resetCreateState();
+              });
+            }}
+          >
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <Input
+                label="Strand Code"
+                value={form.code}
+                error={formErrors.code}
+                onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value.toUpperCase() }))}
+              />
+              <Input
+                label="Strand Name"
+                value={form.name}
+                error={formErrors.name}
+                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+              />
+              <Input
+                label={`Sort Order (default ${suggestedSortOrder})`}
+                value={form.sort_order}
+                error={formErrors.sort_order}
+                onChange={(event) => setForm((prev) => ({ ...prev, sort_order: event.target.value }))}
+              />
+            </div>
+          </CambridgeFormModal>
+
+          <CambridgeFormModal
+            isOpen={Boolean(editingStrand)}
+            onClose={closeEditModal}
+            title="Edit Strand"
+            description="Update the strand display name."
+            submitLabel="Save Changes"
+            submitting={updateMutation.isPending}
+            errorMessage={actionError}
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              if (!editingStrand || !validateEditForm()) return;
+              runAction(async () => {
+                await updateMutation.mutateAsync({
+                  id: editingStrand.id,
+                  payload: { name: editName.trim() },
+                });
+                closeEditModal();
+              });
+            }}
+          >
+            <Input
+              label="Strand Name"
+              value={editName}
+              error={formErrors.edit_name}
+              onChange={(event) => setEditName(event.target.value)}
+            />
+          </CambridgeFormModal>
+
+          <CambridgeConfirmModal
+            isOpen={Boolean(deletingStrand)}
+            onClose={() => {
+              setDeletingStrand(null);
+              setActionError(null);
+            }}
+            title="Delete Strand"
+            message={
+              deletingStrand
+                ? `Delete strand "${deletingStrand.name}"? This action cannot be undone.`
+                : ''
+            }
+            confirmLabel="Delete Strand"
+            confirming={deleteMutation.isPending}
+            onConfirm={() => {
+              if (!deletingStrand) return;
+              runAction(async () => {
+                await deleteMutation.mutateAsync(deletingStrand.id);
+                setDeletingStrand(null);
+                setActionError(null);
+              });
+            }}
+          />
         </div>
       </PermissionGuard>
     </TenantGuard>

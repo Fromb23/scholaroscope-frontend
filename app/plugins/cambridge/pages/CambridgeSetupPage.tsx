@@ -9,7 +9,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { useCambridgeInstallationStatus, useCambridgeProgrammes, useCambridgeSubjects, useDisableCambridgeInstallation, useDisableCambridgeProgramme, useEnableCambridgeInstallation, useEnableCambridgeProgramme, useInstallCambridge } from '../hooks';
+import { useCambridgeInstallationStatus, useCambridgeOfferings, useCambridgeProgrammes, useDisableCambridgeInstallation, useDisableCambridgeProgramme, useEnableCambridgeInstallation, useEnableCambridgeProgramme, useInstallCambridge } from '../hooks';
 import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/CambridgeNavigation';
 import { modeLabel } from './authoringUtils';
 
@@ -20,7 +20,7 @@ export default function CambridgeSetupPage() {
 
   const { data: installation, isLoading: installationLoading, error: installationError } = useCambridgeInstallationStatus();
   const { data: installationProgrammes = [], isLoading: programmesLoading, error: programmesError } = useCambridgeProgrammes();
-  const { data: installationSubjects = [], isLoading: subjectsLoading } = useCambridgeSubjects();
+  const { data: offerings = [], isLoading: offeringsLoading } = useCambridgeOfferings({ active: true });
 
   const installMutation = useInstallCambridge();
   const enableInstallationMutation = useEnableCambridgeInstallation();
@@ -28,7 +28,7 @@ export default function CambridgeSetupPage() {
   const enableProgrammeMutation = useEnableCambridgeProgramme();
   const disableProgrammeMutation = useDisableCambridgeProgramme();
 
-  const loading = installationLoading || programmesLoading || subjectsLoading;
+  const loading = installationLoading || programmesLoading || offeringsLoading;
   const hasError = installationError || programmesError;
 
   return (
@@ -132,8 +132,8 @@ export default function CambridgeSetupPage() {
             ) : (
               <ul className="mt-4 space-y-3">
                 {installationProgrammes.map((programme) => {
-                  const subjectCount = installationSubjects.filter(
-                    (subject) => subject.programme_code === programme.code
+                  const subjectCount = offerings.filter(
+                    (subject) => subject.installation_programme_id === programme.id
                   ).length;
                   const isToggleLoading =
                     enableProgrammeMutation.variables === programme.id ||
@@ -148,7 +148,7 @@ export default function CambridgeSetupPage() {
                             {programme.code} · {modeLabel(programme.structure_mode)} · {programme.display_stage_range}
                           </p>
                           <p className="mt-1 text-xs text-gray-500">
-                            {subjectCount} installation subjects
+                            {subjectCount} offered subjects
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -178,7 +178,7 @@ export default function CambridgeSetupPage() {
                             </Button>
                           ) : null}
                           <Link
-                            href={`/cambridge/programmes/${programme.id}/subjects`}
+                            href={`/cambridge/setup/programmes/${programme.id}/subjects`}
                             className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
                           >
                             Manage Subjects

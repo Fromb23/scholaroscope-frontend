@@ -5,6 +5,7 @@
 import { AxiosError } from 'axios';
 import { apiClient } from '@/app/core/api/client';
 import type {
+  CambridgeAssignOfferingToCohortPayload,
   CambridgeCatalogueAssessmentComponent,
   CambridgeCatalogueAssessmentComponentCreatePayload,
   CambridgeCatalogueEntryOption,
@@ -26,6 +27,7 @@ import type {
   CambridgeCatalogueSyllabusCreatePayload,
   CambridgeCatalogueSyllabusContentArea,
   CambridgeCatalogueSyllabusContentAreaCreatePayload,
+  CambridgeCohortSubject,
   CambridgeInstallation,
   CambridgeInstallationProgramme,
   CambridgeInstallationSubject,
@@ -35,7 +37,11 @@ import type {
   CambridgeNormalizedAssessmentUnit,
   CambridgeNormalizedLearningUnit,
   CambridgeNormalizedSubject,
+  CambridgeProgrammeSubjectsResponse,
   CambridgeRenameSubjectPayload,
+  CambridgeSubjectOffering,
+  CambridgeSubjectOfferingCreatePayload,
+  CambridgeSubjectOfferingUpdatePayload,
   CambridgeSubjectProgress,
   ListResponse,
 } from './types';
@@ -83,6 +89,16 @@ export const programmeAPI = {
     return toArray(response.data);
   },
 
+  async getSubjects(id: number): Promise<CambridgeProgrammeSubjectsResponse> {
+    const response = await apiClient.get<CambridgeProgrammeSubjectsResponse>(`/cambridge/programmes/${id}/subjects/`);
+    return response.data;
+  },
+
+  async offerSubject(id: number, payload: CambridgeSubjectOfferingCreatePayload): Promise<CambridgeSubjectOffering> {
+    const response = await apiClient.post<CambridgeSubjectOffering>(`/cambridge/programmes/${id}/subjects/`, payload);
+    return response.data;
+  },
+
   async enable(id: number): Promise<CambridgeInstallationProgramme> {
     const response = await apiClient.post<CambridgeInstallationProgramme>(`/cambridge/programmes/${id}/enable/`);
     return response.data;
@@ -117,6 +133,60 @@ export const subjectAPI = {
 
   async rename(id: number, payload: CambridgeRenameSubjectPayload): Promise<CambridgeInstallationSubject> {
     const response = await apiClient.patch<CambridgeInstallationSubject>(`/cambridge/subjects/${id}/rename/`, payload);
+    return response.data;
+  },
+};
+
+export const offeringAPI = {
+  async list(params?: {
+    installation_programme?: number;
+    subject_profile?: number;
+    cohort?: number;
+    active?: boolean;
+  }): Promise<CambridgeSubjectOffering[]> {
+    const response = await apiClient.get<ListResponse<CambridgeSubjectOffering>>('/cambridge/offerings/', {
+      params,
+    });
+    return toArray(response.data);
+  },
+
+  async getById(id: number): Promise<CambridgeSubjectOffering> {
+    const response = await apiClient.get<CambridgeSubjectOffering>(`/cambridge/offerings/${id}/`);
+    return response.data;
+  },
+
+  async update(id: number, payload: CambridgeSubjectOfferingUpdatePayload): Promise<CambridgeSubjectOffering> {
+    const response = await apiClient.patch<CambridgeSubjectOffering>(`/cambridge/offerings/${id}/`, payload);
+    return response.data;
+  },
+
+  async assignCohort(id: number, payload: CambridgeAssignOfferingToCohortPayload): Promise<CambridgeCohortSubject> {
+    const response = await apiClient.post<CambridgeCohortSubject>(`/cambridge/offerings/${id}/assign-cohort/`, payload);
+    return response.data;
+  },
+
+  async listCohorts(id: number, params?: { active?: boolean }): Promise<CambridgeCohortSubject[]> {
+    const response = await apiClient.get<ListResponse<CambridgeCohortSubject>>(`/cambridge/offerings/${id}/cohorts/`, {
+      params,
+    });
+    return toArray(response.data);
+  },
+};
+
+export const cohortSubjectAPI = {
+  async list(params?: {
+    cohort?: number;
+    offering?: number;
+    active?: boolean;
+  }): Promise<CambridgeCohortSubject[]> {
+    const response = await apiClient.get<ListResponse<CambridgeCohortSubject>>('/cambridge/cohort-subjects/', {
+      params,
+    });
+    return toArray(response.data);
+  },
+
+  async deactivate(id: number): Promise<CambridgeCohortSubject> {
+    const response = await apiClient.post<CambridgeCohortSubject>(`/cambridge/cohort-subjects/${id}/deactivate/`);
     return response.data;
   },
 };
@@ -302,8 +372,15 @@ export const catalogueSubstrandAPI = {
     });
     return toArray(response.data);
   },
-  async create(payload: CambridgeCatalogueSubstrandCreatePayload): Promise<CambridgeCatalogueSubstrand> {
-    const response = await apiClient.post<CambridgeCatalogueSubstrand>(`${catalogueBase}/substrands/`, payload);
+  async getById(id: number): Promise<CambridgeCatalogueSubstrand> {
+    const response = await apiClient.get<CambridgeCatalogueSubstrand>(`${catalogueBase}/substrands/${id}/`);
+    return response.data;
+  },
+  async create(strandId: number, payload: CambridgeCatalogueSubstrandCreatePayload): Promise<CambridgeCatalogueSubstrand> {
+    const response = await apiClient.post<CambridgeCatalogueSubstrand>(
+      `${catalogueBase}/strands/${strandId}/substrands/`,
+      payload
+    );
     return response.data;
   },
   async update(id: number, payload: Partial<Omit<CambridgeCatalogueSubstrand, 'id'>>): Promise<CambridgeCatalogueSubstrand> {
@@ -322,8 +399,18 @@ export const catalogueObjectiveAPI = {
     });
     return toArray(response.data);
   },
-  async create(payload: CambridgeCatalogueLearningObjectiveCreatePayload): Promise<CambridgeCatalogueLearningObjective> {
-    const response = await apiClient.post<CambridgeCatalogueLearningObjective>(`${catalogueBase}/objectives/`, payload);
+  async getById(id: number): Promise<CambridgeCatalogueLearningObjective> {
+    const response = await apiClient.get<CambridgeCatalogueLearningObjective>(`${catalogueBase}/objectives/${id}/`);
+    return response.data;
+  },
+  async create(
+    substrandId: number,
+    payload: CambridgeCatalogueLearningObjectiveCreatePayload
+  ): Promise<CambridgeCatalogueLearningObjective> {
+    const response = await apiClient.post<CambridgeCatalogueLearningObjective>(
+      `${catalogueBase}/substrands/${substrandId}/objectives/`,
+      payload
+    );
     return response.data;
   },
   async update(id: number, payload: Partial<Omit<CambridgeCatalogueLearningObjective, 'id'>>): Promise<CambridgeCatalogueLearningObjective> {

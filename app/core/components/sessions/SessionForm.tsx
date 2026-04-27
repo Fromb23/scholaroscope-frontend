@@ -16,7 +16,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { TopicSubtopicPicker } from './TopicSubtopicPicker';
-import { useSessions, useCohortSubjects } from '@/app/core/hooks/useSessions';
+import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
 import { useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useAuth } from '@/app/context/AuthContext';
 import { extractErrorMessage } from '@/app/core/types/errors';
@@ -49,7 +49,9 @@ const SESSION_TYPES = [
 ];
 
 const DEFAULT_FORM: SessionFormData = {
-    cohort_subject: 0,
+    cohort_subject: null,
+    subject_source: undefined,
+    subject_id: null,
     term: null,
     session_type: 'LESSON',
     session_date: new Date().toISOString().split('T')[0],
@@ -82,7 +84,11 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const { user } = useAuth();
     const { createSessionWithLinks } = useSessions();
 
-    const { cohorts } = useCohorts(currentYear ? { academic_year: currentYear.id } : undefined);
+    const cohortFilters = useMemo(
+        () => (currentYear ? { academic_year: currentYear.id } : undefined),
+        [currentYear]
+    );
+    const { cohorts } = useCohorts(cohortFilters);
     const { terms } = useTerms(currentYear?.id);
 
     const activeTerm = useMemo(() => {
@@ -91,12 +97,13 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     }, [terms]);
 
     const [selectedCohort, setSelectedCohort] = useState<number>(0);
-    const [selectedCohortSubjectId, setSelectedCohortSubjectId] = useState<number>(0);
-    const { cohortSubjects } = useCohortSubjects(selectedCohort || null);
+    const [selectedSubjectOptionId, setSelectedSubjectOptionId] = useState<string>('');
+    const { subjectOptions } = useCohortSubjectOptions(selectedCohort || null);
 
-    const selectedCohortSubject = cohortSubjects.find(cs => cs.id === selectedCohortSubjectId);
-    const isCBC = selectedCohortSubject?.curriculum_type === 'CBE';
-    const subjectId = selectedCohortSubject?.subject ?? 0;
+    const selectedSubjectOption = subjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
+    const selectedSubjectSource = selectedSubjectOption?.source ?? null;
+    const requiresTopicSelection = selectedSubjectSource === 'kernel';
+    const topicSubjectId = selectedSubjectOption?.topic_subject_id ?? 0;
 
     const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
     const [selectedSubtopics, setSelectedSubtopics] = useState<Subtopic[]>([]);
@@ -132,31 +139,61 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     const handleCohortChange = (cohortId: number) => {
         setSelectedCohort(cohortId);
-        setSelectedCohortSubjectId(0);
-        handleChange('cohort_subject', 0);
+        setSelectedSubjectOptionId('');
         setSelectedTopic(null);
         setSelectedSubtopics([]);
+        setFormData(prev => ({
+            ...prev,
+            cohort_subject: null,
+            subject_source: undefined,
+            subject_id: null,
+            title: '',
+        }));
+        setErrors(prev => {
+            const next = { ...prev };
+            delete next.cohort_subject;
+            delete next.topic;
+            return next;
+        });
+        setSubmitError(null);
     };
 
-    const handleCohortSubjectChange = (id: number) => {
-        setSelectedCohortSubjectId(id);
-        handleChange('cohort_subject', id);
+    const handleCohortSubjectChange = (id: string) => {
+        const option = subjectOptions.find((item) => item.id === id) ?? null;
+        setSelectedSubjectOptionId(id);
         setSelectedTopic(null);
         setSelectedSubtopics([]);
-        handleChange('title', '');
+        setFormData(prev => ({
+            ...prev,
+            cohort_subject: option?.session_supported ? (option.cohort_subject_id ?? null) : null,
+            subject_source: option?.session_supported
+                ? (option.source === 'cambridge' ? 'cambridge' : 'kernel')
+                : undefined,
+            subject_id: option?.session_supported ? (option.subject_id ?? null) : null,
+            title: '',
+        }));
+        setErrors(prev => {
+            const next = { ...prev };
+            delete next.cohort_subject;
+            delete next.topic;
+            return next;
+        });
+        setSubmitError(null);
     };
 
     const validate = (): boolean => {
         const newErrors: Record<string, string> = {};
         if (!selectedCohort) newErrors.cohort = 'Cohort is required';
-        if (!formData.cohort_subject) newErrors.cohort_subject = 'Subject is required';
+        if (!selectedSubjectOption || !selectedSubjectOption.session_supported || !formData.subject_source || !formData.subject_id) {
+            newErrors.cohort_subject = 'Subject is required';
+        }
         if (!formData.session_date) newErrors.session_date = 'Date is required';
         if (!formData.start_time) newErrors.start_time = 'Start time is required';
         if (!formData.end_time) newErrors.end_time = 'End time is required';
         if (formData.start_time && formData.end_time && formData.start_time >= formData.end_time) {
             newErrors.end_time = 'End time must be after start time';
         }
-        if (!isCBC && !selectedTopic) newErrors.topic = 'Select a topic for this session';
+        if (requiresTopicSelection && !selectedTopic) newErrors.topic = 'Select a topic for this session';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -213,15 +250,18 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                         <div>
                             <Select
                                 label="Subject"
-                                value={formData.cohort_subject.toString()}
-                                onChange={e => handleCohortSubjectChange(Number(e.target.value))}
+                                value={selectedSubjectOptionId}
+                                onChange={e => handleCohortSubjectChange(e.target.value)}
                                 required
                                 disabled={!selectedCohort}
                                 options={[
-                                    { value: '0', label: selectedCohort ? 'Select Subject' : 'Select a cohort first' },
-                                    ...cohortSubjects.map(cs => ({
-                                        value: String(cs.id),
-                                        label: `${cs.subject_code} — ${cs.subject_name}${cs.is_compulsory ? ' (Core)' : ''}`,
+                                    { value: '', label: selectedCohort ? 'Select Subject' : 'Select a cohort first' },
+                                    ...subjectOptions.map(option => ({
+                                        value: option.id,
+                                        label: option.session_supported
+                                            ? `${option.subject_code ?? 'SUBJ'} — ${option.label}${option.source === 'cbc' ? ' (CBC)' : option.source === 'cambridge' ? ' (Cambridge)' : ''}`
+                                            : `${option.subject_code ?? 'SUBJ'} — ${option.label} (${option.programme ?? option.plugin}${option.curriculum_version ? ` · ${option.curriculum_version}` : ''})`,
+                                        disabled: !option.session_supported,
                                     })),
                                 ]}
                             />
@@ -274,7 +314,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             </Card>
 
             {/* Topic & Subtopic — non-CBC only */}
-            {formData.cohort_subject > 0 && !isCBC && (
+            {requiresTopicSelection && topicSubjectId > 0 && (
                 <Card>
                     <div className="p-6">
                         <div className="flex items-center gap-2 mb-2">
@@ -286,7 +326,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                             and pre-fills the session title.
                         </p>
                         <TopicSubtopicPicker
-                            subjectId={subjectId}
+                            subjectId={topicSubjectId}
                             onSelectionChange={(topic, subtopics) => {
                                 setSelectedTopic(topic);
                                 setSelectedSubtopics(subtopics);
@@ -310,7 +350,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                             label="Session Title"
                             type="text"
                             placeholder={
-                                formData.cohort_subject && !isCBC
+                                requiresTopicSelection && Boolean(formData.subject_id)
                                     ? 'Auto-filled from topic selection above'
                                     : 'e.g., Introduction to Algebra'
                             }

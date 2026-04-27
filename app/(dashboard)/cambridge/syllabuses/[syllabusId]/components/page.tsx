@@ -1,3 +1,10 @@
-import CambridgeInstallationSyllabusComponentsPage from '@/app/plugins/cambridge/pages/CambridgeInstallationSyllabusComponentsPage';
+import { redirect } from 'next/navigation';
 
-export default CambridgeInstallationSyllabusComponentsPage;
+export default async function CambridgeSyllabusComponentsRedirect({
+  params,
+}: {
+  params: Promise<{ syllabusId: string }>;
+}) {
+  const { syllabusId } = await params;
+  redirect(`/cambridge/setup/syllabuses/${syllabusId}/components`);
+}

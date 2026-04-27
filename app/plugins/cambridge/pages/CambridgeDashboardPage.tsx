@@ -12,9 +12,10 @@ import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import {
+  useCambridgeCohortSubjects,
   useCambridgeInstallationStatus,
+  useCambridgeOfferings,
   useCambridgeProgrammes,
-  useCambridgeSubjects,
 } from '../hooks';
 
 export default function CambridgeDashboardPage() {
@@ -24,12 +25,14 @@ export default function CambridgeDashboardPage() {
     error: installationError,
   } = useCambridgeInstallationStatus();
   const { data: programmes = [], isLoading: programmesLoading } = useCambridgeProgrammes();
-  const { data: subjects = [], isLoading: subjectsLoading } = useCambridgeSubjects();
+  const { data: offerings = [], isLoading: offeringsLoading } = useCambridgeOfferings({ active: true });
+  const { data: cohortSubjects = [], isLoading: cohortSubjectsLoading } = useCambridgeCohortSubjects({ active: true });
   const [errorVisible, setErrorVisible] = useState(true);
 
   const enabledProgrammes = programmes.filter((programme) => programme.enabled).length;
-  const enabledSubjects = subjects.filter((subject) => subject.enabled).length;
-  const loading = installationLoading || programmesLoading || subjectsLoading;
+  const enabledSubjects = offerings.length;
+  const assignedCohortSubjects = cohortSubjects.length;
+  const loading = installationLoading || programmesLoading || offeringsLoading || cohortSubjectsLoading;
 
   return (
     <TenantGuard>
@@ -80,7 +83,7 @@ export default function CambridgeDashboardPage() {
 
           {!loading && installation && installation.enabled ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Installation</p>
                   <p className="mt-1 text-xl font-semibold text-gray-900">Enabled</p>
@@ -90,22 +93,26 @@ export default function CambridgeDashboardPage() {
                   <p className="mt-1 text-xl font-semibold text-gray-900">{enabledProgrammes}</p>
                 </Card>
                 <Card>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Enabled Subjects</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Offered Subjects</p>
                   <p className="mt-1 text-xl font-semibold text-gray-900">{enabledSubjects}</p>
+                </Card>
+                <Card>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Cohort Assignments</p>
+                  <p className="mt-1 text-xl font-semibold text-gray-900">{assignedCohortSubjects}</p>
                 </Card>
               </div>
 
               <Card>
                 <h2 className="font-semibold text-gray-900">Quick links</h2>
                 <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                  <Link href="/cambridge/setup" className="text-blue-600">
-                    Setup
-                  </Link>
                   <Link href="/cambridge/authoring/programmes" className="text-blue-600">
                     Authoring
                   </Link>
+                  <Link href="/cambridge/setup" className="text-blue-600">
+                    Setup
+                  </Link>
                   <Link href="/cambridge/subjects" className="text-blue-600">
-                    Subject management
+                    Cohort subjects
                   </Link>
                   <Link href="/cambridge/progress" className="text-blue-600">
                     Browser & progress

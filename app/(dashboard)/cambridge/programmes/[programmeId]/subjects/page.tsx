@@ -1,3 +1,10 @@
-import CambridgeInstallationProgrammeSubjectsPage from '@/app/plugins/cambridge/pages/CambridgeInstallationProgrammeSubjectsPage';
+import { redirect } from 'next/navigation';
 
-export default CambridgeInstallationProgrammeSubjectsPage;
+export default async function CambridgeProgrammeSubjectsRedirect({
+  params,
+}: {
+  params: Promise<{ programmeId: string }>;
+}) {
+  const { programmeId } = await params;
+  redirect(`/cambridge/setup/programmes/${programmeId}/subjects`);
+}

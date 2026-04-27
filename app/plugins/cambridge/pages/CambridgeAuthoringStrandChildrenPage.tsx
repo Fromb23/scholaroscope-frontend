@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { PermissionGuard } from '@/app/core/guards/PermissionGuard';
 import { TenantGuard } from '@/app/core/guards/TenantGuard';
@@ -11,23 +11,20 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { Select } from '@/app/components/ui/Select';
 import {
   useCatalogueFramework,
-  useCatalogueObjectives,
   useCatalogueProgramme,
   useCatalogueStrand,
   useCatalogueSubjectProfile,
   useCatalogueSubstrands,
-  useCreateCatalogueObjective,
   useCreateCatalogueSubstrand,
-  useDeleteCatalogueObjective,
   useDeleteCatalogueSubstrand,
-  useUpdateCatalogueObjective,
   useUpdateCatalogueSubstrand,
 } from '../hooks';
+import { CambridgeConfirmModal, CambridgeFormModal } from '../components/CambridgeAuthoringModals';
 import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/CambridgeNavigation';
-import { mutationErrorMessage, nextSortOrder, toPositiveNumber } from './authoringUtils';
+import type { CambridgeCatalogueSubstrand } from '../types';
+import { mutationErrorMessage, toPositiveNumber } from './authoringUtils';
 
 export default function CambridgeAuthoringStrandChildrenPage() {
   const params = useParams<{ strandId: string }>();
@@ -37,47 +34,29 @@ export default function CambridgeAuthoringStrandChildrenPage() {
   const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [substrandForm, setSubstrandForm] = useState({
-    code: '',
-    name: '',
-    sort_order: '',
-  });
-  const [objectiveForm, setObjectiveForm] = useState({
-    substrand: '',
-    stage_number: '1',
-    objective_code: '',
-    statement: '',
-    sort_order: '',
-  });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingSubstrand, setEditingSubstrand] = useState<CambridgeCatalogueSubstrand | null>(null);
+  const [deletingSubstrand, setDeletingSubstrand] = useState<CambridgeCatalogueSubstrand | null>(null);
+  const [substrandName, setSubstrandName] = useState('');
+  const [editName, setEditName] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const { data: strand, isLoading: strandLoading, error: strandError } = useCatalogueStrand(strandId);
   const { data: framework } = useCatalogueFramework(strand?.framework ?? null);
   const { data: subjectProfile } = useCatalogueSubjectProfile(framework?.subject_profile ?? null);
   const { data: programme } = useCatalogueProgramme(subjectProfile?.programme ?? null);
-
   const {
     data: substrands = [],
     isLoading: substrandsLoading,
     error: substrandsError,
   } = useCatalogueSubstrands({ strand: strandId ?? undefined });
-  const {
-    data: objectives = [],
-    isLoading: objectivesLoading,
-    error: objectivesError,
-  } = useCatalogueObjectives({ strand: strandId ?? undefined });
 
   const createSubstrandMutation = useCreateCatalogueSubstrand();
   const updateSubstrandMutation = useUpdateCatalogueSubstrand();
   const deleteSubstrandMutation = useDeleteCatalogueSubstrand();
-  const createObjectiveMutation = useCreateCatalogueObjective();
-  const updateObjectiveMutation = useUpdateCatalogueObjective();
-  const deleteObjectiveMutation = useDeleteCatalogueObjective();
 
-  const loading = strandLoading || substrandsLoading || objectivesLoading;
-  const hasError = strandError || substrandsError || objectivesError;
-
-  const suggestedSubstrandSort = useMemo(() => nextSortOrder(substrands), [substrands]);
-  const suggestedObjectiveSort = useMemo(() => nextSortOrder(objectives), [objectives]);
+  const loading = strandLoading || substrandsLoading;
+  const hasError = strandError || substrandsError;
 
   async function runAction(action: () => Promise<void>) {
     setActionError(null);
@@ -86,6 +65,41 @@ export default function CambridgeAuthoringStrandChildrenPage() {
     } catch (err) {
       setActionError(mutationErrorMessage(err));
     }
+  }
+
+  function closeCreateModal() {
+    setCreateModalOpen(false);
+    setSubstrandName('');
+    setFormErrors({});
+    setActionError(null);
+  }
+
+  function openEditModal(substrand: CambridgeCatalogueSubstrand) {
+    setEditingSubstrand(substrand);
+    setEditName(substrand.name);
+    setFormErrors({});
+    setActionError(null);
+  }
+
+  function closeEditModal() {
+    setEditingSubstrand(null);
+    setEditName('');
+    setFormErrors({});
+    setActionError(null);
+  }
+
+  function validateCreateForm() {
+    const nextErrors: Record<string, string> = {};
+    if (!substrandName.trim()) nextErrors.name = 'Substrand name is required.';
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+
+  function validateEditForm() {
+    const nextErrors: Record<string, string> = {};
+    if (!editName.trim()) nextErrors.edit_name = 'Substrand name is required.';
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   }
 
   return (
@@ -108,30 +122,33 @@ export default function CambridgeAuthoringStrandChildrenPage() {
                 ? { label: framework.version_label, href: `/cambridge/authoring/frameworks/${framework.id}/strands` }
                 : { label: 'Framework' },
               { label: strand?.name ?? 'Strand' },
-              { label: 'Children' },
+              { label: 'Substrands' },
             ]}
           />
 
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Strand Children</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Substrand Authoring</h1>
               <p className="mt-1 text-sm text-gray-500">
-                Step 5: author substrands and objectives under the selected strand.
+                Step 5: select a strand, then manage its substrands.
               </p>
             </div>
-            {framework?.id ? (
-              <Link
-                href={`/cambridge/authoring/frameworks/${framework.id}/strands`}
-                className="text-sm text-blue-600 hover:text-blue-700"
-              >
-                Back to Strands
-              </Link>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {isAdmin && strand ? <Button onClick={() => setCreateModalOpen(true)}>Create Substrand</Button> : null}
+              {framework?.id ? (
+                <Link
+                  href={`/cambridge/authoring/frameworks/${framework.id}/strands`}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  Back to Strands
+                </Link>
+              ) : null}
+            </div>
           </div>
 
-          {loading ? <LoadingSpinner fullScreen={false} message="Loading strand children..." /> : null}
+          {loading ? <LoadingSpinner fullScreen={false} message="Loading substrands..." /> : null}
           {hasError && errorVisible ? (
-            <ErrorBanner message="Failed to load strand child authoring data." onDismiss={() => setErrorVisible(false)} />
+            <ErrorBanner message="Failed to load substrand authoring data." onDismiss={() => setErrorVisible(false)} />
           ) : null}
           {actionError ? <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} /> : null}
 
@@ -139,7 +156,7 @@ export default function CambridgeAuthoringStrandChildrenPage() {
             <Card>
               <h2 className="font-semibold text-gray-900">Strand not found</h2>
               <p className="mt-2 text-sm text-gray-600">
-                Select a strand from framework authoring before creating child nodes.
+                Select a strand from framework authoring before creating substrands.
               </p>
             </Card>
           ) : null}
@@ -147,7 +164,9 @@ export default function CambridgeAuthoringStrandChildrenPage() {
           {!loading && strand ? (
             <Card>
               <h2 className="font-semibold text-gray-900">{strand.name}</h2>
-              <p className="mt-1 text-sm text-gray-600">{strand.code}</p>
+              <p className="mt-1 text-sm text-gray-600">
+                {strand.code} · Sort {strand.sort_order}
+              </p>
             </Card>
           ) : null}
 
@@ -156,8 +175,8 @@ export default function CambridgeAuthoringStrandChildrenPage() {
               <h2 className="font-semibold text-gray-900">Substrands</h2>
               {substrands.length === 0 ? (
                 <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-4">
-                  <p className="text-sm text-gray-600">No substrands found.</p>
-                  <p className="mt-1 text-sm text-gray-500">Next action: create a substrand.</p>
+                  <p className="text-sm text-gray-600">No substrands found for this strand.</p>
+                  <p className="mt-1 text-sm text-gray-500">Next action: create the first substrand.</p>
                 </div>
               ) : (
                 <ul className="mt-4 space-y-3">
@@ -170,162 +189,37 @@ export default function CambridgeAuthoringStrandChildrenPage() {
                             {substrand.code} · Sort {substrand.sort_order}
                           </p>
                         </div>
-                        {isAdmin ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={updateSubstrandMutation.isPending}
-                              onClick={() => {
-                                const nextName = window.prompt('Substrand name', substrand.name);
-                                if (!nextName) return;
-                                runAction(async () => {
-                                  await updateSubstrandMutation.mutateAsync({
-                                    id: substrand.id,
-                                    payload: { name: nextName.trim() },
-                                  });
-                                });
-                              }}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              disabled={deleteSubstrandMutation.isPending}
-                              onClick={() => {
-                                if (!window.confirm(`Delete substrand "${substrand.name}"?`)) return;
-                                runAction(async () => {
-                                  await deleteSubstrandMutation.mutateAsync(substrand.id);
-                                });
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          ) : null}
-
-          {isAdmin && strand ? (
-            <Card>
-              <details>
-                <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
-                  Create Substrand
-                </summary>
-                <form
-                  className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3"
-                  onSubmit={(event: FormEvent) => {
-                    event.preventDefault();
-                    if (!strandId) return;
-                    runAction(async () => {
-                      await createSubstrandMutation.mutateAsync({
-                        strand: strandId,
-                        code: substrandForm.code.trim(),
-                        name: substrandForm.name.trim(),
-                        sort_order: toPositiveNumber(substrandForm.sort_order) ?? suggestedSubstrandSort,
-                      });
-                      setSubstrandForm({ code: '', name: '', sort_order: '' });
-                    });
-                  }}
-                >
-                  <Input
-                    label="Substrand Code"
-                    value={substrandForm.code}
-                    required
-                    onChange={(event) =>
-                      setSubstrandForm((prev) => ({ ...prev, code: event.target.value.toUpperCase() }))
-                    }
-                  />
-                  <Input
-                    label="Substrand Name"
-                    value={substrandForm.name}
-                    required
-                    onChange={(event) => setSubstrandForm((prev) => ({ ...prev, name: event.target.value }))}
-                  />
-                  <Input
-                    label={`Sort Order (default ${suggestedSubstrandSort})`}
-                    value={substrandForm.sort_order}
-                    onChange={(event) => setSubstrandForm((prev) => ({ ...prev, sort_order: event.target.value }))}
-                  />
-                  <div className="md:col-span-3">
-                    <Button
-                      type="submit"
-                      disabled={
-                        createSubstrandMutation.isPending ||
-                        !substrandForm.code.trim() ||
-                        !substrandForm.name.trim()
-                      }
-                    >
-                      {createSubstrandMutation.isPending ? 'Creating...' : 'Create Substrand'}
-                    </Button>
-                  </div>
-                </form>
-              </details>
-            </Card>
-          ) : null}
-
-          {!loading && strand ? (
-            <Card>
-              <h2 className="font-semibold text-gray-900">Objectives</h2>
-              {objectives.length === 0 ? (
-                <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-4">
-                  <p className="text-sm text-gray-600">No objectives found under this strand.</p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Next action: create an objective after selecting a substrand.
-                  </p>
-                </div>
-              ) : (
-                <ul className="mt-4 space-y-3">
-                  {objectives.map((objective) => (
-                    <li key={objective.id} className="rounded-lg border border-gray-200 p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">{objective.objective_code}</p>
-                          <p className="text-sm text-gray-700">{objective.statement}</p>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Stage {objective.stage_number} · Sort {objective.sort_order}
-                          </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/cambridge/authoring/substrands/${substrand.id}/objectives`}
+                            className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                          >
+                            Manage Objectives
+                          </Link>
+                          {isAdmin ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={updateSubstrandMutation.isPending}
+                                onClick={() => openEditModal(substrand)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                disabled={deleteSubstrandMutation.isPending}
+                                onClick={() => {
+                                  setDeletingSubstrand(substrand);
+                                  setActionError(null);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          ) : null}
                         </div>
-                        {isAdmin ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={updateObjectiveMutation.isPending}
-                              onClick={() => {
-                                const nextStatement = window.prompt('Objective statement', objective.statement);
-                                if (!nextStatement) return;
-                                runAction(async () => {
-                                  await updateObjectiveMutation.mutateAsync({
-                                    id: objective.id,
-                                    payload: { statement: nextStatement.trim() },
-                                  });
-                                });
-                              }}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              disabled={deleteObjectiveMutation.isPending}
-                              onClick={() => {
-                                if (!window.confirm(`Delete objective "${objective.objective_code}"?`)) return;
-                                runAction(async () => {
-                                  await deleteObjectiveMutation.mutateAsync(objective.id);
-                                });
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        ) : null}
                       </div>
                     </li>
                   ))}
@@ -334,102 +228,87 @@ export default function CambridgeAuthoringStrandChildrenPage() {
             </Card>
           ) : null}
 
-          {isAdmin && strand ? (
-            <Card>
-              <details>
-                <summary className="cursor-pointer select-none text-sm font-medium text-gray-800">
-                  Create Objective
-                </summary>
-                {substrands.length === 0 ? (
-                  <p className="mt-4 text-sm text-gray-600">
-                    Create a substrand first. Objectives must be linked to a parent substrand.
-                  </p>
-                ) : (
-                  <form
-                    className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2"
-                    onSubmit={(event: FormEvent) => {
-                      event.preventDefault();
-                      if (!strandId) return;
-                      const substrandId = toPositiveNumber(objectiveForm.substrand);
-                      if (!substrandId) {
-                        setActionError('Select a substrand before creating an objective.');
-                        return;
-                      }
-                      runAction(async () => {
-                        await createObjectiveMutation.mutateAsync({
-                          strand: strandId,
-                          substrand: substrandId,
-                          stage_number: Number(objectiveForm.stage_number),
-                          objective_code: objectiveForm.objective_code.trim(),
-                          statement: objectiveForm.statement.trim(),
-                          sort_order: toPositiveNumber(objectiveForm.sort_order) ?? suggestedObjectiveSort,
-                        });
-                        setObjectiveForm({
-                          substrand: '',
-                          stage_number: '1',
-                          objective_code: '',
-                          statement: '',
-                          sort_order: '',
-                        });
-                      });
-                    }}
-                  >
-                    <Select
-                      label="Substrand"
-                      value={objectiveForm.substrand}
-                      options={[
-                        { value: '', label: 'Select substrand' },
-                        ...substrands.map((substrand) => ({
-                          value: substrand.id,
-                          label: `${substrand.code} · ${substrand.name}`,
-                        })),
-                      ]}
-                      onChange={(event) => setObjectiveForm((prev) => ({ ...prev, substrand: event.target.value }))}
-                    />
-                    <Input
-                      label="Stage Number"
-                      value={objectiveForm.stage_number}
-                      required
-                      onChange={(event) => setObjectiveForm((prev) => ({ ...prev, stage_number: event.target.value }))}
-                    />
-                    <Input
-                      label="Objective Code"
-                      value={objectiveForm.objective_code}
-                      required
-                      onChange={(event) =>
-                        setObjectiveForm((prev) => ({ ...prev, objective_code: event.target.value.toUpperCase() }))
-                      }
-                    />
-                    <Input
-                      label="Statement"
-                      value={objectiveForm.statement}
-                      required
-                      onChange={(event) => setObjectiveForm((prev) => ({ ...prev, statement: event.target.value }))}
-                    />
-                    <Input
-                      label={`Sort Order (default ${suggestedObjectiveSort})`}
-                      value={objectiveForm.sort_order}
-                      onChange={(event) => setObjectiveForm((prev) => ({ ...prev, sort_order: event.target.value }))}
-                    />
-                    <div className="md:col-span-2">
-                      <Button
-                        type="submit"
-                        disabled={
-                          createObjectiveMutation.isPending ||
-                          !objectiveForm.substrand ||
-                          !objectiveForm.stage_number.trim() ||
-                          !objectiveForm.objective_code.trim() ||
-                          !objectiveForm.statement.trim()
-                        }
-                      >
-                        {createObjectiveMutation.isPending ? 'Creating...' : 'Create Objective'}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </details>
-            </Card>
-          ) : null}
+          <CambridgeFormModal
+            isOpen={createModalOpen}
+            onClose={closeCreateModal}
+            title="Create Substrand"
+            description="Code and sort order are generated automatically from the selected parent strand."
+            submitLabel="Create Substrand"
+            submitting={createSubstrandMutation.isPending}
+            errorMessage={actionError}
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              if (!strandId || !validateCreateForm()) return;
+              runAction(async () => {
+                await createSubstrandMutation.mutateAsync({
+                  strandId,
+                  payload: {
+                    name: substrandName.trim(),
+                  },
+                });
+                closeCreateModal();
+              });
+            }}
+          >
+            <Input
+              label="Substrand Name"
+              value={substrandName}
+              error={formErrors.name}
+              onChange={(event) => setSubstrandName(event.target.value)}
+            />
+          </CambridgeFormModal>
+
+          <CambridgeFormModal
+            isOpen={Boolean(editingSubstrand)}
+            onClose={closeEditModal}
+            title="Edit Substrand"
+            description="Update the substrand display name."
+            submitLabel="Save Changes"
+            submitting={updateSubstrandMutation.isPending}
+            errorMessage={actionError}
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              if (!editingSubstrand || !validateEditForm()) return;
+              runAction(async () => {
+                await updateSubstrandMutation.mutateAsync({
+                  id: editingSubstrand.id,
+                  payload: { name: editName.trim() },
+                });
+                closeEditModal();
+              });
+            }}
+          >
+            <Input
+              label="Substrand Name"
+              value={editName}
+              error={formErrors.edit_name}
+              onChange={(event) => setEditName(event.target.value)}
+            />
+          </CambridgeFormModal>
+
+          <CambridgeConfirmModal
+            isOpen={Boolean(deletingSubstrand)}
+            onClose={() => {
+              setDeletingSubstrand(null);
+              setActionError(null);
+            }}
+            title="Delete Substrand"
+            message={
+              deletingSubstrand
+                ? `Delete substrand "${deletingSubstrand.name}"? This action cannot be undone.`
+                : ''
+            }
+            confirmLabel="Delete Substrand"
+            confirming={deleteSubstrandMutation.isPending}
+            onConfirm={() => {
+              if (!deletingSubstrand) return;
+              runAction(async () => {
+                await deleteSubstrandMutation.mutateAsync(deletingSubstrand.id);
+                setDeletingSubstrand(null);
+                setActionError(null);
+              });
+            }}
+          />
         </div>
       </PermissionGuard>
     </TenantGuard>

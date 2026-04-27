@@ -8,20 +8,48 @@ export interface CambridgeBreadcrumbSegment {
   href?: string;
 }
 
-const CAMBRIDGE_NAV_ITEMS = [
-  { href: '/cambridge', label: 'Dashboard' },
-  { href: '/cambridge/setup', label: 'Setup' },
-  { href: '/cambridge/authoring/programmes', label: 'Authoring' },
-  { href: '/cambridge/progress', label: 'Progress' },
+type CambridgeNavSection = 'dashboard' | 'authoring' | 'setup' | 'subjects' | 'progress';
+
+const CAMBRIDGE_NAV_ITEMS: Array<{ href: string; label: string; section: CambridgeNavSection }> = [
+  { href: '/cambridge', label: 'Dashboard', section: 'dashboard' },
+  { href: '/cambridge/authoring/programmes', label: 'Authoring', section: 'authoring' },
+  { href: '/cambridge/setup', label: 'Setup', section: 'setup' },
+  { href: '/cambridge/subjects', label: 'Subjects', section: 'subjects' },
+  { href: '/cambridge/progress', label: 'Progress', section: 'progress' },
 ] as const;
+
+function activeSectionForPath(pathname: string): CambridgeNavSection | null {
+  if (pathname === '/cambridge' || pathname === '/cambridge/dashboard') {
+    return 'dashboard';
+  }
+  if (pathname.startsWith('/cambridge/authoring')) {
+    return 'authoring';
+  }
+  if (
+    pathname.startsWith('/cambridge/setup') ||
+    pathname.startsWith('/cambridge/programmes') ||
+    pathname.startsWith('/cambridge/frameworks') ||
+    pathname.startsWith('/cambridge/syllabuses')
+  ) {
+    return 'setup';
+  }
+  if (pathname.startsWith('/cambridge/subjects') || pathname.startsWith('/cambridge/offerings')) {
+    return 'subjects';
+  }
+  if (pathname.startsWith('/cambridge/progress')) {
+    return 'progress';
+  }
+  return null;
+}
 
 export function CambridgeWorkflowNav() {
   const pathname = usePathname();
+  const activeSection = activeSectionForPath(pathname);
 
   return (
     <nav className="flex flex-wrap gap-2 rounded-xl border border-gray-200 bg-white p-2">
       {CAMBRIDGE_NAV_ITEMS.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = activeSection === item.section;
         return (
           <Link
             key={item.href}

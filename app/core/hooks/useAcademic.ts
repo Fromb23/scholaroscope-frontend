@@ -388,12 +388,15 @@ export const useCohorts = (filters?: CohortFilters) => {
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
 
-  const filtersKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
+  const resolvedFilters = useMemo(() => ({
+    ...(filters ?? {}),
+    organization: organizationId || undefined,
+  }), [filters, organizationId]);
 
   const fetchCohorts = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await cohortAPI.getAll({ ...filters, organization: organizationId || undefined });
+      const data = await cohortAPI.getAll(resolvedFilters);
       setCohorts(Array.isArray(data) ? data : (data as { results?: Cohort[] })?.results ?? []);
       setError(null);
     } catch (err) {
@@ -401,9 +404,9 @@ export const useCohorts = (filters?: CohortFilters) => {
     } finally {
       setLoading(false);
     }
-  }, [filters, organizationId]);
+  }, [resolvedFilters]);
 
-  useEffect(() => { fetchCohorts(); }, [fetchCohorts, filtersKey, organizationId]);
+  useEffect(() => { fetchCohorts(); }, [fetchCohorts]);
 
   const createCohort = async (data: {
     curriculum: number;

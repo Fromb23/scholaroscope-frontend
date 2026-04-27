@@ -6,6 +6,7 @@
 
 import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { PermissionGuard } from '@/app/core/guards/PermissionGuard';
 import { TenantGuard } from '@/app/core/guards/TenantGuard';
 import { Card } from '@/app/components/ui/Card';
@@ -15,12 +16,14 @@ import {
   useCambridgeAssessmentUnits,
   useCambridgeBrowserSubjects,
   useCambridgeLearningUnits,
+  useCambridgeProgrammes,
   useCambridgeProgressDetail,
   useCambridgeSubject,
 } from '../hooks';
 import { LearningTree } from '../components/LearningTree';
 import { AssessmentComponentList } from '../components/AssessmentComponentList';
 import { ProgressCard } from '../components/ProgressCard';
+import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/CambridgeNavigation';
 
 export default function CambridgeSubjectDetailPage() {
   const params = useParams();
@@ -32,6 +35,7 @@ export default function CambridgeSubjectDetailPage() {
     isLoading: installationSubjectLoading,
     error: installationSubjectError,
   } = useCambridgeSubject(subjectId);
+  const { data: programmes = [] } = useCambridgeProgrammes();
   const {
     data: normalizedSubjects = [],
     isLoading: normalizedSubjectsLoading,
@@ -42,6 +46,10 @@ export default function CambridgeSubjectDetailPage() {
     if (!installationSubject) return null;
     return normalizedSubjects.find((item) => item.subject_id === installationSubject.subject_id) ?? null;
   }, [installationSubject, normalizedSubjects]);
+  const programme = useMemo(
+    () => programmes.find((item) => item.code === installationSubject?.programme_code) ?? null,
+    [installationSubject?.programme_code, programmes]
+  );
 
   const normalizedSubjectId = normalizedSubject?.id ?? null;
 
@@ -69,6 +77,18 @@ export default function CambridgeSubjectDetailPage() {
     <TenantGuard>
       <PermissionGuard allowedRoles={['ADMIN', 'INSTRUCTOR']}>
         <div className="space-y-6">
+          <CambridgeWorkflowNav />
+          <CambridgeBreadcrumb
+            segments={[
+              { label: 'Cambridge', href: '/cambridge' },
+              { label: 'Setup', href: '/cambridge/setup' },
+              programme?.id
+                ? { label: programme.title, href: `/cambridge/setup/programmes/${programme.id}/subjects` }
+                : { label: installationSubject?.programme_code ?? 'Programme' },
+              { label: installationSubject?.display_name ?? 'Subject' },
+            ]}
+          />
+
           {loading ? <LoadingSpinner fullScreen={false} message="Loading Cambridge subject..." /> : null}
 
           {hasError && errorVisible ? (
@@ -90,11 +110,23 @@ export default function CambridgeSubjectDetailPage() {
           {!loading && installationSubject ? (
             <>
               <Card>
-                <h1 className="text-xl font-semibold text-gray-900">{installationSubject.display_name}</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {installationSubject.subject_code ?? 'No code'} · {installationSubject.programme_code ?? 'No programme'} ·{' '}
-                  {installationSubject.structure_mode ?? 'Unknown structure'}
-                </p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h1 className="text-xl font-semibold text-gray-900">{installationSubject.display_name}</h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {installationSubject.subject_code ?? 'No code'} · {installationSubject.programme_code ?? 'No programme'} ·{' '}
+                      {installationSubject.structure_mode ?? 'Unknown structure'}
+                    </p>
+                  </div>
+                  {programme?.id ? (
+                    <Link
+                      href={`/cambridge/setup/programmes/${programme.id}/subjects`}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Back to Programme Subjects
+                    </Link>
+                  ) : null}
+                </div>
                 <p className="text-sm mt-2">
                   Status:{' '}
                   <span className={installationSubject.enabled ? 'text-green-700' : 'text-gray-500'}>

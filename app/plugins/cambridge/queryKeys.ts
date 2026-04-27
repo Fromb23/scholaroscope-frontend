@@ -16,6 +16,7 @@ export const queryKeys = {
     all: ['cambridge', 'programmes'] as const,
     list: ['cambridge', 'programmes', 'list'] as const,
     detail: (id: number) => ['cambridge', 'programmes', 'detail', id] as const,
+    subjects: (id: number) => ['cambridge', 'programmes', 'subjects', id] as const,
   },
 
   subjects: {
@@ -60,6 +61,19 @@ export const queryKeys = {
     list: ['cambridge', 'progress', 'list'] as const,
     detail: (normalizedSubjectId: number) =>
       ['cambridge', 'progress', 'detail', { normalizedSubjectId }] as const,
+  },
+
+  offerings: {
+    all: ['cambridge', 'offerings'] as const,
+    list: (filter?: Record<string, unknown>) => ['cambridge', 'offerings', 'list', filter ?? {}] as const,
+    detail: (id: number) => ['cambridge', 'offerings', 'detail', id] as const,
+    cohorts: (id: number) => ['cambridge', 'offerings', 'cohorts', id] as const,
+  },
+
+  cohortSubjects: {
+    all: ['cambridge', 'cohort-subjects'] as const,
+    list: (filter?: Record<string, unknown>) => ['cambridge', 'cohort-subjects', 'list', filter ?? {}] as const,
+    detail: (id: number) => ['cambridge', 'cohort-subjects', 'detail', id] as const,
   },
 
   catalogue: {

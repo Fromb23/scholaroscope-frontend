@@ -1,0 +1,3 @@
+import CambridgeInstallationSyllabusComponentsPage from '@/app/plugins/cambridge/pages/CambridgeInstallationSyllabusComponentsPage';
+
+export default CambridgeInstallationSyllabusComponentsPage;

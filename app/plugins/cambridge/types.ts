@@ -26,11 +26,93 @@ export interface CambridgeInstallation {
 
 export interface CambridgeInstallationProgramme {
   id: number;
+  programme_id: number;
   code: string;
   title: string;
   structure_mode: string;
   display_stage_range: string;
   enabled: boolean;
+}
+
+export interface CambridgeFrameworkVersionSummary {
+  id: number;
+  version_label: string;
+  effective_from: number;
+  effective_to: number | null;
+  is_current: boolean;
+}
+
+export interface CambridgeSyllabusVersionSummary {
+  id: number;
+  title: string;
+  version_label: string;
+  valid_from_year: number;
+  valid_to_year: number | null;
+  is_current: boolean;
+}
+
+export interface CambridgeSubjectOffering {
+  id: number;
+  installation_programme_id: number;
+  programme_id: number;
+  programme_code: string;
+  programme_title: string;
+  subject_profile_id: number;
+  subject_title: string;
+  subject_code: string;
+  structure_mode: string;
+  active_framework: CambridgeFrameworkVersionSummary | null;
+  active_syllabus: CambridgeSyllabusVersionSummary | null;
+  is_active: boolean;
+}
+
+export interface CambridgeAvailableSubjectProfile {
+  id: number;
+  title: string;
+  subject_code: string;
+  structure_mode: string;
+  frameworks: CambridgeFrameworkVersionSummary[];
+  syllabuses: CambridgeSyllabusVersionSummary[];
+  offered_subject_id: number | null;
+  active_framework: CambridgeFrameworkVersionSummary | null;
+  active_syllabus: CambridgeSyllabusVersionSummary | null;
+}
+
+export interface CambridgeProgrammeSubjectsResponse {
+  programme: CambridgeInstallationProgramme;
+  available_subjects: CambridgeAvailableSubjectProfile[];
+  offered_subjects: CambridgeSubjectOffering[];
+}
+
+export interface CambridgeSubjectOfferingCreatePayload {
+  subject_profile: number;
+  active_framework?: number | null;
+  active_syllabus?: number | null;
+}
+
+export interface CambridgeSubjectOfferingUpdatePayload {
+  active_framework?: number | null;
+  active_syllabus?: number | null;
+  is_active?: boolean;
+}
+
+export interface CambridgeCohortSubject {
+  id: number;
+  cohort: number;
+  cohort_name: string;
+  cohort_level: string;
+  offering_id: number;
+  programme_code: string;
+  subject_title: string;
+  subject_code: string;
+  structure_mode: string;
+  active_framework: CambridgeFrameworkVersionSummary | null;
+  active_syllabus: CambridgeSyllabusVersionSummary | null;
+  is_active: boolean;
+}
+
+export interface CambridgeAssignOfferingToCohortPayload {
+  cohort: number;
 }
 
 export interface CambridgeInstallationSubject {
@@ -266,10 +348,7 @@ export interface CambridgeCatalogueSubstrand {
 }
 
 export interface CambridgeCatalogueSubstrandCreatePayload {
-  strand: number;
-  code: string;
   name: string;
-  sort_order?: number;
 }
 
 export interface CambridgeCatalogueLearningObjective {
@@ -284,12 +363,8 @@ export interface CambridgeCatalogueLearningObjective {
 }
 
 export interface CambridgeCatalogueLearningObjectiveCreatePayload {
-  strand: number;
-  substrand: number;
   stage_number: number;
-  objective_code: string;
   statement: string;
-  sort_order?: number;
   metadata_json?: Record<string, unknown>;
 }
 

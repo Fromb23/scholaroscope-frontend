@@ -1,3 +1,10 @@
-import CambridgeInstallationSubjectSyllabusesPage from '@/app/plugins/cambridge/pages/CambridgeInstallationSubjectSyllabusesPage';
+import { redirect } from 'next/navigation';
 
-export default CambridgeInstallationSubjectSyllabusesPage;
+export default async function CambridgeSubjectSyllabusesRedirect({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  redirect(`/cambridge/setup/subjects/${id}/syllabuses`);
+}

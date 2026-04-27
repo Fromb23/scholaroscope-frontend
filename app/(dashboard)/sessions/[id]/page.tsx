@@ -169,7 +169,7 @@ export default function SessionDetailPage() {
             {/* rest unchanged */}
             <ParticipatingCohorts
                 sessionId={sessionId}
-                sessionSubjectId={session.cohort_subject}
+                sessionSubjectId={session.cohort_subject ?? undefined}
                 primaryCohortId={session.cohort_id}
                 isHistorical={isHistorical}
             />
@@ -197,7 +197,7 @@ export default function SessionDetailPage() {
                 </div>
             </Card>
 
-            {!isCBC && session.cohort_subject && (
+            {!isCBC && session.cohort_subject && session.subject_id && (
                 <Card>
                     <div className="p-5">
                         <div className="flex items-center justify-between mb-4">

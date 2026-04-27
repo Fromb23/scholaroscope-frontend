@@ -157,8 +157,8 @@ export function getAdminNav(
                 icon: BookOpen,
                 children: [
                     { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
-                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
                     { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
+                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
                     { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
                     { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
                 ],
@@ -227,8 +227,8 @@ export function getInstructorNav(
                 icon: BookOpen,
                 children: [
                     { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
-                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
                     { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
+                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
                     { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
                     { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
                 ],

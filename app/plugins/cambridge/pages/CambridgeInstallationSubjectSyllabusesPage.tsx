@@ -55,7 +55,7 @@ export default function CambridgeInstallationSubjectSyllabusesPage() {
               { label: 'Cambridge', href: '/cambridge' },
               { label: 'Setup', href: '/cambridge/setup' },
               programme?.id
-                ? { label: programme.title, href: `/cambridge/programmes/${programme.id}/subjects` }
+                ? { label: programme.title, href: `/cambridge/setup/programmes/${programme.id}/subjects` }
                 : { label: subject?.programme_code ?? 'Programme' },
               { label: subject?.display_name ?? 'Subject' },
               { label: 'Syllabuses' },
@@ -71,7 +71,7 @@ export default function CambridgeInstallationSubjectSyllabusesPage() {
             </div>
             {programme?.id ? (
               <Link
-                href={`/cambridge/programmes/${programme.id}/subjects`}
+                href={`/cambridge/setup/programmes/${programme.id}/subjects`}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
                 Back to Programme Subjects
@@ -100,7 +100,7 @@ export default function CambridgeInstallationSubjectSyllabusesPage() {
                 This subject uses a framework structure, not syllabuses.
               </p>
               <Link
-                href={`/cambridge/subjects/${subject.id}/frameworks`}
+                href={`/cambridge/setup/subjects/${subject.id}/frameworks`}
                 className="mt-3 inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
               >
                 Manage Frameworks
@@ -137,7 +137,7 @@ export default function CambridgeInstallationSubjectSyllabusesPage() {
                           </p>
                         </div>
                         <Link
-                          href={`/cambridge/syllabuses/${syllabus.id}/components`}
+                          href={`/cambridge/setup/syllabuses/${syllabus.id}/components`}
                           className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
                         >
                           Manage Components

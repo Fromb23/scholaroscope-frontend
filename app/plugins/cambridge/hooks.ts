@@ -18,9 +18,11 @@ import {
   catalogueSubjectProfileAPI,
   catalogueSubstrandAPI,
   catalogueSyllabusAPI,
+  cohortSubjectAPI,
   installationAPI,
   inspectionFrameworkAPI,
   inspectionSyllabusAPI,
+  offeringAPI,
   programmeAPI,
   progressAPI,
   subjectAPI,
@@ -48,6 +50,9 @@ import type {
   CambridgeCatalogueSyllabusCreatePayload,
   CambridgeCatalogueSyllabusContentArea,
   CambridgeCatalogueSyllabusContentAreaCreatePayload,
+  CambridgeSubjectOffering,
+  CambridgeSubjectOfferingCreatePayload,
+  CambridgeSubjectOfferingUpdatePayload,
   CambridgeRenameSubjectPayload,
 } from './types';
 
@@ -55,6 +60,8 @@ function invalidateInstallationSurface(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: queryKeys.installation.status });
   qc.invalidateQueries({ queryKey: queryKeys.programmes.list });
   qc.invalidateQueries({ queryKey: queryKeys.subjects.list });
+  qc.invalidateQueries({ queryKey: queryKeys.offerings.all });
+  qc.invalidateQueries({ queryKey: queryKeys.cohortSubjects.all });
   qc.invalidateQueries({ queryKey: queryKeys.browser.list });
   qc.invalidateQueries({ queryKey: queryKeys.progress.list });
 }
@@ -97,6 +104,28 @@ export function useCambridgeProgrammes() {
   });
 }
 
+export function useCambridgeProgrammeSubjects(programmeId: number | null) {
+  return useQuery({
+    queryKey: queryKeys.programmes.subjects(programmeId ?? 0),
+    queryFn: () => programmeAPI.getSubjects(programmeId as number),
+    enabled: typeof programmeId === 'number' && programmeId > 0,
+  });
+}
+
+export function useCreateCambridgeSubjectOffering(programmeId: number | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CambridgeSubjectOfferingCreatePayload) =>
+      programmeAPI.offerSubject(programmeId as number, payload),
+    onSuccess: () => {
+      if (programmeId) {
+        qc.invalidateQueries({ queryKey: queryKeys.programmes.subjects(programmeId) });
+      }
+      invalidateInstallationSurface(qc);
+    },
+  });
+}
+
 export function useEnableCambridgeProgramme() {
   const qc = useQueryClient();
   return useMutation({
@@ -133,6 +162,91 @@ export function useCambridgeSubject(id: number | null) {
     queryKey: queryKeys.subjects.detail(id ?? 0),
     queryFn: () => subjectAPI.getById(id as number),
     enabled: typeof id === 'number' && id > 0,
+  });
+}
+
+export function useCambridgeOfferings(filter?: {
+  installation_programme?: number;
+  subject_profile?: number;
+  cohort?: number;
+  active?: boolean;
+}) {
+  return useQuery({
+    queryKey: queryKeys.offerings.list(filter),
+    queryFn: () => offeringAPI.list(filter),
+  });
+}
+
+export function useCambridgeOffering(id: number | null) {
+  return useQuery({
+    queryKey: queryKeys.offerings.detail(id ?? 0),
+    queryFn: () => offeringAPI.getById(id as number),
+    enabled: typeof id === 'number' && id > 0,
+  });
+}
+
+function invalidateOfferingQueries(
+  qc: ReturnType<typeof useQueryClient>,
+  offering: CambridgeSubjectOffering,
+) {
+  qc.invalidateQueries({ queryKey: queryKeys.offerings.all });
+  qc.invalidateQueries({ queryKey: queryKeys.offerings.detail(offering.id) });
+  qc.invalidateQueries({ queryKey: queryKeys.offerings.cohorts(offering.id) });
+  qc.invalidateQueries({ queryKey: queryKeys.cohortSubjects.all });
+  qc.invalidateQueries({ queryKey: queryKeys.programmes.subjects(offering.installation_programme_id) });
+  invalidateInstallationSurface(qc);
+}
+
+export function useUpdateCambridgeOffering() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: CambridgeSubjectOfferingUpdatePayload }) =>
+      offeringAPI.update(id, payload),
+    onSuccess: (offering) => invalidateOfferingQueries(qc, offering),
+  });
+}
+
+export function useAssignCambridgeOfferingToCohort() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ offeringId, cohort }: { offeringId: number; cohort: number }) =>
+      offeringAPI.assignCohort(offeringId, { cohort }),
+    onSuccess: (cohortSubject) => {
+      qc.invalidateQueries({ queryKey: queryKeys.offerings.cohorts(cohortSubject.offering_id) });
+      qc.invalidateQueries({ queryKey: queryKeys.cohortSubjects.all });
+      invalidateInstallationSurface(qc);
+    },
+  });
+}
+
+export function useCambridgeOfferingCohorts(offeringId: number | null, active?: boolean) {
+  return useQuery({
+    queryKey: queryKeys.offerings.cohorts(offeringId ?? 0),
+    queryFn: () => offeringAPI.listCohorts(offeringId as number, typeof active === 'boolean' ? { active } : undefined),
+    enabled: typeof offeringId === 'number' && offeringId > 0,
+  });
+}
+
+export function useCambridgeCohortSubjects(filter?: {
+  cohort?: number;
+  offering?: number;
+  active?: boolean;
+}) {
+  return useQuery({
+    queryKey: queryKeys.cohortSubjects.list(filter),
+    queryFn: () => cohortSubjectAPI.list(filter),
+  });
+}
+
+export function useDeactivateCambridgeCohortSubject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => cohortSubjectAPI.deactivate(id),
+    onSuccess: (cohortSubject) => {
+      qc.invalidateQueries({ queryKey: queryKeys.cohortSubjects.all });
+      qc.invalidateQueries({ queryKey: queryKeys.offerings.cohorts(cohortSubject.offering_id) });
+      invalidateInstallationSurface(qc);
+    },
   });
 }
 
@@ -471,11 +585,24 @@ export function useCatalogueSubstrands(filter?: CambridgeCatalogueListFilter) {
   });
 }
 
+export function useCatalogueSubstrand(id: number | null) {
+  return useQuery({
+    queryKey: queryKeys.catalogue.substrands.detail(id ?? 0),
+    queryFn: () => catalogueSubstrandAPI.getById(id as number),
+    enabled: typeof id === 'number' && id > 0,
+  });
+}
+
 export function useCreateCatalogueSubstrand() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CambridgeCatalogueSubstrandCreatePayload) =>
-      catalogueSubstrandAPI.create(payload),
+    mutationFn: ({
+      strandId,
+      payload,
+    }: {
+      strandId: number;
+      payload: CambridgeCatalogueSubstrandCreatePayload;
+    }) => catalogueSubstrandAPI.create(strandId, payload),
     onSuccess: (createdSubstrand) => {
       qc.invalidateQueries({ queryKey: queryKeys.catalogue.substrands.all });
       qc.invalidateQueries({ queryKey: queryKeys.catalogue.substrands.detail(createdSubstrand.id) });
@@ -516,11 +643,24 @@ export function useCatalogueObjectives(filter?: CambridgeCatalogueListFilter) {
   });
 }
 
+export function useCatalogueObjective(id: number | null) {
+  return useQuery({
+    queryKey: queryKeys.catalogue.objectives.detail(id ?? 0),
+    queryFn: () => catalogueObjectiveAPI.getById(id as number),
+    enabled: typeof id === 'number' && id > 0,
+  });
+}
+
 export function useCreateCatalogueObjective() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CambridgeCatalogueLearningObjectiveCreatePayload) =>
-      catalogueObjectiveAPI.create(payload),
+    mutationFn: ({
+      substrandId,
+      payload,
+    }: {
+      substrandId: number;
+      payload: CambridgeCatalogueLearningObjectiveCreatePayload;
+    }) => catalogueObjectiveAPI.create(substrandId, payload),
     onSuccess: (createdObjective) => {
       qc.invalidateQueries({ queryKey: queryKeys.catalogue.objectives.all });
       qc.invalidateQueries({ queryKey: queryKeys.catalogue.objectives.detail(createdObjective.id) });
