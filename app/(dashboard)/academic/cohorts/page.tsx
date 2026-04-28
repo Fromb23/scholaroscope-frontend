@@ -31,6 +31,12 @@ import type { Cohort, CurriculumType } from '@/app/core/types/academic';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useCambridgeOffering } from '@/app/plugins/cambridge/hooks';
+import {
+    CAMBRIDGE_BRIDGE_NAME,
+    getCurriculumBridgeName,
+    getCurriculumOptionLabel,
+    isCambridgeCurriculum,
+} from '@/app/core/lib/curriculumBridge';
 
 type CohortWithIndex = { [key: string]: unknown } & Cohort;
 
@@ -66,24 +72,27 @@ export default function CohortsPage() {
         if (selectedCurriculumId) {
             return curricula.find(c => c.id === selectedCurriculumId) ?? null;
         }
+        if (isCambridgeQuickAction) {
+            return curricula.find(c => c.is_active && isCambridgeCurriculum(c)) ?? null;
+        }
         if (!resolvedQuickActionCurriculumType) {
             return null;
         }
         return curricula.find(
             c => c.is_active && c.curriculum_type === resolvedQuickActionCurriculumType
         ) ?? null;
-    }, [curricula, resolvedQuickActionCurriculumType, selectedCurriculumId]);
+    }, [curricula, isCambridgeQuickAction, resolvedQuickActionCurriculumType, selectedCurriculumId]);
     const quickActionCurriculumName = useMemo(() => {
-        if (quickActionOffering?.programme_title) {
-            return quickActionOffering.programme_title;
+        if (isCambridgeQuickAction) {
+            return CAMBRIDGE_BRIDGE_NAME;
         }
         if (!resolvedQuickActionCurriculumType) {
-            return 'Cambridge Curriculum';
+            return CAMBRIDGE_BRIDGE_NAME;
         }
         return CURRICULUM_TYPE_OPTIONS.find(
             option => option.value === resolvedQuickActionCurriculumType
         )?.label ?? resolvedQuickActionCurriculumType;
-    }, [quickActionOffering?.programme_title, resolvedQuickActionCurriculumType]);
+    }, [isCambridgeQuickAction, resolvedQuickActionCurriculumType]);
     const [isProvisioningQuickActionCurriculum, setIsProvisioningQuickActionCurriculum] = useState(false);
 
     useEffect(() => {
@@ -125,9 +134,7 @@ export default function CohortsPage() {
                 const created = await createCurriculum({
                     name: quickActionCurriculumName,
                     curriculum_type: resolvedQuickActionCurriculumType as CurriculumType,
-                    description: quickActionOffering?.programme_title
-                        ? `${quickActionOffering.programme_title} quick-action curriculum`
-                        : '',
+                    description: '',
                     is_active: true,
                 });
                 if (!cancelled) {
@@ -160,7 +167,6 @@ export default function CohortsPage() {
         isProvisioningQuickActionCurriculum,
         quickActionCurriculum,
         quickActionCurriculumName,
-        quickActionOffering?.programme_title,
         quickActionOfferingLoading,
         resolvedQuickActionCurriculumType,
         selectedCurriculumId,
@@ -283,7 +289,11 @@ export default function CohortsPage() {
                 </span>
             ),
         },
-        { key: 'curriculum_name', header: 'Curriculum', render: c => <Badge variant="info">{c.curriculum_name}</Badge> },
+        {
+            key: 'curriculum_name',
+            header: 'Curriculum',
+            render: c => <Badge variant="info">{getCurriculumBridgeName(c)}</Badge>,
+        },
         { key: 'level', header: 'Level', sortable: true },
         { key: 'stream', header: 'Stream', render: c => <span className="text-gray-500">{c.stream || '—'}</span> },
         {
@@ -398,7 +408,7 @@ export default function CohortsPage() {
                                 .filter(c => c.is_active)
                                 .map(c => ({
                                     value: String(c.id),
-                                    label: `${c.name} · ${c.curriculum_type_display}`,
+                                    label: getCurriculumOptionLabel(c),
                                 })),
                         ]}
                     />
@@ -422,7 +432,7 @@ export default function CohortsPage() {
                             {isHistoricalView
                                 ? 'No cohorts exist for this academic year.'
                                 : selectedCurriculum
-                                    ? `No cohorts exist yet for ${selectedCurriculum.name}.`
+                                    ? `No cohorts exist yet for ${getCurriculumBridgeName(selectedCurriculum)}.`
                                     : 'Get started by creating a new cohort.'}
                         </p>
                         {!isHistoricalView && (

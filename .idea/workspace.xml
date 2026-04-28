@@ -5,28 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/app/components/layout/navConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/navConfig.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/AssessmentComponentList.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/AssessmentComponentList.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/CambridgeInstallationGate.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/CambridgeInstallationGate.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/ContentAreaList.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/ContentAreaList.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/LearningTree.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/LearningTree.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/ProgrammeToggle.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/ProgrammeToggle.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/ProgressCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/ProgressCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/RenameSubjectModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/RenameSubjectModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/SubjectBrowserList.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/SubjectBrowserList.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/SubjectTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/SubjectTable.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/context/CambridgeContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/context/CambridgeContext.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/hooks.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/hooks.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeDashboardPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeDashboardPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeProgressPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeProgressPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSetupPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSetupPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSubjectDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSubjectDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSubjectManagementPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSubjectManagementPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/queryKeys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/queryKeys.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/curricula/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/curricula/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/SubjectComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/SubjectComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/academic.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeOfferingCohortsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeOfferingCohortsPage.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="342" />
+    <option name="cachedIndexableFilesCount" value="379" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -122,11 +107,26 @@
       <workItem from="1777128534336" duration="1444000" />
       <workItem from="1777129997320" duration="10934000" />
       <workItem from="1777155467994" duration="2196000" />
-      <workItem from="1777157916112" duration="2869000" />
+      <workItem from="1777157916112" duration="5305000" />
+      <workItem from="1777234045033" duration="2660000" />
+      <workItem from="1777263907646" duration="758000" />
+      <workItem from="1777412084633" duration="6089000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/app/core/components/cohorts/CohortComponents.tsx</url>
+          <line>10</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

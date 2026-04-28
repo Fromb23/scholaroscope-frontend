@@ -26,6 +26,12 @@ import type { Curriculum } from '@/app/core/types/academic';
 import type { CurriculumFormData } from '@/app/core/components/curricula/CurriculumFormModal';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import type { CurriculumType } from '@/app/core/types/academic';
+import {
+    CAMBRIDGE_BRIDGE_NAME,
+    getCurriculumBridgeCode,
+    getCurriculumBridgeName,
+    isCambridgeCurriculumType,
+} from '@/app/core/lib/curriculumBridge';
 
 export default function CurriculaPage() {
     const { curricula, loading, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
@@ -41,7 +47,7 @@ export default function CurriculaPage() {
     const shouldOpenCreate = searchParams.get('create') === '1';
     const returnTo = searchParams.get('returnTo');
     const createInitialData = useMemo<CurriculumFormData>(() => ({
-        name: searchParams.get('name') ?? '',
+        name: isCambridgeCurriculumType(searchParams.get('curriculum_type')) ? CAMBRIDGE_BRIDGE_NAME : (searchParams.get('name') ?? ''),
         curriculum_type: (searchParams.get('curriculum_type') ?? '') as CurriculumType,
         description: '',
         is_active: true,
@@ -78,7 +84,7 @@ export default function CurriculaPage() {
     };
 
     const handleDelete = async (curriculum: Curriculum) => {
-        if (!confirm(`Delete "${curriculum.name}"? This will affect all associated subjects and cohorts.`)) return;
+        if (!confirm(`Delete "${getCurriculumBridgeName(curriculum)}"? This will affect all associated subjects and cohorts.`)) return;
         setPageError(null);
         try {
             await deleteCurriculum(curriculum.id);
@@ -171,8 +177,8 @@ export default function CurriculaPage() {
                         <TableBody>
                             {activeCurricula.map(c => (
                                 <TableRow key={c.id}>
-                                    <TableCell><span className="font-mono font-medium">{c.curriculum_type}</span></TableCell>
-                                    <TableCell><span className="font-medium">{c.name}</span></TableCell>
+                                    <TableCell><span className="font-mono font-medium">{getCurriculumBridgeCode(c.curriculum_type)}</span></TableCell>
+                                    <TableCell><span className="font-medium">{getCurriculumBridgeName(c)}</span></TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
                                     <TableCell><Badge variant="info">{c.subjects_count ?? 0}</Badge></TableCell>
                                     <TableCell><Badge variant="info">{c.cohorts_count ?? 0}</Badge></TableCell>
@@ -201,8 +207,8 @@ export default function CurriculaPage() {
                         <TableBody>
                             {inactiveCurricula.map(c => (
                                 <TableRow key={c.id} className="opacity-60">
-                                    <TableCell><span className="font-mono font-medium">{c.curriculum_type}</span></TableCell>
-                                    <TableCell><span className="font-medium">{c.name}</span></TableCell>
+                                    <TableCell><span className="font-mono font-medium">{getCurriculumBridgeCode(c.curriculum_type)}</span></TableCell>
+                                    <TableCell><span className="font-medium">{getCurriculumBridgeName(c)}</span></TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
                                     <TableCell><RowActions curriculum={c} /></TableCell>
                                 </TableRow>

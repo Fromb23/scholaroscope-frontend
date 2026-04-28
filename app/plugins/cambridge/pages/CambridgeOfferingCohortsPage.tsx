@@ -12,6 +12,12 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
+import {
+  CAMBRIDGE_BRIDGE_NAME,
+  getCurriculumBridgeName,
+  isCambridgeCurriculum,
+  isCambridgeCurriculumType,
+} from '@/app/core/lib/curriculumBridge';
 import { CambridgeFormModal } from '../components/CambridgeAuthoringModals';
 import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/CambridgeNavigation';
 import {
@@ -41,52 +47,56 @@ export default function CambridgeOfferingCohortsPage() {
     error: assignmentsError,
   } = useCambridgeOfferingCohorts(offeringId, true);
   const { curricula, loading: curriculaLoading } = useCurricula();
-  const { cohorts, loading: cohortsLoading } = useCohorts(
-    offering?.programme_code ? { curriculum_type: offering.programme_code } : undefined,
-    { enabled: Boolean(offering?.programme_code) }
-  );
+  const { cohorts, loading: cohortsLoading } = useCohorts(undefined, { enabled: true });
   const assignMutation = useAssignCambridgeOfferingToCohort();
   const deactivateMutation = useDeactivateCambridgeCohortSubject();
 
   const matchingCurricula = useMemo(
-    () => curricula.filter((curriculum) => curriculum.curriculum_type === offering?.programme_code),
-    [curricula, offering?.programme_code]
+    () => curricula.filter((curriculum) => isCambridgeCurriculum(curriculum)),
+    [curricula]
   );
   const preferredCurriculum = useMemo(
-    () => matchingCurricula.find((curriculum) => curriculum.is_active) ?? matchingCurricula[0] ?? null,
+    () => matchingCurricula.find((curriculum) => curriculum.is_active && getCurriculumBridgeName(curriculum) === CAMBRIDGE_BRIDGE_NAME)
+      ?? matchingCurricula.find((curriculum) => curriculum.is_active)
+      ?? matchingCurricula[0]
+      ?? null,
     [matchingCurricula]
   );
   const preferredCurriculumId = preferredCurriculum?.id;
   const assignedCohortIds = useMemo(() => new Set(assignments.map((assignment) => assignment.cohort)), [assignments]);
+  const matchingCohorts = useMemo(
+    () => cohorts.filter((cohort) => isCambridgeCurriculum(cohort)),
+    [cohorts]
+  );
   const assignableCohorts = useMemo(
-    () => cohorts.filter((cohort) => !assignedCohortIds.has(cohort.id)),
-    [assignedCohortIds, cohorts]
+    () => matchingCohorts.filter((cohort) => !assignedCohortIds.has(cohort.id)),
+    [assignedCohortIds, matchingCohorts]
   );
   const cohortOptions = useMemo(
     () => [
       { value: '', label: 'Select cohort' },
       ...assignableCohorts.map((cohort) => ({
         value: cohort.id,
-        label: `${cohort.name} · ${cohort.curriculum_name} · ${cohort.academic_year_name}`,
+        label: `${cohort.name} · ${getCurriculumBridgeName(cohort)} · ${cohort.academic_year_name}`,
       })),
     ],
     [assignableCohorts]
   );
 
-  const createCohortHref = useMemo(() => {
-    const params = new URLSearchParams({
-      create: '1',
-      curriculum_type: offering?.programme_code ?? '',
-      returnTo: pathname || `/cambridge/offerings/${offeringId}/cohorts`,
-    });
-    if (preferredCurriculumId) {
-      params.set('curriculum', String(preferredCurriculumId));
-    }
-    return `/academic/cohorts?${params.toString()}`;
-  }, [offering?.programme_code, offeringId, pathname, preferredCurriculumId]);
-  const loading = offeringLoading || assignmentsLoading || curriculaLoading || (Boolean(offering?.programme_code) && cohortsLoading);
+  const createCohortParams = new URLSearchParams({
+    create: '1',
+    returnTo: pathname || `/cambridge/offerings/${offeringId}/cohorts`,
+  });
+  if (offering?.programme_code && isCambridgeCurriculumType(offering.programme_code)) {
+    createCohortParams.set('curriculum_type', offering.programme_code);
+  }
+  if (preferredCurriculumId) {
+    createCohortParams.set('curriculum', String(preferredCurriculumId));
+  }
+  const createCohortHref = `/academic/cohorts?${createCohortParams.toString()}`;
+  const loading = offeringLoading || assignmentsLoading || curriculaLoading || cohortsLoading;
   const activeVersion = offering?.structure_mode === 'QUALIFICATION' ? offering.active_syllabus : offering?.active_framework;
-  const hasMatchingCohorts = cohorts.length > 0;
+  const hasMatchingCohorts = matchingCohorts.length > 0;
   const allMatchingCohortsAssigned = hasMatchingCohorts && assignableCohorts.length === 0;
 
   const runAction = async (work: () => Promise<void>) => {
@@ -158,7 +168,7 @@ export default function CambridgeOfferingCohortsPage() {
                         : 'No active version'}
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      Matching curriculum: {preferredCurriculum ? preferredCurriculum.name : offering.programme_title}
+                      Matching curriculum: {preferredCurriculum ? getCurriculumBridgeName(preferredCurriculum) : CAMBRIDGE_BRIDGE_NAME}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -188,7 +198,7 @@ export default function CambridgeOfferingCohortsPage() {
                 <Card>
                   <h2 className="font-semibold text-gray-900">Create a cohort for this curriculum</h2>
                   <p className="mt-2 text-sm text-gray-600">
-                    No cohorts exist yet for {preferredCurriculum?.name ?? offering.programme_title}.
+                    No cohorts exist yet for {preferredCurriculum ? getCurriculumBridgeName(preferredCurriculum) : CAMBRIDGE_BRIDGE_NAME}.
                   </p>
                   <div className="mt-4">
                     <Link href={createCohortHref} className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50">
