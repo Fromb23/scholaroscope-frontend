@@ -41,6 +41,10 @@ export const CURRICULUM_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: '8-4-4', label: '8-4-4' },
   { value: 'CBE', label: 'CBE' },
   { value: 'IGCSE', label: 'IGCSE' },
+  { value: 'CAM_PRIMARY', label: 'Cambridge Primary (Stages 1-6)' },
+  { value: 'CAM_LOWER_SEC', label: 'Cambridge Lower Secondary (Stages 7-9)' },
+  { value: 'CAM_UPPER_SEC', label: 'Cambridge IGCSE (Upper Secondary)' },
+  { value: 'CAM_ADVANCED', label: 'Cambridge AS & A Level (Advanced)' },
   { value: 'CUSTOM', label: 'Custom' },
 ];
 
@@ -72,7 +76,7 @@ export interface Subject {
 }
 
 export interface SubjectDetail extends Subject {
-  teachers: any[];
+  teachers: Array<Record<string, unknown>>;
   cohorts_offering: {
     cohort_id: number;
     cohort_name: string;

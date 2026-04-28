@@ -30,6 +30,7 @@ interface CurriculumFormModalProps {
     isOpen: boolean;
     onClose: () => void;
     editing: Curriculum | null;
+    initialData?: Partial<CurriculumFormData>;
     onSave: (data: CurriculumFormData, editingId?: number) => Promise<void>;
 }
 
@@ -42,7 +43,13 @@ const DEFAULT_FORM: CurriculumFormData = {
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export function CurriculumFormModal({ isOpen, onClose, editing, onSave }: CurriculumFormModalProps) {
+export function CurriculumFormModal({
+    isOpen,
+    onClose,
+    editing,
+    initialData,
+    onSave,
+}: CurriculumFormModalProps) {
     const [form, setForm] = useState<CurriculumFormData>(DEFAULT_FORM);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -57,10 +64,13 @@ export function CurriculumFormModal({ isOpen, onClose, editing, onSave }: Curric
                 is_active: editing.is_active,
             });
         } else {
-            setForm(DEFAULT_FORM);
+            setForm({
+                ...DEFAULT_FORM,
+                ...initialData,
+            });
         }
         setError(null);
-    }, [editing, isOpen]);
+    }, [editing, initialData, isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

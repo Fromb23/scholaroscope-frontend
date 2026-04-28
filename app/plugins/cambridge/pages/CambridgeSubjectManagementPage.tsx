@@ -121,32 +121,34 @@ export default function CambridgeSubjectManagementPage() {
                           >
                             {offering.is_active ? 'Active' : 'Inactive'}
                           </span>
-                          <Link
-                            href={`/cambridge/offerings/${offering.id}/cohorts`}
-                            className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
-                          >
-                            Manage Cohorts
-                          </Link>
                           {isAdmin ? (
-                            <Button
-                              size="sm"
-                              variant={offering.is_active ? 'danger' : 'primary'}
-                              disabled={togglePending}
-                              onClick={async () => {
-                                setActionError(null);
-                                try {
-                                  await updateOfferingMutation.mutateAsync({
-                                    id: offering.id,
-                                    payload: { is_active: !offering.is_active },
-                                  });
-                                } catch (mutationError) {
-                                  setActionError(mutationErrorMessage(mutationError));
-                                  setErrorVisible(true);
-                                }
-                              }}
-                            >
-                              {togglePending ? 'Saving...' : offering.is_active ? 'Deactivate' : 'Activate'}
-                            </Button>
+                            <>
+                              <Link
+                                href={`/cambridge/offerings/${offering.id}/cohorts`}
+                                className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                              >
+                                Manage Cohorts
+                              </Link>
+                              <Button
+                                size="sm"
+                                variant={offering.is_active ? 'danger' : 'primary'}
+                                disabled={togglePending}
+                                onClick={async () => {
+                                  setActionError(null);
+                                  try {
+                                    await updateOfferingMutation.mutateAsync({
+                                      id: offering.id,
+                                      payload: { is_active: !offering.is_active },
+                                    });
+                                  } catch (mutationError) {
+                                    setActionError(mutationErrorMessage(mutationError));
+                                    setErrorVisible(true);
+                                  }
+                                }}
+                              >
+                                {togglePending ? 'Saving...' : offering.is_active ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </>
                           ) : null}
                         </div>
                       </div>

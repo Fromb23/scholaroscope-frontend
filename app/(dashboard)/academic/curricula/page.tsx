@@ -7,7 +7,9 @@
 // No alert(). No any. No inline modal definitions.
 // ============================================================================
 
-import { useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Plus, Edit, Trash2, CheckCircle } from 'lucide-react';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { Card } from '@/app/components/ui/Card';
@@ -23,9 +25,12 @@ import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
 import type { CurriculumFormData } from '@/app/core/components/curricula/CurriculumFormModal';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
+import type { CurriculumType } from '@/app/core/types/academic';
 
 export default function CurriculaPage() {
     const { curricula, loading, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Curriculum | null>(null);
@@ -33,10 +38,36 @@ export default function CurriculaPage() {
 
     const activeCurricula = curricula.filter(c => c.is_active);
     const inactiveCurricula = curricula.filter(c => !c.is_active);
+    const shouldOpenCreate = searchParams.get('create') === '1';
+    const returnTo = searchParams.get('returnTo');
+    const createInitialData = useMemo<CurriculumFormData>(() => ({
+        name: searchParams.get('name') ?? '',
+        curriculum_type: (searchParams.get('curriculum_type') ?? '') as CurriculumType,
+        description: '',
+        is_active: true,
+    }), [searchParams]);
 
     const openCreate = () => { setEditing(null); setShowModal(true); };
     const openEdit = (c: Curriculum) => { setEditing(c); setShowModal(true); };
-    const closeModal = () => { setShowModal(false); setEditing(null); };
+    const clearCreateFlag = () => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('create');
+        const next = params.toString();
+        router.replace(next ? `/academic/curricula?${next}` : '/academic/curricula', { scroll: false });
+    };
+    const closeModal = () => {
+        setShowModal(false);
+        setEditing(null);
+        if (shouldOpenCreate) {
+            clearCreateFlag();
+        }
+    };
+
+    useEffect(() => {
+        if (shouldOpenCreate && !editing) {
+            setShowModal(true);
+        }
+    }, [editing, shouldOpenCreate]);
 
     const handleSave = async (data: CurriculumFormData, editingId?: number) => {
         if (editingId) {
@@ -84,6 +115,22 @@ export default function CurriculaPage() {
             </div>
 
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
+
+            {returnTo ? (
+                <Card>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="text-sm font-semibold text-gray-900">Cambridge Setup Flow</h2>
+                            <p className="mt-1 text-sm text-gray-600">
+                                Create the curriculum here, then return to the Cambridge offering to assign cohorts.
+                            </p>
+                        </div>
+                        <Link href={returnTo} className="text-sm text-blue-600 hover:text-blue-700">
+                            Return to Cambridge offering
+                        </Link>
+                    </div>
+                </Card>
+            ) : null}
 
             <DesktopOnly>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -169,6 +216,7 @@ export default function CurriculaPage() {
                 isOpen={showModal}
                 onClose={closeModal}
                 editing={editing}
+                initialData={editing ? undefined : createInitialData}
                 onSave={handleSave}
             />
         </div>

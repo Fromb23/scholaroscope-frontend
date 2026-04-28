@@ -24,6 +24,7 @@ import { academicKeys } from '@/app/core/lib/queryKeys';
 export interface CohortFilters {
   academic_year?: number;
   curriculum?: number;
+  curriculum_type?: string;
   organization?: number;
   level?: string;
 }
@@ -382,18 +383,36 @@ export const useCohortSubjects = (cohortId?: number) => {
 
 // ── useCohorts ────────────────────────────────────────────────────────────
 
-export const useCohorts = (filters?: CohortFilters) => {
+export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolean }) => {
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
+  const enabled = options?.enabled ?? true;
+  const academicYear = filters?.academic_year;
+  const curriculum = filters?.curriculum;
+  const curriculumType = filters?.curriculum_type;
+  const level = filters?.level;
 
-  const resolvedFilters = useMemo(() => ({
-    ...(filters ?? {}),
-    organization: organizationId || undefined,
-  }), [filters, organizationId]);
+  const resolvedFilters = useMemo(() => {
+    const nextFilters: CohortFilters = {};
+
+    if (academicYear) nextFilters.academic_year = academicYear;
+    if (curriculum) nextFilters.curriculum = curriculum;
+    if (curriculumType) nextFilters.curriculum_type = curriculumType;
+    if (organizationId) nextFilters.organization = organizationId;
+    if (level) nextFilters.level = level;
+
+    return nextFilters;
+  }, [academicYear, curriculum, curriculumType, level, organizationId]);
 
   const fetchCohorts = useCallback(async () => {
+    if (!enabled) {
+      setCohorts([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     try {
       setLoading(true);
       const data = await cohortAPI.getAll(resolvedFilters);
@@ -404,7 +423,7 @@ export const useCohorts = (filters?: CohortFilters) => {
     } finally {
       setLoading(false);
     }
-  }, [resolvedFilters]);
+  }, [enabled, resolvedFilters]);
 
   useEffect(() => { fetchCohorts(); }, [fetchCohorts]);
 

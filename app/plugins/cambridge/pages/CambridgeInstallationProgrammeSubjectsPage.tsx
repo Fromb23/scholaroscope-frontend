@@ -302,28 +302,30 @@ export default function CambridgeInstallationProgrammeSubjectsPage() {
                                   {offering.structure_mode === 'QUALIFICATION' ? 'Change Syllabus' : 'Change Framework'}
                                 </Button>
                               ) : null}
-                              <Link
-                                href={`/cambridge/offerings/${offering.id}/cohorts`}
-                                className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
-                              >
-                                Manage Cohorts
-                              </Link>
                               {isAdmin ? (
-                                <Button
-                                  size="sm"
-                                  variant={offering.is_active ? 'danger' : 'primary'}
-                                  disabled={togglePending || (programmeDisabled && !offering.is_active)}
-                                  onClick={() => {
-                                    runAction(async () => {
-                                      await updateOfferingMutation.mutateAsync({
-                                        id: offering.id,
-                                        payload: { is_active: !offering.is_active },
+                                <>
+                                  <Link
+                                    href={`/cambridge/offerings/${offering.id}/cohorts`}
+                                    className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50"
+                                  >
+                                    Manage Cohorts
+                                  </Link>
+                                  <Button
+                                    size="sm"
+                                    variant={offering.is_active ? 'danger' : 'primary'}
+                                    disabled={togglePending || (programmeDisabled && !offering.is_active)}
+                                    onClick={() => {
+                                      runAction(async () => {
+                                        await updateOfferingMutation.mutateAsync({
+                                          id: offering.id,
+                                          payload: { is_active: !offering.is_active },
+                                        });
                                       });
-                                    });
-                                  }}
-                                >
-                                  {togglePending ? 'Saving...' : offering.is_active ? 'Deactivate' : 'Activate'}
-                                </Button>
+                                    }}
+                                  >
+                                    {togglePending ? 'Saving...' : offering.is_active ? 'Deactivate' : 'Activate'}
+                                  </Button>
+                                </>
                               ) : null}
                             </div>
                           </div>

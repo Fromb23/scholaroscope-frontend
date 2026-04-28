@@ -159,6 +159,7 @@ export const subjectAPI = {
 export interface CohortQueryParams extends ListQueryParams {
   academic_year?: number;
   curriculum?: number;
+  curriculum_type?: string;
   level?: string;
 }
 export const cohortAPI = {

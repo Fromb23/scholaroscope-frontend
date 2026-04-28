@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { FormEvent, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { PermissionGuard } from '@/app/core/guards/PermissionGuard';
 import { TenantGuard } from '@/app/core/guards/TenantGuard';
 import { useAuth } from '@/app/context/AuthContext';
-import { useCohorts } from '@/app/core/hooks/useAcademic';
+import { useCohorts, useCurricula } from '@/app/core/hooks/useAcademic';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -24,6 +24,7 @@ import { modeLabel, mutationErrorMessage, toPositiveNumber } from './authoringUt
 
 export default function CambridgeOfferingCohortsPage() {
   const params = useParams<{ offeringId: string }>();
+  const pathname = usePathname();
   const offeringId = toPositiveNumber(params.offeringId);
   const { user, activeRole } = useAuth();
   const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
@@ -39,10 +40,23 @@ export default function CambridgeOfferingCohortsPage() {
     isLoading: assignmentsLoading,
     error: assignmentsError,
   } = useCambridgeOfferingCohorts(offeringId, true);
-  const { cohorts, loading: cohortsLoading } = useCohorts();
+  const { curricula, loading: curriculaLoading } = useCurricula();
+  const { cohorts, loading: cohortsLoading } = useCohorts(
+    offering?.programme_code ? { curriculum_type: offering.programme_code } : undefined,
+    { enabled: Boolean(offering?.programme_code) }
+  );
   const assignMutation = useAssignCambridgeOfferingToCohort();
   const deactivateMutation = useDeactivateCambridgeCohortSubject();
 
+  const matchingCurricula = useMemo(
+    () => curricula.filter((curriculum) => curriculum.curriculum_type === offering?.programme_code),
+    [curricula, offering?.programme_code]
+  );
+  const preferredCurriculum = useMemo(
+    () => matchingCurricula.find((curriculum) => curriculum.is_active) ?? matchingCurricula[0] ?? null,
+    [matchingCurricula]
+  );
+  const preferredCurriculumId = preferredCurriculum?.id;
   const assignedCohortIds = useMemo(() => new Set(assignments.map((assignment) => assignment.cohort)), [assignments]);
   const assignableCohorts = useMemo(
     () => cohorts.filter((cohort) => !assignedCohortIds.has(cohort.id)),
@@ -53,14 +67,27 @@ export default function CambridgeOfferingCohortsPage() {
       { value: '', label: 'Select cohort' },
       ...assignableCohorts.map((cohort) => ({
         value: cohort.id,
-        label: `${cohort.name} · ${cohort.curriculum_name}`,
+        label: `${cohort.name} · ${cohort.curriculum_name} · ${cohort.academic_year_name}`,
       })),
     ],
     [assignableCohorts]
   );
 
-  const loading = offeringLoading || assignmentsLoading;
+  const createCohortHref = useMemo(() => {
+    const params = new URLSearchParams({
+      create: '1',
+      curriculum_type: offering?.programme_code ?? '',
+      returnTo: pathname || `/cambridge/offerings/${offeringId}/cohorts`,
+    });
+    if (preferredCurriculumId) {
+      params.set('curriculum', String(preferredCurriculumId));
+    }
+    return `/academic/cohorts?${params.toString()}`;
+  }, [offering?.programme_code, offeringId, pathname, preferredCurriculumId]);
+  const loading = offeringLoading || assignmentsLoading || curriculaLoading || (Boolean(offering?.programme_code) && cohortsLoading);
   const activeVersion = offering?.structure_mode === 'QUALIFICATION' ? offering.active_syllabus : offering?.active_framework;
+  const hasMatchingCohorts = cohorts.length > 0;
+  const allMatchingCohortsAssigned = hasMatchingCohorts && assignableCohorts.length === 0;
 
   const runAction = async (work: () => Promise<void>) => {
     setActionError(null);
@@ -74,7 +101,7 @@ export default function CambridgeOfferingCohortsPage() {
 
   return (
     <TenantGuard>
-      <PermissionGuard allowedRoles={['ADMIN', 'INSTRUCTOR']}>
+      <PermissionGuard allowedRoles={['ADMIN']}>
         <div className="space-y-6">
           <CambridgeWorkflowNav />
           <CambridgeBreadcrumb
@@ -130,6 +157,9 @@ export default function CambridgeOfferingCohortsPage() {
                         ? `Active ${offering.structure_mode === 'QUALIFICATION' ? 'syllabus' : 'framework'}: ${activeVersion.version_label}`
                         : 'No active version'}
                     </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Matching curriculum: {preferredCurriculum ? preferredCurriculum.name : offering.programme_title}
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -153,6 +183,20 @@ export default function CambridgeOfferingCohortsPage() {
                   </div>
                 </div>
               </Card>
+
+              {isAdmin && !cohortsLoading && !hasMatchingCohorts ? (
+                <Card>
+                  <h2 className="font-semibold text-gray-900">Create a cohort for this curriculum</h2>
+                  <p className="mt-2 text-sm text-gray-600">
+                    No cohorts exist yet for {preferredCurriculum?.name ?? offering.programme_title}.
+                  </p>
+                  <div className="mt-4">
+                    <Link href={createCohortHref} className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50">
+                      Create Cohort
+                    </Link>
+                  </div>
+                </Card>
+              ) : null}
 
               <Card>
                 <h2 className="font-semibold text-gray-900">Assigned Cohorts</h2>
@@ -240,9 +284,13 @@ export default function CambridgeOfferingCohortsPage() {
               options={cohortOptions}
               disabled={cohortsLoading || assignableCohorts.length === 0}
             />
-            {assignableCohorts.length === 0 ? (
+            {!hasMatchingCohorts ? (
               <p className="text-sm text-gray-500">
-                All visible cohorts are already assigned to this offering.
+                No cohorts exist for this curriculum yet. Create one in Academic setup, then return here.
+              </p>
+            ) : allMatchingCohortsAssigned ? (
+              <p className="text-sm text-gray-500">
+                All cohorts in this curriculum are already assigned to this offering.
               </p>
             ) : null}
           </CambridgeFormModal>

@@ -266,13 +266,14 @@ interface CohortFormModalProps {
     editingCohort: Cohort | null;
     academicYears: AcademicYear[];
     curricula: Curriculum[];
+    lockedCurriculum?: Curriculum | null;
     onSave: (data: CohortFormState, isEdit: boolean, cohortId?: number) => Promise<void>;
     initialData: CohortFormState;
 }
 
 export function CohortFormModal({
     isOpen, onClose, editingCohort,
-    academicYears, curricula, onSave, initialData,
+    academicYears, curricula, lockedCurriculum, onSave, initialData,
 }: CohortFormModalProps) {
     const [formData, setFormData] = useState<CohortFormState>(initialData);
     const [formError, setFormError] = useState<string | null>(null);
@@ -286,7 +287,18 @@ export function CohortFormModal({
             setFormError(null);
             setSubjectPanelOpen(false);
         }
-    }, [isOpen]);
+    }, [initialData, isOpen]);
+
+    useEffect(() => {
+        if (
+            isOpen &&
+            !editingCohort &&
+            lockedCurriculum &&
+            formData.curriculum !== String(lockedCurriculum.id)
+        ) {
+            setFormData(prev => ({ ...prev, curriculum: String(lockedCurriculum.id) }));
+        }
+    }, [editingCohort, formData.curriculum, isOpen, lockedCurriculum]);
 
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {
@@ -326,18 +338,30 @@ export function CohortFormModal({
                             })),
                         ]}
                     />
-                    <Select
-                        label="Curriculum"
-                        value={formData.curriculum}
-                        onChange={e => setFormData(prev => ({ ...prev, curriculum: e.target.value }))}
-                        required
-                        options={[
-                            { value: '', label: 'Select Curriculum' },
-                            ...curricula.filter(c => c.is_active).map(c => ({
-                                value: String(c.id), label: c.name,
-                            })),
-                        ]}
-                    />
+                    {lockedCurriculum && !editingCohort ? (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">
+                                Curriculum
+                            </label>
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                                <p className="text-sm font-medium text-gray-900">{lockedCurriculum.name}</p>
+                                <p className="text-xs text-gray-500">{lockedCurriculum.curriculum_type_display}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <Select
+                            label="Curriculum"
+                            value={formData.curriculum}
+                            onChange={e => setFormData(prev => ({ ...prev, curriculum: e.target.value }))}
+                            required
+                            options={[
+                                { value: '', label: 'Select Curriculum' },
+                                ...curricula.filter(c => c.is_active).map(c => ({
+                                    value: String(c.id), label: c.name,
+                                })),
+                            ]}
+                        />
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
