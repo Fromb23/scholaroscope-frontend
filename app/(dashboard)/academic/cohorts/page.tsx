@@ -31,6 +31,7 @@ import type { Cohort, CurriculumType } from '@/app/core/types/academic';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useCambridgeOffering } from '@/app/plugins/cambridge/hooks';
+import { useAuth } from '@/app/context/AuthContext';
 import {
     CAMBRIDGE_BRIDGE_NAME,
     getCurriculumBridgeName,
@@ -43,6 +44,7 @@ type CohortWithIndex = { [key: string]: unknown } & Cohort;
 export default function CohortsPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { activeRole } = useAuth();
     const { academicYears } = useAcademicYears();
     const { curricula, createCurriculum } = useCurricula();
     const [filters, updateFilters] = usePersistedFilters('/academic/cohorts', {
@@ -51,6 +53,7 @@ export default function CohortsPage() {
     });
 
     const currentYear = useMemo(() => academicYears.find(y => y.is_current), [academicYears]);
+    const isInstructor = activeRole === 'INSTRUCTOR';
     const selectedYearId = filters.academic_year ? Number(filters.academic_year) : undefined;
     const selectedCurriculumId = filters.curriculum ? Number(filters.curriculum) : undefined;
     const shouldOpenCreate = searchParams.get('create') === '1';
@@ -112,6 +115,7 @@ export default function CohortsPage() {
     }, [filters.curriculum, isCambridgeQuickAction, quickActionCurriculum, updateFilters]);
 
     useEffect(() => {
+        if (isInstructor) return;
         const shouldProvision =
             isCambridgeQuickAction
             && shouldOpenCreate
@@ -172,6 +176,7 @@ export default function CohortsPage() {
         selectedCurriculumId,
         shouldOpenCreate,
         updateFilters,
+        isInstructor,
     ]);
 
     const { cohorts, loading, refetch, createCohort, updateCohort, deleteCohort } = useCohorts(
@@ -191,7 +196,11 @@ export default function CohortsPage() {
     const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
     const totalStudents = cohorts.reduce((sum, c) => sum + (c.students_count ?? 0), 0);
 
-    const openCreate = () => { setEditingCohort(null); setShowFormModal(true); };
+    const openCreate = () => {
+        if (isInstructor) return;
+        setEditingCohort(null);
+        setShowFormModal(true);
+    };
     const openEdit = (c: Cohort) => { setEditingCohort(c); setShowFormModal(true); };
     const clearCreateFlag = () => {
         const params = new URLSearchParams(searchParams.toString());
@@ -214,10 +223,11 @@ export default function CohortsPage() {
     );
 
     useEffect(() => {
+        if (isInstructor) return;
         if (shouldOpenCreate && !editingCohort && !quickActionSetupPending) {
             setShowFormModal(true);
         }
-    }, [editingCohort, quickActionSetupPending, shouldOpenCreate]);
+    }, [editingCohort, isInstructor, quickActionSetupPending, shouldOpenCreate]);
 
     const handleSave = async (
         data: { academic_year: string; curriculum: string; level: string; stream: string },
@@ -272,7 +282,14 @@ export default function CohortsPage() {
             key: 'name', header: 'Cohort', sortable: true,
             render: cohort => (
                 <div className="flex items-center gap-2">
-                    <Link href={`/academic/cohorts/${cohort.id}/students`} className="font-medium text-blue-600 hover:underline">
+                    <Link
+                        href={
+                            isInstructor
+                                ? `/learners?curriculum=${cohort.curriculum}&cohort=${cohort.id}`
+                                : `/academic/cohorts/${cohort.id}/students`
+                        }
+                        className="font-medium text-blue-600 hover:underline"
+                    >
                         {cohort.name}
                     </Link>
                     {!cohort.is_current_year && (
@@ -306,9 +323,13 @@ export default function CohortsPage() {
             ),
         },
         { key: 'subjects_count', header: 'Subjects', render: c => <Badge variant="default">{c.subjects_count ?? 0}</Badge> },
-        {
-            key: 'actions', header: '',
-            render: cohort => {
+    ];
+
+    if (!isInstructor) {
+        columns.push({
+            key: 'actions',
+            header: '',
+            render: (cohort: Cohort) => {
                 const isHistorical = !cohort.is_current_year;
                 return (
                     <div className="flex gap-1 justify-end">
@@ -334,8 +355,8 @@ export default function CohortsPage() {
                     </div>
                 );
             },
-        },
-    ];
+        });
+    }
 
     // ── Render ────────────────────────────────────────────────────────────
 
@@ -343,12 +364,16 @@ export default function CohortsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Cohorts</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">{isInstructor ? 'My Cohorts' : 'Cohorts'}</h1>
                     <p className="mt-1 text-gray-500">
-                        {isHistoricalView ? 'Viewing historical records — read only' : 'Manage student cohorts and classes'}
+                        {isInstructor
+                            ? 'View the cohorts currently assigned to you.'
+                            : isHistoricalView
+                                ? 'Viewing historical records — read only'
+                                : 'Manage student cohorts and classes'}
                     </p>
                 </div>
-                {!isHistoricalView && (
+                {!isInstructor && !isHistoricalView && (
                     <Button onClick={openCreate}>
                         <Plus className="mr-2 h-4 w-4" />Add Cohort
                     </Button>
@@ -357,7 +382,7 @@ export default function CohortsPage() {
 
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
-            {returnTo ? (
+            {!isInstructor && returnTo ? (
                 <Card>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -399,19 +424,21 @@ export default function CohortsPage() {
                             })),
                         ]}
                     />
-                    <Select
-                        value={selectedCurriculumId?.toString() ?? ''}
-                        onChange={e => updateFilters({ curriculum: e.target.value })}
-                        options={[
-                            { value: '', label: 'All Curricula' },
-                            ...curricula
-                                .filter(c => c.is_active)
-                                .map(c => ({
-                                    value: String(c.id),
-                                    label: getCurriculumOptionLabel(c),
-                                })),
-                        ]}
-                    />
+                    {!isInstructor && (
+                        <Select
+                            value={selectedCurriculumId?.toString() ?? ''}
+                            onChange={e => updateFilters({ curriculum: e.target.value })}
+                            options={[
+                                { value: '', label: 'All Curricula' },
+                                ...curricula
+                                    .filter(c => c.is_active)
+                                    .map(c => ({
+                                        value: String(c.id),
+                                        label: getCurriculumOptionLabel(c),
+                                    })),
+                            ]}
+                        />
+                    )}
                     {isHistoricalView && (
                         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 whitespace-nowrap">
                             <History className="h-3.5 w-3.5 shrink-0" />
@@ -429,13 +456,15 @@ export default function CohortsPage() {
                         <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No cohorts found</h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            {isHistoricalView
+                            {isInstructor
+                                ? 'No cohort assignments match the selected academic year.'
+                                : isHistoricalView
                                 ? 'No cohorts exist for this academic year.'
                                 : selectedCurriculum
                                     ? `No cohorts exist yet for ${getCurriculumBridgeName(selectedCurriculum)}.`
                                     : 'Get started by creating a new cohort.'}
                         </p>
-                        {!isHistoricalView && (
+                        {!isInstructor && !isHistoricalView && (
                             <Button className="mt-4" onClick={openCreate}>
                                 <Plus className="mr-2 h-4 w-4" />Add Cohort
                             </Button>
@@ -454,18 +483,20 @@ export default function CohortsPage() {
                 )}
             </Card>
 
-            <CohortFormModal
-                isOpen={showFormModal}
-                onClose={closeModal}
-                editingCohort={editingCohort}
-                academicYears={academicYears}
-                curricula={curricula}
-                lockedCurriculum={isCambridgeQuickAction ? quickActionCurriculum : null}
-                onSave={handleSave}
-                initialData={initialFormData}
-            />
+            {!isInstructor && (
+                <CohortFormModal
+                    isOpen={showFormModal}
+                    onClose={closeModal}
+                    editingCohort={editingCohort}
+                    academicYears={academicYears}
+                    curricula={curricula}
+                    lockedCurriculum={isCambridgeQuickAction ? quickActionCurriculum : null}
+                    onSave={handleSave}
+                    initialData={initialFormData}
+                />
+            )}
 
-            {rolloverCohort && (
+            {!isInstructor && rolloverCohort && (
                 <RolloverModal
                     cohort={rolloverCohort}
                     onClose={() => setRolloverCohort(null)}

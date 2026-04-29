@@ -20,7 +20,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AcademicNav } from '@/app/core/components/academic/AcademicProgressComponents';
-import { TopicRow, SubjectSection } from '@/app/core/components/topics/TopicBrowserComponents';
+import { SubjectSection } from '@/app/core/components/topics/TopicBrowserComponents';
 import type { Topic } from '@/app/core/types/topics';
 
 // ── Grouping utility ──────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ export default function TopicsBrowserPage() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
-                            {isAdmin ? 'Topic Browser' : 'My Topics'}
+                            {isAdmin ? 'Topic Browser' : 'Cohort Topics'}
                         </h1>
                         <p className="text-sm text-gray-500 mt-1">
                             {isAdmin

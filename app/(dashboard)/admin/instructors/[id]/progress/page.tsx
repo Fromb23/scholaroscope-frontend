@@ -13,7 +13,6 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { instructorsAPI } from '@/app/core/api/instructors';
 import { useInstructorProgress } from '@/app/core/hooks/useInstructorProgress';
 import { useBackNavigation } from '@/app/core/hooks/useBackNavigation';
@@ -184,7 +183,7 @@ export default function InstructorProgressPage() {
                 {(instructor.cohort_assignments?.length ?? 0) > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
                         {instructor.cohort_assignments?.map(a => (
-                            <Badge key={a.cohort_subject_id} variant="info" size="sm">
+                            <Badge key={a.cohort_id} variant="info" size="sm">
                                 <GraduationCap className="h-3 w-3 mr-1 inline" />{a.cohort_name}
                             </Badge>
                         ))}

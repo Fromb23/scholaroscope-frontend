@@ -28,6 +28,7 @@ import {
 } from '@/app/core/types/session';
 import { CohortSubject } from '@/app/core/types/academic';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 
 
 // ── Helper — unwrap paginated or flat response ────────────────────────────
@@ -36,12 +37,23 @@ function unwrapList<T>(data: T[] | { results?: T[] }): T[] {
   return Array.isArray(data) ? data : data?.results ?? [];
 }
 
+function toIdSet(idsKey: string): Set<number> {
+  if (!idsKey) return new Set<number>();
+  return new Set(
+    idsKey
+      .split(',')
+      .map(value => Number(value))
+      .filter(value => Number.isFinite(value))
+  );
+}
+
 // ── useSessions ───────────────────────────────────────────────────────────
 
 export const useSessions = (params?: SessionQueryParams) => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const instructorAccess = useInstructorCohortAccess();
   const sessionFilters = useMemo(
     () => ({
       term: params?.term,
@@ -62,19 +74,29 @@ export const useSessions = (params?: SessionQueryParams) => {
       params?.created_by,
     ],
   );
+  const cohortIdsKey = instructorAccess.cohortIdsKey;
+  const allowedCohortIds = useMemo(
+    () => toIdSet(cohortIdsKey),
+    [cohortIdsKey]
+  );
 
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
       const data = await sessionAPI.getAll(sessionFilters);
-      setSessions(unwrapList(data));
+      const allSessions = unwrapList(data);
+      setSessions(
+        instructorAccess.isInstructor
+          ? allSessions.filter(session => allowedCohortIds.has(session.cohort_id))
+          : allSessions
+      );
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch sessions'));
     } finally {
       setLoading(false);
     }
-  }, [sessionFilters]);
+  }, [allowedCohortIds, instructorAccess.isInstructor, sessionFilters]);
 
   useEffect(() => {
     fetchSessions();
@@ -126,23 +148,33 @@ export const useTodaySessions = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const instructorAccess = useInstructorCohortAccess();
+  const cohortIdsKey = instructorAccess.cohortIdsKey;
+  const allowedCohortIds = useMemo(
+    () => toIdSet(cohortIdsKey),
+    [cohortIdsKey]
+  );
 
-  const fetchTodaySessions = async () => {
+  const fetchTodaySessions = useCallback(async () => {
     try {
       setLoading(true);
       const data = await sessionAPI.getToday();
-      setSessions(data);
+      setSessions(
+        instructorAccess.isInstructor
+          ? data.filter(session => allowedCohortIds.has(session.cohort_id))
+          : data
+      );
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, "Failed to fetch today's sessions"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [allowedCohortIds, instructorAccess.isInstructor]);
 
   useEffect(() => {
     fetchTodaySessions();
-  }, []);
+  }, [fetchTodaySessions]);
 
   return { sessions, loading, error, refetch: fetchTodaySessions };
 };

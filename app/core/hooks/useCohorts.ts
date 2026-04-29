@@ -2,11 +2,22 @@
 // app/hooks/useCohorts.ts - Cohorts Data Hooks
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cohortsAPI, Cohort, CohortDetail, CohortStats } from '../api/cohorts';
-import { CohortSubject, Subject } from '../types/academic';
+import { CohortSubject } from '../types/academic';
 import { StudentDetail } from '../types/student';
 import { ApiError, extractErrorMessage } from '../types/errors';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+
+function toIdSet(idsKey: string): Set<number> {
+  if (!idsKey) return new Set<number>();
+  return new Set(
+    idsKey
+      .split(',')
+      .map(value => Number(value))
+      .filter(value => Number.isFinite(value))
+  );
+}
 
 export function useCohorts(filters?: {
   curriculum?: number;
@@ -18,24 +29,49 @@ export function useCohorts(filters?: {
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const instructorAccess = useInstructorCohortAccess();
+  const curriculum = filters?.curriculum;
+  const academicYear = filters?.academic_year;
+  const level = filters?.level;
+  const isActive = filters?.is_active;
+  const search = filters?.search;
+  const requestFilters = useMemo(
+    () => ({
+      curriculum,
+      academic_year: academicYear,
+      level,
+      is_active: isActive,
+      search,
+    }),
+    [academicYear, curriculum, isActive, level, search]
+  );
+  const allowedCohortIds = useMemo(
+    () => toIdSet(instructorAccess.cohortIdsKey),
+    [instructorAccess.cohortIdsKey]
+  );
 
-  useEffect(() => {
-    loadCohorts();
-  }, [JSON.stringify(filters)]);
-
-  const loadCohorts = async () => {
+  const loadCohorts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await cohortsAPI.getCohorts(filters);
-      setCohorts(Array.isArray(data) ? data : data.results ?? []);
+      const data = await cohortsAPI.getCohorts(requestFilters);
+      const allCohorts = Array.isArray(data) ? data : data.results ?? [];
+      setCohorts(
+        instructorAccess.isInstructor
+          ? allCohorts.filter(cohort => allowedCohortIds.has(cohort.id))
+          : allCohorts
+      );
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohorts'));
       setCohorts([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [allowedCohortIds, instructorAccess.isInstructor, requestFilters]);
+
+  useEffect(() => {
+    void loadCohorts();
+  }, [loadCohorts]);
 
   return { cohorts, loading, error, reload: loadCohorts };
 }
@@ -45,11 +81,7 @@ export function useCohort(id: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id) loadCohort();
-  }, [id]);
-
-  const loadCohort = async () => {
+  const loadCohort = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -61,7 +93,13 @@ export function useCohort(id: number) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      void loadCohort();
+    }
+  }, [id, loadCohort]);
 
   return { cohort, loading, error, reload: loadCohort };
 }
@@ -71,11 +109,7 @@ export function useActiveCohorts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadCohorts();
-  }, []);
-
-  const loadCohorts = async () => {
+  const loadCohorts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -87,7 +121,11 @@ export function useActiveCohorts() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadCohorts();
+  }, [loadCohorts]);
 
   return { cohorts, loading, error, reload: loadCohorts };
 }
@@ -97,11 +135,7 @@ export function useCohortsByCurriculum(curriculumId?: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (curriculumId) loadCohorts();
-  }, [curriculumId]);
-
-  const loadCohorts = async () => {
+  const loadCohorts = useCallback(async () => {
     if (!curriculumId) return;
     try {
       setLoading(true);
@@ -114,7 +148,13 @@ export function useCohortsByCurriculum(curriculumId?: number) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [curriculumId]);
+
+  useEffect(() => {
+    if (curriculumId) {
+      void loadCohorts();
+    }
+  }, [curriculumId, loadCohorts]);
 
   return { cohorts, loading, error, reload: loadCohorts };
 }
@@ -124,11 +164,7 @@ export function useCohortsByAcademicYear(academicYearId?: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (academicYearId) loadCohorts();
-  }, [academicYearId]);
-
-  const loadCohorts = async () => {
+  const loadCohorts = useCallback(async () => {
     if (!academicYearId) return;
     try {
       setLoading(true);
@@ -141,7 +177,13 @@ export function useCohortsByAcademicYear(academicYearId?: number) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [academicYearId]);
+
+  useEffect(() => {
+    if (academicYearId) {
+      void loadCohorts();
+    }
+  }, [academicYearId, loadCohorts]);
 
   return { cohorts, loading, error, reload: loadCohorts };
 }
@@ -151,11 +193,7 @@ export function useCohortStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -167,7 +205,11 @@ export function useCohortStats() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats]);
 
   return { stats, loading, error, reload: loadStats };
 }
@@ -177,11 +219,7 @@ export function useCohortStudents(cohortId?: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (cohortId) loadStudents();
-  }, [cohortId]);
-
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     if (!cohortId) return;
     try {
       setLoading(true);
@@ -194,7 +232,13 @@ export function useCohortStudents(cohortId?: number) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cohortId]);
+
+  useEffect(() => {
+    if (cohortId) {
+      void loadStudents();
+    }
+  }, [cohortId, loadStudents]);
 
   return { students, loading, error, reload: loadStudents };
 }
@@ -204,11 +248,7 @@ export function useCohortSubjects(cohortId?: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (cohortId) loadSubjects();
-  }, [cohortId]);
-
-  const loadSubjects = async () => {
+  const loadSubjects = useCallback(async () => {
     if (!cohortId) return;
     try {
       setLoading(true);
@@ -221,7 +261,13 @@ export function useCohortSubjects(cohortId?: number) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cohortId]);
+
+  useEffect(() => {
+    if (cohortId) {
+      void loadSubjects();
+    }
+  }, [cohortId, loadSubjects]);
 
   return { subjects, loading, error, reload: loadSubjects };
 }

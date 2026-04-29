@@ -166,6 +166,15 @@ export interface TermQueryParams {
   organization?: number
 }
 
+export interface InstructorCohortAccessAssignment {
+  cohort_id: number;
+  cohort_name: string;
+  curriculum_name: string;
+  curriculum_type: string;
+  academic_year: string;
+  is_current_year: boolean;
+}
+
 export interface TeachingAssignment {
   cohort_subject_id: number;
   cohort_id: number;

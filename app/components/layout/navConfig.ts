@@ -196,9 +196,9 @@ export function getInstructorNav(
         primary: [
             { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
             {
-                name: 'My Topics', href: '/academic/topics/browser', icon: Layers,
+                name: 'My Cohorts', href: '/academic/cohorts', icon: Users,
                 children: [
-                    { name: 'Browse Topics', href: '/academic/topics/browser', icon: BookOpen },
+                    { name: 'Assigned Cohorts', href: '/academic/cohorts', icon: Users },
                     { name: 'Coverage Progress', href: '/academic/progress', icon: TrendingUp },
                 ],
             },

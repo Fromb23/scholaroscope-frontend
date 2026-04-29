@@ -1,5 +1,5 @@
 // app/core/types/globalUsers.ts
-// Mirrors: apps/users/models.py User + UserSerializer + MembershipSerializer
+// Mirrors: apps/users/models.py User + user serializers.
 
 export type MemberRole = 'ADMIN' | 'INSTRUCTOR';
 export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
@@ -17,15 +17,15 @@ export interface GlobalUser {
     profile_image?: string;
     date_joined: string;
     last_login: string | null;
-    membership_status?: 'ACTIVE' | 'INACTIVE' | null;
-    role?: 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+    membership_status?: MembershipStatus | null;
+    role?: UserRole;
     role_display?: string;
     organization?: number | null;
     organization_name?: string | null;
     organization_code?: string | null;
+    membership_version?: number;
 }
 
-// Membership embedded in user list responses
 export interface UserMembership {
     role: MemberRole;
     role_display: string;
@@ -39,9 +39,6 @@ export interface UserMembership {
     joined_at: string;
 }
 
-// POST /api/users/ — UserCreateSerializer
-// organization is no longer on User — membership is created server-side
-// from the active org context in the JWT
 export interface UserCreatePayload {
     email: string;
     first_name: string;
@@ -52,14 +49,12 @@ export interface UserCreatePayload {
     password2: string;
 }
 
-// PATCH /api/users/{id}/ — UserUpdateSerializer
 export interface UserUpdatePayload {
     first_name?: string;
     last_name?: string;
     phone?: string;
 }
 
-// GET /api/users/statistics/
 export interface GlobalUserStats {
     total_members: number;
     active_members: number;
@@ -83,6 +78,16 @@ export const ROLE_LABELS: Record<UserRole, string> = {
     INSTRUCTOR: 'Instructor',
 };
 
+export interface AvailableCohort {
+    id: number;
+    name: string;
+    curriculum_name: string;
+    curriculum_type: string;
+    academic_year: number;
+    academic_year_name: string;
+    is_current_year: boolean;
+}
+
 export interface AvailableCohortSubject {
     id: number;
     cohort: number;
@@ -91,14 +96,7 @@ export interface AvailableCohortSubject {
     subject_name: string;
     subject_code: string;
     is_compulsory: boolean;
-    academic_year_name?: string;  // optional — not in serializer yet
-}
-
-export interface CohortAssignModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    instructorId: number;
-    instructorName: string;
+    academic_year_name?: string;
 }
 
 export interface CohortAssignModalProps {
@@ -116,36 +114,23 @@ export interface InstructorStats {
     unassigned: number;
 }
 
-export interface CohortAssignment {
+export interface CohortAssignmentSubjectLink {
     cohort_subject_id: number;
-    cohort_id: number;
-    cohort_name: string;
-    subject_id: number;
     subject_name: string;
-    academic_year: string;
-    start_date: string;
-    role: string;
 }
 
-export interface GlobalUser {
-    id: number;
-    email: string;
-    first_name: string;
-    last_name: string;
-    full_name: string;
-    is_superadmin: boolean;
-    is_active: boolean;
-    phone: string;
-    profile_image?: string;
-    date_joined: string;
-    last_login: string | null;
-    membership_status?: MembershipStatus | null;
-    role?: UserRole;
-    role_display?: string;
-    organization?: number | null;
-    organization_name?: string | null;
-    organization_code?: string | null;
-    membership_version: number;
+export interface CohortAssignment {
+    cohort_id: number;
+    cohort_name: string;
+    curriculum_name: string;
+    curriculum_type: string;
+    academic_year: string;
+    start_date?: string | null;
+    assigned_at?: string | null;
+    assigned_by?: string | null;
+    assignment_source?: 'cohort' | 'legacy_subject' | 'derived' | string;
+    is_cbc?: boolean;
+    subjects?: CohortAssignmentSubjectLink[];
 }
 
 export interface UserOrgMembership {

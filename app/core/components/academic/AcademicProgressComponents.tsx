@@ -61,7 +61,7 @@ export function AcademicNav({ active }: AcademicNavProps) {
     return (
         <nav className="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
             {isAdmin && tab('/academic/topics', 'Authoring', 'authoring')}
-            {tab('/academic/topics/browser', isAdmin ? 'Browser' : 'My Topics', 'browser')}
+            {tab('/academic/topics/browser', isAdmin ? 'Browser' : 'Cohort Topics', 'browser')}
             {tab('/academic/progress', 'Progress', 'progress')}
         </nav>
     );
