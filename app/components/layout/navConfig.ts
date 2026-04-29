@@ -195,16 +195,9 @@ export function getInstructorNav(
     return {
         primary: [
             { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
-            {
-                name: 'My Cohorts', href: '/academic/cohorts', icon: Users,
-                children: [
-                    { name: 'Assigned Cohorts', href: '/academic/cohorts', icon: Users },
-                    { name: 'Coverage Progress', href: '/academic/progress', icon: TrendingUp },
-                ],
-            },
-            { name: 'My Requests', href: '/requests', icon: Inbox, badge: 0 },
-            { name: "Today's Sessions", href: '/sessions/today', icon: Clock },
+            { name: 'My Cohorts', href: '/academic/cohorts', icon: Users },
             { name: 'My Sessions', href: '/sessions', icon: Calendar },
+            { name: 'My Requests', href: '/requests', icon: Inbox, badge: 0 },
             { name: 'My Learners', href: '/learners', icon: Users },
             {
                 name: 'Assessments', href: '/assessments', icon: ClipboardCheck,

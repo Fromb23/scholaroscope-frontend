@@ -7,11 +7,17 @@
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/curricula/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/curricula/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/academic/SubjectComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/SubjectComponents.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/academic.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeOfferingCohortsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeOfferingCohortsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/progress/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/topics/browser/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/topics/browser/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/browser/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/browser/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/instructor/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/instructor/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/sessions/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/sessions/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/sessions/today/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/sessions/today/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/layout/navConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/navConfig.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/AcademicProgressComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/AcademicProgressComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useInstructorDashboard.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useInstructorDashboard.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/routeAccess.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/routeAccess.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,7 +25,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="379" />
+    <option name="cachedIndexableFilesCount" value="383" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -110,7 +116,10 @@
       <workItem from="1777157916112" duration="5305000" />
       <workItem from="1777234045033" duration="2660000" />
       <workItem from="1777263907646" duration="758000" />
-      <workItem from="1777412084633" duration="6089000" />
+      <workItem from="1777412084633" duration="6689000" />
+      <workItem from="1777421506671" duration="6536000" />
+      <workItem from="1777499240078" duration="3430000" />
+      <workItem from="1777503856246" duration="1322000" />
     </task>
     <servers />
   </component>
@@ -123,7 +132,6 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/app/core/components/cohorts/CohortComponents.tsx</url>
           <line>10</line>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>

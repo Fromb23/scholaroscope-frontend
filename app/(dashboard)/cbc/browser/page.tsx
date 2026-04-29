@@ -6,6 +6,7 @@ import { BookOpen, ChevronRight, Search, Layers } from 'lucide-react';
 import { useStrands } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import { useAcademic } from '@/app/core/hooks/useAcademic';
+import { useCohortSubjectsByCohort } from '@/app/core/hooks/useCohortSubjects';
 import {
     CBCNav, CBCError, CBCLoading, CBCEmpty, SubjectGroupPicker,
 } from '@/app/plugins/cbc/components/CBCComponents';
@@ -20,9 +21,10 @@ export default function CBCBrowserPage() {
     const [setupStrand, setSetupStrand] = useState<Strand | null>(null);
     const {
         selectedCurriculumId, selectedSubjectId,
-        setSelectedSubject, allowedSubjectIds,
+        selectedCohortId, setSelectedSubject, allowedSubjectIds,
         isAdmin, teachingLoading,
     } = useCBCContext();
+    const { subjects: cohortSubjectLinks } = useCohortSubjectsByCohort(selectedCohortId);
     const [search, setSearch] = useState('');
     const { subjects = [] } = useAcademic();
 
@@ -39,12 +41,21 @@ export default function CBCBrowserPage() {
             }
             : undefined
     );
+    const cohortSubjectIds = useMemo(() => {
+        if (!selectedCohortId) return null;
+        return new Set(cohortSubjectLinks.map(cs => cs.subject));
+    }, [cohortSubjectLinks, selectedCohortId]);
 
     const subjectsForCurriculum = useMemo(() => {
         const all = subjects.filter((s: Subject) => s.curriculum === selectedCurriculumId);
-        const filtered = isAdmin || allowedSubjectIds === null
+
+        let filtered = isAdmin || allowedSubjectIds === null
             ? all
             : all.filter((s: Subject) => allowedSubjectIds.includes(s.id));
+
+        if (cohortSubjectIds !== null) {
+            filtered = filtered.filter((s: Subject) => cohortSubjectIds.has(s.id));
+        }
 
         const subjectIdsWithStrands = new Set(
             strands
@@ -53,13 +64,16 @@ export default function CBCBrowserPage() {
                 .filter(Boolean)
         );
         return filtered.filter((s: Subject) => subjectIdsWithStrands.has(s.id));
-    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds, strands]);
+    }, [subjects, selectedCurriculumId, isAdmin, allowedSubjectIds, cohortSubjectIds, strands]);
 
     const visible = useMemo(() => {
         let result = strands;
 
         if (!isAdmin && allowedSubjectIds !== null) {
             result = result.filter(s => s.subject_org_id && allowedSubjectIds.includes(s.subject_org_id));
+        }
+        if (cohortSubjectIds !== null) {
+            result = result.filter(s => s.subject_org_id && cohortSubjectIds.has(s.subject_org_id));
         }
         if (search.trim()) {
             const q = search.toLowerCase();
@@ -71,7 +85,7 @@ export default function CBCBrowserPage() {
         }
         result = result.filter(s => s.sub_strands_count > 0);
         return result;
-    }, [strands, search, isAdmin, allowedSubjectIds]);
+    }, [strands, search, isAdmin, allowedSubjectIds, cohortSubjectIds]);
 
     if (teachingLoading) return <CBCLoading message="Loading your assignments…" />;
 
@@ -148,7 +162,11 @@ export default function CBCBrowserPage() {
                             <CBCEmpty
                                 icon={Search}
                                 title="No Strands Found"
-                                description="No strands match your current filters."
+                                description={
+                                    selectedCohortId
+                                        ? 'No strands are available for the selected cohort.'
+                                        : 'No strands match your current filters.'
+                                }
                             />
                         </Card>
                     ) : (

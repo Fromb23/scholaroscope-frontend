@@ -283,11 +283,7 @@ export default function CohortsPage() {
             render: cohort => (
                 <div className="flex items-center gap-2">
                     <Link
-                        href={
-                            isInstructor
-                                ? `/learners?curriculum=${cohort.curriculum}&cohort=${cohort.id}`
-                                : `/academic/cohorts/${cohort.id}/students`
-                        }
+                        href={`/academic/cohorts/${cohort.id}`}
                         className="font-medium text-blue-600 hover:underline"
                     >
                         {cohort.name}

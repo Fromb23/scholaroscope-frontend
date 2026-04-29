@@ -207,7 +207,7 @@ export function InstructorKeyMetrics({ metrics }: InstructorKeyMetricsProps) {
                 subtitle={`${metrics.sessions.upcoming} upcoming`}
                 icon={Calendar}
                 gradient="from-blue-500 to-cyan-500"
-                onClick={() => router.push('/sessions/today')}
+                onClick={() => router.push('/sessions')}
             />
             <MetricCard
                 title="Needs Grading"
@@ -224,7 +224,7 @@ export function InstructorKeyMetrics({ metrics }: InstructorKeyMetricsProps) {
                 subtitle="My classes"
                 icon={TrendingUp}
                 gradient="from-purple-500 to-pink-500"
-                onClick={() => router.push('/cbc/progress')}
+                onClick={() => router.push('/assessments')}
             />
         </div>
     );
@@ -250,7 +250,7 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
                     <h3 className="text-xl font-bold text-gray-900">Today&apos;s Teaching Schedule</h3>
                 </div>
                 <button
-                    onClick={() => router.push('/sessions/today')}
+                    onClick={() => router.push('/sessions')}
                     className="text-sm text-green-600 hover:text-green-700 font-semibold flex items-center gap-1 hover:gap-2 transition-all"
                 >
                     View All →
@@ -361,7 +361,7 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl">
                         <Users className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">My Classes</h3>
+                    <h3 className="text-xl font-bold text-gray-900">My Cohorts</h3>
                 </div>
                 <button
                     onClick={() => router.push('/academic/cohorts')}
@@ -370,17 +370,40 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
                     View All →
                 </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {preview.map(cohort => (
-                    <div
-                        key={cohort.id}
-                        onClick={() => router.push(`/academic/cohorts/${cohort.id}`)}
-                        className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 cursor-pointer hover:scale-[1.02] transition-all"
-                    >
-                        <p className="font-bold text-gray-900">{cohort.name}</p>
-                        <p className="text-sm text-gray-600 mt-1">{cohort.level}</p>
-                    </div>
-                ))}
+            {preview.length === 0 ? (
+                <div className="py-10 text-center">
+                    <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-gray-900">No cohorts assigned yet.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {preview.map(cohort => (
+                        <div
+                            key={cohort.id}
+                            onClick={() => router.push(`/academic/cohorts/${cohort.id}`)}
+                            className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 cursor-pointer hover:scale-[1.02] transition-all"
+                        >
+                            <p className="font-bold text-gray-900">{cohort.name}</p>
+                            <p className="text-sm text-gray-600 mt-1">{cohort.level}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── NoCohortsAssignedCard ────────────────────────────────────────────────
+
+export function NoCohortsAssignedCard() {
+    return (
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+            <div className="py-10 text-center">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-lg font-semibold text-gray-900">No cohorts assigned yet.</p>
+                <p className="text-sm text-gray-500 mt-2">
+                    Your teaching dashboard will show cohort, session, and curriculum tools after assignments are added.
+                </p>
             </div>
         </div>
     );
@@ -396,10 +419,9 @@ export function InstructorQuickActions({ needsGrading }: InstructorQuickActionsP
     const router = useRouter();
 
     const actions: { icon: LucideIcon; label: string; path: string; badge?: number }[] = [
-        { icon: Clock, label: 'Mark Attendance', path: '/sessions/today' },
+        { icon: Clock, label: 'Mark Attendance', path: '/sessions' },
         { icon: Award, label: 'Grade Work', path: '/assessments?status=pending', badge: needsGrading },
         { icon: FileText, label: 'Submit Request', path: '/requests/new' },
-        { icon: BookOpen, label: 'CBC Teaching', path: '/cbc/teaching' },
     ];
 
     return (
@@ -473,39 +495,56 @@ export function MyRequestsCard() {
     );
 }
 
-// ── CBCProgressCard ───────────────────────────────────────────────────────
+// ── CurriculumToolCard ────────────────────────────────────────────────────
 
-export function CBCProgressCard() {
+interface CurriculumToolCardProps {
+    title: string;
+    description: string;
+    icon: LucideIcon;
+    primaryAction: {
+        label: string;
+        path: string;
+    };
+    secondaryAction?: {
+        label: string;
+        path: string;
+    };
+}
+
+export function CurriculumToolCard({
+    title,
+    description,
+    icon: Icon,
+    primaryAction,
+    secondaryAction,
+}: CurriculumToolCardProps) {
     const router = useRouter();
-
-    // Hardcoded — replace with useCBCProgress hook when available
-    const stats = [
-        { label: 'Outcomes Recorded', value: 24, color: 'bg-purple-50', textColor: 'text-purple-600' },
-        { label: 'Evidence Collected', value: 156, color: 'bg-pink-50', textColor: 'text-pink-600' },
-    ];
 
     return (
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
             <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
-                    <Target className="w-5 h-5 text-white" />
+                    <Icon className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">CBC Progress</h3>
+                <h3 className="text-lg font-bold text-gray-900">{title}</h3>
             </div>
-            <div className="space-y-3">
-                {stats.map(s => (
-                    <div key={s.label} className={`p-3 ${s.color} rounded-xl`}>
-                        <p className="text-sm font-medium text-gray-700">{s.label}</p>
-                        <p className={`text-2xl font-bold ${s.textColor} mt-1`}>{s.value}</p>
-                    </div>
-                ))}
+            <p className="text-sm text-gray-600 mb-4">{description}</p>
+            <div className="space-y-2">
+                <button
+                    onClick={() => router.push(primaryAction.path)}
+                    className="w-full px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                    {primaryAction.label}
+                </button>
+                {secondaryAction && (
+                    <button
+                        onClick={() => router.push(secondaryAction.path)}
+                        className="w-full px-4 py-2 bg-purple-50 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-100 transition-colors"
+                    >
+                        {secondaryAction.label}
+                    </button>
+                )}
             </div>
-            <button
-                onClick={() => router.push('/cbc/teaching')}
-                className="w-full mt-4 px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors"
-            >
-                Track Progress
-            </button>
         </div>
     );
 }
@@ -572,14 +611,14 @@ export function TeachingLoadCard({ assignments }: TeachingLoadCardProps) {
             {currentYear.length === 0 ? (
                 <div className="py-8 text-center">
                     <BookOpen className="w-10 w-10 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No subjects assigned yet</p>
+                    <p className="text-sm text-gray-500">No teaching assignments available yet.</p>
                 </div>
             ) : (
                 <div className="space-y-3">
                     {currentYear.map(a => (
                         <div
                             key={a.cohort_subject_id}
-                            onClick={() => router.push(`/academic/topics/browser`)}
+                            onClick={() => router.push('/academic/cohorts')}
                             className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 rounded-xl border border-teal-200 transition-all hover:scale-[1.02] cursor-pointer"
                         >
                             <div className="flex items-center justify-between mb-2">

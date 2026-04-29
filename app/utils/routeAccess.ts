@@ -24,6 +24,8 @@ export const routeRules: RouteRule[] = [
     { pattern: /^\/academic\/topics$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/topics\/new/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/topics\/\d+\/edit/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/academic\/topics\/browser/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/academic\/progress/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/new$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/assessments\/new$/, allowedRoles: ['ADMIN'] },
@@ -35,8 +37,7 @@ export const routeRules: RouteRule[] = [
 
     // ADMIN + INSTRUCTOR
     { pattern: /^\/academic\/cohorts$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/academic\/topics\/browser/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/academic\/progress/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/academic\/cohorts\/\d+$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/sessions/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/learners/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/assessments/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },

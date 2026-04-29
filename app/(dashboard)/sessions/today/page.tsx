@@ -8,6 +8,8 @@
 // ============================================================================
 
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, Clock, CheckCircle, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -15,12 +17,22 @@ import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { useAuth } from '@/app/context/AuthContext';
 import { SessionCard } from '@/app/core/components/sessions/SessionCard';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { categorizeSessions, calcAvgAttendance } from '@/app/utils/sessionUtils';
 
 export default function TodaySessionsPage() {
+    const router = useRouter();
+    const { activeRole, loading: authLoading } = useAuth();
     const { sessions, loading, error } = useTodaySessions();
+
+    useEffect(() => {
+        if (authLoading || activeRole !== 'INSTRUCTOR') return;
+        router.replace('/sessions');
+    }, [activeRole, authLoading, router]);
+
+    if (authLoading || activeRole === 'INSTRUCTOR') return null;
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorState message={error} />;

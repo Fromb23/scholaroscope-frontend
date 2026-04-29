@@ -9,6 +9,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { BookOpen, Search, Plus, GraduationCap, History } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useTopics } from '@/app/core/hooks/useTopics';
@@ -21,6 +22,7 @@ import { Select } from '@/app/components/ui/Select';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AcademicNav } from '@/app/core/components/academic/AcademicProgressComponents';
 import { SubjectSection } from '@/app/core/components/topics/TopicBrowserComponents';
+import { roleHomeRoute } from '@/app/utils/routeAccess';
 import type { Topic } from '@/app/core/types/topics';
 
 // ── Grouping utility ──────────────────────────────────────────────────────
@@ -32,8 +34,14 @@ interface CohortGroup {
 }
 
 export default function TopicsBrowserPage() {
-    const { user, activeRole } = useAuth();
+    const router = useRouter();
+    const { user, activeRole, loading: authLoading } = useAuth();
     const isAdmin = activeRole === 'ADMIN' || !!user?.is_superadmin;
+
+    useEffect(() => {
+        if (authLoading || isAdmin || !activeRole) return;
+        router.replace(roleHomeRoute[activeRole]);
+    }, [activeRole, authLoading, isAdmin, router]);
 
     const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find(y => y.is_current), [academicYears]);
@@ -93,6 +101,8 @@ export default function TopicsBrowserPage() {
     const isHistoricalView = selectedYearId
         ? !academicYears.find(y => y.id === selectedYearId)?.is_current
         : false;
+
+    if (authLoading || !isAdmin) return null;
 
     // ── Render ────────────────────────────────────────────────────────────
 
