@@ -2,8 +2,10 @@
 // React Query hooks for the CBC plugin.
 // All server state is managed here — pages/components only call these hooks.
 
+import type { AxiosError } from 'axios';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
+import { apiClient } from '@/app/core/api/client';
 import {
   strandAPI,
   subStrandAPI,
@@ -48,6 +50,85 @@ function uniqueSortedIds(values: number[]) {
     .sort((left, right) => left - right);
 }
 
+interface CBCRequestDiagnostics {
+  endpoint: string;
+  url: string;
+  params?: Record<string, number | string | null | undefined>;
+  statusCode?: number;
+  backendDetail?: string;
+  backendMessage?: string;
+  responseData?: unknown;
+}
+
+export interface CBCQueryError extends Error {
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+  diagnostic?: CBCRequestDiagnostics;
+}
+
+function buildRequestUrl(endpoint: string, params?: Record<string, number | string | null | undefined>) {
+  const baseURL = apiClient.defaults.baseURL ?? '';
+  const normalizedBaseURL = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = new URL(`${normalizedBaseURL}${normalizedEndpoint}`, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        url.searchParams.set(key, String(value));
+      }
+    });
+  }
+
+  return url.toString();
+}
+
+function extractBackendMessage(responseData: unknown) {
+  if (typeof responseData === 'string') {
+    return {
+      backendDetail: responseData,
+      backendMessage: responseData,
+    };
+  }
+
+  if (!responseData || typeof responseData !== 'object') return {};
+
+  const payload = responseData as {
+    detail?: string;
+    message?: string;
+    error?: string;
+    non_field_errors?: string[];
+  };
+
+  return {
+    backendDetail: payload.detail ?? payload.non_field_errors?.[0],
+    backendMessage: payload.message ?? payload.error,
+  };
+}
+
+function decorateCBCQueryError(
+  error: unknown,
+  endpoint: string,
+  params?: Record<string, number | string | null | undefined>
+): CBCQueryError {
+  const axiosError = error as AxiosError;
+  const decorated = error instanceof Error ? error as CBCQueryError : new Error('CBC request failed') as CBCQueryError;
+  const responseData = axiosError.response?.data;
+
+  decorated.diagnostic = {
+    endpoint,
+    url: buildRequestUrl(endpoint, params),
+    params,
+    statusCode: axiosError.response?.status,
+    ...extractBackendMessage(responseData),
+    responseData,
+  };
+
+  return decorated;
+}
+
 // ============================================================================
 // Structural — Strands
 // ============================================================================
@@ -56,8 +137,22 @@ export const useStrands = (params?: { curriculum?: number; subject?: number; sub
   useQuery<Strand[]>({
     queryKey: cbcKeys.strands.list(params),
     queryFn: async () => {
-      const data = await strandAPI.getAll(params);
-      return toArray(data);
+      try {
+        const data = await strandAPI.getAll(params);
+        return toArray(data);
+      } catch (error) {
+        const decorated = decorateCBCQueryError(error, '/cbc/strands/', params);
+        console.error('[CBC Browser] strand fetch failed', {
+          endpointUrl: decorated.diagnostic?.url ?? decorated.diagnostic?.endpoint ?? null,
+          queryParams: decorated.diagnostic?.params ?? params ?? null,
+          statusCode: decorated.diagnostic?.statusCode ?? null,
+          backendDetail: decorated.diagnostic?.backendDetail ?? null,
+          backendMessage: decorated.diagnostic?.backendMessage ?? null,
+          responseData: decorated.diagnostic?.responseData ?? null,
+          finalUseStrandsParams: params ?? null,
+        });
+        throw decorated;
+      }
     },
     enabled: params !== undefined,
     staleTime: 5 * 60 * 1000,
