@@ -40,8 +40,7 @@ export const CURRICULUM_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Select curriculum type' },
   { value: '8-4-4', label: '8-4-4' },
   { value: 'CBE', label: 'CBE' },
-  { value: 'IGCSE', label: 'IGCSE' },
-  { value: 'CUSTOM', label: 'Custom' },
+  { value: 'CAMBRIDGE', label: 'Cambridge' },
 ];
 
 export type CurriculumType = typeof CURRICULUM_TYPE_OPTIONS[number]['value'];
@@ -72,7 +71,7 @@ export interface Subject {
 }
 
 export interface SubjectDetail extends Subject {
-  teachers: any[];
+  teachers: Array<Record<string, unknown>>;
   cohorts_offering: {
     cohort_id: number;
     cohort_name: string;
@@ -165,6 +164,15 @@ export interface CohortSubjectFormData {
 export interface TermQueryParams {
   academic_year?: number
   organization?: number
+}
+
+export interface InstructorCohortAccessAssignment {
+  cohort_id: number;
+  cohort_name: string;
+  curriculum_name: string;
+  curriculum_type: string;
+  academic_year: string;
+  is_current_year: boolean;
 }
 
 export interface TeachingAssignment {

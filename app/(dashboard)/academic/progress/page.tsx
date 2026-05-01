@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { TrendingUp, Users, BookOpen, AlertCircle, History } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useCohorts, useAcademicYears, useCohortDetail } from '@/app/core/hooks/useAcademic';
@@ -20,10 +21,17 @@ import {
     CoverageLegend,
     CohortSubjectCard,
 } from '@/app/core/components/academic/AcademicProgressComponents';
+import { roleHomeRoute } from '@/app/utils/routeAccess';
 
 export default function AcademicProgressPage() {
-    const { user, activeRole } = useAuth();
+    const router = useRouter();
+    const { user, activeRole, loading: authLoading } = useAuth();
     const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
+
+    useEffect(() => {
+        if (authLoading || isAdmin || !activeRole) return;
+        router.replace(roleHomeRoute[activeRole]);
+    }, [activeRole, authLoading, isAdmin, router]);
 
     const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find(y => y.is_current), [academicYears]);
@@ -68,6 +76,8 @@ export default function AcademicProgressPage() {
 
     const selectedCohort = cohorts.find(c => c.id === selectedCohortId);
     const isHistoricalView = selectedCohort ? !selectedCohort.is_current_year : false;
+
+    if (authLoading || !isAdmin) return null;
 
     // ── Render ────────────────────────────────────────────────────────────
 

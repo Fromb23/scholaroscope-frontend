@@ -1,5 +1,6 @@
 // app/utils/routeAccess.ts
-import { Role } from '@/app/core/types/auth';
+
+type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
 
 type RouteRule = {
     pattern: RegExp;
@@ -19,10 +20,12 @@ export const routeRules: RouteRule[] = [
     { pattern: /^\/academic\/years/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/terms/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/subjects/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/academic\/cohorts/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/academic\/cohorts\/[^/]+\/students$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/topics$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/topics\/new/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/academic\/topics\/\d+\/edit/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/academic\/topics\/browser/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/academic\/progress/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/new$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/assessments\/new$/, allowedRoles: ['ADMIN'] },
@@ -33,14 +36,15 @@ export const routeRules: RouteRule[] = [
     { pattern: /^\/dashboard\/instructor/, allowedRoles: ['INSTRUCTOR'] },
 
     // ADMIN + INSTRUCTOR
-    { pattern: /^\/academic\/topics\/browser/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/academic\/progress/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/academic\/cohorts$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/academic\/cohorts\/\d+$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/sessions/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/learners/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/assessments/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/cbc\/teaching/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/cbc\/progress/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/cbc\/browser/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/cambridge/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/announcements/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/requests/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/profile/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },

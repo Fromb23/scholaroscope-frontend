@@ -7,7 +7,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useCambridgeInstallation } from '../hooks';
+import { useCambridgeInstallationStatus } from '../hooks';
 
 interface CambridgeInstallationGateProps {
   children: ReactNode;
@@ -18,7 +18,7 @@ export function CambridgeInstallationGate({
   children,
   fallback = null,
 }: CambridgeInstallationGateProps) {
-  const { data: installation, isLoading } = useCambridgeInstallation();
+  const { data: installation, isLoading } = useCambridgeInstallationStatus();
 
   if (isLoading) {
     return <div>Checking Cambridge status...</div>;

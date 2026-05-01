@@ -6,8 +6,8 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Calendar, Clock, BookOpen, Users, Plus, Filter, ChevronDown, ChevronRight, Layers, MapPin, CheckCircle2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Calendar, Clock, Users, Plus, ChevronDown, ChevronRight, Layers, MapPin, CheckCircle2 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -20,12 +20,25 @@ import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { groupBy } from '@/app/utils/groupBy';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
+import { useAuth } from '@/app/context/AuthContext';
 
 export default function SessionsOverview() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const { activeRole } = useAuth();
+    const isInstructor = activeRole === 'INSTRUCTOR';
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedCohort, setSelectedCohort] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
+    const cohortFromQuery = searchParams.get('cohort');
+
+    useEffect(() => {
+        if (!cohortFromQuery) return;
+        const parsed = Number(cohortFromQuery);
+        if (Number.isFinite(parsed) && parsed > 0 && parsed !== selectedCohort) {
+            setSelectedCohort(parsed);
+        }
+    }, [cohortFromQuery, selectedCohort]);
 
     const { sessions, loading, error, refetch } = useSessions({
         term: selectedTerm,
@@ -74,7 +87,11 @@ export default function SessionsOverview() {
     const toggleGroup = (cohortId: number) => {
         setCollapsedGroups(prev => {
             const next = new Set(prev);
-            next.has(cohortId) ? next.delete(cohortId) : next.add(cohortId);
+            if (next.has(cohortId)) {
+                next.delete(cohortId);
+            } else {
+                next.add(cohortId);
+            }
             return next;
         });
     };
@@ -106,12 +123,14 @@ export default function SessionsOverview() {
                     <p className="text-gray-600 mt-1 text-sm">Manage class sessions and attendance</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                    <Link href="/sessions/today">
-                        <Button variant="primary" size="sm">
-                            <Clock className="w-4 h-4 mr-1" />
-                            <span className="hidden sm:inline">Today's </span>Sessions
-                        </Button>
-                    </Link>
+                    {!isInstructor && (
+                        <Link href="/sessions/today">
+                            <Button variant="primary" size="sm">
+                                <Clock className="w-4 h-4 mr-1" />
+                                <span className="hidden sm:inline">Today&apos;s </span>Sessions
+                            </Button>
+                        </Link>
+                    )}
                     <Link href="/sessions/new">
                         <Button size="sm">
                             <Plus className="w-4 h-4 sm:mr-1" />
@@ -136,10 +155,12 @@ export default function SessionsOverview() {
                 <Card>
                     <div className="p-4">
                         <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-base font-semibold text-gray-900">Today's Sessions</h2>
-                            <Link href="/sessions/today">
-                                <Button variant="ghost" size="sm">View All</Button>
-                            </Link>
+                            <h2 className="text-base font-semibold text-gray-900">Today&apos;s Sessions</h2>
+                            {!isInstructor && (
+                                <Link href="/sessions/today">
+                                    <Button variant="ghost" size="sm">View All</Button>
+                                </Link>
+                            )}
                         </div>
                         <div className="space-y-2">
                             {todaySessions.slice(0, 3).map(session => {

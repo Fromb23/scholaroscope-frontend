@@ -11,6 +11,7 @@ import {
   CohortDetail,
   TermQueryParams
 } from '@/app/core/types/academic';
+import { CohortSubjectOption } from '@/app/core/types/session';
 import { PaginatedResponse } from './sessions';
 
 interface CurriculumQuery {
@@ -158,6 +159,7 @@ export const subjectAPI = {
 export interface CohortQueryParams extends ListQueryParams {
   academic_year?: number;
   curriculum?: number;
+  curriculum_type?: string;
   level?: string;
 }
 export const cohortAPI = {
@@ -250,6 +252,11 @@ export const cohortAPI = {
       `/cohorts/${cohortId}/rollover/`,
       data
     );
+    return response.data;
+  },
+
+  getSubjectOptions: async (cohortId: number) => {
+    const response = await apiClient.get<CohortSubjectOption[]>(`/cohorts/${cohortId}/subject-options/`);
     return response.data;
   },
 };

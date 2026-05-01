@@ -24,15 +24,22 @@ export function usePersistedFilters<T extends FilterState>(
     });
 
     useEffect(() => {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams(searchParams.toString());
         for (const key in filters) {
             const val = filters[key];
             if (val !== null && val !== undefined && val !== '') {
                 params.set(key, String(val));
+            } else {
+                params.delete(key);
             }
         }
-        router.replace(`${basePath}?${params.toString()}`, { scroll: false });
-    }, [filters]);
+        const nextQuery = params.toString();
+        const currentQuery = searchParams.toString();
+        if (nextQuery === currentQuery) {
+            return;
+        }
+        router.replace(nextQuery ? `${basePath}?${nextQuery}` : basePath, { scroll: false });
+    }, [basePath, filters, router, searchParams]);
 
     const updateFilters = (updates: Partial<T>) => {
         setFilters(prev => ({ ...prev, ...updates }));

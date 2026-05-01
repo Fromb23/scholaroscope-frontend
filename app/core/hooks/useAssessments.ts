@@ -3,7 +3,7 @@
 // Owns all assessment server state and mutations.
 // No API calls outside this file. No any. No business logic in pages.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   assessmentAPI,
   assessmentScoreAPI,
@@ -21,12 +21,23 @@ import {
 } from '../types/assessment';
 import { PaginatedResponse } from '@/app/core/types/api';
 import { ApiError, extractErrorMessage } from '../types/errors';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 
 // ── Helper ────────────────────────────────────────────────────────────────
 
 
 function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
   return Array.isArray(data) ? data : data?.results ?? [];
+}
+
+function toIdSet(idsKey: string): Set<number> {
+  if (!idsKey) return new Set<number>();
+  return new Set(
+    idsKey
+      .split(',')
+      .map(value => Number(value))
+      .filter(value => Number.isFinite(value))
+  );
 }
 
 // ── useAssessments ────────────────────────────────────────────────────────
@@ -41,29 +52,50 @@ export const useAssessments = (params?: {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const instructorAccess = useInstructorCohortAccess();
+  const cohortIdsKey = instructorAccess.cohortIdsKey;
+  const allowedCohortIds = useMemo(
+    () => toIdSet(cohortIdsKey),
+    [cohortIdsKey]
+  );
+  const assessmentFilters = useMemo(
+    () => ({
+      term: params?.term,
+      cohort_subject: params?.cohort_subject,
+      assessment_type: params?.assessment_type,
+      evaluation_type: params?.evaluation_type,
+      status: params?.status,
+    }),
+    [
+      params?.term,
+      params?.cohort_subject,
+      params?.assessment_type,
+      params?.evaluation_type,
+      params?.status,
+    ]
+  );
 
-  const fetchAssessments = async () => {
+  const fetchAssessments = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await assessmentAPI.getAll(params);
-      setAssessments(unwrapList(data));
+      const data = await assessmentAPI.getAll(assessmentFilters);
+      const allAssessments = unwrapList(data);
+      setAssessments(
+        instructorAccess.isInstructor
+          ? allAssessments.filter(assessment => allowedCohortIds.has(assessment.cohort_id))
+          : allAssessments
+      );
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessments'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [allowedCohortIds, assessmentFilters, instructorAccess.isInstructor]);
 
   useEffect(() => {
-    fetchAssessments();
-  }, [
-    params?.term,
-    params?.cohort_subject,
-    params?.assessment_type,
-    params?.evaluation_type,
-    params?.status,
-  ]);
+    void fetchAssessments();
+  }, [fetchAssessments]);
 
   const createAssessment = async (data: Partial<Assessment>): Promise<Assessment> => {
     const created = await assessmentAPI.create(data);
@@ -98,7 +130,7 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
   const [finalizing, setFinalizing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchAssessment = async () => {
+  const fetchAssessment = useCallback(async () => {
     if (!assessmentId) { setLoading(false); return; }
     try {
       setLoading(true);
@@ -110,9 +142,9 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [assessmentId]);
 
-  useEffect(() => { fetchAssessment(); }, [assessmentId]);
+  useEffect(() => { void fetchAssessment(); }, [fetchAssessment]);
 
   const activateAssessment = async (): Promise<void> => {
     if (!assessmentId) return;
@@ -164,12 +196,28 @@ export const useAssessmentScores = (params?: {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalItems, setTotalItems] = useState(0);
+  const scoreFilters = useMemo(
+    () => ({
+      assessment: params?.assessment,
+      student: params?.student,
+      search: params?.search,
+      page: params?.page,
+      page_size: params?.page_size,
+    }),
+    [
+      params?.assessment,
+      params?.student,
+      params?.search,
+      params?.page,
+      params?.page_size,
+    ]
+  );
 
-  const fetchScores = async () => {
+  const fetchScores = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await assessmentScoreAPI.getAll(params);
+      const data = await assessmentScoreAPI.getAll(scoreFilters);
       setScores(unwrapList(data));
       setTotalItems(
         Array.isArray(data) ? data.length : (data as PaginatedResponse<AssessmentScore>).count ?? 0
@@ -180,11 +228,11 @@ export const useAssessmentScores = (params?: {
     } finally {
       setLoading(false);
     }
-  };
+  }, [scoreFilters]);
 
   useEffect(() => {
-    fetchScores();
-  }, [params?.assessment, params?.student, params?.search, params?.page, params?.page_size]);
+    void fetchScores();
+  }, [fetchScores]);
 
   const updateScore = async (id: number, data: Partial<AssessmentScore>): Promise<AssessmentScore> => {
     const updated = await assessmentScoreAPI.update(id, data);
@@ -211,7 +259,7 @@ export const useRubricScales = (curriculumId?: number) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRubricScales = async () => {
+  const fetchRubricScales = useCallback(async () => {
     try {
       setLoading(true);
       const data = curriculumId
@@ -224,9 +272,9 @@ export const useRubricScales = (curriculumId?: number) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [curriculumId]);
 
-  useEffect(() => { fetchRubricScales(); }, [curriculumId]);
+  useEffect(() => { void fetchRubricScales(); }, [fetchRubricScales]);
 
   const createRubricScale = async (data: Partial<RubricScale>): Promise<RubricScale> => {
     const created = await rubricScaleAPI.create(data);
@@ -259,7 +307,7 @@ export const useRubricScaleDetail = (scaleId: number | null) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchScale = async () => {
+  const fetchScale = useCallback(async () => {
     if (!scaleId) { setLoading(false); return; }
     try {
       setLoading(true);
@@ -271,9 +319,9 @@ export const useRubricScaleDetail = (scaleId: number | null) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [scaleId]);
 
-  useEffect(() => { fetchScale(); }, [scaleId]);
+  useEffect(() => { void fetchScale(); }, [fetchScale]);
 
   return { scale, loading, error, refetch: fetchScale };
 };
@@ -289,7 +337,7 @@ export const useStudentScores = (
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStudentScores = async () => {
+  const fetchStudentScores = useCallback(async () => {
     if (!studentId) { setLoading(false); return; }
     try {
       setLoading(true);
@@ -301,17 +349,15 @@ export const useStudentScores = (
     } finally {
       setLoading(false);
     }
-  };
+  }, [cohortId, studentId, termId]);
 
-  useEffect(() => { fetchStudentScores(); }, [studentId, termId, cohortId]);
+  useEffect(() => { void fetchStudentScores(); }, [fetchStudentScores]);
 
   return { data, loading, error, refetch: fetchStudentScores };
 };
 
 
 // ── useCreateAssessmentForm ───────────────────────────────────────────────
-
-import { CohortSubject } from '../types/academic';
 
 interface AssessmentFormState {
   cohort_subject: number;

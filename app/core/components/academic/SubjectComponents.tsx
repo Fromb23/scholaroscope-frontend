@@ -21,6 +21,7 @@ import Modal from '@/app/components/ui/Modal';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
+import { getCurriculumOptionLabel } from '@/app/core/lib/curriculumBridge';
 import type { Subject, SubjectFormData, Curriculum } from '@/app/core/types/academic';
 
 // ── Grouping utility ──────────────────────────────────────────────────────
@@ -252,7 +253,7 @@ export function SubjectFormModal({
             setForm({ curriculum: defaultCurriculumId, code: '', name: '', level: '', description: '' });
         }
         setError(null);
-    }, [editing, isOpen, addingLevelTo]);
+    }, [addingLevelTo, defaultCurriculumId, editing, isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -288,7 +289,7 @@ export function SubjectFormModal({
                         { value: '', label: 'Select Curriculum' },
                         ...curricula.map(c => ({
                             value: String(c.id),
-                            label: `${c.name} (${c.curriculum_type_display})`,
+                            label: getCurriculumOptionLabel(c),
                         })),
                     ]}
                 />

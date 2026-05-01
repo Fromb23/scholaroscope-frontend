@@ -113,7 +113,7 @@ function generateInstructorAlerts(metrics: InstructorMetrics): DashboardAlert[] 
         alerts.push({
             id: 2, type: 'info',
             message: `${metrics.sessions.upcoming} sessions starting soon`,
-            action: 'View Schedule', link: '/sessions/today',
+            action: 'View Schedule', link: '/sessions',
         });
     }
     if (metrics.performance.needsSupport > 10) {

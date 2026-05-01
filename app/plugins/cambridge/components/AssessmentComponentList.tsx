@@ -6,41 +6,31 @@
 
 'use client';
 
-import type { AssessmentComponent } from '../types';
+import type { CambridgeNormalizedAssessmentUnit } from '../types';
 
 interface AssessmentComponentListProps {
-  components: AssessmentComponent[];
-  onEdit?: (component: AssessmentComponent) => void;
-  onDelete?: (component: AssessmentComponent) => void;
+  components: CambridgeNormalizedAssessmentUnit[];
 }
 
-export function AssessmentComponentList({ components, onEdit, onDelete }: AssessmentComponentListProps) {
+export function AssessmentComponentList({ components }: AssessmentComponentListProps) {
   return (
-    <div>
-      {/* TODO: UI implementation */}
-      <table>
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
         <thead>
-          <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Weight</th>
-            <th>Max Marks</th>
-            <th>Actions</th>
+          <tr className="border-b border-gray-200 text-left">
+            <th className="pb-2 pr-2">Title</th>
+            <th className="pb-2 pr-2">Type</th>
+            <th className="pb-2 pr-2">Weight</th>
+            <th className="pb-2">Max Mark</th>
           </tr>
         </thead>
         <tbody>
           {components.map((c) => (
-            <tr key={c.id}>
-              <td>{c.code}</td>
-              <td>{c.name}</td>
-              <td>{c.component_type}</td>
-              <td>{c.weight}%</td>
-              <td>{c.max_marks}</td>
-              <td>
-                {onEdit && <button onClick={() => onEdit(c)}>Edit</button>}
-                {onDelete && <button onClick={() => onDelete(c)}>Delete</button>}
-              </td>
+            <tr key={c.id} className="border-b border-gray-100">
+              <td className="py-2 pr-2">{c.title}</td>
+              <td className="py-2 pr-2">{c.assessment_type}</td>
+              <td className="py-2 pr-2">{c.weight_percentage ?? '—'}</td>
+              <td className="py-2">{c.max_mark ?? '—'}</td>
             </tr>
           ))}
         </tbody>

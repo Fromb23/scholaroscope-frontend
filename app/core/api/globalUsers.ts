@@ -3,7 +3,7 @@
 // Mirrors: UserViewSet endpoints — superadmin sees all users across all orgs
 // ============================================================================
 
-import { HistoryEntry, TeachingAssignment } from '../types/academic';
+import { HistoryEntry, InstructorCohortAccessAssignment, TeachingAssignment } from '../types/academic';
 import { apiClient } from './client';
 import {
     GlobalUser,
@@ -77,6 +77,7 @@ export const globalUsersAPI = {
         organization: string | null;
         total_assigned: number;
         assignments: TeachingAssignment[];
+        cohort_assignments: InstructorCohortAccessAssignment[];
     }> => {
         const response = await apiClient.get('/users/my_teaching_load/');
         return response.data;

@@ -6,7 +6,15 @@
 // ============================================================================
 
 import { apiClient } from './client';
-import { GlobalUser, UserCreatePayload, UserUpdatePayload, AvailableCohortSubject, InstructorStats, CohortAssignment } from '@/app/core/types/globalUsers';
+import {
+    AvailableCohort,
+    AvailableCohortSubject,
+    CohortAssignment,
+    GlobalUser,
+    InstructorStats,
+    UserCreatePayload,
+    UserUpdatePayload,
+} from '@/app/core/types/globalUsers';
 
 
 
@@ -84,14 +92,13 @@ export const instructorsAPI = {
     },
 
     // GET /api/cohorts/ — for the assign-to-cohort dropdown
-    getCohorts: async (): Promise<{ id: number; name: string; academic_year: string }[]> => {
+    getCohorts: async (): Promise<AvailableCohort[]> => {
         const response = await apiClient.get('/cohorts/');
         const data = response.data;
-        type Cohort = { id: number; name: string; academic_year: string };
         if (Array.isArray(data)) {
-            return data as Cohort[];
+            return data as AvailableCohort[];
         } else if (data && typeof data === 'object' && 'results' in data) {
-            return (data as { results: Cohort[] }).results ?? [];
+            return (data as { results: AvailableCohort[] }).results ?? [];
         } else {
             return [];
         }
@@ -100,6 +107,25 @@ export const instructorsAPI = {
         const response = await apiClient.get('/cohort-subjects/');
         const data = response.data;
         return Array.isArray(data) ? data : (data as { results: AvailableCohortSubject[] }).results ?? [];
+    },
+
+    assignCohort: async (instructorId: number, cohortId: number): Promise<void> => {
+        await apiClient.post(`/users/${instructorId}/assign_cohort/`, {
+            cohort_id: cohortId,
+        });
+    },
+
+    unassignCohort: async (
+        instructorId: number,
+        cohortId: number,
+        reason?: string,
+        notes?: string,
+    ): Promise<void> => {
+        await apiClient.post(`/users/${instructorId}/unassign_cohort/`, {
+            cohort_id: cohortId,
+            ...(reason ? { reason } : {}),
+            ...(notes ? { notes } : {}),
+        });
     },
 
     // POST /api/cohorts/{cohortId}/assign_instructor/

@@ -1,0 +1,3 @@
+import CambridgeAuthoringFrameworkStrandsPage from '@/app/plugins/cambridge/pages/CambridgeAuthoringFrameworkStrandsPage';
+
+export default CambridgeAuthoringFrameworkStrandsPage;

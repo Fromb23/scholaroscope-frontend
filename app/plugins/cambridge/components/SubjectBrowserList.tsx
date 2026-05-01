@@ -6,36 +6,33 @@
 
 'use client';
 
-import type { CambridgeSubject, CambridgeProgramme, CambridgeLevel } from '../types';
+import type { CambridgeNormalizedSubject } from '../types';
 
 interface SubjectBrowserListProps {
-  subjects: CambridgeSubject[];
-  filterProgramme?: CambridgeProgramme;
-  filterLevel?: CambridgeLevel;
-  onSelect: (subject: CambridgeSubject) => void;
+  subjects: CambridgeNormalizedSubject[];
+  selectedId?: number | null;
+  onSelect: (subject: CambridgeNormalizedSubject) => void;
 }
 
-export function SubjectBrowserList({
-  subjects,
-  filterProgramme,
-  filterLevel,
-  onSelect,
-}: SubjectBrowserListProps) {
-  const filtered = subjects.filter((s) => {
-    if (filterProgramme && s.programme !== filterProgramme) return false;
-    if (filterLevel && s.level !== filterLevel) return false;
-    return true;
-  });
-
+export function SubjectBrowserList({ subjects, selectedId, onSelect }: SubjectBrowserListProps) {
   return (
-    <div>
-      {/* TODO: UI implementation */}
-      <p>{filtered.length} subjects</p>
-      <ul>
-        {filtered.map((subject) => (
+    <div className="space-y-2">
+      <p className="text-sm text-gray-500">{subjects.length} normalized subjects</p>
+      <ul className="space-y-2">
+        {subjects.map((subject) => (
           <li key={subject.id}>
-            <button onClick={() => onSelect(subject)}>
-              {subject.code} — {subject.name}
+            <button
+              onClick={() => onSelect(subject)}
+              className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                subject.id === selectedId
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 bg-white hover:bg-gray-50'
+              }`}
+            >
+              <div className="font-medium text-gray-900">{subject.title}</div>
+              <div className="text-xs text-gray-500">
+                {subject.programme_code} · {subject.structure_mode} · {subject.learning_unit_count} units
+              </div>
             </button>
           </li>
         ))}

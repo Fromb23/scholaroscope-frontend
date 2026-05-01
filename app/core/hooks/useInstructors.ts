@@ -110,13 +110,13 @@ export const useInstructorDetail = (id: number | null) => {
 
     const assignCohort = async (cohortId: number) => {
         if (!id) return;
-        await instructorsAPI.assignToCohortSubject(id, cohortId);
+        await instructorsAPI.assignCohort(id, cohortId);
         await fetchDetail();
     };
 
     const unassignCohort = async (cohortId: number) => {
         if (!id) return;
-        await instructorsAPI.unassignFromCohortSubject(id, cohortId);
+        await instructorsAPI.unassignCohort(id, cohortId);
         await fetchDetail();
     };
 

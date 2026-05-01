@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ScholaroScope Frontend
 
-## Getting Started
+This frontend is not a marketing site and not a collection of isolated pages. It is the operator console for a multi-tenant school platform.
 
-First, run the development server:
+Its job is to let real users run school operations across organizations, roles, curricula, plugins, sessions, assessments, learners, reporting, and administrative controls without leaking backend complexity into the UI.
+
+## What This System Is
+
+At runtime, the frontend behaves as a single application shell with four constant dimensions:
+
+- Organization-aware: every meaningful action happens inside an organization context, or from a superadmin view looking into one.
+- Role-aware: superadmins, admins, and instructors do not see the same system, because they do not have the same authority or responsibilities.
+- Curriculum-aware: kernel academic flows exist alongside curriculum-specific flows such as CBC and Cambridge.
+- Plugin-aware: features are not all hardcoded into the core shell; some are mounted into it through registry and extension points.
+
+This means the frontend should be understood as an operations surface over a governed system, not as a set of route files.
+
+## Core Philosophy
+
+The frontend follows these principles:
+
+- Workflow first: model teacher, admin, and superadmin tasks first; route files are only entry points into those workflows.
+- Backend contract first: the API owns system truth. The frontend should express, validate, and visualize that truth, not invent parallel business rules.
+- Isolation where it matters: Cambridge, CBC, requests, announcements, and audit concerns can extend the shell without forcing everything into one generic model.
+- Shared shell where it matters: authentication, navigation, organization context, session handling, and reporting still feel like one product.
+- State should follow system boundaries: auth state, active organization, role, membership version, and plugin capability are first-class concerns.
+
+## How The Frontend Thinks
+
+When you work in this codebase, think in this order:
+
+1. Who is the actor: superadmin, admin, instructor, invited user?
+2. What organization context is active?
+3. What domain is being operated on: academic setup, teaching, learners, assessments, requests, reports, plugins?
+4. Is the behavior kernel-wide, or does it belong to a plugin boundary such as CBC or Cambridge?
+5. What is the backend contract for this workflow?
+
+If those questions are clear, the code usually becomes straightforward. If they are not clear, file-level edits tend to drift into bad abstractions.
+
+## Runtime Shape
+
+The frontend is effectively made of five cooperating layers:
+
+- Application shell: authentication, organization switching, layout, navigation, route protection, and global UI state.
+- Core domain client: typed API adapters, hooks, shared components, and shared types for kernel platform features.
+- Plugin surfaces: CBC, Cambridge, requests, announcements, audit, and other mounted capabilities.
+- Registry layer: the mechanism that lets plugins extend navigation, providers, routes, slots, and modal surfaces.
+- Route entry points: Next.js pages that compose the above into actual user journeys.
+
+Pages are the thinnest layer. They should not become the place where system behavior is invented.
+
+## What Makes This Frontend Different
+
+Several behaviors define the true nature of this client:
+
+- Auth is contextual, not just token-based. The UI tracks user identity, memberships, active organization, and active role together.
+- Organization membership can change underneath the browser. The client watches the backend membership version header and refreshes context when needed.
+- Navigation is role-shaped and capability-shaped. Users do not simply get hidden links; they get different operating surfaces.
+- Plugins are mounted into the same shell. CBC and Cambridge are not separate apps pretending to be one product.
+- Sessions, assessments, learners, reports, and academic setup are cross-cutting workflows that may combine kernel and plugin data.
+
+## Architecture Guidance For Contributors
+
+When adding or changing features:
+
+- Start from the workflow and API contract, not from the nearest route file.
+- Keep kernel behavior in core only when it is genuinely shared across curricula and plugins.
+- Put plugin-specific semantics inside the relevant plugin boundary.
+- Do not duplicate backend invariants in several components. Centralize request shaping and typed contracts.
+- Prefer typed API modules and hooks as the seam between UI and backend.
+- Preserve organization scoping and role scoping in every new workflow.
+- Treat registry extension points as part of the architecture, not as a workaround.
+
+## What Not To Do
+
+- Do not describe this app as “just a Next.js frontend”.
+- Do not treat plugin features as one-off exceptions scattered through generic pages.
+- Do not anchor architecture discussions on folder names alone.
+- Do not move backend truth into client-only heuristics unless the UX explicitly needs local assistance.
+- Do not make pages thick with data orchestration and business branching when hooks or domain modules should own that logic.
+
+## Development
+
+Requirements:
+
+- Node.js 20+
+- npm
+- Running backend API, usually at `http://127.0.0.1:8000/api`
+
+Environment:
+
+- `NEXT_PUBLIC_API_URL` points the frontend at the backend API.
+- If unset, the client defaults to `http://127.0.0.1:8000/api`.
+
+Useful commands:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run prepare
+npx tsc --noEmit
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`npm run prepare` installs Husky hooks for local guardrails. `npm run build` is the production check and should pass before shipping.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Mental Model For Reading The Codebase
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Read the system by responsibility, not by directory:
 
-## Learn More
+- Shell and identity: auth, active org, role, layout, navigation.
+- Operational domains: academic setup, sessions, learners, assessments, requests, reports.
+- Plugin capability: CBC, Cambridge, announcements, audit, and other mounted concerns.
+- Integration seams: API clients, hooks, shared types, registries, provider extensions.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If you keep that model in mind, the codebase reads as one governed product with modular curriculum surfaces, which is what it actually is.

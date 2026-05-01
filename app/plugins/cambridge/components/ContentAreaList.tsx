@@ -6,27 +6,32 @@
 
 'use client';
 
-import type { ContentArea } from '../types';
+import type { CambridgeNormalizedSubject } from '../types';
 
 interface ContentAreaListProps {
-  contentAreas: ContentArea[];
-  onSelect?: (contentArea: ContentArea) => void;
-  onEdit?: (contentArea: ContentArea) => void;
-  onDelete?: (contentArea: ContentArea) => void;
+  subjects: CambridgeNormalizedSubject[];
+  onSelect?: (subject: CambridgeNormalizedSubject) => void;
 }
 
-export function ContentAreaList({ contentAreas, onSelect, onEdit, onDelete }: ContentAreaListProps) {
+export function ContentAreaList({ subjects, onSelect }: ContentAreaListProps) {
   return (
     <div>
-      {/* TODO: UI implementation */}
-      <ul>
-        {contentAreas.map((ca) => (
-          <li key={ca.id}>
-            <span>{ca.code} — {ca.name}</span>
-            <span> ({ca.topic_count} topics)</span>
-            {onSelect && <button onClick={() => onSelect(ca)}>View</button>}
-            {onEdit && <button onClick={() => onEdit(ca)}>Edit</button>}
-            {onDelete && <button onClick={() => onDelete(ca)}>Delete</button>}
+      <ul className="space-y-2">
+        {subjects.map((subject) => (
+          <li key={subject.id} className="rounded-lg border border-gray-200 bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium text-gray-900">{subject.title}</p>
+                <p className="text-xs text-gray-500">
+                  {subject.programme_code} · {subject.structure_mode}
+                </p>
+              </div>
+              {onSelect ? (
+                <button className="text-blue-600 text-sm" onClick={() => onSelect(subject)}>
+                  Open
+                </button>
+              ) : null}
+            </div>
           </li>
         ))}
       </ul>

@@ -1,0 +1,3 @@
+import CambridgeInstallationSubjectSyllabusesPage from '@/app/plugins/cambridge/pages/CambridgeInstallationSubjectSyllabusesPage';
+
+export default CambridgeInstallationSubjectSyllabusesPage;

@@ -13,12 +13,9 @@ import {
     Inbox, UserCog, TrendingUp, Database, Clock, Target,
     CalendarDays, Layers, Megaphone,
     Puzzle,
-    ChartBarIcon,
-    BookOpenIcon, GraduationCapIcon,
     BarChart3,
 } from 'lucide-react';
 import type { Role } from '@/app/core/types/auth';
-import { Children } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -160,6 +157,8 @@ export function getAdminNav(
                 icon: BookOpen,
                 children: [
                     { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
+                    { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
+                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
                     { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
                     { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
                 ],
@@ -196,16 +195,9 @@ export function getInstructorNav(
     return {
         primary: [
             { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
-            {
-                name: 'My Topics', href: '/academic/topics/browser', icon: Layers,
-                children: [
-                    { name: 'Browse Topics', href: '/academic/topics/browser', icon: BookOpen },
-                    { name: 'Coverage Progress', href: '/academic/progress', icon: TrendingUp },
-                ],
-            },
-            { name: 'My Requests', href: '/requests', icon: Inbox, badge: 0 },
-            { name: "Today's Sessions", href: '/sessions/today', icon: Clock },
+            { name: 'My Cohorts', href: '/academic/cohorts', icon: Users },
             { name: 'My Sessions', href: '/sessions', icon: Calendar },
+            { name: 'My Requests', href: '/requests', icon: Inbox, badge: 0 },
             { name: 'My Learners', href: '/learners', icon: Users },
             {
                 name: 'Assessments', href: '/assessments', icon: ClipboardCheck,
@@ -228,6 +220,8 @@ export function getInstructorNav(
                 icon: BookOpen,
                 children: [
                     { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
+                    { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
+                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
                     { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
                     { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
                 ],

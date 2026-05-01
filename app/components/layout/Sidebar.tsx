@@ -14,6 +14,7 @@ import { Activity } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useNavBadges } from '@/app/core/registry/navBadges';
 import { NavItem } from './NavItem';
 import {
@@ -34,6 +35,7 @@ export default function Sidebar() {
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
   const { hasPlugin } = usePlugins();
+  const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
   const unreadCount = badges['announcements'] ?? 0;
 
@@ -41,6 +43,8 @@ export default function Sidebar() {
 
   const hasCBC = hasPlugin('cbc');
   const hasCambridge = hasPlugin('cambridge');
+  const instructorHasCBC = hasCBC && instructorAccess.hasCBCAccess;
+  const instructorHasCambridge = hasCambridge && instructorAccess.hasCambridgeAccess;
 
   // ── Build nav config ──────────────────────────────────────────────────
 
@@ -48,9 +52,11 @@ export default function Sidebar() {
     if (!user) return { primary: [] };
     if (user.is_superadmin) return SUPERADMIN_NAV;
     if (activeRole === 'ADMIN') return getAdminNav(hasCBC, unreadCount, hasCambridge);
-    if (activeRole === 'INSTRUCTOR') return getInstructorNav(hasCBC, unreadCount, hasCambridge);
+    if (activeRole === 'INSTRUCTOR') {
+      return getInstructorNav(instructorHasCBC, unreadCount, instructorHasCambridge);
+    }
     return { primary: [] };
-  }, [user, activeRole, hasCBC, unreadCount]);
+  }, [user, activeRole, hasCBC, hasCambridge, instructorHasCBC, instructorHasCambridge, unreadCount]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
   const colors = ROLE_COLORS[resolvedRole] ?? ROLE_COLORS.ADMIN;

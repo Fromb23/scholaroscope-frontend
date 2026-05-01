@@ -1,3 +1,10 @@
-import CambridgeSubjectDetailPage from '@/app/plugins/cambridge/pages/CambridgeSubjectDetailPage';
+import { redirect } from 'next/navigation';
 
-export default CambridgeSubjectDetailPage;
+export default async function CambridgeSubjectDetailRedirect({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  redirect(`/cambridge/setup/subjects/${id}`);
+}

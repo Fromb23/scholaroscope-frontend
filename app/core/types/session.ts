@@ -23,11 +23,15 @@ export enum AttendanceStatus {
 export interface Session {
   linked_cohorts: SessionCohort[];
   id: number;
-  cohort_subject: number;
+  subject_source: 'kernel' | 'cambridge';
+  session_subject_id: number | null;
+  cambridge_cohort_subject_id: number | null;
+  offering_id: number | null;
+  cohort_subject: number | null;
   cohort_id: number;
   cohort_name: string;
   cohort_level: string;
-  subject_id: number;
+  subject_id: number | null;
   subject_name: string;
   subject_code: string;
   curriculum_type: string;
@@ -106,7 +110,9 @@ export interface BulkAttendanceData {
 
 // Form Data Types
 export interface SessionFormData {
-  cohort_subject: number;
+  cohort_subject: number | null;
+  subject_source?: 'kernel' | 'cbc' | 'cambridge';
+  subject_id?: number | null;
   term: number | null;
   session_type: string;
   session_date: string;
@@ -116,6 +122,22 @@ export interface SessionFormData {
   description: string;
   venue: string;
   auto_create_attendance: boolean;
+}
+
+export interface CohortSubjectOption {
+  source: 'kernel' | 'cbc' | 'cambridge';
+  id: string;
+  label: string;
+  subject_id?: number | null;
+  topic_subject_id?: number | null;
+  subject_code: string | null;
+  programme: string | null;
+  curriculum_version: string | null;
+  plugin: string | null;
+  cohort_subject_id?: number | null;
+  offering_id?: number | null;
+  session_supported: boolean;
+  disabled_reason?: string | null;
 }
 
 export interface AttendanceFormData {
@@ -174,7 +196,7 @@ export interface SessionCohortsResponse {
  */
 export interface SessionWithCohorts {
   id: number;
-  cohort_subject: number;
+  cohort_subject: number | null;
   session_type: string;
   session_date: string;
   start_time: string;

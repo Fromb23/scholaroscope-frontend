@@ -9,9 +9,8 @@
 // ============================================================================
 
 import { useEffect, useState } from 'react';
-import {
-    Check, X, BookOpen, ChevronDown, ChevronRight,
-} from 'lucide-react';
+import Link from 'next/link';
+import { Check, X, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
@@ -23,6 +22,9 @@ import { useSubjects } from '@/app/core/hooks/useAcademic';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
+import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
+import { cohortSubjectAPI } from '@/app/plugins/cambridge/api';
+import type { CambridgeCohortSubject } from '@/app/plugins/cambridge/types';
 
 // ── SubjectPanel ──────────────────────────────────────────────────────────
 
@@ -37,136 +39,285 @@ interface CohortSubjectLink {
 interface SubjectPanelProps {
     cohortId: number;
     curriculumId: number;
+    curriculumType: string;
     cohortLevel: string;
     isHistorical: boolean;
 }
 
-export function SubjectPanel({ cohortId, curriculumId, cohortLevel, isHistorical }: SubjectPanelProps) {
-    const [detail, setDetail] = useState<CohortDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [working, setWorking] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+export function SubjectPanel({
+                               cohortId,
+                               curriculumId,
+                               cohortLevel,
+                               curriculumType,
+                               isHistorical,
+                             }: SubjectPanelProps) {
+  const [detail, setDetail] = useState<CohortDetail | null>(null);
+  const [cambridgeAssignments, setCambridgeAssignments] = useState<CambridgeCohortSubject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const { subjects: allSubjects } = useSubjects(curriculumId);
+  const isCambridge = curriculumType === 'CAMBRIDGE';
 
-    const loadDetail = async () => {
-        setLoading(true);
-        try {
-            const data = await cohortAPI.getById(cohortId);
-            setDetail(data);
-        } catch {
-            setError('Failed to load subjects.');
-        } finally {
-            setLoading(false);
+  const { subjects: allSubjects } = useSubjects(isCambridge ? undefined : curriculumId);
+
+  const loadDetail = async () => {
+    setLoading(true);
+    try {
+      if (isCambridge) {
+        const rows = await cohortSubjectAPI.list({ cohort: cohortId, active: true });
+        setCambridgeAssignments(rows);
+        setDetail(null);
+      } else {
+        const data = await cohortAPI.getById(cohortId);
+        setDetail(data);
+        setCambridgeAssignments([]);
+      }
+    } catch {
+      setError('Failed to load subjects.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true);
+      try {
+        if (isCambridge) {
+          const rows = await cohortSubjectAPI.list({ cohort: cohortId, active: true });
+          setCambridgeAssignments(rows);
+          setDetail(null);
+        } else {
+          const data = await cohortAPI.getById(cohortId);
+          setDetail(data);
+          setCambridgeAssignments([]);
         }
+      } catch {
+        setError('Failed to load subjects.');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // Load on mount
-    useState(() => { loadDetail(); });
+    run();
+  }, [cohortId, isCambridge]);
 
-    const linkedIds = new Set((detail?.subjects ?? []).map((s: CohortSubjectLink) => s.subject));
-    const unlinked = allSubjects.filter(s => {
-        if (linkedIds.has(s.id)) return false;
-        const cohortNorm = cohortLevel.toLowerCase().replace(/\s+/g, '');
-        const subjectNorm = s.level.toLowerCase().replace(/\s+/g, '');
-        return cohortNorm === subjectNorm;
+  const linkedIds = new Set((detail?.subjects ?? []).map((s: CohortSubjectLink) => s.subject));
+  const offeringId = cambridgeAssignments[0]?.offering_id;
+
+  const unlinked = isCambridge
+    ? []
+    : allSubjects.filter((s) => {
+      if (linkedIds.has(s.id)) return false;
+      const cohortNorm = cohortLevel.toLowerCase().replace(/\s+/g, '');
+      const subjectNorm = s.level.toLowerCase().replace(/\s+/g, '');
+      return cohortNorm === subjectNorm;
     });
 
-    const handleLink = async (subjectId: number) => {
-        setWorking(true); setError(null);
-        try {
-            await cohortAPI.assignSubject(cohortId, subjectId, true);
-            await loadDetail();
-        } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to link subject.'));
-        } finally { setWorking(false); }
-    };
+  const handleLink = async (subjectId: number) => {
+    setWorking(true);
+    setError(null);
+    try {
+      await cohortAPI.assignSubject(cohortId, subjectId, true);
+      await loadDetail();
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to link subject.'));
+    } finally {
+      setWorking(false);
+    }
+  };
 
-    const handleUnlink = async (subjectId: number) => {
-        setWorking(true); setError(null);
-        try {
-            await cohortAPI.removeSubject(cohortId, subjectId);
-            await loadDetail();
-        } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to unlink subject.'));
-        } finally { setWorking(false); }
-    };
+  const handleUnlink = async (subjectId: number) => {
+    setWorking(true);
+    setError(null);
+    try {
+      await cohortAPI.removeSubject(cohortId, subjectId);
+      await loadDetail();
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to unlink subject.'));
+    } finally {
+      setWorking(false);
+    }
+  };
 
-    if (loading) return (
-        <div className="py-6 text-center">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto" />
-        </div>
-    );
+  const handleCambridgeUnlink = async (assignmentId: number) => {
+    setWorking(true);
+    setError(null);
+    try {
+      await cohortSubjectAPI.deactivate(assignmentId);
+      await loadDetail();
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to unlink Cambridge subject.'));
+    } finally {
+      setWorking(false);
+    }
+  };
 
+  if (loading) {
     return (
-        <div className="space-y-4">
-            {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
-
-            <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">
-                    Linked Subjects ({detail?.subjects?.length ?? 0})
-                </p>
-                {(detail?.subjects?.length ?? 0) === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                        No subjects linked yet
-                    </p>
-                ) : (
-                    <div className="space-y-1.5">
-                        {(detail?.subjects ?? []).map((cs: CohortSubjectLink) => (
-                            <div key={cs.id} className="flex items-center justify-between px-3 py-2 bg-green-50 border border-green-100 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                    <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                    <span className="text-sm font-medium text-gray-900">{cs.subject_name}</span>
-                                    <span className="font-mono text-xs text-gray-400">{cs.subject_code}</span>
-                                    {cs.is_compulsory && <Badge variant="green" size="sm">Compulsory</Badge>}
-                                </div>
-                                {!isHistorical && (
-                                    <button
-                                        onClick={() => handleUnlink(cs.subject)}
-                                        disabled={working}
-                                        className="p-1 rounded text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {!isHistorical && unlinked.length > 0 && (
-                <div>
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Available to Link</p>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                        {unlinked.map(s => (
-                            <div key={s.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg hover:bg-gray-100 transition-colors">
-                                <div>
-                                    <span className="text-sm font-medium text-gray-900">{s.name} - {s.level}</span>
-                                    <span className="font-mono text-xs text-gray-400 ml-2">{s.code}</span>
-                                </div>
-                                <button
-                                    onClick={() => handleLink(s.id)}
-                                    disabled={working}
-                                    className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                                >
-                                    + Link
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {isHistorical && (
-                <p className="text-xs text-gray-400 text-center py-2">
-                    This cohort is from a past academic year and is read-only.
-                </p>
-            )}
-        </div>
+      <div className="py-6 text-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto" />
+      </div>
     );
-}
+  }
 
+  if (isCambridge) {
+    return (
+      <div className="space-y-4">
+        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+        <div>
+          <p className="text-sm font-semibold text-gray-700 mb-2">
+            Linked Cambridge Subjects ({cambridgeAssignments.length})
+          </p>
+
+          {cambridgeAssignments.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+              No Cambridge subjects assigned yet
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {cambridgeAssignments.map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="flex items-center justify-between px-3 py-2 bg-green-50 border border-green-100 rounded-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                    <span className="text-sm font-medium text-gray-900">
+                      {assignment.subject_title}
+                    </span>
+                    <span className="font-mono text-xs text-gray-400">
+                      {assignment.subject_code}
+                    </span>
+                    <Badge variant="green" size="sm">
+                      {assignment.programme_code}
+                    </Badge>
+                  </div>
+
+                  {!isHistorical && (
+                    <button
+                      onClick={() => handleCambridgeUnlink(assignment.id)}
+                      disabled={working}
+                      className="p-1 rounded text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!isHistorical && (
+          <div className="text-center py-3 space-y-2">
+            <p className="text-xs text-gray-500">
+              Cambridge subjects are linked to cohorts from the Cambridge offering setup.
+            </p>
+            {offeringId && (
+              <Link
+                href={`/cambridge/offerings/${offeringId}/cohorts`}
+                className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+              >
+                Manage Cohort Linking →
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+      <div>
+        <p className="text-sm font-semibold text-gray-700 mb-2">
+          Linked Subjects ({detail?.subjects?.length ?? 0})
+        </p>
+
+        {(detail?.subjects?.length ?? 0) === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-3 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+            No subjects linked yet
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {(detail?.subjects ?? []).map((cs: CohortSubjectLink) => (
+              <div
+                key={cs.id}
+                className="flex items-center justify-between px-3 py-2 bg-green-50 border border-green-100 rounded-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                  <span className="text-sm font-medium text-gray-900">
+                                        {cs.subject_name}
+                                    </span>
+                  <span className="font-mono text-xs text-gray-400">
+                                        {cs.subject_code}
+                                    </span>
+                  {cs.is_compulsory && (
+                    <Badge variant="green" size="sm">
+                      Compulsory
+                    </Badge>
+                  )}
+                </div>
+
+                {!isHistorical && (
+                  <button
+                    onClick={() => handleUnlink(cs.subject)}
+                    disabled={working}
+                    className="p-1 rounded text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {!isHistorical && unlinked.length > 0 && (
+        <div>
+          <p className="text-sm font-semibold text-gray-700 mb-2">Available to Link</p>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {unlinked.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div>
+                                    <span className="text-sm font-medium text-gray-900">
+                                        {s.name} - {s.level}
+                                    </span>
+                  <span className="font-mono text-xs text-gray-400 ml-2">
+                                        {s.code}
+                                    </span>
+                </div>
+                <button
+                  onClick={() => handleLink(s.id)}
+                  disabled={working}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                >
+                  + Link
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isHistorical && (
+        <p className="text-xs text-gray-400 text-center py-2">
+          This cohort is from a past academic year and is read-only.
+        </p>
+      )}
+    </div>
+  );
+}
 // ── RolloverModal ─────────────────────────────────────────────────────────
 
 interface RolloverModalProps {
@@ -266,13 +417,14 @@ interface CohortFormModalProps {
     editingCohort: Cohort | null;
     academicYears: AcademicYear[];
     curricula: Curriculum[];
+    lockedCurriculum?: Curriculum | null;
     onSave: (data: CohortFormState, isEdit: boolean, cohortId?: number) => Promise<void>;
     initialData: CohortFormState;
 }
 
 export function CohortFormModal({
     isOpen, onClose, editingCohort,
-    academicYears, curricula, onSave, initialData,
+    academicYears, curricula, lockedCurriculum, onSave, initialData,
 }: CohortFormModalProps) {
     const [formData, setFormData] = useState<CohortFormState>(initialData);
     const [formError, setFormError] = useState<string | null>(null);
@@ -286,7 +438,18 @@ export function CohortFormModal({
             setFormError(null);
             setSubjectPanelOpen(false);
         }
-    }, [isOpen]);
+    }, [initialData, isOpen]);
+
+    useEffect(() => {
+        if (
+            isOpen &&
+            !editingCohort &&
+            lockedCurriculum &&
+            formData.curriculum !== String(lockedCurriculum.id)
+        ) {
+            setFormData(prev => ({ ...prev, curriculum: String(lockedCurriculum.id) }));
+        }
+    }, [editingCohort, formData.curriculum, isOpen, lockedCurriculum]);
 
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {
@@ -326,18 +489,29 @@ export function CohortFormModal({
                             })),
                         ]}
                     />
-                    <Select
-                        label="Curriculum"
-                        value={formData.curriculum}
-                        onChange={e => setFormData(prev => ({ ...prev, curriculum: e.target.value }))}
-                        required
-                        options={[
-                            { value: '', label: 'Select Curriculum' },
-                            ...curricula.filter(c => c.is_active).map(c => ({
-                                value: String(c.id), label: c.name,
-                            })),
-                        ]}
-                    />
+                    {lockedCurriculum && !editingCohort ? (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">
+                                Curriculum
+                            </label>
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                                <p className="text-sm font-medium text-gray-900">{getCurriculumBridgeName(lockedCurriculum)}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <Select
+                            label="Curriculum"
+                            value={formData.curriculum}
+                            onChange={e => setFormData(prev => ({ ...prev, curriculum: e.target.value }))}
+                            required
+                            options={[
+                                { value: '', label: 'Select Curriculum' },
+                                ...curricula.filter(c => c.is_active).map(c => ({
+                                    value: String(c.id), label: getCurriculumBridgeName(c),
+                                })),
+                            ]}
+                        />
+                    )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -390,6 +564,7 @@ export function CohortFormModal({
                                 <SubjectPanel
                                     cohortId={editingCohort.id}
                                     curriculumId={editingCohort.curriculum}
+                                    curriculumType={editingCohort.curriculum_type}
                                     cohortLevel={editingCohort.level}
                                     isHistorical={!editingCohort.is_current_year}
                                 />

@@ -18,14 +18,26 @@ import {
   CohortSubject,
 } from '@/app/core/types/academic';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 
 export interface CohortFilters {
   academic_year?: number;
   curriculum?: number;
+  curriculum_type?: string;
   organization?: number;
   level?: string;
+}
+
+function toIdSet(idsKey: string): Set<number> {
+  if (!idsKey) return new Set<number>();
+  return new Set(
+    idsKey
+      .split(',')
+      .map(value => Number(value))
+      .filter(value => Number.isFinite(value))
+  );
 }
 
 // ── useAcademicYears ──────────────────────────────────────────────────────
@@ -299,6 +311,12 @@ export const useSubjects = (curriculumId?: number) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
+  const instructorAccess = useInstructorCohortAccess();
+  const subjectIdsKey = instructorAccess.subjectIdsKey;
+  const allowedSubjectIds = useMemo(
+    () => toIdSet(subjectIdsKey),
+    [subjectIdsKey]
+  );
 
   const fetchSubjects = useCallback(async () => {
     try {
@@ -307,14 +325,19 @@ export const useSubjects = (curriculumId?: number) => {
       if (curriculumId) params.curriculum = String(curriculumId);
       if (organizationId) params.organization = String(organizationId);
       const data = await subjectAPI.getAll(params);
-      setSubjects(Array.isArray(data) ? data : (data as { results?: Subject[] })?.results ?? []);
+      const allSubjects = Array.isArray(data) ? data : (data as { results?: Subject[] })?.results ?? [];
+      setSubjects(
+        instructorAccess.isInstructor
+          ? allSubjects.filter(subject => allowedSubjectIds.has(subject.id))
+          : allSubjects
+      );
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch subjects'));
     } finally {
       setLoading(false);
     }
-  }, [curriculumId, organizationId]);
+  }, [allowedSubjectIds, curriculumId, instructorAccess.isInstructor, organizationId]);
 
   useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
 
@@ -382,28 +405,60 @@ export const useCohortSubjects = (cohortId?: number) => {
 
 // ── useCohorts ────────────────────────────────────────────────────────────
 
-export const useCohorts = (filters?: CohortFilters) => {
+export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolean }) => {
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
+  const instructorAccess = useInstructorCohortAccess();
+  const enabled = options?.enabled ?? true;
+  const cohortIdsKey = instructorAccess.cohortIdsKey;
+  const allowedCohortIds = useMemo(
+    () => toIdSet(cohortIdsKey),
+    [cohortIdsKey]
+  );
+  const academicYear = filters?.academic_year;
+  const curriculum = filters?.curriculum;
+  const curriculumType = filters?.curriculum_type;
+  const level = filters?.level;
 
-  const filtersKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
+  const resolvedFilters = useMemo(() => {
+    const nextFilters: CohortFilters = {};
+
+    if (academicYear) nextFilters.academic_year = academicYear;
+    if (curriculum) nextFilters.curriculum = curriculum;
+    if (curriculumType) nextFilters.curriculum_type = curriculumType;
+    if (organizationId) nextFilters.organization = organizationId;
+    if (level) nextFilters.level = level;
+
+    return nextFilters;
+  }, [academicYear, curriculum, curriculumType, level, organizationId]);
 
   const fetchCohorts = useCallback(async () => {
+    if (!enabled) {
+      setCohorts([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     try {
       setLoading(true);
-      const data = await cohortAPI.getAll({ ...filters, organization: organizationId || undefined });
-      setCohorts(Array.isArray(data) ? data : (data as { results?: Cohort[] })?.results ?? []);
+      const data = await cohortAPI.getAll(resolvedFilters);
+      const allCohorts = Array.isArray(data) ? data : (data as { results?: Cohort[] })?.results ?? [];
+      setCohorts(
+        instructorAccess.isInstructor
+          ? allCohorts.filter(cohort => allowedCohortIds.has(cohort.id))
+          : allCohorts
+      );
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohorts'));
     } finally {
       setLoading(false);
     }
-  }, [filters, organizationId]);
+  }, [allowedCohortIds, enabled, instructorAccess.isInstructor, resolvedFilters]);
 
-  useEffect(() => { fetchCohorts(); }, [fetchCohorts, filtersKey, organizationId]);
+  useEffect(() => { fetchCohorts(); }, [fetchCohorts]);
 
   const createCohort = async (data: {
     curriculum: number;

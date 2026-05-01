@@ -8,37 +8,26 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { CambridgeProgramme, CambridgeLevel } from '../types';
 
 interface CambridgeContextType {
-  selectedProgramme: CambridgeProgramme | null;
-  selectedLevel: CambridgeLevel | null;
-  setSelectedProgramme: (programme: CambridgeProgramme | null) => void;
-  setSelectedLevel: (level: CambridgeLevel | null) => void;
+  selectedNormalizedSubjectId: number | null;
+  setSelectedNormalizedSubjectId: (normalizedSubjectId: number | null) => void;
 }
 
 const CambridgeContext = createContext<CambridgeContextType | null>(null);
 
 export function CambridgeProvider({ children }: { children: ReactNode }) {
-  const [selectedProgramme, setSelectedProgramme] = useState<CambridgeProgramme | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<CambridgeLevel | null>(null);
+  const [selectedNormalizedSubjectId, setSelectedNormalizedSubjectId] = useState<number | null>(null);
 
-  const handleSetProgramme = useCallback((programme: CambridgeProgramme | null) => {
-    setSelectedProgramme(programme);
-    setSelectedLevel(null);
-  }, []);
-
-  const handleSetLevel = useCallback((level: CambridgeLevel | null) => {
-    setSelectedLevel(level);
+  const handleSetNormalizedSubject = useCallback((normalizedSubjectId: number | null) => {
+    setSelectedNormalizedSubjectId(normalizedSubjectId);
   }, []);
 
   return (
     <CambridgeContext.Provider
       value={{
-        selectedProgramme,
-        selectedLevel,
-        setSelectedProgramme: handleSetProgramme,
-        setSelectedLevel: handleSetLevel,
+        selectedNormalizedSubjectId,
+        setSelectedNormalizedSubjectId: handleSetNormalizedSubject,
       }}
     >
       {children}

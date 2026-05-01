@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
     Calendar,
@@ -8,13 +7,13 @@ import {
     Users,
     GraduationCap,
     Clock,
-    TrendingUp
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAcademicYears, useCurricula, useCohorts, useTerms } from '@/app/core/hooks/useAcademic';
 import { Badge } from '@/app/components/ui/Badge';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
+import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 
 export default function AcademicOverview() {
     const { academicYears, loading: yearsLoading } = useAcademicYears();
@@ -27,7 +26,16 @@ export default function AcademicOverview() {
 
     const loading = yearsLoading || curriculaLoading || cohortsLoading || termsLoading;
 
-    const quickLinks = [
+    type QuickLinkColor = 'blue' | 'green' | 'purple' | 'orange' | 'indigo';
+
+    const quickLinks: Array<{
+        title: string;
+        description: string;
+        href: string;
+        icon: typeof Calendar;
+        count: number;
+        color: QuickLinkColor;
+    }> = [
         {
             title: 'Academic Years',
             description: 'Manage academic year settings',
@@ -120,7 +128,7 @@ export default function AcademicOverview() {
                                 {activeCurricula.length > 0 ? (
                                     activeCurricula.map(c => (
                                         <Badge key={c.id} variant="blue">
-                                            {c.curriculum_type_display}
+                                            {getCurriculumBridgeName(c)}
                                         </Badge>
                                     ))
                                 ) : (
@@ -192,7 +200,7 @@ export default function AcademicOverview() {
                                             <div className={`p-3 bg-${link.color}-100 rounded-lg`}>
                                                 <Icon className={`w-6 h-6 text-${link.color}-600`} />
                                             </div>
-                                            <Badge variant={link.color as any}>
+                                            <Badge variant={link.color}>
                                                 {link.count}
                                             </Badge>
                                         </div>
