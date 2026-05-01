@@ -121,7 +121,6 @@ export function getAdminNav(
                     { name: 'Years', href: '/academic/years', icon: Calendar },
                     { name: 'Terms', href: '/academic/terms', icon: CalendarDays },
                     { name: 'Subjects', href: '/academic/subjects', icon: BookOpen },
-                    { name: 'Topics', href: '/academic/topics', icon: Layers },
                     { name: 'Cohorts', href: '/academic/cohorts', icon: Users },
                 ],
             },

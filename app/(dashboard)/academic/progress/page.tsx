@@ -8,10 +8,11 @@
 // ============================================================================
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { TrendingUp, Users, BookOpen, AlertCircle, History } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useCohorts, useAcademicYears, useCohortDetail } from '@/app/core/hooks/useAcademic';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Select } from '@/app/components/ui/Select';
@@ -25,13 +26,30 @@ import { roleHomeRoute } from '@/app/utils/routeAccess';
 
 export default function AcademicProgressPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, activeRole, loading: authLoading } = useAuth();
     const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
+    const isInstructor = activeRole === 'INSTRUCTOR';
+    const canViewProgress = isAdmin || isInstructor;
+    const instructorAccess = useInstructorCohortAccess({ enabled: isInstructor });
+    const requestedCohortSubjectId = useMemo(() => {
+        const rawValue = searchParams.get('cohort_subject');
+        if (!rawValue) return null;
+
+        const parsed = Number(rawValue);
+        return Number.isFinite(parsed) ? parsed : null;
+    }, [searchParams]);
+    const requestedAssignment = useMemo(
+        () => instructorAccess.assignments.find(
+            assignment => assignment.cohort_subject_id === requestedCohortSubjectId
+        ) ?? null,
+        [instructorAccess.assignments, requestedCohortSubjectId]
+    );
 
     useEffect(() => {
-        if (authLoading || isAdmin || !activeRole) return;
+        if (authLoading || canViewProgress || !activeRole) return;
         router.replace(roleHomeRoute[activeRole]);
-    }, [activeRole, authLoading, isAdmin, router]);
+    }, [activeRole, authLoading, canViewProgress, router]);
 
     const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find(y => y.is_current), [academicYears]);
@@ -65,6 +83,13 @@ export default function AcademicProgressPage() {
         }
     }, [cohorts, isAdmin, selectedCohortId]);
 
+    useEffect(() => {
+        if (!requestedAssignment) return;
+        if (selectedCohortId === requestedAssignment.cohort_id) return;
+
+        setSelectedCohortId(requestedAssignment.cohort_id);
+    }, [requestedAssignment, selectedCohortId]);
+
     // Load cohort detail via hook — replaces direct cohortAPI.getById() call
     const { cohort: cohortDetail, loading: csLoading } = useCohortDetail(selectedCohortId);
 
@@ -73,11 +98,21 @@ export default function AcademicProgressPage() {
         () => cohortDetail?.subjects?.map(cs => cs.id) ?? [],
         [cohortDetail]
     );
+    const visibleCohortSubjectIds = useMemo(() => {
+        if (
+            requestedCohortSubjectId !== null &&
+            cohortSubjectIds.includes(requestedCohortSubjectId)
+        ) {
+            return [requestedCohortSubjectId];
+        }
+
+        return cohortSubjectIds;
+    }, [cohortSubjectIds, requestedCohortSubjectId]);
 
     const selectedCohort = cohorts.find(c => c.id === selectedCohortId);
     const isHistoricalView = selectedCohort ? !selectedCohort.is_current_year : false;
 
-    if (authLoading || !isAdmin) return null;
+    if (authLoading || !canViewProgress) return null;
 
     // ── Render ────────────────────────────────────────────────────────────
 
@@ -191,10 +226,10 @@ export default function AcademicProgressPage() {
                             {selectedCohort?.name} — Subject Coverage
                         </h2>
                         <Badge variant="info" size="sm">
-                            {cohortSubjectIds.length} subject{cohortSubjectIds.length !== 1 ? 's' : ''}
+                            {visibleCohortSubjectIds.length} subject{visibleCohortSubjectIds.length !== 1 ? 's' : ''}
                         </Badge>
                     </div>
-                    {cohortSubjectIds.map(csId => (
+                    {visibleCohortSubjectIds.map(csId => (
                         <CohortSubjectCard
                             key={csId}
                             cohortSubjectId={csId}
