@@ -22,6 +22,7 @@ import {
 } from '@/app/plugins/cbc/lib/visibility';
 import { useResolvedCBCInstructorContext } from '@/app/plugins/cbc/hooks/useCBCInstructorContext';
 import type { Subject } from '@/app/core/types/academic';
+import type { CBCQueryError } from '@/app/plugins/cbc/hooks/useCBC';
 
 function formatLevelLabel(level: string | null | undefined) {
     return (level ?? '')
@@ -150,6 +151,36 @@ export default function CBCBrowserPage() {
         refetchInstructorContext();
         return refetchStrands();
     };
+    const strandErrorDiagnostic = (strandsError as CBCQueryError | null)?.diagnostic ?? null;
+    const strandFetchDebugContext = useMemo(
+        () => (strandsError ? {
+            endpointUrl: strandErrorDiagnostic?.url ?? strandErrorDiagnostic?.endpoint ?? null,
+            queryParams: strandErrorDiagnostic?.params ?? strandQueryParams ?? null,
+            statusCode: strandErrorDiagnostic?.statusCode ?? null,
+            backendDetail: strandErrorDiagnostic?.backendDetail ?? null,
+            backendMessage: strandErrorDiagnostic?.backendMessage ?? null,
+            responseData: strandErrorDiagnostic?.responseData ?? null,
+            selectedCurriculumId,
+            selectedSubjectId,
+            selectedCohortId,
+            allowedSubjectIds: isAdmin ? allowedSubjectIds : selectedProfileIds,
+            allowedCohortIds: isAdmin ? allowedCohortIds : assignedCohorts.map(cohort => cohort.id),
+            finalUseStrandsParams: strandQueryParams ?? null,
+        } : null),
+        [
+            allowedCohortIds,
+            allowedSubjectIds,
+            assignedCohorts,
+            isAdmin,
+            selectedCohortId,
+            selectedCurriculumId,
+            selectedProfileIds,
+            selectedSubjectId,
+            strandErrorDiagnostic,
+            strandQueryParams,
+            strandsError,
+        ]
+    );
 
     useEffect(() => {
         if (typeof window === 'undefined' || !pathname.startsWith('/cbc/browser')) return;
@@ -202,6 +233,20 @@ export default function CBCBrowserPage() {
         strandQueryParams,
         teachingLoading,
         visible,
+    ]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !pathname.startsWith('/cbc/browser') || !strandsError) return;
+
+        console.error('[CBC Browser] strand fetch failed', {
+            width: window.innerWidth,
+            route: pathname,
+            ...strandFetchDebugContext,
+        });
+    }, [
+        pathname,
+        strandFetchDebugContext,
+        strandsError,
     ]);
 
     if (isLoading) {
@@ -298,9 +343,13 @@ export default function CBCBrowserPage() {
                         )}
                     </div>
 
-                    {error && <CBCError error={error} onRetry={refetch} />}
-
-                    {isLoading ? (
+                    {error ? (
+                        <CBCError
+                            error={error}
+                            onRetry={refetch}
+                            debugContext={error === strandsError ? strandFetchDebugContext : null}
+                        />
+                    ) : isLoading ? (
                         <CBCLoading message="Loading strands…" />
                     ) : !isAdmin && !hasVisibleProfiles ? (
                         <Card>

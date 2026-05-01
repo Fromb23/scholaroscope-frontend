@@ -408,16 +408,65 @@ interface ServerError {
     type?: string;
 }
 
+interface CBCErrorDiagnostic {
+    endpoint?: string;
+    url?: string;
+    params?: unknown;
+    statusCode?: number;
+    backendDetail?: string;
+    backendMessage?: string;
+    responseData?: unknown;
+}
+
+interface CBCErrorDebugContext {
+    endpointUrl?: string | null;
+    queryParams?: unknown;
+    statusCode?: number | null;
+    backendDetail?: string | null;
+    backendMessage?: string | null;
+    responseData?: unknown;
+    selectedCurriculumId?: number | null;
+    selectedSubjectId?: number | null;
+    selectedCohortId?: number | null;
+    allowedSubjectIds?: number[] | null;
+    allowedCohortIds?: number[] | null;
+    finalUseStrandsParams?: unknown;
+}
+
+function formatDiagnosticValue(value: unknown) {
+    if (value === null || value === undefined) return 'null';
+    if (typeof value === 'string') return value;
+
+    try {
+        return JSON.stringify(value, null, 2);
+    } catch {
+        return String(value);
+    }
+}
+
 export function CBCError({
     error,
     onRetry,
     title = 'Something went wrong',
+    debugContext,
 }: {
     error: unknown;
     onRetry?: () => void;
     title?: string;
+    debugContext?: CBCErrorDebugContext | null;
 }) {
     const msg = extractErrorMessage(error);
+    const diagnostic = extractCBCErrorDiagnostic(error);
+    const resolvedDebugContext = debugContext ?? (diagnostic ? {
+        endpointUrl: diagnostic.url ?? diagnostic.endpoint ?? null,
+        queryParams: diagnostic.params ?? null,
+        statusCode: diagnostic.statusCode ?? null,
+        backendDetail: diagnostic.backendDetail ?? null,
+        backendMessage: diagnostic.backendMessage ?? null,
+        responseData: diagnostic.responseData ?? null,
+    } : null);
+    const showDiagnostic = process.env.NODE_ENV === 'development' && resolvedDebugContext !== null;
+
     return (
         <div className="rounded-xl border border-red-200 bg-red-50 p-5 flex items-start gap-4">
             <div className="p-2 bg-red-100 rounded-lg shrink-0">
@@ -426,6 +475,60 @@ export function CBCError({
             <div className="flex-1 min-w-0">
                 <p className="font-semibold text-red-900">{title}</p>
                 <p className="text-sm text-red-700 mt-1">{msg}</p>
+                {showDiagnostic && (
+                    <div className="mt-3 rounded-lg border border-red-200 bg-white/70 p-3 text-xs text-red-900 space-y-2">
+                        <div>
+                            <p className="font-semibold">Request URL</p>
+                            <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
+                                {formatDiagnosticValue(resolvedDebugContext.endpointUrl ?? 'Unknown')}
+                            </pre>
+                        </div>
+                        <div>
+                            <p className="font-semibold">Query Params</p>
+                            <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
+                                {formatDiagnosticValue(resolvedDebugContext.queryParams ?? null)}
+                            </pre>
+                        </div>
+                        <div>
+                            <p className="font-semibold">Status Code</p>
+                            <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
+                                {formatDiagnosticValue(resolvedDebugContext.statusCode ?? null)}
+                            </pre>
+                        </div>
+                        <div>
+                            <p className="font-semibold">Backend Detail / Message</p>
+                            <pre className="mt-1 whitespace-pre-wrap break-words font-mono">
+                                {formatDiagnosticValue({
+                                    detail: resolvedDebugContext.backendDetail ?? null,
+                                    message: resolvedDebugContext.backendMessage ?? null,
+                                })}
+                            </pre>
+                        </div>
+                        {'selectedCurriculumId' in resolvedDebugContext && (
+                            <div>
+                                <p className="font-semibold">CBC Browser Context</p>
+                                <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
+                                    {formatDiagnosticValue({
+                                        selectedCurriculumId: resolvedDebugContext.selectedCurriculumId ?? null,
+                                        selectedSubjectId: resolvedDebugContext.selectedSubjectId ?? null,
+                                        selectedCohortId: resolvedDebugContext.selectedCohortId ?? null,
+                                        allowedSubjectIds: resolvedDebugContext.allowedSubjectIds ?? [],
+                                        allowedCohortIds: resolvedDebugContext.allowedCohortIds ?? [],
+                                        finalUseStrandsParams: resolvedDebugContext.finalUseStrandsParams ?? null,
+                                    })}
+                                </pre>
+                            </div>
+                        )}
+                        {resolvedDebugContext.responseData !== undefined && (
+                            <div>
+                                <p className="font-semibold">Backend Response</p>
+                                <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
+                                    {formatDiagnosticValue(resolvedDebugContext.responseData)}
+                                </pre>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             {onRetry && (
                 <button
@@ -445,13 +548,29 @@ export function extractErrorMessage(error: unknown): string {
     if (!error) return 'An unknown error occurred';
     if (typeof error === 'string') return error;
 
-    const e = error as { response?: { data?: ServerError }; message?: string };
+    const e = error as {
+        response?: { data?: ServerError | string };
+        message?: string;
+        diagnostic?: CBCErrorDiagnostic;
+    };
+
+    if (e.diagnostic?.backendDetail || e.diagnostic?.backendMessage) {
+        return e.diagnostic.backendDetail ?? e.diagnostic.backendMessage ?? 'Server error';
+    }
 
     if (e.response?.data) {
         const d = e.response.data;
+        if (typeof d === 'string') return d;
         return d.detail ?? d.message ?? 'Server error';
     }
     return e.message ?? 'An unexpected error occurred';
+}
+
+function extractCBCErrorDiagnostic(error: unknown): CBCErrorDiagnostic | null {
+    if (!error || typeof error !== 'object') return null;
+
+    const diagnostic = (error as { diagnostic?: CBCErrorDiagnostic }).diagnostic;
+    return diagnostic ?? null;
 }
 
 // ============================================================================
