@@ -50,7 +50,6 @@ export default function AdminDashboard() {
                 termName={currentTerm?.name ?? 'No active term'}
                 yearName={currentYear?.name ?? String(new Date().getFullYear())}
                 lastRefresh={lastRefresh}
-                alertCount={alerts.length}
                 onRefresh={refresh}
             />
 
