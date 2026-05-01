@@ -11,6 +11,8 @@ import { RegistrySlotProvider } from '@/app/core/registry/slots';
 import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import '@/app/plugins/cbc/registry/curriculumModalExtension';
 import '@/app/plugins/cbc/registry/providerExtension';
+import '@/app/plugins/cbc/registry/teachingRouteExtension';
+import '@/app/plugins/cambridge/registry/routeExtension';
 import '@/app/plugins/announcements/registry/navBadgeExtension';
 import { AlertTriangle } from 'lucide-react';
 import { SuspendedNotice } from '../core/types/auth';

@@ -1,13 +1,20 @@
 // app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/[learningOutcomeId]/evidence/page.tsx
 'use client';
 
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Target, Users, Layers, AlertCircle } from 'lucide-react';
 import { useEvidenceEntry } from '@/app/plugins/cbc/hooks/useEvidenceEntry';
 import { LearnerEvidenceRow } from '@/app/plugins/cbc/components/evidence/LearnerEvidenceRow';
 import { BulkClassModal } from '@/app/plugins/cbc/components/evidence/BulkClassModal';
 import { EvidenceSuccessBanner } from '@/app/plugins/cbc/components/evidence/EvidenceSuccessBanner';
-import { CBCNav, CBCBreadcrumb, CBCError, CBCLoading } from '@/app/plugins/cbc/components/CBCComponents';
+import {
+    CBCNav,
+    CBCBreadcrumb,
+    CBCError,
+    CBCLoading,
+    CBCTeachingSessionNav,
+} from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -52,11 +59,13 @@ export default function EvidenceEntryPage() {
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
+                { label: 'Sessions', href: '/cbc/teaching/sessions' },
                 { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
                 { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: outcome.code },
                 { label: 'Evidence' },
             ]} />
+            <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
 
             {bulkSuccess !== null && (
                 <EvidenceSuccessBanner
@@ -84,7 +93,7 @@ export default function EvidenceEntryPage() {
                 </div>
             </Card>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
                     { label: 'Total Learners', value: sortedLearners.length, color: 'text-blue-600' },
                     { label: 'With Evidence', value: sortedLearners.length - withoutEvidence.length, color: 'text-emerald-600' },
@@ -98,7 +107,7 @@ export default function EvidenceEntryPage() {
             </div>
 
             <Card>
-                <div className="flex items-center justify-between mb-5">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                             <Users className="h-5 w-5 text-purple-600" />
@@ -108,14 +117,22 @@ export default function EvidenceEntryPage() {
                             Record class performance or individual observations
                         </p>
                     </div>
-                    <Button
-                        variant="primary" size="md"
-                        onClick={() => setShowBulk(true)}
-                        disabled={sortedLearners.length === 0}
-                    >
-                        <Layers className="h-4 w-4 mr-2" />
-                        Record for Class
-                    </Button>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`} className="w-full sm:w-auto">
+                            <Button variant="ghost" size="md" className="w-full sm:w-auto">
+                                Back to Outcomes
+                            </Button>
+                        </Link>
+                        <Button
+                            variant="primary" size="md"
+                            className="w-full sm:w-auto"
+                            onClick={() => setShowBulk(true)}
+                            disabled={sortedLearners.length === 0}
+                        >
+                            <Layers className="h-4 w-4 mr-2" />
+                            Record for Class
+                        </Button>
+                    </div>
                 </div>
 
                 {sortedLearners.length === 0 ? (

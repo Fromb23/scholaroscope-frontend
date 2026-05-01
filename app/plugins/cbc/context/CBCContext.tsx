@@ -11,6 +11,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCBCCurriculum } from '@/app/plugins/cbc/hooks/useCBCCurriculum';
 import { useMyCBCTeachingLoad } from '@/app/plugins/cbc/hooks/useCBCTeaching';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -77,9 +78,13 @@ export function CBCProvider({ children }: { children: ReactNode }) {
     const {
         isAdmin,
         subjectIds,
-        cohortIds,
-        loading: teachingLoading,
+        loading: cbcTeachingLoading,
     } = useMyCBCTeachingLoad();
+    const {
+        cohortIds,
+        isLoading: cohortAccessLoading,
+    } = useInstructorCohortAccess();
+    const teachingLoading = cbcTeachingLoading || cohortAccessLoading;
 
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
     const [selectedCohortId, setSelectedCohortId] = useState<number | null>(null);

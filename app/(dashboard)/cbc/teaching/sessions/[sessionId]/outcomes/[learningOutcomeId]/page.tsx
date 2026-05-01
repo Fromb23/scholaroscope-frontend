@@ -20,10 +20,16 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/app/core/api/client';
 import { useTeachingSession } from '@/app/plugins/cbc/hooks/useCBC';
+import {
+    CBCNav,
+    CBCBreadcrumb,
+    CBCError,
+    CBCLoading,
+    CBCTeachingSessionNav,
+} from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
-import { Input } from '@/app/components/ui/Input';
 
 interface LearningOutcome {
     id: number;
@@ -47,9 +53,7 @@ interface OutcomeSession {
 export default function OutcomeInSessionPage() {
     const params = useParams();
     const sessionId = Number(params.sessionId);
-    console.log("Session id", sessionId);
     const learningOutcomeId = Number(params.learningOutcomeId);
-    console.log("learning outcomeId", learningOutcomeId);
 
     const { data: session } = useTeachingSession(sessionId);
 
@@ -71,13 +75,13 @@ export default function OutcomeInSessionPage() {
                 setLearningOutcome(outcomeResponse.data);
 
                 // 2. Fetch all outcome sessions for this session
-                const sessionOutcomesResponse = await apiClient.get(
+                const sessionOutcomesResponse = await apiClient.get<OutcomeSession[]>(
                     `/cbc/outcome-sessions/by_session/?session_id=${sessionId}`
                 );
 
                 // 3. Find the specific OutcomeSession that links this learning outcome to this session
                 const outcomeSessionLink = sessionOutcomesResponse.data.find(
-                    (link: any) => link.learning_outcome === learningOutcomeId
+                    (link: OutcomeSession) => link.learning_outcome === learningOutcomeId
                 );
 
                 if (outcomeSessionLink) {
@@ -128,25 +132,20 @@ export default function OutcomeInSessionPage() {
         }
     };
 
-    if (loading || !session) {
+    if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                    <p className="text-sm text-gray-500">Loading...</p>
-                </div>
+            <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <CBCNav />
+                <CBCLoading message="Loading outcome…" />
             </div>
         );
     }
 
-    if (!learningOutcome || !outcomeSession) {
+    if (!session || !learningOutcome || !outcomeSession) {
         return (
-            <div className="py-20 text-center max-w-md mx-auto">
-                <Target className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                <p className="text-lg font-medium text-gray-900 mb-1">Outcome not found</p>
-                <p className="text-sm text-gray-500 mb-4">
-                    This learning outcome is not linked to this session.
-                </p>
+            <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                <CBCNav />
+                <CBCError error="This learning outcome is not linked to this session." />
                 <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`}>
                     <Button variant="primary">
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -159,38 +158,15 @@ export default function OutcomeInSessionPage() {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* CBC nav */}
-            <nav className="flex gap-2 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-                <Link href="/cbc/authoring" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Authoring
-                </Link>
-                <Link href="/cbc/browser" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Browser
-                </Link>
-                <Link href="/cbc/progress" className="flex-1 text-center text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg py-2.5 transition-colors">
-                    Progress
-                </Link>
-                <Link href="/cbc/teaching" className="flex-1 text-center text-sm font-semibold text-white bg-blue-600 rounded-lg py-2.5 shadow-sm">
-                    Teaching
-                </Link>
-            </nav>
-
-            {/* Breadcrumb */}
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                <Link href="/cbc/teaching" className="hover:text-blue-600">Teaching</Link>
-                <span>→</span>
-                <Link href="/cbc/teaching/sessions" className="hover:text-blue-600">Sessions</Link>
-                <span>→</span>
-                <Link href={`/cbc/teaching/sessions/${sessionId}`} className="hover:text-blue-600 break-words">
-                    {session.subject_name}
-                </Link>
-                <span>→</span>
-                <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`} className="hover:text-blue-600">
-                    Outcomes
-                </Link>
-                <span>→</span>
-                <span className="text-gray-900 font-medium break-words">{learningOutcome.code}</span>
-            </div>
+            <CBCNav />
+            <CBCBreadcrumb segments={[
+                { label: 'Teaching', href: '/cbc/teaching' },
+                { label: 'Sessions', href: '/cbc/teaching/sessions' },
+                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
+                { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: learningOutcome.code },
+            ]} />
+            <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
 
             {/* Outcome Header */}
             <Card className="shadow-sm">

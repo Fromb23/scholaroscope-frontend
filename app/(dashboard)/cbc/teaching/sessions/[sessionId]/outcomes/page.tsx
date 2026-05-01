@@ -8,7 +8,13 @@ import { useSessionOutcomes } from '@/app/plugins/cbc/hooks/useSessionOutcomes';
 import { SessionHeader } from '@/app/plugins/cbc/components/outcomes/SessionHeader';
 import { OutcomeRow } from '@/app/plugins/cbc/components/outcomes/OutcomeRow';
 import { OutcomeFilterToggle } from '@/app/plugins/cbc/components/outcomes/OutcomeFilterToggle';
-import { CBCNav, CBCBreadcrumb, CBCError, CBCLoading } from '@/app/plugins/cbc/components/CBCComponents';
+import {
+    CBCNav,
+    CBCBreadcrumb,
+    CBCError,
+    CBCLoading,
+    CBCTeachingSessionNav,
+} from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -29,7 +35,12 @@ export default function SessionOutcomesPage() {
         handleToggleCovered, handleSaveNotes, handleRemove,
     } = useSessionOutcomes(sessionId);
 
-    if (sessionLoading) return <CBCLoading />;
+    if (sessionLoading) return (
+        <div className="space-y-6">
+            <CBCNav />
+            <CBCLoading message="Loading session…" />
+        </div>
+    );
     if (sessionError || !session) return (
         <div className="space-y-6">
             <CBCNav />
@@ -46,6 +57,7 @@ export default function SessionOutcomesPage() {
                 { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
                 { label: 'Outcomes' },
             ]} />
+            <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
 
             <SessionHeader
                 session={session}
@@ -59,14 +71,14 @@ export default function SessionOutcomesPage() {
             {linksError && <CBCError error={linksError} onRetry={refetch} />}
 
             <Card>
-                <div className="flex items-center justify-between mb-4">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                         <Target className="h-5 w-5 text-blue-600" />
                         Linked Outcomes
                         {links.length > 0 && <Badge variant="blue" size="sm">{links.length}</Badge>}
                     </h2>
-                    <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`}>
-                        <Button variant="primary" size="md">
+                    <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`} className="w-full sm:w-auto">
+                        <Button variant="primary" size="md" className="w-full sm:w-auto">
                             <Plus className="h-4 w-4 mr-2" />Add Outcomes
                         </Button>
                     </Link>

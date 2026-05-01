@@ -14,6 +14,7 @@ import {
   teachingAPI,
   bulkEvidenceAPI,
   rubricScaleAPI,
+  cbcCatalogAPI,
 } from '@/app/plugins/cbc/api/cbc';
 import type {
   StrandFormData,
@@ -36,15 +37,29 @@ import type {
   CBCProgressSummary,
   StrandOutcomeDistribution,
   OutcomeLearner,
-  OutcomeConfidence
+  OutcomeConfidence,
+  CBCCatalog,
 } from '@/app/plugins/cbc/types/cbc';
 import { toArray } from '@/app/plugins/cbc/lib/apiHelpers';
+
+function uniqueSortedIds(values: number[]) {
+  return Array.from(new Set(values))
+    .filter(value => Number.isFinite(value))
+    .sort((left, right) => left - right);
+}
+
+function attachSubjectProfileId<T extends Strand>(strands: T[], subjectProfileId: number): T[] {
+  return strands.map(strand => ({
+    ...strand,
+    subject_profile_id: strand.subject_profile_id ?? subjectProfileId,
+  }));
+}
 
 // ============================================================================
 // Structural — Strands
 // ============================================================================
 
-export const useStrands = (params?: { curriculum?: number; subject?: number }) =>
+export const useStrands = (params?: { curriculum?: number; subject?: number; subject_profile?: number }) =>
   useQuery<Strand[]>({
     queryKey: cbcKeys.strands.list(params),
     queryFn: async () => {
@@ -67,13 +82,84 @@ export const useStrandsByCurriculum = (curriculumId: number | null) =>
   useQuery<StrandDetail[]>({
     queryKey: cbcKeys.strands.byCurriculum(curriculumId!),
     queryFn: async () => {
-      const visible = await strandAPI.getAll();
+      const visible = await strandAPI.getAll({ curriculum: curriculumId! });
       const visibleStrands = toArray(visible);
       return Promise.all(visibleStrands.map(strand => strandAPI.getById(strand.id)));
     },
     enabled: !!curriculumId,
     staleTime: 5 * 60 * 1000,
   });
+
+export const useCBCCatalog = () =>
+  useQuery<CBCCatalog>({
+    queryKey: cbcKeys.catalog.detail,
+    queryFn: () => cbcCatalogAPI.getCatalog(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useStrandsBySubjectProfiles = (params: {
+  curriculumId: number | null;
+  subjectProfileIds: number[];
+}) => {
+  const profileIds = uniqueSortedIds(params.subjectProfileIds);
+
+  return useQuery<Strand[]>({
+    queryKey: cbcKeys.strands.byProfiles(params.curriculumId ?? 0, profileIds),
+    queryFn: async () => {
+      const responses = await Promise.all(
+        profileIds.map(async subjectProfileId => attachSubjectProfileId(
+          toArray(await strandAPI.getAll({
+            curriculum: params.curriculumId!,
+            subject_profile: subjectProfileId,
+          })),
+          subjectProfileId
+        ))
+      );
+
+      const strands = responses.flat();
+      return Array.from(new Map(strands.map(strand => [strand.id, strand])).values());
+    },
+    enabled: Boolean(params.curriculumId) && profileIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useStrandDetailsBySubjectProfiles = (params: {
+  curriculumId: number | null;
+  subjectProfileIds: number[];
+}) => {
+  const profileIds = uniqueSortedIds(params.subjectProfileIds);
+
+  return useQuery<StrandDetail[]>({
+    queryKey: cbcKeys.strands.detailByProfiles(params.curriculumId ?? 0, profileIds),
+    queryFn: async () => {
+      const responses = await Promise.all(
+        profileIds.map(async subjectProfileId => attachSubjectProfileId(
+          toArray(await strandAPI.getAll({
+            curriculum: params.curriculumId!,
+            subject_profile: subjectProfileId,
+          })),
+          subjectProfileId
+        ))
+      );
+
+      const strands = Array.from(
+        new Map(
+          responses
+            .flat()
+            .map(strand => [strand.id, strand])
+        ).values()
+      );
+
+      return Promise.all(strands.map(async strand => ({
+        ...await strandAPI.getById(strand.id),
+        subject_profile_id: strand.subject_profile_id ?? null,
+      })));
+    },
+    enabled: Boolean(params.curriculumId) && profileIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+};
 export const useCreateStrand = () => {
   const qc = useQueryClient();
   return useMutation({

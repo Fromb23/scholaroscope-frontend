@@ -20,6 +20,8 @@ import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable'
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
 import { SessionSubtopicLinker } from '@/app/core/components/sessions/SessionSubtopicLinker';
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
+import { getCurriculumTypeLabel } from '@/app/core/lib/curriculumBridge';
+import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
 
@@ -45,12 +47,14 @@ export default function SessionDetailPage() {
     const { activeCohorts, historicalCohorts } = useSessionCohorts(sessionId);
 
     const isHistorical = session ? !session.is_current_year : false;
-    const isCBC = session?.curriculum_type === 'CBE';
     const sessionStatus = session?.status ?? 'SCHEDULED';
     const isCompleted = sessionStatus === 'COMPLETED';
     const isInProgress = sessionStatus === 'IN_PROGRESS';
     const isScheduled = sessionStatus === 'SCHEDULED';
     const isReadOnly = isHistorical || isCompleted;
+    const teachingWorkflow = getSessionTeachingWorkflow(session);
+    const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
+    const showKernelTeachingContent = session?.subject_source === 'kernel' && !teachingWorkflow;
     const isMerged = useMemo(
         () => (activeCohorts?.length ?? 0) + (historicalCohorts?.length ?? 0) > 1,
         [activeCohorts, historicalCohorts]
@@ -166,6 +170,30 @@ export default function SessionDetailPage() {
                 </div>
             </Card>
 
+            <Card>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h2 className="text-lg font-semibold text-gray-900">Teaching Workflow</h2>
+                            <Badge variant="blue">{curriculumLabel}</Badge>
+                        </div>
+                        <p className="mt-2 text-sm text-gray-600">
+                            {teachingWorkflow
+                                ? teachingWorkflow.description
+                                : 'No curriculum plugin workflow is available for this session. Shared attendance, status, schedule, and editing stay on this page.'}
+                        </p>
+                    </div>
+
+                    {teachingWorkflow ? (
+                        <Link href={teachingWorkflow.href} className="w-full sm:w-auto shrink-0">
+                            <Button className="w-full sm:w-auto" size="sm">
+                                {teachingWorkflow.actionLabel}
+                            </Button>
+                        </Link>
+                    ) : null}
+                </div>
+            </Card>
+
             {/* rest unchanged */}
             <ParticipatingCohorts
                 sessionId={sessionId}
@@ -197,7 +225,7 @@ export default function SessionDetailPage() {
                 </div>
             </Card>
 
-            {!isCBC && session.cohort_subject && session.subject_id && (
+            {showKernelTeachingContent && session.cohort_subject && session.subject_id && (
                 <Card>
                     <div className="p-5">
                         <div className="flex items-center justify-between mb-4">

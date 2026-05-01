@@ -3,12 +3,12 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, FileText, Target, BookOpen } from 'lucide-react';
+import { Users, FileText, Target, BookOpen } from 'lucide-react';
 import {
     useTeachingSession, useSessionLearners, useOutcomeSessions,
 } from '@/app/plugins/cbc/hooks/useCBC';
 import {
-    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, SessionStatusBadge,
+    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, SessionStatusBadge, CBCTeachingSessionNav,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -46,6 +46,7 @@ export default function SessionLearnersPage() {
                 { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
                 { label: 'Learners' },
             ]} />
+            <CBCTeachingSessionNav sessionId={sessionId} active="learners" />
 
             {/* Session header */}
             <Card>
@@ -73,24 +74,11 @@ export default function SessionLearnersPage() {
                             </div>
                         </div>
                     </div>
-                    {/* Tab nav */}
-                    <div className="flex gap-2 shrink-0">
-                        <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`}
-                            className="px-3 py-1.5 text-gray-600 text-sm font-medium
-                hover:bg-gray-100 rounded-lg transition-colors">
-                            Outcomes
-                        </Link>
-                        <span className="px-3 py-1.5 bg-purple-600 text-white text-sm
-              font-medium rounded-lg flex items-center gap-1.5">
-                            <Users className="h-4 w-4" />
-                            Learners
-                        </span>
-                    </div>
                 </div>
             </Card>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
                     { label: 'Total Learners', value: learners.length, color: 'text-purple-600' },
                     { label: 'With Evidence', value: learnersWithEvidence, color: 'text-emerald-600' },
@@ -124,8 +112,8 @@ export default function SessionLearnersPage() {
                     <div className="space-y-2">
                         {learners.map(learner => (
                             <div key={learner.id}
-                                className="flex items-center justify-between p-4 border border-gray-200
-                  rounded-xl hover:border-purple-300 hover:bg-purple-50 transition-all">
+                                className="flex flex-col gap-4 p-4 border border-gray-200
+                  rounded-xl hover:border-purple-300 hover:bg-purple-50 transition-all sm:flex-row sm:items-center sm:justify-between">
                                 <div className="flex items-center gap-4 flex-1 min-w-0">
                                     <div className="p-2.5 bg-purple-100 rounded-lg shrink-0">
                                         <Users className="h-5 w-5 text-purple-600" />
@@ -138,8 +126,8 @@ export default function SessionLearnersPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 shrink-0">
-                                    <div className="text-right">
+                                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+                                    <div className="flex items-center justify-between sm:block sm:text-right">
                                         <div className="text-2xl font-bold text-purple-600">
                                             {learner.session_evidence_count}
                                         </div>
@@ -152,6 +140,7 @@ export default function SessionLearnersPage() {
                                         <Button
                                             variant={learner.session_evidence_count > 0 ? 'primary' : 'secondary'}
                                             size="sm"
+                                            className="w-full sm:w-auto"
                                             onClick={() => {
                                                 // Navigate to first linked outcome's evidence page
                                                 const firstOutcome = links[0].learning_outcome;

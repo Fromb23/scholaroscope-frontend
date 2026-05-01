@@ -54,7 +54,7 @@ import {
 // ============================================================================
 
 export const strandAPI = {
-  getAll: async (params?: { curriculum?: number; subject?: number }) => {
+  getAll: async (params?: { curriculum?: number; subject?: number; subject_profile?: number }) => {
     const response = await apiClient.get<Strand[]>('/cbc/strands/', { params });
     return response.data;
   },
