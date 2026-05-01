@@ -48,13 +48,6 @@ function uniqueSortedIds(values: number[]) {
     .sort((left, right) => left - right);
 }
 
-function attachSubjectProfileId<T extends Strand>(strands: T[], subjectProfileId: number): T[] {
-  return strands.map(strand => ({
-    ...strand,
-    subject_profile_id: strand.subject_profile_id ?? subjectProfileId,
-  }));
-}
-
 // ============================================================================
 // Structural — Strands
 // ============================================================================
@@ -66,7 +59,7 @@ export const useStrands = (params?: { curriculum?: number; subject?: number; sub
       const data = await strandAPI.getAll(params);
       return toArray(data);
     },
-    enabled: true,
+    enabled: params !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -81,11 +74,7 @@ export const useStrandDetail = (id: number | null) =>
 export const useStrandsByCurriculum = (curriculumId: number | null) =>
   useQuery<StrandDetail[]>({
     queryKey: cbcKeys.strands.byCurriculum(curriculumId!),
-    queryFn: async () => {
-      const visible = await strandAPI.getAll({ curriculum: curriculumId! });
-      const visibleStrands = toArray(visible);
-      return Promise.all(visibleStrands.map(strand => strandAPI.getById(strand.id)));
-    },
+    queryFn: () => strandAPI.getByCurriculum(curriculumId!),
     enabled: !!curriculumId,
     staleTime: 5 * 60 * 1000,
   });
@@ -106,18 +95,17 @@ export const useStrandsBySubjectProfiles = (params: {
   return useQuery<Strand[]>({
     queryKey: cbcKeys.strands.byProfiles(params.curriculumId ?? 0, profileIds),
     queryFn: async () => {
-      const responses = await Promise.all(
-        profileIds.map(async subjectProfileId => attachSubjectProfileId(
-          toArray(await strandAPI.getAll({
-            curriculum: params.curriculumId!,
-            subject_profile: subjectProfileId,
-          })),
-          subjectProfileId
-        ))
-      );
+      const strands = toArray(await strandAPI.getAll({ curriculum: params.curriculumId! }));
 
-      const strands = responses.flat();
-      return Array.from(new Map(strands.map(strand => [strand.id, strand])).values());
+      return strands
+        .filter(strand => (
+          typeof strand.subject_profile_id === 'number' &&
+          profileIds.includes(strand.subject_profile_id)
+        ))
+        .map(strand => ({
+          ...strand,
+          subject_profile_id: strand.subject_profile_id ?? null,
+        }));
     },
     enabled: Boolean(params.curriculumId) && profileIds.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -133,28 +121,12 @@ export const useStrandDetailsBySubjectProfiles = (params: {
   return useQuery<StrandDetail[]>({
     queryKey: cbcKeys.strands.detailByProfiles(params.curriculumId ?? 0, profileIds),
     queryFn: async () => {
-      const responses = await Promise.all(
-        profileIds.map(async subjectProfileId => attachSubjectProfileId(
-          toArray(await strandAPI.getAll({
-            curriculum: params.curriculumId!,
-            subject_profile: subjectProfileId,
-          })),
-          subjectProfileId
-        ))
-      );
+      const strands = await strandAPI.getByCurriculum(params.curriculumId!);
 
-      const strands = Array.from(
-        new Map(
-          responses
-            .flat()
-            .map(strand => [strand.id, strand])
-        ).values()
-      );
-
-      return Promise.all(strands.map(async strand => ({
-        ...await strandAPI.getById(strand.id),
-        subject_profile_id: strand.subject_profile_id ?? null,
-      })));
+      return strands.filter(strand => (
+        typeof strand.subject_profile_id === 'number' &&
+        profileIds.includes(strand.subject_profile_id)
+      ));
     },
     enabled: Boolean(params.curriculumId) && profileIds.length > 0,
     staleTime: 5 * 60 * 1000,
@@ -576,11 +548,13 @@ export const useBulkCreateClassEvidence = () => {
 export const useStrandOutcomeDistribution = (params: {
   strand_id: number | null;
   cohort_id: number | null;
+  subject_id?: number | null;
 }) =>
   useQuery<StrandOutcomeDistribution[]>({
     queryKey: cbcKeys.outcomeProgress.strandDistribution(
       params.strand_id!,
       params.cohort_id!,
+      params.subject_id,
     ),
     queryFn: () =>
       outcomeProgressAPI.strandOutcomeDistribution({

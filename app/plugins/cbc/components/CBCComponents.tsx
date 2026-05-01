@@ -10,6 +10,7 @@ import {
     ArrowLeftRight,
     BookOpen,
     Calendar,
+    Check,
     ChevronDown,
     RefreshCw,
     Target,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { Subject } from '@/app/core/types/academic';
 import type { MasteryLevel, MasteryDistribution } from '@/app/plugins/cbc/types/cbc';
+import type { CBCInstructorSubjectSelection } from '@/app/plugins/cbc/lib/visibility';
 import { Select } from '@/app/components/ui/Select';
 
 // ============================================================================
@@ -491,12 +493,16 @@ export function SubjectGroupPicker({
     onSelect,
     showAllOption = true,
     autoExpandSelected = false,
+    mode = 'catalog',
+    instructorSelections = [],
 }: {
     subjects: Subject[];
     selectedSubjectId: number | null;
     onSelect: (id: number | null) => void;
     showAllOption?: boolean;
     autoExpandSelected?: boolean;
+    mode?: 'catalog' | 'instructor';
+    instructorSelections?: CBCInstructorSubjectSelection[];
 }) {
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -569,6 +575,61 @@ export function SubjectGroupPicker({
         });
     };
 
+    if (mode === 'instructor') {
+        return (
+            <div className="space-y-2">
+                {instructorSelections.map(selection => {
+                    const isSelected = selectedSubjectId === selection.filter_id;
+                    const subjectCode = (selection.subject_code ?? selection.subject.code ?? '').trim();
+                    const levelLabel = formatInstructorLevelLabel(selection.level);
+                    const cohortName = (selection.cohort_name ?? '').trim();
+                    const academicYear = (selection.academic_year ?? '').trim();
+
+                    let metaLabel = levelLabel || 'CBC Assignment';
+
+                    if (cohortName) {
+                        metaLabel = academicYear ? `${cohortName} ${academicYear}` : cohortName;
+                    } else if (selection.cohort_id) {
+                        metaLabel = levelLabel
+                            ? `${levelLabel} · Cohort ${selection.cohort_id}`
+                            : `Cohort ${selection.cohort_id}`;
+                    }
+
+                    if (subjectCode) {
+                        metaLabel = `${metaLabel} · ${subjectCode}`;
+                    }
+
+                    return (
+                        <button
+                            key={selection.cohort_subject_id ?? selection.filter_id}
+                            onClick={() => onSelect(selection.filter_id)}
+                            className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${isSelected
+                                ? 'border-blue-300 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+                                        {selection.subject.name}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        {metaLabel}
+                                    </p>
+                                </div>
+                                {isSelected && (
+                                    <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                                        <Check className="h-3.5 w-3.5" />
+                                    </span>
+                                )}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-1">
             {showAllOption && (
@@ -626,6 +687,14 @@ export function SubjectGroupPicker({
             })}
         </div>
     );
+}
+
+function formatInstructorLevelLabel(level: string | null | undefined) {
+    return (level ?? '')
+        .replace('grade', 'Grade ')
+        .replace(/(\d+)/, ' $1')
+        .replace(/\s+/, ' ')
+        .trim();
 }
 
 // ============================================================================

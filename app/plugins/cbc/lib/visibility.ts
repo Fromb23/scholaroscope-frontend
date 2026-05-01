@@ -66,8 +66,14 @@ export interface CBCInstructorSubjectSelection {
     filter_id: number;
     subject: Subject;
     subject_ids: number[];
+    subject_profile_ids?: number[];
     subject_name: string;
     level: string | null;
+    cohort_id?: number | null;
+    cohort_name?: string | null;
+    academic_year?: string | null;
+    subject_code?: string | null;
+    cohort_subject_id?: number | null;
 }
 
 export function resolveCBCVisibleProfiles(
@@ -319,6 +325,64 @@ export function buildCBCInstructorSubjectSelections(
 
     return Array.from(fallbackSelections.values()).sort((left, right) => (
         left.subject.name.localeCompare(right.subject.name) ||
+        left.subject.level.localeCompare(right.subject.level)
+    ));
+}
+
+export function buildCBCInstructorAssignmentSelections(
+    assignments: Array<Pick<
+        CBCTeachingAssignment,
+        'cohort_subject_id' | 'cohort_id' | 'cohort_name' | 'subject_id' |
+        'subject_name' | 'subject_code' | 'subject_profile_id' | 'level' | 'academic_year'
+    >>,
+    visibleProfiles: CBCVisibleProfile[],
+    curriculumId: number | null,
+    curriculumName = 'CBC'
+): CBCInstructorSubjectSelection[] {
+    const deduped = new Map<number, CBCInstructorSubjectSelection>();
+
+    assignments.forEach(assignment => {
+        const filterId = hashKey(`assignment:${assignment.cohort_subject_id}`);
+        const matchingProfiles = visibleProfiles.filter(profile => (
+            (typeof assignment.subject_profile_id === 'number' &&
+                assignment.subject_profile_id === profile.subject_profile_id) ||
+            matchesCBCVisibleProfile({
+                subject_name: assignment.subject_name,
+                subject_code: assignment.subject_code,
+                cohort_level: assignment.level,
+            }, profile)
+        ));
+        const resolvedProfile = matchingProfiles[0] ?? null;
+
+        deduped.set(assignment.cohort_subject_id, {
+            filter_id: filterId,
+            subject: {
+                id: filterId,
+                curriculum: curriculumId ?? 0,
+                curriculum_name: curriculumName,
+                curriculum_type: 'CBE',
+                code: resolvedProfile?.subject_code ?? assignment.subject_code,
+                name: resolvedProfile?.subject_name ?? assignment.subject_name,
+                level: resolvedProfile?.level ?? assignment.level,
+                description: '',
+                created_at: '',
+            },
+            subject_ids: [assignment.subject_id],
+            subject_profile_ids: matchingProfiles.map(profile => profile.subject_profile_id),
+            subject_name: resolvedProfile?.subject_name ?? assignment.subject_name,
+            level: resolvedProfile?.level ?? assignment.level,
+            cohort_id: assignment.cohort_id,
+            cohort_name: assignment.cohort_name,
+            academic_year: assignment.academic_year,
+            subject_code: resolvedProfile?.subject_code ?? assignment.subject_code,
+            cohort_subject_id: assignment.cohort_subject_id,
+        });
+    });
+
+    return Array.from(deduped.values()).sort((left, right) => (
+        left.subject.name.localeCompare(right.subject.name) ||
+        (left.cohort_name ?? '').localeCompare(right.cohort_name ?? '') ||
+        (left.academic_year ?? '').localeCompare(right.academic_year ?? '') ||
         left.subject.level.localeCompare(right.subject.level)
     ));
 }

@@ -3,6 +3,11 @@
 // Import from here — never hardcode strings in hooks.
 
 export const cbcKeys = {
+    instructorContext: {
+        detail: (userId: number, organizationId: number, curriculumId: number) =>
+            ['cbc', 'instructor-context', userId, organizationId, curriculumId] as const,
+    },
+
     catalog: {
         all: ['cbc', 'catalog'] as const,
         detail: ['cbc', 'catalog', 'detail'] as const,
@@ -69,8 +74,8 @@ export const cbcKeys = {
             ['cbc', 'outcome-progress', 'cbc-summary', cohortId, subjectId] as const,
         distribution: (outcomeId: number, cohortId: number) =>
             ['cbc', 'outcome-progress', 'distribution', outcomeId, cohortId] as const,
-        strandDistribution: (strandId: number, cohortId: number) =>
-            ['cbc', 'outcome-progress', 'strand-distribution', strandId, cohortId] as const,
+        strandDistribution: (strandId: number, cohortId: number, subjectId?: number | null) =>
+            ['cbc', 'outcome-progress', 'strand-distribution', strandId, cohortId, subjectId ?? null] as const,
         outcomeLearners: (outcomeId: number, cohortId: number, levels?: string) =>
             ['cbc', 'outcome-progress', 'learners', outcomeId, cohortId, levels] as const,
     },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -12,6 +12,7 @@ import {
 } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCohorts } from '@/app/core/hooks/useAcademic';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
+import { useResolvedCBCInstructorContext } from '@/app/plugins/cbc/hooks/useCBCInstructorContext';
 import {
     CBCNav, CBCBreadcrumb, CBCError, CBCLoading,
     MasteryBadge, MASTERY_CONFIG,
@@ -23,7 +24,6 @@ import type {
     MasteryLevel, StrandOutcomeDistribution,
     CompetencyDistribution, OutcomeLearner,
 } from '@/app/plugins/cbc/types/cbc';
-import type { Cohort } from '@/app/core/types/academic';
 
 const MASTERY_LEVELS: MasteryLevel[] = [
     'NOT_STARTED', 'BELOW', 'APPROACHING', 'MEETING', 'EXCEEDING',
@@ -200,36 +200,42 @@ export default function StrandCompetencyOverviewPage() {
     const strandId = Number(raw);
     const searchParams = useSearchParams();
     const cohortFromUrl = searchParams.get('cohort');
+    const cohortFromQuery = cohortFromUrl ? Number(cohortFromUrl) : null;
+    const subjectFromUrl = searchParams.get('subject');
+    const subjectFromQuery = subjectFromUrl ? Number(subjectFromUrl) : null;
 
-    const { selectedCohortId, setSelectedCohort, selectedCurriculumId } = useCBCContext();
+    const { selectedCohortId, selectedCurriculumId, isAdmin } = useCBCContext();
     const [expandedOutcome, setExpandedOutcome] = useState<number | null>(null);
     const [drillDown, setDrillDown] = useState<DrillDown | null>(null);
 
     const { data: strand, isLoading: strandLoading } = useStrandDetail(strandId);
-    const { cohorts = [] } = useCohorts({
-        curriculum: selectedCurriculumId ?? undefined,
+    const { cohorts = [] } = useCohorts(
+        isAdmin ? { curriculum: selectedCurriculumId ?? undefined } : undefined,
+        { enabled: isAdmin }
+    );
+    const instructorContext = useResolvedCBCInstructorContext({
+        selectedCurriculumId,
+        requestedCohortId: cohortFromQuery ?? selectedCohortId,
+        requestedSubjectId: null,
     });
-
-    const subjectFromUrl = searchParams.get('subject');
-
-    useEffect(() => {
-        if (selectedCohortId === null && cohorts.length > 0) {
-            if (cohortFromUrl) {
-                setSelectedCohort(Number(cohortFromUrl));
-                return;
-            }
-
-            setSelectedCohort(cohorts[0].id);
-        }
-    }, [cohorts, cohortFromUrl, selectedCohortId, setSelectedCohort]);
+    const {
+        isLoading: instructorContextLoading,
+        error: instructorContextError,
+    } = instructorContext;
+    const resolvedCohortId = useMemo(() => {
+        if (!Number.isNaN(cohortFromQuery) && cohortFromQuery !== null) return cohortFromQuery;
+        if (!isAdmin) return instructorContext.effectiveCohortId;
+        return selectedCohortId ?? cohorts[0]?.id ?? null;
+    }, [cohortFromQuery, cohorts, instructorContext.effectiveCohortId, isAdmin, selectedCohortId]);
 
     const { data: outcomes = [], isLoading, error, refetch } =
         useStrandOutcomeDistribution({
             strand_id: strandId,
-            cohort_id: selectedCohortId,
+            cohort_id: resolvedCohortId,
+            subject_id: subjectFromQuery,
         });
 
-    const bySubStrand = outcomes.reduce<Record<number, {
+    const bySubStrand = useMemo(() => outcomes.reduce<Record<number, {
         name: string;
         outcomes: StrandOutcomeDistribution[];
     }>>((acc, o) => {
@@ -238,15 +244,24 @@ export default function StrandCompetencyOverviewPage() {
         }
         acc[o.sub_strand_id].outcomes.push(o);
         return acc;
-    }, {});
+    }, {}), [outcomes]);
 
-    const needsAttention = outcomes.filter(
+    const needsAttention = useMemo(() => outcomes.filter(
         o => o.distribution.BELOW > 0 || o.distribution.APPROACHING > 0
-    );
+    ), [outcomes]);
 
-    if (strandLoading) return (
+    if (strandLoading || (!isAdmin && instructorContextLoading)) return (
         <div className="space-y-6"><CBCNav /><CBCLoading message="Loading strand…" /></div>
     );
+
+    if (!isAdmin && instructorContextError) {
+        return (
+            <div className="space-y-6">
+                <CBCNav />
+                <CBCError error={instructorContextError} onRetry={() => instructorContext.refetch()} />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -286,7 +301,7 @@ export default function StrandCompetencyOverviewPage() {
             </Card>
 
 
-            {!selectedCohortId ? (
+            {!resolvedCohortId ? (
                 <Card className="py-12 text-center">
                     <Users className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                     <p className="text-gray-500 mb-4">No cohort context — go back and select a cohort first</p>
@@ -569,10 +584,10 @@ export default function StrandCompetencyOverviewPage() {
             )}
 
             {/* Drill-down modal */}
-            {drillDown && selectedCohortId && (
+            {drillDown && resolvedCohortId && (
                 <LearnerDrillDown
                     outcome={drillDown.outcome}
-                    cohortId={selectedCohortId}
+                    cohortId={resolvedCohortId}
                     levels={drillDown.levels}
                     label={drillDown.label}
                     onClose={() => setDrillDown(null)}

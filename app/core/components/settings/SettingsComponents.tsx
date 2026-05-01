@@ -7,7 +7,7 @@
 // No any. Typed props. Reuses ErrorBanner and InlineAlert.
 // ============================================================================
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Puzzle, Check, X, Power, PowerOff, ChevronRight, BookOpen,
     Clock, UserCheck, Ban, Plus, Trash2, Mail,
@@ -22,11 +22,14 @@ import Modal from '@/app/components/ui/Modal';
 import { pluginAPI } from '@/app/core/api/plugins';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
+import { useOrganizationContext } from '@/app/context/OrganizationContext';
+import { useAuth } from '@/app/context/AuthContext';
+import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import {
     CurriculumCatalogDetail, InstalledPlugin,
     SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
 } from '@/app/core/types/plugins';
-import { getPluginModalSlot } from '@/app/core/registry/pluginModalSlots';
+import { pluginModalSlots } from '@/app/core/registry/pluginModalSlots';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -402,8 +405,8 @@ interface InstalledPluginCardProps {
 export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPluginCardProps) {
     const [curriculumOpen, setCurriculumOpen] = useState(false);
     const [modalKey, setModalKey] = useState(0);
-
-    const PluginModal = getPluginModalSlot(plugin.key);
+    const isActive = plugin.state === 'active' || plugin.is_active;
+    const PluginModal = pluginModalSlots[plugin.key] ?? null;
 
     const openCurriculum = () => {
         setModalKey(k => k + 1);
@@ -412,18 +415,18 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
 
     return (
         <>
-            <div className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${plugin.is_active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
+            <div className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
                 }`}>
                 <div className="flex items-start gap-4">
-                    <div className={`p-2.5 rounded-xl shrink-0 ${plugin.is_active ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                        <Puzzle className={`h-5 w-5 ${plugin.is_active ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <div className={`p-2.5 rounded-xl shrink-0 ${isActive ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                        <Puzzle className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <h3 className="text-sm font-semibold text-gray-900">{plugin.name}</h3>
                             <Badge variant="default" size="sm" className="font-mono">{plugin.version}</Badge>
                             {plugin.is_core && <Badge variant="info" size="sm">Core</Badge>}
-                            {plugin.is_active
+                            {isActive
                                 ? <Badge variant="green" size="sm">Active</Badge>
                                 : <Badge variant="default" size="sm">Inactive</Badge>
                             }
@@ -431,7 +434,7 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                         <p className="text-xs text-gray-500 max-w-md">{plugin.description}</p>
                         <p className="text-xs text-gray-400 mt-1 font-mono">key: {plugin.key}</p>
 
-                        {PluginModal && plugin.is_active && (
+                        {PluginModal && isActive && (
                             <button
                                 onClick={openCurriculum}
                                 className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
@@ -447,12 +450,12 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                     <button
                         onClick={() => onToggle(plugin.id)}
                         disabled={toggling}
-                        className={`p-2 rounded-lg transition-colors shrink-0 ml-4 ${plugin.is_active
+                        className={`p-2 rounded-lg transition-colors shrink-0 ml-4 ${isActive
                             ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
                             : 'text-gray-400 hover:bg-green-50 hover:text-green-600'
                             }`}
                     >
-                        {plugin.is_active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                        {isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                     </button>
                 )}
             </div>
@@ -472,8 +475,16 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
 
 export function PluginsTab() {
     const { plugins, loading, error, refetch } = usePlugins();
+    const { activeOrg } = useAuth();
+    const { organizationId } = useOrganizationContext();
     const [toggling, setToggling] = useState(false);
+    const [localPlugins, setLocalPlugins] = useState<InstalledPlugin[]>([]);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
+
+    useEffect(() => {
+        setLocalPlugins(plugins);
+    }, [plugins]);
 
     const flash = (type: 'success' | 'error', message: string) => {
         setFeedback({ type, message });
@@ -483,16 +494,29 @@ export function PluginsTab() {
     const handleToggle = async (id: number) => {
         setToggling(true);
         try {
-            await pluginAPI.toggle(id);
+            const updatedPlugin = await pluginAPI.toggle(id);
+            console.debug('[PluginsTab.toggle] toggled', {
+                id,
+                organizationId: scopedOrganizationId,
+                returned: {
+                    id: updatedPlugin.id,
+                    is_active: updatedPlugin.is_active,
+                    state: updatedPlugin.state,
+                    organization: updatedPlugin.organization,
+                },
+            });
+            setLocalPlugins(prev => prev.map(plugin => (
+                plugin.id === id ? updatedPlugin : plugin
+            )));
             await refetch();
             flash('success', 'Plugin updated.');
-        } catch {
-            flash('error', 'Failed to update plugin.');
+        } catch (err) {
+            flash('error', extractErrorMessage(err as ApiError, 'Failed to update plugin.'));
         } finally { setToggling(false); }
     };
 
-    const corePlugins = plugins.filter(p => p.is_core);
-    const optionalPlugins = plugins.filter(p => !p.is_core);
+    const corePlugins = localPlugins.filter(p => p.is_core);
+    const optionalPlugins = localPlugins.filter(p => !p.is_core);
 
     if (loading) return <LoadingSpinner fullScreen={false} message="Loading plugins..." />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
@@ -572,7 +596,7 @@ export function CurriculumSelectionModal({
     const clone = (obj: Record<string, Set<string>>) =>
         Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, new Set(v)]));
 
-    const applyData = (data: CurriculumCatalogDetail) => {
+    const applyData = useCallback((data: CurriculumCatalogDetail) => {
         setCatalog(data);
         const t: Record<string, Set<string>> = {};
         const s: Record<string, Set<string>> = {};
@@ -595,7 +619,7 @@ export function CurriculumSelectionModal({
         setCheckedSubtopics(s);
         setSnapTopics(clone(t));
         setSnapSubtopics(clone(s));
-    };
+    }, []);
 
     useEffect(() => {
         if (!isOpen) {
@@ -616,7 +640,7 @@ export function CurriculumSelectionModal({
             .then(applyData)
             .catch(() => setError('Could not load curriculum.'))
             .finally(() => setLoading(false));
-    }, [isOpen, installedPluginId]);
+    }, [applyData, isOpen, installedPluginId]);
 
     const toggleLevel = (lk: string, topics: CurriculumTopicEntry[]) => {
         const cur = checkedTopics[lk] ?? new Set();
@@ -654,7 +678,11 @@ export function CurriculumSelectionModal({
     const toggleSubtopic = (lk: string, tc: string, sc: string) => {
         const sk = `${lk}-${tc}`;
         const current = new Set(checkedSubtopics[sk] ?? []);
-        current.has(sc) ? current.delete(sc) : current.add(sc);
+        if (current.has(sc)) {
+            current.delete(sc);
+        } else {
+            current.add(sc);
+        }
         setCheckedSubtopics(prev => ({ ...prev, [sk]: current }));
     };
 
@@ -855,7 +883,11 @@ export function CurriculumSelectionModal({
                                         <button
                                             onClick={() => setExpandedSubjects(prev => {
                                                 const n = new Set(prev);
-                                                n.has(group.name) ? n.delete(group.name) : n.add(group.name);
+                                                if (n.has(group.name)) {
+                                                    n.delete(group.name);
+                                                } else {
+                                                    n.add(group.name);
+                                                }
                                                 return n;
                                             })}
                                             className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 text-left"
@@ -903,7 +935,11 @@ export function CurriculumSelectionModal({
                                                                 <button
                                                                     onClick={() => setExpandedLevels(prev => {
                                                                         const n = new Set(prev);
-                                                                        n.has(lk) ? n.delete(lk) : n.add(lk);
+                                                                        if (n.has(lk)) {
+                                                                            n.delete(lk);
+                                                                        } else {
+                                                                            n.add(lk);
+                                                                        }
                                                                         return n;
                                                                     })}
                                                                     className="flex-1 flex items-center justify-between text-left"
@@ -954,7 +990,11 @@ export function CurriculumSelectionModal({
                                                                                     <button
                                                                                         onClick={() => setExpandedTopics(prev => {
                                                                                             const n = new Set(prev);
-                                                                                            n.has(tKey) ? n.delete(tKey) : n.add(tKey);
+                                                                                            if (n.has(tKey)) {
+                                                                                                n.delete(tKey);
+                                                                                            } else {
+                                                                                                n.add(tKey);
+                                                                                            }
                                                                                             return n;
                                                                                         })}
                                                                                         className="flex-1 flex items-center justify-between text-left"
