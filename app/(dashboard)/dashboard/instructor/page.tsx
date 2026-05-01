@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useInstructorDashboard } from '@/app/core/hooks/useInstructorDashboard';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { useMyRequests } from '@/app/plugins/requests/hooks/useRequests';
 import {
     InstructorHeader,
     InstructorAlertsBanner,
@@ -30,6 +31,7 @@ export default function InstructorDashboard() {
     const { user, activeRole } = useAuth();
     const { hasPlugin, loading: pluginsLoading } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
+    const { requests, loading: requestsLoading, error: requestsError } = useMyRequests();
 
     const {
         metrics, alerts, sessions, cohorts,
@@ -59,7 +61,6 @@ export default function InstructorDashboard() {
                 termName={currentTerm?.name ?? 'No active term'}
                 yearName={currentYear?.name ?? String(new Date().getFullYear())}
                 lastRefresh={lastRefresh}
-                alertCount={alerts.length}
                 onRefresh={refresh}
             />
             <InstructorAlertsBanner alerts={alerts} />
@@ -72,7 +73,6 @@ export default function InstructorDashboard() {
                             <TeachingHistoryCard history={teachingHistory} />
                             <TodayScheduleCard sessions={sessions} />
                             <LearnersAtRisk
-                                frequentlyAbsent={metrics.attendance.frequentlyAbsent}
                                 needsSupport={metrics.performance.needsSupport}
                             />
                             <MyCohortsCard cohorts={cohorts} />
@@ -85,7 +85,11 @@ export default function InstructorDashboard() {
                     {hasAssignedCohorts && (
                         <InstructorQuickActions needsGrading={metrics.assessments.needsGrading} />
                     )}
-                    <MyRequestsCard />
+                    <MyRequestsCard
+                        requests={requests}
+                        loading={requestsLoading}
+                        error={requestsError}
+                    />
                     {showCBCTools && (
                         <CurriculumToolCard
                             title="CBC Teaching"
@@ -112,13 +116,6 @@ export default function InstructorDashboard() {
                         />
                     )}
                 </div>
-            </div>
-            <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-2xl p-6 border border-green-200">
-                <p className="text-center text-gray-700">
-                    <span className="font-bold text-green-600">More Features Coming Soon:</span>{' '}
-                    Learner progress tracking, personalized teaching insights, lesson planning tools,
-                    and collaborative features.
-                </p>
             </div>
         </div>
     );

@@ -7,10 +7,11 @@
 // Reuses MetricCard and AlertsBanner from AdminDashboardWidgets.
 // ============================================================================
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
     Calendar, Clock, Award, TrendingUp, Users,
-    AlertCircle, Bell, RefreshCw, Inbox,
+    AlertCircle, RefreshCw, Inbox,
     Target, FileText, Zap, BookOpen, Activity,
     ChevronRight, UserX, TrendingDown,
 } from 'lucide-react';
@@ -27,16 +28,13 @@ interface InstructorHeaderProps {
     termName: string;
     yearName: string;
     lastRefresh: Date;
-    alertCount: number;
     onRefresh: () => void;
 }
 
 export function InstructorHeader({
     firstName, termName, yearName,
-    lastRefresh, alertCount, onRefresh,
+    lastRefresh, onRefresh,
 }: InstructorHeaderProps) {
-    const router = useRouter();
-
     return (
         <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -61,27 +59,6 @@ export function InstructorHeader({
                         className="p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-300 hover:scale-110"
                     >
                         <RefreshCw className="w-5 h-5" />
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/requests')}
-                        className="relative p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all"
-                    >
-                        <Inbox className="w-5 h-5" />
-                        <span className="absolute -top-1 -right-1 px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">2</span>
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/notifications')}
-                        className="relative p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all"
-                    >
-                        <Bell className="w-5 h-5" />
-                        {alertCount > 0 && (
-                            <>
-                                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
-                                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-                            </>
-                        )}
                     </button>
 
                     <div className="hidden lg:block text-right px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
@@ -300,11 +277,10 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
 // ── LearnersAtRisk ────────────────────────────────────────────────────────
 
 interface LearnersAtRiskProps {
-    frequentlyAbsent: number;
     needsSupport: number;
 }
 
-export function LearnersAtRisk({ frequentlyAbsent, needsSupport }: LearnersAtRiskProps) {
+export function LearnersAtRisk({ needsSupport }: LearnersAtRiskProps) {
     const router = useRouter();
 
     return (
@@ -317,15 +293,17 @@ export function LearnersAtRisk({ frequentlyAbsent, needsSupport }: LearnersAtRis
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
-                    onClick={() => router.push('/learners?filter=absent')}
-                    className="p-5 bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100 rounded-xl border border-orange-200 transition-all hover:scale-[1.02] text-left"
+                    type="button"
+                    className="p-5 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200 text-left cursor-default"
                 >
                     <div className="flex items-center gap-3 mb-3">
                         <UserX className="w-6 h-6 text-orange-600" />
-                        <p className="font-bold text-gray-900">Frequently Absent</p>
+                        <p className="font-bold text-gray-900">Attendance Risk</p>
                     </div>
-                    <p className="text-3xl font-bold text-orange-600 mb-1">{frequentlyAbsent}</p>
-                    <p className="text-xs text-gray-600">Missing 3+ sessions/week</p>
+                    <p className="text-sm font-medium text-gray-700">Unavailable</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                        Frequent-absence indicators are not available on this dashboard yet.
+                    </p>
                 </button>
 
                 <button
@@ -457,14 +435,22 @@ export function InstructorQuickActions({ needsGrading }: InstructorQuickActionsP
 
 // ── MyRequestsCard ────────────────────────────────────────────────────────
 
-export function MyRequestsCard() {
-    const router = useRouter();
+interface RequestSummary {
+    id: number;
+    title: string;
+    status_display: string;
+    request_type_display: string;
+}
 
-    // Hardcoded — replace with useRequests hook when available
-    const requests = [
-        { title: 'Enrollment Change', status: 'Pending approval', color: 'bg-blue-50' },
-        { title: 'Grade Override', status: 'Approved', color: 'bg-green-50' },
-    ];
+interface MyRequestsCardProps {
+    requests: RequestSummary[];
+    loading: boolean;
+    error: string | null;
+}
+
+export function MyRequestsCard({ requests, loading, error }: MyRequestsCardProps) {
+    const router = useRouter();
+    const recentRequests = requests.slice(0, 3);
 
     return (
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
@@ -475,22 +461,43 @@ export function MyRequestsCard() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">My Requests</h3>
                 </div>
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">2</span>
+                {requests.length > 0 && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                        {requests.length}
+                    </span>
+                )}
             </div>
-            <div className="space-y-3">
-                {requests.map(r => (
-                    <div key={r.title} className={`p-3 ${r.color} rounded-xl`}>
-                        <p className="text-sm font-medium text-gray-900">{r.title}</p>
-                        <p className="text-xs text-gray-500 mt-1">{r.status}</p>
+
+            {loading ? (
+                <p className="text-sm text-gray-500 py-4">Loading requests…</p>
+            ) : error ? (
+                <p className="text-sm text-gray-500 py-4">Requests are unavailable right now.</p>
+            ) : recentRequests.length === 0 ? (
+                <p className="text-sm text-gray-500 py-4">No requests submitted yet.</p>
+            ) : (
+                <>
+                    <div className="space-y-3">
+                        {recentRequests.map(request => (
+                            <Link
+                                key={request.id}
+                                href={`/requests/${request.id}`}
+                                className="block rounded-xl bg-blue-50 p-3 transition-colors hover:bg-blue-100"
+                            >
+                                <p className="text-sm font-medium text-gray-900">{request.title}</p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    {request.status_display} · {request.request_type_display}
+                                </p>
+                            </Link>
+                        ))}
                     </div>
-                ))}
-            </div>
-            <button
-                onClick={() => router.push('/requests')}
-                className="w-full mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-            >
-                View All Requests
-            </button>
+                    <button
+                        onClick={() => router.push('/requests')}
+                        className="w-full mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        View All Requests
+                    </button>
+                </>
+            )}
         </div>
     );
 }

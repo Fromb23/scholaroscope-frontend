@@ -25,7 +25,6 @@ export interface InstructorMetrics {
     };
     attendance: {
         todayRate: number;
-        frequentlyAbsent: number;
     };
     assessments: {
         needsGrading: number;
@@ -87,12 +86,9 @@ function computeInstructorMetrics(
         return total > 0 && (s.score / total) * 100 < 50;
     }).length;
 
-    // Placeholder — ~8% of active students frequently absent
-    const frequentlyAbsent = Math.floor(activeStudents.length * 0.08);
-
     return {
         students: { total: students.length, active: activeStudents.length },
-        attendance: { todayRate, frequentlyAbsent },
+        attendance: { todayRate },
         assessments: { needsGrading, upcoming: upcomingAssessments },
         sessions: { today: sessions.length, upcoming: upcomingSessions },
         performance: { averageScore, needsSupport },
@@ -123,14 +119,6 @@ function generateInstructorAlerts(metrics: InstructorMetrics): DashboardAlert[] 
             action: 'View Learners', link: '/learners?filter=struggling',
         });
     }
-    if (metrics.attendance.frequentlyAbsent > 5) {
-        alerts.push({
-            id: 4, type: 'error',
-            message: `${metrics.attendance.frequentlyAbsent} learners frequently absent`,
-            action: 'Check Attendance', link: '/learners?filter=absent',
-        });
-    }
-
     return alerts;
 }
 
