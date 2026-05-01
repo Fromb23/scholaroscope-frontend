@@ -597,6 +597,10 @@ interface TeachingLoadCardProps {
     assignments: TeachingAssignment[];
 }
 
+function getTeachingAssignmentProgressRoute(assignment: Pick<TeachingAssignment, 'cohort_subject_id'>) {
+    return `/academic/progress?cohort_subject=${assignment.cohort_subject_id}`;
+}
+
 export function TeachingLoadCard({ assignments }: TeachingLoadCardProps) {
     const router = useRouter();
     const currentYear = assignments.filter(a => a.is_current_year);
@@ -625,7 +629,7 @@ export function TeachingLoadCard({ assignments }: TeachingLoadCardProps) {
                     {currentYear.map(a => (
                         <div
                             key={a.cohort_subject_id}
-                            onClick={() => router.push('/academic/cohorts')}
+                            onClick={() => router.push(getTeachingAssignmentProgressRoute(a))}
                             className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 rounded-xl border border-teal-200 transition-all hover:scale-[1.02] cursor-pointer"
                         >
                             <div className="flex items-center justify-between mb-2">
