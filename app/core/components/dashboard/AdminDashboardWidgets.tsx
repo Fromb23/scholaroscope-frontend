@@ -10,7 +10,7 @@
 import { useRouter } from 'next/navigation';
 import {
     Users, Calendar, ClipboardCheck, TrendingUp, Award,
-    AlertCircle, Clock, Bell, RefreshCw, Inbox,
+    AlertCircle, Clock, RefreshCw, Inbox,
     Activity, FileBarChart, Settings, Zap, ChevronRight,
     BarChart3,
     BookOpen,
@@ -27,16 +27,13 @@ interface DashboardHeaderProps {
     termName: string;
     yearName: string;
     lastRefresh: Date;
-    alertCount: number;
     onRefresh: () => void;
 }
 
 export function DashboardHeader({
     firstName, termName, yearName,
-    lastRefresh, alertCount, onRefresh,
+    lastRefresh, onRefresh,
 }: DashboardHeaderProps) {
-    const router = useRouter();
-
     return (
         <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-8 mb-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -61,27 +58,6 @@ export function DashboardHeader({
                         className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-110"
                     >
                         <RefreshCw className="w-5 h-5" />
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/requests')}
-                        className="relative p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                    >
-                        <Inbox className="w-5 h-5" />
-                        <span className="absolute -top-1 -right-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">5</span>
-                    </button>
-
-                    <button
-                        onClick={() => router.push('/notifications')}
-                        className="relative p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                    >
-                        <Bell className="w-5 h-5" />
-                        {alertCount > 0 && (
-                            <>
-                                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
-                                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-                            </>
-                        )}
                     </button>
 
                     <div className="hidden lg:block text-right px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">

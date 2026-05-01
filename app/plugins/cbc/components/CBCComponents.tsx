@@ -1,11 +1,25 @@
 'use client';
 // app/plugins/cbc/components/CBCComponents.tsx
 
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import type { LucideIcon } from 'lucide-react';
+import {
+    AlertTriangle,
+    ArrowLeftRight,
+    BookOpen,
+    Calendar,
+    Check,
+    ChevronDown,
+    RefreshCw,
+    Target,
+    Users,
+} from 'lucide-react';
+import type { Subject } from '@/app/core/types/academic';
 import type { MasteryLevel, MasteryDistribution } from '@/app/plugins/cbc/types/cbc';
+import type { CBCInstructorSubjectSelection } from '@/app/plugins/cbc/lib/visibility';
+import { Select } from '@/app/components/ui/Select';
 
 // ============================================================================
 // CBC Nav — single source, never duplicated across pages
@@ -19,27 +33,150 @@ const NAV_ITEMS = [
 
 export function CBCNav() {
     const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const activeHref = NAV_ITEMS.find(({ href }) => pathname.startsWith(href))?.href ?? '';
+    const contextualQuery = useMemo(() => {
+        const next = new URLSearchParams();
+        const subject = searchParams.get('subject');
+        const cohort = searchParams.get('cohort');
+
+        if (subject) next.set('subject', subject);
+        if (cohort) next.set('cohort', cohort);
+
+        return next.toString();
+    }, [searchParams]);
+    const withContext = useCallback((href: string) => (
+        contextualQuery ? `${href}?${contextualQuery}` : href
+    ), [contextualQuery]);
 
     return (
-        <nav className="flex gap-1.5 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
-            {NAV_ITEMS.map(({ href, label }) => {
-                const active = pathname.startsWith(href);
-                return (
-                    <Link
-                        key={href}
-                        href={href}
-                        className={`
-              flex-1 text-center text-sm font-medium rounded-lg py-2.5 transition-colors
-              ${active
-                                ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
-            `}
-                    >
-                        {label}
-                    </Link>
-                );
-            })}
-        </nav>
+        <div className="space-y-3">
+            <div className="md:hidden">
+                <Select
+                    label="CBC Section"
+                    value={activeHref}
+                    onChange={(e) => {
+                        const nextHref = e.target.value;
+                        if (nextHref) router.push(withContext(nextHref));
+                    }}
+                    options={[
+                        { value: '', label: 'Choose section', disabled: true },
+                        ...NAV_ITEMS.map(item => ({ value: item.href, label: item.label })),
+                    ]}
+                />
+            </div>
+
+            <nav className="hidden md:flex gap-1.5 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
+                {NAV_ITEMS.map(({ href, label }) => {
+                    const active = pathname.startsWith(href);
+                    return (
+                        <Link
+                            key={href}
+                            href={withContext(href)}
+                            className={`
+                flex-1 text-center text-sm font-medium rounded-lg py-2.5 transition-colors
+                ${active
+                                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
+              `}
+                            aria-current={active ? 'page' : undefined}
+                        >
+                            {label}
+                        </Link>
+                    );
+                })}
+            </nav>
+        </div>
+    );
+}
+
+type TeachingSessionNavKey = 'sessions' | 'shared' | 'outcomes' | 'learners';
+
+interface TeachingSessionNavItem {
+    key: TeachingSessionNavKey;
+    href: string;
+    label: string;
+    icon: LucideIcon;
+}
+
+const teachingSessionNavLinkClass = (active: boolean) => `
+    inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors
+    ${active
+        ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+        : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700'}
+`;
+
+export function CBCTeachingSessionNav({
+    sessionId,
+    active,
+}: {
+    sessionId: number;
+    active: TeachingSessionNavKey;
+}) {
+    const items: TeachingSessionNavItem[] = [
+        {
+            key: 'sessions',
+            href: '/cbc/teaching/sessions',
+            label: 'My Sessions',
+            icon: Calendar,
+        },
+        {
+            key: 'shared',
+            href: `/sessions/${sessionId}`,
+            label: 'Shared Session',
+            icon: ArrowLeftRight,
+        },
+        {
+            key: 'outcomes',
+            href: `/cbc/teaching/sessions/${sessionId}/outcomes`,
+            label: 'Outcomes',
+            icon: Target,
+        },
+        {
+            key: 'learners',
+            href: `/cbc/teaching/sessions/${sessionId}/learners`,
+            label: 'Learners',
+            icon: Users,
+        },
+    ];
+
+    return (
+        <div className="space-y-3">
+            <div className="md:hidden grid grid-cols-2 gap-2">
+                {items.map(({ key, href, label, icon: Icon }) => {
+                    const isActive = key === active;
+                    return (
+                        <Link
+                            key={href}
+                            href={href}
+                            className={teachingSessionNavLinkClass(isActive)}
+                            aria-current={isActive ? 'page' : undefined}
+                        >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{label}</span>
+                        </Link>
+                    );
+                })}
+            </div>
+
+            <nav className="hidden md:flex flex-wrap gap-2">
+                {items.map(({ key, href, label, icon: Icon }) => {
+                    const isActive = key === active;
+                    return (
+                        <Link
+                            key={href}
+                            href={href}
+                            className={teachingSessionNavLinkClass(isActive)}
+                            aria-current={isActive ? 'page' : undefined}
+                        >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span>{label}</span>
+                        </Link>
+                    );
+                })}
+            </nav>
+        </div>
     );
 }
 
@@ -364,53 +501,162 @@ export function CBCEmpty({
 // SubjectGroupPicker — grouped subject selector (subject → grades)
 // ============================================================================
 
-import { useState } from 'react';
-import { ChevronDown, BookOpen } from 'lucide-react';
-import type { Subject } from '@/app/core/types/academic';
-
 export function SubjectGroupPicker({
     subjects,
     selectedSubjectId,
     onSelect,
+    showAllOption = true,
+    autoExpandSelected = false,
+    mode = 'catalog',
+    instructorSelections = [],
 }: {
     subjects: Subject[];
     selectedSubjectId: number | null;
     onSelect: (id: number | null) => void;
+    showAllOption?: boolean;
+    autoExpandSelected?: boolean;
+    mode?: 'catalog' | 'instructor';
+    instructorSelections?: CBCInstructorSubjectSelection[];
 }) {
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
+    const normalizedSubjects = useMemo(() => subjects.map(subject => {
+        const rawName = typeof subject.name === 'string'
+            ? subject.name
+            : ((subject as Subject & { title?: string | null }).title ?? '');
+        const name = rawName.trim() || 'Untitled Subject';
+        const rawCode = typeof subject.code === 'string' ? subject.code : '';
+        const levelSource = typeof subject.level === 'string' ? subject.level : '';
+        const level = levelSource.trim();
+        const groupKey = name
+            .replace(/\s+Grade\s+\d+/i, '')
+            .replace(/\s+grade\d+/i, '')
+            .trim() || name;
+        const levelLabel = level
+            ? level
+                .replace('grade', 'Grade ')
+                .replace(/(\d+)/, ' $1')
+                .replace(/\s+/, ' ')
+                .trim()
+            : (rawCode.trim() || 'Subject');
+
+        return {
+            ...subject,
+            code: rawCode,
+            name,
+            level,
+            groupKey,
+            levelLabel,
+        };
+    }), [subjects]);
+
     const groups = useMemo(() => {
-        const map: Record<string, Subject[]> = {};
-        subjects.forEach(s => {
-            const base = s.name
-                .replace(/\s+Grade\s+\d+/i, '')
-                .replace(/\s+grade\d+/i, '')
-                .trim();
+        const map: Record<string, typeof normalizedSubjects> = {};
+        normalizedSubjects.forEach(s => {
+            const base = s.groupKey;
             if (!map[base]) map[base] = [];
             map[base].push(s);
         });
         return map;
-    }, [subjects]);
+    }, [normalizedSubjects]);
+
+    useEffect(() => {
+        if (!autoExpandSelected || selectedSubjectId === null) return;
+
+        const selectedGroup = Object.entries(groups).find(([, groupSubjects]) =>
+            groupSubjects.some(subject => subject.id === selectedSubjectId)
+        )?.[0];
+
+        if (!selectedGroup) return;
+
+        setExpandedGroups(prev => {
+            if (prev.has(selectedGroup)) return prev;
+            const next = new Set(prev);
+            next.add(selectedGroup);
+            return next;
+        });
+    }, [autoExpandSelected, groups, selectedSubjectId]);
 
     const toggleGroup = (name: string) => {
         setExpandedGroups(prev => {
             const n = new Set(prev);
-            n.has(name) ? n.delete(name) : n.add(name);
+            if (n.has(name)) {
+                n.delete(name);
+            } else {
+                n.add(name);
+            }
             return n;
         });
     };
 
+    if (mode === 'instructor') {
+        return (
+            <div className="space-y-2">
+                {instructorSelections.map(selection => {
+                    const isSelected = selectedSubjectId === selection.filter_id;
+                    const subjectCode = (selection.subject_code ?? selection.subject.code ?? '').trim();
+                    const levelLabel = formatInstructorLevelLabel(selection.level);
+                    const cohortName = (selection.cohort_name ?? '').trim();
+                    const academicYear = (selection.academic_year ?? '').trim();
+
+                    let metaLabel = levelLabel || 'CBC Assignment';
+
+                    if (cohortName) {
+                        metaLabel = academicYear ? `${cohortName} ${academicYear}` : cohortName;
+                    } else if (selection.cohort_id) {
+                        metaLabel = levelLabel
+                            ? `${levelLabel} · Cohort ${selection.cohort_id}`
+                            : `Cohort ${selection.cohort_id}`;
+                    }
+
+                    if (subjectCode) {
+                        metaLabel = `${metaLabel} · ${subjectCode}`;
+                    }
+
+                    return (
+                        <button
+                            key={selection.cohort_subject_id ?? selection.filter_id}
+                            onClick={() => onSelect(selection.filter_id)}
+                            className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${isSelected
+                                ? 'border-blue-300 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+                                        {selection.subject.name}
+                                    </p>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        {metaLabel}
+                                    </p>
+                                </div>
+                                {isSelected && (
+                                    <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                                        <Check className="h-3.5 w-3.5" />
+                                    </span>
+                                )}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-1">
-            <button
-                onClick={() => onSelect(null)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedSubjectId === null
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-            >
-                All Subjects
-            </button>
+            {showAllOption && (
+                <button
+                    onClick={() => onSelect(null)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedSubjectId === null
+                        ? 'bg-blue-50 text-blue-700 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                >
+                    All Subjects
+                </button>
+            )}
             {Object.entries(groups).map(([groupName, groupSubjects]) => {
                 const expanded = expandedGroups.has(groupName);
                 const hasSelected = groupSubjects.some(s => s.id === selectedSubjectId);
@@ -435,11 +681,6 @@ export function SubjectGroupPicker({
                         {expanded && (
                             <div className="ml-4 mt-1 space-y-0.5">
                                 {groupSubjects.map(s => {
-                                    const levelLabel = s.level
-                                        .replace('grade', 'Grade ')
-                                        .replace(/(\d+)/, ' $1')
-                                        .replace(/\s+/, ' ')
-                                        .trim();
                                     return (
                                         <button
                                             key={s.id}
@@ -449,7 +690,7 @@ export function SubjectGroupPicker({
                                                 : 'text-gray-600 hover:bg-gray-50'
                                                 }`}
                                         >
-                                            {levelLabel}
+                                            {s.levelLabel}
                                         </button>
                                     );
                                 })}
@@ -460,6 +701,14 @@ export function SubjectGroupPicker({
             })}
         </div>
     );
+}
+
+function formatInstructorLevelLabel(level: string | null | undefined) {
+    return (level ?? '')
+        .replace('grade', 'Grade ')
+        .replace(/(\d+)/, ' $1')
+        .replace(/\s+/, ' ')
+        .trim();
 }
 
 // ============================================================================

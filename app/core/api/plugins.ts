@@ -56,7 +56,7 @@ export const pluginAPI = {
     getInstalled: async (organizationId?: number): Promise<InstalledPlugin[]> => {
         const response = await apiClient.get<InstalledPlugin[]>(
             '/installed-plugins/',
-            { params: organizationId ? { organization: organizationId } : {} }
+            { params: organizationId !== undefined ? { organization: organizationId } : {} }
         );
         return Array.isArray(response.data)
             ? response.data

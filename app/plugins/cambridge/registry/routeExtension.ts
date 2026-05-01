@@ -1,14 +1,24 @@
 // ============================================================================
 // app/plugins/cambridge/registry/routeExtension.ts
 //
-// Placeholder for route-level extensions.
-// The App Router uses filesystem routing; this file is reserved for:
-// - Breadcrumb registrations
-// - Route metadata extensions
-// - Future pluginRoutes registry consumption if core implements it
+// Registers Cambridge route metadata consumed by kernel pages.
 // ============================================================================
 
-// No imperative route registration needed for Next.js App Router.
-// Cambridge routes live at app/(dashboard)/cambridge/** via filesystem.
+import { isCambridgeCurriculum } from '@/app/core/lib/curriculumBridge';
+import { registerSessionTeachingWorkflowResolver } from '@/app/core/registry/pluginRoutes';
 
-export {};
+registerSessionTeachingWorkflowResolver({
+    key: 'cambridge-session-teaching',
+    priority: 20,
+    resolve: (session) => {
+        if (!isCambridgeCurriculum(session)) return null;
+
+        return {
+            pluginKey: 'cambridge',
+            href: `/cambridge/teaching/sessions/${session.id}`,
+            title: 'Cambridge Teaching',
+            actionLabel: 'Open Cambridge Teaching',
+            description: 'Open the Cambridge learning-unit workspace for this session.',
+        };
+    },
+});

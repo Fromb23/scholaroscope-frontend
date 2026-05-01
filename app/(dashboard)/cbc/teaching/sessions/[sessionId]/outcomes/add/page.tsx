@@ -13,7 +13,7 @@ import {
 } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import {
-    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, extractErrorMessage,
+    CBCNav, CBCBreadcrumb, CBCError, CBCLoading, CBCTeachingSessionNav, extractErrorMessage,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -201,6 +201,7 @@ export default function AddOutcomesPage() {
                 { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: 'Add' },
             ]} />
+            <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
 
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -208,8 +209,8 @@ export default function AddOutcomesPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Add Learning Outcomes</h1>
                     <p className="text-gray-500 mt-1">Select outcomes to link to this session</p>
                 </div>
-                <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`}>
-                    <Button variant="ghost" size="md">
+                <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`} className="w-full sm:w-auto">
+                    <Button variant="ghost" size="md" className="w-full sm:w-auto">
                         <ArrowLeft className="mr-2 h-4 w-4" />Cancel
                     </Button>
                 </Link>

@@ -13,14 +13,15 @@ function uniqueSortedNumbers(values: Array<number | null | undefined>): number[]
         .sort((a, b) => a - b);
 }
 
-export function useInstructorCohortAccess() {
+export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
     const { user, activeRole } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const enabled = options?.enabled ?? true;
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['instructor-cohort-access', user?.id],
         queryFn: () => globalUsersAPI.getMyTeachingLoad(),
-        enabled: Boolean(user) && isInstructor,
+        enabled: enabled && Boolean(user) && isInstructor,
         staleTime: 60_000,
     });
 

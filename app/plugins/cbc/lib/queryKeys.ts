@@ -3,13 +3,27 @@
 // Import from here — never hardcode strings in hooks.
 
 export const cbcKeys = {
+    instructorContext: {
+        detail: (userId: number, organizationId: number, curriculumId: number) =>
+            ['cbc', 'instructor-context', userId, organizationId, curriculumId] as const,
+    },
+
+    catalog: {
+        all: ['cbc', 'catalog'] as const,
+        detail: ['cbc', 'catalog', 'detail'] as const,
+    },
+
     // Structural
     strands: {
         all: ['cbc', 'strands'] as const,
-        list: (params?: { curriculum?: number; subject?: number }) =>
+        list: (params?: { curriculum?: number; subject?: number; subject_profile?: number }) =>
             ['cbc', 'strands', 'list', params] as const,
         detail: (id: number) => ['cbc', 'strands', id] as const,
         byCurriculum: (id: number) => ['cbc', 'strands', 'by-curriculum', id] as const,
+        byProfiles: (curriculumId: number, profileIds: number[]) =>
+            ['cbc', 'strands', 'by-profiles', curriculumId, profileIds] as const,
+        detailByProfiles: (curriculumId: number, profileIds: number[]) =>
+            ['cbc', 'strands', 'detail-by-profiles', curriculumId, profileIds] as const,
     },
 
     subStrands: {
@@ -60,8 +74,8 @@ export const cbcKeys = {
             ['cbc', 'outcome-progress', 'cbc-summary', cohortId, subjectId] as const,
         distribution: (outcomeId: number, cohortId: number) =>
             ['cbc', 'outcome-progress', 'distribution', outcomeId, cohortId] as const,
-        strandDistribution: (strandId: number, cohortId: number) =>
-            ['cbc', 'outcome-progress', 'strand-distribution', strandId, cohortId] as const,
+        strandDistribution: (strandId: number, cohortId: number, subjectId?: number | null) =>
+            ['cbc', 'outcome-progress', 'strand-distribution', strandId, cohortId, subjectId ?? null] as const,
         outcomeLearners: (outcomeId: number, cohortId: number, levels?: string) =>
             ['cbc', 'outcome-progress', 'learners', outcomeId, cohortId, levels] as const,
     },

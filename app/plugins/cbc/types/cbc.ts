@@ -14,6 +14,7 @@ export interface Strand {
   curriculum: number | null;
   curriculum_name: string | null;
   subject: number | null;
+  subject_profile_id?: number | null;
   subject_level: string | null;
   subject_org_id: number | null;
   subject_name: string | null;
@@ -419,6 +420,9 @@ export interface CBCTeachingAssignment {
   subject_id: number;
   subject_name: string;
   subject_code: string;
+  subject_profile_id?: number | null;
+  subject_profile_name?: string | null;
+  subject_profile_code?: string | null;
   level: string;
   academic_year: string;
   is_current_year: boolean;
@@ -473,4 +477,12 @@ export interface CBCCatalog {
   curriculum_id: number | null;
   curriculum_name: string;
   subjects: CBCCatalogSubject[];
+}
+
+export interface CBCVisibleProfile {
+  subject_profile_id: number;
+  subject_id: number | null;
+  subject_name: string;
+  subject_code: string;
+  level: string;
 }

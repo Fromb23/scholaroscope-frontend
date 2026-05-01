@@ -306,12 +306,13 @@ export const useCurricula = () => {
 
 // ── useSubjects ───────────────────────────────────────────────────────────
 
-export const useSubjects = (curriculumId?: number) => {
+export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean }) => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
-  const instructorAccess = useInstructorCohortAccess();
+  const enabled = options?.enabled ?? true;
+  const instructorAccess = useInstructorCohortAccess({ enabled });
   const subjectIdsKey = instructorAccess.subjectIdsKey;
   const allowedSubjectIds = useMemo(
     () => toIdSet(subjectIdsKey),
@@ -319,6 +320,12 @@ export const useSubjects = (curriculumId?: number) => {
   );
 
   const fetchSubjects = useCallback(async () => {
+    if (!enabled) {
+      setSubjects([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     try {
       setLoading(true);
       const params: Record<string, string> = { page_size: '1000' };
@@ -337,7 +344,7 @@ export const useSubjects = (curriculumId?: number) => {
     } finally {
       setLoading(false);
     }
-  }, [allowedSubjectIds, curriculumId, instructorAccess.isInstructor, organizationId]);
+  }, [allowedSubjectIds, curriculumId, enabled, instructorAccess.isInstructor, organizationId]);
 
   useEffect(() => { fetchSubjects(); }, [fetchSubjects]);
 
@@ -410,8 +417,8 @@ export const useCohorts = (filters?: CohortFilters, options?: { enabled?: boolea
   const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
   const [error, setError] = useState<string | null>(null);
   const { organizationId } = useOrganizationContext();
-  const instructorAccess = useInstructorCohortAccess();
   const enabled = options?.enabled ?? true;
+  const instructorAccess = useInstructorCohortAccess({ enabled });
   const cohortIdsKey = instructorAccess.cohortIdsKey;
   const allowedCohortIds = useMemo(
     () => toIdSet(cohortIdsKey),

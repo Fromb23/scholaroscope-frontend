@@ -80,3 +80,61 @@ export function useCohortSubjectsByCohort(cohortId?: number | null) {
 
     return { subjects, loading };
 }
+
+export function useCohortSubjectsByCohorts(cohortIds?: number[] | null) {
+    const [subjects, setSubjects] = useState<CohortSubjectExtended[]>([]);
+    const [loading, setLoading] = useState(false);
+    const cohortIdsKey = (cohortIds ?? []).join(',');
+
+    useEffect(() => {
+        let active = true;
+        const ids = cohortIdsKey
+            .split(',')
+            .filter(value => value !== '')
+            .map(value => Number(value))
+            .filter(value => Number.isFinite(value));
+
+        if (ids.length === 0) {
+            setSubjects([]);
+            setLoading(false);
+            return () => {
+                active = false;
+            };
+        }
+
+        setLoading(true);
+
+        Promise.all(ids.map(id => cohortSubjectAPI.getByCohort(id)))
+            .then(results => {
+                if (!active) return;
+
+                const flattened = results.flatMap(data => (
+                    Array.isArray(data)
+                        ? data
+                        : (data as { results?: CohortSubjectExtended[] })?.results ?? []
+                ));
+
+                const deduped = Array.from(
+                    new Map(
+                        flattened.map(subject => [subject.id, subject as CohortSubjectExtended])
+                    ).values()
+                );
+
+                setSubjects(deduped);
+            })
+            .catch(() => {
+                if (!active) return;
+                setSubjects([]);
+            })
+            .finally(() => {
+                if (!active) return;
+                setLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [cohortIdsKey]);
+
+    return { subjects, loading };
+}

@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { pluginAPI } from '@/app/core/api/plugins';
 import type { InstalledPlugin } from '@/app/core/types/plugins';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
+import { useAuth } from '@/app/context/AuthContext';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 interface UsePluginsReturn {
@@ -11,32 +13,52 @@ interface UsePluginsReturn {
     loading: boolean;
     error: string | null;
     hasPlugin: (key: string) => boolean;
-    refetch: () => void;
+    refetch: () => Promise<void>;
 }
 
 export const usePlugins = (): UsePluginsReturn => {
     const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const requestIdRef = useRef(0);
+    const pathname = usePathname();
+    const { activeOrg } = useAuth();
     const { organizationId } = useOrganizationContext();
+    const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
+    const isOrgScopedSettingsRoute = pathname.includes('/superadmin/organizations/');
+    const shouldWaitForOrganization = isOrgScopedSettingsRoute && scopedOrganizationId === null;
 
     const fetch = useCallback(async () => {
+        if (shouldWaitForOrganization) {
+            setPlugins([]);
+            setError(null);
+            setLoading(true);
+            return;
+        }
+
+        const requestId = ++requestIdRef.current;
         setLoading(true);
         try {
-            const data = await pluginAPI.getInstalled();
-            setPlugins(data);
-            setError(null);
+            const data = await pluginAPI.getInstalled(scopedOrganizationId ?? undefined);
+            if (requestId === requestIdRef.current) {
+                setPlugins(data);
+                setError(null);
+            }
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to fetch plugins'));
+            if (requestId === requestIdRef.current) {
+                setError(extractErrorMessage(err as ApiError, 'Failed to fetch plugins'));
+            }
         } finally {
-            setLoading(false);
+            if (requestId === requestIdRef.current) {
+                setLoading(false);
+            }
         }
-    }, [organizationId]);
+    }, [scopedOrganizationId, shouldWaitForOrganization]);
 
     useEffect(() => { fetch(); }, [fetch]);
 
     const hasPlugin = useCallback(
-        (key: string): boolean => plugins.some(p => p.key === key && p.is_active && p.is_available),
+        (key: string): boolean => plugins.some(p => p.key === key && (p.state === 'active' || p.is_active)),
         [plugins]
     );
 

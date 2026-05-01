@@ -1,7 +1,6 @@
 // app/plugins/cbc/components/outcomes/OutcomeRow.tsx
 import Link from 'next/link';
 import { CheckCircle, Circle, Trash2, FileText } from 'lucide-react';
-import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
@@ -107,7 +106,7 @@ export function OutcomeRow({
                         </button>
                     )}
 
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <Link
                             href={`/cbc/teaching/sessions/${sessionId}/outcomes/${link.learning_outcome}`}
                             className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"

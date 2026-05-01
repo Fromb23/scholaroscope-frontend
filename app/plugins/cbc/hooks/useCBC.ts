@@ -14,6 +14,7 @@ import {
   teachingAPI,
   bulkEvidenceAPI,
   rubricScaleAPI,
+  cbcCatalogAPI,
 } from '@/app/plugins/cbc/api/cbc';
 import type {
   StrandFormData,
@@ -36,22 +37,29 @@ import type {
   CBCProgressSummary,
   StrandOutcomeDistribution,
   OutcomeLearner,
-  OutcomeConfidence
+  OutcomeConfidence,
+  CBCCatalog,
 } from '@/app/plugins/cbc/types/cbc';
 import { toArray } from '@/app/plugins/cbc/lib/apiHelpers';
+
+function uniqueSortedIds(values: number[]) {
+  return Array.from(new Set(values))
+    .filter(value => Number.isFinite(value))
+    .sort((left, right) => left - right);
+}
 
 // ============================================================================
 // Structural — Strands
 // ============================================================================
 
-export const useStrands = (params?: { curriculum?: number; subject?: number }) =>
+export const useStrands = (params?: { curriculum?: number; subject?: number; subject_profile?: number }) =>
   useQuery<Strand[]>({
     queryKey: cbcKeys.strands.list(params),
     queryFn: async () => {
       const data = await strandAPI.getAll(params);
       return toArray(data);
     },
-    enabled: true,
+    enabled: params !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -66,14 +74,64 @@ export const useStrandDetail = (id: number | null) =>
 export const useStrandsByCurriculum = (curriculumId: number | null) =>
   useQuery<StrandDetail[]>({
     queryKey: cbcKeys.strands.byCurriculum(curriculumId!),
-    queryFn: async () => {
-      const visible = await strandAPI.getAll();
-      const visibleStrands = toArray(visible);
-      return Promise.all(visibleStrands.map(strand => strandAPI.getById(strand.id)));
-    },
+    queryFn: () => strandAPI.getByCurriculum(curriculumId!),
     enabled: !!curriculumId,
     staleTime: 5 * 60 * 1000,
   });
+
+export const useCBCCatalog = () =>
+  useQuery<CBCCatalog>({
+    queryKey: cbcKeys.catalog.detail,
+    queryFn: () => cbcCatalogAPI.getCatalog(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useStrandsBySubjectProfiles = (params: {
+  curriculumId: number | null;
+  subjectProfileIds: number[];
+}) => {
+  const profileIds = uniqueSortedIds(params.subjectProfileIds);
+
+  return useQuery<Strand[]>({
+    queryKey: cbcKeys.strands.byProfiles(params.curriculumId ?? 0, profileIds),
+    queryFn: async () => {
+      const strands = toArray(await strandAPI.getAll({ curriculum: params.curriculumId! }));
+
+      return strands
+        .filter(strand => (
+          typeof strand.subject_profile_id === 'number' &&
+          profileIds.includes(strand.subject_profile_id)
+        ))
+        .map(strand => ({
+          ...strand,
+          subject_profile_id: strand.subject_profile_id ?? null,
+        }));
+    },
+    enabled: Boolean(params.curriculumId) && profileIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useStrandDetailsBySubjectProfiles = (params: {
+  curriculumId: number | null;
+  subjectProfileIds: number[];
+}) => {
+  const profileIds = uniqueSortedIds(params.subjectProfileIds);
+
+  return useQuery<StrandDetail[]>({
+    queryKey: cbcKeys.strands.detailByProfiles(params.curriculumId ?? 0, profileIds),
+    queryFn: async () => {
+      const strands = await strandAPI.getByCurriculum(params.curriculumId!);
+
+      return strands.filter(strand => (
+        typeof strand.subject_profile_id === 'number' &&
+        profileIds.includes(strand.subject_profile_id)
+      ));
+    },
+    enabled: Boolean(params.curriculumId) && profileIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+};
 export const useCreateStrand = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -490,11 +548,13 @@ export const useBulkCreateClassEvidence = () => {
 export const useStrandOutcomeDistribution = (params: {
   strand_id: number | null;
   cohort_id: number | null;
+  subject_id?: number | null;
 }) =>
   useQuery<StrandOutcomeDistribution[]>({
     queryKey: cbcKeys.outcomeProgress.strandDistribution(
       params.strand_id!,
       params.cohort_id!,
+      params.subject_id,
     ),
     queryFn: () =>
       outcomeProgressAPI.strandOutcomeDistribution({
