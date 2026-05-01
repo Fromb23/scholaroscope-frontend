@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { BookOpen, ChevronRight, Search, Layers } from 'lucide-react';
 import {
     useStrands,
@@ -33,9 +34,14 @@ function formatLevelLabel(level: string | null | undefined) {
 export default function CBCBrowserPage() {
     const [setupStrand, setSetupStrand] = useState<Strand | null>(null);
     const [selectedSubjectFilterId, setSelectedSubjectFilterId] = useState<number | null>(null);
+    const pathname = usePathname();
     const {
         selectedCurriculumId,
+        selectedSubjectId,
         selectedCohortId,
+        allowedSubjectIds,
+        allowedCohortIds,
+        teachingLoading,
         isAdmin,
         curriculumLoading,
     } = useCBCContext();
@@ -44,16 +50,16 @@ export default function CBCBrowserPage() {
         subjects: adminSubjects = [],
         loading: subjectsLoading,
     } = useSubjects(selectedCurriculumId ?? undefined, { enabled: isAdmin });
+    const strandQueryParams = useMemo(
+        () => (selectedCurriculumId ? { curriculum: selectedCurriculumId } : undefined),
+        [selectedCurriculumId]
+    );
     const {
         data: curriculumStrands = [],
         isLoading: strandsLoading,
         error: strandsError,
         refetch: refetchStrands,
-    } = useStrands(
-        selectedCurriculumId
-            ? { curriculum: selectedCurriculumId }
-            : undefined
-    );
+    } = useStrands(strandQueryParams);
     const instructorContext = useResolvedCBCInstructorContext({
         selectedCurriculumId,
         requestedCohortId: selectedCohortId,
@@ -67,6 +73,7 @@ export default function CBCBrowserPage() {
         subjectOptions: instructorSubjectOptions,
         selectedSubjectId: selectedVisibleSubjectId,
         selectedSelection: resolvedInstructorSubjectSelection,
+        selectedProfileIds,
         hasVisibleProfiles,
         isLoading: instructorContextLoading,
         error: instructorContextError,
@@ -143,6 +150,59 @@ export default function CBCBrowserPage() {
         refetchInstructorContext();
         return refetchStrands();
     };
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !pathname.startsWith('/cbc/browser')) return;
+
+        console.debug('[CBCBrowser.mobile-debug]', {
+            width: window.innerWidth,
+            route: pathname,
+            selectedCurriculumId,
+            selectedSubjectId,
+            selectedSubjectFilterId,
+            selectedVisibleSubjectId,
+            selectedCohortId,
+            allowedSubjectIds: isAdmin ? allowedSubjectIds : selectedProfileIds,
+            allowedCohortIds: isAdmin ? allowedCohortIds : assignedCohorts.map(cohort => cohort.id),
+            teachingLoading,
+            teachingContextLoading: instructorContextLoading,
+            finalUseStrandsParams: strandQueryParams ?? null,
+            strandsReturned: {
+                count: curriculumStrands.length,
+                ids: curriculumStrands.map(strand => strand.id),
+            },
+            visibleAfterAssignmentFilter: {
+                count: assignedVisibleStrands.length,
+                ids: assignedVisibleStrands.map(strand => strand.id),
+            },
+            visibleAfterFilters: {
+                count: visible.length,
+                ids: visible.map(strand => strand.id),
+            },
+            effectiveCohortId,
+            resolvedSelectionFilterId: resolvedInstructorSubjectSelection?.filter_id ?? null,
+        });
+    }, [
+        allowedCohortIds,
+        allowedSubjectIds,
+        assignedCohorts,
+        assignedVisibleStrands,
+        curriculumStrands,
+        effectiveCohortId,
+        instructorContextLoading,
+        isAdmin,
+        pathname,
+        selectedCohortId,
+        selectedCurriculumId,
+        selectedProfileIds,
+        selectedSubjectFilterId,
+        selectedSubjectId,
+        selectedVisibleSubjectId,
+        resolvedInstructorSubjectSelection,
+        strandQueryParams,
+        teachingLoading,
+        visible,
+    ]);
 
     if (isLoading) {
         return <CBCLoading message="Loading your assignments…" />;

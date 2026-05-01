@@ -1,9 +1,9 @@
 'use client';
 // app/plugins/cbc/components/CBCComponents.tsx
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import {
     AlertTriangle,
@@ -34,7 +34,21 @@ const NAV_ITEMS = [
 export function CBCNav() {
     const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const activeHref = NAV_ITEMS.find(({ href }) => pathname.startsWith(href))?.href ?? '';
+    const contextualQuery = useMemo(() => {
+        const next = new URLSearchParams();
+        const subject = searchParams.get('subject');
+        const cohort = searchParams.get('cohort');
+
+        if (subject) next.set('subject', subject);
+        if (cohort) next.set('cohort', cohort);
+
+        return next.toString();
+    }, [searchParams]);
+    const withContext = useCallback((href: string) => (
+        contextualQuery ? `${href}?${contextualQuery}` : href
+    ), [contextualQuery]);
 
     return (
         <div className="space-y-3">
@@ -44,7 +58,7 @@ export function CBCNav() {
                     value={activeHref}
                     onChange={(e) => {
                         const nextHref = e.target.value;
-                        if (nextHref) router.push(nextHref);
+                        if (nextHref) router.push(withContext(nextHref));
                     }}
                     options={[
                         { value: '', label: 'Choose section', disabled: true },
@@ -59,7 +73,7 @@ export function CBCNav() {
                     return (
                         <Link
                             key={href}
-                            href={href}
+                            href={withContext(href)}
                             className={`
                 flex-1 text-center text-sm font-medium rounded-lg py-2.5 transition-colors
                 ${active
