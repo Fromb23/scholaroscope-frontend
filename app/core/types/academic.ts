@@ -179,9 +179,15 @@ export interface TeachingAssignment {
   cohort_subject_id: number;
   cohort_id: number;
   cohort_name: string;
+  source?: string | null;
   subject_id: number;
+  teaching_link_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
+  cambridge_cohort_subject_id?: number | null;
+  assigned?: boolean;
   subject_name: string;
   subject_code: string;
+  curriculum_name?: string | null;
   level: string;
   academic_year: string;
   is_current_year: boolean;
@@ -190,6 +196,7 @@ export interface TeachingAssignment {
   total: number;
   start_date: string;
   percentage: number;
+  offering_id?: number | null;
 }
 
 export interface SyllabusProgress {

@@ -52,22 +52,22 @@ export default function Modal({
             {/* Modal */}
             <div className="flex min-h-full items-center justify-center p-4">
                 <div
-                    className={`relative bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} transform transition-all`}
+                    className={`relative flex max-h-[calc(100vh-2rem)] w-full min-w-0 flex-col overflow-hidden rounded-lg bg-white shadow-xl ${sizeClasses[size]} transform transition-all`}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+                    <div className="flex items-center justify-between gap-4 border-b border-gray-200 p-6">
+                        <h2 className="min-w-0 flex-1 text-xl font-semibold text-gray-900">{title}</h2>
                         <button
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            className="shrink-0 text-gray-400 transition-colors hover:text-gray-600"
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     {/* Content */}
-                    <div className="p-6">
+                    <div className="min-w-0 overflow-y-auto p-6">
                         {children}
                     </div>
                 </div>

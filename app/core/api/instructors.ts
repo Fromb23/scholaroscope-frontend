@@ -6,12 +6,14 @@
 // ============================================================================
 
 import { apiClient } from './client';
+import type { TeachingAssignment } from '@/app/core/types/academic';
 import {
     AvailableCohort,
     AvailableCohortSubject,
     CohortAssignment,
     GlobalUser,
     InstructorStats,
+    SourceAwareSubjectReference,
     UserCreatePayload,
     UserUpdatePayload,
 } from '@/app/core/types/globalUsers';
@@ -20,8 +22,33 @@ import {
 
 export interface InstructorProfile extends GlobalUser {
     cohort_assignments: CohortAssignment[];
+    teaching_assignments?: TeachingAssignment[];
     session_count: number;
     last_session_at: string | null;
+}
+
+type SourceAwareInstructorSubject = SourceAwareSubjectReference;
+
+function buildSourceAwareSubjectPayload(subject: SourceAwareInstructorSubject) {
+    const subjectSource = subject.source?.trim();
+    const subjectId =
+        subject.teaching_link_id ??
+        subject.cbc_cohort_subject_id ??
+        subject.cambridge_cohort_subject_id ??
+        subject.subject_id;
+
+    if (!subjectSource) {
+        throw new Error('Subject assignment is missing source metadata');
+    }
+
+    if (typeof subjectId !== 'number' || !Number.isFinite(subjectId)) {
+        throw new Error('Subject assignment is missing a source-aware subject id');
+    }
+
+    return {
+        subject_source: subjectSource,
+        subject_id: subjectId,
+    };
 }
 
 export const instructorsAPI = {
@@ -128,21 +155,24 @@ export const instructorsAPI = {
         });
     },
 
-    // POST /api/cohorts/{cohortId}/assign_instructor/
-    assignToCohortSubject: async (instructorId: number, cohortSubjectId: number): Promise<void> => {
-        await apiClient.post(`/users/${instructorId}/assign_cohort_subject/`, {
-            cohort_subject_id: cohortSubjectId,
-        });
+    assignToCohortSubject: async (
+        instructorId: number,
+        subject: SourceAwareInstructorSubject,
+    ): Promise<void> => {
+        await apiClient.post(
+            `/users/${instructorId}/assign_cohort_subject/`,
+            buildSourceAwareSubjectPayload(subject)
+        );
     },
 
     unassignFromCohortSubject: async (
         instructorId: number,
-        cohortSubjectId: number,
+        subject: SourceAwareInstructorSubject,
         reason?: string,
         notes?: string,
     ): Promise<void> => {
         await apiClient.post(`/users/${instructorId}/unassign_cohort_subject/`, {
-            cohort_subject_id: cohortSubjectId,
+            ...buildSourceAwareSubjectPayload(subject),
             reason: reason ?? 'MANUAL',
             notes: notes ?? '',
         });
