@@ -122,6 +122,7 @@ export interface CohortAssignModalProps {
     onClose: () => void;
     instructorId: number;
     instructorName: string;
+    onAssignmentsChanged?: () => Promise<void> | void;
 }
 
 export interface InstructorStats {

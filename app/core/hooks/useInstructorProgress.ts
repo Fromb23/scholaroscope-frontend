@@ -7,22 +7,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
-import { CohortAssignment, CohortAssignmentSubjectLink } from '@/app/core/types/globalUsers';
+import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
 import type { Session } from '@/app/core/types/session';
-
-// ── Extended types ─────────────────────────────────────────────────────────
-// The API returns more fields on CohortAssignment than the base type.
-// Extend rather than cast to any.
-
-export interface CohortAssignmentExtended extends CohortAssignment {
-    subjects?: CohortAssignmentSubjectLink[];
-    is_cbc?: boolean;
-}
-
-export interface InstructorProfileExtended extends Omit<InstructorProfile, 'cohort_assignments'> {
-    cohort_assignments: CohortAssignmentExtended[];
-}
 
 // ── Derived types ──────────────────────────────────────────────────────────
 
@@ -31,6 +18,7 @@ export interface CohortSubjectEntry {
     subjectName: string;
     cohortName: string;
     isCBC: boolean;
+    teachingKey: string;
 }
 
 export interface SessionStats {
@@ -46,19 +34,69 @@ export interface AttendanceStats {
     rate: number;
 }
 
+type TeachingAssignmentIdentity = Pick<
+    TeachingAssignment,
+    | 'source'
+    | 'subject_source'
+    | 'curriculum_type'
+    | 'teaching_link_id'
+    | 'cbc_cohort_subject_id'
+    | 'cambridge_cohort_subject_id'
+    | 'cohort_subject_id'
+    | 'subject_id'
+>;
+
+function normalizeTeachingSource(source?: string | null) {
+    return source?.trim().toLowerCase() ?? '';
+}
+
+export function isCBCTeachingAssignment(
+    assignment: Pick<TeachingAssignment, 'source' | 'subject_source' | 'curriculum_type'>
+) {
+    return (
+        normalizeTeachingSource(assignment.source) === 'cbc' ||
+        normalizeTeachingSource(assignment.subject_source) === 'cbc' ||
+        assignment.curriculum_type === 'CBE'
+    );
+}
+
+function getTeachingAssignmentIdentityValue(assignment: TeachingAssignmentIdentity) {
+    return (
+        assignment.teaching_link_id ??
+        assignment.cbc_cohort_subject_id ??
+        assignment.cambridge_cohort_subject_id ??
+        assignment.cohort_subject_id ??
+        assignment.subject_id ??
+        null
+    );
+}
+
+export function getTeachingAssignmentKey(assignment: TeachingAssignmentIdentity) {
+    const source =
+        normalizeTeachingSource(assignment.source) ||
+        normalizeTeachingSource(assignment.subject_source) ||
+        (assignment.curriculum_type === 'CBE' ? 'cbc' : 'unknown');
+    const identity = getTeachingAssignmentIdentityValue(assignment);
+
+    return `${source}-${identity ?? 'unresolved'}`;
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────
 
 export function useInstructorProgress(instructorId: number) {
-    const [instructor, setInstructor] = useState<InstructorProfileExtended | null>(null);
+    const [instructor, setInstructor] = useState<InstructorProfile | null>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+    const load = useCallback(async (showLoadingState = true) => {
+        if (showLoadingState) {
+            setLoading(true);
+            setError(null);
+        }
+
         try {
-            const instructorData = await instructorsAPI.getById(instructorId) as InstructorProfileExtended;
+            const instructorData = await instructorsAPI.getById(instructorId);
             setInstructor(instructorData);
 
             const sessionsData = await sessionAPI.getAll({ created_by: instructorData.email });
@@ -67,44 +105,65 @@ export function useInstructorProgress(instructorId: number) {
                 : (sessionsData as { results?: Session[] })?.results ?? [];
             setSessions(allSessions as Session[]);
         } catch {
-            setError('Failed to load instructor data');
+            if (showLoadingState) {
+                setError('Failed to load instructor data');
+            }
         } finally {
-            setLoading(false);
+            if (showLoadingState) {
+                setLoading(false);
+            }
         }
     }, [instructorId]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        void load();
+    }, [load]);
 
     // ── Derived data ──────────────────────────────────────────────────────
 
-    const cohortSubjects = useMemo<CohortSubjectEntry[]>(() => {
-        if (!instructor?.cohort_assignments) return [];
-        const seen = new Set<number>();
-        const result: CohortSubjectEntry[] = [];
-        instructor.cohort_assignments.forEach(a => {
-            (a.subjects ?? []).forEach(cs => {
-                if (!seen.has(cs.cohort_subject_id)) {
-                    seen.add(cs.cohort_subject_id);
-                    result.push({
-                        cohortSubjectId: cs.cohort_subject_id,
-                        subjectName: cs.subject_name,
-                        cohortName: a.cohort_name,
-                        isCBC: a.is_cbc ?? false,
-                    });
-                }
-            });
+    const teachingAssignments = useMemo<TeachingAssignment[]>(() => {
+        if (!instructor?.teaching_assignments) return [];
+
+        const seen = new Set<string>();
+        const result: TeachingAssignment[] = [];
+
+        instructor.teaching_assignments.forEach((assignment) => {
+            const teachingKey = getTeachingAssignmentKey(assignment);
+            if (seen.has(teachingKey)) {
+                return;
+            }
+
+            seen.add(teachingKey);
+            result.push(assignment);
         });
+
         return result;
     }, [instructor]);
 
-    const nonCBCSubjects = useMemo(
-        () => cohortSubjects.filter(cs => !cs.isCBC),
-        [cohortSubjects]
+    const cbcTeachingAssignments = useMemo(
+        () => teachingAssignments.filter(isCBCTeachingAssignment),
+        [teachingAssignments]
     );
 
-    const cbcCohorts = useMemo(
-        () => instructor?.cohort_assignments?.filter(a => a.is_cbc) ?? [],
-        [instructor]
+    const nonCBCSubjects = useMemo<CohortSubjectEntry[]>(
+        () =>
+            teachingAssignments.flatMap((assignment) => {
+                if (
+                    isCBCTeachingAssignment(assignment) ||
+                    typeof assignment.cohort_subject_id !== 'number'
+                ) {
+                    return [];
+                }
+
+                return [{
+                    cohortSubjectId: assignment.cohort_subject_id,
+                    subjectName: assignment.subject_name,
+                    cohortName: assignment.cohort_name,
+                    isCBC: false,
+                    teachingKey: getTeachingAssignmentKey(assignment),
+                }];
+            }),
+        [teachingAssignments]
     );
 
     const sessionStats = useMemo<SessionStats>(() => {
@@ -134,9 +193,10 @@ export function useInstructorProgress(instructorId: number) {
         sessions,
         loading,
         error,
-        refetch: load,
+        refetch: () => load(false),
+        teachingAssignments,
+        cbcTeachingAssignments,
         nonCBCSubjects,
-        cbcCohorts,
         sessionStats,
         attendanceStats,
     };

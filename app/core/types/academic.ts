@@ -176,17 +176,19 @@ export interface InstructorCohortAccessAssignment {
 }
 
 export interface TeachingAssignment {
-  cohort_subject_id: number;
-  cohort_id: number;
-  cohort_name: string;
   source?: string | null;
-  subject_id: number;
+  subject_source?: string | null;
   teaching_link_id?: number | null;
+  cohort_subject_id?: number | null;
   cbc_cohort_subject_id?: number | null;
   cambridge_cohort_subject_id?: number | null;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  topic_subject_id?: number | null;
   assigned?: boolean;
   subject_name: string;
-  subject_code: string;
+  subject_code?: string | null;
   curriculum_name?: string | null;
   level: string;
   academic_year: string;

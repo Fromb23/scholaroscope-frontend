@@ -14,7 +14,10 @@ import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { instructorsAPI } from '@/app/core/api/instructors';
-import { useInstructorProgress } from '@/app/core/hooks/useInstructorProgress';
+import {
+    getTeachingAssignmentKey,
+    useInstructorProgress,
+} from '@/app/core/hooks/useInstructorProgress';
 import { useBackNavigation } from '@/app/core/hooks/useBackNavigation';
 import {
     EditModal,
@@ -37,7 +40,7 @@ export default function InstructorProgressPage() {
 
     const {
         instructor, sessions, loading, error,
-        refetch, nonCBCSubjects, cbcCohorts,
+        refetch, teachingAssignments, cbcTeachingAssignments, nonCBCSubjects,
         sessionStats, attendanceStats,
     } = useInstructorProgress(instructorId);
 
@@ -158,7 +161,7 @@ export default function InstructorProgressPage() {
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => setCohortOpen(true)}>
                         <BookOpen className="h-3.5 w-3.5 md:mr-1" />
-                        <span className="hidden md:inline">Cohorts</span>
+                        <span className="hidden md:inline">Teaching</span>
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => setResetOpen(true)}>
                         <KeyRound className="h-3.5 w-3.5 md:mr-1" />
@@ -179,12 +182,17 @@ export default function InstructorProgressPage() {
                     </Button>
                 </div>
 
-                {/* Row 3 — cohort badges */}
-                {(instructor.cohort_assignments?.length ?? 0) > 0 && (
+                {/* Row 3 — teaching badges */}
+                {teachingAssignments.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
-                        {instructor.cohort_assignments?.map(a => (
-                            <Badge key={a.cohort_id} variant="info" size="sm">
-                                <GraduationCap className="h-3 w-3 mr-1 inline" />{a.cohort_name}
+                        {teachingAssignments.map((assignment) => (
+                            <Badge
+                                key={getTeachingAssignmentKey(assignment)}
+                                variant="info"
+                                size="sm"
+                            >
+                                <GraduationCap className="h-3 w-3 mr-1 inline" />
+                                {assignment.cohort_name} — {assignment.subject_name}
                             </Badge>
                         ))}
                     </div>
@@ -231,7 +239,7 @@ export default function InstructorProgressPage() {
                         </div>
                         <div className="space-y-3">
                             {nonCBCSubjects.map(cs => (
-                                <CohortSubjectCoverage key={cs.cohortSubjectId} cs={cs} />
+                                <CohortSubjectCoverage key={cs.teachingKey} cs={cs} />
                             ))}
                         </div>
                     </div>
@@ -239,7 +247,7 @@ export default function InstructorProgressPage() {
             )}
 
             {/* CBC progress */}
-            {cbcCohorts.length > 0 && (
+            {cbcTeachingAssignments.length > 0 && (
                 <Card>
                     <div className="p-6">
                         <div className="flex items-center gap-2 mb-4">
@@ -247,13 +255,18 @@ export default function InstructorProgressPage() {
                             <h2 className="text-lg font-semibold text-gray-900">CBC Outcome Progress</h2>
                         </div>
                         <div className="space-y-3">
-                            {cbcCohorts.map(a => (
-                                <div key={a.cohort_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
+                            {cbcTeachingAssignments.map((assignment) => (
+                                <div
+                                    key={getTeachingAssignmentKey(assignment)}
+                                    className="flex items-center justify-between p-4 border border-gray-200 rounded-xl"
+                                >
                                     <div>
-                                        <p className="font-medium text-gray-900">{a.cohort_name}</p>
-                                        <p className="text-xs text-gray-500">{a.academic_year}</p>
+                                        <p className="font-medium text-gray-900">
+                                            {assignment.cohort_name} — {assignment.subject_name}
+                                        </p>
+                                        <p className="text-xs text-gray-500">{assignment.academic_year}</p>
                                     </div>
-                                    <Link href={`/cbc/progress/cohort/${a.cohort_id}`}>
+                                    <Link href={`/cbc/progress/cohort/${assignment.cohort_id}`}>
                                         <Button size="sm" variant="ghost">
                                             <TrendingUp className="h-3.5 w-3.5 mr-1" />View Progress
                                         </Button>
@@ -302,6 +315,7 @@ export default function InstructorProgressPage() {
                 onClose={() => setCohortOpen(false)}
                 instructorId={instructorId}
                 instructorName={instructor.full_name}
+                onAssignmentsChanged={refetch}
             />
         </div>
     );
