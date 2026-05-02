@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
-import { CohortAssignment } from '@/app/core/types/globalUsers';
+import { CohortAssignment, CohortAssignmentSubjectLink } from '@/app/core/types/globalUsers';
 import { sessionAPI } from '@/app/core/api/sessions';
 import type { Session } from '@/app/core/types/session';
 
@@ -15,13 +15,8 @@ import type { Session } from '@/app/core/types/session';
 // The API returns more fields on CohortAssignment than the base type.
 // Extend rather than cast to any.
 
-export interface CohortSubjectLink {
-    cohort_subject_id: number;
-    subject_name: string;
-}
-
 export interface CohortAssignmentExtended extends CohortAssignment {
-    subjects?: CohortSubjectLink[];
+    subjects?: CohortAssignmentSubjectLink[];
     is_cbc?: boolean;
 }
 

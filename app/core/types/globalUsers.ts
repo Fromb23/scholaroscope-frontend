@@ -88,15 +88,33 @@ export interface AvailableCohort {
     is_current_year: boolean;
 }
 
-export interface AvailableCohortSubject {
-    id: number;
-    cohort: number;
+export interface SourceAwareSubjectReference {
+    source?: string | null;
+    subject_id?: number | null;
+    teaching_link_id?: number | null;
+    cbc_cohort_subject_id?: number | null;
+    cambridge_cohort_subject_id?: number | null;
+    cohort_subject_id?: number | null;
+    assigned?: boolean;
+}
+
+export interface AvailableCohortSubject extends SourceAwareSubjectReference {
+    id?: number;
+    cohort?: number;
+    cohort_id?: number | null;
     cohort_name: string;
-    subject: number;
+    subject?: number;
     subject_name: string;
-    subject_code: string;
-    is_compulsory: boolean;
-    academic_year_name?: string;
+    subject_code?: string | null;
+    is_compulsory?: boolean;
+    curriculum_name?: string | null;
+    curriculum_type?: string | null;
+    academic_year?: string | null;
+    academic_year_name?: string | null;
+    cohort_level?: string | null;
+    subject_level?: string | null;
+    is_current_year?: boolean;
+    offering_id?: number | null;
 }
 
 export interface CohortAssignModalProps {
@@ -114,9 +132,15 @@ export interface InstructorStats {
     unassigned: number;
 }
 
-export interface CohortAssignmentSubjectLink {
+export interface CohortAssignmentSubjectLink extends SourceAwareSubjectReference {
     cohort_subject_id: number;
     subject_name: string;
+    subject_code?: string | null;
+    cohort_id?: number | null;
+    cohort_name?: string | null;
+    curriculum_name?: string | null;
+    academic_year?: string | null;
+    offering_id?: number | null;
 }
 
 export interface CohortAssignment {

@@ -129,6 +129,9 @@ export interface CohortSubjectOption {
   id: string;
   label: string;
   subject_id?: number | null;
+  teaching_link_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
+  cambridge_cohort_subject_id?: number | null;
   topic_subject_id?: number | null;
   subject_code: string | null;
   programme: string | null;
