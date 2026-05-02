@@ -201,6 +201,22 @@ export interface TeachingAssignment {
   offering_id?: number | null;
 }
 
+export interface TeachingCohortSubjectSummary {
+  teaching_key: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code?: string | null;
+}
+
+export interface TeachingCohortSummary {
+  cohort_id: number;
+  cohort_name: string;
+  level?: string | null;
+  curriculum_type?: string | null;
+  subject_count: number;
+  subjects: TeachingCohortSubjectSummary[];
+}
+
 export interface SyllabusProgress {
   cohort_id: number;
   cohort_name: string;

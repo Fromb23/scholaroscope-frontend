@@ -7,12 +7,15 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useStudents } from '@/app/core/hooks/useStudents';
-import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useAssessments, useAssessmentScores } from '@/app/core/hooks/useAssessments';
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import type { Session } from '@/app/core/types/session';
-import type { Cohort, TeachingAssignment, HistoryEntry } from '@/app/core/types/academic';
+import type {
+    TeachingAssignment,
+    HistoryEntry,
+    TeachingCohortSummary,
+} from '@/app/core/types/academic';
 import type { DashboardAlert } from './useAdminDashboard';
 import { globalUsersAPI } from '../api/globalUsers';
 
@@ -122,6 +125,67 @@ function generateInstructorAlerts(metrics: InstructorMetrics): DashboardAlert[] 
     return alerts;
 }
 
+function getTeachingAssignmentKey(assignment: Pick<
+    TeachingAssignment,
+    'source' | 'subject_source' | 'curriculum_type' | 'teaching_link_id' | 'cbc_cohort_subject_id' | 'cambridge_cohort_subject_id' | 'cohort_subject_id' | 'subject_id'
+>) {
+    const source =
+        assignment.source?.trim().toLowerCase() ||
+        assignment.subject_source?.trim().toLowerCase() ||
+        (assignment.curriculum_type === 'CBE' ? 'cbc' : 'unknown');
+    const identity =
+        assignment.teaching_link_id ??
+        assignment.cbc_cohort_subject_id ??
+        assignment.cambridge_cohort_subject_id ??
+        assignment.cohort_subject_id ??
+        assignment.subject_id;
+
+    return `${source}-${identity ?? 'unresolved'}`;
+}
+
+function buildTeachingCohorts(assignments: TeachingAssignment[]): TeachingCohortSummary[] {
+    const teachingCohortMap = new Map<number, TeachingCohortSummary>();
+
+    assignments.forEach((assignment) => {
+        const existing = teachingCohortMap.get(assignment.cohort_id);
+        const teachingKey = getTeachingAssignmentKey(assignment);
+
+        if (!existing) {
+            teachingCohortMap.set(assignment.cohort_id, {
+                cohort_id: assignment.cohort_id,
+                cohort_name: assignment.cohort_name,
+                level: assignment.level ?? null,
+                curriculum_type: assignment.curriculum_type ?? null,
+                subject_count: 1,
+                subjects: [{
+                    teaching_key: teachingKey,
+                    subject_id: assignment.subject_id,
+                    subject_name: assignment.subject_name,
+                    subject_code: assignment.subject_code ?? null,
+                }],
+            });
+            return;
+        }
+
+        const alreadyAdded = existing.subjects.some((subject) => subject.teaching_key === teachingKey);
+        if (alreadyAdded) {
+            return;
+        }
+
+        existing.subjects.push({
+            teaching_key: teachingKey,
+            subject_id: assignment.subject_id,
+            subject_name: assignment.subject_name,
+            subject_code: assignment.subject_code ?? null,
+        });
+        existing.subject_count = existing.subjects.length;
+        existing.level = existing.level ?? assignment.level ?? null;
+        existing.curriculum_type = existing.curriculum_type ?? assignment.curriculum_type ?? null;
+    });
+
+    return Array.from(teachingCohortMap.values());
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────
 
 export function useInstructorDashboard() {
@@ -131,7 +195,6 @@ export function useInstructorDashboard() {
     const [teachingHistory, setTeachingHistory] = useState<HistoryEntry[]>([]);
 
     const { students, loading: studentsLoading, reload: refetchStudents } = useStudents();
-    const { cohorts, loading: cohortsLoading } = useCohorts();
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
     const { currentTerm, loading: termLoading } = useCurrentTerm();
     const { currentYear, loading: yearLoading } = useCurrentAcademicYear();
@@ -140,7 +203,7 @@ export function useInstructorDashboard() {
     });
     const { scores, loading: scoresLoading } = useAssessmentScores();
 
-    const isLoading = studentsLoading || cohortsLoading || sessionsLoading ||
+    const isLoading = studentsLoading || sessionsLoading ||
         assessmentsLoading || scoresLoading || termLoading || yearLoading || teachingLoadLoading;
 
     const metrics = useMemo(
@@ -153,12 +216,26 @@ export function useInstructorDashboard() {
         [metrics]
     );
 
-    useEffect(() => {
-        globalUsersAPI.getMyTeachingLoad()
-            .then(data => setTeachingLoad(data.assignments))
-            .catch(() => setTeachingLoad([]))
-            .finally(() => setTeachingLoadLoading(false));
+    const loadTeachingLoad = useCallback(async (showLoadingState = false) => {
+        if (showLoadingState) {
+            setTeachingLoadLoading(true);
+        }
+
+        try {
+            const data = await globalUsersAPI.getMyTeachingLoad();
+            setTeachingLoad(data.assignments);
+        } catch {
+            setTeachingLoad([]);
+        } finally {
+            if (showLoadingState) {
+                setTeachingLoadLoading(false);
+            }
+        }
     }, []);
+
+    useEffect(() => {
+        void loadTeachingLoad(true);
+    }, [loadTeachingLoad]);
 
     useEffect(() => {
         globalUsersAPI.getMyTeachingHistory()
@@ -166,14 +243,20 @@ export function useInstructorDashboard() {
             .catch(() => setTeachingHistory([]));
     }, []);
 
+    const teachingCohorts = useMemo(
+        () => buildTeachingCohorts(teachingLoad),
+        [teachingLoad]
+    );
+
     const refresh = useCallback(async () => {
         await Promise.all([
             refetchStudents(),
             refetchSessions(),
             refetchAssessments(),
+            loadTeachingLoad(),
         ]);
         setLastRefresh(new Date());
-    }, [refetchStudents, refetchSessions, refetchAssessments]);
+    }, [refetchStudents, refetchSessions, refetchAssessments, loadTeachingLoad]);
 
     useEffect(() => {
         const interval = setInterval(refresh, 5 * 60 * 1000);
@@ -184,7 +267,7 @@ export function useInstructorDashboard() {
         metrics,
         alerts,
         sessions,
-        cohorts: cohorts as Cohort[],
+        teachingCohorts,
         currentTerm,
         currentYear,
         lastRefresh,

@@ -17,7 +17,11 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Session } from '@/app/core/types/session';
-import type { Cohort, HistoryEntry, TeachingAssignment } from '@/app/core/types/academic';
+import type {
+    HistoryEntry,
+    TeachingAssignment,
+    TeachingCohortSummary,
+} from '@/app/core/types/academic';
 import type { InstructorMetrics } from '@/app/core/hooks/useInstructorDashboard';
 import type { DashboardAlert } from '@/app/core/hooks/useAdminDashboard';
 
@@ -325,7 +329,7 @@ export function LearnersAtRisk({ needsSupport }: LearnersAtRiskProps) {
 // ── MyCohortsCard ─────────────────────────────────────────────────────────
 
 interface MyCohortsCardProps {
-    cohorts: Cohort[];
+    cohorts: TeachingCohortSummary[];
 }
 
 export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
@@ -351,18 +355,26 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
             {preview.length === 0 ? (
                 <div className="py-10 text-center">
                     <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-gray-900">No cohorts assigned yet.</p>
+                    <p className="text-sm font-medium text-gray-900">No teaching cohorts assigned yet.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {preview.map(cohort => (
                         <div
-                            key={cohort.id}
-                            onClick={() => router.push(`/academic/cohorts/${cohort.id}`)}
+                            key={cohort.cohort_id}
+                            onClick={() => router.push(`/academic/cohorts/${cohort.cohort_id}`)}
                             className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 cursor-pointer hover:scale-[1.02] transition-all"
                         >
-                            <p className="font-bold text-gray-900">{cohort.name}</p>
-                            <p className="text-sm text-gray-600 mt-1">{cohort.level}</p>
+                            <p className="font-bold text-gray-900">{cohort.cohort_name}</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                                {[cohort.level, cohort.curriculum_type].filter(Boolean).join(' · ') || 'Teaching cohort'}
+                            </p>
+                            <p className="text-xs text-blue-700 mt-2 font-medium">
+                                {cohort.subject_count} subject{cohort.subject_count !== 1 ? 's' : ''}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {cohort.subjects.map((subject) => subject.subject_name).join(', ')}
+                            </p>
                         </div>
                     ))}
                 </div>
