@@ -15,15 +15,13 @@ import { Input } from '@/app/components/ui/Input';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { cohortAPI } from '@/app/core/api/academic';
 import { useInstructorDetail } from '@/app/core/hooks/useInstructors';
-import { InstructorProfile, instructorsAPI } from '@/app/core/api/instructors';
+import { instructorsAPI, type InstructorProfile } from '@/app/core/api/instructors';
 import type {
     AvailableCohortSubject,
     CohortAssignModalProps,
-    CohortAssignment,
     SourceAwareSubjectReference,
     UserUpdatePayload,
 } from '@/app/core/types/globalUsers';
-import type { InstructorProfileExtended } from '@/app/core/hooks/useInstructorProgress';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import type { ApiError } from '@/app/core/types/errors';
 import { extractErrorMessage } from '@/app/core/types/errors';
@@ -36,7 +34,7 @@ interface EditModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: UserUpdatePayload) => Promise<void>;
-    instructor: InstructorProfileExtended;
+    instructor: InstructorProfile;
     submitting: boolean;
 }
 
@@ -174,7 +172,7 @@ export function DeleteModal({ isOpen, onClose, onConfirm, name, submitting }: De
 
 interface ActiveTeachingAssignment extends SourceAwareSubjectReference {
     assignmentKey: string;
-    cohortSubjectId: number;
+    cohortSubjectId: number | null;
     cohortId: number;
     cohortName: string;
     subjectName: string;
@@ -371,50 +369,6 @@ function getSourceAwareSubjectKey(subject: SourceAwareSubjectReference) {
     return `${source}:unresolved`;
 }
 
-function flattenTeachingAssignments(
-    assignments: CohortAssignment[],
-    subjectOptionIndex: SourceAwareSubjectOptionIndex,
-): ActiveTeachingAssignment[] {
-    const seen = new Set<string>();
-    const flattened: ActiveTeachingAssignment[] = [];
-
-    assignments.forEach((assignment) => {
-        (assignment.subjects ?? []).forEach((subject) => {
-            const normalizedSubject = normalizeSourceAwareSubjectReference(subject, {
-                curriculumType: assignment.curriculum_type,
-                isCBC: assignment.is_cbc,
-                enrichment: getSubjectOptionEnrichment(
-                    subjectOptionIndex,
-                    assignment.cohort_id,
-                    subject.cohort_subject_id,
-                    subject.source,
-                ),
-            });
-            const assignmentKey = getSourceAwareSubjectKey({
-                ...normalizedSubject,
-                cohort_subject_id: subject.cohort_subject_id,
-            });
-            if (seen.has(assignmentKey)) return;
-
-            seen.add(assignmentKey);
-            flattened.push({
-                ...normalizedSubject,
-                assignmentKey,
-                cohortSubjectId: subject.cohort_subject_id,
-                cohortId: assignment.cohort_id,
-                cohortName: assignment.cohort_name,
-                subjectName: subject.subject_name,
-                curriculumName: assignment.curriculum_name,
-                academicYear: assignment.academic_year,
-                assignedAt: assignment.assigned_at ?? assignment.start_date ?? null,
-                cohort_subject_id: subject.cohort_subject_id,
-            });
-        });
-    });
-
-    return flattened;
-}
-
 function normalizeTeachingAssignments(
     assignments: TeachingAssignment[],
     subjectOptionIndex: SourceAwareSubjectOptionIndex,
@@ -444,7 +398,7 @@ function normalizeTeachingAssignments(
             ...assignment,
             ...normalizedSubject,
             assignmentKey,
-            cohortSubjectId: assignment.cohort_subject_id,
+            cohortSubjectId: assignment.cohort_subject_id ?? null,
             cohortId: assignment.cohort_id,
             cohortName: assignment.cohort_name,
             subjectName: assignment.subject_name,
@@ -459,14 +413,10 @@ function normalizeTeachingAssignments(
 }
 
 function getActiveTeachingAssignments(
-    detail: Pick<InstructorProfile, 'cohort_assignments' | 'teaching_assignments'> | null | undefined,
+    detail: { teaching_assignments?: TeachingAssignment[] | null } | null | undefined,
     subjectOptionIndex: SourceAwareSubjectOptionIndex,
 ) {
-    if (Array.isArray(detail?.teaching_assignments)) {
-        return normalizeTeachingAssignments(detail.teaching_assignments, subjectOptionIndex);
-    }
-
-    return flattenTeachingAssignments(detail?.cohort_assignments ?? [], subjectOptionIndex);
+    return normalizeTeachingAssignments(detail?.teaching_assignments ?? [], subjectOptionIndex);
 }
 
 function normalizeAssignableCohortSubject(
@@ -716,7 +666,7 @@ function CohortSubjectDropdown({
 
 
 export function CohortAssignModal({
-    isOpen, onClose, instructorId, instructorName,
+    isOpen, onClose, instructorId, instructorName, onAssignmentsChanged,
 }: CohortAssignModalProps) {
     const { instructor: detail, loading, refetch } =
         useInstructorDetail(isOpen ? instructorId : null);
@@ -826,6 +776,7 @@ export function CohortAssignModal({
             await instructorsAPI.assignToCohortSubject(instructorId, selectedCohortSubjectOption);
             setSelectedCohortSubject('');
             await refetch();
+            await onAssignmentsChanged?.();
         } catch (err) {
             setError(extractErrorMessage(err as ApiError, 'Failed to assign cohort subject'));
         } finally { setWorking(false); }
@@ -838,6 +789,7 @@ export function CohortAssignModal({
                 instructorId, assignment, unassignReason, unassignNotes
             );
             await refetch();
+            await onAssignmentsChanged?.();
             setUnassignReason('MANUAL');
             setUnassignNotes('');
         } catch (err) {

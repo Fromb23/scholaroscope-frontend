@@ -22,7 +22,6 @@ import {
     TeachingStats,
     TeachingLoadCard,
     TeachingHistoryCard,
-    NoCohortsAssignedCard,
 } from '@/app/core/components/dashboard/InstructorDashboardWidgets';
 
 
@@ -34,14 +33,18 @@ export default function InstructorDashboard() {
     const { requests, loading: requestsLoading, error: requestsError } = useMyRequests();
 
     const {
-        metrics, alerts, sessions, cohorts,
+        metrics, alerts, sessions, teachingCohorts,
         currentTerm, currentYear,
         lastRefresh, isLoading, refresh, teachingLoad, teachingHistory
     } = useInstructorDashboard();
 
-    const hasAssignedCohorts = instructorAccess.hasAssignedCohorts;
-    const showCBCTools = hasPlugin('cbc') && instructorAccess.hasCBCAccess;
-    const showCambridgeTools = hasPlugin('cambridge') && instructorAccess.hasCambridgeAccess;
+    const hasTeachingAssignments = teachingLoad.length > 0;
+    const showCBCTools = hasPlugin('cbc') &&
+        instructorAccess.hasCBCAccess &&
+        teachingCohorts.some(cohort => cohort.curriculum_type === 'CBE');
+    const showCambridgeTools = hasPlugin('cambridge') &&
+        instructorAccess.hasCambridgeAccess &&
+        teachingCohorts.some(cohort => cohort.curriculum_type === 'CAMBRIDGE');
     const dashboardLoading = isLoading || instructorAccess.isLoading || pluginsLoading;
 
     useEffect(() => {
@@ -67,22 +70,16 @@ export default function InstructorDashboard() {
             <InstructorKeyMetrics metrics={metrics} />
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">
-                    {hasAssignedCohorts ? (
-                        <>
-                            <TeachingLoadCard assignments={teachingLoad} />
-                            <TeachingHistoryCard history={teachingHistory} />
-                            <TodayScheduleCard sessions={sessions} />
-                            <LearnersAtRisk
-                                needsSupport={metrics.performance.needsSupport}
-                            />
-                            <MyCohortsCard cohorts={cohorts} />
-                        </>
-                    ) : (
-                        <NoCohortsAssignedCard />
-                    )}
+                    <TeachingLoadCard assignments={teachingLoad} />
+                    <TeachingHistoryCard history={teachingHistory} />
+                    <TodayScheduleCard sessions={sessions} />
+                    <LearnersAtRisk
+                        needsSupport={metrics.performance.needsSupport}
+                    />
+                    <MyCohortsCard cohorts={teachingCohorts} />
                 </div>
                 <div className="space-y-6">
-                    {hasAssignedCohorts && (
+                    {hasTeachingAssignments && (
                         <InstructorQuickActions needsGrading={metrics.assessments.needsGrading} />
                     )}
                     <MyRequestsCard
@@ -108,7 +105,7 @@ export default function InstructorDashboard() {
                             secondaryAction={{ label: 'View Progress', path: '/cambridge/progress' }}
                         />
                     )}
-                    {hasAssignedCohorts && (
+                    {hasTeachingAssignments && (
                         <TeachingStats
                             attendance={metrics.attendance.todayRate}
                             sessions={metrics.sessions.today}
