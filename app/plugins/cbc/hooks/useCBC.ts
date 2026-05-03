@@ -216,17 +216,30 @@ export const useStrandDetailsBySubjectProfiles = (params: {
   return useQuery<StrandDetail[]>({
     queryKey: cbcKeys.strands.detailByProfiles(params.curriculumId ?? 0, profileIds),
     queryFn: async () => {
-      const strands = await strandAPI.getByCurriculum(params.curriculumId!);
+      const results = await Promise.all(
+        profileIds.map(profileId =>
+          strandAPI.getAll({ subject_profile: profileId })
+        )
+      );
 
-      return strands.filter(strand => (
-        typeof strand.subject_profile_id === 'number' &&
-        profileIds.includes(strand.subject_profile_id)
-      ));
+      const byId = new Map<number, StrandDetail>();
+
+      results.flatMap(toArray).forEach(strand => {
+        byId.set(strand.id, {
+          ...(strand as StrandDetail),
+          sub_strands: (strand as StrandDetail).sub_strands ?? [],
+        });
+      });
+
+      return Array.from(byId.values()).sort((a, b) => {
+        return (a.sequence ?? 0) - (b.sequence ?? 0) || a.name.localeCompare(b.name);
+      });
     },
-    enabled: Boolean(params.curriculumId) && profileIds.length > 0,
+    enabled: profileIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 };
+
 export const useCreateStrand = () => {
   const qc = useQueryClient();
   return useMutation({

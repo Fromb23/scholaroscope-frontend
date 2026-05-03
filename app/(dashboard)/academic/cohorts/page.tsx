@@ -3,23 +3,35 @@
 // ============================================================================
 // app/(dashboard)/academic/cohorts/page.tsx
 //
-// Responsibility: fetch data, handle state, compose components, render.
-// No inline component definitions. No any.
+// Responsibility: branch by role, fetch via hooks, manage state, compose
+// components, render. No direct kernel cohort listing for instructors.
 // ============================================================================
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    Users, Plus, Edit, Trash2, GraduationCap,
-    History, RotateCcw, Eye,
+    BookOpen,
+    Edit,
+    Eye,
+    GraduationCap,
+    History,
+    Plus,
+    RotateCcw,
+    Trash2,
+    Users,
 } from 'lucide-react';
-import { useCohorts, useAcademicYears, useCurricula } from '@/app/core/hooks/useAcademic';
+import { useAcademicYears, useCohorts, useCurricula } from '@/app/core/hooks/useAcademic';
+import {
+    type InstructorAcademicYearFilterMode,
+    type InstructorMyCohort,
+    useInstructorMyCohorts,
+} from '@/app/core/hooks/useInstructorMyCohorts';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { Select } from '@/app/components/ui/Select';
-import { DataTable, Column } from '@/app/components/ui/Table';
+import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -39,29 +51,72 @@ import {
     isCambridgeCurriculum,
 } from '@/app/core/lib/curriculumBridge';
 
-type CohortWithIndex = { [key: string]: unknown } & Cohort;
+type CohortWithIndex = Record<string, unknown> & Cohort;
 
-export default function CohortsPage() {
+function parseOptionalNumber(value: string | number | null | undefined): number | undefined {
+    if (value === null || value === undefined || value === '') return undefined;
+
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+}
+
+function buildAcademicYearOptions(
+    academicYears: Array<{ id: number; name: string; is_current: boolean }>,
+    emptyLabel = 'All Academic Years'
+) {
+    return [
+        { value: '', label: emptyLabel },
+        ...academicYears.map((academicYear) => ({
+            value: String(academicYear.id),
+            label: academicYear.is_current
+                ? `${academicYear.name} (Current)`
+                : `${academicYear.name} — Historical`,
+        })),
+    ];
+}
+
+function getInstructorAcademicYearFilterNotice(
+    academicYearFilterMode: InstructorAcademicYearFilterMode
+): string | null {
+    if (academicYearFilterMode === 'id') {
+        return null;
+    }
+
+    if (academicYearFilterMode === 'name') {
+        return 'Academic year filtering is matched by year name because /users/my_teaching_load/ does not currently expose academic_year_id in cohort_assignments.';
+    }
+
+    return 'Academic year filtering is unavailable because /users/my_teaching_load/ does not currently expose academic year metadata in cohort_assignments.';
+}
+
+function AdminCohortsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole } = useAuth();
     const { academicYears } = useAcademicYears();
     const { curricula, createCurriculum } = useCurricula();
     const [filters, updateFilters] = usePersistedFilters('/academic/cohorts', {
         academic_year: '',
         curriculum: '',
     });
+    const [showFormModal, setShowFormModal] = useState(false);
+    const [editingCohort, setEditingCohort] = useState<Cohort | null>(null);
+    const [rolloverCohort, setRolloverCohort] = useState<Cohort | null>(null);
+    const [pageError, setPageError] = useState<string | null>(null);
+    const [isProvisioningQuickActionCurriculum, setIsProvisioningQuickActionCurriculum] = useState(false);
 
-    const currentYear = useMemo(() => academicYears.find(y => y.is_current), [academicYears]);
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const selectedYearId = filters.academic_year ? Number(filters.academic_year) : undefined;
-    const selectedCurriculumId = filters.curriculum ? Number(filters.curriculum) : undefined;
+    const currentYear = useMemo(
+        () => academicYears.find((academicYear) => academicYear.is_current),
+        [academicYears]
+    );
+    const selectedYearId = parseOptionalNumber(filters.academic_year);
+    const selectedCurriculumId = parseOptionalNumber(filters.curriculum);
     const shouldOpenCreate = searchParams.get('create') === '1';
     const returnTo = searchParams.get('returnTo');
     const quickActionCurriculumType = searchParams.get('curriculum_type') as CurriculumType | null;
     const isCambridgeQuickAction = Boolean(returnTo?.startsWith('/cambridge/'));
     const quickActionOfferingId = useMemo(() => {
         if (!returnTo) return null;
+
         const match = returnTo.match(/\/cambridge\/offerings\/(\d+)\/cohorts/);
         return match ? Number(match[1]) : null;
     }, [returnTo]);
@@ -73,16 +128,17 @@ export default function CohortsPage() {
         ?? null;
     const quickActionCurriculum = useMemo(() => {
         if (selectedCurriculumId) {
-            return curricula.find(c => c.id === selectedCurriculumId) ?? null;
+            return curricula.find((curriculum) => curriculum.id === selectedCurriculumId) ?? null;
         }
         if (isCambridgeQuickAction) {
-            return curricula.find(c => c.is_active && isCambridgeCurriculum(c)) ?? null;
+            return curricula.find((curriculum) => curriculum.is_active && isCambridgeCurriculum(curriculum)) ?? null;
         }
         if (!resolvedQuickActionCurriculumType) {
             return null;
         }
+
         return curricula.find(
-            c => c.is_active && c.curriculum_type === resolvedQuickActionCurriculumType
+            (curriculum) => curriculum.is_active && curriculum.curriculum_type === resolvedQuickActionCurriculumType
         ) ?? null;
     }, [curricula, isCambridgeQuickAction, resolvedQuickActionCurriculumType, selectedCurriculumId]);
     const quickActionCurriculumName = useMemo(() => {
@@ -92,11 +148,11 @@ export default function CohortsPage() {
         if (!resolvedQuickActionCurriculumType) {
             return CAMBRIDGE_BRIDGE_NAME;
         }
+
         return CURRICULUM_TYPE_OPTIONS.find(
-            option => option.value === resolvedQuickActionCurriculumType
+            (option) => option.value === resolvedQuickActionCurriculumType
         )?.label ?? resolvedQuickActionCurriculumType;
     }, [isCambridgeQuickAction, resolvedQuickActionCurriculumType]);
-    const [isProvisioningQuickActionCurriculum, setIsProvisioningQuickActionCurriculum] = useState(false);
 
     useEffect(() => {
         if (currentYear && !filters.academic_year) {
@@ -115,7 +171,6 @@ export default function CohortsPage() {
     }, [filters.curriculum, isCambridgeQuickAction, quickActionCurriculum, updateFilters]);
 
     useEffect(() => {
-        if (isInstructor) return;
         const shouldProvision =
             isCambridgeQuickAction
             && shouldOpenCreate
@@ -135,14 +190,14 @@ export default function CohortsPage() {
             setIsProvisioningQuickActionCurriculum(true);
             setPageError(null);
             try {
-                const created = await createCurriculum({
+                const createdCurriculum = await createCurriculum({
                     name: quickActionCurriculumName,
                     curriculum_type: resolvedQuickActionCurriculumType as CurriculumType,
                     description: '',
                     is_active: true,
                 });
                 if (!cancelled) {
-                    updateFilters({ curriculum: String(created.id) });
+                    updateFilters({ curriculum: String(createdCurriculum.id) });
                 }
             } catch (err) {
                 if (!cancelled) {
@@ -176,37 +231,34 @@ export default function CohortsPage() {
         selectedCurriculumId,
         shouldOpenCreate,
         updateFilters,
-        isInstructor,
     ]);
 
-    const { cohorts, loading, refetch, createCohort, updateCohort, deleteCohort } = useCohorts(
-        {
-            ...(selectedYearId ? { academic_year: selectedYearId } : {}),
-            ...(selectedCurriculumId ? { curriculum: selectedCurriculumId } : {}),
-        }
+    const { cohorts, loading, refetch, createCohort, updateCohort, deleteCohort } = useCohorts({
+        ...(selectedYearId ? { academic_year: selectedYearId } : {}),
+        ...(selectedCurriculumId ? { curriculum: selectedCurriculumId } : {}),
+    });
+
+    const selectedYear = academicYears.find((academicYear) => academicYear.id === selectedYearId);
+    const selectedCurriculum = curricula.find((curriculum) => curriculum.id === selectedCurriculumId);
+    const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
+    const totalStudents = cohorts.reduce(
+        (studentCount, cohort) => studentCount + (cohort.students_count ?? 0),
+        0
     );
 
-    const [showFormModal, setShowFormModal] = useState(false);
-    const [editingCohort, setEditingCohort] = useState<Cohort | null>(null);
-    const [rolloverCohort, setRolloverCohort] = useState<Cohort | null>(null);
-    const [pageError, setPageError] = useState<string | null>(null);
-
-    const selectedYear = academicYears.find(y => y.id === selectedYearId);
-    const selectedCurriculum = curricula.find(c => c.id === selectedCurriculumId);
-    const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
-    const totalStudents = cohorts.reduce((sum, c) => sum + (c.students_count ?? 0), 0);
-
     const openCreate = () => {
-        if (isInstructor) return;
         setEditingCohort(null);
         setShowFormModal(true);
     };
-    const openEdit = (c: Cohort) => { setEditingCohort(c); setShowFormModal(true); };
+    const openEdit = (cohort: Cohort) => {
+        setEditingCohort(cohort);
+        setShowFormModal(true);
+    };
     const clearCreateFlag = () => {
         const params = new URLSearchParams(searchParams.toString());
         params.delete('create');
-        const next = params.toString();
-        router.replace(next ? `/academic/cohorts?${next}` : '/academic/cohorts', { scroll: false });
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/academic/cohorts?${nextQuery}` : '/academic/cohorts', { scroll: false });
     };
     const closeModal = () => {
         setShowFormModal(false);
@@ -223,11 +275,10 @@ export default function CohortsPage() {
     );
 
     useEffect(() => {
-        if (isInstructor) return;
         if (shouldOpenCreate && !editingCohort && !quickActionSetupPending) {
             setShowFormModal(true);
         }
-    }, [editingCohort, isInstructor, quickActionSetupPending, shouldOpenCreate]);
+    }, [editingCohort, quickActionSetupPending, shouldOpenCreate]);
 
     const handleSave = async (
         data: { academic_year: string; curriculum: string; level: string; stream: string },
@@ -240,15 +291,20 @@ export default function CohortsPage() {
             level: data.level,
             stream: data.stream || undefined,
         };
+
         if (isEdit && cohortId) {
             await updateCohort(cohortId, payload);
-        } else {
-            await createCohort(payload);
+            return;
         }
+
+        await createCohort(payload);
     };
 
     const handleDelete = async (cohort: Cohort) => {
-        if (!confirm(`Delete cohort "${cohort.name}"? This will affect all enrolled students.`)) return;
+        if (!confirm(`Delete cohort "${cohort.name}"? This will affect all enrolled students.`)) {
+            return;
+        }
+
         setPageError(null);
         try {
             await deleteCohort(cohort.id);
@@ -258,7 +314,11 @@ export default function CohortsPage() {
     };
 
     const initialFormData = useMemo(() => ({
-        academic_year: editingCohort ? String(editingCohort.academic_year) : currentYear ? String(currentYear.id) : '',
+        academic_year: editingCohort
+            ? String(editingCohort.academic_year)
+            : currentYear
+                ? String(currentYear.id)
+                : '',
         curriculum: editingCohort
             ? String(editingCohort.curriculum)
             : selectedCurriculumId
@@ -275,12 +335,12 @@ export default function CohortsPage() {
         selectedCurriculumId,
     ]);
 
-    // ── Table columns ─────────────────────────────────────────────────────
-
     const columns: Column<Cohort>[] = [
         {
-            key: 'name', header: 'Cohort', sortable: true,
-            render: cohort => (
+            key: 'name',
+            header: 'Cohort',
+            sortable: true,
+            render: (cohort) => (
                 <div className="flex items-center gap-2">
                     <Link
                         href={`/academic/cohorts/${cohort.id}`}
@@ -289,15 +349,20 @@ export default function CohortsPage() {
                         {cohort.name}
                     </Link>
                     {!cohort.is_current_year && (
-                        <Badge variant="default" size="sm"><History className="h-3 w-3 mr-1" />Historical</Badge>
+                        <Badge variant="default" size="sm">
+                            <History className="mr-1 h-3 w-3" />
+                            Historical
+                        </Badge>
                     )}
                 </div>
             ),
         },
         {
-            key: 'academic_year_name', header: 'Academic Year', sortable: true,
-            render: cohort => (
-                <span className={cohort.is_current_year ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+            key: 'academic_year_name',
+            header: 'Academic Year',
+            sortable: true,
+            render: (cohort) => (
+                <span className={cohort.is_current_year ? 'font-medium text-gray-900' : 'text-gray-400'}>
                     {cohort.academic_year_name}
                 </span>
             ),
@@ -305,36 +370,49 @@ export default function CohortsPage() {
         {
             key: 'curriculum_name',
             header: 'Curriculum',
-            render: c => <Badge variant="info">{getCurriculumBridgeName(c)}</Badge>,
+            render: (cohort) => <Badge variant="info">{getCurriculumBridgeName(cohort)}</Badge>,
         },
         { key: 'level', header: 'Level', sortable: true },
-        { key: 'stream', header: 'Stream', render: c => <span className="text-gray-500">{c.stream || '—'}</span> },
         {
-            key: 'students_count', header: 'Students', sortable: true,
-            render: c => (
+            key: 'stream',
+            header: 'Stream',
+            render: (cohort) => <span className="text-gray-500">{cohort.stream || '—'}</span>,
+        },
+        {
+            key: 'students_count',
+            header: 'Students',
+            sortable: true,
+            render: (cohort) => (
                 <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">{c.students_count ?? 0}</span>
+                    <span className="font-medium">{cohort.students_count ?? 0}</span>
                 </div>
             ),
         },
-        { key: 'subjects_count', header: 'Subjects', render: c => <Badge variant="default">{c.subjects_count ?? 0}</Badge> },
-    ];
-
-    if (!isInstructor) {
-        columns.push({
+        {
+            key: 'subjects_count',
+            header: 'Subjects',
+            render: (cohort) => <Badge variant="default">{cohort.subjects_count ?? 0}</Badge>,
+        },
+        {
             key: 'actions',
             header: '',
-            render: (cohort: Cohort) => {
-                const isHistorical = !cohort.is_current_year;
+            render: (cohort) => {
+                const isHistoricalCohort = !cohort.is_current_year;
                 return (
-                    <div className="flex gap-1 justify-end">
-                        {isHistorical ? (
+                    <div className="flex justify-end gap-1">
+                        {isHistoricalCohort ? (
                             <>
                                 <Link href={`/academic/cohorts/${cohort.id}/students`}>
-                                    <Button size="sm" variant="ghost"><Eye className="h-4 w-4" /></Button>
+                                    <Button size="sm" variant="ghost">
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
                                 </Link>
-                                <Button size="sm" variant="ghost" onClick={() => setRolloverCohort(cohort)}>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setRolloverCohort(cohort)}
+                                >
                                     <RotateCcw className="h-4 w-4 text-blue-500" />
                                 </Button>
                             </>
@@ -351,34 +429,31 @@ export default function CohortsPage() {
                     </div>
                 );
             },
-        });
-    }
-
-    // ── Render ────────────────────────────────────────────────────────────
+        },
+    ];
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">{isInstructor ? 'My Cohorts' : 'Cohorts'}</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">Cohorts</h1>
                     <p className="mt-1 text-gray-500">
-                        {isInstructor
-                            ? 'View the cohorts currently assigned to you.'
-                            : isHistoricalView
-                                ? 'Viewing historical records — read only'
-                                : 'Manage student cohorts and classes'}
+                        {isHistoricalView
+                            ? 'Viewing historical records — read only'
+                            : 'Manage student cohorts and classes'}
                     </p>
                 </div>
-                {!isInstructor && !isHistoricalView && (
+                {!isHistoricalView && (
                     <Button onClick={openCreate}>
-                        <Plus className="mr-2 h-4 w-4" />Add Cohort
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Cohort
                     </Button>
                 )}
             </div>
 
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
-            {!isInstructor && returnTo ? (
+            {returnTo ? (
                 <Card>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -403,7 +478,12 @@ export default function CohortsPage() {
                 <div className="grid gap-4 md:grid-cols-3">
                     <StatsCard title="Total Cohorts" value={cohorts.length} icon={GraduationCap} color="blue" />
                     <StatsCard title="Total Students" value={totalStudents} icon={Users} color="green" />
-                    <StatsCard title="Avg per Cohort" value={cohorts.length > 0 ? Math.round(totalStudents / cohorts.length) : 0} icon={Users} color="yellow" />
+                    <StatsCard
+                        title="Avg per Cohort"
+                        value={cohorts.length > 0 ? Math.round(totalStudents / cohorts.length) : 0}
+                        icon={Users}
+                        color="yellow"
+                    />
                 </div>
             </DesktopOnly>
 
@@ -411,32 +491,24 @@ export default function CohortsPage() {
                 <div className="flex items-center gap-3">
                     <Select
                         value={selectedYearId?.toString() ?? ''}
-                        onChange={e => updateFilters({ academic_year: e.target.value })}
+                        onChange={(event) => updateFilters({ academic_year: event.target.value })}
+                        options={buildAcademicYearOptions(academicYears)}
+                    />
+                    <Select
+                        value={selectedCurriculumId?.toString() ?? ''}
+                        onChange={(event) => updateFilters({ curriculum: event.target.value })}
                         options={[
-                            { value: '', label: 'All Academic Years' },
-                            ...academicYears.map(y => ({
-                                value: String(y.id),
-                                label: y.is_current ? `${y.name} (Current)` : `${y.name} — Historical`,
-                            })),
+                            { value: '', label: 'All Curricula' },
+                            ...curricula
+                                .filter((curriculum) => curriculum.is_active)
+                                .map((curriculum) => ({
+                                    value: String(curriculum.id),
+                                    label: getCurriculumOptionLabel(curriculum),
+                                })),
                         ]}
                     />
-                    {!isInstructor && (
-                        <Select
-                            value={selectedCurriculumId?.toString() ?? ''}
-                            onChange={e => updateFilters({ curriculum: e.target.value })}
-                            options={[
-                                { value: '', label: 'All Curricula' },
-                                ...curricula
-                                    .filter(c => c.is_active)
-                                    .map(c => ({
-                                        value: String(c.id),
-                                        label: getCurriculumOptionLabel(c),
-                                    })),
-                            ]}
-                        />
-                    )}
                     {isHistoricalView && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 whitespace-nowrap">
+                        <div className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                             <History className="h-3.5 w-3.5 shrink-0" />
                             Historical view — records are read-only
                         </div>
@@ -452,17 +524,16 @@ export default function CohortsPage() {
                         <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No cohorts found</h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            {isInstructor
-                                ? 'No cohort assignments match the selected academic year.'
-                                : isHistoricalView
+                            {isHistoricalView
                                 ? 'No cohorts exist for this academic year.'
                                 : selectedCurriculum
                                     ? `No cohorts exist yet for ${getCurriculumBridgeName(selectedCurriculum)}.`
                                     : 'Get started by creating a new cohort.'}
                         </p>
-                        {!isInstructor && !isHistoricalView && (
+                        {!isHistoricalView && (
                             <Button className="mt-4" onClick={openCreate}>
-                                <Plus className="mr-2 h-4 w-4" />Add Cohort
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Cohort
                             </Button>
                         )}
                     </div>
@@ -474,25 +545,23 @@ export default function CohortsPage() {
                         enableSort
                         searchPlaceholder="Search cohorts..."
                         emptyMessage="No cohorts found"
-                        onSort={() => { }}
+                        onSort={() => {}}
                     />
                 )}
             </Card>
 
-            {!isInstructor && (
-                <CohortFormModal
-                    isOpen={showFormModal}
-                    onClose={closeModal}
-                    editingCohort={editingCohort}
-                    academicYears={academicYears}
-                    curricula={curricula}
-                    lockedCurriculum={isCambridgeQuickAction ? quickActionCurriculum : null}
-                    onSave={handleSave}
-                    initialData={initialFormData}
-                />
-            )}
+            <CohortFormModal
+                isOpen={showFormModal}
+                onClose={closeModal}
+                editingCohort={editingCohort}
+                academicYears={academicYears}
+                curricula={curricula}
+                lockedCurriculum={isCambridgeQuickAction ? quickActionCurriculum : null}
+                onSave={handleSave}
+                initialData={initialFormData}
+            />
 
-            {!isInstructor && rolloverCohort && (
+            {rolloverCohort && (
                 <RolloverModal
                     cohort={rolloverCohort}
                     onClose={() => setRolloverCohort(null)}
@@ -501,4 +570,238 @@ export default function CohortsPage() {
             )}
         </div>
     );
+}
+
+function InstructorMyCohortsPageContent() {
+    const { academicYears } = useAcademicYears();
+    const [filters, updateFilters] = usePersistedFilters('/academic/cohorts', {
+        academic_year: '',
+    });
+    const { cohorts, loading, error, academicYearFilterMode } = useInstructorMyCohorts();
+    const [isErrorDismissed, setIsErrorDismissed] = useState(false);
+
+    const currentYear = useMemo(
+        () => academicYears.find((academicYear) => academicYear.is_current),
+        [academicYears]
+    );
+    const selectedYearId = parseOptionalNumber(filters.academic_year);
+    const selectedYear = useMemo(
+        () => academicYears.find((academicYear) => academicYear.id === selectedYearId),
+        [academicYears, selectedYearId]
+    );
+    const academicYearFilterNotice = useMemo(
+        () => getInstructorAcademicYearFilterNotice(academicYearFilterMode),
+        [academicYearFilterMode]
+    );
+    const canFilterByAcademicYear = academicYearFilterMode !== 'none';
+
+    useEffect(() => {
+        if (currentYear && !filters.academic_year && canFilterByAcademicYear) {
+            updateFilters({ academic_year: String(currentYear.id) });
+        }
+    }, [canFilterByAcademicYear, currentYear, filters.academic_year, updateFilters]);
+
+    useEffect(() => {
+        setIsErrorDismissed(false);
+    }, [error]);
+
+    const filteredCohorts = useMemo(() => {
+        if (!selectedYearId) {
+            return cohorts;
+        }
+
+        if (academicYearFilterMode === 'id') {
+            return cohorts.filter((cohort) => cohort.academic_year_id === selectedYearId);
+        }
+
+        if (academicYearFilterMode === 'name' && selectedYear) {
+            return cohorts.filter((cohort) => (
+                cohort.academic_year_name === null || cohort.academic_year_name === selectedYear.name
+            ));
+        }
+
+        return cohorts;
+    }, [academicYearFilterMode, cohorts, selectedYear, selectedYearId]);
+
+    const assignedCurriculaCount = useMemo(() => (
+        new Set(
+            filteredCohorts.map((cohort) => `${cohort.curriculum_type}:${cohort.curriculum_name}`)
+        ).size
+    ), [filteredCohorts]);
+    const currentYearCohortCount = useMemo(
+        () => filteredCohorts.filter((cohort) => cohort.is_current_year).length,
+        [filteredCohorts]
+    );
+    const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
+
+    const columns: Column<InstructorMyCohort>[] = [
+        {
+            key: 'name',
+            header: 'Cohort',
+            sortable: true,
+            render: (cohort) => (
+                <div className="flex items-center gap-2">
+                    <Link
+                        href={`/academic/cohorts/${cohort.id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                    >
+                        {cohort.name}
+                    </Link>
+                    {!cohort.is_current_year && (
+                        <Badge variant="default" size="sm">
+                            <History className="mr-1 h-3 w-3" />
+                            Historical
+                        </Badge>
+                    )}
+                </div>
+            ),
+        },
+        {
+            key: 'academic_year_name',
+            header: 'Academic Year',
+            sortable: true,
+            render: (cohort) => (
+                <span className={cohort.is_current_year ? 'font-medium text-gray-900' : 'text-gray-400'}>
+                    {cohort.academic_year_name ?? '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'curriculum_name',
+            header: 'Curriculum',
+            render: (cohort) => <Badge variant="info">{getCurriculumBridgeName(cohort)}</Badge>,
+        },
+        {
+            key: 'level',
+            header: 'Level',
+            sortable: true,
+            render: (cohort) => <span>{cohort.level ?? '—'}</span>,
+        },
+        {
+            key: 'stream',
+            header: 'Stream',
+            render: (cohort) => <span className="text-gray-500">{cohort.stream ?? '—'}</span>,
+        },
+        {
+            key: 'students_count',
+            header: 'Students',
+            sortable: true,
+            render: (cohort) => (
+                typeof cohort.students_count === 'number' ? (
+                    <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-gray-400" />
+                        <span className="font-medium">{cohort.students_count}</span>
+                    </div>
+                ) : (
+                    <span className="text-gray-400">—</span>
+                )
+            ),
+        },
+        {
+            key: 'subjects_count',
+            header: 'Subjects',
+            render: (cohort) => (
+                typeof cohort.subjects_count === 'number'
+                    ? <Badge variant="default">{cohort.subjects_count}</Badge>
+                    : <span className="text-gray-400">—</span>
+            ),
+        },
+    ];
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">My Cohorts</h1>
+                    <p className="mt-1 text-gray-500">
+                        View the cohorts currently assigned to you.
+                    </p>
+                </div>
+            </div>
+
+            {error && !isErrorDismissed && (
+                <ErrorBanner message={error} onDismiss={() => setIsErrorDismissed(true)} />
+            )}
+
+            <DesktopOnly>
+                <div className="grid gap-4 md:grid-cols-3">
+                    <StatsCard title="Total Cohorts" value={filteredCohorts.length} icon={GraduationCap} color="blue" />
+                    <StatsCard title="Current Year Cohorts" value={currentYearCohortCount} icon={Users} color="green" />
+                    <StatsCard title="Assigned Curricula" value={assignedCurriculaCount} icon={BookOpen} color="yellow" />
+                </div>
+            </DesktopOnly>
+
+            <Card>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <Select
+                            value={selectedYearId?.toString() ?? ''}
+                            onChange={(event) => updateFilters({ academic_year: event.target.value })}
+                            disabled={!canFilterByAcademicYear}
+                            options={buildAcademicYearOptions(
+                                academicYears,
+                                canFilterByAcademicYear
+                                    ? 'All Academic Years'
+                                    : 'Academic year filtering unavailable'
+                            )}
+                        />
+                        {isHistoricalView && (
+                            <div className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                                <History className="h-3.5 w-3.5 shrink-0" />
+                                Historical view — records are read-only
+                            </div>
+                        )}
+                    </div>
+
+                    {academicYearFilterNotice && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                            {academicYearFilterNotice}
+                        </div>
+                    )}
+                </div>
+            </Card>
+
+            <Card>
+                {loading ? (
+                    <LoadingSpinner fullScreen={false} />
+                ) : filteredCohorts.length === 0 ? (
+                    <div className="py-12 text-center">
+                        <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No cohorts found</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                            {selectedYearId && canFilterByAcademicYear
+                                ? 'No cohort assignments match the selected academic year.'
+                                : 'No cohorts are currently assigned to you.'}
+                        </p>
+                    </div>
+                ) : (
+                    <DataTable
+                        data={filteredCohorts}
+                        columns={columns}
+                        enableSearch
+                        enableSort
+                        searchPlaceholder="Search cohorts..."
+                        emptyMessage="No cohorts found"
+                        onSort={() => {}}
+                    />
+                )}
+            </Card>
+        </div>
+    );
+}
+
+export default function CohortsPage() {
+    const { activeRole, loading: authLoading } = useAuth();
+
+    if (authLoading) {
+        return <LoadingSpinner fullScreen={false} />;
+    }
+
+    if (!activeRole) {
+        return null;
+    }
+
+    return activeRole === 'INSTRUCTOR'
+        ? <InstructorMyCohortsPageContent />
+        : <AdminCohortsPageContent />;
 }

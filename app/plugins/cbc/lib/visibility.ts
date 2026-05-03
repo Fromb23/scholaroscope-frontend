@@ -123,43 +123,56 @@ export function resolveCBCVisibleProfiles(
 }
 
 export function resolveCBCVisibleProfilesFromAssignments(
-    catalog: CBCCatalog | null | undefined,
-    assignments: Array<Pick<
-        CBCTeachingAssignment,
-        'subject_profile_id' | 'subject_profile_name' | 'subject_profile_code' |
-        'subject_name' | 'subject_code' | 'level'
-    >>
+  catalog: CBCCatalog | null | undefined,
+  assignments: Array<
+    Pick<
+      CBCTeachingAssignment,
+      | 'subject_profile_id'
+      | 'subject_profile_name'
+      | 'subject_profile_code'
+      | 'subject_name'
+      | 'subject_code'
+      | 'level'
+    >
+  >,
 ): CBCVisibleProfile[] {
-    const directProfiles = assignments
-        .filter((assignment): assignment is typeof assignment & { subject_profile_id: number } => (
-            typeof assignment.subject_profile_id === 'number'
-        ))
-        .map(assignment => ({
-            subject_profile_id: assignment.subject_profile_id,
-            subject_id: null,
-            subject_name: assignment.subject_profile_name ?? assignment.subject_name,
-            subject_code: assignment.subject_profile_code ?? assignment.subject_code,
-            level: assignment.level,
-        }));
+  const catalogProfiles = resolveCBCVisibleProfiles(
+    catalog,
+    assignments.map((assignment) => ({
+      subject_name: assignment.subject_profile_name ?? assignment.subject_name,
+      subject_code: assignment.subject_profile_code ?? assignment.subject_code,
+      cohort_level: assignment.level,
+    })),
+  );
 
-    const catalogProfiles = resolveCBCVisibleProfiles(
-        catalog,
-        assignments
-            .filter(assignment => typeof assignment.subject_profile_id !== 'number')
-            .map(assignment => ({
-                subject_name: assignment.subject_name,
-                subject_code: assignment.subject_code,
-                cohort_level: assignment.level,
-            }))
-    );
+  const directProfiles = assignments
+    .filter(
+      (assignment): assignment is typeof assignment & { subject_profile_id: number } =>
+        typeof assignment.subject_profile_id === 'number',
+    )
+    .map((assignment) => ({
+      subject_profile_id: assignment.subject_profile_id,
+      subject_id: null,
+      subject_name: assignment.subject_profile_name ?? assignment.subject_name,
+      subject_code: assignment.subject_profile_code ?? assignment.subject_code,
+      level: assignment.level,
+    }));
 
-    const deduped = new Map<number, CBCVisibleProfile>();
+  const deduped = new Map<number, CBCVisibleProfile>();
 
-    [...directProfiles, ...catalogProfiles].forEach(profile => {
-        deduped.set(profile.subject_profile_id, profile);
-    });
+  // Prefer catalogue/structured profiles first because strands live there.
+  catalogProfiles.forEach((profile) => {
+    deduped.set(profile.subject_profile_id, profile);
+  });
 
-    return sortVisibleProfiles(Array.from(deduped.values()));
+  // Keep direct org-local profiles only as fallback/compatibility.
+  directProfiles.forEach((profile) => {
+    if (!deduped.has(profile.subject_profile_id)) {
+      deduped.set(profile.subject_profile_id, profile);
+    }
+  });
+
+  return sortVisibleProfiles(Array.from(deduped.values()));
 }
 
 export function matchesCBCVisibleProfile(
@@ -388,19 +401,34 @@ export function buildCBCInstructorAssignmentSelections(
 }
 
 export function matchesCBCStrandToSubjectSelection(
-    strand: Pick<Strand, 'subject' | 'subject_org_id' | 'subject_name' | 'subject_level'>,
-    selection: Pick<CBCInstructorSubjectSelection, 'subject_ids' | 'subject_name' | 'level'>
+  strand: Pick<
+    Strand,
+    'subject' | 'subject_org_id' | 'subject_name' | 'subject_level' | 'subject_profile_id'
+  >,
+  selection: Pick<
+    CBCInstructorSubjectSelection,
+    'subject_ids' | 'subject_name' | 'level' | 'subject_profile_ids'
+  >,
 ) {
-    if (selection.subject_ids.some(subjectId => (
-        strand.subject === subjectId || strand.subject_org_id === subjectId
-    ))) {
-        return true;
-    }
+  if (
+    typeof strand.subject_profile_id === 'number' &&
+    selection.subject_profile_ids?.includes(strand.subject_profile_id)
+  ) {
+    return true;
+  }
 
-    return matchesCBCSubjectIdentity(
-        strand.subject_name,
-        strand.subject_level,
-        selection.subject_name,
-        selection.level
-    );
+  if (
+    selection.subject_ids.some(
+      (subjectId) => strand.subject === subjectId || strand.subject_org_id === subjectId,
+    )
+  ) {
+    return true;
+  }
+
+  return matchesCBCSubjectIdentity(
+    strand.subject_name,
+    strand.subject_level,
+    selection.subject_name,
+    selection.level,
+  );
 }

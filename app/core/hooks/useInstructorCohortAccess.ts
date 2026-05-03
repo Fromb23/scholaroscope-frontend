@@ -5,8 +5,32 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
 import { isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
+import { extractErrorMessage } from '@/app/core/types/errors';
+import type { ApiError } from '@/app/core/types/errors';
 
 export type InstructorCurriculumKey = 'CBC' | 'CAMBRIDGE';
+export type MyTeachingLoadResponse = Awaited<ReturnType<typeof globalUsersAPI.getMyTeachingLoad>>;
+
+export function useMyTeachingLoad(options?: { enabled?: boolean }) {
+    const { user, activeRole } = useAuth();
+    const isInstructor = activeRole === 'INSTRUCTOR';
+    const enabled = options?.enabled ?? true;
+
+    return useQuery<MyTeachingLoadResponse, Error>({
+        queryKey: ['my-teaching-load', user?.id],
+        queryFn: async () => {
+            try {
+                return await globalUsersAPI.getMyTeachingLoad();
+            } catch (err) {
+                throw new Error(
+                    extractErrorMessage(err as ApiError, 'Failed to fetch teaching load.')
+                );
+            }
+        },
+        enabled: enabled && Boolean(user) && isInstructor,
+        staleTime: 60_000,
+    });
+}
 
 function uniqueSortedNumbers(values: Array<number | null | undefined>): number[] {
     return Array.from(new Set(values.filter((value): value is number => typeof value === 'number')))
@@ -14,16 +38,9 @@ function uniqueSortedNumbers(values: Array<number | null | undefined>): number[]
 }
 
 export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
-    const { user, activeRole } = useAuth();
+    const { activeRole } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
-    const enabled = options?.enabled ?? true;
-
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['instructor-cohort-access', user?.id],
-        queryFn: () => globalUsersAPI.getMyTeachingLoad(),
-        enabled: enabled && Boolean(user) && isInstructor,
-        staleTime: 60_000,
-    });
+    const { data, isLoading, error } = useMyTeachingLoad(options);
 
     const assignments = useMemo(
         () => data?.assignments ?? [],
