@@ -169,9 +169,16 @@ export interface TermQueryParams {
 export interface InstructorCohortAccessAssignment {
   cohort_id: number;
   cohort_name: string;
+  curriculum_id?: number | null;
   curriculum_name: string;
   curriculum_type: string;
-  academic_year: string;
+  academic_year?: string | null;
+  academic_year_id?: number | null;
+  academic_year_name?: string | null;
+  level?: string | null;
+  stream?: string | null;
+  students_count?: number | null;
+  subjects_count?: number | null;
   is_current_year: boolean;
 }
 

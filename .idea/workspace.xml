@@ -6,6 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useInstructorCohortAccess.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useInstructorCohortAccess.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/academic.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBC.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBC.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/visibility.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/visibility.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="388" />
+    <option name="cachedIndexableFilesCount" value="389" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -114,7 +120,8 @@
       <workItem from="1777740207483" duration="1574000" />
       <workItem from="1777745194773" duration="11059000" />
       <workItem from="1777760616259" duration="2627000" />
-      <workItem from="1777809995398" duration="2095000" />
+      <workItem from="1777809995398" duration="4080000" />
+      <workItem from="1777828850302" duration="6058000" />
     </task>
     <servers />
   </component>
