@@ -177,6 +177,20 @@ export const instructorsAPI = {
             notes: notes ?? '',
         });
     },
+  getAssignableSubjects: async (instructorId: number): Promise<AvailableCohortSubject[]> => {
+    const response = await apiClient.get(`/users/${instructorId}/assignable_subjects/`);
+    const data = response.data;
+
+    if (Array.isArray(data)) {
+      return data as AvailableCohortSubject[];
+    }
+
+    if (data && typeof data === 'object' && 'results' in data) {
+      return (data as { results: AvailableCohortSubject[] }).results ?? [];
+    }
+
+    return [];
+  },
     getInstructorHistory: async (cohortSubjectId: number) => {
         const response = await apiClient.get(
             `/cohort-subjects/${cohortSubjectId}/instructor_history/`

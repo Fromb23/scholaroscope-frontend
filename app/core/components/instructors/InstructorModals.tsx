@@ -679,12 +679,14 @@ export function CohortAssignModal({
     const [unassignReason, setUnassignReason] = useState('MANUAL');
     const [unassignNotes, setUnassignNotes] = useState('');
 
-    useEffect(() => {
-        if (!isOpen) return;
-        instructorsAPI.getCohortSubjects()
-            .then(setAllCohortSubjects)
-            .catch(() => { });
-    }, [isOpen]);
+  useEffect(() => {
+    if (!isOpen) return;
+
+    instructorsAPI
+      .getAssignableSubjects(instructorId)
+      .then(setAllCohortSubjects)
+      .catch(() => {});
+  }, [isOpen, instructorId]);
 
     useEffect(() => {
         if (!isOpen) return;
