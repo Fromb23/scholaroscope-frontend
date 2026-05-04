@@ -8,8 +8,12 @@ import {
     ArrowLeft, Search, ChevronDown, ChevronRight, Target, Check,
 } from 'lucide-react';
 import {
-    useTeachingSession, useOutcomeSessions, useBulkTagOutcomes,
-    useStrandsByCurriculum, useLearningOutcomes,
+  useTeachingSession,
+  useOutcomeSessions,
+  useBulkTagOutcomes,
+  useStrandsByCurriculum,
+  useLearningOutcomes,
+  useStrandsBySubject,
 } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import {
@@ -112,10 +116,9 @@ export default function AddOutcomesPage() {
     // The session doesn't directly expose curriculum_id, so we fetch all strands
     // filtered by the session context once loaded.
     // For now we use selectedCurriculumId from context if set, else show a prompt.
-    const { selectedCurriculumId } = useCBCContext();
-    const { data: strands = [], isLoading: strandsLoading } = useStrandsByCurriculum(
-        selectedCurriculumId
-    );
+  const subjectId = session?.subject_id ?? null;
+
+  const { data: strands = [], isLoading: strandsLoading } = useStrandsBySubject(subjectId);
 
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [search, setSearch] = useState('');
@@ -125,12 +128,9 @@ export default function AddOutcomesPage() {
 
     const [expandedSubStrands, setExpandedSubStrands] = useState<Set<number>>(new Set());
 
-    const visibleBySubject = useMemo(() => {
-        const base = session?.subject_id
-            ? strands.filter(s => s.subject_org_id === session.subject_id)
-            : strands;
-        return base.filter(s => s.sub_strands.length > 0);
-    }, [strands, session]);
+  const visibleBySubject = useMemo(() => {
+    return strands.filter((s) => s.sub_strands.length > 0);
+  }, [strands]);
 
     const toggleSubStrand = useCallback((id: number) => {
         setExpandedSubStrands(prev => {

@@ -6,12 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useInstructorCohortAccess.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useInstructorCohortAccess.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/academic.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBC.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBC.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/visibility.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/visibility.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -122,6 +117,8 @@
       <workItem from="1777760616259" duration="2627000" />
       <workItem from="1777809995398" duration="4080000" />
       <workItem from="1777828850302" duration="6058000" />
+      <workItem from="1777840835547" duration="1333000" />
+      <workItem from="1777882335605" duration="302000" />
     </task>
     <servers />
   </component>
