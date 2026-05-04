@@ -174,6 +174,14 @@ export const useStrandsByCurriculum = (curriculumId: number | null) =>
     staleTime: 5 * 60 * 1000,
   });
 
+export const useStrandsBySubject = (subjectId: number | null) =>
+  useQuery<StrandDetail[]>({
+    queryKey: ['cbc', 'strands', 'by-subject', subjectId],
+    queryFn: () => strandAPI.getBySubject(subjectId!),
+    enabled: !!subjectId,
+    staleTime: 5 * 60 * 1000,
+  });
+
 export const useCBCCatalog = () =>
   useQuery<CBCCatalog>({
     queryKey: cbcKeys.catalog.detail,
