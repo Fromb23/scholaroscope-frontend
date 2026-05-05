@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Users, UserPlus, ChevronRight } from 'lucide-react';
+import { Users, UserPlus, ChevronRight, CheckCircle2, X } from 'lucide-react';
 import { useStudents, useStudentStats } from '@/app/core/hooks/useStudents';
 import { useCurricula, useCohorts, useCohortSubjects } from '@/app/core/hooks/useAcademic';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
@@ -15,7 +15,6 @@ import { Badge } from '@/app/components/ui/Badge';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import type { Student } from '@/app/core/types/student';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success', GRADUATED: 'info', TRANSFERRED: 'warning',
@@ -24,8 +23,10 @@ const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'>
 
 function LearnersPageInner() {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const searchParams = useSearchParams();
+    const { activeRole } = useAuth();
     const canCreate = hasCapability(activeRole, 'CREATE_LEARNER');
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const [filters, updateFilters, backUrl] = usePersistedFilters('/learners', {
         curriculum: null as number | null,
@@ -35,6 +36,20 @@ function LearnersPageInner() {
         q: '',
         page: 1,
     });
+
+    useEffect(() => {
+        if (searchParams.get('created') === '1') {
+            setSuccessMessage('Learner created and placed in cohort. Assign subjects separately from cohort subject management.');
+        }
+    }, [searchParams]);
+
+    const dismissSuccessMessage = () => {
+        setSuccessMessage(null);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('created');
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/learners?${nextQuery}` : '/learners', { scroll: false });
+    };
 
     // ── Cascading data ────────────────────────────────────────────────────
     const { curricula } = useCurricula();
@@ -116,16 +131,30 @@ function LearnersPageInner() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Learners</h1>
-                    <p className="mt-1 text-gray-500 text-sm">Filter by curriculum and cohort to view students.</p>
+                    <p className="mt-1 text-gray-500 text-sm">Filter by curriculum and cohort to view learners.</p>
                 </div>
                 {canCreate && (
                     <Link href="/learners/new">
                         <Button>
-                            <UserPlus className="mr-2 h-4 w-4" />Add Student
+                            <UserPlus className="mr-2 h-4 w-4" />Add Learner
                         </Button>
                     </Link>
                 )}
             </div>
+
+            {successMessage && (
+                <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="flex-1">{successMessage}</span>
+                    <button
+                        type="button"
+                        onClick={dismissSuccessMessage}
+                        className="text-green-500 transition-colors hover:text-green-700"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
 
             {/* Stats */}
             {stats && (
@@ -216,10 +245,10 @@ function LearnersPageInner() {
                     columns={columns}
                     loading={loading}
                     pagination={pagination}
-                    onPaginationChange={(page, size) => updateFilters({ page })}
+                    onPaginationChange={(page) => updateFilters({ page })}
                     onSearch={q => updateFilters({ q, page: 1 })}
                     searchPlaceholder="Search by name or admission number..."
-                    emptyMessage="No students found in this cohort."
+                    emptyMessage="No learners found in this cohort."
                     enableSearch
                     onRowClick={row => router.push(`/learners/${row.id}?back=${backUrl}`)}
                 />

@@ -1,25 +1,44 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { learnersAPI } from '@/app/core/api/learners';
 import { useCohorts } from '@/app/core/hooks/useAcademic';
-import { subjectAPI } from '@/app/core/api/academic';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
-import { Badge } from '@/app/components/ui/Badge';
-import { Subject } from '@/app/core/types/academic';
+
+function getLearnerCreationError(error: unknown) {
+    if (
+        error
+        && typeof error === 'object'
+        && 'response' in error
+        && error.response
+        && typeof error.response === 'object'
+        && 'data' in error.response
+    ) {
+        const data = error.response.data as {
+            admission_number?: string[];
+            detail?: string;
+            message?: string;
+        };
+
+        return data.admission_number?.[0]
+            || data.detail
+            || data.message
+            || 'Failed to create learner';
+    }
+
+    return 'Failed to create learner';
+}
 
 export default function NewStudentPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [loadingSubjects, setLoadingSubjects] = useState(false);
 
     const { cohorts } = useCohorts();
 
@@ -33,49 +52,7 @@ export default function NewStudentPage() {
         cohort: '',
         email: '',
         phone: '',
-        subject_ids: [] as number[],
     });
-
-    // Fetch subjects when cohort changes
-    useEffect(() => {
-        if (!formData.cohort) {
-            setSubjects([]);
-            setFormData(prev => ({ ...prev, subject_ids: [] }));
-            return;
-        }
-
-        const selectedCohort = cohorts.find(c => c.id === Number(formData.cohort));
-        if (!selectedCohort) return;
-
-        const fetchSubjects = async () => {
-            try {
-                setLoadingSubjects(true);
-                const data = await subjectAPI.getAll();
-                const subjectsArray = Array.isArray(data)
-                    ? data
-                    : (data as any).results ?? []
-                setSubjects(subjectsArray);
-            } catch (err) {
-                console.error('Failed to fetch subjects:', err);
-                setSubjects([]);
-            } finally {
-                setLoadingSubjects(false);
-            }
-        };
-
-        fetchSubjects();
-    }, [formData.cohort, cohorts]);
-
-    const handleSubjectToggle = (subjectId: number) => {
-        setFormData(prev => {
-            const isSelected = prev.subject_ids.includes(subjectId);
-            const newSubjectIds = isSelected
-                ? prev.subject_ids.filter(id => id !== subjectId)
-                : [...prev.subject_ids, subjectId];
-
-            return { ...prev, subject_ids: newSubjectIds };
-        });
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -93,17 +70,12 @@ export default function NewStudentPage() {
                 cohort: Number(formData.cohort),
                 email: formData.email || undefined,
                 phone: formData.phone || undefined,
-                subject_ids: formData.subject_ids.length > 0 ? formData.subject_ids : undefined,
             };
 
             await learnersAPI.createStudent(studentData);
-            router.push('/learners');
-        } catch (err: any) {
-            const errorMsg = err.response?.data?.admission_number?.[0] ||
-                err.response?.data?.detail ||
-                err.response?.data?.message ||
-                'Failed to create student';
-            setError(errorMsg);
+            router.push('/learners?created=1');
+        } catch (error) {
+            setError(getLearnerCreationError(error));
         } finally {
             setLoading(false);
         }
@@ -120,8 +92,8 @@ export default function NewStudentPage() {
                     </Button>
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Add New Student</h1>
-                    <p className="mt-2 text-gray-600">Register a new student in the system</p>
+                    <h1 className="text-3xl font-bold text-gray-900">Add New Learner</h1>
+                    <p className="mt-2 text-gray-600">Create learner identity and place the learner in a cohort.</p>
                 </div>
             </div>
 
@@ -221,75 +193,15 @@ export default function NewStudentPage() {
                         </div>
                     </div>
 
-                    {/* Subject Selection */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Subject Enrollment</h3>
-
-                        {!formData.cohort ? (
-                            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-600">
-                                Please select a cohort first to view available subjects
-                            </div>
-                        ) : loadingSubjects ? (
-                            <div className="py-8 text-center">
-                                <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                                <p className="mt-2 text-sm text-gray-600">Loading subjects...</p>
-                            </div>
-                        ) : subjects.length === 0 ? (
-                            <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-600">
-                                No subjects available for this cohort's curriculum
-                            </div>
-                        ) : (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    Select Subject(s) <span className="text-gray-500">(Optional - can be added later)</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {subjects.map((subject) => {
-                                        const isSelected = formData.subject_ids.includes(subject.id);
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={subject.id}
-                                                onClick={() => handleSubjectToggle(subject.id)}
-                                                className={`
-                                                    px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all
-                                                    ${isSelected
-                                                        ? 'bg-blue-600 text-white border-blue-600'
-                                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                                                    }
-                                                `}
-                                            >
-                                                {subject.code} - {subject.name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {formData.subject_ids.length > 0 && (
-                                    <div className="mt-3">
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            Selected subjects ({formData.subject_ids.length}):
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {formData.subject_ids.map(id => {
-                                                const subject = subjects.find(s => s.id === id);
-                                                return subject ? (
-                                                    <Badge key={id} variant="success">
-                                                        {subject.code}
-                                                    </Badge>
-                                                ) : null;
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+                        Learner creation places the learner in a cohort only. Assign subjects separately from cohort subject management.
                     </div>
 
                     {/* Actions */}
                     <div className="flex gap-4 pt-4 border-t">
                         <Button type="submit" disabled={loading}>
                             <Save className="mr-2 h-4 w-4" />
-                            {loading ? 'Creating...' : 'Create Student'}
+                            {loading ? 'Creating...' : 'Create Learner'}
                         </Button>
                         <Link href="/learners">
                             <Button type="button" variant="ghost">

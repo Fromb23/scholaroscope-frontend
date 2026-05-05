@@ -194,6 +194,10 @@ export default function CohortHubPage() {
     const hasCBCPlugin = hasPlugin('cbc');
     const hasCambridgePlugin = hasPlugin('cambridge');
     const unknownCurriculumReason = `No workflow is configured yet for ${curriculumName}.`;
+    const showKernelSubjectParticipation = !isCBC && !isCambridge;
+    const visibleCohortSubjects = isInstructor
+        ? cohort.subjects.filter(subject => instructorAccess.cohortSubjectIds.includes(subject.id))
+        : cohort.subjects;
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
@@ -322,6 +326,56 @@ export default function CohortHubPage() {
                     )}
                 </div>
             </section>
+
+            {showKernelSubjectParticipation && (
+                <section className="space-y-4">
+                    <div className="space-y-1">
+                        <h2 className="text-xl font-semibold text-gray-900">Subject Participation</h2>
+                        <p className="text-sm text-gray-500">
+                            Manage explicit learner participation per cohort subject. Cohort membership does not assign subjects.
+                        </p>
+                    </div>
+
+                    <Card>
+                        {visibleCohortSubjects.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+                                {isInstructor
+                                    ? 'No assigned cohort subjects are available for learner management.'
+                                    : 'No cohort subjects are available for learner management yet.'}
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-gray-100">
+                                {visibleCohortSubjects.map((subject) => (
+                                    <div
+                                        key={subject.id}
+                                        className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="text-sm font-semibold text-gray-900">{subject.subject_name}</h3>
+                                                <Badge variant="info">{subject.subject_code}</Badge>
+                                                {subject.is_compulsory ? <Badge variant="default">Compulsory</Badge> : null}
+                                            </div>
+                                            <p className="mt-1 text-sm text-gray-500">
+                                                Manage learners enrolled in this cohort subject without changing cohort placement.
+                                            </p>
+                                        </div>
+
+                                        <Link
+                                            href={`/academic/cohort-subjects/${subject.id}/learners`}
+                                            className="shrink-0"
+                                        >
+                                            <Button size="sm">
+                                                Manage Learners
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </section>
+            )}
 
             <Card>
                 <div className="flex items-start gap-3">

@@ -5,6 +5,8 @@
 import { CohortSubject } from '../types/academic';
 import { apiClient } from './client';
 
+const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
+
 export interface Cohort {
   students_count: number;
   id: number;
@@ -134,8 +136,11 @@ export const cohortsAPI = {
   },
 
   getCohortSubjects: async (id: number): Promise<CohortSubject[]> => {
-    const { data } = await apiClient.get<CohortSubject[]>(`/cohort-subjects/?cohort=${id}`);
-    return data;
+    const { data } = await apiClient.get<CohortSubject[] | { results?: CohortSubject[] }>(
+      `${KERNEL_COHORT_SUBJECTS_BASE}/`,
+      { params: { cohort: id } }
+    );
+    return Array.isArray(data) ? data : data.results ?? [];
   },
 
   // Add subject to cohort
