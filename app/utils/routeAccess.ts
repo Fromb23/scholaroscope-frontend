@@ -38,6 +38,7 @@ export const routeRules: RouteRule[] = [
     // ADMIN + INSTRUCTOR
     { pattern: /^\/academic\/cohorts$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/academic\/cohorts\/\d+$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/academic\/cohort-subjects\/\d+\/learners$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/sessions/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/learners/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/assessments/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },

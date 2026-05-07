@@ -4,7 +4,6 @@ import {
   StudentDetail,
   StudentFormData,
   StudentStats,
-  EnrollmentFormData,
   TransferFormData,
   StudentCohortEnrollment
 } from '../types/student';

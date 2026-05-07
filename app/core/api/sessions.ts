@@ -20,6 +20,8 @@ import {
 import { CohortSubject } from '../types/academic';
 import { TopicSessionLink } from '../types/topics';
 
+const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
+
 // ── Shared response shapes ────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {
@@ -247,13 +249,14 @@ export const attendanceAPI = {
 export const cohortSubjectAPI = {
   getByCohort: async (cohortId: number): Promise<CohortSubject[] | PaginatedResponse<CohortSubject>> => {
     const res = await apiClient.get<CohortSubject[] | PaginatedResponse<CohortSubject>>(
-      `/cohort-subjects/?cohort=${cohortId}`
+      `${KERNEL_COHORT_SUBJECTS_BASE}/`,
+      { params: { cohort: cohortId } }
     );
     return res.data;
   },
 
   getById: async (id: number): Promise<CohortSubject> => {
-    const res = await apiClient.get<CohortSubject>(`/cohort-subjects/${id}/`);
+    const res = await apiClient.get<CohortSubject>(`${KERNEL_COHORT_SUBJECTS_BASE}/${id}/`);
     return res.data;
   },
 };

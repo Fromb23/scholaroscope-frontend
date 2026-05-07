@@ -6,7 +6,9 @@
 // ============================================================================
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { cohortSubjectAPI } from '@/app/core/api/academic';
+import { academicKeys } from '@/app/core/lib/queryKeys';
 import type { CohortSubject } from '@/app/core/types/academic';
 
 // ── Extended type ─────────────────────────────────────────────────────────
@@ -58,27 +60,25 @@ export function useCohortSubjects(academicYearId?: number) {
 }
 
 export function useCohortSubjectsByCohort(cohortId?: number | null) {
-    const [subjects, setSubjects] = useState<CohortSubjectExtended[]>([]);
-    const [loading, setLoading] = useState(false);
+    const enabled = typeof cohortId === 'number' && cohortId > 0;
+    const query = useQuery<CohortSubjectExtended[], Error>({
+        queryKey: academicKeys.cohorts.subjects(cohortId ?? null),
+        queryFn: async () => {
+            const data = await cohortSubjectAPI.getAll({ cohort: String(cohortId) });
+            return Array.isArray(data)
+                ? data as CohortSubjectExtended[]
+                : (data as { results?: CohortSubjectExtended[] })?.results ?? [];
+        },
+        enabled,
+        staleTime: 30_000,
+    });
 
-    useEffect(() => {
-        if (!cohortId) {
-            setSubjects([]);
-            return;
-        }
-        setLoading(true);
-        cohortSubjectAPI.getAll({ cohort: String(cohortId) })
-            .then(data => {
-                const arr = Array.isArray(data)
-                    ? data
-                    : (data as { results?: CohortSubjectExtended[] })?.results ?? [];
-                setSubjects(arr as CohortSubjectExtended[]);
-            })
-            .catch(() => setSubjects([]))
-            .finally(() => setLoading(false));
-    }, [cohortId]);
-
-    return { subjects, loading };
+    return {
+        subjects: query.data ?? [],
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
 }
 
 export function useCohortSubjectsByCohorts(cohortIds?: number[] | null) {

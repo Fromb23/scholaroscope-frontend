@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft,
@@ -15,13 +15,17 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
-import { useCohortDetail } from '@/app/core/hooks/useAcademic';
+import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
+import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
+import { useCohortSubjectParticipation } from '@/app/core/hooks/useCohortSubjectParticipation';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
+import { CohortSubjectParticipationSection } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useCambridgeCohortSubjects } from '@/app/plugins/cambridge/hooks';
@@ -36,6 +40,7 @@ interface ActionCardProps {
     description: string;
     icon: LucideIcon;
     href?: string;
+    onClick?: () => void;
     disabledReason?: string;
     footerLabel?: string;
 }
@@ -54,6 +59,7 @@ function ActionCard({
     description,
     icon: Icon,
     href,
+    onClick,
     disabledReason,
     footerLabel,
 }: ActionCardProps) {
@@ -72,15 +78,15 @@ function ActionCard({
                 </div>
             </div>
             <div className="mt-6 flex items-center justify-between">
-                <span className={`text-sm font-semibold ${href ? 'text-blue-600' : 'text-gray-400'}`}>
-                    {footerLabel ?? (href ? 'Open' : 'Unavailable')}
+                <span className={`text-sm font-semibold ${href || onClick ? 'text-blue-600' : 'text-gray-400'}`}>
+                    {footerLabel ?? (href || onClick ? 'Open' : 'Unavailable')}
                 </span>
-                {href ? <ChevronRight className="h-5 w-5 text-blue-600" /> : null}
+                {href || onClick ? <ChevronRight className="h-5 w-5 text-blue-600" /> : null}
             </div>
         </>
     );
 
-    if (!href) {
+    if (!href && !onClick) {
         return (
             <div
                 aria-disabled="true"
@@ -91,14 +97,37 @@ function ActionCard({
         );
     }
 
+    const className = 'flex min-h-[208px] flex-col justify-between rounded-lg border border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+
+    if (href) {
+        return (
+            <Link href={href} className={className}>
+                {content}
+            </Link>
+        );
+    }
+
     return (
-        <Link
-            href={href}
-            className="flex min-h-[208px] flex-col justify-between rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
+        <button type="button" onClick={onClick} className={className}>
             {content}
-        </Link>
+        </button>
     );
+}
+
+function buildInstructorManagementHref(cohortId: number, cohortName: string, subject: {
+    id: number;
+    subject_name: string;
+}) {
+    const params = new URLSearchParams({
+        cohort_subject_id: String(subject.id),
+        cohort_id: String(cohortId),
+        cohort_name: cohortName,
+        subject_name: subject.subject_name,
+        returnTo: `/academic/cohorts/${cohortId}`,
+        open: 'teaching',
+    });
+
+    return `/admin/instructors?${params.toString()}`;
 }
 
 function CambridgeCurriculumCards({
@@ -145,10 +174,23 @@ export default function CohortHubPage() {
     const { user, activeRole, loading: authLoading } = useAuth();
     const { hasPlugin, loading: pluginsLoading } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
+    const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
 
     const cohortId = Number(params.id);
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
-    const { cohort, loading: cohortLoading, error } = useCohortDetail(isValidCohortId ? cohortId : null);
+    const {
+        cohort,
+        loading: cohortLoading,
+        error,
+        refetch: refetchCohort,
+    } = useCohortDetail(isValidCohortId ? cohortId : null);
+    const {
+        cohortSubjects,
+        loading: cohortSubjectsLoading,
+        error: cohortSubjectsError,
+        refetch: refetchCohortSubjects,
+    } = useCohortSubjects(isValidCohortId ? cohortId : undefined);
+    const enrolledStudentsQuery = useCohortEnrolledStudents(cohortId);
 
     const isInstructor = activeRole === 'INSTRUCTOR';
     const accessLoading = authLoading || pluginsLoading || (isInstructor && instructorAccess.isLoading);
@@ -157,39 +199,54 @@ export default function CohortHubPage() {
         : user.is_superadmin
             || activeRole === 'ADMIN'
             || (isInstructor && instructorAccess.cohortIds.includes(cohortId));
+    const canManageInstructors = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+    const canLinkSubjects = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+    const visibleCohortSubjects = isInstructor
+        ? cohortSubjects.filter(subject => instructorAccess.cohortSubjectIds.includes(subject.id))
+        : cohortSubjects;
+    const subjectParticipationQuery = useCohortSubjectParticipation(
+        cohort?.id ?? null,
+        visibleCohortSubjects,
+        { includeInstructor: canManageInstructors }
+    );
 
     useEffect(() => {
         if (accessLoading || allowed || !activeRole) return;
         router.replace(roleHomeRoute[activeRole]);
     }, [accessLoading, activeRole, allowed, router]);
 
+    const isCambridge = cohort ? isCambridgeCurriculumType(cohort.curriculum_type) : false;
+    const isCBC = cohort?.curriculum_type === 'CBE';
+
     if (!isValidCohortId) {
         return <ErrorState fullScreen={false} message="Invalid cohort." />;
     }
 
-    if (accessLoading || cohortLoading) {
+    if (accessLoading || cohortLoading || enrolledStudentsQuery.isLoading) {
         return <LoadingSpinner fullScreen={false} message="Loading cohort hub..." />;
     }
 
     if (!allowed) return null;
 
-    if (error || !cohort) {
+    if (error || enrolledStudentsQuery.error || !cohort) {
         return (
             <ErrorState
                 fullScreen={false}
-                message={error ?? 'Failed to load cohort details.'}
+                message={error ?? enrolledStudentsQuery.error?.message ?? 'Failed to load cohort details.'}
             />
         );
     }
 
     const curriculumName = getCurriculumBridgeName(cohort);
-    const isCambridge = isCambridgeCurriculumType(cohort.curriculum_type);
-    const isCBC = cohort.curriculum_type === 'CBE';
-    const learnerCount = String(cohort.students_count ?? 0);
-    const subjectCount = cohort.subjects_count ?? cohort.subjects.length;
-    const learnersHref = isInstructor
+    const learnerCount = String(enrolledStudentsQuery.data?.students.length ?? 0);
+    const subjectCount = cohortSubjects.length;
+    const cohortPlacementHref = isInstructor
         ? `/learners?curriculum=${cohort.curriculum}&cohort=${cohort.id}`
         : `/academic/cohorts/${cohort.id}/students`;
+    const cohortPlacementTitle = isInstructor ? 'Cohort Learners' : 'Manage Placement';
+    const cohortPlacementDescription = isInstructor
+        ? 'View learners currently placed in this cohort.'
+        : 'Add or remove learners from this cohort. Subject participation is managed separately per cohort subject.';
     const sessionsHref = `/sessions?cohort=${cohort.id}`;
     const hasCBCPlugin = hasPlugin('cbc');
     const hasCambridgePlugin = hasPlugin('cambridge');
@@ -214,7 +271,7 @@ export default function CohortHubPage() {
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold text-gray-900">{cohort.name}</h1>
                     <p className="text-sm text-gray-500">
-                        Use this cohort hub to open learners, sessions, and curriculum workflows for the selected cohort.
+                        Use this cohort control center to manage placement, create cohort subject offerings, and open subject-specific learner workflows.
                     </p>
                 </div>
             </div>
@@ -232,7 +289,7 @@ export default function CohortHubPage() {
 
             <section className="space-y-4">
                 <div className="space-y-1">
-                    <h2 className="text-xl font-semibold text-gray-900">Teaching Actions</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">Cohort Actions</h2>
                     <p className="text-sm text-gray-500">
                         Choose the workflow you want to open for this cohort.
                     </p>
@@ -240,12 +297,23 @@ export default function CohortHubPage() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <ActionCard
-                        title="Learners"
-                        description="View learners enrolled in this cohort."
+                        title={cohortPlacementTitle}
+                        description={cohortPlacementDescription}
                         icon={Users}
-                        href={learnersHref}
-                        footerLabel={`${learnerCount} learner${learnerCount === '1' ? '' : 's'}`}
+                        href={cohortPlacementHref}
+                        footerLabel={isInstructor
+                            ? `${learnerCount} learner${learnerCount === '1' ? '' : 's'}`
+                            : 'Manage placement'}
                     />
+                    {canLinkSubjects ? (
+                        <ActionCard
+                            title="Link Subject to Cohort"
+                            description="Create or update cohort subject offerings for this cohort."
+                            icon={BookOpen}
+                            onClick={() => setAssignSubjectsOpen(true)}
+                            footerLabel={subjectCount > 0 ? `${subjectCount} linked` : 'Assign subject'}
+                        />
+                    ) : null}
                     <ActionCard
                         title="Sessions"
                         description="Open sessions filtered to this cohort."
@@ -323,6 +391,20 @@ export default function CohortHubPage() {
                 </div>
             </section>
 
+            <CohortSubjectParticipationSection
+                cohortSubjects={visibleCohortSubjects}
+                summaries={subjectParticipationQuery.summaries}
+                loading={cohortSubjectsLoading || subjectParticipationQuery.loading}
+                error={cohortSubjectsError ?? subjectParticipationQuery.error}
+                emptyMessage={isInstructor
+                    ? 'No cohort subjects are assigned to you yet.'
+                    : undefined}
+                canManageInstructors={canManageInstructors}
+                canLinkSubjects={canLinkSubjects}
+                onLinkSubjects={() => setAssignSubjectsOpen(true)}
+                buildInstructorHref={(subject) => buildInstructorManagementHref(cohort.id, cohort.name, subject)}
+            />
+
             <Card>
                 <div className="flex items-start gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -336,6 +418,18 @@ export default function CohortHubPage() {
                     </div>
                 </div>
             </Card>
+
+            {canLinkSubjects ? (
+                <ManageCohortSubjectsModal
+                    isOpen={assignSubjectsOpen}
+                    onClose={() => setAssignSubjectsOpen(false)}
+                    cohort={cohort}
+                    onSubjectsChanged={async () => {
+                        await refetchCohort();
+                        await refetchCohortSubjects();
+                    }}
+                />
+            ) : null}
         </div>
     );
 }

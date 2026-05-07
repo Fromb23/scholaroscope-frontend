@@ -1,81 +1,72 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Save } from 'lucide-react';
 import Link from 'next/link';
 import { learnersAPI } from '@/app/core/api/learners';
-import { useCohorts } from '@/app/core/hooks/useAcademic';
-import { subjectAPI } from '@/app/core/api/academic';
+import { useCohortDetail, useCohorts } from '@/app/core/hooks/useAcademic';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
-import { Badge } from '@/app/components/ui/Badge';
-import { Subject } from '@/app/core/types/academic';
+
+const INITIAL_FORM_DATA = {
+    admission_number: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    date_of_birth: '',
+    gender: '',
+    cohort: '',
+    email: '',
+    phone: '',
+};
+
+interface CreatedLearnerState {
+    cohortId: number;
+    cohortName: string;
+    learnerName: string;
+}
+
+function getLearnerCreationError(error: unknown) {
+    if (
+        error
+        && typeof error === 'object'
+        && 'response' in error
+        && error.response
+        && typeof error.response === 'object'
+        && 'data' in error.response
+    ) {
+        const data = error.response.data as {
+            admission_number?: string[];
+            detail?: string;
+            message?: string;
+        };
+
+        return data.admission_number?.[0]
+            || data.detail
+            || data.message
+            || 'Failed to create learner';
+    }
+
+    return 'Failed to create learner';
+}
 
 export default function NewStudentPage() {
-    const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [loadingSubjects, setLoadingSubjects] = useState(false);
+    const [createdLearner, setCreatedLearner] = useState<CreatedLearnerState | null>(null);
 
     const { cohorts } = useCohorts();
 
-    const [formData, setFormData] = useState({
-        admission_number: '',
-        first_name: '',
-        middle_name: '',
-        last_name: '',
-        date_of_birth: '',
-        gender: '',
-        cohort: '',
-        email: '',
-        phone: '',
-        subject_ids: [] as number[],
-    });
-
-    // Fetch subjects when cohort changes
-    useEffect(() => {
-        if (!formData.cohort) {
-            setSubjects([]);
-            setFormData(prev => ({ ...prev, subject_ids: [] }));
-            return;
-        }
-
-        const selectedCohort = cohorts.find(c => c.id === Number(formData.cohort));
-        if (!selectedCohort) return;
-
-        const fetchSubjects = async () => {
-            try {
-                setLoadingSubjects(true);
-                const data = await subjectAPI.getAll();
-                const subjectsArray = Array.isArray(data)
-                    ? data
-                    : (data as any).results ?? []
-                setSubjects(subjectsArray);
-            } catch (err) {
-                console.error('Failed to fetch subjects:', err);
-                setSubjects([]);
-            } finally {
-                setLoadingSubjects(false);
-            }
-        };
-
-        fetchSubjects();
-    }, [formData.cohort, cohorts]);
-
-    const handleSubjectToggle = (subjectId: number) => {
-        setFormData(prev => {
-            const isSelected = prev.subject_ids.includes(subjectId);
-            const newSubjectIds = isSelected
-                ? prev.subject_ids.filter(id => id !== subjectId)
-                : [...prev.subject_ids, subjectId];
-
-            return { ...prev, subject_ids: newSubjectIds };
-        });
-    };
+    const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+    const selectedCohortId = formData.cohort ? Number(formData.cohort) : null;
+    const selectedCohort = useMemo(
+        () => cohorts.find((cohort) => cohort.id === selectedCohortId) ?? null,
+        [cohorts, selectedCohortId]
+    );
+    const { cohort: createdCohort, loading: createdCohortLoading } = useCohortDetail(createdLearner?.cohortId ?? null);
+    const quickActionSubjects = createdCohort?.subjects ?? [];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -93,21 +84,113 @@ export default function NewStudentPage() {
                 cohort: Number(formData.cohort),
                 email: formData.email || undefined,
                 phone: formData.phone || undefined,
-                subject_ids: formData.subject_ids.length > 0 ? formData.subject_ids : undefined,
             };
 
-            await learnersAPI.createStudent(studentData);
-            router.push('/learners');
-        } catch (err: any) {
-            const errorMsg = err.response?.data?.admission_number?.[0] ||
-                err.response?.data?.detail ||
-                err.response?.data?.message ||
-                'Failed to create student';
-            setError(errorMsg);
+            const createdStudent = await learnersAPI.createStudent(studentData);
+            const learnerName = createdStudent.full_name?.trim()
+                || `${formData.first_name} ${formData.last_name}`.trim();
+
+            setCreatedLearner({
+                cohortId: studentData.cohort,
+                cohortName: selectedCohort?.name ?? `Cohort #${studentData.cohort}`,
+                learnerName,
+            });
+        } catch (error) {
+            setError(getLearnerCreationError(error));
         } finally {
             setLoading(false);
         }
     };
+
+    if (createdLearner) {
+        return (
+            <div className="mx-auto max-w-5xl space-y-6">
+                <div className="flex items-center gap-4">
+                    <Link href="/learners">
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Learners
+                        </Button>
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Learner Created</h1>
+                        <p className="mt-2 text-gray-600">
+                            {createdLearner.learnerName} was placed in {createdLearner.cohortName}.
+                        </p>
+                    </div>
+                </div>
+
+                <Card>
+                    <div className="space-y-5">
+                        <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                            <div className="space-y-1">
+                                <p className="font-medium text-green-900">Learner created and placed in cohort. Assign subjects separately.</p>
+                                <p>Use the cohort control center or learner profile to manage subject participation for this learner.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <Link href={`/academic/cohorts/${createdLearner.cohortId}`} className="w-full sm:w-auto">
+                                <Button className="w-full">
+                                    Open Cohort Control Center
+                                    <ChevronRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </Link>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="w-full sm:w-auto"
+                                onClick={() => {
+                                    setCreatedLearner(null);
+                                    setError('');
+                                    setFormData(INITIAL_FORM_DATA);
+                                }}
+                            >
+                                Create Another Learner
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+
+                {createdCohortLoading ? (
+                    <Card>
+                        <p className="text-sm text-gray-500">Loading cohort subject actions...</p>
+                    </Card>
+                ) : quickActionSubjects.length > 0 ? (
+                    <section className="space-y-4">
+                        <div className="space-y-1">
+                            <h2 className="text-xl font-semibold text-gray-900">Quick Subject Actions</h2>
+                            <p className="text-sm text-gray-500">
+                                Open the subject learner pages directly for this cohort.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {quickActionSubjects.map((subject) => (
+                                <Card key={subject.id}>
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="min-w-0 space-y-1">
+                                            <h3 className="text-base font-semibold text-gray-900">{subject.subject_name}</h3>
+                                            <p className="text-sm text-gray-500">{subject.subject_code}</p>
+                                        </div>
+                                        <Link
+                                            href={`/academic/cohort-subjects/${subject.id}/learners`}
+                                            className="w-full shrink-0 sm:w-auto"
+                                        >
+                                            <Button size="sm" className="w-full sm:w-auto">
+                                                Manage Learners
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+            </div>
+        );
+    }
 
     return (
         <div className="mx-auto max-w-3xl space-y-6">
@@ -120,8 +203,8 @@ export default function NewStudentPage() {
                     </Button>
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Add New Student</h1>
-                    <p className="mt-2 text-gray-600">Register a new student in the system</p>
+                    <h1 className="text-3xl font-bold text-gray-900">Add New Learner</h1>
+                    <p className="mt-2 text-gray-600">Create learner identity and place the learner in a cohort.</p>
                 </div>
             </div>
 
@@ -221,75 +304,15 @@ export default function NewStudentPage() {
                         </div>
                     </div>
 
-                    {/* Subject Selection */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Subject Enrollment</h3>
-
-                        {!formData.cohort ? (
-                            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-600">
-                                Please select a cohort first to view available subjects
-                            </div>
-                        ) : loadingSubjects ? (
-                            <div className="py-8 text-center">
-                                <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                                <p className="mt-2 text-sm text-gray-600">Loading subjects...</p>
-                            </div>
-                        ) : subjects.length === 0 ? (
-                            <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-600">
-                                No subjects available for this cohort's curriculum
-                            </div>
-                        ) : (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-3">
-                                    Select Subject(s) <span className="text-gray-500">(Optional - can be added later)</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {subjects.map((subject) => {
-                                        const isSelected = formData.subject_ids.includes(subject.id);
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={subject.id}
-                                                onClick={() => handleSubjectToggle(subject.id)}
-                                                className={`
-                                                    px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all
-                                                    ${isSelected
-                                                        ? 'bg-blue-600 text-white border-blue-600'
-                                                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                                                    }
-                                                `}
-                                            >
-                                                {subject.code} - {subject.name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {formData.subject_ids.length > 0 && (
-                                    <div className="mt-3">
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            Selected subjects ({formData.subject_ids.length}):
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {formData.subject_ids.map(id => {
-                                                const subject = subjects.find(s => s.id === id);
-                                                return subject ? (
-                                                    <Badge key={id} variant="success">
-                                                        {subject.code}
-                                                    </Badge>
-                                                ) : null;
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+                        Learner creation places the learner in a cohort only. Assign subjects separately from cohort subject management.
                     </div>
 
                     {/* Actions */}
                     <div className="flex gap-4 pt-4 border-t">
                         <Button type="submit" disabled={loading}>
                             <Save className="mr-2 h-4 w-4" />
-                            {loading ? 'Creating...' : 'Create Student'}
+                            {loading ? 'Creating...' : 'Create Learner'}
                         </Button>
                         <Link href="/learners">
                             <Button type="button" variant="ghost">

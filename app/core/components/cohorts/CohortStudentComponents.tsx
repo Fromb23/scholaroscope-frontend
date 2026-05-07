@@ -145,7 +145,6 @@ interface AvailablePanelProps {
     searchValue: string;
     loading: boolean;
     onSearchChange: (v: string) => void;
-    onSearch: () => void;
     onToggle: (id: number) => void;
     onSelectAll: () => void;
     onEnrollClick: () => void;
@@ -153,7 +152,7 @@ interface AvailablePanelProps {
 
 export function AvailablePanel({
     students, selected, searchValue, loading,
-    onSearchChange, onSearch, onToggle, onSelectAll, onEnrollClick,
+    onSearchChange, onToggle, onSelectAll, onEnrollClick,
 }: AvailablePanelProps) {
     const allSelected = students.length > 0 && selected.size === students.length;
 
@@ -174,15 +173,13 @@ export function AvailablePanel({
                 </Button>
             </div>
 
-            <div className="flex gap-2">
+            <div>
                 <input
                     value={searchValue}
                     onChange={e => onSearchChange(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && onSearch()}
                     placeholder="Search available..."
-                    className="flex-1 pl-4 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-4 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <Button size="sm" variant="secondary" onClick={onSearch}>Search</Button>
             </div>
 
             {students.length > 0 && (

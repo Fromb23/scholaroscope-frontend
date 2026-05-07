@@ -6,6 +6,9 @@ import {
   Subject,
   Cohort,
   CohortSubject,
+  CohortSubjectLearnerListResponse,
+  BulkSubjectEnrollResponse,
+  BulkSubjectUnenrollResponse,
   SubjectDetail,
   ListQueryParams,
   CohortDetail,
@@ -17,6 +20,50 @@ import { PaginatedResponse } from './sessions';
 interface CurriculumQuery {
   organization?: number;
   is_active?: boolean;
+}
+
+const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';
+
+export async function listCohortSubjects(cohortId: number): Promise<CohortSubject[]> {
+  const response = await apiClient.get<CohortSubject[] | PaginatedResponse<CohortSubject>>(
+    `${KERNEL_COHORT_SUBJECTS_BASE}/`,
+    { params: { cohort: cohortId } }
+  );
+
+  return Array.isArray(response.data)
+    ? response.data
+    : response.data.results ?? [];
+}
+
+export async function getCohortSubjectLearners(
+  cohortSubjectId: number
+): Promise<CohortSubjectLearnerListResponse> {
+  const response = await apiClient.get<CohortSubjectLearnerListResponse>(
+    `${KERNEL_COHORT_SUBJECTS_BASE}/${cohortSubjectId}/learners/`
+  );
+  return response.data;
+}
+
+export async function bulkEnrollCohortSubjectLearners(
+  cohortSubjectId: number,
+  studentIds: number[]
+): Promise<BulkSubjectEnrollResponse> {
+  const response = await apiClient.post<BulkSubjectEnrollResponse>(
+    `${KERNEL_COHORT_SUBJECTS_BASE}/${cohortSubjectId}/learners/bulk-enroll/`,
+    { student_ids: studentIds }
+  );
+  return response.data;
+}
+
+export async function bulkUnenrollCohortSubjectLearners(
+  cohortSubjectId: number,
+  studentIds: number[]
+): Promise<BulkSubjectUnenrollResponse> {
+  const response = await apiClient.post<BulkSubjectUnenrollResponse>(
+    `${KERNEL_COHORT_SUBJECTS_BASE}/${cohortSubjectId}/learners/bulk-unenroll/`,
+    { student_ids: studentIds }
+  );
+  return response.data;
 }
 
 
@@ -265,34 +312,35 @@ export const cohortSubjectAPI = {
   getAll: async (params?: {
     cohort?: number | string;
     subject?: number | string;
+    academic_year?: number | string;
   }) => {
-    const response = await apiClient.get<CohortSubject[]>('/cohort-subjects/', { params });
+    const response = await apiClient.get<CohortSubject[] | PaginatedResponse<CohortSubject>>(
+      `${KERNEL_COHORT_SUBJECTS_BASE}/`,
+      { params }
+    );
     return response.data;
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<CohortSubject>(`/cohort-subjects/${id}/`);
+    const response = await apiClient.get<CohortSubject>(`${KERNEL_COHORT_SUBJECTS_BASE}/${id}/`);
     return response.data;
   },
 
   create: async (data: Partial<CohortSubject>) => {
-    const response = await apiClient.post<CohortSubject>('/cohort-subjects/', data);
+    const response = await apiClient.post<CohortSubject>(`${KERNEL_COHORT_SUBJECTS_BASE}/`, data);
     return response.data;
   },
 
   update: async (id: number, data: Partial<CohortSubject>) => {
-    const response = await apiClient.patch<CohortSubject>(`/cohort-subjects/${id}/`, data);
+    const response = await apiClient.patch<CohortSubject>(`${KERNEL_COHORT_SUBJECTS_BASE}/${id}/`, data);
     return response.data;
   },
-  getByCohort: async (cohortId: number): Promise<CohortSubject[] | PaginatedResponse<CohortSubject>> => {
-    const res = await apiClient.get<CohortSubject[] | PaginatedResponse<CohortSubject>>(
-      `/cohort-subjects/?cohort=${cohortId}`
-    );
-    return res.data;
+  getByCohort: async (cohortId: number): Promise<CohortSubject[]> => {
+    return listCohortSubjects(cohortId);
   },
 
   delete: async (id: number) => {
-    await apiClient.delete(`/cohort-subjects/${id}/`);
+    await apiClient.delete(`${KERNEL_COHORT_SUBJECTS_BASE}/${id}/`);
   },
   getUnattended: async (): Promise<{
     id: number;
@@ -300,7 +348,7 @@ export const cohortSubjectAPI = {
     subject_name: string;
     has_active_instructor: boolean;
   }[]> => {
-    const response = await apiClient.get('/cohort-subjects/');
+    const response = await apiClient.get(`${KERNEL_COHORT_SUBJECTS_BASE}/`);
     const data = Array.isArray(response.data)
       ? response.data
       : (response.data as { results: unknown[] })?.results ?? [];
@@ -313,4 +361,8 @@ export const cohortSubjectAPI = {
       has_active_instructor: boolean;
     }[];
   },
+  listCohortSubjects,
+  getLearners: getCohortSubjectLearners,
+  bulkEnrollLearners: bulkEnrollCohortSubjectLearners,
+  bulkUnenrollLearners: bulkUnenrollCohortSubjectLearners,
 };

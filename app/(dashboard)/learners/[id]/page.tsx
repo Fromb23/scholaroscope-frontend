@@ -5,13 +5,14 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, Edit, Mail, Phone, User,
-    GraduationCap, FileText, Trash2, UserPlus, UserMinus,
+    GraduationCap, FileText, Trash2, UserPlus, UserMinus, BookOpen,
 } from 'lucide-react';
 import { useStudent } from '@/app/core/hooks/useStudents';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useCohortSubjectsByCohort } from '@/app/core/hooks/useCohortSubjects';
 import { useStudentAttendanceHistory } from '@/app/core/hooks/useSessions';
 import { useAuth } from '@/app/context/AuthContext';
-import { hasCapability } from '@/app/utils/permissions';
+import { hasCapability, isAdminOrAbove } from '@/app/utils/permissions';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -77,6 +78,7 @@ export default function LearnerDetailPage() {
 
     const canEdit = !!user && hasCapability(activeRole, 'EDIT_LEARNER');
     const canManage = !!user && hasCapability(activeRole, 'MANAGE_ENROLLMENT');
+    const canManageSubjectParticipation = isAdminOrAbove(user, activeRole);
 
     const availableCohorts = useMemo(() => {
         if (!cohorts || !student) return [];
@@ -90,6 +92,21 @@ export default function LearnerDetailPage() {
     );
     const historyEnrollments = useMemo(
         () => student?.enrollments.filter(e => !e.is_active) ?? [],
+        [student]
+    );
+    const currentEnrollment = useMemo(
+        () => (
+            activeEnrollments.find((enrollment) => enrollment.cohort === student?.primary_cohort)
+            ?? activeEnrollments[0]
+            ?? null
+        ),
+        [activeEnrollments, student?.primary_cohort]
+    );
+    const currentCohortId = currentEnrollment?.cohort ?? null;
+    const currentCohortName = currentEnrollment?.cohort_name ?? null;
+    const { subjects: cohortSubjects, loading: cohortSubjectsLoading } = useCohortSubjectsByCohort(currentCohortId);
+    const currentSubjectIds = useMemo(
+        () => new Set((student?.current_subjects ?? []).map(subject => subject.id)),
         [student]
     );
 
@@ -330,6 +347,80 @@ export default function LearnerDetailPage() {
                     }
                 </Card>
             </div>
+
+            <Card>
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <h2 className="text-lg font-semibold text-gray-900">Subject Participation</h2>
+                        <p className="text-sm text-gray-500">
+                            {canManageSubjectParticipation
+                                ? 'Use the learner&apos;s current cohort subject offerings to manage explicit subject participation.'
+                                : 'Read-only subject participation status for the learner&apos;s current cohort subjects.'}
+                        </p>
+                    </div>
+
+                    {!currentCohortId ? (
+                        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
+                            {canManageSubjectParticipation
+                                ? 'Assign this learner to a cohort before managing subject participation.'
+                                : 'This learner must be assigned to a cohort before subject participation can be shown.'}
+                        </div>
+                    ) : cohortSubjectsLoading ? (
+                        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
+                            Loading subject offerings for {currentCohortName ?? 'the current cohort'}...
+                        </div>
+                    ) : cohortSubjects.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
+                            {canManageSubjectParticipation
+                                ? `No subjects are linked to ${currentCohortName ?? 'this cohort'} yet.`
+                                : `No subject offerings are linked to ${currentCohortName ?? 'this cohort'} yet.`}
+                        </div>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {cohortSubjects.map((subject) => {
+                                const isParticipating = currentSubjectIds.has(subject.id);
+
+                                return (
+                                    <div key={subject.id} className="rounded-xl border border-gray-200 p-4">
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h3 className="text-base font-semibold text-gray-900">{subject.subject_name}</h3>
+                                                    <Badge variant="info">{subject.subject_code}</Badge>
+                                                    <Badge variant={isParticipating ? 'default' : 'warning'}>
+                                                        {isParticipating ? 'Participating' : 'Not Participating'}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-sm text-gray-500">
+                                                    {canManageSubjectParticipation
+                                                        ? isParticipating
+                                                            ? 'This learner is currently enrolled in the cohort subject.'
+                                                            : 'Open the cohort subject learner page to add this learner to the subject offering.'
+                                                        : isParticipating
+                                                            ? 'This learner is currently participating in this subject offering.'
+                                                            : 'This learner is not currently participating in this subject offering.'}
+                                                </p>
+                                            </div>
+
+                                            {canManageSubjectParticipation ? (
+                                                <Link
+                                                    href={`/academic/cohort-subjects/${subject.id}/learners`}
+                                                    className="w-full sm:w-auto"
+                                                >
+                                                    <Button className="w-full sm:w-auto">
+                                                        <BookOpen className="mr-2 h-4 w-4" />
+                                                        Manage Subject Learners
+                                                    </Button>
+                                                </Link>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </Card>
 
             {/* Current Subjects */}
             {student.current_subjects && student.current_subjects.length > 0 && (

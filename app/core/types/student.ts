@@ -26,6 +26,30 @@ export interface StudentCohortEnrollment {
   end_reason: 'COMPLETED' | 'GRADUATED' | 'TRANSFERRED' | 'WRONG_ASSIGNMENT' | 'WITHDRAWN' | 'PROMOTED' | null;
 }
 
+export interface StudentSummary {
+  id: number;
+  admission_number: string;
+  full_name?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  email?: string | null;
+  phone?: string | null;
+  primary_cohort_name?: string | null;
+  status?: string;
+  status_display?: string;
+}
+
+export interface StudentCurrentSubject {
+  id: number;
+  code: string;
+  name: string;
+  cohort: string;
+  is_compulsory: boolean;
+  cohort_id?: number;
+  subject_id?: number;
+}
+
 export interface Student {
   id: number;
   admission_number: string;
@@ -55,18 +79,12 @@ export interface Student {
 }
 
 export interface StudentDetail extends Student {
-  [x: string]: any;
+  [x: string]: unknown;
   // All enrollments (active and inactive)
   enrollments: StudentCohortEnrollment[];
 
-  // Current subjects from all active cohorts
-  current_subjects: Array<{
-    id: number;
-    code: string;
-    name: string;
-    cohort: string;
-    is_compulsory: boolean;
-  }>;
+  // Explicit subject participation. `id` is the CohortSubject id.
+  current_subjects: StudentCurrentSubject[];
 
   attendance_summary?: {
     total: number;

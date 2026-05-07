@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, Calendar, Users, TrendingUp, CheckCircle,
@@ -35,8 +35,14 @@ import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 export default function InstructorProgressPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const instructorId = Number(params.id);
     const goBack = useBackNavigation('/admin/instructors');
+    const initialCohortSubjectId = Number(searchParams.get('cohort_subject_id'));
+    const hasInitialCohortSubjectId = Number.isFinite(initialCohortSubjectId) && initialCohortSubjectId > 0;
+    const initialCohortName = searchParams.get('cohort_name');
+    const initialSubjectName = searchParams.get('subject_name');
+    const shouldOpenTeachingModal = searchParams.get('open') === 'teaching' || hasInitialCohortSubjectId;
 
     const {
         instructor, sessions, loading, error,
@@ -50,6 +56,12 @@ export default function InstructorProgressPage() {
     const [resetOpen, setResetOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [cohortOpen, setCohortOpen] = useState(false);
+
+    useEffect(() => {
+        if (shouldOpenTeachingModal) {
+            setCohortOpen(true);
+        }
+    }, [shouldOpenTeachingModal]);
 
     const flash = (type: 'success' | 'error', msg: string) => {
         setFeedback({ type, msg });
@@ -134,6 +146,13 @@ export default function InstructorProgressPage() {
                     {feedback.msg}
                 </div>
             )}
+
+            {initialSubjectName && initialCohortName ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                    Manage teaching assignment for <span className="font-medium text-blue-900">{initialSubjectName}</span> in{' '}
+                    <span className="font-medium text-blue-900">{initialCohortName}</span>.
+                </div>
+            ) : null}
 
             {/* Header */}
             <div className="space-y-3">
@@ -315,6 +334,9 @@ export default function InstructorProgressPage() {
                 onClose={() => setCohortOpen(false)}
                 instructorId={instructorId}
                 instructorName={instructor.full_name}
+                initialCohortSubjectId={hasInitialCohortSubjectId ? initialCohortSubjectId : null}
+                initialCohortName={initialCohortName}
+                initialSubjectName={initialSubjectName}
                 onAssignmentsChanged={refetch}
             />
         </div>

@@ -2,6 +2,8 @@
 // app/types/academic.ts - Updated Academic Types
 // ============================================================================
 
+import type { StudentSummary } from './student';
+
 export interface ListQueryParams {
   organization?: number;
   is_active?: boolean;
@@ -76,6 +78,10 @@ export interface SubjectDetail extends Subject {
     cohort_id: number;
     cohort_name: string;
     is_compulsory: boolean;
+    cohort_subject_id?: number | null;
+    academic_year_name?: string | null;
+    learner_count?: number | null;
+    available_count?: number | null;
   }[];
 }
 
@@ -99,14 +105,49 @@ export interface Cohort {
 export interface CohortSubject {
   id: number;
   cohort: number;
+  cohort_id?: number;
   cohort_name: string;
   cohort_level: string;
   subject: number;
+  subject_id?: number;
   subject_name: string;
   subject_code: string;
   curriculum_name: string;
   curriculum_type: CurriculumType;
   is_compulsory: boolean;
+}
+
+export interface CohortSubjectLearnerCounts {
+  enrolled: number;
+  available: number;
+  cohort_total: number;
+}
+
+export interface CohortSubjectLearnerListResponse {
+  cohort_subject_id: number;
+  cohort_id: number;
+  subject_id: number;
+  subject_name: string;
+  counts: CohortSubjectLearnerCounts;
+  enrolled: StudentSummary[];
+  available: StudentSummary[];
+}
+
+export interface BulkSubjectEnrollResponse {
+  cohort_subject_id: number;
+  created: number;
+  reactivated: number;
+  already_active: number;
+  rejected: number;
+  processed: number;
+}
+
+export interface BulkSubjectUnenrollResponse {
+  cohort_subject_id: number;
+  deactivated: number;
+  already_inactive: number;
+  missing: number;
+  processed: number;
 }
 
 export interface CohortDetail extends Cohort {

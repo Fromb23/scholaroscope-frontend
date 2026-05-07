@@ -18,6 +18,8 @@ import {
     UserUpdatePayload,
 } from '@/app/core/types/globalUsers';
 
+const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
+
 
 
 export interface InstructorProfile extends GlobalUser {
@@ -131,7 +133,7 @@ export const instructorsAPI = {
         }
     },
     getCohortSubjects: async (): Promise<AvailableCohortSubject[]> => {
-        const response = await apiClient.get('/cohort-subjects/');
+        const response = await apiClient.get(`${KERNEL_COHORT_SUBJECTS_BASE}/`);
         const data = response.data;
         return Array.isArray(data) ? data : (data as { results: AvailableCohortSubject[] }).results ?? [];
     },
@@ -193,7 +195,7 @@ export const instructorsAPI = {
   },
     getInstructorHistory: async (cohortSubjectId: number) => {
         const response = await apiClient.get(
-            `/cohort-subjects/${cohortSubjectId}/instructor_history/`
+            `${KERNEL_COHORT_SUBJECTS_BASE}/${cohortSubjectId}/instructor_history/`
         );
         return response.data as {
             cohort_subject_id: number;

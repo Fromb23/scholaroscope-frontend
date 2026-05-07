@@ -75,9 +75,19 @@ interface SubjectNameGroupProps {
     onEdit: (s: Subject) => void;
     onDelete: (id: number) => void;
     onAddLevel: (s: Subject) => void;
+    onAssignToCohort: (s: Subject) => void;
+    canManage: boolean;
 }
 
-export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }: SubjectNameGroupProps) {
+export function SubjectNameGroup({
+    name,
+    levels,
+    onEdit,
+    onAddLevel,
+    onDelete,
+    onAssignToCohort,
+    canManage,
+}: SubjectNameGroupProps) {
     const [open, setOpen] = useState(true);
 
     return (
@@ -95,14 +105,16 @@ export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }:
                 <Badge variant="default" size="sm">
                     {levels.length} level{levels.length !== 1 ? 's' : ''}
                 </Badge>
-                <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); onAddLevel(levels[0]); }}
-                    className="p-1 rounded-md text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors"
-                    title="Add level"
-                >
-                    <Plus className="h-3.5 w-3.5" />
-                </button>
+                {canManage ? (
+                    <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); onAddLevel(levels[0]); }}
+                        className="p-1 rounded-md text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors"
+                        title="Add level"
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                    </button>
+                ) : null}
             </button>
 
             {open && (
@@ -110,16 +122,31 @@ export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }:
                     {levels.map(subject => (
                         <div
                             key={subject.id}
-                            className="flex items-center gap-4 px-4 py-2.5 pl-9 bg-gray-50 hover:bg-gray-100 transition-colors"
+                            className="flex flex-col gap-3 bg-gray-50 px-4 py-3 pl-9 transition-colors hover:bg-gray-100 sm:flex-row sm:items-center"
                         >
-                            <span className="font-mono text-xs text-gray-400 w-24 shrink-0">{subject.code}</span>
-                            <Badge variant="blue" size="sm" className="shrink-0">{subject.level}</Badge>
-                            {subject.description && (
-                                <p className="text-xs text-gray-400 flex-1 truncate hidden md:block">
-                                    {subject.description}
-                                </p>
-                            )}
-                            <div className="flex items-center gap-1 ml-auto shrink-0">
+                            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="w-24 shrink-0 font-mono text-xs text-gray-400">{subject.code}</span>
+                                    <Badge variant="blue" size="sm" className="shrink-0">{subject.level}</Badge>
+                                </div>
+                                {subject.description && (
+                                    <p className="truncate text-xs text-gray-400">
+                                        {subject.description}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end">
+                                {canManage ? (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => onAssignToCohort(subject)}
+                                        className="w-full sm:w-auto"
+                                    >
+                                        Assign to Cohort
+                                    </Button>
+                                ) : null}
                                 <a
                                     href={`/academic/subjects/${subject.id}`}
                                     className="p-1.5 rounded-lg text-gray-400 hover:bg-purple-50 hover:text-purple-600 transition-colors"
@@ -127,18 +154,22 @@ export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }:
                                 >
                                     <ExternalLink className="h-3.5 w-3.5" />
                                 </a>
-                                <button
-                                    onClick={() => onEdit(subject)}
-                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                                >
-                                    <Edit2 className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                    onClick={() => onDelete(subject.id)}
-                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                                {canManage ? (
+                                    <>
+                                        <button
+                                            onClick={() => onEdit(subject)}
+                                            className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                        >
+                                            <Edit2 className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={() => onDelete(subject.id)}
+                                            className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                    </>
+                                ) : null}
                             </div>
                         </div>
                     ))}
@@ -157,10 +188,12 @@ interface CurriculumGroupProps {
     onEdit: (s: Subject) => void;
     onDelete: (id: number) => void;
     onAddLevel: (s: Subject) => void;
+    onAssignToCohort: (s: Subject) => void;
+    canManage: boolean;
 }
 
 export function CurriculumGroup({
-    curriculumName, curriculumType, subjectGroups, onEdit, onDelete, onAddLevel,
+    curriculumName, curriculumType, subjectGroups, onEdit, onDelete, onAddLevel, onAssignToCohort, canManage,
 }: CurriculumGroupProps) {
     const [open, setOpen] = useState(true);
     const totalSubjects = Array.from(subjectGroups.values()).flat().length;
@@ -201,6 +234,8 @@ export function CurriculumGroup({
                             onEdit={onEdit}
                             onDelete={onDelete}
                             onAddLevel={onAddLevel}
+                            onAssignToCohort={onAssignToCohort}
+                            canManage={canManage}
                         />
                     ))}
                 </div>
