@@ -12,6 +12,7 @@ import {
     BookOpen, Edit2, Trash2, ChevronDown, ChevronRight,
     Plus,
     ExternalLink,
+    Link2,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -74,9 +75,17 @@ interface SubjectNameGroupProps {
     onEdit: (s: Subject) => void;
     onDelete: (id: number) => void;
     onAddLevel: (s: Subject) => void;
+    onManageCohortLink: (s: Subject) => void;
 }
 
-export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }: SubjectNameGroupProps) {
+export function SubjectNameGroup({
+    name,
+    levels,
+    onEdit,
+    onAddLevel,
+    onDelete,
+    onManageCohortLink,
+}: SubjectNameGroupProps) {
     const [open, setOpen] = useState(true);
 
     return (
@@ -127,6 +136,14 @@ export function SubjectNameGroup({ name, levels, onEdit, onAddLevel, onDelete }:
                                     <ExternalLink className="h-3.5 w-3.5" />
                                 </a>
                                 <button
+                                    type="button"
+                                    onClick={() => onManageCohortLink(subject)}
+                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+                                    title="Manage Cohort Link"
+                                >
+                                    <Link2 className="h-3.5 w-3.5" />
+                                </button>
+                                <button
                                     onClick={() => onEdit(subject)}
                                     className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                                 >
@@ -156,10 +173,11 @@ interface CurriculumGroupProps {
     onEdit: (s: Subject) => void;
     onDelete: (id: number) => void;
     onAddLevel: (s: Subject) => void;
+    onManageCohortLink: (s: Subject) => void;
 }
 
 export function CurriculumGroup({
-    curriculumName, curriculumType, subjectGroups, onEdit, onDelete, onAddLevel,
+    curriculumName, curriculumType, subjectGroups, onEdit, onDelete, onAddLevel, onManageCohortLink,
 }: CurriculumGroupProps) {
     const [open, setOpen] = useState(true);
     const totalSubjects = Array.from(subjectGroups.values()).flat().length;
@@ -200,6 +218,7 @@ export function CurriculumGroup({
                             onEdit={onEdit}
                             onDelete={onDelete}
                             onAddLevel={onAddLevel}
+                            onManageCohortLink={onManageCohortLink}
                         />
                     ))}
                 </div>
@@ -252,7 +271,7 @@ export function SubjectFormModal({
             setForm({ curriculum: defaultCurriculumId, code: '', name: '', level: '', description: '' });
         }
         setError(null);
-    }, [editing, isOpen, addingLevelTo]);
+    }, [addingLevelTo, defaultCurriculumId, editing, isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

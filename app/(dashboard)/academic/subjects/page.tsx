@@ -19,12 +19,13 @@ import {
     CurriculumGroup,
     SubjectFormModal,
 } from '@/app/core/components/academic/SubjectComponents';
+import { SubjectCohortLinkModal } from '@/app/core/components/academic/SubjectCohortLinkModal';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Subject, SubjectFormData } from '@/app/core/types/academic';
 
 export default function SubjectsPage() {
-    const { subjects, loading, createSubject, updateSubject, deleteSubject } = useSubjects();
+    const { subjects, loading, refetch, createSubject, updateSubject, deleteSubject } = useSubjects();
     const { curricula } = useCurricula();
 
     const [search, setSearch] = useState('');
@@ -32,6 +33,7 @@ export default function SubjectsPage() {
     const [editing, setEditing] = useState<Subject | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
     const [addingLevelTo, setAddingLevelTo] = useState<Subject | null>(null);
+    const [linkingSubject, setLinkingSubject] = useState<Subject | null>(null);
 
     const grouped = useMemo(() => groupSubjects(subjects, search), [subjects, search]);
 
@@ -39,6 +41,8 @@ export default function SubjectsPage() {
     const openAddLevel = (s: Subject) => { setEditing(null); setAddingLevelTo(s); setIsModalOpen(true); };
     const openEdit = (s: Subject) => { setEditing(s); setAddingLevelTo(null); setIsModalOpen(true); };
     const closeModal = () => { setIsModalOpen(false); setEditing(null); setAddingLevelTo(null); };
+    const openCohortLinkModal = (s: Subject) => { setLinkingSubject(s); };
+    const closeCohortLinkModal = () => { setLinkingSubject(null); };
 
     const handleSave = async (data: SubjectFormData, editingId?: number) => {
         if (editingId) {
@@ -128,6 +132,7 @@ export default function SubjectsPage() {
                             onEdit={openEdit}
                             onDelete={handleDelete}
                             onAddLevel={openAddLevel}
+                            onManageCohortLink={openCohortLinkModal}
                         />
                     ))}
                 </div>
@@ -141,6 +146,13 @@ export default function SubjectsPage() {
                 onSave={handleSave}
                 defaultCurriculumId={curricula[0]?.id ?? 0}
                 addingLevelTo={addingLevelTo}
+            />
+
+            <SubjectCohortLinkModal
+                isOpen={!!linkingSubject}
+                onClose={closeCohortLinkModal}
+                subject={linkingSubject}
+                onLinkChanged={refetch}
             />
         </div>
     );

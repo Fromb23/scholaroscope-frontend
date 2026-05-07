@@ -13,6 +13,7 @@ import {
   Term,
   Curriculum,
   Subject,
+  SubjectDetail,
   Cohort,
   CohortDetail,
   CohortSubject,
@@ -26,6 +27,11 @@ export interface CohortFilters {
   curriculum?: number;
   organization?: number;
   level?: string;
+}
+
+interface CohortSubjectFilters {
+  cohort?: number;
+  subject?: number;
 }
 
 // ── useAcademicYears ──────────────────────────────────────────────────────
@@ -350,6 +356,29 @@ export const useSubjects = (curriculumId?: number) => {
   return { subjects, loading, error, refetch: fetchSubjects, createSubject, updateSubject, deleteSubject };
 };
 
+// ── useSubjectDetail ──────────────────────────────────────────────────────
+
+export const useSubjectDetail = (subjectId: number | null) => {
+  const query = useQuery<SubjectDetail, Error>({
+    queryKey: academicKeys.subjects.detail(subjectId),
+    queryFn: async () => {
+      if (!subjectId) throw new Error('Subject ID is required');
+      return subjectAPI.getById(subjectId);
+    },
+    enabled: !!subjectId,
+    staleTime: 60 * 1000,
+  });
+
+  return {
+    subject: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: async () => {
+      await query.refetch();
+    },
+  };
+};
+
 // ── useCohortSubjects ─────────────────────────────────────────────────────
 
 export const useCohortSubjects = (cohortId?: number) => {
@@ -380,6 +409,38 @@ export const useCohortSubjects = (cohortId?: number) => {
   return { cohortSubjects, loading, error };
 };
 
+// ── useSubjectCohortLinks ────────────────────────────────────────────────
+
+export const useSubjectCohortLinks = (filters?: CohortSubjectFilters) => {
+  const { organizationId } = useOrganizationContext();
+  const paramsKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
+  const normalizedFilters = useMemo<CohortSubjectFilters>(
+    () => JSON.parse(paramsKey) as CohortSubjectFilters,
+    [paramsKey]
+  );
+
+  const query = useQuery<CohortSubject[], Error>({
+    queryKey: academicKeys.cohortSubjects.list(organizationId, paramsKey),
+    queryFn: async () => {
+      const data = await cohortSubjectAPI.getAll(normalizedFilters);
+      return Array.isArray(data)
+        ? data
+        : (data as { results?: CohortSubject[] })?.results ?? [];
+    },
+    enabled: Object.keys(normalizedFilters).length > 0,
+    staleTime: 30 * 1000,
+  });
+
+  return {
+    cohortSubjects: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: async () => {
+      await query.refetch();
+    },
+  };
+};
+
 // ── useCohorts ────────────────────────────────────────────────────────────
 
 export const useCohorts = (filters?: CohortFilters) => {
@@ -389,11 +450,18 @@ export const useCohorts = (filters?: CohortFilters) => {
   const { organizationId } = useOrganizationContext();
 
   const filtersKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
+  const normalizedFilters = useMemo<CohortFilters>(
+    () => JSON.parse(filtersKey) as CohortFilters,
+    [filtersKey]
+  );
 
   const fetchCohorts = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await cohortAPI.getAll({ ...filters, organization: organizationId || undefined });
+      const data = await cohortAPI.getAll({
+        ...normalizedFilters,
+        organization: organizationId || undefined
+      });
       setCohorts(Array.isArray(data) ? data : (data as { results?: Cohort[] })?.results ?? []);
       setError(null);
     } catch (err) {
@@ -401,9 +469,9 @@ export const useCohorts = (filters?: CohortFilters) => {
     } finally {
       setLoading(false);
     }
-  }, [filters, organizationId]);
+  }, [normalizedFilters, organizationId]);
 
-  useEffect(() => { fetchCohorts(); }, [fetchCohorts, filtersKey, organizationId]);
+  useEffect(() => { fetchCohorts(); }, [fetchCohorts]);
 
   const createCohort = async (data: {
     curriculum: number;
@@ -426,7 +494,7 @@ export const useCohorts = (filters?: CohortFilters) => {
   }) => {
     try {
       const updated = await cohortAPI.update(id, data);
-      setCohorts(prev => prev.map(c => c.id === id ? updated : c));
+      await fetchCohorts();
       return updated;
     } catch (err) {
       throw new Error(extractErrorMessage(err as ApiError, 'Failed to update cohort'));

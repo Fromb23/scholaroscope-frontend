@@ -24,6 +24,23 @@ import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
 
+function formatCohortSaveError(err: ApiError): string {
+    const data = err?.response?.data;
+
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+        return Object.entries(data)
+            .map(([field, value]) => {
+                const message = Array.isArray(value) ? value.join(', ') : value;
+                if (field === 'detail' || field === 'non_field_errors') return message;
+                const label = field.replace(/_/g, ' ');
+                return `${label}: ${message}`;
+            })
+            .join('\n');
+    }
+
+    return extractErrorMessage(err, 'Failed to save cohort.');
+}
+
 // ── SubjectPanel ──────────────────────────────────────────────────────────
 
 interface CohortSubjectLink {
@@ -286,7 +303,7 @@ export function CohortFormModal({
             setFormError(null);
             setSubjectPanelOpen(false);
         }
-    }, [isOpen]);
+    }, [initialData, isOpen]);
 
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {
@@ -298,7 +315,7 @@ export function CohortFormModal({
             await onSave(formData, !!editingCohort, editingCohort?.id);
             onClose();
         } catch (err) {
-            setFormError(extractErrorMessage(err as ApiError, 'Failed to save cohort.'));
+            setFormError(formatCohortSaveError(err as ApiError));
         } finally { setSaving(false); }
     };
 

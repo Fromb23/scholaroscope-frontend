@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Users, UserPlus, ChevronRight } from 'lucide-react';
@@ -15,7 +15,6 @@ import { Badge } from '@/app/components/ui/Badge';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import type { Student } from '@/app/core/types/student';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success', GRADUATED: 'info', TRANSFERRED: 'warning',
@@ -24,7 +23,7 @@ const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'>
 
 function LearnersPageInner() {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { activeRole } = useAuth();
     const canCreate = hasCapability(activeRole, 'CREATE_LEARNER');
 
     const [filters, updateFilters, backUrl] = usePersistedFilters('/learners', {
@@ -49,6 +48,7 @@ function LearnersPageInner() {
     const { students, pagination, loading } = useStudents(
         filters.cohort ? {
             cohort: filters.cohort,
+            cohort_subject: filters.cohort_subject || undefined,
             status: filters.status || undefined,
             search: filters.q || undefined,
             page: filters.page,
@@ -57,14 +57,6 @@ function LearnersPageInner() {
     );
 
     const { stats } = useStudentStats();
-
-    // ── Filtered students by cohort_subject ───────────────────────────────
-    const displayedStudents = useMemo(() => {
-        if (!filters.cohort_subject) return students;
-        // cohort subject filter is server-side not yet supported
-        // filter client-side by checking current_subjects
-        return students;
-    }, [students, filters.cohort_subject]);
 
     const handleCurriculumChange = (id: number | null) =>
         updateFilters({ curriculum: id, cohort: null, cohort_subject: null, page: 1 });
@@ -212,11 +204,11 @@ function LearnersPageInner() {
                 </Card>
             ) : (
                 <DataTable
-                    data={displayedStudents as unknown as Record<string, unknown>[]}
+                    data={students as unknown as Record<string, unknown>[]}
                     columns={columns}
                     loading={loading}
                     pagination={pagination}
-                    onPaginationChange={(page, size) => updateFilters({ page })}
+                    onPaginationChange={page => updateFilters({ page })}
                     onSearch={q => updateFilters({ q, page: 1 })}
                     searchPlaceholder="Search by name or admission number..."
                     emptyMessage="No students found in this cohort."

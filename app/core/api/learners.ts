@@ -4,7 +4,6 @@ import {
   StudentDetail,
   StudentFormData,
   StudentStats,
-  EnrollmentFormData,
   TransferFormData,
   StudentCohortEnrollment
 } from '../types/student';
@@ -13,6 +12,7 @@ export const learnersAPI = {
   // Get all students with optional filters
   getStudents: async (params?: {
     cohort?: number;
+    cohort_subject?: number;
     status?: string;
     gender?: string;
     search?: string;
