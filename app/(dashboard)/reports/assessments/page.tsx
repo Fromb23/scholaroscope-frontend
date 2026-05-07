@@ -4,16 +4,19 @@
 // app/(dashboard)/reports/assessments/page.tsx — render only
 // ============================================================================
 
-import { useState } from 'react';
-import { PieChart, Award, TrendingUp, Target } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { PieChart, Award, TrendingUp, Target, Download } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
+import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { ExportModal } from '@/app/components/export/ExportModal';
 import { useAssessmentTypeSummaries } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
+import type { ExportPayload } from '@/app/types/export';
 
 const TYPE_COLOR: Record<string, string> = {
     CAT: 'bg-blue-50   border-blue-200   text-blue-600',
@@ -27,6 +30,7 @@ const TYPE_COLOR: Record<string, string> = {
 
 export default function AssessmentsReportPage() {
     const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
+    const [exportOpen, setExportOpen] = useState(false);
     const { terms, loading: termsLoading } = useTerms();
     const { summaries, loading, error } = useAssessmentTypeSummaries({
         term: selectedTerm ?? undefined,
@@ -37,18 +41,56 @@ export default function AssessmentsReportPage() {
         ? summaries.reduce((s, r) => s + (r.average_score ?? 0), 0) / summaries.length
         : 0;
 
+    const exportPayload = useMemo<ExportPayload | null>(() => {
+        if (!selectedTerm || summaries.length === 0) return null;
+
+        return {
+            title: 'Assessment Report',
+            subtitle: 'Assessment type analysis',
+            metadata: {
+                term: terms.find(term => term.id === selectedTerm)?.name ?? 'Selected term',
+                generatedAt: new Date().toLocaleString(),
+            },
+            columns: [
+                { key: 'assessment_type', label: 'Assessment Type', width: 18 },
+                { key: 'subject_name', label: 'Subject', width: 22 },
+                { key: 'cohort_name', label: 'Cohort', width: 18 },
+                { key: 'term_name', label: 'Term', width: 14 },
+                { key: 'average_score', label: 'Average Score', format: 'percentage', width: 16, align: 'right' as const },
+                { key: 'total_assessments', label: 'Assessments', format: 'number', width: 14, align: 'right' as const },
+                { key: 'total_weight', label: 'Total Weight', format: 'number', width: 14, align: 'right' as const },
+            ],
+            rows: summaries,
+            fileName: 'assessment-report',
+            includeMetadata: true,
+            includeTimestamp: true,
+            sheetName: 'Assessment Report',
+            freezeHeader: true,
+            autoFilter: true,
+            orientation: 'landscape' as const,
+        };
+    }, [selectedTerm, summaries, terms]);
+
     return (
         <div className="space-y-6">
 
             {/* Header */}
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">Assessment Reports</h1>
                     <p className="text-gray-500 mt-1">
                         Assessment type analysis and pedagogy insights.
                     </p>
                 </div>
-                <PieChart className="h-7 w-7 text-orange-500" />
+                <div className="flex items-center gap-2">
+                    {exportPayload && (
+                        <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
+                            <Download className="h-4 w-4 mr-1.5" />
+                            Export
+                        </Button>
+                    )}
+                    <PieChart className="h-7 w-7 text-orange-500" />
+                </div>
             </div>
 
             {/* Stats */}
@@ -146,6 +188,16 @@ export default function AssessmentsReportPage() {
                         <p className="mt-2 text-sm text-gray-500">No assessment data for this term.</p>
                     </div>
                 </Card>
+            )}
+
+            {exportPayload && (
+                <ExportModal
+                    open={exportOpen}
+                    onClose={() => setExportOpen(false)}
+                    payload={exportPayload}
+                    defaultFormat="excel"
+                    title="Export Assessment Report"
+                />
             )}
 
         </div>

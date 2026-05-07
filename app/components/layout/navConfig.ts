@@ -199,6 +199,13 @@ export function getInstructorNav(
             { name: 'My Requests', href: '/requests', icon: Inbox, badge: 0 },
             { name: 'My Learners', href: '/learners', icon: Users },
             {
+                name: 'My Reports', href: '/reports/instructor', icon: FileBarChart,
+                children: [
+                    { name: 'Overview', href: '/reports/instructor', icon: LayoutDashboard },
+                    { name: 'My Cohort Subjects', href: '/reports/instructor/cohort-subjects', icon: BookOpen },
+                ],
+            },
+            {
                 name: 'Assessments', href: '/assessments', icon: ClipboardCheck,
                 children: [
                     { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },

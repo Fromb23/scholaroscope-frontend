@@ -11,6 +11,12 @@ import {
   ClassSummary,
   SubjectAnalysis,
   LongitudinalStudentData,
+  InstructorOverview,
+  InstructorCohortSubjectOverview,
+  InstructorCohortSubjectLearnersReport,
+  InstructorCohortSubjectPerformanceReport,
+  InstructorCohortSubjectTeachingActivityReport,
+  InstructorCohortSubjectCoverageReport,
   ComputeResponse,
   ReportFilters,
 } from '@/app/core/types/reporting';
@@ -180,36 +186,120 @@ export const assessmentTypeSummaryAPI = {
 // Reports API (Comprehensive Reports)
 // ============================================================================
 export const reportsAPI = {
-  getDashboardOverview: async () => {
+  getAdminOverview: async () => {
     const response = await apiClient.get<DashboardOverview>(
-      '/reporting/reports/dashboard_overview/'
+      '/reports/admin/overview/'
     );
     return response.data;
+  },
+
+  getAdminCohortSummary: async (cohortId: number, termId?: number | null) => {
+    const response = await apiClient.get<ClassSummary>(
+      `/reports/admin/cohorts/${cohortId}/`,
+      {
+        params: termId ? { term_id: termId } : undefined,
+      }
+    );
+    return response.data;
+  },
+
+  getAdminSubjectOverview: async (subjectId: number, termId?: number | null) => {
+    const response = await apiClient.get<SubjectAnalysis>(
+      `/reports/admin/subjects/${subjectId}/`,
+      {
+        params: termId ? { term_id: termId } : undefined,
+      }
+    );
+    return response.data;
+  },
+
+  getAdminStudentReportCard: async (studentId: number, termId?: number | null) => {
+    const response = await apiClient.get<StudentReportCard>(
+      `/reports/admin/students/${studentId}/report-card/`,
+      {
+        params: termId ? { term_id: termId } : undefined,
+      }
+    );
+    return response.data;
+  },
+
+  getInstructorOverview: async () => {
+    const response = await apiClient.get<InstructorOverview>(
+      '/reports/instructor/overview/'
+    );
+    return response.data;
+  },
+
+  getInstructorCohortSubjects: async () => {
+    const response = await apiClient.get<InstructorCohortSubjectOverview[]>(
+      '/reports/instructor/cohort-subjects/'
+    );
+    return response.data;
+  },
+
+  getInstructorCohortSubjectLearners: async (
+    cohortSubjectId: number,
+    termId?: number | null,
+  ) => {
+    const response = await apiClient.get<InstructorCohortSubjectLearnersReport>(
+      `/reports/instructor/cohort-subjects/${cohortSubjectId}/learners/`,
+      {
+        params: termId ? { term_id: termId } : undefined,
+      }
+    );
+    return response.data;
+  },
+
+  getInstructorCohortSubjectPerformance: async (
+    cohortSubjectId: number,
+    termId?: number | null,
+  ) => {
+    const response = await apiClient.get<InstructorCohortSubjectPerformanceReport>(
+      `/reports/instructor/cohort-subjects/${cohortSubjectId}/performance/`,
+      {
+        params: termId ? { term_id: termId } : undefined,
+      }
+    );
+    return response.data;
+  },
+
+  getInstructorCohortSubjectTeachingActivity: async (
+    cohortSubjectId: number,
+    termId?: number | null,
+  ) => {
+    const response = await apiClient.get<InstructorCohortSubjectTeachingActivityReport>(
+      `/reports/instructor/cohort-subjects/${cohortSubjectId}/teaching-activity/`,
+      {
+        params: termId ? { term_id: termId } : undefined,
+      }
+    );
+    return response.data;
+  },
+
+  getInstructorCohortSubjectCoverage: async (cohortSubjectId: number) => {
+    const response = await apiClient.get<InstructorCohortSubjectCoverageReport>(
+      `/reports/instructor/cohort-subjects/${cohortSubjectId}/coverage/`
+    );
+    return response.data;
+  },
+
+  getDashboardOverview: async () => {
+    return reportsAPI.getAdminOverview();
   },
 
   getStudentReportCard: async (studentId: number, termId: number) => {
-    const response = await apiClient.get<StudentReportCard>(
-      '/reporting/reports/student_report_card/',
-      { params: { student_id: studentId, term_id: termId } }
-    );
-    return response.data;
+    return reportsAPI.getAdminStudentReportCard(studentId, termId);
   },
 
   getClassSummary: async (termId: number, cohortId: number) => {
-    const response = await apiClient.get<ClassSummary>(
-      '/reporting/reports/class_summary/',
-      { params: { term_id: termId, cohort_id: cohortId } }
-    );
-    return response.data;
+    return reportsAPI.getAdminCohortSummary(cohortId, termId);
   },
 
   getSubjectAnalysis: async (termId: number, subjectId?: number): Promise<SubjectAnalysis> => {
-    const params: Record<string, number> = { term_id: termId };
-    if (subjectId) params.subject_id = subjectId;
-    const response = await apiClient.get<SubjectAnalysis>(
-      '/reporting/reports/subject_analysis/', { params }
-    );
-    return response.data;
+    if (!subjectId) {
+      throw new Error('Select a subject to view the subject report.');
+    }
+    return reportsAPI.getAdminSubjectOverview(subjectId, termId);
   },
 
   getLongitudinalStudent: async (studentId: number) => {

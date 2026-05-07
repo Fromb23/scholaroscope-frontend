@@ -1,21 +1,21 @@
 'use client';
 
-// ============================================================================
-// app/(dashboard)/reports/page.tsx — render only
-// ============================================================================
-
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 import {
     Users, BookOpen, FileText, Calendar,
-    BarChart3, PieChart, TrendingUp, Target,
-    Award, Settings, ArrowRight,
+    BarChart3, PieChart, Target,
+    Award, Settings, ArrowRight, Download,
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
+import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { ExportModal } from '@/app/components/export/ExportModal';
 import { useDashboardOverview } from '@/app/core/hooks/useReporting';
+import type { ExportPayload } from '@/app/types/export';
 
 const SECTIONS = [
     {
@@ -80,7 +80,57 @@ const COLOR_MAP: Record<string, { bg: string; icon: string }> = {
 };
 
 export default function ReportsPage() {
+    const [exportOpen, setExportOpen] = useState(false);
     const { overview, loading, error } = useDashboardOverview();
+
+    const exportPayload = useMemo<ExportPayload | null>(() => {
+        if (!overview) return null;
+
+        return {
+            title: 'Admin Overview',
+            subtitle: overview.organization.name,
+            metadata: {
+                academicYear: overview.academic_year?.name ?? 'No active academic year',
+                term: overview.current_term?.name ?? 'No active term',
+                generatedAt: new Date().toLocaleString(),
+            },
+            columns: [
+                { key: 'organization', label: 'Organization', width: 24 },
+                { key: 'academic_year', label: 'Academic Year', width: 18 },
+                { key: 'current_term', label: 'Current Term', width: 18 },
+                { key: 'total_learners', label: 'Learners', format: 'number', width: 12, align: 'right' as const },
+                { key: 'total_cohorts', label: 'Cohorts', format: 'number', width: 12, align: 'right' as const },
+                { key: 'total_cohort_subjects', label: 'Cohort Subjects', format: 'number', width: 16, align: 'right' as const },
+                { key: 'total_instructors', label: 'Instructors', format: 'number', width: 12, align: 'right' as const },
+                { key: 'total_sessions', label: 'Sessions', format: 'number', width: 12, align: 'right' as const },
+                { key: 'total_assessments', label: 'Assessments', format: 'number', width: 14, align: 'right' as const },
+                { key: 'average_grade', label: 'Average Grade', format: 'percentage', width: 14, align: 'right' as const },
+                { key: 'average_attendance', label: 'Average Attendance', format: 'percentage', width: 18, align: 'right' as const },
+            ],
+            rows: [
+                {
+                    organization: overview.organization.name,
+                    academic_year: overview.academic_year?.name ?? '—',
+                    current_term: overview.current_term?.name ?? '—',
+                    total_learners: overview.total_learners,
+                    total_cohorts: overview.total_cohorts,
+                    total_cohort_subjects: overview.total_cohort_subjects,
+                    total_instructors: overview.total_instructors,
+                    total_sessions: overview.total_sessions,
+                    total_assessments: overview.total_assessments,
+                    average_grade: overview.average_grade,
+                    average_attendance: overview.average_attendance,
+                },
+            ],
+            fileName: 'admin-overview',
+            includeMetadata: true,
+            includeTimestamp: true,
+            sheetName: 'Overview',
+            freezeHeader: true,
+            autoFilter: true,
+            orientation: 'landscape' as const,
+        };
+    }, [overview]);
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
@@ -88,38 +138,46 @@ export default function ReportsPage() {
     return (
         <div className="space-y-8">
 
-            {/* Header */}
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
                         Reporting & Analytics
                     </h1>
                     <p className="text-gray-500 mt-1">
-                        {overview?.academic_year ?? '—'}
-                        {overview?.current_term ? ` · ${overview.current_term}` : ' · No active term'}
+                        {overview?.organization.name ?? '—'}
+                        {overview?.academic_year ? ` · ${overview.academic_year.name}` : ''}
+                        {overview?.current_term ? ` · ${overview.current_term.name}` : ' · No active term'}
                     </p>
                 </div>
-                <BarChart3 className="h-7 w-7 text-blue-600" />
+                <div className="flex items-center gap-2">
+                    {exportPayload && (
+                        <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
+                            <Download className="h-4 w-4 mr-1.5" />
+                            Export
+                        </Button>
+                    )}
+                    <BarChart3 className="h-7 w-7 text-blue-600" />
+                </div>
             </div>
 
-            {/* Stats strip */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <StatsCard title="Active Students" value={overview?.total_students ?? 0} icon={Users} color="blue" />
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <StatsCard title="Active Learners" value={overview?.total_learners ?? 0} icon={Users} color="blue" />
                 <StatsCard title="Cohorts" value={overview?.total_cohorts ?? 0} icon={BookOpen} color="purple" />
-                <StatsCard title="Subjects" value={overview?.total_subjects ?? 0} icon={FileText} color="green" />
-                <StatsCard title="Assessments" value={overview?.total_assessments ?? 0} icon={Target} color="orange" />
+                <StatsCard title="Cohort Subjects" value={overview?.total_cohort_subjects ?? 0} icon={FileText} color="green" />
+                <StatsCard title="Instructors" value={overview?.total_instructors ?? 0} icon={Target} color="orange" />
+                <StatsCard title="Sessions" value={overview?.total_sessions ?? 0} icon={Calendar} color="indigo" />
+                <StatsCard title="Assessments" value={overview?.total_assessments ?? 0} icon={Award} color="yellow" />
             </div>
 
-            {/* Performance bars */}
             {(overview?.average_grade != null || overview?.average_attendance != null) && (
                 <Card>
                     <div className="flex items-center gap-2 mb-5">
                         <Award className="h-5 w-5 text-blue-600" />
                         <h2 className="text-base font-semibold text-gray-900">
-                            Current Term Performance
+                            Current Reporting Snapshot
                         </h2>
-                        {overview?.current_term && (
-                            <Badge variant="blue">{overview.current_term}</Badge>
+                        {overview?.current_term?.name && (
+                            <Badge variant="blue">{overview.current_term.name}</Badge>
                         )}
                     </div>
                     <div className="grid md:grid-cols-2 gap-6">
@@ -159,7 +217,6 @@ export default function ReportsPage() {
                 </Card>
             )}
 
-            {/* Section cards */}
             <div>
                 <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
                     Report Categories
@@ -188,6 +245,16 @@ export default function ReportsPage() {
                     })}
                 </div>
             </div>
+
+            {exportPayload && (
+                <ExportModal
+                    open={exportOpen}
+                    onClose={() => setExportOpen(false)}
+                    payload={exportPayload}
+                    defaultFormat="pdf"
+                    title="Export Admin Overview"
+                />
+            )}
 
         </div>
     );
