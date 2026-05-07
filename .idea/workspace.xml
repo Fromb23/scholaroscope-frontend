@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,7 +14,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="391" />
+    <option name="cachedIndexableFilesCount" value="389" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -117,12 +118,7 @@
       <workItem from="1777809995398" duration="4080000" />
       <workItem from="1777828850302" duration="6058000" />
       <workItem from="1777840835547" duration="1333000" />
-      <workItem from="1777882335605" duration="1532000" />
-      <workItem from="1778021426728" duration="3825000" />
-      <workItem from="1778075611830" duration="1914000" />
-      <workItem from="1778105143481" duration="35000" />
-      <workItem from="1778134129408" duration="304000" />
-      <workItem from="1778134579860" duration="4090000" />
+      <workItem from="1777882335605" duration="302000" />
     </task>
     <servers />
   </component>
