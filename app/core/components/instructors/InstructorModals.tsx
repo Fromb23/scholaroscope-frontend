@@ -666,7 +666,14 @@ function CohortSubjectDropdown({
 
 
 export function CohortAssignModal({
-    isOpen, onClose, instructorId, instructorName, onAssignmentsChanged,
+    isOpen,
+    onClose,
+    instructorId,
+    instructorName,
+    initialCohortSubjectId,
+    initialCohortName,
+    initialSubjectName,
+    onAssignmentsChanged,
 }: CohortAssignModalProps) {
     const { instructor: detail, loading, refetch } =
         useInstructorDetail(isOpen ? instructorId : null);
@@ -771,6 +778,25 @@ export function CohortAssignModal({
         (cohortSubject) => getSourceAwareSubjectKey(cohortSubject) === selectedCohortSubject
     );
 
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedCohortSubject('');
+            return;
+        }
+
+        if (selectedCohortSubject || typeof initialCohortSubjectId !== 'number') {
+            return;
+        }
+
+        const matchedOption = availableCohortSubjects.find(
+            (cohortSubject) => cohortSubject.cohort_subject_id === initialCohortSubjectId
+        );
+
+        if (matchedOption) {
+            setSelectedCohortSubject(getSourceAwareSubjectKey(matchedOption));
+        }
+    }, [availableCohortSubjects, initialCohortSubjectId, isOpen, selectedCohortSubject]);
+
     const handleAssign = async () => {
         if (!selectedCohortSubjectOption) return;
         setWorking(true); setError(null);
@@ -803,6 +829,13 @@ export function CohortAssignModal({
         <Modal isOpen={isOpen} onClose={onClose} title={`Teaching Assignments — ${instructorName}`} size="md">
             <div className="min-w-0 space-y-5">
                 {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
+                {initialSubjectName && initialCohortName ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                        Managing <span className="font-medium text-blue-900">{initialSubjectName}</span> for{' '}
+                        <span className="font-medium text-blue-900">{initialCohortName}</span>.
+                    </div>
+                ) : null}
 
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-700 mb-2">

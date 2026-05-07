@@ -42,6 +42,7 @@ interface SubjectPanelProps {
     curriculumType: string;
     cohortLevel: string;
     isHistorical: boolean;
+    onSubjectsChanged?: () => void | Promise<void>;
 }
 
 export function SubjectPanel({
@@ -50,6 +51,7 @@ export function SubjectPanel({
                                cohortLevel,
                                curriculumType,
                                isHistorical,
+                               onSubjectsChanged,
                              }: SubjectPanelProps) {
   const [detail, setDetail] = useState<CohortDetail | null>(null);
   const [cambridgeAssignments, setCambridgeAssignments] = useState<CambridgeCohortSubject[]>([]);
@@ -121,6 +123,7 @@ export function SubjectPanel({
     try {
       await cohortAPI.assignSubject(cohortId, subjectId, true);
       await loadDetail();
+      await onSubjectsChanged?.();
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to link subject.'));
     } finally {
@@ -134,6 +137,7 @@ export function SubjectPanel({
     try {
       await cohortAPI.removeSubject(cohortId, subjectId);
       await loadDetail();
+      await onSubjectsChanged?.();
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to unlink subject.'));
     } finally {
@@ -147,6 +151,7 @@ export function SubjectPanel({
     try {
       await cohortSubjectAPI.deactivate(assignmentId);
       await loadDetail();
+      await onSubjectsChanged?.();
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to unlink Cambridge subject.'));
     } finally {
@@ -318,6 +323,45 @@ export function SubjectPanel({
     </div>
   );
 }
+
+interface ManageCohortSubjectsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    cohort: CohortDetail;
+    onSubjectsChanged?: () => void | Promise<void>;
+}
+
+export function ManageCohortSubjectsModal({
+    isOpen,
+    onClose,
+    cohort,
+    onSubjectsChanged,
+}: ManageCohortSubjectsModalProps) {
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={`Link Subjects — ${cohort.name}`}
+            size="lg"
+        >
+            <div className="space-y-4">
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+                    Create or remove cohort subject offerings for this cohort. Learner participation stays under each cohort subject learner page.
+                </div>
+
+                <SubjectPanel
+                    cohortId={cohort.id}
+                    curriculumId={cohort.curriculum}
+                    curriculumType={cohort.curriculum_type}
+                    cohortLevel={cohort.level}
+                    isHistorical={!cohort.is_current_year}
+                    onSubjectsChanged={onSubjectsChanged}
+                />
+            </div>
+        </Modal>
+    );
+}
+
 // ── RolloverModal ─────────────────────────────────────────────────────────
 
 interface RolloverModalProps {

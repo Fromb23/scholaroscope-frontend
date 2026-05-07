@@ -13,7 +13,9 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { useAuth } from '@/app/context/AuthContext';
 import { useSubjects, useCurricula } from '@/app/core/hooks/useAcademic';
+import { AssignSubjectToCohortModal } from '@/app/core/components/academic/AssignSubjectToCohortModal';
 import {
     groupSubjects,
     CurriculumGroup,
@@ -22,8 +24,10 @@ import {
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Subject, SubjectFormData } from '@/app/core/types/academic';
+import { isAdminOrAbove } from '@/app/utils/permissions';
 
 export default function SubjectsPage() {
+    const { user, activeRole } = useAuth();
     const { subjects, loading, createSubject, updateSubject, deleteSubject } = useSubjects();
     const { curricula } = useCurricula();
 
@@ -32,6 +36,8 @@ export default function SubjectsPage() {
     const [editing, setEditing] = useState<Subject | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
     const [addingLevelTo, setAddingLevelTo] = useState<Subject | null>(null);
+    const [assigningSubject, setAssigningSubject] = useState<Subject | null>(null);
+    const canManageSubjects = isAdminOrAbove(user, activeRole);
 
     const grouped = useMemo(() => groupSubjects(subjects, search), [subjects, search]);
 
@@ -65,11 +71,17 @@ export default function SubjectsPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">Subjects</h1>
-                    <p className="text-gray-600 mt-1">Manage subjects across all curricula and levels</p>
+                    <p className="text-gray-600 mt-1">
+                        {canManageSubjects
+                            ? 'Manage subjects across all curricula and levels'
+                            : 'Read-only subject catalog across all curricula and levels'}
+                    </p>
                 </div>
-                <Button onClick={openCreate}>
-                    <Plus className="w-4 h-4 mr-2" />Add Subject
-                </Button>
+                {canManageSubjects ? (
+                    <Button onClick={openCreate}>
+                        <Plus className="w-4 h-4 mr-2" />Add Subject
+                    </Button>
+                ) : null}
             </div>
 
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
@@ -108,13 +120,17 @@ export default function SubjectsPage() {
                         <BookOpen className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                         <h3 className="text-sm font-medium text-gray-900">No subjects found</h3>
                         <p className="text-sm text-gray-500 mt-1">
-                            {search ? 'No subjects match your search.' : 'Get started by adding a subject.'}
+                            {search
+                                ? 'No subjects match your search.'
+                                : canManageSubjects
+                                    ? 'Get started by adding a subject.'
+                                    : 'No subjects are available to display.'}
                         </p>
-                        {!search && (
+                        {!search && canManageSubjects ? (
                             <Button className="mt-4" onClick={openCreate}>
                                 <Plus className="mr-2 h-4 w-4" />Add Subject
                             </Button>
-                        )}
+                        ) : null}
                     </div>
                 </Card>
             ) : (
@@ -128,20 +144,32 @@ export default function SubjectsPage() {
                             onEdit={openEdit}
                             onDelete={handleDelete}
                             onAddLevel={openAddLevel}
+                            onAssignToCohort={setAssigningSubject}
+                            canManage={canManageSubjects}
                         />
                     ))}
                 </div>
             )}
 
-            <SubjectFormModal
-                isOpen={isModalOpen}
-                onClose={closeModal}
-                editing={editing}
-                curricula={curricula}
-                onSave={handleSave}
-                defaultCurriculumId={curricula[0]?.id ?? 0}
-                addingLevelTo={addingLevelTo}
-            />
+            {canManageSubjects ? (
+                <SubjectFormModal
+                    isOpen={isModalOpen}
+                    onClose={closeModal}
+                    editing={editing}
+                    curricula={curricula}
+                    onSave={handleSave}
+                    defaultCurriculumId={curricula[0]?.id ?? 0}
+                    addingLevelTo={addingLevelTo}
+                />
+            ) : null}
+
+            {canManageSubjects ? (
+                <AssignSubjectToCohortModal
+                    isOpen={!!assigningSubject}
+                    onClose={() => setAssigningSubject(null)}
+                    subject={assigningSubject}
+                />
+            ) : null}
         </div>
     );
 }

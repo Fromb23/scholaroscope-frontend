@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft,
@@ -15,16 +15,20 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
-import { useCohortDetail } from '@/app/core/hooks/useAcademic';
+import { getCohortSubjectLearners } from '@/app/core/api/academic';
+import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
+import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useCambridgeCohortSubjects } from '@/app/plugins/cambridge/hooks';
+import type { CohortSubjectLearnerCounts } from '@/app/core/types/academic';
 
 interface MetadataItemProps {
     label: string;
@@ -36,6 +40,7 @@ interface ActionCardProps {
     description: string;
     icon: LucideIcon;
     href?: string;
+    onClick?: () => void;
     disabledReason?: string;
     footerLabel?: string;
 }
@@ -54,6 +59,7 @@ function ActionCard({
     description,
     icon: Icon,
     href,
+    onClick,
     disabledReason,
     footerLabel,
 }: ActionCardProps) {
@@ -72,15 +78,15 @@ function ActionCard({
                 </div>
             </div>
             <div className="mt-6 flex items-center justify-between">
-                <span className={`text-sm font-semibold ${href ? 'text-blue-600' : 'text-gray-400'}`}>
-                    {footerLabel ?? (href ? 'Open' : 'Unavailable')}
+                <span className={`text-sm font-semibold ${href || onClick ? 'text-blue-600' : 'text-gray-400'}`}>
+                    {footerLabel ?? (href || onClick ? 'Open' : 'Unavailable')}
                 </span>
-                {href ? <ChevronRight className="h-5 w-5 text-blue-600" /> : null}
+                {href || onClick ? <ChevronRight className="h-5 w-5 text-blue-600" /> : null}
             </div>
         </>
     );
 
-    if (!href) {
+    if (!href && !onClick) {
         return (
             <div
                 aria-disabled="true"
@@ -91,14 +97,37 @@ function ActionCard({
         );
     }
 
+    const className = 'flex min-h-[208px] flex-col justify-between rounded-lg border border-gray-200 bg-white p-5 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+
+    if (href) {
+        return (
+            <Link href={href} className={className}>
+                {content}
+            </Link>
+        );
+    }
+
     return (
-        <Link
-            href={href}
-            className="flex min-h-[208px] flex-col justify-between rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
+        <button type="button" onClick={onClick} className={className}>
             {content}
-        </Link>
+        </button>
     );
+}
+
+function buildInstructorManagementHref(cohortId: number, cohortName: string, subject: {
+    id: number;
+    subject_name: string;
+}) {
+    const params = new URLSearchParams({
+        cohort_subject_id: String(subject.id),
+        cohort_id: String(cohortId),
+        cohort_name: cohortName,
+        subject_name: subject.subject_name,
+        returnTo: `/academic/cohorts/${cohortId}`,
+        open: 'teaching',
+    });
+
+    return `/admin/instructors?${params.toString()}`;
 }
 
 function CambridgeCurriculumCards({
@@ -145,10 +174,22 @@ export default function CohortHubPage() {
     const { user, activeRole, loading: authLoading } = useAuth();
     const { hasPlugin, loading: pluginsLoading } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
+    const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
+    const [subjectCounts, setSubjectCounts] = useState<Record<number, CohortSubjectLearnerCounts>>({});
 
     const cohortId = Number(params.id);
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
-    const { cohort, loading: cohortLoading, error } = useCohortDetail(isValidCohortId ? cohortId : null);
+    const {
+        cohort,
+        loading: cohortLoading,
+        error,
+        refetch: refetchCohort,
+    } = useCohortDetail(isValidCohortId ? cohortId : null);
+    const {
+        cohortSubjects,
+        loading: cohortSubjectsLoading,
+        error: cohortSubjectsError,
+    } = useCohortSubjects(isValidCohortId ? cohortId : undefined);
 
     const isInstructor = activeRole === 'INSTRUCTOR';
     const accessLoading = authLoading || pluginsLoading || (isInstructor && instructorAccess.isLoading);
@@ -162,6 +203,50 @@ export default function CohortHubPage() {
         if (accessLoading || allowed || !activeRole) return;
         router.replace(roleHomeRoute[activeRole]);
     }, [accessLoading, activeRole, allowed, router]);
+
+    const isCambridge = cohort ? isCambridgeCurriculumType(cohort.curriculum_type) : false;
+    const isCBC = cohort?.curriculum_type === 'CBE';
+    const showKernelSubjectParticipation = Boolean(cohort && !isCBC && !isCambridge);
+
+    useEffect(() => {
+        let active = true;
+
+        if (!showKernelSubjectParticipation || cohortSubjects.length === 0) {
+            setSubjectCounts({});
+            return () => {
+                active = false;
+            };
+        }
+
+        const loadCounts = async () => {
+            const entries = await Promise.all(
+                cohortSubjects.map(async (cohortSubject) => {
+                    try {
+                        const data = await getCohortSubjectLearners(cohortSubject.id);
+                        return [cohortSubject.id, data.counts] as const;
+                    } catch {
+                        return null;
+                    }
+                })
+            );
+
+            if (!active) return;
+
+            setSubjectCounts(
+                entries.reduce<Record<number, CohortSubjectLearnerCounts>>((acc, entry) => {
+                    if (!entry) return acc;
+                    acc[entry[0]] = entry[1];
+                    return acc;
+                }, {})
+            );
+        };
+
+        void loadCounts();
+
+        return () => {
+            active = false;
+        };
+    }, [cohortSubjects, showKernelSubjectParticipation]);
 
     if (!isValidCohortId) {
         return <ErrorState fullScreen={false} message="Invalid cohort." />;
@@ -183,21 +268,27 @@ export default function CohortHubPage() {
     }
 
     const curriculumName = getCurriculumBridgeName(cohort);
-    const isCambridge = isCambridgeCurriculumType(cohort.curriculum_type);
-    const isCBC = cohort.curriculum_type === 'CBE';
     const learnerCount = String(cohort.students_count ?? 0);
-    const subjectCount = cohort.subjects_count ?? cohort.subjects.length;
-    const learnersHref = isInstructor
+    const subjectCount = showKernelSubjectParticipation
+        ? cohortSubjects.length
+        : cohort.subjects_count ?? cohort.subjects.length;
+    const canManageSubjectParticipation = isAdminOrAbove(user, activeRole);
+    const canManageInstructors = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+    const canLinkSubjects = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+    const cohortPlacementHref = isInstructor
         ? `/learners?curriculum=${cohort.curriculum}&cohort=${cohort.id}`
         : `/academic/cohorts/${cohort.id}/students`;
+    const cohortPlacementTitle = isInstructor ? 'Cohort Learners' : 'Manage Placement';
+    const cohortPlacementDescription = isInstructor
+        ? 'View learners currently placed in this cohort.'
+        : 'Add or remove learners from this cohort. Subject participation is managed separately per cohort subject.';
     const sessionsHref = `/sessions?cohort=${cohort.id}`;
     const hasCBCPlugin = hasPlugin('cbc');
     const hasCambridgePlugin = hasPlugin('cambridge');
     const unknownCurriculumReason = `No workflow is configured yet for ${curriculumName}.`;
-    const showKernelSubjectParticipation = !isCBC && !isCambridge;
     const visibleCohortSubjects = isInstructor
-        ? cohort.subjects.filter(subject => instructorAccess.cohortSubjectIds.includes(subject.id))
-        : cohort.subjects;
+        ? cohortSubjects.filter(subject => instructorAccess.cohortSubjectIds.includes(subject.id))
+        : cohortSubjects;
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
@@ -218,7 +309,7 @@ export default function CohortHubPage() {
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold text-gray-900">{cohort.name}</h1>
                     <p className="text-sm text-gray-500">
-                        Use this cohort hub to open learners, sessions, and curriculum workflows for the selected cohort.
+                        Use this cohort control center to manage placement, create cohort subject offerings, and open subject-specific learner workflows.
                     </p>
                 </div>
             </div>
@@ -236,7 +327,7 @@ export default function CohortHubPage() {
 
             <section className="space-y-4">
                 <div className="space-y-1">
-                    <h2 className="text-xl font-semibold text-gray-900">Teaching Actions</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">Cohort Actions</h2>
                     <p className="text-sm text-gray-500">
                         Choose the workflow you want to open for this cohort.
                     </p>
@@ -244,12 +335,23 @@ export default function CohortHubPage() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <ActionCard
-                        title="Learners"
-                        description="View learners enrolled in this cohort."
+                        title={cohortPlacementTitle}
+                        description={cohortPlacementDescription}
                         icon={Users}
-                        href={learnersHref}
-                        footerLabel={`${learnerCount} learner${learnerCount === '1' ? '' : 's'}`}
+                        href={cohortPlacementHref}
+                        footerLabel={isInstructor
+                            ? `${learnerCount} learner${learnerCount === '1' ? '' : 's'}`
+                            : 'Manage placement'}
                     />
+                    {showKernelSubjectParticipation && canLinkSubjects ? (
+                        <ActionCard
+                            title="Link Subject to Cohort"
+                            description="Create or update cohort subject offerings for this cohort."
+                            icon={BookOpen}
+                            onClick={() => setAssignSubjectsOpen(true)}
+                            footerLabel={subjectCount > 0 ? `${subjectCount} linked` : 'Assign subject'}
+                        />
+                    ) : null}
                     <ActionCard
                         title="Sessions"
                         description="Open sessions filtered to this cohort."
@@ -329,50 +431,110 @@ export default function CohortHubPage() {
 
             {showKernelSubjectParticipation && (
                 <section className="space-y-4">
-                    <div className="space-y-1">
-                        <h2 className="text-xl font-semibold text-gray-900">Subject Participation</h2>
-                        <p className="text-sm text-gray-500">
-                            Manage explicit learner participation per cohort subject. Cohort membership does not assign subjects.
-                        </p>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="space-y-1">
+                            <h2 className="text-xl font-semibold text-gray-900">Subject Participation</h2>
+                            <p className="text-sm text-gray-500">
+                                {canManageSubjectParticipation
+                                    ? 'Manage explicit learner participation per cohort subject. Cohort placement stays under the cohort placement workflow.'
+                                    : 'Read-only subject participation summary for the cohort subjects assigned to you.'}
+                            </p>
+                        </div>
+                        {canLinkSubjects ? (
+                            <Button type="button" variant="secondary" onClick={() => setAssignSubjectsOpen(true)} className="w-full sm:w-auto">
+                                Link Subject to Cohort
+                            </Button>
+                        ) : null}
                     </div>
 
-                    <Card>
-                        {visibleCohortSubjects.length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-                                {isInstructor
-                                    ? 'No assigned cohort subjects are available for learner management.'
-                                    : 'No cohort subjects are available for learner management yet.'}
+                    <Card className="space-y-4">
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            {isInstructor
+                                ? 'This section shows read-only subject participation details for the cohort subjects assigned to you.'
+                                : 'The cohort students page manages placement only. Use the cohort subject cards below to assign subjects and instructors.'}
+                        </div>
+
+                        {cohortSubjectsError ? (
+                            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                                {cohortSubjectsError}
                             </div>
-                        ) : (
-                            <div className="divide-y divide-gray-100">
+                        ) : null}
+
+                        {cohortSubjectsLoading ? (
+                            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+                                Loading cohort subjects...
+                            </div>
+                        ) : null}
+
+                        {!cohortSubjectsLoading && visibleCohortSubjects.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+                                <p>
+                                    {isInstructor
+                                        ? 'No cohort subjects are assigned to you yet.'
+                                        : 'No subjects linked to this cohort'}
+                                </p>
+                                {!isInstructor && canLinkSubjects ? (
+                                    <div className="mt-4 flex justify-center">
+                                        <Button type="button" onClick={() => setAssignSubjectsOpen(true)}>
+                                            Link Subject to Cohort
+                                        </Button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : !cohortSubjectsLoading ? (
+                            <div className="grid gap-4 md:grid-cols-2">
                                 {visibleCohortSubjects.map((subject) => (
                                     <div
                                         key={subject.id}
-                                        className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                                        className="rounded-xl border border-gray-200 p-4"
                                     >
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 space-y-4">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="text-sm font-semibold text-gray-900">{subject.subject_name}</h3>
+                                                <h3 className="text-base font-semibold text-gray-900">{subject.subject_name}</h3>
                                                 <Badge variant="info">{subject.subject_code}</Badge>
                                                 {subject.is_compulsory ? <Badge variant="default">Compulsory</Badge> : null}
                                             </div>
-                                            <p className="mt-1 text-sm text-gray-500">
-                                                Manage learners enrolled in this cohort subject without changing cohort placement.
-                                            </p>
+                                            {subjectCounts[subject.id] ? (
+                                                <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                                                    <span>Enrolled: {subjectCounts[subject.id].enrolled}</span>
+                                                    <span>Available: {subjectCounts[subject.id].available}</span>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-gray-500">
+                                                    {canManageSubjectParticipation
+                                                        ? 'Manage learners enrolled in this cohort subject without changing cohort placement.'
+                                                        : 'View-only summary for this cohort subject.'}
+                                                </p>
+                                            )}
+                                            {canManageSubjectParticipation || canManageInstructors ? (
+                                                <div className="flex flex-col gap-2 sm:flex-row">
+                                                    {canManageSubjectParticipation ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            className="w-full sm:w-auto"
+                                                            onClick={() => router.push(`/academic/cohort-subjects/${subject.id}/learners`)}
+                                                        >
+                                                            Manage {subject.subject_name} Learners
+                                                        </Button>
+                                                    ) : null}
+                                                    {canManageInstructors ? (
+                                                        <Link
+                                                            href={buildInstructorManagementHref(cohort.id, cohort.name, subject)}
+                                                            className="w-full sm:w-auto"
+                                                        >
+                                                            <Button variant="secondary" size="sm" className="w-full sm:w-auto">
+                                                                Assign/Manage Instructor
+                                                            </Button>
+                                                        </Link>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
                                         </div>
-
-                                        <Link
-                                            href={`/academic/cohort-subjects/${subject.id}/learners`}
-                                            className="shrink-0"
-                                        >
-                                            <Button size="sm">
-                                                Manage Learners
-                                            </Button>
-                                        </Link>
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        ) : null}
                     </Card>
                 </section>
             )}
@@ -390,6 +552,17 @@ export default function CohortHubPage() {
                     </div>
                 </div>
             </Card>
+
+            {showKernelSubjectParticipation && canLinkSubjects ? (
+                <ManageCohortSubjectsModal
+                    isOpen={assignSubjectsOpen}
+                    onClose={() => setAssignSubjectsOpen(false)}
+                    cohort={cohort}
+                    onSubjectsChanged={async () => {
+                        await refetchCohort();
+                    }}
+                />
+            ) : null}
         </div>
     );
 }

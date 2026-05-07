@@ -13,6 +13,7 @@ import {
     listCohortSubjects,
 } from '@/app/core/api/academic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { isAdminOrAbove, isInstructor as hasInstructorRole } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -173,6 +174,88 @@ function LearnerTable({
     );
 }
 
+function getLearnerStatus(student: StudentSummary) {
+    return student.status_display?.trim() || student.status?.trim() || '—';
+}
+
+function getLearnerStatusVariant(student: StudentSummary): 'success' | 'warning' | 'danger' | 'info' | 'default' {
+    switch (student.status) {
+        case 'ACTIVE':
+            return 'success';
+        case 'TRANSFERRED':
+            return 'warning';
+        case 'GRADUATED':
+            return 'info';
+        case 'SUSPENDED':
+        case 'WITHDRAWN':
+            return 'danger';
+        default:
+            return 'default';
+    }
+}
+
+function ReadOnlyLearnerTable({ learners }: { learners: StudentSummary[] }) {
+    if (learners.length === 0) {
+        return (
+            <Card>
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
+                    No learners are enrolled in this cohort subject yet.
+                </div>
+            </Card>
+        );
+    }
+
+    return (
+        <Card>
+            <div className="space-y-4">
+                <div className="space-y-1">
+                    <h2 className="text-lg font-semibold text-gray-900">Enrolled Learners</h2>
+                    <p className="text-sm text-gray-500">
+                        Read-only learner list for this assigned cohort subject.
+                    </p>
+                </div>
+
+                <Table>
+                    <TableHeader>
+                        <tr>
+                            <TableHead>Admission No.</TableHead>
+                            <TableHead>Learner Name</TableHead>
+                            <TableHead>Status</TableHead>
+                        </tr>
+                    </TableHeader>
+                    <TableBody>
+                        {learners.map((learner) => (
+                            <TableRow key={learner.id}>
+                                <TableCell>
+                                    <span className="font-mono text-sm text-gray-700">{learner.admission_number}</span>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="min-w-0">
+                                        <Link
+                                            href={`/learners/${learner.id}`}
+                                            className="font-medium text-blue-600 hover:underline"
+                                        >
+                                            {getStudentName(learner)}
+                                        </Link>
+                                        {learner.primary_cohort_name ? (
+                                            <p className="text-xs text-gray-500">{learner.primary_cohort_name}</p>
+                                        ) : null}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={getLearnerStatusVariant(learner)}>
+                                        {getLearnerStatus(learner)}
+                                    </Badge>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </Card>
+    );
+}
+
 function buildEnrollResultMessage(result: BulkSubjectEnrollResponse) {
     return `Enroll processed: ${result.processed}. Created ${result.created}, reactivated ${result.reactivated}, already active ${result.already_active}, rejected ${result.rejected}.`;
 }
@@ -186,17 +269,17 @@ export default function CohortSubjectLearnersPage() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const { user, activeRole, loading: authLoading } = useAuth();
-    const instructorAccess = useInstructorCohortAccess({ enabled: activeRole === 'INSTRUCTOR' });
+    const instructorView = hasInstructorRole(activeRole);
+    const canManageLearners = isAdminOrAbove(user, activeRole);
+    const instructorAccess = useInstructorCohortAccess({ enabled: instructorView });
 
     const cohortSubjectId = Number(params.id);
     const isValidCohortSubjectId = Number.isFinite(cohortSubjectId) && cohortSubjectId > 0;
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const accessLoading = authLoading || (isInstructor && instructorAccess.isLoading);
+    const accessLoading = authLoading || (instructorView && instructorAccess.isLoading);
     const allowed = !user
         ? false
-        : user.is_superadmin
-            || activeRole === 'ADMIN'
-            || (isInstructor && instructorAccess.cohortSubjectIds.includes(cohortSubjectId));
+        : canManageLearners
+            || (instructorView && instructorAccess.cohortSubjectIds.includes(cohortSubjectId));
 
     const [selectedEnrolled, setSelectedEnrolled] = useState<Set<number>>(new Set());
     const [selectedAvailable, setSelectedAvailable] = useState<Set<number>>(new Set());
@@ -303,12 +386,18 @@ export default function CohortSubjectLearnersPage() {
         );
     }
 
-    const backHref = learnerData.cohort_id
-        ? `/academic/cohorts/${learnerData.cohort_id}`
-        : '/academic/cohorts';
+    const cohortHref = `/academic/cohorts/${learnerData.cohort_id}`;
     const cohortLabel = cohortSubject?.cohort_name || `Cohort #${learnerData.cohort_id}`;
     const subjectLabel = cohortSubject?.subject_name || learnerData.subject_name;
     const isMutating = enrollMutation.isPending || unenrollMutation.isPending;
+    const cohortStudentsHref = `/academic/cohorts/${learnerData.cohort_id}/students`;
+    const canViewCohortStudents = canManageLearners;
+    const pageTitle = instructorView
+        ? `${subjectLabel} Learners`
+        : `Manage ${subjectLabel} Learners`;
+    const pageSubtitle = instructorView
+        ? 'Read-only learner list for your assigned cohort subject.'
+        : 'This screen manages explicit subject participation. It does not add or remove learners from the parent cohort.';
 
     const toggleSelection = (
         setter: Dispatch<SetStateAction<Set<number>>>,
@@ -337,12 +426,25 @@ export default function CohortSubjectLearnersPage() {
     return (
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="space-y-3">
-                <Link href={backHref}>
-                    <Button variant="ghost" size="sm">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={() => router.push(cohortHref)}
+                    >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Cohort
                     </Button>
-                </Link>
+                    {canViewCohortStudents ? (
+                        <Link href={cohortStudentsHref} className="w-full sm:w-auto">
+                            <Button variant="secondary" size="sm" className="w-full sm:w-auto">
+                                View Cohort Students
+                            </Button>
+                        </Link>
+                    ) : null}
+                </div>
 
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
@@ -351,27 +453,32 @@ export default function CohortSubjectLearnersPage() {
                             <Badge variant="default">Cohort Subject #{cohortSubjectId}</Badge>
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">{subjectLabel}</h1>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Manage explicit learner participation for this cohort subject. Cohort placement is unchanged here.
-                            </p>
+                            <h1 className="text-3xl font-bold text-gray-900">{pageTitle}</h1>
+                            <p className="mt-1 text-sm text-gray-500">{pageSubtitle}</p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
-                        <Card className="min-w-[120px]">
+                    {instructorView ? (
+                        <Card className="min-w-[140px]">
                             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Enrolled</p>
                             <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.enrolled}</p>
                         </Card>
-                        <Card className="min-w-[120px]">
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Available</p>
-                            <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.available}</p>
-                        </Card>
-                        <Card className="min-w-[120px]">
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Cohort Total</p>
-                            <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.cohort_total}</p>
-                        </Card>
-                    </div>
+                    ) : (
+                        <div className="grid grid-cols-3 gap-3">
+                            <Card className="min-w-[120px]">
+                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Enrolled</p>
+                                <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.enrolled}</p>
+                            </Card>
+                            <Card className="min-w-[120px]">
+                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Available</p>
+                                <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.available}</p>
+                            </Card>
+                            <Card className="min-w-[120px]">
+                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Cohort Total</p>
+                                <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.cohort_total}</p>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -393,37 +500,41 @@ export default function CohortSubjectLearnersPage() {
                 </div>
             ) : null}
 
-            <div className="grid gap-6 xl:grid-cols-2">
-                <LearnerTable
-                    title="Enrolled Learners"
-                    description="Learners currently participating in this cohort subject."
-                    icon={Users}
-                    learners={learnerData.enrolled}
-                    selectedIds={selectedEnrolled}
-                    onToggle={(studentId) => toggleSelection(setSelectedEnrolled, studentId)}
-                    onToggleAll={() => toggleAllSelection(learnerData.enrolled, selectedEnrolled, setSelectedEnrolled)}
-                    actionLabel={unenrollMutation.isPending ? 'Removing...' : 'Bulk Unenroll'}
-                    actionVariant="danger"
-                    onAction={() => unenrollMutation.mutate(Array.from(selectedEnrolled))}
-                    actionDisabled={selectedEnrolled.size === 0 || isMutating}
-                    emptyMessage="No learners enrolled in this subject yet."
-                />
+            {instructorView ? (
+                <ReadOnlyLearnerTable learners={learnerData.enrolled} />
+            ) : (
+                <div className="grid gap-6 xl:grid-cols-2">
+                    <LearnerTable
+                        title="Enrolled Learners"
+                        description="Learners currently participating in this cohort subject."
+                        icon={Users}
+                        learners={learnerData.enrolled}
+                        selectedIds={selectedEnrolled}
+                        onToggle={(studentId) => toggleSelection(setSelectedEnrolled, studentId)}
+                        onToggleAll={() => toggleAllSelection(learnerData.enrolled, selectedEnrolled, setSelectedEnrolled)}
+                        actionLabel={unenrollMutation.isPending ? 'Removing...' : 'Bulk Unenroll'}
+                        actionVariant="danger"
+                        onAction={() => unenrollMutation.mutate(Array.from(selectedEnrolled))}
+                        actionDisabled={selectedEnrolled.size === 0 || isMutating}
+                        emptyMessage="No learners enrolled in this subject yet."
+                    />
 
-                <LearnerTable
-                    title="Available Learners"
-                    description="Learners in the parent cohort who are not yet enrolled in this cohort subject."
-                    icon={UserPlus}
-                    learners={learnerData.available}
-                    selectedIds={selectedAvailable}
-                    onToggle={(studentId) => toggleSelection(setSelectedAvailable, studentId)}
-                    onToggleAll={() => toggleAllSelection(learnerData.available, selectedAvailable, setSelectedAvailable)}
-                    actionLabel={enrollMutation.isPending ? 'Enrolling...' : 'Bulk Enroll'}
-                    actionVariant="primary"
-                    onAction={() => enrollMutation.mutate(Array.from(selectedAvailable))}
-                    actionDisabled={selectedAvailable.size === 0 || isMutating}
-                    emptyMessage="No available cohort learners."
-                />
-            </div>
+                    <LearnerTable
+                        title="Available Learners"
+                        description="Learners in the parent cohort who are not yet enrolled in this cohort subject."
+                        icon={UserPlus}
+                        learners={learnerData.available}
+                        selectedIds={selectedAvailable}
+                        onToggle={(studentId) => toggleSelection(setSelectedAvailable, studentId)}
+                        onToggleAll={() => toggleAllSelection(learnerData.available, selectedAvailable, setSelectedAvailable)}
+                        actionLabel={enrollMutation.isPending ? 'Enrolling...' : 'Bulk Enroll'}
+                        actionVariant="primary"
+                        onAction={() => enrollMutation.mutate(Array.from(selectedAvailable))}
+                        actionDisabled={selectedAvailable.size === 0 || isMutating}
+                        emptyMessage="No available cohort learners."
+                    />
+                </div>
+            )}
 
             <Card>
                 <div className="flex items-start gap-3">
@@ -433,7 +544,9 @@ export default function CohortSubjectLearnersPage() {
                     <div className="space-y-1">
                         <h2 className="text-base font-semibold text-gray-900">Scope</h2>
                         <p className="text-sm text-gray-600">
-                            This screen only manages explicit subject participation. It does not enroll or remove learners from the parent cohort.
+                            {instructorView
+                                ? 'This is a read-only learner list for your assigned cohort subject.'
+                                : 'This screen manages explicit subject participation. It does not add or remove learners from the parent cohort.'}
                         </p>
                     </div>
                 </div>

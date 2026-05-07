@@ -8,7 +8,8 @@
 // ============================================================================
 
 import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Users, Plus, GraduationCap, AlertTriangle, CheckCircle,
     UserCheck, UserX, BookOpen, LayoutGrid, List, Mail, Phone,
@@ -21,7 +22,6 @@ import { Card } from '@/app/components/ui/Card';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import Modal from '@/app/components/ui/Modal';
 import { Input } from '@/app/components/ui/Input';
-import { instructorsAPI } from '@/app/core/api/instructors';
 import { UserCreatePayload } from '@/app/core/types/globalUsers';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 
@@ -203,6 +203,7 @@ function InstructorGridCard({
 
 export default function InstructorManagementPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { instructors, loading, error, refetch, createInstructor } = useInstructors();
 
     const [search, setSearch] = useState('');
@@ -229,8 +230,36 @@ export default function InstructorManagementPage() {
             return matchSearch && matchStatus;
         });
     }, [instructors, search, statusFilter]);
+    const selectedCohortSubjectId = searchParams.get('cohort_subject_id');
+    const selectedCohortName = searchParams.get('cohort_name');
+    const selectedSubjectName = searchParams.get('subject_name');
+    const returnTo = searchParams.get('returnTo');
+    const hasTeachingContext = Boolean(selectedCohortSubjectId && selectedSubjectName && selectedCohortName);
+    const preservedContextQuery = searchParams.toString();
 
-    const navigateTo = (id: number) => router.push(`/admin/instructors/${id}/progress`);
+    const navigateTo = (id: number) => {
+        if (!hasTeachingContext) {
+            router.push(`/admin/instructors/${id}/progress`);
+            return;
+        }
+
+        const params = new URLSearchParams({
+            cohort_subject_id: selectedCohortSubjectId ?? '',
+            cohort_name: selectedCohortName ?? '',
+            subject_name: selectedSubjectName ?? '',
+            open: 'teaching',
+        });
+
+        if (returnTo) {
+            params.set('returnTo', returnTo);
+        }
+
+        if (preservedContextQuery) {
+            params.set('back', preservedContextQuery);
+        }
+
+        router.push(`/admin/instructors/${id}/progress?${params.toString()}`);
+    };
 
     const handleCreate = async (data: UserCreatePayload) => {
         setSubmitting(true); setActionError(null);
@@ -338,6 +367,25 @@ export default function InstructorManagementPage() {
             </div>
 
             <StatsBar instructors={instructors} />
+
+            {hasTeachingContext && (
+                <Card>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="text-sm font-semibold text-gray-900">Cohort Subject Assignment</h2>
+                            <p className="mt-1 text-sm text-gray-600">
+                                Select an instructor to manage <span className="font-medium text-gray-900">{selectedSubjectName}</span> in{' '}
+                                <span className="font-medium text-gray-900">{selectedCohortName}</span>.
+                            </p>
+                        </div>
+                        {returnTo ? (
+                            <Link href={returnTo} className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                                Return to cohort
+                            </Link>
+                        ) : null}
+                    </div>
+                </Card>
+            )}
 
             {/* Feedback */}
             {actionError && (

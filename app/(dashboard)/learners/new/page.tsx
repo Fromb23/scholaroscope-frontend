@@ -1,15 +1,33 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Save } from 'lucide-react';
 import Link from 'next/link';
 import { learnersAPI } from '@/app/core/api/learners';
-import { useCohorts } from '@/app/core/hooks/useAcademic';
+import { useCohortDetail, useCohorts } from '@/app/core/hooks/useAcademic';
+import { isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+
+const INITIAL_FORM_DATA = {
+    admission_number: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    date_of_birth: '',
+    gender: '',
+    cohort: '',
+    email: '',
+    phone: '',
+};
+
+interface CreatedLearnerState {
+    cohortId: number;
+    cohortName: string;
+    learnerName: string;
+}
 
 function getLearnerCreationError(error: unknown) {
     if (
@@ -36,23 +54,25 @@ function getLearnerCreationError(error: unknown) {
 }
 
 export default function NewStudentPage() {
-    const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [createdLearner, setCreatedLearner] = useState<CreatedLearnerState | null>(null);
 
     const { cohorts } = useCohorts();
 
-    const [formData, setFormData] = useState({
-        admission_number: '',
-        first_name: '',
-        middle_name: '',
-        last_name: '',
-        date_of_birth: '',
-        gender: '',
-        cohort: '',
-        email: '',
-        phone: '',
-    });
+    const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+    const selectedCohortId = formData.cohort ? Number(formData.cohort) : null;
+    const selectedCohort = useMemo(
+        () => cohorts.find((cohort) => cohort.id === selectedCohortId) ?? null,
+        [cohorts, selectedCohortId]
+    );
+    const { cohort: createdCohort, loading: createdCohortLoading } = useCohortDetail(createdLearner?.cohortId ?? null);
+    const showKernelSubjectActions = Boolean(
+        createdCohort
+        && createdCohort.curriculum_type !== 'CBE'
+        && !isCambridgeCurriculumType(createdCohort.curriculum_type)
+    );
+    const quickActionSubjects = showKernelSubjectActions ? createdCohort?.subjects ?? [] : [];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -72,14 +92,111 @@ export default function NewStudentPage() {
                 phone: formData.phone || undefined,
             };
 
-            await learnersAPI.createStudent(studentData);
-            router.push('/learners?created=1');
+            const createdStudent = await learnersAPI.createStudent(studentData);
+            const learnerName = createdStudent.full_name?.trim()
+                || `${formData.first_name} ${formData.last_name}`.trim();
+
+            setCreatedLearner({
+                cohortId: studentData.cohort,
+                cohortName: selectedCohort?.name ?? `Cohort #${studentData.cohort}`,
+                learnerName,
+            });
         } catch (error) {
             setError(getLearnerCreationError(error));
         } finally {
             setLoading(false);
         }
     };
+
+    if (createdLearner) {
+        return (
+            <div className="mx-auto max-w-5xl space-y-6">
+                <div className="flex items-center gap-4">
+                    <Link href="/learners">
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Learners
+                        </Button>
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Learner Created</h1>
+                        <p className="mt-2 text-gray-600">
+                            {createdLearner.learnerName} was placed in {createdLearner.cohortName}.
+                        </p>
+                    </div>
+                </div>
+
+                <Card>
+                    <div className="space-y-5">
+                        <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                            <div className="space-y-1">
+                                <p className="font-medium text-green-900">Learner created and placed in cohort. Assign subjects separately.</p>
+                                <p>Use the cohort control center or learner profile to manage subject participation for this learner.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <Link href={`/academic/cohorts/${createdLearner.cohortId}`} className="w-full sm:w-auto">
+                                <Button className="w-full">
+                                    Open Cohort Control Center
+                                    <ChevronRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            </Link>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="w-full sm:w-auto"
+                                onClick={() => {
+                                    setCreatedLearner(null);
+                                    setError('');
+                                    setFormData(INITIAL_FORM_DATA);
+                                }}
+                            >
+                                Create Another Learner
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+
+                {createdCohortLoading ? (
+                    <Card>
+                        <p className="text-sm text-gray-500">Loading cohort subject actions...</p>
+                    </Card>
+                ) : quickActionSubjects.length > 0 ? (
+                    <section className="space-y-4">
+                        <div className="space-y-1">
+                            <h2 className="text-xl font-semibold text-gray-900">Quick Subject Actions</h2>
+                            <p className="text-sm text-gray-500">
+                                Open the subject learner pages directly for this cohort.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {quickActionSubjects.map((subject) => (
+                                <Card key={subject.id}>
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="min-w-0 space-y-1">
+                                            <h3 className="text-base font-semibold text-gray-900">{subject.subject_name}</h3>
+                                            <p className="text-sm text-gray-500">{subject.subject_code}</p>
+                                        </div>
+                                        <Link
+                                            href={`/academic/cohort-subjects/${subject.id}/learners`}
+                                            className="w-full shrink-0 sm:w-auto"
+                                        >
+                                            <Button size="sm" className="w-full sm:w-auto">
+                                                Manage Learners
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+            </div>
+        );
+    }
 
     return (
         <div className="mx-auto max-w-3xl space-y-6">

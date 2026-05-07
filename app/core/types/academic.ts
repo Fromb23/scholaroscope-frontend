@@ -78,6 +78,10 @@ export interface SubjectDetail extends Subject {
     cohort_id: number;
     cohort_name: string;
     is_compulsory: boolean;
+    cohort_subject_id?: number | null;
+    academic_year_name?: string | null;
+    learner_count?: number | null;
+    available_count?: number | null;
   }[];
 }
 

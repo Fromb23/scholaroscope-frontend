@@ -13,6 +13,7 @@ import {
   Term,
   Curriculum,
   Subject,
+  SubjectDetail,
   Cohort,
   CohortDetail,
   CohortSubject,
@@ -378,6 +379,38 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
   };
 
   return { subjects, loading, error, refetch: fetchSubjects, createSubject, updateSubject, deleteSubject };
+};
+
+export const useSubjectDetail = (subjectId: number | null) => {
+  const [subject, setSubject] = useState<SubjectDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSubject = useCallback(async () => {
+    if (!subjectId) {
+      setSubject(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const data = await subjectAPI.getById(subjectId);
+      setSubject(data);
+      setError(null);
+    } catch (err) {
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch subject details'));
+      setSubject(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [subjectId]);
+
+  useEffect(() => {
+    fetchSubject();
+  }, [fetchSubject]);
+
+  return { subject, loading, error, refetch: fetchSubject };
 };
 
 // ── useCohortSubjects ─────────────────────────────────────────────────────
