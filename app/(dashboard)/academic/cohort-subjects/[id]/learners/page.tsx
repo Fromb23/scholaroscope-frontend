@@ -13,6 +13,7 @@ import {
     listCohortSubjects,
 } from '@/app/core/api/academic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { academicKeys } from '@/app/core/lib/queryKeys';
 import { isAdminOrAbove, isInstructor as hasInstructorRole } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { Card } from '@/app/components/ui/Card';
@@ -285,13 +286,28 @@ export default function CohortSubjectLearnersPage() {
     const [selectedAvailable, setSelectedAvailable] = useState<Set<number>>(new Set());
     const [resultBanner, setResultBanner] = useState<ResultBannerState | null>(null);
 
+    const invalidateParticipationDependencies = async (studentIds: number[]) => {
+        const cohortId = learnersQuery.data?.cohort_id;
+
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: academicKeys.cohortSubjects.learners(cohortSubjectId) }),
+            ...(typeof cohortId === 'number' ? [
+                queryClient.invalidateQueries({ queryKey: academicKeys.cohorts.subjectParticipationPrefix(cohortId) }),
+                queryClient.invalidateQueries({ queryKey: academicKeys.cohorts.subjects(cohortId) }),
+            ] : []),
+            ...studentIds.map((studentId) => (
+                queryClient.invalidateQueries({ queryKey: academicKeys.students.detail(studentId) })
+            )),
+        ]);
+    };
+
     useEffect(() => {
         if (accessLoading || allowed || !activeRole) return;
         router.replace(roleHomeRoute[activeRole]);
     }, [accessLoading, activeRole, allowed, router]);
 
     const learnersQuery = useQuery<CohortSubjectLearnerListResponse, Error>({
-        queryKey: ['academic', 'cohort-subject-learners', cohortSubjectId],
+        queryKey: academicKeys.cohortSubjects.learners(cohortSubjectId),
         queryFn: () => getCohortSubjectLearners(cohortSubjectId),
         enabled: isValidCohortSubjectId && allowed,
         staleTime: 30_000,
@@ -331,9 +347,10 @@ export default function CohortSubjectLearnersPage() {
     const enrollMutation = useMutation({
         mutationFn: (studentIds: number[]) => bulkEnrollCohortSubjectLearners(cohortSubjectId, studentIds),
         onSuccess: async (result) => {
+            const affectedStudentIds = Array.from(selectedAvailable);
             setSelectedAvailable(new Set());
             setResultBanner({ tone: 'success', message: buildEnrollResultMessage(result) });
-            await queryClient.invalidateQueries({ queryKey: ['academic', 'cohort-subject-learners', cohortSubjectId] });
+            await invalidateParticipationDependencies(affectedStudentIds);
         },
         onError: (error) => {
             setResultBanner({
@@ -346,9 +363,10 @@ export default function CohortSubjectLearnersPage() {
     const unenrollMutation = useMutation({
         mutationFn: (studentIds: number[]) => bulkUnenrollCohortSubjectLearners(cohortSubjectId, studentIds),
         onSuccess: async (result) => {
+            const affectedStudentIds = Array.from(selectedEnrolled);
             setSelectedEnrolled(new Set());
             setResultBanner({ tone: 'success', message: buildUnenrollResultMessage(result) });
-            await queryClient.invalidateQueries({ queryKey: ['academic', 'cohort-subject-learners', cohortSubjectId] });
+            await invalidateParticipationDependencies(affectedStudentIds);
         },
         onError: (error) => {
             setResultBanner({

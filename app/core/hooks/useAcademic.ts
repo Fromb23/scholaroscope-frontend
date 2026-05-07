@@ -416,31 +416,25 @@ export const useSubjectDetail = (subjectId: number | null) => {
 // ── useCohortSubjects ─────────────────────────────────────────────────────
 
 export const useCohortSubjects = (cohortId?: number) => {
-  const [cohortSubjects, setCohortSubjects] = useState<CohortSubject[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { organizationId } = useOrganizationContext();
+  const enabled = typeof cohortId === 'number' && cohortId > 0;
+  const query = useQuery<CohortSubject[], Error>({
+    queryKey: academicKeys.cohorts.subjects(cohortId ?? null),
+    queryFn: async () => {
+      const data = await cohortSubjectAPI.getAll({ cohort: String(cohortId) });
+      return Array.isArray(data)
+        ? data
+        : (data as { results?: CohortSubject[] })?.results ?? [];
+    },
+    enabled,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    const fetch = async () => {
-      setLoading(true);
-      try {
-        const params: Record<string, string> = {};
-        if (cohortId) params.cohort = String(cohortId);
-        const data = await cohortSubjectAPI.getAll(params);
-        const arr = Array.isArray(data) ? data : (data as { results?: CohortSubject[] })?.results ?? [];
-        setCohortSubjects(arr.filter((cs: CohortSubject) => cs.curriculum_type !== 'CBE'));
-        setError(null);
-      } catch (err) {
-        setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort subjects'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, [cohortId, organizationId]);
-
-  return { cohortSubjects, loading, error };
+  return {
+    cohortSubjects: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: query.refetch,
+  };
 };
 
 // ── useCohorts ────────────────────────────────────────────────────────────
@@ -559,27 +553,26 @@ export const useCohort = (cohortId: number | null) => {
 // ── useCohortDetail ───────────────────────────────────────────────────────
 
 export const useCohortDetail = (cohortId: number | null) => {
-  const [cohort, setCohort] = useState<CohortDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const enabled = typeof cohortId === 'number' && cohortId > 0;
+  const query = useQuery<CohortDetail, Error>({
+    queryKey: academicKeys.cohorts.detail(cohortId),
+    queryFn: async () => {
+      if (!cohortId) {
+        throw new Error('Cohort id is required');
+      }
 
-  const fetchCohort = useCallback(async () => {
-    if (!cohortId) { setLoading(false); return; }
-    try {
-      setLoading(true);
-      const data = await cohortAPI.getById(cohortId);
-      setCohort(data);
-      setError(null);
-    } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort details'));
-    } finally {
-      setLoading(false);
-    }
-  }, [cohortId]);
+      return cohortAPI.getById(cohortId);
+    },
+    enabled,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => { fetchCohort(); }, [fetchCohort]);
-
-  return { cohort, loading, error, refetch: fetchCohort };
+  return {
+    cohort: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
+    refetch: query.refetch,
+  };
 };
 
 // ── useAcademic (composite) ───────────────────────────────────────────────

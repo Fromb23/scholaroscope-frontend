@@ -94,8 +94,16 @@ export default function LearnerDetailPage() {
         () => student?.enrollments.filter(e => !e.is_active) ?? [],
         [student]
     );
-    const currentCohortId = student?.primary_cohort ?? activeEnrollments[0]?.cohort ?? null;
-    const currentCohortName = student?.primary_cohort_name ?? activeEnrollments[0]?.cohort_name ?? null;
+    const currentEnrollment = useMemo(
+        () => (
+            activeEnrollments.find((enrollment) => enrollment.cohort === student?.primary_cohort)
+            ?? activeEnrollments[0]
+            ?? null
+        ),
+        [activeEnrollments, student?.primary_cohort]
+    );
+    const currentCohortId = currentEnrollment?.cohort ?? null;
+    const currentCohortName = currentEnrollment?.cohort_name ?? null;
     const { subjects: cohortSubjects, loading: cohortSubjectsLoading } = useCohortSubjectsByCohort(currentCohortId);
     const currentSubjectIds = useMemo(
         () => new Set((student?.current_subjects ?? []).map(subject => subject.id)),

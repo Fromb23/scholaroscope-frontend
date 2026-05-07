@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { learnersAPI } from '../api/learners';
 import { Student, StudentStats, StudentDetail } from '../types/student';
 import { ApiError, extractErrorMessage } from '../types/errors';
+import { academicKeys } from '@/app/core/lib/queryKeys';
 
 // ── useStudents ───────────────────────────────────────────────────────────
 
@@ -26,8 +28,14 @@ export function useStudents(filters?: StudentsFilters) {
   });
 
   const abortRef = useRef<AbortController | null>(null);
+  const cohort = filters?.cohort;
+  const status = filters?.status;
+  const gender = filters?.gender;
+  const search = filters?.search;
+  const page = filters?.page ?? 1;
+  const pageSize = filters?.page_size ?? 10;
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     const controller = new AbortController();
     abortRef.current?.abort();
     abortRef.current = controller;
@@ -37,9 +45,12 @@ export function useStudents(filters?: StudentsFilters) {
 
     try {
       const data = await learnersAPI.getStudents({
-        ...filters,
-        page: filters?.page ?? 1,
-        page_size: filters?.page_size ?? 10,
+        cohort,
+        status,
+        gender,
+        search,
+        page,
+        page_size: pageSize,
       });
 
       if (controller.signal.aborted) return;
@@ -49,9 +60,8 @@ export function useStudents(filters?: StudentsFilters) {
 
       if (!Array.isArray(data)) {
         const totalItems = data.count ?? results.length;
-        const pageSize = filters?.page_size ?? 10;
         setPagination({
-          currentPage: filters?.page ?? 1,
+          currentPage: page,
           pageSize,
           totalItems,
           totalPages: Math.ceil(totalItems / pageSize),
@@ -72,19 +82,19 @@ export function useStudents(filters?: StudentsFilters) {
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
-  };
+  }, [
+    cohort,
+    gender,
+    page,
+    pageSize,
+    search,
+    status,
+  ]);
 
   useEffect(() => {
     loadStudents();
     return () => { abortRef.current?.abort(); };
-  }, [
-    filters?.cohort,
-    filters?.status,
-    filters?.gender,
-    filters?.search,
-    filters?.page,
-    filters?.page_size,
-  ]);
+  }, [loadStudents]);
 
   return { students, pagination, loading, error, reload: loadStudents };
 }
@@ -92,35 +102,28 @@ export function useStudents(filters?: StudentsFilters) {
 // ── useStudent ────────────────────────────────────────────────────────────
 
 export function useStudent(id: number) {
-  const [student, setStudent] = useState<StudentDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const enabled = Number.isFinite(id) && id > 0;
+  const query = useQuery<StudentDetail, Error>({
+    queryKey: academicKeys.students.detail(id),
+    queryFn: async () => learnersAPI.getStudent(id),
+    enabled,
+    staleTime: 30_000,
+  });
 
   const loadStudent = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await learnersAPI.getStudent(id);
-      setStudent(data);
-    } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to load student'));
-      setStudent(null);
-    } finally {
-      setLoading(false);
-    }
+    const result = await query.refetch();
+    return result.data ?? null;
   };
-
-  useEffect(() => {
-    if (id) loadStudent();
-  }, [id]);
 
   const withAction = async (fn: () => Promise<void>) => {
     setActionLoading(true);
     setActionError(null);
     try {
       await fn();
+      await queryClient.invalidateQueries({ queryKey: academicKeys.students.detail(id) });
       await loadStudent();
     } catch (err) {
       const message = extractErrorMessage(err as ApiError, 'Action failed');
@@ -144,7 +147,9 @@ export function useStudent(id: number) {
     withAction(() => learnersAPI.deleteStudent(id));
 
   return {
-    student, loading, error,
+    student: query.data ?? null,
+    loading: query.isLoading,
+    error: query.error?.message ?? null,
     actionLoading, actionError, setActionError,
     reload: loadStudent,
     updateStatus, enroll, unenroll, deleteStudent,
@@ -184,7 +189,7 @@ export function useStudentsByCohort(cohortId?: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     if (!cohortId) return;
     try {
       setLoading(true);
@@ -197,11 +202,11 @@ export function useStudentsByCohort(cohortId?: number) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cohortId]);
 
   useEffect(() => {
     if (cohortId) loadStudents();
-  }, [cohortId]);
+  }, [cohortId, loadStudents]);
 
   return { students, loading, error, reload: loadStudents };
 }

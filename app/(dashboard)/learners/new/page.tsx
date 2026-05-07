@@ -5,7 +5,6 @@ import { ArrowLeft, CheckCircle2, ChevronRight, Save } from 'lucide-react';
 import Link from 'next/link';
 import { learnersAPI } from '@/app/core/api/learners';
 import { useCohortDetail, useCohorts } from '@/app/core/hooks/useAcademic';
-import { isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
@@ -67,12 +66,7 @@ export default function NewStudentPage() {
         [cohorts, selectedCohortId]
     );
     const { cohort: createdCohort, loading: createdCohortLoading } = useCohortDetail(createdLearner?.cohortId ?? null);
-    const showKernelSubjectActions = Boolean(
-        createdCohort
-        && createdCohort.curriculum_type !== 'CBE'
-        && !isCambridgeCurriculumType(createdCohort.curriculum_type)
-    );
-    const quickActionSubjects = showKernelSubjectActions ? createdCohort?.subjects ?? [] : [];
+    const quickActionSubjects = createdCohort?.subjects ?? [];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
