@@ -11,35 +11,23 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Users, UserPlus, CheckSquare } from 'lucide-react';
-import { useAuth } from '@/app/context/AuthContext';
-import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
-import { useCohortSubjectParticipation } from '@/app/core/hooks/useCohortSubjectParticipation';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { useCohortDetail } from '@/app/core/hooks/useAcademic';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
-import { CohortSubjectParticipationSection } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
 import { EnrolledPanel, AvailablePanel, EnrollModal, UnenrollModal } from '@/app/core/components/cohorts/CohortStudentComponents';
 import { useCohortStudents } from '@/app/core/hooks/useCohortStudents';
 
 export default function CohortStudentsPage() {
     const params = useParams();
     const cohortId = Number(params.id);
-    const { user, activeRole } = useAuth();
 
     const {
         cohortName, enrolled, enrolledCount, available, availableCount,
         loading, error, clearError,
         bulkEnroll, bulkUnenroll,
     } = useCohortStudents(cohortId);
-    const { cohort, refetch: refetchCohort } = useCohortDetail(Number.isFinite(cohortId) && cohortId > 0 ? cohortId : null);
-    const {
-        cohortSubjects,
-        loading: cohortSubjectsLoading,
-        error: cohortSubjectsError,
-        refetch: refetchCohortSubjects,
-    } = useCohortSubjects(Number.isFinite(cohortId) && cohortId > 0 ? cohortId : undefined);
+    const { cohort } = useCohortDetail(Number.isFinite(cohortId) && cohortId > 0 ? cohortId : null);
 
     const [selectedEnrolled, setSelectedEnrolled] = useState<Set<number>>(new Set());
     const [selectedAvailable, setSelectedAvailable] = useState<Set<number>>(new Set());
@@ -48,14 +36,6 @@ export default function CohortStudentsPage() {
     const [showEnrollModal, setShowEnrollModal] = useState(false);
     const [showUnenrollModal, setShowUnenrollModal] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
-    const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
-    const canManageInstructors = isAdminOrAbove(user, activeRole);
-    const canLinkSubjects = isAdminOrAbove(user, activeRole);
-    const subjectParticipationQuery = useCohortSubjectParticipation(
-        cohort?.id ?? null,
-        cohortSubjects,
-        { includeInstructor: canManageInstructors }
-    );
 
     // ── Filter enrolled client-side ───────────────────────────────────────
 
@@ -129,38 +109,25 @@ export default function CohortStudentsPage() {
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="flex items-center gap-4">
+            <div className="space-y-4">
+                <div>
                     <Link href={`/academic/cohorts/${cohortId}`}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="mr-2 h-4 w-4" />Back to Cohort
                         </Button>
                     </Link>
-                    <div className="space-y-1">
-                        <h1 className="text-2xl font-bold text-gray-900">Cohort Learners</h1>
-                        <p className="text-sm text-gray-500">
-                            View and manage learners enrolled in this cohort. Subject participation is managed separately per cohort subject.
-                        </p>
-                        {(cohortName || cohort?.name) ? (
-                            <p className="text-sm font-medium text-gray-700">{cohortName || cohort?.name}</p>
-                        ) : null}
-                    </div>
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                    {canLinkSubjects ? (
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="w-full sm:w-auto"
-                            onClick={() => setAssignSubjectsOpen(true)}
-                        >
-                            Link Subject to Cohort
-                        </Button>
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-bold text-gray-900">Cohort Learners</h1>
+                    <p className="text-sm text-gray-500">
+                        View and manage learners enrolled in this cohort.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                        Cohort placement controls class membership. Subject participation is managed separately from each cohort subject.
+                    </p>
+                    {(cohortName || cohort?.name) ? (
+                        <p className="text-sm font-medium text-gray-700">{cohortName || cohort?.name}</p>
                     ) : null}
-                    <Link href="/assessments" className="w-full sm:w-auto">
-                        <Button variant="secondary" size="sm" className="w-full sm:w-auto">View Assessments</Button>
-                    </Link>
                 </div>
             </div>
 
@@ -170,16 +137,6 @@ export default function CohortStudentsPage() {
                     onDismiss={() => { clearError(); setActionError(null); }}
                 />
             )}
-
-            <CohortSubjectParticipationSection
-                cohortSubjects={cohortSubjects}
-                summaries={subjectParticipationQuery.summaries}
-                loading={cohortSubjectsLoading || subjectParticipationQuery.loading}
-                error={cohortSubjectsError ?? subjectParticipationQuery.error}
-                canManageInstructors={canManageInstructors}
-                canLinkSubjects={canLinkSubjects}
-                onLinkSubjects={() => setAssignSubjectsOpen(true)}
-            />
 
             <div className="grid gap-4 md:grid-cols-3">
                 <StatsCard title="Enrolled" value={enrolledCount} icon={Users} color="blue" />
@@ -225,18 +182,6 @@ export default function CohortStudentsPage() {
                 onClose={() => setShowUnenrollModal(false)}
                 onConfirm={handleUnenroll}
             />
-
-            {cohort && canLinkSubjects ? (
-                <ManageCohortSubjectsModal
-                    isOpen={assignSubjectsOpen}
-                    onClose={() => setAssignSubjectsOpen(false)}
-                    cohort={cohort}
-                    onSubjectsChanged={async () => {
-                        await refetchCohort();
-                        await refetchCohortSubjects();
-                    }}
-                />
-            ) : null}
         </div>
     );
 }
