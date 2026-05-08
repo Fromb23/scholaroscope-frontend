@@ -49,7 +49,7 @@ export default function CohortStudentsPage() {
     const [showUnenrollModal, setShowUnenrollModal] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
-    const canManageInstructors = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+    const canManageInstructors = isAdminOrAbove(user, activeRole);
     const canLinkSubjects = isAdminOrAbove(user, activeRole);
     const subjectParticipationQuery = useCohortSubjectParticipation(
         cohort?.id ?? null,
@@ -136,9 +136,14 @@ export default function CohortStudentsPage() {
                             <ArrowLeft className="mr-2 h-4 w-4" />Back to Cohort
                         </Button>
                     </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Manage Cohort Placement</h1>
-                        {(cohortName || cohort?.name) && <p className="text-sm text-gray-500 mt-0.5">{cohortName || cohort?.name}</p>}
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-bold text-gray-900">Cohort Learners</h1>
+                        <p className="text-sm text-gray-500">
+                            View and manage learners enrolled in this cohort. Subject participation is managed separately per cohort subject.
+                        </p>
+                        {(cohortName || cohort?.name) ? (
+                            <p className="text-sm font-medium text-gray-700">{cohortName || cohort?.name}</p>
+                        ) : null}
                     </div>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">

@@ -27,6 +27,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
 import { CohortSubjectParticipationSection } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
+import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useCambridgeCohortSubjects } from '@/app/plugins/cambridge/hooks';
 
@@ -199,8 +200,8 @@ export default function CohortHubPage() {
         : user.is_superadmin
             || activeRole === 'ADMIN'
             || (isInstructor && instructorAccess.cohortIds.includes(cohortId));
-    const canManageInstructors = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
-    const canLinkSubjects = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+    const canManageInstructors = isAdminOrAbove(user, activeRole);
+    const canLinkSubjects = isAdminOrAbove(user, activeRole);
     const visibleCohortSubjects = isInstructor
         ? cohortSubjects.filter(subject => instructorAccess.cohortSubjectIds.includes(subject.id))
         : cohortSubjects;
@@ -240,13 +241,8 @@ export default function CohortHubPage() {
     const curriculumName = getCurriculumBridgeName(cohort);
     const learnerCount = String(enrolledStudentsQuery.data?.students.length ?? 0);
     const subjectCount = cohortSubjects.length;
-    const cohortPlacementHref = isInstructor
-        ? `/learners?curriculum=${cohort.curriculum}&cohort=${cohort.id}`
-        : `/academic/cohorts/${cohort.id}/students`;
-    const cohortPlacementTitle = isInstructor ? 'Cohort Learners' : 'Manage Placement';
-    const cohortPlacementDescription = isInstructor
-        ? 'View learners currently placed in this cohort.'
-        : 'Add or remove learners from this cohort. Subject participation is managed separately per cohort subject.';
+    const canViewCohortLearners = isAdminOrAbove(user, activeRole);
+    const cohortLearnersHref = `/academic/cohorts/${cohort.id}/students`;
     const sessionsHref = `/sessions?cohort=${cohort.id}`;
     const hasCBCPlugin = hasPlugin('cbc');
     const hasCambridgePlugin = hasPlugin('cambridge');
@@ -271,7 +267,9 @@ export default function CohortHubPage() {
                 <div className="space-y-1">
                     <h1 className="text-3xl font-bold text-gray-900">{cohort.name}</h1>
                     <p className="text-sm text-gray-500">
-                        Use this cohort control center to manage placement, create cohort subject offerings, and open subject-specific learner workflows.
+                        {canViewCohortLearners
+                            ? 'Use this cohort control center to manage placement, create cohort subject offerings, and open subject-specific learner workflows.'
+                            : 'Use this cohort control center to open subject-specific learner workflows for your teaching assignments.'}
                     </p>
                 </div>
             </div>
@@ -296,15 +294,15 @@ export default function CohortHubPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <ActionCard
-                        title={cohortPlacementTitle}
-                        description={cohortPlacementDescription}
-                        icon={Users}
-                        href={cohortPlacementHref}
-                        footerLabel={isInstructor
-                            ? `${learnerCount} learner${learnerCount === '1' ? '' : 's'}`
-                            : 'Manage placement'}
-                    />
+                    {canViewCohortLearners ? (
+                        <ActionCard
+                            title="Class List"
+                            description="Open cohort learners to view enrolled learners and manage cohort placement. Subject participation stays scoped to each cohort subject."
+                            icon={Users}
+                            href={cohortLearnersHref}
+                            footerLabel="View class list"
+                        />
+                    ) : null}
                     {canLinkSubjects ? (
                         <ActionCard
                             title="Link Subject to Cohort"
