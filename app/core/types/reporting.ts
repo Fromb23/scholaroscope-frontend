@@ -96,12 +96,25 @@ export interface AssessmentTypeSummary {
   last_updated: string;
 }
 
+export interface ReportOrganization {
+  id: number;
+  name: string;
+}
+
+export interface AcademicYearInfo {
+  id: number;
+  name: string;
+}
+
 export interface DashboardOverview {
-  academic_year: string | null;
-  current_term: string | null;
-  total_students: number;
+  organization: ReportOrganization;
+  academic_year: AcademicYearInfo | null;
+  current_term: TermInfo | null;
+  total_learners: number;
   total_cohorts: number;
-  total_subjects: number;
+  total_cohort_subjects: number;
+  total_instructors: number;
+  total_sessions: number;
   total_assessments: number;
   average_grade: number | null;
   average_attendance: number | null;
@@ -112,6 +125,7 @@ export interface StudentInfo {
   name: string;
   admission_number: string;
   cohort: string | null;
+  cohort_id?: number | null;
   level: string | null;
 }
 
@@ -119,6 +133,7 @@ export interface TermInfo {
   id: number;
   name: string;
   academic_year: string;
+  academic_year_id?: number | null;
 }
 
 export interface OverallStats {
@@ -129,24 +144,125 @@ export interface OverallStats {
 
 export interface StudentReportCard {
   student: StudentInfo;
-  term: TermInfo;
+  term: TermInfo | null;
   overall: OverallStats;
   grades: (ComputedGradeDTO & { position: number; total_in_class: number })[];
   attendance: AttendanceSummary[];
 }
 
-export interface ClassSummary {
-  cohort: { id: number; name: string; level: string };
-  term: TermInfo;
-  summary: CohortSummary | null;
-  subject_performance: SubjectSummary[];
+export interface ReportCoverageSummary {
+  covered: number;
+  total: number;
+  percentage: number | null;
+}
+
+export interface ReportAssignedInstructor {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface ReportCohortInfo {
+  id: number;
+  name: string;
+  level: string;
+  academic_year: string;
+  academic_year_id: number;
+  curriculum: string;
+  curriculum_id: number;
+}
+
+export interface ReportSubjectInfo {
+  id: number;
+  name: string;
+  code: string;
+  curriculum_id: number;
+}
+
+export interface ReportCohortSubjectRef {
+  id: number;
+  cohort_id: number;
+  cohort_name?: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+}
+
+export interface CohortSummarySnapshot {
+  id: number;
+  cohort: number;
+  term: number;
   total_students: number;
+  average_grade: number | null;
+  average_attendance: number | null;
+  grade_a_count: number;
+  grade_b_count: number;
+  grade_c_count: number;
+  grade_d_count: number;
+  grade_e_count: number;
+  last_updated: string;
+}
+
+export interface SubjectSummarySnapshot {
+  id: number;
+  cohort_subject: number;
+  term: number;
+  total_students: number;
+  average_score: number | null;
+  highest_score: number | null;
+  lowest_score: number | null;
+  total_assessments: number;
+  cat_count: number;
+  exam_count: number;
+  project_count: number;
+  last_updated: string;
+}
+
+export interface AdminCohortSubjectSummary {
+  cohort_subject: ReportCohortSubjectRef;
+  assigned_instructor: ReportAssignedInstructor | null;
+  active_learner_count: number;
+  average_grade: number | null;
+  average_attendance: number | null;
+  subject_summary: SubjectSummarySnapshot | null;
+  coverage: ReportCoverageSummary | null;
+}
+
+export interface ClassSummary {
+  cohort: ReportCohortInfo;
+  term: TermInfo | null;
+  learner_count: number;
+  average_grade: number | null;
+  average_attendance: number | null;
+  cohort_summary: CohortSummarySnapshot | null;
+  subject_summaries: SubjectSummary[];
+  cohort_subjects: AdminCohortSubjectSummary[];
+}
+
+export interface SubjectCohortOverview {
+  cohort_subject: ReportCohortSubjectRef;
+  cohort: ReportCohortInfo;
+  active_learner_count: number;
+  assigned_instructor: ReportAssignedInstructor | null;
+  average_score: number | null;
+  highest_score: number | null;
+  lowest_score: number | null;
+}
+
+export interface ReportAssessmentTypeBreakdown {
+  assessment_type: string;
+  cohort_subjects?: number;
+  average_score: number | null;
+  total_assessments: number;
 }
 
 export interface SubjectAnalysis {
-  term: TermInfo;
+  subject: ReportSubjectInfo;
+  term: TermInfo | null;
+  average_score: number | null;
+  cohort_subjects: SubjectCohortOverview[];
   subject_summaries: SubjectSummary[];
-  assessment_type_breakdown: AssessmentTypeSummary[];
+  assessment_type_breakdown: ReportAssessmentTypeBreakdown[];
 }
 
 export interface LongitudinalTermData {
@@ -158,6 +274,130 @@ export interface LongitudinalTermData {
 export interface LongitudinalStudentData {
   student: StudentInfo;
   terms: LongitudinalTermData[];
+}
+
+export interface InstructorCohortSubjectOverview {
+  id: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  curriculum: string;
+  curriculum_type: string;
+  academic_year: string;
+  active_learner_count: number;
+  average_grade: number | null;
+  average_attendance: number | null;
+  session_count: number | null;
+  completed_session_count: number | null;
+  coverage: ReportCoverageSummary | null;
+}
+
+export interface InstructorOverview {
+  instructor: {
+    role: string;
+  };
+  assigned_cohort_subjects: InstructorCohortSubjectOverview[];
+  total_assigned_cohort_subjects: number;
+  total_visible_learners: number;
+}
+
+export interface ReportStudentRef {
+  id: number;
+  name: string;
+  admission_number: string;
+}
+
+export interface ReportAverageSummary {
+  average: number | null;
+  records: number;
+}
+
+export interface ReportComputedGradePreview {
+  id: number;
+  term_id: number;
+  final_score: number | null;
+  letter_grade: string | null;
+  letter_label: string | null;
+  grade_status: string | null;
+}
+
+export interface ReportGradeSummaryPreview {
+  id: number;
+  term_id: number;
+  average_score: number | null;
+  weighted_average: number | null;
+  final_grade: string | null;
+  total_assessments: number;
+}
+
+export interface ReportAssessmentCompletion {
+  completed_scores: number;
+  total_assessments: number;
+}
+
+export interface InstructorLearnerReportRow {
+  student: ReportStudentRef;
+  attendance_summary: ReportAverageSummary | null;
+  computed_grade: ReportComputedGradePreview | null;
+  grade_summary: ReportGradeSummaryPreview | null;
+  assessment_completion: ReportAssessmentCompletion;
+}
+
+export interface InstructorCohortSubjectLearnersReport {
+  cohort_subject: ReportCohortSubjectRef;
+  term: TermInfo | null;
+  learners: InstructorLearnerReportRow[];
+  total_learners: number;
+}
+
+export interface ReportGradeDistributionItem {
+  letter_grade: string | null;
+  count: number;
+}
+
+export interface ReportGradeStatusCountItem {
+  grade_status: string | null;
+  count: number;
+}
+
+export interface InstructorCohortSubjectPerformanceReport {
+  cohort_subject: ReportCohortSubjectRef;
+  term: TermInfo | null;
+  total_learners: number;
+  average_score: number | null;
+  highest_score: number | null;
+  lowest_score: number | null;
+  grade_distribution: ReportGradeDistributionItem[];
+  grade_status_counts: ReportGradeStatusCountItem[];
+  assessment_type_breakdown: ReportAssessmentTypeBreakdown[];
+}
+
+export interface InstructorCohortSubjectTeachingActivityReport {
+  cohort_subject: ReportCohortSubjectRef;
+  term: TermInfo | null;
+  sessions_created: number;
+  sessions_completed: number;
+  attendance_marked: number;
+  attendance_expected: number;
+  attendance_completeness: number | null;
+  coverage: ReportCoverageSummary | null;
+}
+
+export interface CoverageRecord {
+  subtopic_id: number;
+  subtopic_code: string;
+  subtopic_name: string;
+  topic_name: string;
+  is_covered: boolean;
+  covered_at: string | null;
+}
+
+export interface InstructorCohortSubjectCoverageReport {
+  cohort_subject: ReportCohortSubjectRef;
+  coverage: ReportCoverageSummary | null;
+  records: CoverageRecord[];
 }
 
 export interface ComputeResponse {
