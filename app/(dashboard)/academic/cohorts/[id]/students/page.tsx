@@ -3,185 +3,199 @@
 // ============================================================================
 // app/(dashboard)/academic/cohorts/[id]/students/page.tsx
 //
-// Responsibility: fetch via hook, handle selection state, compose components.
-// No alert(). No direct API calls. No any.
+// Responsibility: render a read-only class list for the cohort.
+// No enrollment mutations. No direct API calls. No any.
 // ============================================================================
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, UserPlus, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { useCohortDetail } from '@/app/core/hooks/useAcademic';
+import { type EnrolledStudent, useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { Button } from '@/app/components/ui/Button';
+import { Card } from '@/app/components/ui/Card';
+import { Badge } from '@/app/components/ui/Badge';
+import { Input } from '@/app/components/ui/Input';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { EnrolledPanel, AvailablePanel, EnrollModal, UnenrollModal } from '@/app/core/components/cohorts/CohortStudentComponents';
-import { useCohortStudents } from '@/app/core/hooks/useCohortStudents';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { ErrorState } from '@/app/components/ui/ErrorState';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/app/components/ui/Table';
+
+type LearnerRow = EnrolledStudent & {
+    email?: string | null;
+    phone?: string | null;
+    status?: string | null;
+    status_display?: string | null;
+};
+
+function getLearnerContact(student: LearnerRow) {
+    const contact = [student.email, student.phone]
+        .filter((value): value is string => Boolean(value?.trim()))
+        .join(' • ');
+
+    return contact || '—';
+}
+
+function getLearnerStatus(student: LearnerRow) {
+    return student.status_display?.trim() || student.status?.trim() || '—';
+}
+
+function getLearnerStatusVariant(student: LearnerRow): 'success' | 'warning' | 'danger' | 'info' | 'default' {
+    switch (student.status) {
+        case 'ACTIVE':
+            return 'success';
+        case 'TRANSFERRED':
+            return 'warning';
+        case 'GRADUATED':
+            return 'info';
+        case 'SUSPENDED':
+        case 'WITHDRAWN':
+            return 'danger';
+        default:
+            return 'default';
+    }
+}
 
 export default function CohortStudentsPage() {
-    const params = useParams();
+    const params = useParams<{ id: string }>();
     const cohortId = Number(params.id);
-
-    const {
-        cohortName, enrolled, enrolledCount, available, availableCount,
-        loading, error, clearError,
-        bulkEnroll, bulkUnenroll,
-    } = useCohortStudents(cohortId);
-    const { cohort } = useCohortDetail(Number.isFinite(cohortId) && cohortId > 0 ? cohortId : null);
-
-    const [selectedEnrolled, setSelectedEnrolled] = useState<Set<number>>(new Set());
-    const [selectedAvailable, setSelectedAvailable] = useState<Set<number>>(new Set());
+    const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
+    const enrolledQuery = useCohortEnrolledStudents(cohortId);
+    const { cohort } = useCohortDetail(isValidCohortId ? cohortId : null);
     const [searchEnrolled, setSearchEnrolled] = useState('');
-    const [searchAvailableStr, setSearchAvailableStr] = useState('');
-    const [showEnrollModal, setShowEnrollModal] = useState(false);
-    const [showUnenrollModal, setShowUnenrollModal] = useState(false);
-    const [actionError, setActionError] = useState<string | null>(null);
 
-    // ── Filter enrolled client-side ───────────────────────────────────────
-
-    const filteredEnrolled = enrolled.filter(s =>
-        s.full_name.toLowerCase().includes(searchEnrolled.toLowerCase()) ||
-        s.admission_number.toLowerCase().includes(searchEnrolled.toLowerCase())
-    );
-
-    const filteredAvailable = available.filter(s =>
-        s.full_name.toLowerCase().includes(searchAvailableStr.toLowerCase()) ||
-        s.admission_number.toLowerCase().includes(searchAvailableStr.toLowerCase())
-    );
-
-    // ── Selection helpers ─────────────────────────────────────────────────
-
-    const toggleEnrolled = (id: number) => {
-        setSelectedEnrolled(prev => {
-            const s = new Set(prev);
-            if (s.has(id)) {
-                s.delete(id);
-            } else {
-                s.add(id);
-            }
-            return s;
-        });
-    };
-
-    const toggleAvailable = (id: number) => {
-        setSelectedAvailable(prev => {
-            const s = new Set(prev);
-            if (s.has(id)) {
-                s.delete(id);
-            } else {
-                s.add(id);
-            }
-            return s;
-        });
-    };
-
-    const selectAllEnrolled = () => setSelectedEnrolled(
-        selectedEnrolled.size === filteredEnrolled.length
-            ? new Set()
-            : new Set(filteredEnrolled.map(s => s.id))
-    );
-
-    const selectAllAvailable = () => setSelectedAvailable(
-        selectedAvailable.size === filteredAvailable.length
-            ? new Set()
-            : new Set(filteredAvailable.map(s => s.id))
-    );
-
-    // ── Action handlers ───────────────────────────────────────────────────
-
-    const handleEnroll = async (enrollmentType: string, notes: string) => {
-        const result = await bulkEnroll(Array.from(selectedAvailable), enrollmentType, notes);
-        setSelectedAvailable(new Set());
-        setActionError(
-            `Enrolled ${result.created} new · ${result.reactivated} reactivated · ${result.already_active} already active`
+    const enrolled: LearnerRow[] = enrolledQuery.data?.students ?? [];
+    const cohortName = enrolledQuery.data?.cohort_name || cohort?.name || '';
+    const filteredEnrolled = enrolled.filter((student) => {
+        const query = searchEnrolled.toLowerCase();
+        return (
+            student.full_name.toLowerCase().includes(query)
+            || student.admission_number.toLowerCase().includes(query)
+            || student.email?.toLowerCase().includes(query)
+            || student.phone?.toLowerCase().includes(query)
         );
-    };
+    });
 
-    const handleUnenroll = async (notes: string) => {
-        const result = await bulkUnenroll(Array.from(selectedEnrolled), notes);
-        setSelectedEnrolled(new Set());
-        if (result.primary_cleared > 0) {
-            setActionError(`Removed ${result.unenrolled} · Primary cohort cleared for ${result.primary_cleared} student(s)`);
-        }
-    };
+    if (!isValidCohortId) {
+        return <ErrorState fullScreen={false} message="Invalid cohort." />;
+    }
 
-    // ── Render ────────────────────────────────────────────────────────────
+    if (enrolledQuery.isLoading) {
+        return <LoadingSpinner fullScreen={false} message="Loading cohort learners..." />;
+    }
+
+    if (enrolledQuery.error) {
+        return (
+            <ErrorState
+                fullScreen={false}
+                message={enrolledQuery.error.message || 'Failed to load cohort learners.'}
+                onRetry={() => {
+                    void enrolledQuery.refetch();
+                }}
+            />
+        );
+    }
+
+    const emptyMessage = enrolled.length === 0
+        ? 'No learners are currently enrolled in this cohort.'
+        : 'No learners match your search.';
 
     return (
-        <div className="space-y-6 max-w-6xl mx-auto">
+        <div className="mx-auto max-w-6xl space-y-6">
             <div className="space-y-4">
                 <div>
                     <Link href={`/academic/cohorts/${cohortId}`}>
                         <Button variant="ghost" size="sm">
-                            <ArrowLeft className="mr-2 h-4 w-4" />Back to Cohort
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Cohort
                         </Button>
                     </Link>
                 </div>
+
                 <div className="space-y-1">
                     <h1 className="text-2xl font-bold text-gray-900">Cohort Learners</h1>
+                    <p className="text-sm text-gray-500">View learners enrolled in this cohort.</p>
                     <p className="text-sm text-gray-500">
-                        View and manage learners enrolled in this cohort.
+                        Cohort placement defines class membership. Subject participation is managed separately per cohort subject.
                     </p>
-                    <p className="text-sm text-gray-500">
-                        Cohort placement controls class membership. Subject participation is managed separately from each cohort subject.
-                    </p>
-                    {(cohortName || cohort?.name) ? (
-                        <p className="text-sm font-medium text-gray-700">{cohortName || cohort?.name}</p>
+                    {cohortName ? (
+                        <p className="text-sm font-medium text-gray-700">{cohortName}</p>
                     ) : null}
                 </div>
             </div>
 
-            {(error || actionError) && (
-                <ErrorBanner
-                    message={error ?? actionError ?? ''}
-                    onDismiss={() => { clearError(); setActionError(null); }}
-                />
-            )}
-
-            <div className="grid gap-4 md:grid-cols-3">
-                <StatsCard title="Enrolled" value={enrolledCount} icon={Users} color="blue" />
-                <StatsCard title="Available" value={availableCount} icon={UserPlus} color="green" />
-                <StatsCard title="Selected" value={selectedEnrolled.size + selectedAvailable.size} icon={CheckSquare} color="yellow" />
+            <div className="max-w-xs">
+                <StatsCard title="Enrolled Learners" value={enrolled.length} icon={Users} color="blue" />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-                <EnrolledPanel
-                    students={filteredEnrolled}
-                    selected={selectedEnrolled}
-                    searchValue={searchEnrolled}
-                    loading={loading}
-                    onSearchChange={setSearchEnrolled}
-                    onToggle={toggleEnrolled}
-                    onSelectAll={selectAllEnrolled}
-                    onRemoveClick={() => setShowUnenrollModal(true)}
-                />
+            <Card>
+                <div className="space-y-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-1">
+                            <h2 className="text-lg font-semibold text-gray-900">Class List</h2>
+                            <p className="text-sm text-gray-500">
+                                Read-only learner roster for this cohort.
+                            </p>
+                        </div>
+                        <div className="w-full lg:max-w-sm">
+                            <Input
+                                value={searchEnrolled}
+                                onChange={(event) => setSearchEnrolled(event.target.value)}
+                                placeholder="Search learners by name, admission number, or contact"
+                                aria-label="Search enrolled learners"
+                            />
+                        </div>
+                    </div>
 
-                <AvailablePanel
-                    students={filteredAvailable}
-                    selected={selectedAvailable}
-                    searchValue={searchAvailableStr}
-                    loading={loading}
-                    onSearchChange={setSearchAvailableStr}
-                    onToggle={toggleAvailable}
-                    onSelectAll={selectAllAvailable}
-                    onEnrollClick={() => setShowEnrollModal(true)}
-                />
-            </div>
-
-            <EnrollModal
-                isOpen={showEnrollModal}
-                count={selectedAvailable.size}
-                cohortName={cohortName}
-                onClose={() => setShowEnrollModal(false)}
-                onConfirm={handleEnroll}
-            />
-
-            <UnenrollModal
-                isOpen={showUnenrollModal}
-                count={selectedEnrolled.size}
-                onClose={() => setShowUnenrollModal(false)}
-                onConfirm={handleUnenroll}
-            />
+                    {filteredEnrolled.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
+                            {emptyMessage}
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <tr>
+                                    <TableHead>Admission No.</TableHead>
+                                    <TableHead>Learner</TableHead>
+                                    <TableHead>Contact</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </tr>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredEnrolled.map((student) => (
+                                    <TableRow key={student.id}>
+                                        <TableCell>
+                                            <span className="font-mono text-sm text-gray-700">{student.admission_number}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Link
+                                                href={`/learners/${student.id}`}
+                                                className="font-medium text-blue-600 hover:underline"
+                                            >
+                                                {student.full_name}
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell>{getLearnerContact(student)}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={getLearnerStatusVariant(student)}>
+                                                {getLearnerStatus(student)}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+            </Card>
         </div>
     );
 }
