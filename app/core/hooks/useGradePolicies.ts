@@ -1,6 +1,6 @@
 // app/core/hooks/useGradePolicies.ts
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { gradePolicyAPI } from '@/app/core/api/gradePolicy';
 import {
     GradePolicy,
@@ -19,7 +19,7 @@ export function useGradePolicies(filters?: PolicyFilters) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchPolicies = async () => {
+    const fetchPolicies = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -29,7 +29,9 @@ export function useGradePolicies(filters?: PolicyFilters) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [
+        filters,
+    ]);
 
     useEffect(() => {
         fetchPolicies();
@@ -39,6 +41,7 @@ export function useGradePolicies(filters?: PolicyFilters) {
         filters?.curriculum,
         filters?.term,
         filters?.is_active,
+        fetchPolicies,
     ]);
 
     const createPolicy = async (payload: GradePolicyPayload): Promise<GradePolicy> => {
@@ -296,7 +299,7 @@ export function useComputedGrades(filters?: ComputedGradeFilters) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchGrades = async () => {
+    const fetchGrades = useCallback(async () => {
         const hasFilter = filters && Object.values(filters).some(v => v !== undefined);
         if (!hasFilter) { setLoading(false); return; }
         try {
@@ -308,11 +311,11 @@ export function useComputedGrades(filters?: ComputedGradeFilters) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters]);
 
     useEffect(() => {
         fetchGrades();
-    }, [filters?.student, filters?.term, filters?.cohort_subject, filters?.policy]);
+    }, [fetchGrades, filters?.student, filters?.term, filters?.cohort_subject, filters?.policy]);
 
     const computeWithPolicy = async (
         termId: number, cohortId?: number, policyId?: number

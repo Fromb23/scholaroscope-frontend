@@ -7,6 +7,11 @@ import { Badge } from '@/app/components/ui/Badge';
 import { useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { AddCohortModal } from './AddCohortModal';
 
+function getActionErrorMessage(err: unknown, fallback: string): string {
+    const error = err as { response?: { data?: { detail?: string } }; message?: string };
+    return error.response?.data?.detail ?? error.message ?? fallback;
+}
+
 interface ParticipatingCohortsProps {
     sessionId: number;
     sessionSubjectId?: number;
@@ -31,8 +36,8 @@ export function ParticipatingCohorts({
         try {
             await linkCohort(cohortId);
             setShowAddModal(false);
-        } catch (err: any) {
-            setActionError(err?.response?.data?.detail ?? err?.message ?? 'Failed to add cohort.');
+        } catch (err: unknown) {
+            setActionError(getActionErrorMessage(err, 'Failed to add cohort.'));
         }
     };
 
@@ -41,8 +46,8 @@ export function ParticipatingCohorts({
         try {
             await unlinkCohort(cohortId);
             setConfirmUnlink(null);
-        } catch (err: any) {
-            setActionError(err?.response?.data?.detail ?? err?.message ?? 'Failed to unlink cohort.');
+        } catch (err: unknown) {
+            setActionError(getActionErrorMessage(err, 'Failed to unlink cohort.'));
         }
     };
 

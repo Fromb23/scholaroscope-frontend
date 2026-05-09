@@ -39,17 +39,14 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
-import { CURRICULUM_TYPE_OPTIONS } from '@/app/core/types/academic';
-import type { Cohort, CurriculumType } from '@/app/core/types/academic';
+import type { Cohort } from '@/app/core/types/academic';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
-import { useCambridgeOffering } from '@/app/plugins/cambridge/hooks';
+import { useCambridgeCohortQuickAction } from '@/app/plugins/cambridge/lib/cohortQuickAction';
 import { useAuth } from '@/app/context/AuthContext';
 import {
-    CAMBRIDGE_BRIDGE_NAME,
     getCurriculumBridgeName,
     getCurriculumOptionLabel,
-    isCambridgeCurriculum,
 } from '@/app/core/lib/curriculumBridge';
 
 type CohortWithIndex = Record<string, unknown> & Cohort;
@@ -103,7 +100,6 @@ function AdminCohortsPageContent() {
     const [editingCohort, setEditingCohort] = useState<Cohort | null>(null);
     const [rolloverCohort, setRolloverCohort] = useState<Cohort | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
-    const [isProvisioningQuickActionCurriculum, setIsProvisioningQuickActionCurriculum] = useState(false);
 
     const currentYear = useMemo(
         () => academicYears.find((academicYear) => academicYear.is_current),
@@ -112,127 +108,20 @@ function AdminCohortsPageContent() {
     const selectedYearId = parseOptionalNumber(filters.academic_year);
     const selectedCurriculumId = parseOptionalNumber(filters.curriculum);
     const shouldOpenCreate = searchParams.get('create') === '1';
-    const returnTo = searchParams.get('returnTo');
-    const quickActionCurriculumType = searchParams.get('curriculum_type') as CurriculumType | null;
-    const isCambridgeQuickAction = Boolean(returnTo?.startsWith('/cambridge/'));
-    const quickActionOfferingId = useMemo(() => {
-        if (!returnTo) return null;
-
-        const match = returnTo.match(/\/cambridge\/offerings\/(\d+)\/cohorts/);
-        return match ? Number(match[1]) : null;
-    }, [returnTo]);
-    const { data: quickActionOffering, isLoading: quickActionOfferingLoading } = useCambridgeOffering(
-        isCambridgeQuickAction && !quickActionCurriculumType ? quickActionOfferingId : null
-    );
-    const resolvedQuickActionCurriculumType = quickActionCurriculumType
-        ?? (quickActionOffering?.programme_code as CurriculumType | undefined)
-        ?? null;
-    const quickActionCurriculum = useMemo(() => {
-        if (selectedCurriculumId) {
-            return curricula.find((curriculum) => curriculum.id === selectedCurriculumId) ?? null;
-        }
-        if (isCambridgeQuickAction) {
-            return curricula.find((curriculum) => curriculum.is_active && isCambridgeCurriculum(curriculum)) ?? null;
-        }
-        if (!resolvedQuickActionCurriculumType) {
-            return null;
-        }
-
-        return curricula.find(
-            (curriculum) => curriculum.is_active && curriculum.curriculum_type === resolvedQuickActionCurriculumType
-        ) ?? null;
-    }, [curricula, isCambridgeQuickAction, resolvedQuickActionCurriculumType, selectedCurriculumId]);
-    const quickActionCurriculumName = useMemo(() => {
-        if (isCambridgeQuickAction) {
-            return CAMBRIDGE_BRIDGE_NAME;
-        }
-        if (!resolvedQuickActionCurriculumType) {
-            return CAMBRIDGE_BRIDGE_NAME;
-        }
-
-        return CURRICULUM_TYPE_OPTIONS.find(
-            (option) => option.value === resolvedQuickActionCurriculumType
-        )?.label ?? resolvedQuickActionCurriculumType;
-    }, [isCambridgeQuickAction, resolvedQuickActionCurriculumType]);
+    const quickAction = useCambridgeCohortQuickAction({
+        searchParams,
+        curricula,
+        selectedCurriculumId,
+        shouldOpenCreate,
+        createCurriculum,
+        updateFilters,
+    });
 
     useEffect(() => {
         if (currentYear && !filters.academic_year) {
             updateFilters({ academic_year: String(currentYear.id) });
         }
     }, [currentYear, filters.academic_year, updateFilters]);
-
-    useEffect(() => {
-        if (
-            isCambridgeQuickAction &&
-            quickActionCurriculum &&
-            filters.curriculum !== String(quickActionCurriculum.id)
-        ) {
-            updateFilters({ curriculum: String(quickActionCurriculum.id) });
-        }
-    }, [filters.curriculum, isCambridgeQuickAction, quickActionCurriculum, updateFilters]);
-
-    useEffect(() => {
-        const shouldProvision =
-            isCambridgeQuickAction
-            && shouldOpenCreate
-            && !selectedCurriculumId
-            && !quickActionCurriculum
-            && !isProvisioningQuickActionCurriculum
-            && Boolean(resolvedQuickActionCurriculumType)
-            && !quickActionOfferingLoading;
-
-        if (!shouldProvision) {
-            return;
-        }
-
-        let cancelled = false;
-
-        const provisionCurriculum = async () => {
-            setIsProvisioningQuickActionCurriculum(true);
-            setPageError(null);
-            try {
-                const createdCurriculum = await createCurriculum({
-                    name: quickActionCurriculumName,
-                    curriculum_type: resolvedQuickActionCurriculumType as CurriculumType,
-                    description: '',
-                    is_active: true,
-                });
-                if (!cancelled) {
-                    updateFilters({ curriculum: String(createdCurriculum.id) });
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    setPageError(
-                        extractErrorMessage(
-                            err as ApiError,
-                            'Failed to prepare the Cambridge curriculum for cohort creation.'
-                        )
-                    );
-                }
-            } finally {
-                if (!cancelled) {
-                    setIsProvisioningQuickActionCurriculum(false);
-                }
-            }
-        };
-
-        void provisionCurriculum();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [
-        createCurriculum,
-        isCambridgeQuickAction,
-        isProvisioningQuickActionCurriculum,
-        quickActionCurriculum,
-        quickActionCurriculumName,
-        quickActionOfferingLoading,
-        resolvedQuickActionCurriculumType,
-        selectedCurriculumId,
-        shouldOpenCreate,
-        updateFilters,
-    ]);
 
     const { cohorts, loading, refetch, createCohort, updateCohort, deleteCohort } = useCohorts({
         ...(selectedYearId ? { academic_year: selectedYearId } : {}),
@@ -269,17 +158,11 @@ function AdminCohortsPageContent() {
         }
     };
 
-    const quickActionSetupPending = isCambridgeQuickAction && (
-        quickActionOfferingLoading
-        || isProvisioningQuickActionCurriculum
-        || (!quickActionCurriculum && Boolean(resolvedQuickActionCurriculumType))
-    );
-
     useEffect(() => {
-        if (shouldOpenCreate && !editingCohort && !quickActionSetupPending) {
+        if (shouldOpenCreate && !editingCohort && !quickAction.setupPending) {
             setShowFormModal(true);
         }
-    }, [editingCohort, quickActionSetupPending, shouldOpenCreate]);
+    }, [editingCohort, quickAction.setupPending, shouldOpenCreate]);
 
     const handleSave = async (
         data: { academic_year: string; curriculum: string; level: string; stream: string },
@@ -314,7 +197,7 @@ function AdminCohortsPageContent() {
         }
     };
 
-    const initialFormData = useMemo(() => ({
+    const initialFormData = {
         academic_year: editingCohort
             ? String(editingCohort.academic_year)
             : currentYear
@@ -324,17 +207,12 @@ function AdminCohortsPageContent() {
             ? String(editingCohort.curriculum)
             : selectedCurriculumId
                 ? String(selectedCurriculumId)
-                : quickActionCurriculum
-                    ? String(quickActionCurriculum.id)
+                : quickAction.curriculum
+                    ? String(quickAction.curriculum.id)
                     : '',
         level: editingCohort?.level ?? '',
         stream: editingCohort?.stream ?? '',
-    }), [
-        currentYear,
-        editingCohort,
-        quickActionCurriculum,
-        selectedCurriculumId,
-    ]);
+    };
 
     const columns: Column<Cohort>[] = [
         {
@@ -452,24 +330,32 @@ function AdminCohortsPageContent() {
                 )}
             </div>
 
-            {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
+            {(pageError || quickAction.error) && (
+                <ErrorBanner
+                    message={pageError ?? quickAction.error ?? ''}
+                    onDismiss={() => {
+                        setPageError(null);
+                        quickAction.clearError();
+                    }}
+                />
+            )}
 
-            {returnTo ? (
+            {quickAction.returnTo ? (
                 <Card>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <h2 className="text-sm font-semibold text-gray-900">Cambridge Setup Flow</h2>
+                            <h2 className="text-sm font-semibold text-gray-900">{quickAction.noticeTitle}</h2>
                             <p className="mt-1 text-sm text-gray-600">
-                                Create the cohort. The matching Cambridge curriculum will be used automatically, then return to the offering assignment.
+                                {quickAction.noticeDescription}
                             </p>
-                            {quickActionSetupPending ? (
+                            {quickAction.setupPending ? (
                                 <p className="mt-2 text-xs text-gray-500">
-                                    Preparing the Cambridge curriculum for this cohort...
+                                    {quickAction.pendingMessage}
                                 </p>
                             ) : null}
                         </div>
-                        <Link href={returnTo} className="text-sm text-blue-600 hover:text-blue-700">
-                            Return to Cambridge offering
+                        <Link href={quickAction.returnTo} className="text-sm text-blue-600 hover:text-blue-700">
+                            {quickAction.returnLabel}
                         </Link>
                     </div>
                 </Card>
@@ -557,7 +443,7 @@ function AdminCohortsPageContent() {
                 editingCohort={editingCohort}
                 academicYears={academicYears}
                 curricula={curricula}
-                lockedCurriculum={isCambridgeQuickAction ? quickActionCurriculum : null}
+                lockedCurriculum={quickAction.isActive ? quickAction.curriculum : null}
                 onSave={handleSave}
                 initialData={initialFormData}
             />

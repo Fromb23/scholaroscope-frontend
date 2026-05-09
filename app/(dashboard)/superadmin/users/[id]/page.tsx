@@ -61,7 +61,7 @@ export default function UserDetailPage() {
             .then(setMemberships)
             .catch(() => setMemberships([]))
             .finally(() => setMembershipsLoading(false));
-    }, [userId, users]);
+    }, [getUserMemberships, userId, users]);
 
     const handleEdit = (data: UserUpdatePayload) =>
         withSubmit(async () => {

@@ -24,12 +24,12 @@ function LoginForm() {
                 'Your organization has been suspended. Contact your administrator for more information.'
             );
         }
-    }, []);
+    }, [searchParams]);
 
     useEffect(() => {
         const inviteEmail = searchParams.get('email');
         if (inviteEmail) setEmail(inviteEmail);
-    }, []);
+    }, [searchParams]);
 
     // ADD before handleSubmit
     const resolveErrorMessage = (data: Record<string, unknown>): string => {
@@ -111,7 +111,7 @@ function LoginForm() {
 
                     {inviteToken && orgName && (
                         <p className="mb-6 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                            You've been invited to join <strong>{decodeURIComponent(orgName)}</strong>. Sign in to accept.
+                            You&apos;ve been invited to join <strong>{decodeURIComponent(orgName)}</strong>. Sign in to accept.
                         </p>
                     )}
 

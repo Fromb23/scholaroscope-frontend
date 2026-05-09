@@ -7,16 +7,18 @@
 import { useState, useMemo } from 'react';
 import { MessageCircle, Search, AlertTriangle } from 'lucide-react';
 import { useRequests, useRequestDetail } from '@/app/plugins/requests/hooks/useRequests';
-import { Request, STATUS_COLORS, PRIORITY_COLORS } from '@/app/plugins/requests/types/requests';
-import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import {
     RequestStatsBar, RequestCard, RequestDetailPanel,
 } from '@/app/plugins/requests/components/RequestShared';
 
+function getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : 'Request action failed';
+}
+
 export default function SuperAdminSupportPage() {
-    const { requests, loading, error, refetch, reviewRequest } = useRequests();
+    const { requests, loading, error, refetch } = useRequests();
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -49,12 +51,12 @@ export default function SuperAdminSupportPage() {
         try {
             await reviewDetail({ action, resolution_note: note });
             await refetch();
-        } catch (err: any) { setActionError(err.message); }
+        } catch (err: unknown) { setActionError(getErrorMessage(err)); }
     };
 
     const handleAddComment = async (content: string, is_internal: boolean) => {
         try { await addComment(content, is_internal); }
-        catch (err: any) { setActionError(err.message); }
+        catch (err: unknown) { setActionError(getErrorMessage(err)); }
     };
 
     if (loading) return (

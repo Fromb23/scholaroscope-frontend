@@ -11,6 +11,10 @@ import { Input } from '@/app/components/ui/Input';
 import { useAcademicYears } from '@/app/core/hooks/useAcademic';
 import { AcademicYear, AcademicYearFormData } from '@/app/core/types/academic';
 
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'An unexpected error occurred.';
+}
+
 export default function AcademicYearsPage() {
     const { academicYears, loading, createAcademicYear, updateAcademicYear, deleteAcademicYear, setCurrentYear } = useAcademicYears();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,8 +38,8 @@ export default function AcademicYearsPage() {
             }
             setIsModalOpen(false);
             resetForm();
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error: unknown) {
+            alert(getErrorMessage(error));
         } finally {
             setSaving(false);
         }
@@ -56,8 +60,8 @@ export default function AcademicYearsPage() {
         if (confirm('Are you sure you want to delete this academic year?')) {
             try {
                 await deleteAcademicYear(id);
-            } catch (error: any) {
-                alert(error.message);
+            } catch (error: unknown) {
+                alert(getErrorMessage(error));
             }
         }
     };
@@ -65,8 +69,8 @@ export default function AcademicYearsPage() {
     const handleSetCurrent = async (id: number) => {
         try {
             await setCurrentYear(id);
-        } catch (error: any) {
-            alert(error.message);
+        } catch (error: unknown) {
+            alert(getErrorMessage(error));
         }
     };
 

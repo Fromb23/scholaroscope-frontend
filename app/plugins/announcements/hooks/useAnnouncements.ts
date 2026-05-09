@@ -7,7 +7,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { announcementAPI } from '../api/announcements';
 import { Announcement, AnnouncementFormData } from '../types/announcements';
-import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
 // ── Full list hook ────────────────────────────────────────────────────────
 
@@ -15,7 +14,6 @@ export const useAnnouncements = () => {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { organizationId } = useOrganizationContext();
 
     const fetch = useCallback(async () => {
         setLoading(true);
@@ -28,7 +26,7 @@ export const useAnnouncements = () => {
         } finally {
             setLoading(false);
         }
-    }, [organizationId]);
+    }, []);
 
     useEffect(() => { fetch(); }, [fetch]);
 
@@ -82,7 +80,6 @@ export const useUnreadAnnouncements = () => {
     const [count, setCount] = useState(0);
     const [unread, setUnread] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
-    const { organizationId } = useOrganizationContext();
 
     const fetch = useCallback(async () => {
         try {
@@ -94,7 +91,7 @@ export const useUnreadAnnouncements = () => {
         } finally {
             setLoading(false);
         }
-    }, [organizationId]);
+    }, []);
 
     useEffect(() => { fetch(); }, [fetch]);
 

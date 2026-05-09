@@ -31,9 +31,22 @@ const EMPTY: FormData = {
     title: '', description: '', request_type: '', priority: 'NORMAL',
 };
 
+function getRequestSubmitError(err: unknown): string {
+    const error = err as {
+        response?: { data?: { request_type?: string[]; detail?: string } };
+        message?: string;
+    };
+    return (
+        error.response?.data?.request_type?.[0] ||
+        error.response?.data?.detail ||
+        error.message ||
+        'Failed to submit request'
+    );
+}
+
 export default function NewRequestPage() {
     const router = useRouter();
-    const { user, activeOrg, activeRole } = useAuth();
+    const { activeOrg, activeRole } = useAuth();
 
     const [form, setForm] = useState<FormData>(EMPTY);
     const [errors, setErrors] = useState<Partial<FormData>>({});
@@ -42,8 +55,6 @@ export default function NewRequestPage() {
     const [submitted, setSubmitted] = useState(false);
 
     const isAdmin = activeRole === 'ADMIN';
-    const isInstructor = activeRole === 'INSTRUCTOR';
-
     const typeOptions = isAdmin ? ADMIN_REQUEST_OPTIONS : INSTRUCTOR_REQUEST_OPTIONS;
 
     const set = (field: keyof FormData, val: string) => {
@@ -72,12 +83,8 @@ export default function NewRequestPage() {
                 priority: form.priority as RequestPriority,
             });
             setSubmitted(true);
-        } catch (err: any) {
-            setSubmitError(
-                err.response?.data?.request_type?.[0] ||
-                err.response?.data?.detail ||
-                err.message || 'Failed to submit request'
-            );
+        } catch (err: unknown) {
+            setSubmitError(getRequestSubmitError(err));
         } finally {
             setSubmitting(false);
         }

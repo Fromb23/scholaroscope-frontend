@@ -20,7 +20,6 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import Modal from '@/app/components/ui/Modal';
-import { STATUS_COLORS, Request } from '@/app/plugins/requests/types/requests';
 import type { ProfileData } from '@/app/core/hooks/useProfile';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -45,6 +44,39 @@ export const ROLE_BADGE: Record<string, 'purple' | 'info' | 'default'> = {
     ADMIN: 'info',
     INSTRUCTOR: 'default',
 };
+
+type RecentRequestStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CLOSED';
+
+interface RecentRequest {
+    id: number;
+    title: string;
+    request_type_display: string;
+    status: RecentRequestStatus;
+    status_display: string;
+    created_at: string;
+}
+
+const REQUEST_STATUS_COLORS: Record<RecentRequestStatus, 'warning' | 'info' | 'success' | 'danger' | 'default'> = {
+    PENDING: 'warning',
+    IN_REVIEW: 'info',
+    APPROVED: 'success',
+    REJECTED: 'danger',
+    CLOSED: 'default',
+};
+
+function isRecentRequest(value: unknown): value is RecentRequest {
+    if (!value || typeof value !== 'object') return false;
+    const request = value as Partial<RecentRequest>;
+    return (
+        typeof request.id === 'number'
+        && typeof request.title === 'string'
+        && typeof request.request_type_display === 'string'
+        && typeof request.status === 'string'
+        && typeof request.status_display === 'string'
+        && typeof request.created_at === 'string'
+        && request.status in REQUEST_STATUS_COLORS
+    );
+}
 
 // ── ProfileField ──────────────────────────────────────────────────────────
 
@@ -205,7 +237,7 @@ interface RecentRequestsCardProps {
 }
 
 export function RecentRequestsCard({ requests, loading }: RecentRequestsCardProps) {
-    const safeRequests: Request[] = Array.isArray(requests) ? requests : [];
+    const safeRequests = Array.isArray(requests) ? requests.filter(isRecentRequest) : [];
 
     return (
         <Card className="p-0">
@@ -236,7 +268,7 @@ export function RecentRequestsCard({ requests, loading }: RecentRequestsCardProp
                                         {r.request_type_display} · {formatDate(r.created_at)}
                                     </p>
                                 </div>
-                                <Badge variant={STATUS_COLORS[r.status]} size="sm">
+                                <Badge variant={REQUEST_STATUS_COLORS[r.status]} size="sm">
                                     {r.status_display}
                                 </Badge>
                             </li>

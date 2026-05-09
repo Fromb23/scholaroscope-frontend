@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
@@ -96,10 +96,10 @@ export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
         [cohortAssignments]
     );
 
-    const hasCurriculumAccess = (curriculum: InstructorCurriculumKey): boolean => {
+    const hasCurriculumAccess = useCallback((curriculum: InstructorCurriculumKey): boolean => {
         if (!isInstructor) return true;
         return curriculum === 'CBC' ? hasCBCAccess : hasCambridgeAccess;
-    };
+    }, [hasCBCAccess, hasCambridgeAccess, isInstructor]);
 
     return {
         isInstructor,

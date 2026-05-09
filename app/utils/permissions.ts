@@ -1,9 +1,13 @@
 // app/utils/permissions.ts
-import type { Role, User } from '@/app/core/types/auth';
+
+type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+type User = {
+    is_superadmin?: boolean;
+} | null;
 
 // ── Core role checks (take activeRole, not activeRole) ─────────────────────────
 
-export const isSuperAdmin = (user: User | null): boolean =>
+export const isSuperAdmin = (user: User): boolean =>
     !!user?.is_superadmin;
 
 export const isAdmin = (activeRole: Role | null): boolean =>
@@ -12,16 +16,16 @@ export const isAdmin = (activeRole: Role | null): boolean =>
 export const isInstructor = (activeRole: Role | null): boolean =>
     activeRole === 'INSTRUCTOR';
 
-export const isAdminOrAbove = (user: User | null, activeRole: Role | null): boolean =>
+export const isAdminOrAbove = (user: User, activeRole: Role | null): boolean =>
     !!user?.is_superadmin || activeRole === 'ADMIN';
 
-export const isAuthenticated = (user: User | null): boolean =>
+export const isAuthenticated = (user: User): boolean =>
     !!user;
 
 // ── Route-level permission check ──────────────────────────────────────────────
 
 export const hasRouteAccess = (
-    user: User | null,
+    user: User,
     activeRole: Role | null,
     allowedRoles: Role[]
 ): boolean => {
@@ -35,46 +39,46 @@ export const hasRouteAccess = (
 
 // ── Feature-level checks ──────────────────────────────────────────────────────
 
-export const canManageUsers = (user: User | null, activeRole: Role | null): boolean =>
+export const canManageUsers = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canManageCurriculum = (user: User | null, activeRole: Role | null): boolean =>
+export const canManageCurriculum = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canManageCohorts = (user: User | null, activeRole: Role | null): boolean =>
+export const canManageCohorts = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canManageAssessments = (user: User | null, activeRole: Role | null): boolean =>
+export const canManageAssessments = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canManagePlugins = (user: User | null, activeRole: Role | null): boolean =>
+export const canManagePlugins = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canCreateSession = (user: User | null, activeRole: Role | null): boolean =>
+export const canCreateSession = (user: User, activeRole: Role | null): boolean =>
     activeRole === 'INSTRUCTOR' || isAdminOrAbove(user, activeRole);
 
-export const canMarkAttendance = (user: User | null, activeRole: Role | null): boolean =>
+export const canMarkAttendance = (user: User, activeRole: Role | null): boolean =>
     activeRole === 'INSTRUCTOR' || isAdminOrAbove(user, activeRole);
 
-export const canViewReports = (user: User | null, activeRole: Role | null): boolean =>
+export const canViewReports = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canManageRequests = (user: User | null): boolean =>
+export const canManageRequests = (user: User): boolean =>
     !!user;
 
-export const canManageAnnouncements = (user: User | null, activeRole: Role | null): boolean =>
+export const canManageAnnouncements = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canViewAnnouncements = (user: User | null): boolean =>
+export const canViewAnnouncements = (user: User): boolean =>
     !!user;
 
-export const canBulkUploadStudents = (user: User | null, activeRole: Role | null): boolean =>
+export const canBulkUploadStudents = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canDeleteRecords = (user: User | null, activeRole: Role | null): boolean =>
+export const canDeleteRecords = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
 
-export const canAccessSuperAdminPanel = (user: User | null): boolean =>
+export const canAccessSuperAdminPanel = (user: User): boolean =>
     !!user?.is_superadmin;
 
 type Capability =

@@ -2,7 +2,7 @@
 // app/hooks/useOrganizations.ts
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { organizationAPI } from '@/app/core/api/organizations';
 import {
     Organization,
@@ -103,7 +103,7 @@ export const useOrganizationDetail = (id: number | null) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchOrganization = async () => {
+    const fetchOrganization = useCallback(async () => {
         if (!id) { setLoading(false); return; }
         try {
             setLoading(true);
@@ -115,9 +115,9 @@ export const useOrganizationDetail = (id: number | null) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
 
-    useEffect(() => { fetchOrganization(); }, [id]);
+    useEffect(() => { fetchOrganization(); }, [fetchOrganization]);
 
     return { organization, loading, error, refetch: fetchOrganization, setOrganization };
 };
@@ -158,7 +158,7 @@ export const useOrganizationUsers = (id: number | null) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         if (!id) { setLoading(false); return; }
         try {
             setLoading(true);
@@ -170,9 +170,9 @@ export const useOrganizationUsers = (id: number | null) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
 
-    useEffect(() => { fetchUsers(); }, [id]);
+    useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
     return { users, loading, error, refetch: fetchUsers };
 };

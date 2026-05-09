@@ -86,7 +86,17 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
             venue: session.venue ?? '',
             term: session.term ? String(session.term) : '',
         });
-    }, [session.id]);
+    }, [
+        session.description,
+        session.end_time,
+        session.id,
+        session.session_date,
+        session.session_type,
+        session.start_time,
+        session.term,
+        session.title,
+        session.venue,
+    ]);
 
     const handleChange = (field: keyof EditFormState, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));

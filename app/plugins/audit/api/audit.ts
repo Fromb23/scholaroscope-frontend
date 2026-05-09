@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { apiClient } from '@/app/core/api/client';
-import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/platform/audit/types/auditLogs';
+import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/audit/types/auditLogs';
 
 export const auditAPI = {
     getAll: async (filters?: AuditLogFilters): Promise<AuditLog[]> => {

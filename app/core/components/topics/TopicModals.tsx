@@ -22,6 +22,10 @@ export interface SubjectOption {
     label: string;
 }
 
+function getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : 'Failed to save topic.';
+}
+
 // ── TopicFormModal ────────────────────────────────────────────────────────
 
 interface TopicFormModalProps {
@@ -55,7 +59,7 @@ export function TopicFormModal({
             sequence: initialData?.sequence ?? 0,
         });
         setError(null);
-    }, [isOpen, initialData]);
+    }, [initialData, isOpen, subjects]);
 
     const handleSubmit = async () => {
         if (!form.subject || !form.code || !form.name) {
@@ -65,8 +69,8 @@ export function TopicFormModal({
         setError(null);
         try {
             await onSubmit(form);
-        } catch (err: any) {
-            setError(err?.message || 'Failed to save topic.');
+        } catch (err: unknown) {
+            setError(getErrorMessage(err));
         }
     };
 
