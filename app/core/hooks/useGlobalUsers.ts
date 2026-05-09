@@ -2,7 +2,7 @@
 // app/hooks/useGlobalUsers.ts
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
 import {
     GlobalUser,
@@ -85,9 +85,9 @@ export const useGlobalUsers = () => {
         }
     };
 
-    const getUserMemberships = async (id: number): Promise<UserOrgMembership[]> => {
+    const getUserMemberships = useCallback(async (id: number): Promise<UserOrgMembership[]> => {
         return await globalUsersAPI.getMemberships(id);
-    };
+    }, []);
 
     const removeFromOrg = async (userId: number, organizationId: number): Promise<void> => {
         try {

@@ -12,12 +12,12 @@ import type { ExportPayload, ExportFormat, ExportColumn } from '@/app/types/expo
 // Helper Functions
 // ============================================================================
 
-const formatValue = (value: any, format?: ExportColumn['format']): string => {
+const formatValue = (value: unknown, format?: ExportColumn['format']): string => {
     if (value === null || value === undefined || value === '') return '';
 
     switch (format) {
         case 'date':
-            return new Date(value).toLocaleDateString();
+            return new Date(String(value)).toLocaleDateString();
         case 'number':
             return Number(value).toLocaleString();
         case 'percentage':
@@ -46,7 +46,7 @@ const generateFileName = (payload: ExportPayload, extension: string): string => 
 
 export const exportToExcel = (payload: ExportPayload): void => {
     const workbook = XLSX.utils.book_new();
-    const sheetData: any[][] = [];
+    const sheetData: unknown[][] = [];
 
     // Add title
     sheetData.push([payload.title]);
@@ -71,8 +71,9 @@ export const exportToExcel = (payload: ExportPayload): void => {
 
     // Add data rows
     payload.rows.forEach(row => {
+        const cells = row as Record<string, unknown>;
         const rowData = payload.columns.map(col =>
-            formatValue(row[col.key], col.format)
+            formatValue(cells[col.key], col.format)
         );
         sheetData.push(rowData);
     });
@@ -168,7 +169,7 @@ export const exportToPDF = (payload: ExportPayload): void => {
     // Prepare table data
     const headers = payload.columns.map(col => col.label);
     const body = payload.rows.map(row =>
-        payload.columns.map(col => formatValue(row[col.key], col.format))
+        payload.columns.map(col => formatValue((row as Record<string, unknown>)[col.key], col.format))
     );
 
     // Add table
@@ -186,13 +187,13 @@ export const exportToPDF = (payload: ExportPayload): void => {
             textColor: [255, 255, 255],
             fontStyle: 'bold'
         },
-        columnStyles: payload.columns.reduce((acc, col, idx) => {
+        columnStyles: payload.columns.reduce<Record<number, { halign: ExportColumn['align']; cellWidth: number | 'auto' }>>((acc, col, idx) => {
             acc[idx] = {
                 halign: col.align || 'left',
                 cellWidth: col.width || 'auto'
             };
             return acc;
-        }, {} as any),
+        }, {}),
         didDrawPage: (data) => {
             // Add page numbers
             const pageCount = doc.getNumberOfPages();
@@ -240,8 +241,9 @@ export const exportToCSV = (payload: ExportPayload): void => {
 
     // Add data rows
     payload.rows.forEach(row => {
+        const cells = row as Record<string, unknown>;
         const rowData = payload.columns.map(col =>
-            formatValue(row[col.key], col.format)
+            formatValue(cells[col.key], col.format)
         );
         rows.push(rowData);
     });
@@ -297,7 +299,7 @@ export const exportData = (payload: ExportPayload, format: ExportFormat): void =
 export const createExportPayload = (
     title: string,
     columns: ExportColumn[],
-    rows: Record<string, any>[],
+    rows: object[],
     options?: Partial<ExportPayload>
 ): ExportPayload => {
     return {

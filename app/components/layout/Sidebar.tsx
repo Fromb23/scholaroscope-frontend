@@ -18,7 +18,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import { useNavBadges } from '@/app/core/registry/navBadges';
 import { NavItem } from './NavItem';
 import {
-  SUPERADMIN_NAV,
+  getSuperadminNav,
   getAdminNav,
   getInstructorNav,
   ROLE_COLORS,
@@ -28,6 +28,7 @@ import {
   type NavigationConfig,
 } from './navConfig';
 import type { Role } from '@/app/core/types/auth';
+import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -37,26 +38,29 @@ export default function Sidebar() {
   const { hasPlugin } = usePlugins();
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
-  const unreadCount = badges['announcements'] ?? 0;
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const hasCBC = hasPlugin('cbc');
-  const hasCambridge = hasPlugin('cambridge');
-  const instructorHasCBC = hasCBC && instructorAccess.hasCBCAccess;
-  const instructorHasCambridge = hasCambridge && instructorAccess.hasCambridgeAccess;
+  const pluginNavigationContext = useMemo<PluginNavigationContext>(() => ({
+    role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
+    hasPlugin,
+    badges,
+    instructorAccess: {
+      hasCurriculumAccess: instructorAccess.hasCurriculumAccess,
+    },
+  }), [activeRole, badges, hasPlugin, instructorAccess.hasCurriculumAccess, user?.is_superadmin]);
 
   // ── Build nav config ──────────────────────────────────────────────────
 
   const navConfig = useMemo<NavigationConfig>(() => {
     if (!user) return { primary: [] };
-    if (user.is_superadmin) return SUPERADMIN_NAV;
-    if (activeRole === 'ADMIN') return getAdminNav(hasCBC, unreadCount, hasCambridge);
+    if (user.is_superadmin) return getSuperadminNav(pluginNavigationContext);
+    if (activeRole === 'ADMIN') return getAdminNav(pluginNavigationContext);
     if (activeRole === 'INSTRUCTOR') {
-      return getInstructorNav(instructorHasCBC, unreadCount, instructorHasCambridge);
+      return getInstructorNav(pluginNavigationContext);
     }
     return { primary: [] };
-  }, [user, activeRole, hasCBC, hasCambridge, instructorHasCBC, instructorHasCambridge, unreadCount]);
+  }, [user, activeRole, pluginNavigationContext]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
   const colors = ROLE_COLORS[resolvedRole] ?? ROLE_COLORS.ADMIN;

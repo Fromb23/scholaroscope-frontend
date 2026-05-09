@@ -9,8 +9,9 @@
 // ============================================================================
 
 import { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
-    Settings, Globe, Mail, Lock, Bell, Save,
+    Globe, Mail, Lock, Bell, Save,
     CheckCircle, AlertTriangle, Eye, EyeOff, Info,
     ToggleLeft, ToggleRight,
 } from 'lucide-react';
@@ -109,7 +110,7 @@ const DEFAULT_NOTIFICATIONS: NotificationSettings = {
 function TabButton({
     active, onClick, icon: Icon, label,
 }: {
-    active: boolean; onClick: () => void; icon: any; label: string;
+    active: boolean; onClick: () => void; icon: LucideIcon; label: string;
 }) {
     return (
         <button
@@ -510,14 +511,14 @@ export default function SuperAdminSettingsPage() {
             await new Promise(r => setTimeout(r, 600)); // simulate API
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
-        } catch (err: any) {
+        } catch {
             setSaveError('Failed to save settings. Please try again.');
         } finally {
             setSaving(false);
         }
     };
 
-    const tabs: { id: SettingsTab; label: string; icon: any }[] = [
+    const tabs: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
         { id: 'platform', label: 'Platform', icon: Globe },
         { id: 'email', label: 'Email Service', icon: Mail },
         { id: 'security', label: 'Security', icon: Lock },

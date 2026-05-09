@@ -4,19 +4,17 @@
 // Hooks for Topic / Subtopic / Coverage.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { topicAPI, subtopicAPI, subtopicCoverageAPI } from '@/app/core/api/topics';
 import {
     Topic,
     TopicDetail,
     Subtopic,
-    SubtopicCoverage,
     CoverageProgress,
     TopicFormData,
     SubtopicFormData,
     TopicQueryParams,
 } from '@/app/core/types/topics';
-import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 // ── useTopics ─────────────────────────────────────────────────────────────
@@ -25,9 +23,8 @@ export const useTopics = (subjectId?: number) => {
     const [topics, setTopics] = useState<Topic[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { organizationId } = useOrganizationContext();
 
-    const fetchTopics = async () => {
+    const fetchTopics = useCallback(async () => {
         try {
             setLoading(true);
             const params: TopicQueryParams = {};
@@ -40,16 +37,21 @@ export const useTopics = (subjectId?: number) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [subjectId]);
 
     useEffect(() => {
         fetchTopics();
-    }, [subjectId]);
+    }, [fetchTopics]);
 
     const createTopic = async (data: TopicFormData) => {
         try {
-            const { sequence, ...payload } = data;
-            const newTopic = await topicAPI.create(payload as TopicFormData);
+            const payload: TopicFormData = {
+                subject: data.subject,
+                code: data.code,
+                name: data.name,
+                description: data.description,
+            };
+            const newTopic = await topicAPI.create(payload);
             setTopics(prev => [...prev, newTopic].sort((a, b) => a.sequence - b.sequence));
             return newTopic;
         } catch (err) {
@@ -86,7 +88,7 @@ export const useTopicDetail = (topicId: number | null) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchTopic = async () => {
+    const fetchTopic = useCallback(async () => {
         if (!topicId) { setLoading(false); return; }
         try {
             setLoading(true);
@@ -98,9 +100,9 @@ export const useTopicDetail = (topicId: number | null) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [topicId]);
 
-    useEffect(() => { fetchTopic(); }, [topicId]);
+    useEffect(() => { fetchTopic(); }, [fetchTopic]);
 
     return { topic, loading, error, refetch: fetchTopic };
 };
@@ -111,9 +113,8 @@ export const useSubtopics = (topicId?: number) => {
     const [subtopics, setSubtopics] = useState<Subtopic[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { organizationId } = useOrganizationContext();
 
-    const fetchSubtopics = async () => {
+    const fetchSubtopics = useCallback(async () => {
         try {
             setLoading(true);
             const params: Record<string, number> = {};
@@ -126,14 +127,19 @@ export const useSubtopics = (topicId?: number) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [topicId]);
 
-    useEffect(() => { fetchSubtopics(); }, [topicId]);
+    useEffect(() => { fetchSubtopics(); }, [fetchSubtopics]);
 
     const createSubtopic = async (data: SubtopicFormData) => {
         try {
-            const { sequence, ...payload } = data;
-            const newSubtopic = await subtopicAPI.create(payload as SubtopicFormData);
+            const payload: SubtopicFormData = {
+                topic: data.topic,
+                code: data.code,
+                name: data.name,
+                description: data.description,
+            };
+            const newSubtopic = await subtopicAPI.create(payload);
             setSubtopics(prev => [...prev, newSubtopic].sort((a, b) => a.sequence - b.sequence));
             return newSubtopic;
         } catch (err) {
@@ -170,7 +176,7 @@ export const useCoverageProgress = (cohortSubjectId: number | null) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchProgress = async () => {
+    const fetchProgress = useCallback(async () => {
         if (!cohortSubjectId) { setLoading(false); return; }
         try {
             setLoading(true);
@@ -182,9 +188,9 @@ export const useCoverageProgress = (cohortSubjectId: number | null) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [cohortSubjectId]);
 
-    useEffect(() => { fetchProgress(); }, [cohortSubjectId]);
+    useEffect(() => { fetchProgress(); }, [fetchProgress]);
 
     return { progress, loading, error, refetch: fetchProgress };
 };

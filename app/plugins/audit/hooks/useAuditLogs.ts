@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { auditAPI } from '@/app/plugins/audit/api/audit';
-import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/platform/audit/types/auditLogs';
+import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/audit/types/auditLogs';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 export const useAuditLogs = (filters?: AuditLogFilters) => {
@@ -19,7 +19,7 @@ export const useAuditLogs = (filters?: AuditLogFilters) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [filters]);
 
     useEffect(() => { fetchLogs(); }, [fetchLogs]);
 

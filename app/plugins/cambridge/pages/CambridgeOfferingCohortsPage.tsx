@@ -85,6 +85,8 @@ export default function CambridgeOfferingCohortsPage() {
 
   const createCohortParams = new URLSearchParams({
     create: '1',
+    source: 'cambridge',
+    offering: String(offeringId),
     returnTo: pathname || `/cambridge/offerings/${offeringId}/cohorts`,
   });
   if (offering?.programme_code && isCambridgeCurriculumType(offering.programme_code)) {

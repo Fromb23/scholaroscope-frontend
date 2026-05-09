@@ -23,10 +23,14 @@ const eslintConfig = defineConfig([
         // Core kernel
         // ─────────────────────────────
         { type: "core", pattern: "app/core/**" },
+        { type: "core", pattern: "app/context/**" },
 
         // ─────────────────────────────
         // Plugins (isolated domains)
         // ─────────────────────────────
+        { type: "plugin-announcements", pattern: "app/plugins/announcements/**" },
+        { type: "plugin-audit", pattern: "app/plugins/audit/**" },
+        { type: "plugin-cambridge", pattern: "app/plugins/cambridge/**" },
         { type: "plugin-cbc", pattern: "app/plugins/cbc/**" },
         { type: "plugin-projects", pattern: "app/plugins/projects/**" },
         { type: "plugin-requests", pattern: "app/plugins/requests/**" },
@@ -44,7 +48,6 @@ const eslintConfig = defineConfig([
         // Shared (lightweight utilities)
         // ─────────────────────────────
         { type: "shared", pattern: "app/utils/**" },
-        { type: "shared", pattern: "app/context/**" },
         { type: "shared", pattern: "app/types/**" },
       ],
     },
@@ -84,6 +87,18 @@ const eslintConfig = defineConfig([
             // But NEVER other plugins
             // ─────────────────────────────
             {
+              from: "plugin-announcements",
+              allow: ["plugin-announcements", "core", "ui", "shared"],
+            },
+            {
+              from: "plugin-audit",
+              allow: ["plugin-audit", "core", "ui", "shared"],
+            },
+            {
+              from: "plugin-cambridge",
+              allow: ["plugin-cambridge", "core", "ui", "shared"],
+            },
+            {
               from: "plugin-cbc",
               allow: ["plugin-cbc", "core", "ui", "shared"],
             },
@@ -111,6 +126,9 @@ const eslintConfig = defineConfig([
               from: "pages",
               allow: [
                 "pages",
+                "plugin-announcements",
+                "plugin-audit",
+                "plugin-cambridge",
                 "plugin-cbc",
                 "plugin-projects",
                 "plugin-requests",

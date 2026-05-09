@@ -20,7 +20,7 @@ export interface ExportPayload {
     subtitle?: string;
     metadata?: ExportMetadata;
     columns: ExportColumn[];
-    rows: Record<string, any>[];
+    rows: object[];
     fileName?: string; // Custom filename, defaults to title
 
     // Optional configurations
@@ -49,7 +49,7 @@ export interface ExportPreset {
     id: string;
     label: string;
     description?: string;
-    icon?: any;
+    icon?: unknown;
     columns: ExportColumn[];
     includeMetadata?: boolean;
     format?: ExportFormat;

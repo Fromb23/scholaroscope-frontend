@@ -10,18 +10,22 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, Inbox, AlertTriangle, Send } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
-import { useRequests, useRequestDetail } from '@/app/plugins/requests/hooks/useRequests';
+import { useRequests } from '@/app/plugins/requests/hooks/useRequests';
 import { Request } from '@/app/plugins/requests/types/requests';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import {
-    RequestStatsBar, RequestCard, RequestDetailPanel, DeleteRequestModal,
+    RequestStatsBar, RequestCard, DeleteRequestModal,
 } from '@/app/plugins/requests/components/RequestShared';
+
+function getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : 'Request action failed';
+}
 
 export default function RequestsPage() {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
-    const { requests, loading, error, refetch, reviewRequest, deleteRequest } = useRequests();
+    const { activeRole } = useAuth();
+    const { requests, loading, error, refetch, deleteRequest } = useRequests();
 
     const isAdmin = activeRole === 'ADMIN';
     const isInstructor = activeRole === 'INSTRUCTOR';
@@ -33,9 +37,6 @@ export default function RequestsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Request | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
-
-    const { request: selectedDetail, loading: detailLoading, addComment, reviewRequest: reviewDetail } =
-        useRequestDetail(selectedId);
 
     // Filtered list
     const filtered = useMemo(() => {
@@ -55,21 +56,6 @@ export default function RequestsPage() {
         [requests]
     );
 
-    const handleReview = async (action: 'approve' | 'reject' | 'review', note: string) => {
-        if (!selectedId) return;
-        setActionError(null);
-        try {
-            await reviewDetail({ action, resolution_note: note });
-            await refetch();
-        } catch (err: any) { setActionError(err.message); }
-    };
-
-    const handleAddComment = async (content: string, is_internal: boolean) => {
-        try {
-            await addComment(content, is_internal);
-        } catch (err: any) { setActionError(err.message); }
-    };
-
     const handleDelete = async () => {
         if (!deleteTarget) return;
         setSubmitting(true);
@@ -77,7 +63,7 @@ export default function RequestsPage() {
             await deleteRequest(deleteTarget.id);
             setDeleteTarget(null);
             if (selectedId === deleteTarget.id) setSelectedId(null);
-        } catch (err: any) { setActionError(err.message); }
+        } catch (err: unknown) { setActionError(getErrorMessage(err)); }
         finally { setSubmitting(false); }
     };
 

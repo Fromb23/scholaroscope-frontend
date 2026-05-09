@@ -4,11 +4,22 @@
 // Pure utility functions for session data — no React, no API calls.
 // ============================================================================
 
-import type { Session, AttendanceRecord } from '@/app/core/types/session';
+interface SessionLike {
+    start_time: string | null;
+    end_time: string | null;
+    attendance_count: {
+        total: number;
+        present: number;
+    };
+}
+
+interface AttendanceRecordLike {
+    status?: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | 'SICK' | string | null;
+}
 
 export type SessionStatus = 'upcoming' | 'ongoing' | 'completed';
 
-export function getSessionStatus(session: Session, currentMinutes: number): SessionStatus {
+export function getSessionStatus(session: SessionLike, currentMinutes: number): SessionStatus {
     if (!session.start_time || !session.end_time) return 'upcoming';
 
     const [startH, startM] = session.start_time.split(':').map(Number);
@@ -21,16 +32,16 @@ export function getSessionStatus(session: Session, currentMinutes: number): Sess
     return 'completed';
 }
 
-export interface CategorizedSessions {
-    ongoing: Session[];
-    upcoming: Session[];
-    completed: Session[];
+export interface CategorizedSessions<TSession extends SessionLike> {
+    ongoing: TSession[];
+    upcoming: TSession[];
+    completed: TSession[];
 }
 
-export function categorizeSessions(
-    sessions: Session[],
+export function categorizeSessions<TSession extends SessionLike>(
+    sessions: TSession[],
     currentMinutes: number
-): CategorizedSessions {
+): CategorizedSessions<TSession> {
     return {
         ongoing: sessions.filter(s => getSessionStatus(s, currentMinutes) === 'ongoing'),
         upcoming: sessions.filter(s => getSessionStatus(s, currentMinutes) === 'upcoming'),
@@ -38,7 +49,7 @@ export function categorizeSessions(
     };
 }
 
-export function calcAvgAttendance(sessions: Session[]): number {
+export function calcAvgAttendance(sessions: SessionLike[]): number {
     if (sessions.length === 0) return 0;
     return sessions.reduce((sum, s) => {
         const { total, present } = s.attendance_count;
@@ -57,7 +68,7 @@ export interface AttendanceStats {
     attendancePercent: number;
 }
 
-export function calcAttendanceStats(records: AttendanceRecord[]): AttendanceStats {
+export function calcAttendanceStats(records: AttendanceRecordLike[]): AttendanceStats {
     const total = records.length;
     const present = records.filter(r => r.status === 'PRESENT').length;
     const absent = records.filter(r => r.status === 'ABSENT').length;

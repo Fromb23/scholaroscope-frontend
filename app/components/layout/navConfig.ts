@@ -10,26 +10,24 @@ import {
     LayoutDashboard, Users, BookOpen, Calendar,
     ClipboardCheck, Award, FileBarChart, GraduationCap,
     Building2, Settings, ShieldCheck, Activity, FileText, AlertCircle,
-    Inbox, UserCog, TrendingUp, Database, Clock, Target,
-    CalendarDays, Layers, Megaphone,
+    Inbox, UserCog, TrendingUp, Database, Clock,
+    CalendarDays,
     Puzzle,
-    BarChart3,
 } from 'lucide-react';
 import type { Role } from '@/app/core/types/auth';
+import {
+    getPluginNavigationItems,
+    type NavItem as RegistryNavItem,
+    type PluginNavigationContext,
+} from '@/app/core/registry/pluginNavigation';
+
+export type { NavItem } from '@/app/core/registry/pluginNavigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
-export interface NavItem {
-    name: string;
-    href: string;
-    icon: LucideIcon;
-    badge?: number;
-    children?: NavItem[];
-}
-
 export interface NavigationConfig {
-    primary: NavItem[];
-    secondary?: NavItem[];
+    primary: RegistryNavItem[];
+    secondary?: RegistryNavItem[];
 }
 
 export interface RoleColorScheme {
@@ -84,16 +82,8 @@ export const SUPERADMIN_NAV: NavigationConfig = {
     primary: [
         { name: 'System Overview', href: '/dashboard/superadmin', icon: LayoutDashboard },
         { name: 'Organizations', href: '/superadmin/organizations', icon: Building2 },
-        { name: 'Announcements', href: '/announcements', icon: Megaphone },
         { name: 'Global Users', href: '/superadmin/users', icon: UserCog },
         { name: 'Plugin Registry', href: '/superadmin/plugins', icon: Puzzle },
-        {
-            name: 'Curriculum Authoring', href: '/cbc/authoring', icon: BookOpen,
-            children: [
-                { name: 'Overview', href: '/cbc/authoring', icon: BookOpen },
-                { name: 'Strands', href: '/cbc/authoring/strands', icon: Layers },
-            ],
-        },
         { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },
         { name: 'System Settings', href: '/superadmin/settings', icon: Settings },
         { name: 'Audit Logs', href: '/superadmin/audit', icon: FileText },
@@ -105,14 +95,12 @@ export const SUPERADMIN_NAV: NavigationConfig = {
 };
 
 export function getAdminNav(
-    hasCBC: boolean,
-    unreadAnnouncements: number,
-    hasCambridge: boolean,
+    pluginContext: PluginNavigationContext,
 ): NavigationConfig {
     return {
         primary: [
             { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
-            { name: 'Pending Requests', href: '/requests', icon: Inbox, badge: 0 },
+            ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
             {
                 name: 'Academic Setup', href: '/academic', icon: GraduationCap,
                 children: [
@@ -142,26 +130,7 @@ export function getAdminNav(
                     { name: 'Grade Policies', href: '/reports/grade-policies', icon: Award },
                 ],
             },
-            ...(hasCBC ? [{
-                name: 'CBC Management', href: '/cbc/progress', icon: Award,
-                children: [
-                    { name: 'Progress Tracking', href: '/cbc/progress', icon: TrendingUp },
-                    { name: 'Browser', href: '/cbc/browser', icon: BookOpen },
-                    { name: 'Teaching', href: '/cbc/teaching', icon: Target },
-                ],
-            }] : []),
-            ...(hasCambridge ? [{
-                name: 'Cambridge Management',
-                href: '/cambridge',
-                icon: BookOpen,
-                children: [
-                    { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
-                    { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
-                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
-                    { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
-                    { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
-                ],
-            }] : []),
+            ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
             {
                 name: 'Reports', href: '/reports', icon: FileBarChart,
                 children: [
@@ -177,26 +146,22 @@ export function getAdminNav(
         secondary: [
             { name: 'Instructor Activity', href: '/admin/instructors', icon: Activity },
             { name: 'System Alerts', href: '/admin/alerts', icon: AlertCircle },
-            {
-                name: 'Announcements', href: '/announcements', icon: Megaphone,
-                badge: unreadAnnouncements
-            },
+            ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
             { name: 'Settings', href: '/admin/settings', icon: Settings },
         ],
     };
 }
 
 export function getInstructorNav(
-    hasCBC: boolean,
-    unreadAnnouncements: number,
-    hasCambridge: boolean,
+    pluginContext: PluginNavigationContext,
 ): NavigationConfig {
     return {
         primary: [
             { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
+            ...getPluginNavigationItems('instructor.primary.afterDashboard', pluginContext),
             { name: 'My Cohorts', href: '/academic/cohorts', icon: Users },
             { name: 'My Sessions', href: '/sessions', icon: Calendar },
-            { name: 'My Requests', href: '/requests', icon: Inbox, badge: 0 },
+            ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
             { name: 'My Learners', href: '/learners', icon: Users },
             {
                 name: 'My Reports', href: '/reports/instructor', icon: FileBarChart,
@@ -212,34 +177,29 @@ export function getInstructorNav(
                     { name: 'Needs Grading', href: '/assessments?status=pending', icon: AlertCircle },
                 ],
             },
-            ...(hasCBC ? [{
-                name: 'CBC Teaching', href: '/cbc/teaching', icon: Award,
-                children: [
-                    { name: 'My Sessions', href: '/cbc/teaching/sessions', icon: Target },
-                    { name: 'Progress View', href: '/cbc/progress', icon: TrendingUp },
-                    { name: 'Browse Outcomes', href: '/cbc/browser', icon: BookOpen },
-                ],
-            }] : []),
-            ...(hasCambridge ? [{
-                name: 'Cambridge Management',
-                href: '/cambridge',
-                icon: BookOpen,
-                children: [
-                    { name: 'Dashboard', href: '/cambridge', icon: BookOpen },
-                    { name: 'Authoring', href: '/cambridge/authoring/programmes', icon: Layers },
-                    { name: 'Setup', href: '/cambridge/setup', icon: Settings },
-                    { name: 'Subjects', href: '/cambridge/subjects', icon: GraduationCap },
-                    { name: 'Progress', href: '/cambridge/progress', icon: BarChart3 },
-                ],
-            }] : []),
+            ...getPluginNavigationItems('instructor.primary.afterAssessments', pluginContext),
         ],
         secondary: [
             { name: 'Learners at Risk', href: '/learners?filter=at-risk', icon: AlertCircle },
-            {
-                name: 'Announcements', href: '/announcements', icon: Megaphone,
-                badge: unreadAnnouncements
-            },
+            ...getPluginNavigationItems('instructor.secondary.beforeSubmitRequest', pluginContext),
             { name: 'Submit Request', href: '/requests/new', icon: FileText },
+        ],
+    };
+}
+
+export function getSuperadminNav(pluginContext: PluginNavigationContext): NavigationConfig {
+    return {
+        ...SUPERADMIN_NAV,
+        primary: [
+            { name: 'System Overview', href: '/dashboard/superadmin', icon: LayoutDashboard },
+            { name: 'Organizations', href: '/superadmin/organizations', icon: Building2 },
+            ...getPluginNavigationItems('superadmin.primary.afterOrganizations', pluginContext),
+            { name: 'Global Users', href: '/superadmin/users', icon: UserCog },
+            { name: 'Plugin Registry', href: '/superadmin/plugins', icon: Puzzle },
+            ...getPluginNavigationItems('superadmin.primary.afterPluginRegistry', pluginContext),
+            { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },
+            { name: 'System Settings', href: '/superadmin/settings', icon: Settings },
+            { name: 'Audit Logs', href: '/superadmin/audit', icon: FileText },
         ],
     };
 }

@@ -2,8 +2,7 @@
 
 import {
     AlertTriangle, AlertCircle, CheckCircle2,
-    ChevronDown, ChevronUp, Users, Building2,
-    BarChart3, Puzzle, FileText,
+    ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -11,6 +10,9 @@ import type {
     SignalSeverity, OrphanUser, SuspendedOrg,
     GracePeriodPlugin, PendingRequest,
 } from '@/app/core/api/platformHealth';
+
+const RETENTION_NOW = Date.now();
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 // ── Severity config ───────────────────────────────────────────────────────────
 
@@ -181,7 +183,7 @@ export function GracePeriodTable({ plugins }: { plugins: GracePeriodPlugin[] }) 
         <div className="space-y-2">
             {plugins.map(p => {
                 const daysLeft = Math.max(0, Math.ceil(
-                    (new Date(p.data_retention_until).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                    (new Date(p.data_retention_until).getTime() - RETENTION_NOW) / MS_PER_DAY
                 ));
                 return (
                     <div key={p.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100">

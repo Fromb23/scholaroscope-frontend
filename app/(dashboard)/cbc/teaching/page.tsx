@@ -47,7 +47,7 @@ export default function TeachingHomePage() {
 
             {todayError && <CBCError error={todayError} />}
 
-            {/* Today's Sessions */}
+            {/* Today&apos;s Sessions */}
             <Card>
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
@@ -55,7 +55,7 @@ export default function TeachingHomePage() {
                             <Clock className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900">Today's Sessions</h2>
+                            <h2 className="text-xl font-semibold text-gray-900">Today&apos;s Sessions</h2>
                             <p className="text-sm text-gray-500">
                                 {new Date().toLocaleDateString('en-GB', {
                                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',

@@ -81,7 +81,7 @@ export function useRegister() {
                 setInviteError(err.data?.detail ?? 'This invite link is invalid or has expired.');
             })
             .finally(() => setInviteLoading(false));
-    }, [inviteToken]);
+    }, [inviteToken, router]);
 
     const setField = (key: keyof RegisterForm, value: string) => {
         setForm(f => ({ ...f, [key]: value }));

@@ -7,7 +7,7 @@
 // No inline component definitions. No any.
 // ============================================================================
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Layers, Hash, AlignLeft } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
@@ -29,20 +29,23 @@ export default function TopicDetailPage() {
     const router = useRouter();
     const { user, activeRole } = useAuth();
     const isAdmin = activeRole === 'ADMIN' || user?.is_superadmin;
-    const topicId = Number(params.topicId);
-    if (isNaN(topicId) || topicId === 0) {
-        router.push('/academic/topics');
-        return null;
-    }
+    const parsedTopicId = Number(params.topicId);
+    const topicId = Number.isFinite(parsedTopicId) && parsedTopicId > 0 ? parsedTopicId : null;
 
     const { topic, loading: topicLoading } = useTopicDetail(topicId);
     const { subtopics, loading: subtopicsLoading,
-        createSubtopic, updateSubtopic, deleteSubtopic } = useSubtopics(topicId);
+        createSubtopic, updateSubtopic, deleteSubtopic } = useSubtopics(topicId ?? undefined);
 
     const [addOpen, setAddOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Subtopic | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Subtopic | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
+
+    useEffect(() => {
+        if (topicId === null) {
+            router.push('/academic/topics');
+        }
+    }, [router, topicId]);
 
     const withLoading = async (fn: () => Promise<void>) => {
         setActionLoading(true);
@@ -107,6 +110,8 @@ export default function TopicDetailPage() {
     ];
 
     // ── Guards ────────────────────────────────────────────────────────────
+
+    if (topicId === null) return null;
 
     if (topicLoading) return <LoadingSpinner />;
 

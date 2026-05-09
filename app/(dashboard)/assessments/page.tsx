@@ -12,7 +12,8 @@ import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
 import { useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
-import { Assessment } from '@/app/core/types/assessment';
+
+type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
 
 export default function AssessmentsOverview() {
     const router = useRouter();
@@ -52,7 +53,7 @@ export default function AssessmentsOverview() {
     ];
 
     const getEvaluationBadge = (type: string) => {
-        const variants: Record<string, any> = {
+        const variants: Record<string, BadgeVariant> = {
             NUMERIC: 'blue',
             RUBRIC: 'purple',
             DESCRIPTIVE: 'green',

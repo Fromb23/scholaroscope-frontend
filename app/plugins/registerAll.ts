@@ -1,0 +1,17 @@
+'use client';
+
+import '@/app/plugins/cbc/registry/curriculumModalExtension';
+import '@/app/plugins/cbc/registry/navigationExtension';
+import '@/app/plugins/cbc/registry/providerExtension';
+import '@/app/plugins/cbc/registry/routeAccessExtension';
+import '@/app/plugins/cbc/registry/teachingRouteExtension';
+import '@/app/plugins/cambridge/registry/cohortSubjectPanelExtension';
+import '@/app/plugins/cambridge/registry/navigationExtension';
+import '@/app/plugins/cambridge/registry/providerExtension';
+import '@/app/plugins/cambridge/registry/routeAccessExtension';
+import '@/app/plugins/cambridge/registry/routeExtension';
+import '@/app/plugins/announcements/registry/navBadgeExtension';
+import '@/app/plugins/announcements/registry/navigationExtension';
+import '@/app/plugins/announcements/registry/routeAccessExtension';
+import '@/app/plugins/requests/registry/navigationExtension';
+import '@/app/plugins/requests/registry/routeAccessExtension';

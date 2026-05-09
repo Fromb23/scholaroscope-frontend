@@ -1,17 +1,14 @@
 // app/utils/routeAccess.ts
 
-type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+import { getPluginRouteAccessRules, type RouteAccessRole, type RouteAccessRule } from './pluginRouteAccess';
 
-type RouteRule = {
-    pattern: RegExp;
-    allowedRoles: Role[];
-};
+type Role = RouteAccessRole;
+type RouteRule = RouteAccessRule;
 
-export const routeRules: RouteRule[] = [
+const kernelRouteRules: RouteRule[] = [
     // SUPERADMIN ONLY
     { pattern: /^\/superadmin/, allowedRoles: ['SUPERADMIN'] },
     { pattern: /^\/dashboard\/superadmin/, allowedRoles: ['SUPERADMIN'] },
-    { pattern: /^\/cbc\/authoring/, allowedRoles: ['SUPERADMIN'] },
 
     // ADMIN ONLY
     { pattern: /^\/dashboard\/admin/, allowedRoles: ['ADMIN'] },
@@ -43,14 +40,14 @@ export const routeRules: RouteRule[] = [
     { pattern: /^\/sessions/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/learners/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/assessments/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/cbc\/teaching/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/cbc\/progress/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/cbc\/browser/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/cambridge/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/announcements/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/requests/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/profile/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
 ];
+
+export const routeRules: RouteRule[] = kernelRouteRules;
+
+export function getRouteRules(): RouteRule[] {
+    return [...kernelRouteRules, ...getPluginRouteAccessRules()];
+}
 
 export const roleHomeRoute: Record<Role, string> = {
     SUPERADMIN: '/dashboard/superadmin',

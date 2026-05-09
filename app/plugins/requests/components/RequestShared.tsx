@@ -5,18 +5,17 @@
 // ============================================================================
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
     Clock, CheckCircle2, XCircle, Eye, Trash2, MessageCircle,
-    ChevronRight, FileText, Flame, ArrowUp, Minus, ArrowDown,
-    Send, StickyNote, AlertTriangle, CheckCircle, Building2,
+    FileText, Flame, ArrowUp, Minus, ArrowDown,
+    Send, StickyNote, AlertTriangle, Building2,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import Modal from '@/app/components/ui/Modal';
 import {
-    Request, RequestStatus, RequestPriority,
-    RequestDetail, RequestComment,
+    Request, RequestPriority,
+    RequestDetail,
     STATUS_COLORS, PRIORITY_COLORS,
 } from '@/app/plugins/requests/types/requests';
 
@@ -180,7 +179,7 @@ export function RequestDetailPanel({
     const [reviewNote, setReviewNote] = useState('');
     const [reviewing, setReviewing] = useState(false);
     const [submittingComment, setSubmittingComment] = useState(false);
-    const [localRequest, setLocalRequest] = useState(request);
+    const [localRequest] = useState(request);
 
     const isPending = ['PENDING', 'IN_REVIEW'].includes(localRequest.status);
 
@@ -404,7 +403,7 @@ export function DeleteRequestModal({
                 <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-100">
                     <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-red-700">
-                        Delete <strong>"{title}"</strong>? This cannot be undone.
+                        Delete <strong>&quot;{title}&quot;</strong>? This cannot be undone.
                     </p>
                 </div>
                 <div className="flex justify-end gap-3">

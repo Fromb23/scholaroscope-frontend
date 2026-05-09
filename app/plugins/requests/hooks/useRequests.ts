@@ -2,7 +2,7 @@
 // app/hooks/useRequests.ts
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import {
     Request, RequestDetail, RequestCreatePayload,
     RequestReviewPayload, RequestType, RequestStats,
@@ -10,37 +10,48 @@ import {
 import { requestsAPI } from '@/app/plugins/requests/api/requests';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
+type PaginatedResponse<T> = { results?: T[] };
+type RequestApiError = {
+    detail?: string;
+    response?: { data?: { request_type?: string[]; detail?: string; message?: string } };
+};
+
+function getApiError(err: unknown): RequestApiError {
+    return err as RequestApiError;
+}
+
 export const useRequests = (params?: Record<string, string>) => {
     const [requests, setRequests] = useState<Request[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         try {
             setLoading(true);
             const data = await requestsAPI.getAll(params);
-            const arr = Array.isArray(data) ? data : (data as any).results ?? [];
+            const arr = Array.isArray(data) ? data : (data as PaginatedResponse<Request>).results ?? [];
             setRequests(arr);
             setError(null);
-        } catch (err: any) {
-            setError(err.detail || 'Failed to fetch requests');
+        } catch (err: unknown) {
+            setError(getApiError(err).detail || 'Failed to fetch requests');
         } finally {
             setLoading(false);
         }
-    };
+    }, [params]);
 
-    useEffect(() => { fetchRequests(); }, [JSON.stringify(params)]);
+    useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
     const createRequest = async (data: RequestCreatePayload) => {
         try {
             const newReq = await requestsAPI.create(data);
             setRequests(prev => [newReq, ...prev]);
             return newReq;
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = getApiError(err);
             throw new Error(
-                err.response?.data?.request_type?.[0] ||
-                err.response?.data?.detail ||
-                err.response?.data?.message ||
+                error.response?.data?.request_type?.[0] ||
+                error.response?.data?.detail ||
+                error.response?.data?.message ||
                 'Failed to submit request'
             );
         }
@@ -51,8 +62,8 @@ export const useRequests = (params?: Record<string, string>) => {
             const updated = await requestsAPI.review(id, data);
             setRequests(prev => prev.map(r => r.id === id ? updated : r));
             return updated;
-        } catch (err: any) {
-            throw new Error(err.response?.data?.detail || 'Failed to update request');
+        } catch (err: unknown) {
+            throw new Error(getApiError(err).response?.data?.detail || 'Failed to update request');
         }
     };
 
@@ -60,8 +71,8 @@ export const useRequests = (params?: Record<string, string>) => {
         try {
             await requestsAPI.delete(id);
             setRequests(prev => prev.filter(r => r.id !== id));
-        } catch (err: any) {
-            throw new Error(err.response?.data?.detail || 'Failed to delete request');
+        } catch (err: unknown) {
+            throw new Error(getApiError(err).response?.data?.detail || 'Failed to delete request');
         }
     };
 
@@ -77,21 +88,21 @@ export const useRequestDetail = (id: number | null) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchRequest = async () => {
+    const fetchRequest = useCallback(async () => {
         if (!id) { setLoading(false); return; }
         try {
             setLoading(true);
             const data = await requestsAPI.getById(id);
             setRequest(data);
             setError(null);
-        } catch (err: any) {
-            setError(err.detail || 'Failed to fetch request');
+        } catch (err: unknown) {
+            setError(getApiError(err).detail || 'Failed to fetch request');
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
 
-    useEffect(() => { fetchRequest(); }, [id]);
+    useEffect(() => { fetchRequest(); }, [fetchRequest]);
 
     const addComment = async (content: string, is_internal: boolean) => {
         if (!id || !request) return;
@@ -103,8 +114,8 @@ export const useRequestDetail = (id: number | null) => {
                 comment_count: prev.comment_count + 1,
             } : prev);
             return comment;
-        } catch (err: any) {
-            throw new Error(err.response?.data?.detail || 'Failed to add comment');
+        } catch (err: unknown) {
+            throw new Error(getApiError(err).response?.data?.detail || 'Failed to add comment');
         }
     };
 
@@ -114,8 +125,8 @@ export const useRequestDetail = (id: number | null) => {
             const updated = await requestsAPI.review(id, data);
             setRequest(prev => prev ? { ...prev, ...updated } : prev);
             return updated;
-        } catch (err: any) {
-            throw new Error(err.response?.data?.detail || 'Failed to update request');
+        } catch (err: unknown) {
+            throw new Error(getApiError(err).response?.data?.detail || 'Failed to update request');
         }
     };
 

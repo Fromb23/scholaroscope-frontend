@@ -264,10 +264,10 @@ function RegisterForm() {
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold text-blue-900">
-                                        You've been invited to join {invite.organization}
+                                        You&apos;ve been invited to join {invite.organization}
                                     </p>
                                     <p className="text-xs text-blue-700 mt-0.5">
-                                        You'll join as{' '}
+                                        You&apos;ll join as{' '}
                                         <span className="font-medium">{ROLE_LABEL[invite.role] ?? invite.role}</span>
                                         {' '}· Expires{' '}
                                         {new Date(invite.expires_at).toLocaleDateString('en-GB', {
@@ -388,7 +388,7 @@ function RegisterForm() {
                                     <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                         <User className="h-4 w-4 text-gray-400 shrink-0" />
                                         <span className="text-sm text-gray-600">
-                                            You'll join as{' '}
+                                            You&apos;ll join as{' '}
                                             <span className="font-medium text-gray-800">
                                                 {ROLE_LABEL[invite.role] ?? invite.role}
                                             </span>

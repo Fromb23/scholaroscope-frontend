@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useCohorts } from '@/app/core/hooks/useAcademic';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
@@ -79,9 +80,9 @@ export function GuidedCohortSetupModal({ strand, subjectLevel, onComplete, onClo
                                         Create one first then come back here.
                                     </p>
                                     <div className="flex gap-2">
-                                        <a href="/academic/cohorts">
+                                        <Link href="/academic/cohorts">
                                             <Button variant="secondary" size="sm">Create Cohort ↗</Button>
-                                        </a>
+                                        </Link>
                                         <Button variant="ghost" size="sm" onClick={refetch}>
                                             I&apos;ve created it - refresh
                                         </Button>

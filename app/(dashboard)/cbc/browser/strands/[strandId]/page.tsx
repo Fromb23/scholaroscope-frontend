@@ -79,7 +79,11 @@ export default function StrandDetailPage() {
     const toggleSubStrand = useCallback((id: number) => {
         setExpandedSubStrands(prev => {
             const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
             return next;
         });
     }, []);
@@ -89,7 +93,7 @@ export default function StrandDetailPage() {
             const id = strand.sub_strands[0].id;
             if (!expandedSubStrands.has(id)) toggleSubStrand(id);
         }
-    }, [strand]);
+    }, [expandedSubStrands, strand, toggleSubStrand]);
 
     if (isLoading) return (
         <div className="space-y-6"><CBCNav /><CBCLoading message="Loading strand…" /></div>

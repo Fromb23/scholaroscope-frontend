@@ -122,9 +122,14 @@ export default function EditAssessmentPage() {
         }
     };
 
-    const handleChange = (field: keyof AssessmentFormData | 'cohort', value: any) => {
+    function handleChange(field: 'cohort', value: number): void;
+    function handleChange(field: keyof AssessmentFormData, value: AssessmentFormData[keyof AssessmentFormData]): void;
+    function handleChange(
+        field: keyof AssessmentFormData | 'cohort',
+        value: AssessmentFormData[keyof AssessmentFormData] | number
+    ) {
         if (field === 'cohort') {
-            const cohortId = value;
+            const cohortId = Number(value);
             setSelectedCohort(cohortId);
             setFormData(prev => ({ ...prev, cohort_subject: 0 }));
             if (errors.cohort) {
@@ -161,7 +166,7 @@ export default function EditAssessmentPage() {
                 return newErrors;
             });
         }
-    };
+    }
 
     if (loading) {
         return (

@@ -6,6 +6,10 @@ import {
     AnnouncementFormData, UnreadResponse
 } from '../types/announcements';
 
+type PaginatedResponse<T> = {
+    results?: T[];
+};
+
 export const announcementAPI = {
     getAll: async (params?: {
         is_active?: boolean;
@@ -14,7 +18,7 @@ export const announcementAPI = {
     }): Promise<Announcement[]> => {
         const response = await apiClient.get<Announcement[]>('/announcements/', { params });
         const data = response.data;
-        return Array.isArray(data) ? data : (data as any)?.results ?? [];
+        return Array.isArray(data) ? data : (data as PaginatedResponse<Announcement>)?.results ?? [];
     },
 
     getById: async (id: number): Promise<Announcement> => {
@@ -59,6 +63,6 @@ export const announcementAPI = {
         );
         return Array.isArray(response.data)
             ? response.data
-            : (response.data as any)?.results ?? [];
+            : (response.data as PaginatedResponse<AnnouncementFeedback>)?.results ?? [];
     },
 };
