@@ -4,6 +4,12 @@ import type { AuditLog, AuditLogFilters, AuditStats } from '@/app/plugins/audit/
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 export const useAuditLogs = (filters?: AuditLogFilters) => {
+    const search = filters?.search;
+    const action = filters?.action;
+    const resourceType = filters?.resource_type;
+    const organization = filters?.organization;
+    const dateFrom = filters?.date_from;
+    const dateTo = filters?.date_to;
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -11,7 +17,16 @@ export const useAuditLogs = (filters?: AuditLogFilters) => {
     const fetchLogs = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await auditAPI.getAll(filters);
+            const nextFilters: AuditLogFilters = {};
+            if (search) nextFilters.search = search;
+            if (action) nextFilters.action = action;
+            if (resourceType) nextFilters.resource_type = resourceType;
+            if (organization !== undefined) nextFilters.organization = organization;
+            if (dateFrom) nextFilters.date_from = dateFrom;
+            if (dateTo) nextFilters.date_to = dateTo;
+            const data = await auditAPI.getAll(
+                Object.keys(nextFilters).length > 0 ? nextFilters : undefined
+            );
             setLogs(Array.isArray(data) ? data : (data as { results?: AuditLog[] }).results ?? []);
             setError(null);
         } catch (err) {
@@ -19,7 +34,7 @@ export const useAuditLogs = (filters?: AuditLogFilters) => {
         } finally {
             setLoading(false);
         }
-    }, [filters]);
+    }, [action, dateFrom, dateTo, organization, resourceType, search]);
 
     useEffect(() => { fetchLogs(); }, [fetchLogs]);
 

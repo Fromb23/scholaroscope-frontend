@@ -38,6 +38,22 @@ function statusCode(err: ApiError): number | null {
   return err.response?.status ?? null;
 }
 
+function buildReportFilters(
+  student?: number,
+  term?: number,
+  cohort?: number,
+  subject?: number,
+  cohortSubject?: number,
+): ReportFilters | undefined {
+  const params: ReportFilters = {};
+  if (student !== undefined) params.student = student;
+  if (term !== undefined) params.term = term;
+  if (cohort !== undefined) params.cohort = cohort;
+  if (subject !== undefined) params.subject = subject;
+  if (cohortSubject !== undefined) params.cohort_subject = cohortSubject;
+  return Object.keys(params).length > 0 ? params : undefined;
+}
+
 // ── useDashboardOverview ──────────────────────────────────────────────────
 
 export const useDashboardOverview = () => {
@@ -63,24 +79,30 @@ export const useDashboardOverview = () => {
 
 // ── useAttendanceSummaries ────────────────────────────────────────────────
 
-export const useAttendanceSummaries = (params?: ReportFilters) => {
+export const useAttendanceSummaries = ({
+  student,
+  term,
+  cohort,
+  subject,
+  cohort_subject: cohortSubject,
+}: ReportFilters = {}) => {
   const [summaries, setSummaries] = useState<AttendanceSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSummaries = useCallback(async () => {
-    const hasFilter = params && Object.values(params).some(v => v !== undefined);
-    if (!hasFilter) { setLoading(false); return; }
+    const filters = buildReportFilters(student, term, cohort, subject, cohortSubject);
+    if (!filters) { setLoading(false); return; }
     try {
       setLoading(true);
-      setSummaries(unwrap(await attendanceSummaryAPI.getAll(params)));
+      setSummaries(unwrap(await attendanceSummaryAPI.getAll(filters)));
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance summaries'));
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
 
@@ -94,24 +116,30 @@ export const useAttendanceSummaries = (params?: ReportFilters) => {
 
 // ── useGradeSummaries ─────────────────────────────────────────────────────
 
-export const useGradeSummaries = (params?: ReportFilters) => {
+export const useGradeSummaries = ({
+  student,
+  term,
+  cohort,
+  subject,
+  cohort_subject: cohortSubject,
+}: ReportFilters = {}) => {
   const [summaries, setSummaries] = useState<GradeSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSummaries = useCallback(async () => {
-    const hasFilter = params && Object.values(params).some(v => v !== undefined);
-    if (!hasFilter) { setLoading(false); return; }
+    const filters = buildReportFilters(student, term, cohort, subject, cohortSubject);
+    if (!filters) { setLoading(false); return; }
     try {
       setLoading(true);
-      setSummaries(unwrap(await gradeSummaryAPI.getAll(params)));
+      setSummaries(unwrap(await gradeSummaryAPI.getAll(filters)));
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch grade summaries'));
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
 
@@ -125,7 +153,13 @@ export const useGradeSummaries = (params?: ReportFilters) => {
 
 // ── useCohortSummaries ────────────────────────────────────────────────────
 
-export const useCohortSummaries = (params?: ReportFilters) => {
+export const useCohortSummaries = ({
+  student,
+  term,
+  cohort,
+  subject,
+  cohort_subject: cohortSubject,
+}: ReportFilters = {}) => {
   const [summaries, setSummaries] = useState<CohortSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,14 +167,16 @@ export const useCohortSummaries = (params?: ReportFilters) => {
   const fetchSummaries = useCallback(async () => {
     try {
       setLoading(true);
-      setSummaries(unwrap(await cohortSummaryAPI.getAll(params)));
+      setSummaries(unwrap(await cohortSummaryAPI.getAll(
+        buildReportFilters(student, term, cohort, subject, cohortSubject)
+      )));
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch cohort summaries'));
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
 
@@ -154,7 +190,13 @@ export const useCohortSummaries = (params?: ReportFilters) => {
 
 // ── useSubjectSummaries ───────────────────────────────────────────────────
 
-export const useSubjectSummaries = (params?: ReportFilters) => {
+export const useSubjectSummaries = ({
+  student,
+  term,
+  cohort,
+  subject,
+  cohort_subject: cohortSubject,
+}: ReportFilters = {}) => {
   const [summaries, setSummaries] = useState<SubjectSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,14 +204,16 @@ export const useSubjectSummaries = (params?: ReportFilters) => {
   const fetchSummaries = useCallback(async () => {
     try {
       setLoading(true);
-      setSummaries(unwrap(await subjectSummaryAPI.getAll(params)));
+      setSummaries(unwrap(await subjectSummaryAPI.getAll(
+        buildReportFilters(student, term, cohort, subject, cohortSubject)
+      )));
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch subject summaries'));
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
 
@@ -183,7 +227,13 @@ export const useSubjectSummaries = (params?: ReportFilters) => {
 
 // ── useAssessmentTypeSummaries ────────────────────────────────────────────
 
-export const useAssessmentTypeSummaries = (params?: ReportFilters) => {
+export const useAssessmentTypeSummaries = ({
+  student,
+  term,
+  cohort,
+  subject,
+  cohort_subject: cohortSubject,
+}: ReportFilters = {}) => {
   const [summaries, setSummaries] = useState<AssessmentTypeSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,14 +241,16 @@ export const useAssessmentTypeSummaries = (params?: ReportFilters) => {
   const fetchSummaries = useCallback(async () => {
     try {
       setLoading(true);
-      setSummaries(unwrap(await assessmentTypeSummaryAPI.getAll(params)));
+      setSummaries(unwrap(await assessmentTypeSummaryAPI.getAll(
+        buildReportFilters(student, term, cohort, subject, cohortSubject)
+      )));
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessment type summaries'));
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [cohort, cohortSubject, student, subject, term]);
 
   useEffect(() => { fetchSummaries(); }, [fetchSummaries]);
 
@@ -365,11 +417,11 @@ export const useInstructorCohortSubjectLearners = (
   termId?: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<InstructorCohortSubjectLearnersReport | null>(null);
-  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
+  const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const enabled = options?.enabled ?? true;
 
   const fetchReport = useCallback(async () => {
     if (!enabled || !cohortSubjectId) {
@@ -403,11 +455,11 @@ export const useInstructorCohortSubjectPerformance = (
   termId?: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<InstructorCohortSubjectPerformanceReport | null>(null);
-  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
+  const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const enabled = options?.enabled ?? true;
 
   const fetchReport = useCallback(async () => {
     if (!enabled || !cohortSubjectId) {
@@ -441,11 +493,11 @@ export const useInstructorCohortSubjectTeachingActivity = (
   termId?: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<InstructorCohortSubjectTeachingActivityReport | null>(null);
-  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
+  const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const enabled = options?.enabled ?? true;
 
   const fetchReport = useCallback(async () => {
     if (!enabled || !cohortSubjectId) {
@@ -478,11 +530,11 @@ export const useInstructorCohortSubjectCoverage = (
   cohortSubjectId: number | null,
   options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<InstructorCohortSubjectCoverageReport | null>(null);
-  const [loading, setLoading] = useState(Boolean(options?.enabled ?? true));
+  const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
-  const enabled = options?.enabled ?? true;
 
   const fetchReport = useCallback(async () => {
     if (!enabled || !cohortSubjectId) {

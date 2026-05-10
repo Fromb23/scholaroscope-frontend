@@ -295,27 +295,35 @@ export function useCreatePolicyForm(
 // ── useComputedGrades ─────────────────────────────────────────────────────
 
 export function useComputedGrades(filters?: ComputedGradeFilters) {
+    const student = filters?.student;
+    const term = filters?.term;
+    const cohortSubject = filters?.cohort_subject;
+    const policy = filters?.policy;
     const [grades, setGrades] = useState<ComputedGradeDTO[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const fetchGrades = useCallback(async () => {
-        const hasFilter = filters && Object.values(filters).some(v => v !== undefined);
-        if (!hasFilter) { setLoading(false); return; }
+        const params: ComputedGradeFilters = {};
+        if (student !== undefined) params.student = student;
+        if (term !== undefined) params.term = term;
+        if (cohortSubject !== undefined) params.cohort_subject = cohortSubject;
+        if (policy !== undefined) params.policy = policy;
+        if (Object.keys(params).length === 0) { setLoading(false); return; }
         try {
             setLoading(true);
             setError(null);
-            setGrades(await gradePolicyAPI.getComputedGrades(filters));
+            setGrades(await gradePolicyAPI.getComputedGrades(params));
         } catch (err) {
             setError(extractErrorMessage(err as ApiError, 'Failed to fetch computed grades'));
         } finally {
             setLoading(false);
         }
-    }, [filters]);
+    }, [cohortSubject, policy, student, term]);
 
     useEffect(() => {
         fetchGrades();
-    }, [fetchGrades, filters?.student, filters?.term, filters?.cohort_subject, filters?.policy]);
+    }, [fetchGrades]);
 
     const computeWithPolicy = async (
         termId: number, cohortId?: number, policyId?: number
