@@ -21,23 +21,19 @@ interface CohortSubjectParticipationSectionProps {
 }
 
 function getInstructorLabel(summary: CohortSubjectParticipationSummary | undefined) {
-    if (!summary) {
-        return 'Loading instructor...';
-    }
+  if (!summary) {
+    return 'Loading instructor...';
+  }
 
-    if (summary.instructorState === 'assigned') {
-        return summary.instructorName ?? 'Assigned';
-    }
+  if (summary.instructorState === 'assigned') {
+    return summary.instructorName ?? 'Assigned';
+  }
 
-    if (summary.instructorState === 'unassigned') {
-        return 'No instructor assigned';
-    }
+  if (summary.instructorState === 'unassigned') {
+    return 'No instructor assigned';
+  }
 
-    if (summary.instructorState === 'plugin-managed-unknown') {
-        return 'Managed in CBC';
-    }
-
-    return 'Instructor unavailable';
+  return 'Instructor unavailable';
 }
 
 function getParticipationCount(summary: CohortSubjectParticipationSummary | undefined) {
