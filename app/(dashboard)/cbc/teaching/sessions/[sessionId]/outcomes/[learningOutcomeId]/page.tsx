@@ -162,7 +162,7 @@ export default function OutcomeInSessionPage() {
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
                 { label: 'Sessions', href: '/cbc/teaching/sessions' },
-                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
+                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: learningOutcome.code },
             ]} />

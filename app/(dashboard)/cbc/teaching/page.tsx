@@ -85,7 +85,7 @@ export default function TeachingHomePage() {
                         {todaySessions.map(session => (
                             <button
                                 key={session.id}
-                                onClick={() => router.push(`/cbc/teaching/sessions/${session.id}`)}
+                                onClick={() => router.push(`/cbc/teaching/sessions/${session.id}/outcomes`)}
                                 className="w-full flex items-center justify-between p-4 border border-gray-200
                   rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
                             >
@@ -140,7 +140,7 @@ export default function TeachingHomePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {recentSessions.slice(0, 6).map(session => (
                             <Link key={session.id}
-                                href={`/cbc/teaching/sessions/${session.id}`}
+                                href={`/cbc/teaching/sessions/${session.id}/outcomes`}
                                 className="block p-4 border border-gray-200 rounded-xl
                   hover:border-purple-300 hover:bg-purple-50 transition-all">
                                 <div className="flex items-start justify-between mb-2">

@@ -10,9 +10,7 @@ import {
     CBCNav, CBCBreadcrumb, CBCError, CBCLoading, SessionStatusBadge,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
-import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
-import type { SessionStatus } from '@/app/plugins/cbc/types/cbc';
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
     { value: '', label: 'All statuses' },
@@ -135,7 +133,7 @@ export default function SessionsListPage() {
                         {filtered.map(session => (
                             <button
                                 key={session.id}
-                                onClick={() => router.push(`/cbc/teaching/sessions/${session.id}`)}
+                                onClick={() => router.push(`/cbc/teaching/sessions/${session.id}/outcomes`)}
                                 className="w-full flex items-center justify-between p-5 border border-gray-200
                   rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
                             >

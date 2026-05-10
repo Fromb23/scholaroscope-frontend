@@ -23,7 +23,6 @@ import type {
   SubStrandFormData,
   LearningOutcomeFormData,
   EvidenceFormData,
-  BulkEvidenceData,
   BulkOutcomeSessionData,
   BulkOutcomeProgressData,
   SessionLearner,
@@ -442,14 +441,6 @@ export const useCreateEvidence = () => {
       });
       qc.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all });
     },
-  });
-};
-
-export const useBulkCreateEvidence = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (data: BulkEvidenceData) => evidenceAPI.bulkCreate(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: cbcKeys.evidence.all }),
   });
 };
 

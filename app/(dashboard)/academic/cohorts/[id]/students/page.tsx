@@ -7,10 +7,10 @@
 // No enrollment mutations. No direct API calls. No any.
 // ============================================================================
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft, Download, Users } from 'lucide-react';
 import { useCohortDetail } from '@/app/core/hooks/useAcademic';
 import { type EnrolledStudent, useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { Button } from '@/app/components/ui/Button';
@@ -64,6 +64,20 @@ function getLearnerStatusVariant(student: LearnerRow): 'success' | 'warning' | '
     }
 }
 
+function escapeCsvValue(value: string) {
+    return `"${value.replace(/"/g, '""')}"`;
+}
+
+function buildSafeCohortFilename(cohortName: string, cohortId: number) {
+    const normalized = cohortName
+        .trim()
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .toLowerCase();
+
+    return normalized || `cohort-${cohortId}`;
+}
+
 export default function CohortStudentsPage() {
     const params = useParams<{ id: string }>();
     const cohortId = Number(params.id);
@@ -72,17 +86,52 @@ export default function CohortStudentsPage() {
     const { cohort } = useCohortDetail(isValidCohortId ? cohortId : null);
     const [searchEnrolled, setSearchEnrolled] = useState('');
 
-    const enrolled: LearnerRow[] = enrolledQuery.data?.students ?? [];
+    const enrolled = useMemo<LearnerRow[]>(() => enrolledQuery.data?.students ?? [], [enrolledQuery.data?.students]);
     const cohortName = enrolledQuery.data?.cohort_name || cohort?.name || '';
-    const filteredEnrolled = enrolled.filter((student) => {
-        const query = searchEnrolled.toLowerCase();
-        return (
+    const sortedEnrolled = useMemo(() => (
+        [...enrolled].sort((a, b) => a.admission_number.localeCompare(b.admission_number, undefined, {
+            numeric: true,
+            sensitivity: 'base',
+        }))
+    ), [enrolled]);
+    const filteredEnrolled = useMemo(() => {
+        const query = searchEnrolled.trim().toLowerCase();
+
+        if (!query) return sortedEnrolled;
+
+        return sortedEnrolled.filter((student) => (
             student.full_name.toLowerCase().includes(query)
             || student.admission_number.toLowerCase().includes(query)
             || student.email?.toLowerCase().includes(query)
             || student.phone?.toLowerCase().includes(query)
-        );
-    });
+        ));
+    }, [searchEnrolled, sortedEnrolled]);
+
+    const handleExportList = () => {
+        if (filteredEnrolled.length === 0) return;
+
+        const header = ['Admission No.', 'Learner Name', 'Contact', 'Status'];
+        const rows = filteredEnrolled.map((student) => ([
+            student.admission_number,
+            student.full_name,
+            getLearnerContact(student),
+            getLearnerStatus(student),
+        ]));
+        const csvContent = [header, ...rows]
+            .map((row) => row.map((value) => escapeCsvValue(value)).join(','))
+            .join('\n');
+        const fileName = `${buildSafeCohortFilename(cohortName, cohortId)}-class-list.csv`;
+        const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     if (!isValidCohortId) {
         return <ErrorState fullScreen={false} message="Invalid cohort." />;
@@ -145,13 +194,25 @@ export default function CohortStudentsPage() {
                                 Read-only learner roster for this cohort.
                             </p>
                         </div>
-                        <div className="w-full lg:max-w-sm">
-                            <Input
-                                value={searchEnrolled}
-                                onChange={(event) => setSearchEnrolled(event.target.value)}
-                                placeholder="Search learners by name, admission number, or contact"
-                                aria-label="Search enrolled learners"
-                            />
+                        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:items-center">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleExportList}
+                                disabled={filteredEnrolled.length === 0}
+                                className="gap-2 sm:self-start lg:self-auto"
+                            >
+                                <Download className="h-4 w-4" />
+                                Export List
+                            </Button>
+                            <div className="w-full lg:w-80">
+                                <Input
+                                    value={searchEnrolled}
+                                    onChange={(event) => setSearchEnrolled(event.target.value)}
+                                    placeholder="Search learners by name, admission number, or contact"
+                                    aria-label="Search enrolled learners"
+                                />
+                            </div>
                         </div>
                     </div>
 
