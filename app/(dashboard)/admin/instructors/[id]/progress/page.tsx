@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, Calendar, Users, TrendingUp, CheckCircle,
-    AlertCircle, Award, GraduationCap, Layers, Pencil,
+    AlertCircle, Award, GraduationCap, Pencil,
     KeyRound, Power, PowerOff, Trash2, BookOpen,
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
@@ -26,7 +26,6 @@ import {
     CohortAssignModal,
 } from '@/app/core/components/instructors/InstructorModals';
 import {
-    CohortSubjectCoverage,
     GroupedSessions,
 } from '@/app/core/components/instructors/InstructorProgressComponents';
 import type { UserUpdatePayload } from '@/app/core/types/globalUsers';
@@ -46,7 +45,7 @@ export default function InstructorProgressPage() {
 
     const {
         instructor, sessions, loading, error,
-        refetch, teachingAssignments, cbcTeachingAssignments, nonCBCSubjects,
+        refetch, teachingAssignments, cbcTeachingAssignments,
         sessionStats, attendanceStats,
     } = useInstructorProgress(instructorId);
 
@@ -246,24 +245,6 @@ export default function InstructorProgressPage() {
                     </div>
                 </div>
             </Card>
-
-            {/* Topic coverage */}
-            {nonCBCSubjects.length > 0 && (
-                <Card>
-                    <div className="p-6">
-                        <div className="flex items-center gap-2 mb-5">
-                            <Layers className="h-5 w-5 text-blue-500" />
-                            <h2 className="text-lg font-semibold text-gray-900">Topic Coverage</h2>
-                            <Badge variant="info" size="sm">{nonCBCSubjects.length} subjects</Badge>
-                        </div>
-                        <div className="space-y-3">
-                            {nonCBCSubjects.map(cs => (
-                                <CohortSubjectCoverage key={cs.teachingKey} cs={cs} />
-                            ))}
-                        </div>
-                    </div>
-                </Card>
-            )}
 
             {/* CBC progress */}
             {cbcTeachingAssignments.length > 0 && (

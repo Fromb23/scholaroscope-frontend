@@ -5,7 +5,6 @@
 //
 // Components for the topics browser page.
 // No any. Typed props. No API calls.
-// AcademicNav is reused from AcademicProgressComponents — not duplicated here.
 // ============================================================================
 
 import Link from 'next/link';
@@ -100,13 +99,12 @@ export function TopicRow({ topic }: TopicRowProps) {
 // ── SubjectSection ────────────────────────────────────────────────────────
 
 interface SubjectSectionProps {
-    csId: number;
     label: string;
     topics: Topic[];
     isAdmin: boolean;
 }
 
-export function SubjectSection({ csId: _, label, topics, isAdmin }: SubjectSectionProps) {
+export function SubjectSection({ label, topics, isAdmin }: SubjectSectionProps) {
     return (
         <div>
             <div className="flex items-center gap-3 mb-3">

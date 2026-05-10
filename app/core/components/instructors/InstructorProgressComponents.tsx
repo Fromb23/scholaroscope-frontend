@@ -3,96 +3,18 @@
 // ============================================================================
 // app/core/components/instructors/InstructorProgressComponents.tsx
 //
-// Display components for instructor progress page.
-// No any. Typed props. Reuses CoverageBar/coverageVariant from
-// AcademicProgressComponents — not duplicated.
+// Supporting components for the instructor detail page.
+// No any. Typed props.
 // ============================================================================
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
     Calendar, ChevronDown, ChevronRight,
-    CheckCircle, Circle,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import { useCoverageProgress } from '@/app/core/hooks/useTopics';
-import { CoverageBar, coverageVariant } from '@/app/core/components/academic/AcademicProgressComponents';
 import type { Session } from '@/app/core/types/session';
-import type { CohortSubjectEntry } from '@/app/core/hooks/useInstructorProgress';
-
-// ── CohortSubjectCoverage ─────────────────────────────────────────────────
-
-interface CohortSubjectCoverageProps {
-    cs: CohortSubjectEntry;
-}
-
-export function CohortSubjectCoverage({ cs }: CohortSubjectCoverageProps) {
-    const [open, setOpen] = useState(false);
-    const { progress, loading } = useCoverageProgress(cs.cohortSubjectId);
-
-    if (loading) return (
-        <div className="border border-gray-200 rounded-xl p-4 animate-pulse">
-            <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
-            <div className="h-2 bg-gray-100 rounded" />
-        </div>
-    );
-
-    if (!progress || progress.ineligible) return null;
-
-    return (
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <button
-                type="button"
-                onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center gap-4 px-5 py-4 bg-white hover:bg-gray-50 transition-colors text-left"
-            >
-                <div className="shrink-0">
-                    {open
-                        ? <ChevronDown className="h-4 w-4 text-blue-600" />
-                        : <ChevronRight className="h-4 w-4 text-gray-400" />
-                    }
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-gray-900 text-sm">{cs.subjectName}</p>
-                        <Badge variant="default" size="sm">{cs.cohortName}</Badge>
-                    </div>
-                    <CoverageBar percentage={progress.percentage} />
-                </div>
-                <Badge variant={coverageVariant(progress.percentage)} size="md" className="shrink-0">
-                    {progress.covered}/{progress.total}
-                </Badge>
-            </button>
-
-            {open && (
-                <div className="border-t border-gray-100 bg-gray-50 px-5 py-4">
-                    {progress.uncovered_subtopics?.length === 0 ? (
-                        <div className="flex items-center gap-2 text-green-600">
-                            <CheckCircle className="h-4 w-4" />
-                            <span className="text-sm font-medium">All subtopics covered</span>
-                        </div>
-                    ) : (
-                        <>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                                Remaining ({progress.uncovered_subtopics?.length})
-                            </p>
-                            <div className="space-y-1.5">
-                                {progress.uncovered_subtopics?.map(s => (
-                                    <div key={s.id} className="flex items-center gap-2">
-                                        <Circle className="h-3.5 w-3.5 text-gray-300 shrink-0" />
-                                        <span className="font-mono text-xs text-gray-400">{s.code}</span>
-                                        <span className="text-sm text-gray-600">{s.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
 
 // ── SessionCohortGroup ────────────────────────────────────────────────────
 

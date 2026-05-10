@@ -13,8 +13,6 @@ import { useAssessments, useAssessmentScores } from '@/app/core/hooks/useAssessm
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import type { Session } from '@/app/core/types/session';
 import type { Assessment, AssessmentScore } from '@/app/core/types/assessment';
-import { SyllabusProgress } from '../types/academic';
-import { cohortsAPI } from '../api/cohorts';
 import { cohortSubjectAPI } from '../api/academic';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -166,7 +164,6 @@ function generateAlerts(metrics: DashboardMetrics): DashboardAlert[] {
 
 export function useAdminDashboard() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
-    const [syllabusProgress, setSyllabusProgress] = useState<SyllabusProgress[]>([]);
     const [unattendedSubjects, setUnattendedSubjects] = useState<{
         cohort_subject_id: number;
         cohort_name: string;
@@ -206,17 +203,6 @@ export function useAdminDashboard() {
     }, [refetchStudents, refetchSessions, refetchAssessments]);
 
     useEffect(() => {
-        if (!cohorts.length) return;
-        const currentCohorts = cohorts.filter(
-            c => c.is_current_year && c.curriculum_type !== 'CBE'
-        );
-        Promise.all(
-            currentCohorts.map(c => cohortsAPI.getSyllabusProgress(c.id))
-        ).then(results => setSyllabusProgress(results))
-            .catch(() => setSyllabusProgress([]));
-    }, [cohorts]);
-
-    useEffect(() => {
         cohortSubjectAPI.getUnattended()
             .then(data => setUnattendedSubjects(
                 data.map(cs => ({
@@ -244,7 +230,6 @@ export function useAdminDashboard() {
         lastRefresh,
         isLoading,
         refresh,
-        syllabusProgress,
         unattendedSubjects
     };
 }

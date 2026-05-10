@@ -26,7 +26,6 @@ export default function InstructorReportsOverviewPage() {
 
     const averageGrade = average(overview?.assigned_cohort_subjects.map(item => item.average_grade) ?? []);
     const averageAttendance = average(overview?.assigned_cohort_subjects.map(item => item.average_attendance) ?? []);
-    const averageCoverage = average(overview?.assigned_cohort_subjects.map(item => item.coverage?.percentage) ?? []);
     const totalSessions = (overview?.assigned_cohort_subjects ?? []).reduce(
         (sum, item) => sum + (item.session_count ?? 0),
         0,
@@ -44,7 +43,6 @@ export default function InstructorReportsOverviewPage() {
                 averageGrade: averageGrade != null ? `${averageGrade.toFixed(1)}%` : '—',
                 averageAttendance: averageAttendance != null ? `${averageAttendance.toFixed(1)}%` : '—',
                 totalSessions: String(totalSessions),
-                coverage: averageCoverage != null ? `${averageCoverage.toFixed(1)}%` : '—',
                 generatedAt: new Date().toLocaleString(),
             },
             columns: [
@@ -57,12 +55,8 @@ export default function InstructorReportsOverviewPage() {
                 { key: 'average_attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
                 { key: 'session_count', label: 'Sessions', format: 'number', width: 12, align: 'right' as const },
                 { key: 'completed_session_count', label: 'Completed', format: 'number', width: 12, align: 'right' as const },
-                { key: 'coverage_percentage', label: 'Coverage', format: 'percentage', width: 12, align: 'right' as const },
             ],
-            rows: overview.assigned_cohort_subjects.map(item => ({
-                ...item,
-                coverage_percentage: item.coverage?.percentage ?? null,
-            })),
+            rows: overview.assigned_cohort_subjects,
             fileName: 'instructor-overview',
             includeMetadata: true,
             includeTimestamp: true,
@@ -71,7 +65,7 @@ export default function InstructorReportsOverviewPage() {
             autoFilter: true,
             orientation: 'landscape' as const,
         };
-    }, [averageAttendance, averageCoverage, averageGrade, overview, totalSessions]);
+    }, [averageAttendance, averageGrade, overview, totalSessions]);
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
@@ -125,16 +119,10 @@ export default function InstructorReportsOverviewPage() {
             </div>
 
             <Card>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-lg border border-gray-200 p-4">
                         <p className="text-sm text-gray-500">Total Sessions</p>
                         <p className="mt-2 text-2xl font-semibold text-gray-900">{totalSessions}</p>
-                    </div>
-                    <div className="rounded-lg border border-gray-200 p-4">
-                        <p className="text-sm text-gray-500">Coverage Overview</p>
-                        <p className="mt-2 text-2xl font-semibold text-gray-900">
-                            {averageCoverage != null ? `${averageCoverage.toFixed(1)}%` : '—'}
-                        </p>
                     </div>
                     <div className="rounded-lg border border-gray-200 p-4">
                         <p className="text-sm text-gray-500">Completed Sessions</p>
@@ -176,7 +164,6 @@ export default function InstructorReportsOverviewPage() {
                                 <TableHead>Learners</TableHead>
                                 <TableHead>Average</TableHead>
                                 <TableHead>Attendance</TableHead>
-                                <TableHead>Coverage</TableHead>
                                 <TableHead>
                                     <span className="sr-only">Actions</span>
                                 </TableHead>
@@ -197,7 +184,6 @@ export default function InstructorReportsOverviewPage() {
                                     <TableCell>{item.active_learner_count}</TableCell>
                                     <TableCell>{item.average_grade?.toFixed(1) ?? '—'}%</TableCell>
                                     <TableCell>{item.average_attendance?.toFixed(1) ?? '—'}%</TableCell>
-                                    <TableCell>{item.coverage?.percentage?.toFixed(1) ?? '—'}%</TableCell>
                                     <TableCell>
                                         <Link href={`/reports/instructor/cohort-subjects/${item.id}`}>
                                             <Button variant="ghost" size="sm">Open</Button>

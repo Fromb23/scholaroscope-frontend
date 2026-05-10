@@ -11,16 +11,6 @@ import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
 import type { Session } from '@/app/core/types/session';
 
-// ── Derived types ──────────────────────────────────────────────────────────
-
-export interface CohortSubjectEntry {
-    cohortSubjectId: number;
-    subjectName: string;
-    cohortName: string;
-    isCBC: boolean;
-    teachingKey: string;
-}
-
 export interface SessionStats {
     total: number;
     thisMonth: number;
@@ -145,27 +135,6 @@ export function useInstructorProgress(instructorId: number) {
         [teachingAssignments]
     );
 
-    const nonCBCSubjects = useMemo<CohortSubjectEntry[]>(
-        () =>
-            teachingAssignments.flatMap((assignment) => {
-                if (
-                    isCBCTeachingAssignment(assignment) ||
-                    typeof assignment.cohort_subject_id !== 'number'
-                ) {
-                    return [];
-                }
-
-                return [{
-                    cohortSubjectId: assignment.cohort_subject_id,
-                    subjectName: assignment.subject_name,
-                    cohortName: assignment.cohort_name,
-                    isCBC: false,
-                    teachingKey: getTeachingAssignmentKey(assignment),
-                }];
-            }),
-        [teachingAssignments]
-    );
-
     const sessionStats = useMemo<SessionStats>(() => {
         const now = new Date();
         return {
@@ -196,7 +165,6 @@ export function useInstructorProgress(instructorId: number) {
         refetch: () => load(false),
         teachingAssignments,
         cbcTeachingAssignments,
-        nonCBCSubjects,
         sessionStats,
         attendanceStats,
     };

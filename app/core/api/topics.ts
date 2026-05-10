@@ -1,7 +1,7 @@
 // ============================================================================
 // core/api/topics.ts
 //
-// API calls for Topic / Subtopic / TopicSessionLink / SubtopicCoverage.
+// API calls for Topic / Subtopic authoring.
 // Follows the exact pattern of core/api/academic.ts:
 //   - uses apiClient from ./client
 //   - named export per resource (topicAPI, subtopicAPI, etc.)
@@ -13,9 +13,6 @@ import {
     Topic,
     TopicDetail,
     Subtopic,
-    TopicSessionLink,
-    SubtopicCoverage,
-    CoverageProgress,
     TopicQueryParams,
     SubtopicQueryParams,
     TopicFormData,
@@ -81,53 +78,5 @@ export const subtopicAPI = {
 
     delete: async (id: number) => {
         await apiClient.delete(`/subtopics/${id}/`);
-    },
-};
-
-// ── Topic Session Links ───────────────────────────────────────────────────
-
-export const topicSessionLinkAPI = {
-    getAll: async (params?: { session?: number; subtopic?: number; covered?: boolean }) => {
-        const response = await apiClient.get<PaginatedResponse<TopicSessionLink>>('/topic-session-links/', { params });
-        return response.data;
-    },
-
-    create: async (data: { session: number; subtopic: number; notes?: string }) => {
-        const response = await apiClient.post<TopicSessionLink>('/topic-session-links/', data);
-        return response.data;
-    },
-
-    markCovered: async (linkId: number) => {
-        const response = await apiClient.post<TopicSessionLink>(
-            `/topic-session-links/${linkId}/mark_covered/`
-        );
-        return response.data;
-    },
-
-    markUncovered: async (linkId: number) => {
-        const response = await apiClient.post<TopicSessionLink>(
-            `/topic-session-links/${linkId}/mark_uncovered/`
-        );
-        return response.data;
-    },
-
-    delete: async (id: number) => {
-        await apiClient.delete(`/topic-session-links/${id}/`);
-    },
-};
-
-// ── Subtopic Coverage ─────────────────────────────────────────────────────
-
-export const subtopicCoverageAPI = {
-    getAll: async (params?: { cohort_subject?: number; subtopic?: number; is_covered?: boolean }) => {
-        const response = await apiClient.get<SubtopicCoverage[]>('/subtopic-coverage/', { params });
-        return response.data;
-    },
-
-    getProgress: async (cohortSubjectId: number) => {
-        const response = await apiClient.get<CoverageProgress>('/subtopic-coverage/progress/', {
-            params: { cohort_subject: cohortSubjectId },
-        });
-        return response.data;
     },
 };

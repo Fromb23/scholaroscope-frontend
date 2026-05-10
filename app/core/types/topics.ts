@@ -1,12 +1,11 @@
 // ============================================================================
 // core/types/topics.ts
 //
-// Topic / Subtopic / Coverage types.
+// Topic / Subtopic types.
 // Mirrors the backend models exactly:
 //   Topic           → apps/academic/models.py :: Topic
 //   Subtopic        → apps/academic/models.py :: Subtopic
 //   TopicSessionLink → apps/academic/models.py :: TopicSessionLink
-//   SubtopicCoverage → apps/academic/models.py :: SubtopicCoverage
 // ============================================================================
 
 // ── Structural layer ──────────────────────────────────────────────────────
@@ -54,31 +53,6 @@ export interface TopicSessionLink {
     covered: boolean;
     notes: string;
     created_at: string;
-}
-
-export interface SubtopicCoverage {
-    id: number;
-    cohort_subject: number;
-    subtopic: number;
-    subtopic_code: string;
-    subtopic_name: string;
-    topic_name: string;
-    is_covered: boolean;
-    covered_at: string | null;
-    updated_at: string;
-}
-
-// ── Progress (derived — returned by /subtopic-coverage/progress/) ─────────
-
-export interface CoverageProgress {
-    cohort_subject: number;
-    subject_name: string;
-    covered: number;
-    total: number;
-    percentage: number;
-    uncovered_subtopics: Subtopic[];
-    academic_year: number;
-    ineligible: boolean;
 }
 
 // ── Query param types ─────────────────────────────────────────────────────

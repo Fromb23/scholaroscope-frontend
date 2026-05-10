@@ -112,13 +112,6 @@ export function getAdminNav(
                     { name: 'Cohorts', href: '/academic/cohorts', icon: Users },
                 ],
             },
-            {
-                name: 'Academic Teaching', href: '/academic/teaching', icon: GraduationCap,
-                children: [
-                    { name: 'Browse Topics', href: '/academic/topics/browser', icon: BookOpen },
-                    { name: 'Coverage Progress', href: '/academic/progress', icon: TrendingUp },
-                ],
-            },
             { name: 'Instructors', href: '/admin/instructors', icon: UserCog },
             { name: 'Learners', href: '/learners', icon: Users },
             { name: 'Sessions', href: '/sessions', icon: Calendar },

@@ -1,16 +1,15 @@
 // ============================================================================
 // core/hooks/useTopics.ts
 //
-// Hooks for Topic / Subtopic / Coverage.
+// Hooks for Topic / Subtopic.
 // ============================================================================
 
 import { useCallback, useState, useEffect } from 'react';
-import { topicAPI, subtopicAPI, subtopicCoverageAPI } from '@/app/core/api/topics';
+import { topicAPI, subtopicAPI } from '@/app/core/api/topics';
 import {
     Topic,
     TopicDetail,
     Subtopic,
-    CoverageProgress,
     TopicFormData,
     SubtopicFormData,
     TopicQueryParams,
@@ -167,30 +166,4 @@ export const useSubtopics = (topicId?: number) => {
     };
 
     return { subtopics, loading, error, refetch: fetchSubtopics, createSubtopic, updateSubtopic, deleteSubtopic };
-};
-
-// ── useCoverageProgress ───────────────────────────────────────────────────
-
-export const useCoverageProgress = (cohortSubjectId: number | null) => {
-    const [progress, setProgress] = useState<CoverageProgress | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchProgress = useCallback(async () => {
-        if (!cohortSubjectId) { setLoading(false); return; }
-        try {
-            setLoading(true);
-            const data = await subtopicCoverageAPI.getProgress(cohortSubjectId);
-            setProgress(data);
-            setError(null);
-        } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to fetch coverage progress'));
-        } finally {
-            setLoading(false);
-        }
-    }, [cohortSubjectId]);
-
-    useEffect(() => { fetchProgress(); }, [fetchProgress]);
-
-    return { progress, loading, error, refetch: fetchProgress };
 };

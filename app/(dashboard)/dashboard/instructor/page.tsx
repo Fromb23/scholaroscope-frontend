@@ -20,7 +20,6 @@ import {
     MyRequestsCard,
     CurriculumToolCard,
     TeachingStats,
-    TeachingLoadCard,
     TeachingHistoryCard,
 } from '@/app/core/components/dashboard/InstructorDashboardWidgets';
 
@@ -70,7 +69,6 @@ export default function InstructorDashboard() {
             <InstructorKeyMetrics metrics={metrics} />
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">
-                    <TeachingLoadCard assignments={teachingLoad} />
                     <TeachingHistoryCard history={teachingHistory} />
                     <TodayScheduleCard sessions={sessions} />
                     <LearnersAtRisk

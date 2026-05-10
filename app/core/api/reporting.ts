@@ -16,7 +16,6 @@ import {
   InstructorCohortSubjectLearnersReport,
   InstructorCohortSubjectPerformanceReport,
   InstructorCohortSubjectTeachingActivityReport,
-  InstructorCohortSubjectCoverageReport,
   ComputeResponse,
   ReportFilters,
 } from '@/app/core/types/reporting';
@@ -272,13 +271,6 @@ export const reportsAPI = {
       {
         params: termId ? { term_id: termId } : undefined,
       }
-    );
-    return response.data;
-  },
-
-  getInstructorCohortSubjectCoverage: async (cohortSubjectId: number) => {
-    const response = await apiClient.get<InstructorCohortSubjectCoverageReport>(
-      `/reports/instructor/cohort-subjects/${cohortSubjectId}/coverage/`
     );
     return response.data;
   },

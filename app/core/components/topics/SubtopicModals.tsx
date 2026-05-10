@@ -131,7 +131,7 @@ export function DeleteSubtopicModal({
                 <p className="text-sm text-gray-600">
                     Delete{' '}
                     <span className="font-semibold text-gray-900">{subtopic?.name}</span>?
-                    This will also remove any session links and coverage records for this subtopic.
+                    This will also remove any session links tied to this subtopic.
                 </p>
                 <div className="flex justify-end gap-3">
                     <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>

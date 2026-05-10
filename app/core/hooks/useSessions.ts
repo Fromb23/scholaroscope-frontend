@@ -108,8 +108,7 @@ export const useSessions = (params?: SessionQueryParams) => {
     return newSession;
   };
 
-  // Creates session + links subtopics in one atomic operation.
-  // Use this instead of calling createSession + topicSessionLinkAPI separately.
+  // Creates a session and its linked subtopics in one atomic operation.
   const createSessionWithLinks = async (
     data: SessionFormData & { created_by: number },
     subtopicIds: number[]
