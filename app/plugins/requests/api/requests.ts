@@ -8,6 +8,13 @@ import {
     RequestReviewPayload, AddCommentPayload,
     RequestComment, RequestStats,
 } from '@/app/plugins/requests/types/requests';
+
+export interface RequestListParams {
+    status?: string;
+    request_type?: string;
+    priority?: string;
+}
+
 interface Paginated<T> {
     count: number;
     next: string | null;
@@ -16,7 +23,7 @@ interface Paginated<T> {
 }
 export const requestsAPI = {
     // GET /api/requests/
-    getAll: async (params?: Record<string, string>): Promise<Request[]> => {
+    getAll: async (params?: RequestListParams): Promise<Request[]> => {
         const response = await apiClient.get<Paginated<Request>>(
             '/requests/',
             { params }
@@ -59,5 +66,3 @@ export const requestsAPI = {
         return response.data;
     },
 };
-
-

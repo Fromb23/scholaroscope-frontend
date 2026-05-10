@@ -7,7 +7,7 @@ import {
     Request, RequestDetail, RequestCreatePayload,
     RequestReviewPayload, RequestType, RequestStats,
 } from '@/app/plugins/requests/types/requests';
-import { requestsAPI } from '@/app/plugins/requests/api/requests';
+import { requestsAPI, type RequestListParams } from '@/app/plugins/requests/api/requests';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 type PaginatedResponse<T> = { results?: T[] };
@@ -20,7 +20,25 @@ function getApiError(err: unknown): RequestApiError {
     return err as RequestApiError;
 }
 
-export const useRequests = (params?: Record<string, string>) => {
+function buildRequestListParams(
+    status?: string,
+    requestType?: string,
+    priority?: string
+): RequestListParams | undefined {
+    const params: RequestListParams = {};
+    if (status) params.status = status;
+    if (requestType) params.request_type = requestType;
+    if (priority) params.priority = priority;
+    return Object.keys(params).length > 0 ? params : undefined;
+}
+
+type UseRequestsParams = RequestListParams;
+
+export const useRequests = ({
+    status,
+    request_type: requestType,
+    priority,
+}: UseRequestsParams = {}) => {
     const [requests, setRequests] = useState<Request[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -28,7 +46,7 @@ export const useRequests = (params?: Record<string, string>) => {
     const fetchRequests = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await requestsAPI.getAll(params);
+            const data = await requestsAPI.getAll(buildRequestListParams(status, requestType, priority));
             const arr = Array.isArray(data) ? data : (data as PaginatedResponse<Request>).results ?? [];
             setRequests(arr);
             setError(null);
@@ -37,7 +55,7 @@ export const useRequests = (params?: Record<string, string>) => {
         } finally {
             setLoading(false);
         }
-    }, [params]);
+    }, [priority, requestType, status]);
 
     useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
