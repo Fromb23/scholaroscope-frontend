@@ -43,7 +43,7 @@ export default function SessionLearnersPage() {
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
                 { label: 'Sessions', href: '/cbc/teaching/sessions' },
-                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
+                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: 'Learners' },
             ]} />
             <CBCTeachingSessionNav sessionId={sessionId} active="learners" />

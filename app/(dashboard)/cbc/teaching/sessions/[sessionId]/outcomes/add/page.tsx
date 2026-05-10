@@ -11,11 +11,9 @@ import {
   useTeachingSession,
   useOutcomeSessions,
   useBulkTagOutcomes,
-  useStrandsByCurriculum,
   useLearningOutcomes,
   useStrandsBySubject,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import {
     CBCNav, CBCBreadcrumb, CBCError, CBCLoading, CBCTeachingSessionNav, extractErrorMessage,
 } from '@/app/plugins/cbc/components/CBCComponents';
@@ -197,7 +195,7 @@ export default function AddOutcomesPage() {
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
                 { label: 'Sessions', href: '/cbc/teaching/sessions' },
-                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}` },
+                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: 'Add' },
             ]} />
