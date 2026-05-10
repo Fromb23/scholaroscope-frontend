@@ -18,7 +18,6 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AttendanceStatsStrip } from '@/app/core/components/sessions/AttendanceStats';
 import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable';
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
-import { SessionSubtopicLinker } from '@/app/core/components/sessions/SessionSubtopicLinker';
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { getCurriculumTypeLabel } from '@/app/core/lib/curriculumBridge';
 import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
@@ -54,7 +53,6 @@ export default function SessionDetailPage() {
     const isReadOnly = isHistorical || isCompleted;
     const teachingWorkflow = getSessionTeachingWorkflow(session);
     const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
-    const showKernelTeachingContent = session?.subject_source === 'kernel' && !teachingWorkflow;
     const isMerged = useMemo(
         () => (activeCohorts?.length ?? 0) + (historicalCohorts?.length ?? 0) > 1,
         [activeCohorts, historicalCohorts]
@@ -224,22 +222,6 @@ export default function SessionDetailPage() {
                     />
                 </div>
             </Card>
-
-            {showKernelTeachingContent && session.cohort_subject && session.subject_id && (
-                <Card>
-                    <div className="p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-semibold text-gray-900">Subtopics</h2>
-                            <p className="text-xs text-gray-400">Track what content was covered</p>
-                        </div>
-                        <SessionSubtopicLinker
-                            sessionId={session.id}
-                            subjectId={session.subject_id}
-                            readOnly={isReadOnly}
-                        />
-                    </div>
-                </Card>
-            )}
         </div>
     );
 }

@@ -25,7 +25,6 @@ import {
   InstructorCohortSubjectLearnersReport,
   InstructorCohortSubjectPerformanceReport,
   InstructorCohortSubjectTeachingActivityReport,
-  InstructorCohortSubjectCoverageReport,
   ReportFilters,
 } from '@/app/core/types/reporting';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
@@ -521,43 +520,6 @@ export const useInstructorCohortSubjectTeachingActivity = (
       setLoading(false);
     }
   }, [cohortSubjectId, enabled, termId]);
-
-  useEffect(() => { fetchReport(); }, [fetchReport]);
-  return { report, loading, error, errorStatus, refetch: fetchReport };
-};
-
-export const useInstructorCohortSubjectCoverage = (
-  cohortSubjectId: number | null,
-  options?: { enabled?: boolean },
-) => {
-  const enabled = options?.enabled ?? true;
-  const [report, setReport] = useState<InstructorCohortSubjectCoverageReport | null>(null);
-  const [loading, setLoading] = useState(Boolean(enabled));
-  const [error, setError] = useState<string | null>(null);
-  const [errorStatus, setErrorStatus] = useState<number | null>(null);
-
-  const fetchReport = useCallback(async () => {
-    if (!enabled || !cohortSubjectId) {
-      setReport(null);
-      setLoading(false);
-      setError(null);
-      setErrorStatus(null);
-      return;
-    }
-    try {
-      setLoading(true);
-      setReport(await reportsAPI.getInstructorCohortSubjectCoverage(cohortSubjectId));
-      setError(null);
-      setErrorStatus(null);
-    } catch (err) {
-      const apiError = err as ApiError;
-      setReport(null);
-      setError(extractErrorMessage(apiError, 'Failed to fetch coverage report'));
-      setErrorStatus(statusCode(apiError));
-    } finally {
-      setLoading(false);
-    }
-  }, [cohortSubjectId, enabled]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };

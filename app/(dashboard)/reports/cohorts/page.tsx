@@ -49,7 +49,6 @@ export default function CohortsReportPage() {
             lowest_score: subject.lowest_score,
             assessments: subject.total_assessments,
             average_attendance: null,
-            coverage_percentage: null,
         }));
 
         const teachingRows = summary.cohort_subjects.map(item => ({
@@ -62,7 +61,6 @@ export default function CohortsReportPage() {
             lowest_score: item.subject_summary?.lowest_score ?? null,
             assessments: item.subject_summary?.total_assessments ?? null,
             average_attendance: item.average_attendance,
-            coverage_percentage: item.coverage?.percentage ?? null,
         }));
 
         return {
@@ -86,7 +84,6 @@ export default function CohortsReportPage() {
                 { key: 'lowest_score', label: 'Lowest', format: 'percentage', width: 12, align: 'right' as const },
                 { key: 'assessments', label: 'Assessments', format: 'number', width: 14, align: 'right' as const },
                 { key: 'average_attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
-                { key: 'coverage_percentage', label: 'Coverage', format: 'percentage', width: 14, align: 'right' as const },
             ],
             rows: [...performanceRows, ...teachingRows],
             fileName: `cohort-report-${summary.cohort.name.toLowerCase().replace(/\s+/g, '-')}`,
@@ -286,7 +283,6 @@ export default function CohortsReportPage() {
                                         <TableHead>Learners</TableHead>
                                         <TableHead>Avg Grade</TableHead>
                                         <TableHead>Attendance</TableHead>
-                                        <TableHead>Coverage</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -304,7 +300,6 @@ export default function CohortsReportPage() {
                                             <TableCell>{item.active_learner_count}</TableCell>
                                             <TableCell>{item.average_grade?.toFixed(1) ?? '—'}%</TableCell>
                                             <TableCell>{item.average_attendance?.toFixed(1) ?? '—'}%</TableCell>
-                                            <TableCell>{item.coverage?.percentage?.toFixed(1) ?? '—'}%</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>

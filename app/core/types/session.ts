@@ -132,7 +132,6 @@ export interface CohortSubjectOption {
   teaching_link_id?: number | null;
   cbc_cohort_subject_id?: number | null;
   cambridge_cohort_subject_id?: number | null;
-  topic_subject_id?: number | null;
   subject_code: string | null;
   programme: string | null;
   curriculum_version: string | null;

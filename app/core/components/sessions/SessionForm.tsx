@@ -15,13 +15,11 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
-import { TopicSubtopicPicker } from './TopicSubtopicPicker';
 import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
 import { useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useAuth } from '@/app/context/AuthContext';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
-import type { Topic, Subtopic } from '@/app/core/types/topics';
 import type { SessionFormData } from '@/app/core/types/session';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -82,7 +80,7 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
 export function SessionForm({ currentYear }: SessionFormProps) {
     const router = useRouter();
     const { user } = useAuth();
-    const { createSessionWithLinks } = useSessions();
+    const { createSession } = useSessions();
 
     const cohortFilters = useMemo(
         () => (currentYear ? { academic_year: currentYear.id } : undefined),
@@ -101,12 +99,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const { subjectOptions } = useCohortSubjectOptions(selectedCohort || null);
 
     const selectedSubjectOption = subjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
-    const selectedSubjectSource = selectedSubjectOption?.source ?? null;
-    const requiresTopicSelection = selectedSubjectSource === 'kernel';
-    const topicSubjectId = selectedSubjectOption?.topic_subject_id ?? 0;
-
-    const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-    const [selectedSubtopics, setSelectedSubtopics] = useState<Subtopic[]>([]);
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
@@ -118,15 +110,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             setFormData(prev => ({ ...prev, term: activeTerm.id }));
         }
     }, [activeTerm, formData.term]);
-
-    // Auto-fill title from topic + subtopic selection
-    useEffect(() => {
-        if (!selectedTopic) return;
-        const title = selectedSubtopics.length > 0
-            ? `${selectedTopic.name} — ${selectedSubtopics.map(s => s.name).join(', ')}`
-            : selectedTopic.name;
-        setFormData(prev => ({ ...prev, title }));
-    }, [selectedTopic, selectedSubtopics]);
 
     const handleChange = (
         field: keyof SessionFormData,
@@ -140,8 +123,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const handleCohortChange = (cohortId: number) => {
         setSelectedCohort(cohortId);
         setSelectedSubjectOptionId('');
-        setSelectedTopic(null);
-        setSelectedSubtopics([]);
         setFormData(prev => ({
             ...prev,
             cohort_subject: null,
@@ -152,7 +133,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         setErrors(prev => {
             const next = { ...prev };
             delete next.cohort_subject;
-            delete next.topic;
             return next;
         });
         setSubmitError(null);
@@ -161,8 +141,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const handleCohortSubjectChange = (id: string) => {
         const option = subjectOptions.find((item) => item.id === id) ?? null;
         setSelectedSubjectOptionId(id);
-        setSelectedTopic(null);
-        setSelectedSubtopics([]);
         setFormData(prev => ({
             ...prev,
             cohort_subject: option?.session_supported ? (option.cohort_subject_id ?? null) : null,
@@ -175,7 +153,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         setErrors(prev => {
             const next = { ...prev };
             delete next.cohort_subject;
-            delete next.topic;
             return next;
         });
         setSubmitError(null);
@@ -193,7 +170,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         if (formData.start_time && formData.end_time && formData.start_time >= formData.end_time) {
             newErrors.end_time = 'End time must be after start time';
         }
-        if (requiresTopicSelection && !selectedTopic) newErrors.topic = 'Select a topic for this session';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -206,10 +182,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         setSubmitError(null);
 
         try {
-            const session = await createSessionWithLinks(
-                { ...formData, created_by: user?.id ?? 0 },
-                selectedSubtopics.map(s => s.id)
-            );
+            const session = await createSession({ ...formData, created_by: user?.id ?? 0 });
             router.push(`/sessions/${session.id}`);
         } catch (err) {
             setSubmitError(extractErrorMessage(err as ApiError));
@@ -313,31 +286,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 </div>
             </Card>
 
-            {/* Topic & Subtopic — non-CBC only */}
-            {requiresTopicSelection && topicSubjectId > 0 && (
-                <Card>
-                    <div className="p-6">
-                        <div className="flex items-center gap-2 mb-2">
-                            <BookOpen className="w-5 h-5 text-blue-500" />
-                            <h2 className="text-lg font-semibold text-gray-900">Topic &amp; Subtopics</h2>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-5">
-                            Select what you&apos;ll be teaching. Links this session to the curriculum
-                            and pre-fills the session title.
-                        </p>
-                        <TopicSubtopicPicker
-                            subjectId={topicSubjectId}
-                            onSelectionChange={(topic, subtopics) => {
-                                setSelectedTopic(topic);
-                                setSelectedSubtopics(subtopics);
-                                if (errors.topic) setErrors(prev => { const n = { ...prev }; delete n.topic; return n; });
-                            }}
-                        />
-                        {errors.topic && <p className="mt-2 text-sm text-red-600">{errors.topic}</p>}
-                    </div>
-                </Card>
-            )}
-
             {/* Session Details */}
             <Card>
                 <div className="p-6">
@@ -349,17 +297,10 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                         <Input
                             label="Session Title"
                             type="text"
-                            placeholder={
-                                requiresTopicSelection && Boolean(formData.subject_id)
-                                    ? 'Auto-filled from topic selection above'
-                                    : 'e.g., Introduction to Algebra'
-                            }
+                            placeholder="e.g., Introduction to Algebra"
                             value={formData.title}
                             onChange={e => handleChange('title', e.target.value)}
                         />
-                        {selectedTopic && (
-                            <p className="text-xs text-gray-400">Auto-filled from topic selection — you can edit this.</p>
-                        )}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Description <span className="text-gray-400 font-normal">(optional)</span>
@@ -446,10 +387,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 </Link>
                 <Button type="submit" disabled={saving}>
                     <Save className="w-4 h-4 mr-2" />
-                    {saving
-                        ? selectedSubtopics.length > 0 ? 'Creating & linking subtopics...' : 'Creating...'
-                        : 'Create Session'
-                    }
+                    {saving ? 'Creating...' : 'Create Session'}
                 </Button>
             </div>
         </form>

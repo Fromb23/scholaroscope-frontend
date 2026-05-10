@@ -150,12 +150,6 @@ export interface StudentReportCard {
   attendance: AttendanceSummary[];
 }
 
-export interface ReportCoverageSummary {
-  covered: number;
-  total: number;
-  percentage: number | null;
-}
-
 export interface ReportAssignedInstructor {
   id: number;
   name: string;
@@ -225,7 +219,6 @@ export interface AdminCohortSubjectSummary {
   average_grade: number | null;
   average_attendance: number | null;
   subject_summary: SubjectSummarySnapshot | null;
-  coverage: ReportCoverageSummary | null;
 }
 
 export interface ClassSummary {
@@ -291,7 +284,6 @@ export interface InstructorCohortSubjectOverview {
   average_attendance: number | null;
   session_count: number | null;
   completed_session_count: number | null;
-  coverage: ReportCoverageSummary | null;
 }
 
 export interface InstructorOverview {
@@ -382,22 +374,6 @@ export interface InstructorCohortSubjectTeachingActivityReport {
   attendance_marked: number;
   attendance_expected: number;
   attendance_completeness: number | null;
-  coverage: ReportCoverageSummary | null;
-}
-
-export interface CoverageRecord {
-  subtopic_id: number;
-  subtopic_code: string;
-  subtopic_name: string;
-  topic_name: string;
-  is_covered: boolean;
-  covered_at: string | null;
-}
-
-export interface InstructorCohortSubjectCoverageReport {
-  cohort_subject: ReportCohortSubjectRef;
-  coverage: ReportCoverageSummary | null;
-  records: CoverageRecord[];
 }
 
 export interface ComputeResponse {

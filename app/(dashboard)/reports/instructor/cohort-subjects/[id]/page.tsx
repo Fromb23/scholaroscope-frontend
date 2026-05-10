@@ -18,7 +18,6 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { GradeBadge } from '@/app/core/components/reports/GradeBadge';
 import {
-    useInstructorCohortSubjectCoverage,
     useInstructorCohortSubjectLearners,
     useInstructorCohortSubjectPerformance,
     useInstructorCohortSubjectTeachingActivity,
@@ -27,13 +26,12 @@ import {
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import type { ExportPayload } from '@/app/types/export';
 
-type DetailTab = 'learners' | 'performance' | 'teaching-activity' | 'coverage';
+type DetailTab = 'learners' | 'performance' | 'teaching-activity';
 
 const TABS: Array<{ id: DetailTab; label: string; icon: ElementType }> = [
     { id: 'learners', label: 'Learners', icon: Users },
     { id: 'performance', label: 'Performance', icon: TrendingUp },
     { id: 'teaching-activity', label: 'Teaching Activity', icon: Activity },
-    { id: 'coverage', label: 'Coverage', icon: CheckCircle2 },
 ];
 
 function toPercent(value: number | null | undefined): string {
@@ -71,16 +69,11 @@ export default function InstructorCohortSubjectDetailReportPage() {
         selectedTerm,
         { enabled: activeTab === 'teaching-activity' && isValidCohortSubjectId },
     );
-    const coverageQuery = useInstructorCohortSubjectCoverage(
-        isValidCohortSubjectId ? cohortSubjectId : null,
-        { enabled: activeTab === 'coverage' && isValidCohortSubjectId },
-    );
 
     const cohortSubjectMeta = cohortSubjects.find(item => item.id === cohortSubjectId) ?? null;
     const reportCohortSubject = learnersQuery.report?.cohort_subject
         ?? performanceQuery.report?.cohort_subject
         ?? teachingActivityQuery.report?.cohort_subject
-        ?? coverageQuery.report?.cohort_subject
         ?? null;
 
     const pageTitle = cohortSubjectMeta
@@ -93,9 +86,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
         ? learnersQuery
         : activeTab === 'performance'
             ? performanceQuery
-            : activeTab === 'teaching-activity'
-                ? teachingActivityQuery
-                : coverageQuery;
+            : teachingActivityQuery;
 
     const activeErrorMessage = activeQuery.error;
     const activeErrorStatus = activeQuery.errorStatus;
@@ -211,7 +202,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
                     ? terms.find(term => term.id === selectedTerm)?.name ?? 'Selected term'
                     : 'All terms',
                 metadata: {
-                    coverage: toPercent(teachingActivityQuery.report.coverage?.percentage),
                     generatedAt: new Date().toLocaleString(),
                 },
                 columns: [
@@ -220,7 +210,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
                     { key: 'attendance_marked', label: 'Attendance Marked', format: 'number', width: 18, align: 'right' as const },
                     { key: 'attendance_expected', label: 'Attendance Expected', format: 'number', width: 18, align: 'right' as const },
                     { key: 'attendance_completeness', label: 'Attendance Completeness', format: 'percentage', width: 20, align: 'right' as const },
-                    { key: 'coverage_percentage', label: 'Coverage', format: 'percentage', width: 12, align: 'right' as const },
                 ],
                 rows: [{
                     sessions_created: teachingActivityQuery.report.sessions_created,
@@ -228,7 +217,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
                     attendance_marked: teachingActivityQuery.report.attendance_marked,
                     attendance_expected: teachingActivityQuery.report.attendance_expected,
                     attendance_completeness: teachingActivityQuery.report.attendance_completeness,
-                    coverage_percentage: teachingActivityQuery.report.coverage?.percentage ?? null,
                 }],
                 fileName: `teaching-activity-report-${cohortSubjectId}`,
                 includeMetadata: true,
@@ -240,44 +228,11 @@ export default function InstructorCohortSubjectDetailReportPage() {
             };
         }
 
-        if (activeTab === 'coverage' && coverageQuery.report) {
-            return {
-                title: `${pageTitle} Coverage Report`,
-                subtitle: 'Coverage / Record of Work',
-                metadata: {
-                    coveredItems: String(coverageQuery.report.coverage?.covered ?? 0),
-                    totalItems: String(coverageQuery.report.coverage?.total ?? 0),
-                    coverage: toPercent(coverageQuery.report.coverage?.percentage),
-                    generatedAt: new Date().toLocaleString(),
-                },
-                columns: [
-                    { key: 'topic_name', label: 'Topic', width: 24 },
-                    { key: 'subtopic_name', label: 'Subtopic', width: 28 },
-                    { key: 'subtopic_code', label: 'Code', width: 12 },
-                    { key: 'is_covered', label: 'Covered', width: 12 },
-                    { key: 'covered_at', label: 'Covered At', width: 18 },
-                ],
-                rows: coverageQuery.report.records.map(record => ({
-                    ...record,
-                    is_covered: record.is_covered ? 'Yes' : 'No',
-                    covered_at: record.covered_at ? new Date(record.covered_at).toLocaleDateString() : '—',
-                })),
-                fileName: `coverage-report-${cohortSubjectId}`,
-                includeMetadata: true,
-                includeTimestamp: true,
-                sheetName: 'Coverage',
-                freezeHeader: true,
-                autoFilter: true,
-                orientation: 'landscape' as const,
-            };
-        }
-
         return null;
     }, [
         activeTab,
         cohortSubjectId,
         cohortSubjectMeta,
-        coverageQuery.report,
         isValidCohortSubjectId,
         learnersQuery.report,
         pageTitle,
@@ -315,7 +270,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
                     <div>
                         <h1 className="text-2xl font-semibold text-gray-900">{pageTitle}</h1>
                         <p className="text-gray-500 mt-1">
-                            Cohort-subject scoped reporting for learners, performance, teaching activity, and coverage.
+                            Cohort-subject scoped reporting for learners, performance, and teaching activity.
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -344,7 +299,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
                             label="Term (optional)"
                             value={selectedTerm?.toString() ?? ''}
                             onChange={event => setSelectedTerm(event.target.value ? Number(event.target.value) : null)}
-                            disabled={termsLoading || activeTab === 'coverage'}
+                            disabled={termsLoading}
                             options={[
                                 { value: '', label: 'All terms' },
                                 ...terms.map(term => ({
@@ -573,24 +528,11 @@ export default function InstructorCohortSubjectDetailReportPage() {
                     </div>
 
                     <Card>
-                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-2">
                             <div className="rounded-lg border border-gray-200 p-4">
                                 <p className="text-sm text-gray-500">Attendance Expected</p>
                                 <p className="mt-2 text-2xl font-semibold text-gray-900">
                                     {teachingActivityQuery.report.attendance_expected}
-                                </p>
-                            </div>
-                            <div className="rounded-lg border border-gray-200 p-4">
-                                <p className="text-sm text-gray-500">Coverage</p>
-                                <p className="mt-2 text-2xl font-semibold text-gray-900">
-                                    {toPercent(teachingActivityQuery.report.coverage?.percentage)}
-                                </p>
-                            </div>
-                            <div className="rounded-lg border border-gray-200 p-4">
-                                <p className="text-sm text-gray-500">Covered Items</p>
-                                <p className="mt-2 text-2xl font-semibold text-gray-900">
-                                    {teachingActivityQuery.report.coverage?.covered ?? 0}/
-                                    {teachingActivityQuery.report.coverage?.total ?? 0}
                                 </p>
                             </div>
                         </div>
@@ -604,60 +546,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
                                     No teaching activity has been recorded for this cohort subject yet.
                                 </p>
                             </div>
-                        </Card>
-                    )}
-                </div>
-            )}
-
-            {!activeQuery.loading && !activeErrorMessage && activeTab === 'coverage' && coverageQuery.report && (
-                <div className="space-y-6">
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        <StatsCard title="Covered Items" value={coverageQuery.report.coverage?.covered ?? 0} icon={CheckCircle2} color="green" />
-                        <StatsCard title="Total Items" value={coverageQuery.report.coverage?.total ?? 0} icon={BookOpen} color="blue" />
-                        <StatsCard title="Coverage" value={toPercent(coverageQuery.report.coverage?.percentage)} icon={TrendingUp} color="purple" />
-                    </div>
-
-                    {coverageQuery.report.records.length === 0 ? (
-                        <Card>
-                            <div className="py-12 text-center">
-                                <CheckCircle2 className="mx-auto h-10 w-10 text-gray-300" />
-                                <p className="mt-2 text-sm text-gray-500">
-                                    No coverage records are available yet.
-                                </p>
-                            </div>
-                        </Card>
-                    ) : (
-                        <Card>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Topic</TableHead>
-                                        <TableHead>Subtopic</TableHead>
-                                        <TableHead>Code</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Covered At</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {coverageQuery.report.records.map(record => (
-                                        <TableRow key={record.subtopic_id}>
-                                            <TableCell>{record.topic_name}</TableCell>
-                                            <TableCell>{record.subtopic_name}</TableCell>
-                                            <TableCell>{record.subtopic_code}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={record.is_covered ? 'green' : 'yellow'}>
-                                                    {record.is_covered ? 'Covered' : 'Pending'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                {record.covered_at
-                                                    ? new Date(record.covered_at).toLocaleDateString()
-                                                    : '—'}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
                         </Card>
                     )}
                 </div>

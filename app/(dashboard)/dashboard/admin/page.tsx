@@ -18,7 +18,6 @@ import {
     TodaySessionsWidget,
     SystemOverview,
     PendingApprovals,
-    SyllabusProgressCard,
 } from '@/app/core/components/dashboard/AdminDashboardWidgets';
 
 export default function AdminDashboard() {
@@ -28,7 +27,7 @@ export default function AdminDashboard() {
     const {
         metrics, alerts, sessions, cohorts,
         currentTerm, currentYear,
-        lastRefresh, isLoading, refresh, syllabusProgress,
+        lastRefresh, isLoading, refresh,
     } = useAdminDashboard();
     const { requests, loading: requestsLoading } = useRequests({ status: 'PENDING' });
     const { stats: requestStats } = useRequestStats();
@@ -82,7 +81,6 @@ export default function AdminDashboard() {
                     </div>
 
                     <AssessmentPipeline assessments={metrics.assessments} />
-                    <SyllabusProgressCard progress={syllabusProgress} />
                 </div>
 
                 {/* Right column — supporting widgets */}

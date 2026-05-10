@@ -12,14 +12,13 @@ import { useRouter } from 'next/navigation';
 import {
     Calendar, Clock, Award, TrendingUp, Users,
     AlertCircle, RefreshCw, Inbox,
-    Target, FileText, Zap, BookOpen, Activity,
+    Target, FileText, Zap, Activity,
     ChevronRight, UserX, TrendingDown,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Session } from '@/app/core/types/session';
 import type {
     HistoryEntry,
-    TeachingAssignment,
     TeachingCohortSummary,
 } from '@/app/core/types/academic';
 import type { InstructorMetrics } from '@/app/core/hooks/useInstructorDashboard';
@@ -599,78 +598,6 @@ export function TeachingStats({ attendance, sessions, assessments }: TeachingSta
                     <span className="text-lg font-bold text-amber-600">{assessments}</span>
                 </div>
             </div>
-        </div>
-    );
-}
-
-// ── TeachingLoadCard ─────────────────────────────────────────────────────
-
-interface TeachingLoadCardProps {
-    assignments: TeachingAssignment[];
-}
-
-function getTeachingAssignmentProgressRoute(assignment: Pick<TeachingAssignment, 'cohort_subject_id'>) {
-    return `/academic/progress?cohort_subject=${assignment.cohort_subject_id}`;
-}
-
-export function TeachingLoadCard({ assignments }: TeachingLoadCardProps) {
-    const router = useRouter();
-    const currentYear = assignments.filter(a => a.is_current_year);
-
-    return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl">
-                        <BookOpen className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900">My Teaching Load</h3>
-                </div>
-                <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs font-bold rounded-full">
-                    {currentYear.length} subject{currentYear.length !== 1 ? 's' : ''}
-                </span>
-            </div>
-
-            {currentYear.length === 0 ? (
-                <div className="py-8 text-center">
-                    <BookOpen className="w-10 w-10 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No teaching assignments available yet.</p>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {currentYear.map(a => (
-                        <div
-                            key={a.cohort_subject_id}
-                            onClick={() => router.push(getTeachingAssignmentProgressRoute(a))}
-                            className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 rounded-xl border border-teal-200 transition-all hover:scale-[1.02] cursor-pointer"
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <div>
-                                    <p className="font-bold text-gray-900 text-sm">{a.subject_name}</p>
-                                    <p className="text-xs text-gray-500">
-                                        {a.cohort_name} · {a.level}
-                                        {a.start_date && (
-                                            <span className="ml-1 text-teal-500">
-                                                · since {new Date(a.start_date).toLocaleDateString('en-GB', {
-                                                    day: '2-digit', month: 'short',
-                                                })}
-                                            </span>
-                                        )}
-                                    </p>
-                                </div>
-                                <span className="text-sm font-bold text-teal-600">{a.percentage}%</span>
-                            </div>
-                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full transition-all duration-500"
-                                    style={{ width: `${a.percentage}%` }}
-                                />
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1">{a.covered} / {a.total} subtopics covered</p>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
     );
 }

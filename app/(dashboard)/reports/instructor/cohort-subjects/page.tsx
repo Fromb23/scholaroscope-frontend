@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { BookOpen, Download, GraduationCap, TrendingUp, Users } from 'lucide-react';
+import { BookOpen, Download, TrendingUp, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -26,8 +26,6 @@ export default function InstructorCohortSubjectsReportPage() {
 
     const averageGrade = average(cohortSubjects.map(item => item.average_grade));
     const averageAttendance = average(cohortSubjects.map(item => item.average_attendance));
-    const averageCoverage = average(cohortSubjects.map(item => item.coverage?.percentage));
-
     const exportPayload = useMemo<ExportPayload | null>(() => {
         if (cohortSubjects.length === 0) return null;
 
@@ -38,7 +36,6 @@ export default function InstructorCohortSubjectsReportPage() {
                 totalCohortSubjects: String(cohortSubjects.length),
                 averageGrade: averageGrade != null ? `${averageGrade.toFixed(1)}%` : '—',
                 averageAttendance: averageAttendance != null ? `${averageAttendance.toFixed(1)}%` : '—',
-                coverage: averageCoverage != null ? `${averageCoverage.toFixed(1)}%` : '—',
                 generatedAt: new Date().toLocaleString(),
             },
             columns: [
@@ -50,13 +47,9 @@ export default function InstructorCohortSubjectsReportPage() {
                 { key: 'active_learner_count', label: 'Learners', format: 'number', width: 12, align: 'right' as const },
                 { key: 'average_grade', label: 'Average Grade', format: 'percentage', width: 14, align: 'right' as const },
                 { key: 'average_attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
-                { key: 'coverage_percentage', label: 'Coverage', format: 'percentage', width: 12, align: 'right' as const },
                 { key: 'session_count', label: 'Sessions', format: 'number', width: 12, align: 'right' as const },
             ],
-            rows: cohortSubjects.map(item => ({
-                ...item,
-                coverage_percentage: item.coverage?.percentage ?? null,
-            })),
+            rows: cohortSubjects,
             fileName: 'my-cohort-subjects',
             includeMetadata: true,
             includeTimestamp: true,
@@ -65,7 +58,7 @@ export default function InstructorCohortSubjectsReportPage() {
             autoFilter: true,
             orientation: 'landscape' as const,
         };
-    }, [averageAttendance, averageCoverage, averageGrade, cohortSubjects]);
+    }, [averageAttendance, averageGrade, cohortSubjects]);
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
@@ -91,7 +84,7 @@ export default function InstructorCohortSubjectsReportPage() {
                 </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <StatsCard title="Cohort Subjects" value={cohortSubjects.length} icon={BookOpen} color="blue" />
                 <StatsCard
                     title="Learners"
@@ -104,12 +97,6 @@ export default function InstructorCohortSubjectsReportPage() {
                     value={averageGrade != null ? `${averageGrade.toFixed(1)}%` : '—'}
                     icon={TrendingUp}
                     color="purple"
-                />
-                <StatsCard
-                    title="Coverage"
-                    value={averageCoverage != null ? `${averageCoverage.toFixed(1)}%` : '—'}
-                    icon={GraduationCap}
-                    color="indigo"
                 />
             </div>
 
@@ -135,7 +122,6 @@ export default function InstructorCohortSubjectsReportPage() {
                                 <TableHead>Learners</TableHead>
                                 <TableHead>Average</TableHead>
                                 <TableHead>Attendance</TableHead>
-                                <TableHead>Coverage</TableHead>
                                 <TableHead>
                                     <span className="sr-only">Actions</span>
                                 </TableHead>
@@ -156,7 +142,6 @@ export default function InstructorCohortSubjectsReportPage() {
                                     <TableCell>{item.active_learner_count}</TableCell>
                                     <TableCell>{item.average_grade?.toFixed(1) ?? '—'}%</TableCell>
                                     <TableCell>{item.average_attendance?.toFixed(1) ?? '—'}%</TableCell>
-                                    <TableCell>{item.coverage?.percentage?.toFixed(1) ?? '—'}%</TableCell>
                                     <TableCell>
                                         <Link href={`/reports/instructor/cohort-subjects/${item.id}`}>
                                             <Button variant="ghost" size="sm">Open</Button>
