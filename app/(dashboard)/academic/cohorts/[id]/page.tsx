@@ -118,12 +118,19 @@ function ActionCard({
 function buildInstructorManagementHref(cohortId: number, cohortName: string, subject: {
     id: number;
     subject_name: string;
+    curriculum_type: string;
 }) {
+    const subjectSource = subject.curriculum_type === 'CBE'
+        ? 'cbc'
+        : isCambridgeCurriculumType(subject.curriculum_type)
+            ? 'cambridge'
+            : 'kernel';
     const params = new URLSearchParams({
         cohort_subject_id: String(subject.id),
         cohort_id: String(cohortId),
         cohort_name: cohortName,
         subject_name: subject.subject_name,
+        subject_source: subjectSource,
         returnTo: `/academic/cohorts/${cohortId}`,
         open: 'teaching',
     });

@@ -115,6 +115,16 @@ export interface CohortSubject {
   curriculum_name: string;
   curriculum_type: CurriculumType;
   is_compulsory: boolean;
+
+  has_active_instructor?: boolean;
+  active_instructor?: {
+    user_id: number;
+    full_name: string;
+    email: string;
+    assigned_at: string;
+  } | null;
+  current_instructor_id?: number | null;
+  current_instructor_name?: string | null;
 }
 
 export interface CohortSubjectLearnerCounts {
