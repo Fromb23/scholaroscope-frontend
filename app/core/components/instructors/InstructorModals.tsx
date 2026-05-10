@@ -673,6 +673,7 @@ export function CohortAssignModal({
     initialCohortSubjectId,
     initialCohortName,
     initialSubjectName,
+    initialSubjectSource,
     onAssignmentsChanged,
 }: CohortAssignModalProps) {
     const { instructor: detail, loading, refetch } =
@@ -788,14 +789,17 @@ export function CohortAssignModal({
             return;
         }
 
-        const matchedOption = availableCohortSubjects.find(
+        const matchedOption = availableCohortSubjects.find((cohortSubject) => (
+            cohortSubject.cohort_subject_id === initialCohortSubjectId
+            && (!initialSubjectSource || cohortSubject.source === initialSubjectSource)
+        )) ?? availableCohortSubjects.find(
             (cohortSubject) => cohortSubject.cohort_subject_id === initialCohortSubjectId
         );
 
         if (matchedOption) {
             setSelectedCohortSubject(getSourceAwareSubjectKey(matchedOption));
         }
-    }, [availableCohortSubjects, initialCohortSubjectId, isOpen, selectedCohortSubject]);
+    }, [availableCohortSubjects, initialCohortSubjectId, initialSubjectSource, isOpen, selectedCohortSubject]);
 
     const handleAssign = async () => {
         if (!selectedCohortSubjectOption) return;

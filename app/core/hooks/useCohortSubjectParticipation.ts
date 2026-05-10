@@ -7,12 +7,16 @@ import { instructorsAPI } from '@/app/core/api/instructors';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 import type { CohortSubject, CohortSubjectLearnerCounts } from '@/app/core/types/academic';
 
-export type CohortSubjectInstructorState = 'assigned' | 'unassigned' | 'unavailable';
+export type CohortSubjectInstructorState = 'assigned' | 'unassigned' | 'unavailable' | 'plugin-managed-unknown';
 
 export interface CohortSubjectParticipationSummary {
     counts: CohortSubjectLearnerCounts | null;
     instructorName: string | null;
     instructorState: CohortSubjectInstructorState;
+}
+
+function isCBCManagedCohortSubject(subject: Pick<CohortSubject, 'curriculum_type'>) {
+    return subject.curriculum_type === 'CBE';
 }
 
 async function getInstructorSummary(cohortSubjectId: number): Promise<{
@@ -62,15 +66,22 @@ export function useCohortSubjectParticipation(
         queryFn: async () => {
             const summaries = await Promise.all(
                 cohortSubjects.map(async (subject) => {
+                    const fallbackInstructor = isCBCManagedCohortSubject(subject)
+                        ? {
+                            instructorName: null,
+                            instructorState: 'plugin-managed-unknown' as const,
+                        }
+                        : {
+                            instructorName: null,
+                            instructorState: 'unavailable' as const,
+                        };
+
                     try {
                         const [learners, instructor] = await Promise.all([
                             getCohortSubjectLearners(subject.id),
-                            includeInstructor
+                            includeInstructor && !isCBCManagedCohortSubject(subject)
                                 ? getInstructorSummary(subject.id)
-                                : Promise.resolve({
-                                    instructorName: null,
-                                    instructorState: 'unavailable' as const,
-                                }),
+                                : Promise.resolve(fallbackInstructor),
                         ]);
 
                         return [subject.id, {
@@ -81,8 +92,7 @@ export function useCohortSubjectParticipation(
                     } catch {
                         return [subject.id, {
                             counts: null,
-                            instructorName: null,
-                            instructorState: 'unavailable',
+                            ...fallbackInstructor,
                         }] as const;
                     }
                 })

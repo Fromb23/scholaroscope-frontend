@@ -33,6 +33,10 @@ function getInstructorLabel(summary: CohortSubjectParticipationSummary | undefin
         return 'No instructor assigned';
     }
 
+    if (summary.instructorState === 'plugin-managed-unknown') {
+        return 'Managed in CBC';
+    }
+
     return 'Instructor unavailable';
 }
 

@@ -233,6 +233,7 @@ export default function InstructorManagementPage() {
     const selectedCohortSubjectId = searchParams.get('cohort_subject_id');
     const selectedCohortName = searchParams.get('cohort_name');
     const selectedSubjectName = searchParams.get('subject_name');
+    const selectedSubjectSource = searchParams.get('subject_source');
     const returnTo = searchParams.get('returnTo');
     const hasTeachingContext = Boolean(selectedCohortSubjectId && selectedSubjectName && selectedCohortName);
     const preservedContextQuery = searchParams.toString();
@@ -249,6 +250,10 @@ export default function InstructorManagementPage() {
             subject_name: selectedSubjectName ?? '',
             open: 'teaching',
         });
+
+        if (selectedSubjectSource) {
+            params.set('subject_source', selectedSubjectSource);
+        }
 
         if (returnTo) {
             params.set('returnTo', returnTo);

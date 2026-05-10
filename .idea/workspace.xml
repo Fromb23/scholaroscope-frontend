@@ -6,13 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useGradePolicies.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useGradePolicies.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useReporting.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useReporting.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/audit/hooks/useAuditLogs.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/audit/hooks/useAuditLogs.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/requests/api/requests.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/requests/api/requests.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/requests/hooks/useRequests.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/requests/hooks/useRequests.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/cohorts/CohortSubjectParticipationSection.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/cohorts/CohortSubjectParticipationSection.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/globalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/globalUsers.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -20,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="413" />
+    <option name="cachedIndexableFilesCount" value="399" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -132,6 +131,7 @@
       <workItem from="1778348888993" duration="405000" />
       <workItem from="1778349518360" duration="4940000" />
       <workItem from="1778356384675" duration="1873000" />
+      <workItem from="1778441281494" duration="3297000" />
     </task>
     <servers />
   </component>

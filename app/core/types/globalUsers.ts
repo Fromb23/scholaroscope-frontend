@@ -125,6 +125,7 @@ export interface CohortAssignModalProps {
     initialCohortSubjectId?: number | null;
     initialCohortName?: string | null;
     initialSubjectName?: string | null;
+    initialSubjectSource?: string | null;
     onAssignmentsChanged?: () => Promise<void> | void;
 }
 

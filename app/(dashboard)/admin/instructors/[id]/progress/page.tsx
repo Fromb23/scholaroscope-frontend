@@ -41,6 +41,7 @@ export default function InstructorProgressPage() {
     const hasInitialCohortSubjectId = Number.isFinite(initialCohortSubjectId) && initialCohortSubjectId > 0;
     const initialCohortName = searchParams.get('cohort_name');
     const initialSubjectName = searchParams.get('subject_name');
+    const initialSubjectSource = searchParams.get('subject_source');
     const shouldOpenTeachingModal = searchParams.get('open') === 'teaching' || hasInitialCohortSubjectId;
 
     const {
@@ -318,6 +319,7 @@ export default function InstructorProgressPage() {
                 initialCohortSubjectId={hasInitialCohortSubjectId ? initialCohortSubjectId : null}
                 initialCohortName={initialCohortName}
                 initialSubjectName={initialSubjectName}
+                initialSubjectSource={initialSubjectSource}
                 onAssignmentsChanged={refetch}
             />
         </div>
