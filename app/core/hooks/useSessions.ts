@@ -108,16 +108,6 @@ export const useSessions = (params?: SessionQueryParams) => {
     return newSession;
   };
 
-  // Creates a session and its linked subtopics in one atomic operation.
-  const createSessionWithLinks = async (
-    data: SessionFormData & { created_by: number },
-    subtopicIds: number[]
-  ): Promise<Session> => {
-    const result = await sessionAPI.createWithLinks({ ...data, subtopic_ids: subtopicIds });
-    setSessions(prev => [result.session, ...prev]);
-    return result.session;
-  };
-
   const updateSession = async (id: number, data: Partial<Session>): Promise<Session> => {
     const updated = await sessionAPI.update(id, data);
     setSessions(prev => prev.map(s => s.id === id ? updated : s));
@@ -135,7 +125,6 @@ export const useSessions = (params?: SessionQueryParams) => {
     error,
     refetch: fetchSessions,
     createSession,
-    createSessionWithLinks,
     updateSession,
     deleteSession,
   };

@@ -233,7 +233,6 @@ export interface TeachingAssignment {
   cohort_id: number;
   cohort_name: string;
   subject_id: number;
-  topic_subject_id?: number | null;
   assigned?: boolean;
   subject_name: string;
   subject_code?: string | null;

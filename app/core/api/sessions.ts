@@ -18,7 +18,6 @@ import {
   SessionFormData,
 } from '../types/session';
 import { CohortSubject } from '../types/academic';
-import { TopicSessionLink } from '../types/topics';
 
 const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
 
@@ -55,12 +54,6 @@ export interface AttendanceQueryParams {
   page?: number;
   page_size?: number;
   search?: string;
-}
-
-export interface CreateWithLinksResponse {
-  session: Session;
-  links_created: number;
-  links: TopicSessionLink[];
 }
 
 interface DateRangeParams {
@@ -139,13 +132,6 @@ export const sessionAPI = {
 
   create: async (data: SessionFormData & { created_by: number }): Promise<Session> => {
     const res = await apiClient.post<Session>('/sessions/', data);
-    return res.data;
-  },
-
-  createWithLinks: async (
-    data: SessionFormData & { created_by?: number; subtopic_ids?: number[] }
-  ): Promise<CreateWithLinksResponse> => {
-    const res = await apiClient.post<CreateWithLinksResponse>('/sessions/create_with_links/', data);
     return res.data;
   },
 
