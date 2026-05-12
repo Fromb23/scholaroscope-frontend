@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
+import type { PaginatedResponse } from '@/app/core/api/sessions';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
 import type { Session } from '@/app/core/types/session';
@@ -89,11 +90,19 @@ export function useInstructorProgress(instructorId: number) {
             const instructorData = await instructorsAPI.getById(instructorId);
             setInstructor(instructorData);
 
-            const sessionsData = await sessionAPI.getAll({ created_by: instructorData.email });
+            const sessionsData = await sessionAPI.getAll({ instructor_id: instructorId });
             const allSessions = Array.isArray(sessionsData)
                 ? sessionsData
-                : (sessionsData as { results?: Session[] })?.results ?? [];
-            setSessions(allSessions as Session[]);
+                : (sessionsData as PaginatedResponse<Session>)?.results ?? [];
+            const shouldFilterByCreatorId = allSessions.some(
+                (session) => typeof session.created_by_id === 'number'
+            );
+
+            setSessions(
+                shouldFilterByCreatorId
+                    ? allSessions.filter((session) => session.created_by_id === instructorId)
+                    : allSessions
+            );
         } catch {
             if (showLoadingState) {
                 setError('Failed to load instructor data');

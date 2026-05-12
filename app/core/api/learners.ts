@@ -3,6 +3,7 @@ import {
   Student,
   StudentDetail,
   StudentFormData,
+  StudentProfileUpdateData,
   StudentStats,
   TransferFormData,
   StudentCohortEnrollment
@@ -60,8 +61,7 @@ export const learnersAPI = {
   },
 
   // Update student
-  updateStudent: async (id: number, studentData: Partial<StudentFormData>) => {
-    console.log("update student status", studentData);
+  updateStudent: async (id: number, studentData: StudentProfileUpdateData) => {
     const { data } = await apiClient.patch<Student>(`/students/${id}/`, studentData);
     return data;
   },

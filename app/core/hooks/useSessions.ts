@@ -149,6 +149,7 @@ export const useSessions = (params?: SessionQueryParams) => {
       session_type: params?.session_type,
       session_date: params?.session_date,
       created_by: params?.created_by,
+      instructor_id: params?.instructor_id,
     }),
     [
       params?.term,
@@ -158,6 +159,7 @@ export const useSessions = (params?: SessionQueryParams) => {
       params?.session_type,
       params?.session_date,
       params?.created_by,
+      params?.instructor_id,
     ],
   );
   const cohortIdsKey = instructorAccess.cohortIdsKey;
