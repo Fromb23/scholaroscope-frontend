@@ -31,14 +31,14 @@ interface AttendanceTableProps {
     saving: boolean;
     saveError: string | null;
     readOnly: boolean;
-    pagination: PaginationState;
+    pagination?: PaginationState;
     onUpdateStatus: (studentId: number, status: string) => void;
     onUpdateNotes: (studentId: number, notes: string) => void;
     onMarkAll: (status: string) => void;
     onSave: () => Promise<void>;
     onDismissError: () => void;
     onSearch: (q: string) => void;
-    onPaginationChange: (page: number, pageSize: number) => void;
+    onPaginationChange?: (page: number, pageSize: number) => void;
 }
 
 type AttendanceWithIndex = { [key: string]: unknown } & AttendanceRecord;

@@ -20,8 +20,7 @@ export default function EditSessionPage() {
     const params = useParams();
     const sessionId = Number(params.id);
 
-    // Page size 1 — we only need session metadata, not attendance records
-    const { session, loading } = useSessionDetail(sessionId, '', 1, 1);
+    const { session, loading } = useSessionDetail(sessionId, '');
 
     // ── Guards ────────────────────────────────────────────────────────────
 

@@ -26,7 +26,7 @@ import {
   CohortAttendanceSummary,
   CohortSubjectOption,
 } from '@/app/core/types/session';
-import { CohortSubject } from '@/app/core/types/academic';
+import { CohortSubject, TeachingAssignment } from '@/app/core/types/academic';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 
@@ -45,6 +45,92 @@ function toIdSet(idsKey: string): Set<number> {
       .map(value => Number(value))
       .filter(value => Number.isFinite(value))
   );
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function firstFiniteNumber(...values: Array<number | null | undefined>): number | null {
+  for (const value of values) {
+    if (isFiniteNumber(value)) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function normalizeTeachingSource(source?: string | null, curriculumType?: string | null) {
+  if (curriculumType === 'CBE') {
+    return 'cbc';
+  }
+
+  return source?.trim().toLowerCase() || 'kernel';
+}
+
+function getSessionScopedCohortSubjectId(session: Session): number | null {
+  return firstFiniteNumber(session.cohort_subject, session.cambridge_cohort_subject_id);
+}
+
+function hasEquivalentSessionIdentity(session: Session) {
+  return isFiniteNumber(session.offering_id) || isFiniteNumber(session.subject_id);
+}
+
+function matchesInstructorAssignmentBySessionIdentity(
+  session: Session,
+  assignment: TeachingAssignment
+) {
+  if (session.cohort_id !== assignment.cohort_id) {
+    return false;
+  }
+
+  const sessionSource = normalizeTeachingSource(session.subject_source, session.curriculum_type);
+  const assignmentSource = normalizeTeachingSource(
+    assignment.source ?? assignment.subject_source,
+    assignment.curriculum_type
+  );
+
+  if (sessionSource !== assignmentSource) {
+    return false;
+  }
+
+  if (
+    sessionSource === 'cambridge' &&
+    isFiniteNumber(session.offering_id) &&
+    isFiniteNumber(assignment.offering_id)
+  ) {
+    return session.offering_id === assignment.offering_id;
+  }
+
+  return isFiniteNumber(session.subject_id) && session.subject_id === assignment.subject_id;
+}
+
+function filterInstructorSessions(
+  allSessions: Session[],
+  assignments: TeachingAssignment[],
+  allowedCohortSubjectIds: Set<number>,
+  allowedCohortIds: Set<number>
+) {
+  return allSessions.filter((session) => {
+    const scopedCohortSubjectId = getSessionScopedCohortSubjectId(session);
+
+    if (scopedCohortSubjectId !== null) {
+      if (allowedCohortSubjectIds.has(scopedCohortSubjectId)) {
+        return true;
+      }
+
+      return hasEquivalentSessionIdentity(session)
+        ? assignments.some((assignment) => matchesInstructorAssignmentBySessionIdentity(session, assignment))
+        : false;
+    }
+
+    if (hasEquivalentSessionIdentity(session)) {
+      return assignments.some((assignment) => matchesInstructorAssignmentBySessionIdentity(session, assignment));
+    }
+
+    return allowedCohortIds.has(session.cohort_id);
+  });
 }
 
 // ── useSessions ───────────────────────────────────────────────────────────
@@ -79,6 +165,11 @@ export const useSessions = (params?: SessionQueryParams) => {
     () => toIdSet(cohortIdsKey),
     [cohortIdsKey]
   );
+  const cohortSubjectIdsKey = instructorAccess.cohortSubjectIdsKey;
+  const allowedCohortSubjectIds = useMemo(
+    () => toIdSet(cohortSubjectIdsKey),
+    [cohortSubjectIdsKey]
+  );
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -87,7 +178,12 @@ export const useSessions = (params?: SessionQueryParams) => {
       const allSessions = unwrapList(data);
       setSessions(
         instructorAccess.isInstructor
-          ? allSessions.filter(session => allowedCohortIds.has(session.cohort_id))
+          ? filterInstructorSessions(
+            allSessions,
+            instructorAccess.assignments,
+            allowedCohortSubjectIds,
+            allowedCohortIds
+          )
           : allSessions
       );
       setError(null);
@@ -96,7 +192,13 @@ export const useSessions = (params?: SessionQueryParams) => {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, instructorAccess.isInstructor, sessionFilters]);
+  }, [
+    allowedCohortIds,
+    allowedCohortSubjectIds,
+    instructorAccess.assignments,
+    instructorAccess.isInstructor,
+    sessionFilters,
+  ]);
 
   useEffect(() => {
     fetchSessions();
@@ -142,6 +244,11 @@ export const useTodaySessions = () => {
     () => toIdSet(cohortIdsKey),
     [cohortIdsKey]
   );
+  const cohortSubjectIdsKey = instructorAccess.cohortSubjectIdsKey;
+  const allowedCohortSubjectIds = useMemo(
+    () => toIdSet(cohortSubjectIdsKey),
+    [cohortSubjectIdsKey]
+  );
 
   const fetchTodaySessions = useCallback(async () => {
     try {
@@ -149,7 +256,12 @@ export const useTodaySessions = () => {
       const data = await sessionAPI.getToday();
       setSessions(
         instructorAccess.isInstructor
-          ? data.filter(session => allowedCohortIds.has(session.cohort_id))
+          ? filterInstructorSessions(
+            data,
+            instructorAccess.assignments,
+            allowedCohortSubjectIds,
+            allowedCohortIds
+          )
           : data
       );
       setError(null);
@@ -158,7 +270,12 @@ export const useTodaySessions = () => {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, instructorAccess.isInstructor]);
+  }, [
+    allowedCohortIds,
+    allowedCohortSubjectIds,
+    instructorAccess.assignments,
+    instructorAccess.isInstructor,
+  ]);
 
   useEffect(() => {
     fetchTodaySessions();
@@ -172,13 +289,11 @@ export const useTodaySessions = () => {
 export const useSessionDetail = (
   sessionId: number | null,
   searchQuery?: string,
-  page = 1,
-  pageSize = 10
 ) => {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [pagination, setPagination] = useState<PaginationState>({
-    currentPage: 1, pageSize: 10, totalItems: 0, totalPages: 0,
+    currentPage: 1, pageSize: 0, totalItems: 0, totalPages: 1,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -193,10 +308,9 @@ export const useSessionDetail = (
         sessionAPI.getById(sessionId),
         attendanceAPI.getAll({
           session: sessionId,
-          page,
-          page_size: pageSize,
+          page_size: 1000,
           ...(searchQuery ? { search: searchQuery } : {}),
-        } as AttendanceQueryParams),
+        }),
       ]);
 
       setSession(sessionData);
@@ -208,10 +322,10 @@ export const useSessionDetail = (
 
       setAttendanceRecords(records);
       setPagination({
-        currentPage: page,
-        pageSize,
+        currentPage: 1,
+        pageSize: records.length,
         totalItems,
-        totalPages: Math.ceil(totalItems / pageSize),
+        totalPages: 1,
       });
       setError(null);
     } catch (err) {
@@ -219,7 +333,7 @@ export const useSessionDetail = (
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, searchQuery, sessionId]);
+  }, [searchQuery, sessionId]);
 
   useEffect(() => { fetchSession(); }, [fetchSession]);
 

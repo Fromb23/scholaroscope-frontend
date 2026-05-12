@@ -170,7 +170,7 @@ export function useAdminDashboard() {
         subject_name: string;
     }[]>([]);
 
-    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents();
+    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents({ page_size: 1000 });
     const { cohorts, loading: cohortsLoading } = useCohorts();
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
     const { currentTerm, loading: termLoading } = useCurrentTerm();
