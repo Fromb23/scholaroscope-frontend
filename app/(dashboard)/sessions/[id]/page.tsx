@@ -29,9 +29,6 @@ export default function SessionDetailPage() {
     const sessionId = Number(params.id);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
-
     const {
         session,
         attendanceRecords,
@@ -41,7 +38,7 @@ export default function SessionDetailPage() {
         refetch,
         startSession,
         completeSession,
-    } = useSessionDetail(sessionId, searchQuery, currentPage, pageSize);
+    } = useSessionDetail(sessionId, searchQuery);
 
     const { activeCohorts, historicalCohorts } = useSessionCohorts(sessionId);
 
@@ -217,8 +214,7 @@ export default function SessionDetailPage() {
                         readOnly={isReadOnly}
                         onSave={async () => { await save(); refetch(); }}
                         onDismissError={dismissError}
-                        onSearch={q => { setSearchQuery(q); setCurrentPage(1); }}
-                        onPaginationChange={(p, ps) => { setCurrentPage(p); setPageSize(ps); }}
+                        onSearch={setSearchQuery}
                     />
                 </div>
             </Card>

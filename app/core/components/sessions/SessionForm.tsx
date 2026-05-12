@@ -17,6 +17,7 @@ import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
 import { useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAuth } from '@/app/context/AuthContext';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
@@ -79,8 +80,9 @@ function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () =>
 
 export function SessionForm({ currentYear }: SessionFormProps) {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
     const { createSession } = useSessions();
+    const { cohortSubjectIds } = useInstructorCohortAccess();
 
     const cohortFilters = useMemo(
         () => (currentYear ? { academic_year: currentYear.id } : undefined),
@@ -97,8 +99,25 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const [selectedCohort, setSelectedCohort] = useState<number>(0);
     const [selectedSubjectOptionId, setSelectedSubjectOptionId] = useState<string>('');
     const { subjectOptions } = useCohortSubjectOptions(selectedCohort || null);
+    const allowedCohortSubjectIds = useMemo(
+        () => new Set(cohortSubjectIds),
+        [cohortSubjectIds]
+    );
+    const filteredSubjectOptions = useMemo(() => {
+        if (activeRole !== 'INSTRUCTOR') {
+            return subjectOptions;
+        }
 
-    const selectedSubjectOption = subjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
+        return subjectOptions.filter((option) => {
+            if (typeof option.cohort_subject_id === 'number') {
+                return allowedCohortSubjectIds.has(option.cohort_subject_id);
+            }
+
+            return true;
+        });
+    }, [activeRole, allowedCohortSubjectIds, subjectOptions]);
+
+    const selectedSubjectOption = filteredSubjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
@@ -139,7 +158,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     };
 
     const handleCohortSubjectChange = (id: string) => {
-        const option = subjectOptions.find((item) => item.id === id) ?? null;
+        const option = filteredSubjectOptions.find((item) => item.id === id) ?? null;
         setSelectedSubjectOptionId(id);
         setFormData(prev => ({
             ...prev,
@@ -229,7 +248,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 disabled={!selectedCohort}
                                 options={[
                                     { value: '', label: selectedCohort ? 'Select Subject' : 'Select a cohort first' },
-                                    ...subjectOptions.map(option => ({
+                                    ...filteredSubjectOptions.map(option => ({
                                         value: option.id,
                                         label: option.session_supported
                                             ? `${option.subject_code ?? 'SUBJ'} — ${option.label}${option.source === 'cbc' ? ' (CBC)' : option.source === 'cambridge' ? ' (Cambridge)' : ''}`

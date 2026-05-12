@@ -194,7 +194,7 @@ export function useInstructorDashboard() {
     const [teachingLoadLoading, setTeachingLoadLoading] = useState(true);
     const [teachingHistory, setTeachingHistory] = useState<HistoryEntry[]>([]);
 
-    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents();
+    const { students, loading: studentsLoading, reload: refetchStudents } = useStudents({ page_size: 1000 });
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useTodaySessions();
     const { currentTerm, loading: termLoading } = useCurrentTerm();
     const { currentYear, loading: yearLoading } = useCurrentAcademicYear();
