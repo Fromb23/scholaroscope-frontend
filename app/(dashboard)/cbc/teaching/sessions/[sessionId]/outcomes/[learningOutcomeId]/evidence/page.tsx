@@ -69,7 +69,7 @@ export default function EvidenceEntryPage() {
 
             {bulkSuccess !== null && (
                 <EvidenceSuccessBanner
-                    count={bulkSuccess}
+                    result={bulkSuccess}
                     onDismiss={() => setBulkSuccess(null)}
                 />
             )}

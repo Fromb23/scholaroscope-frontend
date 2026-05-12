@@ -39,6 +39,7 @@ import {
   TeachingSessionSummary,
   RubricScale,
   BulkClassEvidenceData,
+  BulkClassEvidenceResult,
   CompetencyDistribution,
   CBCProgressSummary,
   StrandOutcomeDistribution,
@@ -465,8 +466,8 @@ export const rubricScaleAPI = {
 };
 
 export const bulkEvidenceAPI = {
-  createForClass: async (data: BulkClassEvidenceData): Promise<{ detail: string; records: EvidenceRecord[] }> => {
-    const res = await apiClient.post<{ detail: string; records: EvidenceRecord[] }>(
+  createForClass: async (data: BulkClassEvidenceData): Promise<BulkClassEvidenceResult> => {
+    const res = await apiClient.post<BulkClassEvidenceResult>(
       '/cbc/evidence/bulk_create_class/',
       data,
     );
