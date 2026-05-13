@@ -7,6 +7,7 @@ import {
     ArrowLeft,
     BookOpen,
     ChevronRight,
+    ClipboardList,
     GraduationCap,
     LineChart,
     Users,
@@ -325,6 +326,13 @@ export default function CohortHubPage() {
                         icon={Calendar}
                         href={sessionsHref}
                         footerLabel="Open sessions"
+                    />
+                    <ActionCard
+                        title="Assignments"
+                        description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
+                        icon={ClipboardList}
+                        href={`/academic/cohorts/${cohort.id}/assignments`}
+                        footerLabel="Manage assignments"
                     />
 
                     {isCBC ? (

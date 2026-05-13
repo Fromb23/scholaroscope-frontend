@@ -7,11 +7,8 @@
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/cohorts/CohortSubjectParticipationSection.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/cohorts/CohortSubjectParticipationSection.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/globalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/globalUsers.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/lib/queryKeys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/lib/queryKeys.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,7 +16,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="399" />
+    <option name="cachedIndexableFilesCount" value="408" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -132,6 +129,10 @@
       <workItem from="1778349518360" duration="4940000" />
       <workItem from="1778356384675" duration="1873000" />
       <workItem from="1778441281494" duration="3297000" />
+      <workItem from="1778580169096" duration="3729000" />
+      <workItem from="1778586370030" duration="4461000" />
+      <workItem from="1778626626223" duration="12217000" />
+      <workItem from="1778666862221" duration="6400000" />
     </task>
     <servers />
   </component>
