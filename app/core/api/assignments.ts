@@ -2,6 +2,7 @@ import { apiClient } from '@/app/core/api/client';
 import type {
     Assignment,
     AssignmentCreatePayload,
+    AssignmentEvidenceBridgeResponse,
     AssignmentEvaluation,
     AssignmentEvaluationCreatePayload,
     AssignmentEvaluationFilters,
@@ -11,6 +12,8 @@ import type {
     AssignmentListResponse,
     AssignmentOutcome,
     AssignmentOutcomeCreatePayload,
+    AssignmentPublishPayload,
+    AssignmentPublishResponse,
     AssignmentRecipient,
     AssignmentRecipientCreatePayload,
     AssignmentRecipientListResponse,
@@ -52,8 +55,11 @@ export const assignmentsAPI = {
         await apiClient.delete(`${ASSIGNMENTS_BASE}/${id}/`);
     },
 
-    publish: async (id: number): Promise<Assignment> => {
-        const response = await apiClient.post<Assignment>(`${ASSIGNMENTS_BASE}/${id}/publish/`);
+    publish: async (id: number, data?: AssignmentPublishPayload): Promise<AssignmentPublishResponse> => {
+        const response = await apiClient.post<AssignmentPublishResponse>(
+            `${ASSIGNMENTS_BASE}/${id}/publish/`,
+            data
+        );
         return response.data;
     },
 
@@ -179,8 +185,8 @@ export const assignmentEvaluationAPI = {
         return response.data;
     },
 
-    bridgeToEvidence: async (id: number): Promise<AssignmentEvaluation> => {
-        const response = await apiClient.post<AssignmentEvaluation>(
+    bridgeToEvidence: async (id: number): Promise<AssignmentEvidenceBridgeResponse> => {
+        const response = await apiClient.post<AssignmentEvidenceBridgeResponse>(
             `${ASSIGNMENT_EVALUATIONS_BASE}/${id}/bridge-to-evidence/`
         );
         return response.data;

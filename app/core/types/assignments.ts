@@ -4,6 +4,14 @@ export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
 export type AssignmentEvaluationType = 'NUMERIC' | 'RUBRIC' | 'DESCRIPTIVE' | 'COMPETENCY';
 export type AssignmentRecipientMode = 'ALL_ACTIVE_COHORT_LEARNERS' | 'EXPLICIT_STUDENTS' | 'none';
 
+export interface AssignmentRecipientCreationResult {
+    created: number;
+    existing: number;
+    created_count: number;
+    existing_count: number;
+    recipient_ids: number[];
+}
+
 export interface AssignmentOutcome {
     id: number;
     assignment: number;
@@ -143,6 +151,16 @@ export interface AssignmentRecipientSelectionPayload {
     student_ids?: number[];
 }
 
+export interface AssignmentPublishPayload {
+    recipient_mode?: Exclude<AssignmentRecipientMode, 'none'>;
+    student_ids?: number[];
+}
+
+export interface AssignmentPublishResponse {
+    assignment: Assignment;
+    recipients: AssignmentRecipientCreationResult;
+}
+
 export type AssignmentSubmissionStatus =
     | 'SUBMITTED'
     | 'LATE'
@@ -206,6 +224,14 @@ export interface AssignmentEvaluationUpdatePayload {
     rubric_level?: number | null;
     narrative?: string;
     competency_state?: string | null;
+}
+
+export type AssignmentEvidenceBridgeStatus = 'created' | 'existing' | 'skipped';
+
+export interface AssignmentEvidenceBridgeResponse {
+    status: AssignmentEvidenceBridgeStatus;
+    evidence_record_id: number | null;
+    detail: string;
 }
 
 export interface AssignmentEvaluationFilters {

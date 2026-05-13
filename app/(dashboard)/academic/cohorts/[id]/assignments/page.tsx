@@ -54,11 +54,11 @@ const EVALUATION_OPTIONS: Array<{ value: string; label: string }> = [
 
 function AssignmentSummary({
     assignment,
-    cohortId,
+    detailHref,
     onEdit,
 }: {
     assignment: Assignment;
-    cohortId: number;
+    detailHref: string;
     onEdit: (assignment: Assignment) => void;
 }) {
     return (
@@ -99,10 +99,7 @@ function AssignmentSummary({
                 </div>
 
                 <div className="flex flex-col gap-2 sm:flex-row">
-                    <Link
-                        href={`/academic/cohorts/${cohortId}/assignments/${assignment.id}`}
-                        className="w-full sm:w-auto"
-                    >
+                    <Link href={detailHref} className="w-full sm:w-auto">
                         <Button size="sm" className="w-full sm:w-auto">
                             View Assignment
                         </Button>
@@ -133,8 +130,18 @@ export default function CohortAssignmentsPage() {
     const cohortId = Number(params.id);
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
-    const [statusFilter, setStatusFilter] = useState<AssignmentStatus | ''>('');
-    const [evaluationTypeFilter, setEvaluationTypeFilter] = useState<AssignmentEvaluationType | ''>('');
+    const [statusFilter, setStatusFilter] = useState<AssignmentStatus | ''>(() => {
+        const status = searchParams.get('status');
+        return status && STATUS_OPTIONS.some((option) => option.value === status)
+            ? (status as AssignmentStatus)
+            : '';
+    });
+    const [evaluationTypeFilter, setEvaluationTypeFilter] = useState<AssignmentEvaluationType | ''>(() => {
+        const evaluationType = searchParams.get('evaluation_type');
+        return evaluationType && EVALUATION_OPTIONS.some((option) => option.value === evaluationType)
+            ? (evaluationType as AssignmentEvaluationType)
+            : '';
+    });
     const [cohortSubjectFilter, setCohortSubjectFilter] = useState<string>(
         searchParams.get('cohort_subject') ?? ''
     );
@@ -198,6 +205,32 @@ export default function CohortAssignmentsPage() {
         () => assignments.filter((assignment) => isAssignmentDueSoon(assignment)).length,
         [assignments]
     );
+    const assignmentsHref = useMemo(() => {
+        const nextSearchParams = new URLSearchParams();
+        const trimmedSearch = search.trim();
+
+        if (cohortSubjectFilter) {
+            nextSearchParams.set('cohort_subject', cohortSubjectFilter);
+        }
+        if (statusFilter) {
+            nextSearchParams.set('status', statusFilter);
+        }
+        if (evaluationTypeFilter) {
+            nextSearchParams.set('evaluation_type', evaluationTypeFilter);
+        }
+        if (trimmedSearch) {
+            nextSearchParams.set('search', trimmedSearch);
+        }
+
+        const query = nextSearchParams.toString();
+        return query
+            ? `/academic/cohorts/${cohortId}/assignments?${query}`
+            : `/academic/cohorts/${cohortId}/assignments`;
+    }, [cohortId, cohortSubjectFilter, evaluationTypeFilter, search, statusFilter]);
+    const buildAssignmentDetailHref = (nextAssignmentId: number) =>
+        `/academic/cohorts/${cohortId}/assignments/${nextAssignmentId}?${new URLSearchParams({
+            returnTo: assignmentsHref,
+        }).toString()}`;
     const overdueCount = useMemo(
         () => assignments.filter((assignment) => isAssignmentOverdue(assignment)).length,
         [assignments]
@@ -402,7 +435,7 @@ export default function CohortAssignmentsPage() {
                                 <AssignmentSummary
                                     key={assignment.id}
                                     assignment={assignment}
-                                    cohortId={cohortId}
+                                    detailHref={buildAssignmentDetailHref(assignment.id)}
                                     onEdit={(nextAssignment) => {
                                         setEditingAssignment(nextAssignment);
                                         setCreateOpen(true);
@@ -471,7 +504,7 @@ export default function CohortAssignmentsPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <Link href={`/academic/cohorts/${cohortId}/assignments/${assignment.id}`}>
+                                                    <Link href={buildAssignmentDetailHref(assignment.id)}>
                                                         <Button size="sm">View</Button>
                                                     </Link>
                                                     {assignment.status === 'DRAFT' ? (
@@ -518,7 +551,7 @@ export default function CohortAssignmentsPage() {
                     );
 
                     if (!editingAssignment) {
-                        router.push(`/academic/cohorts/${cohortId}/assignments/${savedAssignment.id}`);
+                        router.push(buildAssignmentDetailHref(savedAssignment.id));
                     }
                 }}
             />

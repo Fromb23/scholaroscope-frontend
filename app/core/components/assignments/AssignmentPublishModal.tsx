@@ -8,7 +8,7 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
-import { useCreateAssignmentRecipients, usePublishAssignment } from '@/app/core/hooks/useAssignments';
+import { usePublishAssignment } from '@/app/core/hooks/useAssignments';
 import type { Assignment, AssignmentRecipientMode } from '@/app/core/types/assignments';
 
 interface AssignmentPublishModalProps {
@@ -33,7 +33,6 @@ export function AssignmentPublishModal({
     onPublished,
 }: AssignmentPublishModalProps) {
     const learnersQuery = useCohortEnrolledStudents(cohortId);
-    const createRecipientsMutation = useCreateAssignmentRecipients(assignment.id);
     const publishMutation = usePublishAssignment();
     const [recipientMode, setRecipientMode] = useState<AssignmentRecipientMode>('none');
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
@@ -62,7 +61,7 @@ export function AssignmentPublishModal({
         });
     }, [learnerSearch, learnersQuery.data?.students]);
 
-    const saving = createRecipientsMutation.isPending || publishMutation.isPending;
+    const saving = publishMutation.isPending;
 
     const toggleStudent = (studentId: number) => {
         setSelectedStudentIds((previous) => (
@@ -86,14 +85,15 @@ export function AssignmentPublishModal({
         }
 
         try {
-            if (recipientMode !== 'none') {
-                await createRecipientsMutation.mutateAsync({
-                    recipient_mode: recipientMode,
-                    student_ids: recipientMode === 'EXPLICIT_STUDENTS' ? selectedStudentIds : undefined,
-                });
-            }
-
-            await publishMutation.mutateAsync(assignment.id);
+            await publishMutation.mutateAsync({
+                assignmentId: assignment.id,
+                data: recipientMode === 'none'
+                    ? undefined
+                    : {
+                        recipient_mode: recipientMode,
+                        student_ids: recipientMode === 'EXPLICIT_STUDENTS' ? selectedStudentIds : undefined,
+                    },
+            });
             onPublished?.();
             onClose();
         } catch (err) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     Archive,
     ArrowLeft,
@@ -73,9 +73,19 @@ function summarizeEvaluation(
     return evaluation.narrative || 'Review saved';
 }
 
+function getAssignmentsReturnHref(cohortId: number, returnTo: string | null): string {
+    const defaultHref = `/academic/cohorts/${cohortId}/assignments`;
+    if (!returnTo) {
+        return defaultHref;
+    }
+
+    return returnTo.startsWith(defaultHref) ? returnTo : defaultHref;
+}
+
 export default function CohortAssignmentDetailPage() {
     const params = useParams<{ id: string; assignmentId: string }>();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, activeRole, loading: authLoading } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const cohortId = Number(params.id);
@@ -126,6 +136,10 @@ export default function CohortAssignmentDetailPage() {
     const archiveMutation = useArchiveAssignment();
     const deleteMutation = useDeleteAssignment();
     const bridgeMutation = useBridgeAssignmentEvaluation();
+    const assignmentsHref = useMemo(
+        () => getAssignmentsReturnHref(cohortId, searchParams.get('returnTo')),
+        [cohortId, searchParams]
+    );
 
     const visibleCohortSubjects = useMemo(() => (
         isInstructor
@@ -170,7 +184,7 @@ export default function CohortAssignmentDetailPage() {
     }
 
     if (assignmentError) {
-        return <ErrorBanner message={assignmentError} onDismiss={() => router.push(`/academic/cohorts/${cohortId}/assignments`)} />;
+        return <ErrorBanner message={assignmentError} onDismiss={() => router.push(assignmentsHref)} />;
     }
 
     if (!assignment) {
@@ -197,7 +211,7 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         try {
             await deleteMutation.mutateAsync(assignment.id);
-            router.push(`/academic/cohorts/${cohortId}/assignments`);
+            router.push(assignmentsHref);
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to delete assignment.');
         }
@@ -223,11 +237,21 @@ export default function CohortAssignmentDetailPage() {
         }
     };
 
-    const handleBridge = async (evaluationId: number) => {
+    const handleBridge = async (evaluation: AssignmentEvaluation) => {
         setActionError(null);
+        setSuccessMessage(null);
         try {
-            await bridgeMutation.mutateAsync(evaluationId);
-            setSuccessMessage('Evaluation bridged to evidence.');
+            const result = await bridgeMutation.mutateAsync({
+                assignmentId: assignment.id,
+                evaluationId: evaluation.id,
+            });
+
+            if (result.status === 'skipped') {
+                setActionError(result.detail || 'The evaluation could not be bridged to evidence.');
+                return;
+            }
+
+            setSuccessMessage(result.detail || 'Evaluation bridged to evidence.');
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to bridge evaluation.');
         }
@@ -237,7 +261,7 @@ export default function CohortAssignmentDetailPage() {
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="space-y-3">
                 <div>
-                    <Link href={`/academic/cohorts/${cohortId}/assignments`}>
+                    <Link href={assignmentsHref}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Back to Assignments
@@ -255,7 +279,7 @@ export default function CohortAssignmentDetailPage() {
                             {cohort?.name ?? assignment.cohort_name}
                         </Link>
                         <span>/</span>
-                        <Link href={`/academic/cohorts/${cohortId}/assignments`} className="hover:text-blue-600">
+                        <Link href={assignmentsHref} className="hover:text-blue-600">
                             Assignments
                         </Link>
                         <span>/</span>
@@ -686,7 +710,7 @@ export default function CohortAssignmentDetailPage() {
                                                 <Button
                                                     type="button"
                                                     variant="secondary"
-                                                    onClick={() => handleBridge(evaluation.id)}
+                                                    onClick={() => handleBridge(evaluation)}
                                                     disabled={bridgeMutation.isPending}
                                                 >
                                                     <Eye className="mr-2 h-4 w-4" />

@@ -12,11 +12,14 @@ import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
     Assignment,
     AssignmentCreatePayload,
+    AssignmentEvidenceBridgeResponse,
     AssignmentEvaluation,
     AssignmentEvaluationCreatePayload,
     AssignmentEvaluationFilters,
     AssignmentEvaluationUpdatePayload,
     AssignmentFilters,
+    AssignmentPublishPayload,
+    AssignmentPublishResponse,
     AssignmentRecipient,
     AssignmentRecipientCreatePayload,
     AssignmentRecipientSelectionPayload,
@@ -419,15 +422,21 @@ export function usePublishAssignment() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (assignmentId: number) => {
+        mutationFn: async ({
+            assignmentId,
+            data,
+        }: {
+            assignmentId: number;
+            data?: AssignmentPublishPayload;
+        }): Promise<AssignmentPublishResponse> => {
             try {
-                return await assignmentsAPI.publish(assignmentId);
+                return await assignmentsAPI.publish(assignmentId, data);
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to publish assignment.'));
             }
         },
-        onSuccess: async (assignment) => {
-            await invalidateAssignmentDependencies(queryClient, assignment.id);
+        onSuccess: async (result) => {
+            await invalidateAssignmentDependencies(queryClient, result.assignment.id);
         },
     });
 }
@@ -588,17 +597,20 @@ export function useBridgeAssignmentEvaluation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (evaluationId: number) => {
+        mutationFn: async (variables: {
+            assignmentId: number;
+            evaluationId: number;
+        }): Promise<AssignmentEvidenceBridgeResponse> => {
             try {
-                return await assignmentEvaluationAPI.bridgeToEvidence(evaluationId);
+                return await assignmentEvaluationAPI.bridgeToEvidence(variables.evaluationId);
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to bridge evaluation to evidence.'));
             }
         },
-        onSuccess: async (evaluation) => {
-            await invalidateAssignmentDependencies(queryClient, evaluation.assignment);
+        onSuccess: async (_, variables) => {
+            await invalidateAssignmentDependencies(queryClient, variables.assignmentId);
             await queryClient.invalidateQueries({
-                queryKey: assignmentKeys.evaluationDetail(evaluation.id),
+                queryKey: assignmentKeys.evaluationDetail(variables.evaluationId),
             });
         },
     });
