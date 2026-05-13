@@ -120,6 +120,18 @@ export interface StudentFormData {
   }>;
 }
 
+export type StudentProfileUpdateData = Pick<
+  StudentFormData,
+  | 'admission_number'
+  | 'first_name'
+  | 'middle_name'
+  | 'last_name'
+  | 'date_of_birth'
+  | 'gender'
+  | 'email'
+  | 'phone'
+>;
+
 export interface EnrollmentFormData {
   cohort_id: number;
   enrollment_type: 'PRIMARY' | 'ELECTIVE' | 'REMEDIAL' | 'ADVANCED' | 'TRANSFER';

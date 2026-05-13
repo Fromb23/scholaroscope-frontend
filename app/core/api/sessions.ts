@@ -40,6 +40,7 @@ export interface SessionQueryParams {
   session_type?: string;
   session_date?: string;
   created_by?: string;
+  instructor_id?: number;
 }
 
 export interface AttendanceQueryParams {

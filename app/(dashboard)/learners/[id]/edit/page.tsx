@@ -12,6 +12,8 @@ import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import type { ApiError } from '@/app/core/types/errors';
+import type { StudentProfileUpdateData } from '@/app/core/types/student';
 
 interface EditForm {
     admission_number: string;
@@ -22,6 +24,36 @@ interface EditForm {
     gender: string;
     email: string;
     phone: string;
+}
+
+function formatLearnerUpdateErrors(err: unknown) {
+    const apiError = err as ApiError;
+    const data = apiError.response?.data;
+
+    if (!data) {
+        return [apiError.message ?? 'Failed to update student'];
+    }
+
+    if (Array.isArray(data)) {
+        return data.map((message) => String(message));
+    }
+
+    if (typeof data === 'string') {
+        return [data];
+    }
+
+    const formatted = Object.entries(data).flatMap(([field, value]) => {
+        const messages = Array.isArray(value) ? value : [value];
+        return messages
+            .filter((message): message is string => typeof message === 'string' && message.trim().length > 0)
+            .map((message) => (
+                field === 'detail' || field === 'non_field_errors'
+                    ? message
+                    : `${field}: ${message}`
+            ));
+    });
+
+    return formatted.length > 0 ? formatted : [apiError.message ?? 'Failed to update student'];
 }
 
 export default function EditLearnerPage() {
@@ -60,14 +92,21 @@ export default function EditLearnerPage() {
         setSubmitting(true);
         setError(null);
         try {
-            await learnersAPI.updateStudent(studentId, {
-                ...form,
-                date_of_birth: form.date_of_birth || null,
-            });
+            const payload: StudentProfileUpdateData = {
+                admission_number: form.admission_number.trim(),
+                first_name: form.first_name.trim(),
+                middle_name: form.middle_name.trim(),
+                last_name: form.last_name.trim(),
+                date_of_birth: form.date_of_birth.trim() ? form.date_of_birth : null,
+                gender: form.gender,
+                email: form.email.trim(),
+                phone: form.phone.trim(),
+            };
+
+            await learnersAPI.updateStudent(studentId, payload);
             router.push(`/learners/${studentId}`);
         } catch (err: unknown) {
-            const e = err as { message?: string };
-            setError(e.message ?? 'Failed to update student');
+            setError(formatLearnerUpdateErrors(err).join('\n'));
         } finally {
             setSubmitting(false);
         }

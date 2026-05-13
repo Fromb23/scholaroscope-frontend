@@ -50,6 +50,9 @@ export interface Session {
   description: string;
   venue: string;
   created_by: string;
+  created_by_id?: number | null;
+  created_by_name?: string | null;
+  created_by_email?: string | null;
   attendance_count: {
     total: number;
     present: number;
