@@ -5,7 +5,11 @@ import {
     useEvidence, useCreateEvidence,
     useSessionRubricScale, useBulkCreateClassEvidence,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import type { EvidenceRecord, EvaluationType } from '@/app/plugins/cbc/types/cbc';
+import type {
+    BulkClassEvidenceResult,
+    EvidenceRecord,
+    EvaluationType,
+} from '@/app/plugins/cbc/types/cbc';
 
 type ApiList<T> = T[] | { results: T[]; count: number };
 
@@ -54,7 +58,7 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
     const [narrative, setNarrative] = useState('');
     const [formError, setFormError] = useState<string | null>(null);
     const [showBulk, setShowBulk] = useState(false);
-    const [bulkSuccess, setBulkSuccess] = useState<number | null>(null);
+    const [bulkSuccess, setBulkSuccess] = useState<BulkClassEvidenceResult | null>(null);
 
     const resetForm = () => {
         setAddingFor(null);
@@ -84,9 +88,9 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
         }
     };
 
-    const handleBulkClose = (recordedCount?: number) => {
+    const handleBulkClose = (result?: BulkClassEvidenceResult) => {
         setShowBulk(false);
-        if (recordedCount) setBulkSuccess(recordedCount);
+        if (result) setBulkSuccess(result);
     };
 
     const isPageLoading = sessionLoading || outcomeLoading || learnersLoading || evidenceLoading;

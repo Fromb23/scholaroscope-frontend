@@ -342,6 +342,36 @@ export interface StudentEntry {
   narrative?: string;
 }
 
+export interface BulkClassEvidenceAttendanceCounts {
+  present?: number;
+  absent?: number;
+  excused?: number;
+  sick?: number;
+  unmarked?: number;
+  late?: number;
+  total?: number;
+}
+
+export interface BulkClassEvidenceResult {
+  detail: string;
+  created_count: number;
+  eligible_count: number;
+  present_count?: number;
+  absent_count?: number;
+  excused_count?: number;
+  sick_count?: number;
+  unmarked_count?: number;
+  late_count?: number;
+  attendance?: BulkClassEvidenceAttendanceCounts;
+  attendance_counts?: BulkClassEvidenceAttendanceCounts;
+  attendance_summary?: {
+    total_students?: number;
+    present_count?: number;
+    summary?: BulkClassEvidenceAttendanceCounts;
+  };
+  records?: EvidenceRecord[];
+}
+
 export interface BulkClassEvidenceData {
   learning_outcome: number;
   session_id: number;
@@ -349,7 +379,8 @@ export interface BulkClassEvidenceData {
   evaluation_type: 'RUBRIC' | 'DESCRIPTIVE';
   default_rubric_level?: number | null;
   default_narrative?: string;
-  student_entries: StudentEntry[];
+  exceptions?: StudentEntry[];
+  student_entries?: StudentEntry[];
 }
 
 

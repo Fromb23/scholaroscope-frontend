@@ -107,6 +107,36 @@ function extractBackendMessage(responseData: unknown) {
   };
 }
 
+function flattenErrorMessages(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) {
+    return value.flatMap(item => flattenErrorMessages(item));
+  }
+  if (!value || typeof value !== 'object') return [];
+
+  return Object.values(value).flatMap(item => flattenErrorMessages(item));
+}
+
+function isUnmarkedAttendanceBulkEvidenceError(error: unknown): boolean {
+  const axiosError = error as AxiosError;
+
+  if (axiosError.response?.status !== 400) {
+    return false;
+  }
+
+  const messages = flattenErrorMessages(axiosError.response?.data)
+    .map(message => message.toLowerCase());
+
+  return messages.some(message => (
+    message.includes('attendance') &&
+    (
+      message.includes('unmarked') ||
+      message.includes('must be marked') ||
+      message.includes('mark attendance')
+    )
+  ));
+}
+
 function decorateCBCQueryError(
   error: unknown,
   endpoint: string,
@@ -639,15 +669,34 @@ export const useSessionRubricScale = (sessionId: number | null) =>
 export const useBulkCreateClassEvidence = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: BulkClassEvidenceData) =>
-      bulkEvidenceAPI.createForClass(data),
+    mutationFn: async (data: BulkClassEvidenceData) => {
+      try {
+        return await bulkEvidenceAPI.createForClass(data);
+      } catch (error) {
+        if (isUnmarkedAttendanceBulkEvidenceError(error)) {
+          throw new Error('Attendance must be marked before recording class evidence.');
+        }
+
+        throw error;
+      }
+    },
     onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: cbcKeys.evidence.all });
+      queryClient.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all });
       queryClient.invalidateQueries({
-        queryKey: cbcKeys.evidence.list({
-          learning_outcome: variables.learning_outcome,
-        }),
+        queryKey: cbcKeys.teachingSessions.summary(variables.session_id),
       });
-      queryClient.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all }); // ← add
+      queryClient.invalidateQueries({
+        queryKey: cbcKeys.teachingSessions.outcomes(variables.session_id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: cbcKeys.teachingSessions.learners(variables.session_id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: cbcKeys.teachingSessions.detail(variables.session_id),
+      });
+      queryClient.invalidateQueries({ queryKey: cbcKeys.teachingSessions.all });
+      queryClient.invalidateQueries({ queryKey: cbcKeys.outcomeProgress.all });
     },
   });
 };

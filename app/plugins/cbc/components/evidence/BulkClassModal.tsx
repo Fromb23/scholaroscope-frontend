@@ -8,7 +8,12 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
 import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
-import type { SessionLearner, BulkClassEvidenceData, StudentEntry } from '@/app/plugins/cbc/types/cbc';
+import type {
+    SessionLearner,
+    BulkClassEvidenceData,
+    BulkClassEvidenceResult,
+    StudentEntry,
+} from '@/app/plugins/cbc/types/cbc';
 
 const BULK_EVAL_OPTIONS = [
     { value: 'DESCRIPTIVE', label: 'Descriptive (Observation)' },
@@ -50,7 +55,11 @@ function evidenceFormReducer(state: EvidenceFormState, action: EvidenceFormActio
             return { ...state, defaultRubricLevel: action.payload };
         case 'toggle_exception': {
             const next = new Map(state.exceptions);
-            next.has(action.studentId) ? next.delete(action.studentId) : next.set(action.studentId, { student_id: action.studentId });
+            if (next.has(action.studentId)) {
+                next.delete(action.studentId);
+            } else {
+                next.set(action.studentId, { student_id: action.studentId });
+            }
             return { ...state, exceptions: next };
         }
         case 'update_exception': {
@@ -73,7 +82,7 @@ interface Props {
     learningOutcomeId: number;
     learners: SessionLearner[];
     observedAt: string;
-    onClose: (recordedCount?: number) => void;
+    onClose: (result?: BulkClassEvidenceResult) => void;
 }
 
 export function BulkClassModal({ sessionId, learningOutcomeId, learners, observedAt, onClose }: Props) {
@@ -84,7 +93,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
 
     const handleSubmit = async () => {
         dispatch({ type: 'set_error', payload: null });
-        const studentEntries: StudentEntry[] = learners.map(l => exceptions.get(l.id) ?? { student_id: l.id });
+        const exceptionEntries = Array.from(exceptions.values());
         const payload: BulkClassEvidenceData = {
             learning_outcome: learningOutcomeId,
             session_id: sessionId,
@@ -92,11 +101,11 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
             evaluation_type: evalType,
             default_narrative: evalType === 'DESCRIPTIVE' ? defaultNarrative : undefined,
             default_rubric_level: evalType === 'RUBRIC' ? defaultRubricLevel : undefined,
-            student_entries: studentEntries,
+            exceptions: exceptionEntries.length > 0 ? exceptionEntries : undefined,
         };
         try {
-            await bulkCreate.mutateAsync(payload);
-            onClose(learners.length);
+            const result = await bulkCreate.mutateAsync(payload);
+            onClose(result);
         } catch (e) {
             dispatch({ type: 'set_error', payload: extractErrorMessage(e) });
         }
@@ -114,7 +123,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                             Record for Class
                         </h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            {learners.length} learners · set default, add exceptions below
+                            Evidence will be recorded for present learners based on session attendance.
                         </p>
                     </div>
                     <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -128,6 +137,9 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                             <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">1</div>
                             <h3 className="font-semibold text-gray-900">Class Default</h3>
                         </div>
+                        <p className="text-sm text-gray-500">
+                            Set the default evidence for learners marked present in this session.
+                        </p>
                         <Select
                             label="Evaluation Type"
                             value={evalType}
@@ -179,8 +191,11 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">2</div>
                             <h3 className="font-semibold text-gray-900">Exceptions (optional)</h3>
-                            <span className="text-xs text-gray-400">Override for specific learners</span>
+                            <span className="text-xs text-gray-400">Overrides for specific learners</span>
                         </div>
+                        <p className="text-sm text-gray-500">
+                            Use exceptions only when a learner needs different evidence from the class default.
+                        </p>
                         <div className="space-y-2">
                             {learners.map(learner => {
                                 const hasException = exceptions.has(learner.id);
@@ -240,14 +255,14 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                 <div className="flex items-center justify-between p-6 border-t border-gray-100 bg-gray-50">
                     <p className="text-sm text-gray-500">
                         {exceptions.size > 0
-                            ? `${learners.length - exceptions.size} default · ${exceptions.size} exception${exceptions.size !== 1 ? 's' : ''}`
-                            : `All ${learners.length} learners get default`}
+                            ? `Class default for present learners · ${exceptions.size} override${exceptions.size !== 1 ? 's' : ''}`
+                            : 'Class default will apply to present learners'}
                     </p>
                     <div className="flex gap-2">
                         <Button variant="ghost" size="md" onClick={() => onClose()}>Cancel</Button>
                         <Button variant="primary" size="md" onClick={handleSubmit} disabled={!canProceed || bulkCreate.isPending}>
                             <Check className="h-4 w-4 mr-2" />
-                            {bulkCreate.isPending ? 'Recording…' : `Record for ${learners.length} Learners`}
+                            {bulkCreate.isPending ? 'Recording…' : 'Record Class Evidence'}
                         </Button>
                     </div>
                 </div>
