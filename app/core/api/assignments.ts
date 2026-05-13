@@ -14,6 +14,21 @@ import type {
     AssignmentOutcomeCreatePayload,
     AssignmentPublishPayload,
     AssignmentPublishResponse,
+    AssignmentGroup,
+    AssignmentGroupCreatePayload,
+    AssignmentGroupCreateResponse,
+    AssignmentGroupEvidenceBridgeResponse,
+    AssignmentGroupEvaluation,
+    AssignmentGroupEvaluationCreatePayload,
+    AssignmentGroupEvaluationFilters,
+    AssignmentGroupEvaluationListResponse,
+    AssignmentGroupEvaluationUpdatePayload,
+    AssignmentGroupListResponse,
+    AssignmentGroupMemberCreatePayload,
+    AssignmentGroupSubmission,
+    AssignmentGroupSubmissionCreatePayload,
+    AssignmentGroupSubmissionListResponse,
+    AssignmentGroupUpdatePayload,
     AssignmentRecipient,
     AssignmentRecipientCreatePayload,
     AssignmentRecipientListResponse,
@@ -29,6 +44,8 @@ const ASSIGNMENT_OUTCOMES_BASE = '/assignment-outcomes';
 const ASSIGNMENT_RECIPIENTS_BASE = '/assignment-recipients';
 const ASSIGNMENT_SUBMISSIONS_BASE = '/assignment-submissions';
 const ASSIGNMENT_EVALUATIONS_BASE = '/assignment-evaluations';
+const ASSIGNMENT_GROUPS_BASE = '/assignment-groups';
+const ASSIGNMENT_GROUP_EVALUATIONS_BASE = '/assignment-group-evaluations';
 
 export const assignmentsAPI = {
     list: async (params?: AssignmentFilters): Promise<AssignmentListResponse> => {
@@ -106,6 +123,24 @@ export const assignmentsAPI = {
     listEvaluations: async (id: number): Promise<AssignmentEvaluationListResponse> => {
         const response = await apiClient.get<AssignmentEvaluationListResponse>(
             `${ASSIGNMENTS_BASE}/${id}/evaluations/`
+        );
+        return response.data;
+    },
+
+    listAssignmentGroups: async (assignmentId: number): Promise<AssignmentGroupListResponse> => {
+        const response = await apiClient.get<AssignmentGroupListResponse>(
+            `${ASSIGNMENTS_BASE}/${assignmentId}/groups/`
+        );
+        return response.data;
+    },
+
+    createAssignmentGroup: async (
+        assignmentId: number,
+        data: AssignmentGroupCreatePayload
+    ): Promise<AssignmentGroupCreateResponse> => {
+        const response = await apiClient.post<AssignmentGroupCreateResponse>(
+            `${ASSIGNMENTS_BASE}/${assignmentId}/groups/`,
+            data
         );
         return response.data;
     },
@@ -188,6 +223,99 @@ export const assignmentEvaluationAPI = {
     bridgeToEvidence: async (id: number): Promise<AssignmentEvidenceBridgeResponse> => {
         const response = await apiClient.post<AssignmentEvidenceBridgeResponse>(
             `${ASSIGNMENT_EVALUATIONS_BASE}/${id}/bridge-to-evidence/`
+        );
+        return response.data;
+    },
+};
+
+export const assignmentGroupAPI = {
+    getById: async (id: number): Promise<AssignmentGroup> => {
+        const response = await apiClient.get<AssignmentGroup>(`${ASSIGNMENT_GROUPS_BASE}/${id}/`);
+        return response.data;
+    },
+
+    update: async (id: number, data: AssignmentGroupUpdatePayload): Promise<AssignmentGroup> => {
+        const response = await apiClient.patch<AssignmentGroup>(`${ASSIGNMENT_GROUPS_BASE}/${id}/`, data);
+        return response.data;
+    },
+
+    delete: async (id: number): Promise<void> => {
+        await apiClient.delete(`${ASSIGNMENT_GROUPS_BASE}/${id}/`);
+    },
+
+    addMember: async (groupId: number, data: AssignmentGroupMemberCreatePayload): Promise<AssignmentGroup> => {
+        const response = await apiClient.post<AssignmentGroup>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/members/`,
+            data
+        );
+        return response.data;
+    },
+
+    removeMember: async (groupId: number, studentId: number): Promise<void> => {
+        await apiClient.delete(`${ASSIGNMENT_GROUPS_BASE}/${groupId}/members/${studentId}/`);
+    },
+
+    listSubmissions: async (groupId: number): Promise<AssignmentGroupSubmissionListResponse> => {
+        const response = await apiClient.get<AssignmentGroupSubmissionListResponse>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/submissions/`
+        );
+        return response.data;
+    },
+
+    createSubmission: async (
+        groupId: number,
+        data: AssignmentGroupSubmissionCreatePayload
+    ): Promise<AssignmentGroupSubmission> => {
+        const response = await apiClient.post<AssignmentGroupSubmission>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/submissions/`,
+            data
+        );
+        return response.data;
+    },
+};
+
+export const assignmentGroupEvaluationAPI = {
+    list: async (
+        params?: AssignmentGroupEvaluationFilters
+    ): Promise<AssignmentGroupEvaluationListResponse> => {
+        const response = await apiClient.get<AssignmentGroupEvaluationListResponse>(
+            `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/`,
+            { params }
+        );
+        return response.data;
+    },
+
+    getById: async (id: number): Promise<AssignmentGroupEvaluation> => {
+        const response = await apiClient.get<AssignmentGroupEvaluation>(
+            `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/${id}/`
+        );
+        return response.data;
+    },
+
+    create: async (
+        data: AssignmentGroupEvaluationCreatePayload
+    ): Promise<AssignmentGroupEvaluation> => {
+        const response = await apiClient.post<AssignmentGroupEvaluation>(
+            `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/`,
+            data
+        );
+        return response.data;
+    },
+
+    update: async (
+        id: number,
+        data: AssignmentGroupEvaluationUpdatePayload
+    ): Promise<AssignmentGroupEvaluation> => {
+        const response = await apiClient.patch<AssignmentGroupEvaluation>(
+            `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/${id}/`,
+            data
+        );
+        return response.data;
+    },
+
+    bridgeToEvidence: async (id: number): Promise<AssignmentGroupEvidenceBridgeResponse> => {
+        const response = await apiClient.post<AssignmentGroupEvidenceBridgeResponse>(
+            `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/${id}/bridge-to-evidence/`
         );
         return response.data;
     },

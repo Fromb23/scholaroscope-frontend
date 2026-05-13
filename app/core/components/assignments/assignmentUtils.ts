@@ -1,5 +1,6 @@
 import type {
     Assignment,
+    AssignmentDeliveryMode,
     AssignmentEvaluationType,
     AssignmentRecipientStatus,
     AssignmentStatus,
@@ -47,6 +48,19 @@ export function getAssignmentEvaluationBadgeVariant(
             return 'green';
         case 'COMPETENCY':
             return 'orange';
+        default:
+            return 'default';
+    }
+}
+
+export function getAssignmentDeliveryBadgeVariant(
+    deliveryMode: AssignmentDeliveryMode
+): BadgeVariant {
+    switch (deliveryMode) {
+        case 'GROUP':
+            return 'indigo';
+        case 'INDIVIDUAL':
+            return 'blue';
         default:
             return 'default';
     }

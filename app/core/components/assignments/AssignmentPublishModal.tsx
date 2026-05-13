@@ -74,12 +74,20 @@ export function AssignmentPublishModal({
     const handlePublish = async () => {
         setFormError(null);
 
-        if (assignment.recipients_count === 0 && recipientMode === 'none') {
+        if (
+            assignment.delivery_mode === 'INDIVIDUAL'
+            && assignment.recipients_count === 0
+            && recipientMode === 'none'
+        ) {
             setFormError('This draft has no recipients yet. Choose a recipient mode before publishing.');
             return;
         }
 
-        if (recipientMode === 'EXPLICIT_STUDENTS' && selectedStudentIds.length === 0) {
+        if (
+            assignment.delivery_mode === 'INDIVIDUAL'
+            && recipientMode === 'EXPLICIT_STUDENTS'
+            && selectedStudentIds.length === 0
+        ) {
             setFormError('Select at least one learner for explicit publication.');
             return;
         }
@@ -87,7 +95,7 @@ export function AssignmentPublishModal({
         try {
             await publishMutation.mutateAsync({
                 assignmentId: assignment.id,
-                data: recipientMode === 'none'
+                data: assignment.delivery_mode === 'GROUP' || recipientMode === 'none'
                     ? undefined
                     : {
                         recipient_mode: recipientMode,
@@ -109,24 +117,34 @@ export function AssignmentPublishModal({
                 ) : null}
 
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                    Publishing this draft keeps the cohort as navigation context, but recipients are still assigned through the underlying cohort subject workflow.
+                    {assignment.delivery_mode === 'GROUP'
+                        ? 'This is a group assignment. Publishing does not create learner recipients. Add groups from the Groups tab.'
+                        : 'Publishing this draft keeps the cohort as navigation context, but recipients are still assigned through the underlying cohort subject workflow.'}
                 </div>
 
                 <div className="space-y-2">
                     <h3 className="text-sm font-semibold text-gray-900">{assignment.title}</h3>
-                    <p className="text-sm text-gray-500">
-                        Current recipients: {assignment.recipients_count}
-                    </p>
+                    {assignment.delivery_mode === 'INDIVIDUAL' ? (
+                        <p className="text-sm text-gray-500">
+                            Current recipients: {assignment.recipients_count}
+                        </p>
+                    ) : (
+                        <p className="text-sm text-gray-500">
+                            Delivery mode: Group work
+                        </p>
+                    )}
                 </div>
 
-                <Select
-                    label="Recipient Mode"
-                    value={recipientMode}
-                    onChange={(event) => setRecipientMode(event.target.value as AssignmentRecipientMode)}
-                    options={PUBLISH_RECIPIENT_OPTIONS}
-                />
+                {assignment.delivery_mode === 'INDIVIDUAL' ? (
+                    <Select
+                        label="Recipient Mode"
+                        value={recipientMode}
+                        onChange={(event) => setRecipientMode(event.target.value as AssignmentRecipientMode)}
+                        options={PUBLISH_RECIPIENT_OPTIONS}
+                    />
+                ) : null}
 
-                {recipientMode === 'EXPLICIT_STUDENTS' ? (
+                {assignment.delivery_mode === 'INDIVIDUAL' && recipientMode === 'EXPLICIT_STUDENTS' ? (
                     <div className="space-y-3">
                         <Input
                             label="Find Learners"

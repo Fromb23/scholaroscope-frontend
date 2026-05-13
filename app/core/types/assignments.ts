@@ -1,8 +1,13 @@
 import type { PaginatedResponse } from '@/app/core/types/api';
 
 export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
+export type AssignmentDeliveryMode = 'INDIVIDUAL' | 'GROUP';
 export type AssignmentEvaluationType = 'NUMERIC' | 'RUBRIC' | 'DESCRIPTIVE' | 'COMPETENCY';
 export type AssignmentRecipientMode = 'ALL_ACTIVE_COHORT_LEARNERS' | 'EXPLICIT_STUDENTS' | 'none';
+export type AssignmentEvidenceProjectionMode =
+    | 'APPLY_TO_ALL_MEMBERS'
+    | 'APPLY_WITH_OVERRIDES'
+    | 'RECORD_ONLY';
 
 export interface AssignmentRecipientCreationResult {
     created: number;
@@ -49,6 +54,7 @@ export interface Assignment {
     starts_at: string | null;
     due_at: string | null;
     status: AssignmentStatus;
+    delivery_mode: AssignmentDeliveryMode;
     evaluation_type: AssignmentEvaluationType;
     rubric_scale: number | null;
     rubric_scale_name: string | null;
@@ -70,6 +76,9 @@ export interface Assignment {
     recipients_count: number;
     submissions_count: number;
     evaluations_count: number;
+    group_count: number;
+    group_submission_count: number;
+    group_evaluation_count: number;
 }
 
 export interface AssignmentCreatePayload {
@@ -79,6 +88,7 @@ export interface AssignmentCreatePayload {
     instructions?: string;
     starts_at?: string | null;
     due_at?: string | null;
+    delivery_mode?: AssignmentDeliveryMode;
     evaluation_type: AssignmentEvaluationType;
     rubric_scale?: number | null;
     total_marks?: number | null;
@@ -97,6 +107,7 @@ export interface AssignmentUpdatePayload {
     instructions?: string;
     starts_at?: string | null;
     due_at?: string | null;
+    delivery_mode?: AssignmentDeliveryMode;
     evaluation_type?: AssignmentEvaluationType;
     rubric_scale?: number | null;
     total_marks?: number | null;
@@ -111,6 +122,7 @@ export interface AssignmentFilters {
     cohort_subject?: number;
     instructor?: number;
     status?: AssignmentStatus;
+    delivery_mode?: AssignmentDeliveryMode;
     evaluation_type?: AssignmentEvaluationType;
     starts_at_after?: string;
     starts_at_before?: string;
@@ -244,6 +256,170 @@ export interface AssignmentEvaluationFilters {
     page_size?: number;
 }
 
+export interface AssignmentGroup {
+    id: number;
+    assignment: number;
+    name: string;
+    notes?: string;
+    member_count?: number;
+    submission_count?: number;
+    evaluation_count?: number;
+    members?: AssignmentGroupMember[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AssignmentGroupMember {
+    id: number;
+    assignment: number;
+    group: number;
+    student: number;
+    student_name: string;
+    admission_number: string;
+    joined_at: string;
+}
+
+export interface AssignmentGroupCreatePayload {
+    name: string;
+    notes?: string;
+    student_ids?: number[];
+}
+
+export interface AssignmentGroupUpdatePayload {
+    name?: string;
+    notes?: string;
+}
+
+export interface AssignmentGroupCreateResponse {
+    created_count: number;
+    existing_count: number;
+    member_created_count: number;
+    member_existing_count: number;
+    groups: AssignmentGroup[];
+}
+
+export interface AssignmentGroupMemberCreatePayload {
+    student_id: number;
+}
+
+export type AssignmentGroupSubmissionStatus = AssignmentSubmissionStatus;
+
+export interface AssignmentGroupSubmission {
+    id: number;
+    group: number;
+    assignment: number;
+    group_name: string;
+    submitted_at: string;
+    text_response: string;
+    attachment_metadata: unknown[];
+    status: AssignmentGroupSubmissionStatus;
+    created_at: string;
+    updated_at: string;
+    is_late?: boolean;
+}
+
+export interface AssignmentGroupSubmissionCreatePayload {
+    submitted_at?: string;
+    text_response?: string;
+    attachment_metadata?: unknown[];
+    status?: AssignmentGroupSubmissionStatus;
+}
+
+export interface AssignmentGroupMemberEvaluationOverride {
+    id: number;
+    group_member?: number | null;
+    student: number;
+    student_id?: number;
+    student_name: string;
+    admission_number: string;
+    evaluation_type?: AssignmentEvaluationType | null;
+    numeric_score?: number | null;
+    rubric_level?: number | null;
+    rubric_level_code?: string | null;
+    rubric_level_label?: string | null;
+    narrative?: string;
+    competency_state?: string | null;
+    exclude_from_evidence?: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AssignmentGroupMemberEvaluationOverridePayload {
+    group_member?: number;
+    student_id?: number;
+    numeric_score?: number | null;
+    rubric_level?: number | null;
+    narrative?: string;
+    competency_state?: string | null;
+    exclude_from_evidence?: boolean;
+}
+
+export interface AssignmentGroupEvaluation {
+    id: number;
+    group_submission: number;
+    assignment: number;
+    group: number;
+    group_name: string;
+    evaluated_by: number;
+    evaluated_at: string;
+    evaluation_type: AssignmentEvaluationType;
+    numeric_score: number | null;
+    rubric_level: number | null;
+    rubric_level_code: string | null;
+    rubric_level_label: string | null;
+    narrative: string;
+    competency_state: string | null;
+    projection_mode: AssignmentEvidenceProjectionMode;
+    member_overrides?: AssignmentGroupMemberEvaluationOverride[];
+    evidence_created?: boolean;
+    evidence_record_ids?: number[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AssignmentGroupEvaluationCreatePayload {
+    group_submission: number;
+    evaluation_type?: AssignmentEvaluationType;
+    numeric_score?: number | null;
+    rubric_level?: number | null;
+    narrative?: string;
+    competency_state?: string | null;
+    projection_mode?: AssignmentEvidenceProjectionMode;
+    member_overrides?: AssignmentGroupMemberEvaluationOverridePayload[];
+}
+
+export interface AssignmentGroupEvaluationUpdatePayload {
+    evaluation_type?: AssignmentEvaluationType;
+    numeric_score?: number | null;
+    rubric_level?: number | null;
+    narrative?: string;
+    competency_state?: string | null;
+    projection_mode?: AssignmentEvidenceProjectionMode;
+    member_overrides?: AssignmentGroupMemberEvaluationOverridePayload[];
+}
+
+export interface AssignmentGroupEvaluationFilters {
+    assignment?: number;
+    group?: number;
+    group_submission?: number;
+    evaluation_type?: AssignmentEvaluationType;
+    projection_mode?: AssignmentEvidenceProjectionMode;
+    page?: number;
+    page_size?: number;
+}
+
+export type AssignmentGroupEvidenceBridgeStatus = 'created' | 'existing' | 'skipped';
+
+export interface AssignmentGroupEvidenceBridgeResponse {
+    status: AssignmentGroupEvidenceBridgeStatus;
+    created_count: number;
+    existing_count: number;
+    skipped_count: number;
+    evidence_record_ids: number[];
+    skipped_member_ids: number[];
+    detail: string;
+}
+
 export type AssignmentListResponse = Assignment[] | PaginatedResponse<Assignment>;
 export type AssignmentRecipientListResponse =
     | AssignmentRecipient[]
@@ -254,3 +430,12 @@ export type AssignmentSubmissionListResponse =
 export type AssignmentEvaluationListResponse =
     | AssignmentEvaluation[]
     | PaginatedResponse<AssignmentEvaluation>;
+export type AssignmentGroupListResponse =
+    | AssignmentGroup[]
+    | PaginatedResponse<AssignmentGroup>;
+export type AssignmentGroupSubmissionListResponse =
+    | AssignmentGroupSubmission[]
+    | PaginatedResponse<AssignmentGroupSubmission>;
+export type AssignmentGroupEvaluationListResponse =
+    | AssignmentGroupEvaluation[]
+    | PaginatedResponse<AssignmentGroupEvaluation>;

@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
 import {
+    getAssignmentDeliveryBadgeVariant,
     formatDate,
     getAssignmentEvaluationBadgeVariant,
     getAssignmentStatusBadgeVariant,
@@ -33,7 +34,12 @@ import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic
 import { useAssignments } from '@/app/core/hooks/useAssignments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAuth } from '@/app/context/AuthContext';
-import type { Assignment, AssignmentEvaluationType, AssignmentStatus } from '@/app/core/types/assignments';
+import type {
+    Assignment,
+    AssignmentDeliveryMode,
+    AssignmentEvaluationType,
+    AssignmentStatus,
+} from '@/app/core/types/assignments';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -50,6 +56,12 @@ const EVALUATION_OPTIONS: Array<{ value: string; label: string }> = [
     { value: 'RUBRIC', label: 'Rubric' },
     { value: 'DESCRIPTIVE', label: 'Descriptive' },
     { value: 'COMPETENCY', label: 'Competency' },
+];
+
+const DELIVERY_MODE_OPTIONS: Array<{ value: string; label: string }> = [
+    { value: '', label: 'All Delivery Modes' },
+    { value: 'INDIVIDUAL', label: 'Individual' },
+    { value: 'GROUP', label: 'Group' },
 ];
 
 function AssignmentSummary({
@@ -70,6 +82,9 @@ function AssignmentSummary({
                         <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)} size="sm">
                             {assignment.status}
                         </Badge>
+                        <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)} size="sm">
+                            {assignment.delivery_mode}
+                        </Badge>
                         <Badge variant={getAssignmentEvaluationBadgeVariant(assignment.evaluation_type)} size="sm">
                             {assignment.evaluation_type}
                         </Badge>
@@ -80,22 +95,45 @@ function AssignmentSummary({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                    <div>
-                        <span className="font-medium text-gray-900">{assignment.recipients_count}</span>
-                        <span className="ml-1">recipients</span>
-                    </div>
-                    <div>
-                        <span className="font-medium text-gray-900">{assignment.submissions_count}</span>
-                        <span className="ml-1">submissions</span>
-                    </div>
-                    <div>
-                        <span className="font-medium text-gray-900">{assignment.reviewed_count}</span>
-                        <span className="ml-1">reviewed</span>
-                    </div>
-                    <div>
-                        <span className="font-medium text-gray-900">{assignment.missing_count}</span>
-                        <span className="ml-1">missing</span>
-                    </div>
+                    {assignment.delivery_mode === 'GROUP' ? (
+                        <>
+                            <div>
+                                <span className="font-medium text-gray-900">{assignment.group_count || '0'}</span>
+                                <span className="ml-1">groups</span>
+                            </div>
+                            <div>
+                                <span className="font-medium text-gray-900">{assignment.group_submission_count}</span>
+                                <span className="ml-1">submissions</span>
+                            </div>
+                            <div>
+                                <span className="font-medium text-gray-900">{assignment.group_evaluation_count}</span>
+                                <span className="ml-1">evaluations</span>
+                            </div>
+                            <div>
+                                <span className="font-medium text-gray-900">Group workflow</span>
+                                <span className="ml-1">active</span>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div>
+                                <span className="font-medium text-gray-900">{assignment.recipients_count}</span>
+                                <span className="ml-1">recipients</span>
+                            </div>
+                            <div>
+                                <span className="font-medium text-gray-900">{assignment.submissions_count}</span>
+                                <span className="ml-1">submissions</span>
+                            </div>
+                            <div>
+                                <span className="font-medium text-gray-900">{assignment.reviewed_count}</span>
+                                <span className="ml-1">reviewed</span>
+                            </div>
+                            <div>
+                                <span className="font-medium text-gray-900">{assignment.missing_count}</span>
+                                <span className="ml-1">missing</span>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="flex flex-col gap-2 sm:flex-row">
@@ -142,6 +180,12 @@ export default function CohortAssignmentsPage() {
             ? (evaluationType as AssignmentEvaluationType)
             : '';
     });
+    const [deliveryModeFilter, setDeliveryModeFilter] = useState<AssignmentDeliveryMode | ''>(() => {
+        const deliveryMode = searchParams.get('delivery_mode');
+        return deliveryMode && DELIVERY_MODE_OPTIONS.some((option) => option.value === deliveryMode)
+            ? (deliveryMode as AssignmentDeliveryMode)
+            : '';
+    });
     const [cohortSubjectFilter, setCohortSubjectFilter] = useState<string>(
         searchParams.get('cohort_subject') ?? ''
     );
@@ -184,6 +228,7 @@ export default function CohortAssignmentsPage() {
         cohort: cohortId,
         cohort_subject: cohortSubjectFilter ? Number(cohortSubjectFilter) : undefined,
         status: statusFilter || undefined,
+        delivery_mode: deliveryModeFilter || undefined,
         evaluation_type: evaluationTypeFilter || undefined,
         search: deferredSearch.trim() || undefined,
     }, {
@@ -215,6 +260,9 @@ export default function CohortAssignmentsPage() {
         if (statusFilter) {
             nextSearchParams.set('status', statusFilter);
         }
+        if (deliveryModeFilter) {
+            nextSearchParams.set('delivery_mode', deliveryModeFilter);
+        }
         if (evaluationTypeFilter) {
             nextSearchParams.set('evaluation_type', evaluationTypeFilter);
         }
@@ -226,7 +274,7 @@ export default function CohortAssignmentsPage() {
         return query
             ? `/academic/cohorts/${cohortId}/assignments?${query}`
             : `/academic/cohorts/${cohortId}/assignments`;
-    }, [cohortId, cohortSubjectFilter, evaluationTypeFilter, search, statusFilter]);
+    }, [cohortId, cohortSubjectFilter, deliveryModeFilter, evaluationTypeFilter, search, statusFilter]);
     const buildAssignmentDetailHref = (nextAssignmentId: number) =>
         `/academic/cohorts/${cohortId}/assignments/${nextAssignmentId}?${new URLSearchParams({
             returnTo: assignmentsHref,
@@ -240,11 +288,23 @@ export default function CohortAssignmentsPage() {
         [assignments]
     );
     const reviewedTotal = useMemo(
-        () => assignments.reduce((count, assignment) => count + assignment.reviewed_count, 0),
+        () => assignments.reduce((count, assignment) => (
+            count + (
+                assignment.delivery_mode === 'GROUP'
+                    ? assignment.group_evaluation_count
+                    : assignment.reviewed_count
+            )
+        ), 0),
         [assignments]
     );
     const submissionTotal = useMemo(
-        () => assignments.reduce((count, assignment) => count + assignment.submissions_count, 0),
+        () => assignments.reduce((count, assignment) => (
+            count + (
+                assignment.delivery_mode === 'GROUP'
+                    ? assignment.group_submission_count
+                    : assignment.submissions_count
+            )
+        ), 0),
         [assignments]
     );
 
@@ -362,7 +422,7 @@ export default function CohortAssignmentsPage() {
                         Filters
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-4">
+                    <div className="grid gap-4 lg:grid-cols-5">
                         <div className="lg:col-span-2">
                             <label className="mb-1 block text-sm font-medium text-gray-700">Search</label>
                             <div className="relative">
@@ -397,6 +457,14 @@ export default function CohortAssignmentsPage() {
                                 options={STATUS_OPTIONS}
                             />
                             <Select
+                                label="Delivery Mode"
+                                value={deliveryModeFilter}
+                                onChange={(event) => setDeliveryModeFilter(event.target.value as AssignmentDeliveryMode | '')}
+                                options={DELIVERY_MODE_OPTIONS}
+                            />
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                            <Select
                                 label="Evaluation"
                                 value={evaluationTypeFilter}
                                 onChange={(event) => setEvaluationTypeFilter(event.target.value as AssignmentEvaluationType | '')}
@@ -410,7 +478,7 @@ export default function CohortAssignmentsPage() {
             {isInstructor && visibleCohortSubjects.length === 0 ? (
                 <Card>
                     <p className="text-sm text-gray-600">
-                        No cohort subjects from your teaching load are available for assignment management in this cohort.
+                        You do not have an assigned subject in this cohort.
                     </p>
                 </Card>
             ) : null}
@@ -423,7 +491,7 @@ export default function CohortAssignmentsPage() {
                         <ClipboardList className="mx-auto h-12 w-12 text-gray-300" />
                         <h2 className="mt-3 text-lg font-semibold text-gray-900">No assignments found</h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            {search || statusFilter || evaluationTypeFilter || cohortSubjectFilter
+                            {search || statusFilter || deliveryModeFilter || evaluationTypeFilter || cohortSubjectFilter
                                 ? 'Adjust the current filters to widen the results.'
                                 : 'Create the first cohort-subject assignment from this cohort workspace.'}
                         </p>
@@ -451,6 +519,7 @@ export default function CohortAssignmentsPage() {
                                         <TableHead>Assignment</TableHead>
                                         <TableHead>Subject</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead>Delivery</TableHead>
                                         <TableHead>Evaluation</TableHead>
                                         <TableHead>Due</TableHead>
                                         <TableHead>Progress</TableHead>
@@ -480,6 +549,11 @@ export default function CohortAssignmentsPage() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
+                                                <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)}>
+                                                    {assignment.delivery_mode}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
                                                 <Badge variant={getAssignmentEvaluationBadgeVariant(assignment.evaluation_type)}>
                                                     {assignment.evaluation_type}
                                                 </Badge>
@@ -495,12 +569,27 @@ export default function CohortAssignmentsPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="text-sm text-gray-900">
-                                                    {assignment.reviewed_count}/{assignment.submissions_count} reviewed
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {assignment.recipients_count} recipients · {assignment.missing_count} missing
-                                                </div>
+                                                {assignment.delivery_mode === 'GROUP' ? (
+                                                    <>
+                                                        <div className="text-sm text-gray-900">
+                                                            {assignment.group_evaluation_count}/{assignment.group_submission_count} evaluated
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {assignment.group_count > 0
+                                                                ? `${assignment.group_count} groups`
+                                                                : 'Group workflow'}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="text-sm text-gray-900">
+                                                            {assignment.reviewed_count}/{assignment.submissions_count} reviewed
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {assignment.recipients_count} recipients · {assignment.missing_count} missing
+                                                        </div>
+                                                    </>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-2">

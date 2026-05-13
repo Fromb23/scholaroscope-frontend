@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+    assignmentGroupAPI,
+    assignmentGroupEvaluationAPI,
     assignmentEvaluationAPI,
     assignmentRecipientAPI,
     assignmentsAPI,
@@ -18,6 +20,18 @@ import type {
     AssignmentEvaluationFilters,
     AssignmentEvaluationUpdatePayload,
     AssignmentFilters,
+    AssignmentGroup,
+    AssignmentGroupCreatePayload,
+    AssignmentGroupCreateResponse,
+    AssignmentGroupEvidenceBridgeResponse,
+    AssignmentGroupEvaluation,
+    AssignmentGroupEvaluationCreatePayload,
+    AssignmentGroupEvaluationFilters,
+    AssignmentGroupEvaluationUpdatePayload,
+    AssignmentGroupMemberCreatePayload,
+    AssignmentGroupSubmission,
+    AssignmentGroupSubmissionCreatePayload,
+    AssignmentGroupUpdatePayload,
     AssignmentPublishPayload,
     AssignmentPublishResponse,
     AssignmentRecipient,
@@ -91,6 +105,32 @@ async function invalidateAssignmentDependencies(
         assignmentId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.evaluationsPrefix(assignmentId) })
             : Promise.resolve(),
+        assignmentId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groups(assignmentId) })
+            : Promise.resolve(),
+        assignmentId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupEvaluationsPrefix(assignmentId) })
+            : Promise.resolve(),
+    ]);
+}
+
+async function invalidateAssignmentGroupDependencies(
+    queryClient: ReturnType<typeof useQueryClient>,
+    assignmentId?: number | null,
+    groupId?: number | null,
+    evaluationId?: number | null,
+) {
+    await Promise.all([
+        invalidateAssignmentDependencies(queryClient, assignmentId),
+        groupId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupDetail(groupId) })
+            : Promise.resolve(),
+        groupId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupSubmissions(groupId) })
+            : Promise.resolve(),
+        evaluationId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupEvaluationDetail(evaluationId) })
+            : Promise.resolve(),
     ]);
 }
 
@@ -103,6 +143,7 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
         cohort_subject: filters?.cohort_subject,
         instructor: filters?.instructor,
         status: filters?.status,
+        delivery_mode: filters?.delivery_mode,
         evaluation_type: filters?.evaluation_type,
         starts_at_after: filters?.starts_at_after,
         starts_at_before: filters?.starts_at_before,
@@ -116,6 +157,7 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
         filters?.cohort,
         filters?.due_at_after,
         filters?.due_at_before,
+        filters?.delivery_mode,
         filters?.evaluation_type,
         filters?.instructor,
         filters?.ordering,
@@ -205,6 +247,63 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
     };
 }
 
+export function useAssignmentGroups(assignmentId: number | null, options?: UseAssignmentsOptions) {
+    const enabled = (options?.enabled ?? true) && typeof assignmentId === 'number' && assignmentId > 0;
+
+    const query = useQuery<AssignmentGroup[], Error>({
+        queryKey: assignmentKeys.groups(assignmentId),
+        queryFn: async () => {
+            if (!assignmentId) {
+                throw new Error('Assignment id is required.');
+            }
+
+            try {
+                const response = await assignmentsAPI.listAssignmentGroups(assignmentId);
+                return unwrapList(response);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment groups.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        groups: query.data ?? [],
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
+export function useAssignmentGroupDetail(groupId: number | null, options?: UseAssignmentsOptions) {
+    const enabled = (options?.enabled ?? true) && typeof groupId === 'number' && groupId > 0;
+
+    const query = useQuery<AssignmentGroup, Error>({
+        queryKey: assignmentKeys.groupDetail(groupId),
+        queryFn: async () => {
+            if (!groupId) {
+                throw new Error('Assignment group id is required.');
+            }
+
+            try {
+                return await assignmentGroupAPI.getById(groupId);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment group.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        group: query.data ?? null,
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
 export function useAssignmentRecipients(assignmentId: number | null, options?: UseAssignmentsOptions) {
     const enabled = (options?.enabled ?? true) && typeof assignmentId === 'number' && assignmentId > 0;
 
@@ -249,6 +348,35 @@ export function useAssignmentSubmissions(assignmentId: number | null, options?: 
                 return unwrapList(response);
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment submissions.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        submissions: query.data ?? [],
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
+export function useAssignmentGroupSubmissions(groupId: number | null, options?: UseAssignmentsOptions) {
+    const enabled = (options?.enabled ?? true) && typeof groupId === 'number' && groupId > 0;
+
+    const query = useQuery<AssignmentGroupSubmission[], Error>({
+        queryKey: assignmentKeys.groupSubmissions(groupId),
+        queryFn: async () => {
+            if (!groupId) {
+                throw new Error('Assignment group id is required.');
+            }
+
+            try {
+                const response = await assignmentGroupAPI.listSubmissions(groupId);
+                return unwrapList(response);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load group submissions.'));
             }
         },
         enabled,
@@ -313,6 +441,56 @@ export function useAssignmentEvaluations(
     };
 }
 
+export function useAssignmentGroupEvaluations(
+    filters?: AssignmentGroupEvaluationFilters,
+    options?: UseAssignmentsOptions
+) {
+    const enabled = options?.enabled ?? true;
+    const normalizedFilters = useMemo(() => compactFilters({
+        assignment: filters?.assignment,
+        group: filters?.group,
+        group_submission: filters?.group_submission,
+        evaluation_type: filters?.evaluation_type,
+        projection_mode: filters?.projection_mode,
+        page: filters?.page,
+        page_size: filters?.page_size,
+    }), [
+        filters?.assignment,
+        filters?.evaluation_type,
+        filters?.group,
+        filters?.group_submission,
+        filters?.page,
+        filters?.page_size,
+        filters?.projection_mode,
+    ]);
+
+    const query = useQuery<AssignmentGroupEvaluation[], Error>({
+        queryKey: assignmentKeys.groupEvaluations(
+            typeof filters?.assignment === 'number' ? filters.assignment : null,
+            normalizedFilters
+        ),
+        queryFn: async () => {
+            try {
+                const response = await assignmentGroupEvaluationAPI.list(
+                    normalizedFilters as AssignmentGroupEvaluationFilters
+                );
+                return unwrapList(response);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load group evaluations.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        evaluations: query.data ?? [],
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
 export function useAssignmentEvaluationDetail(
     evaluationId: number | null,
     options?: UseAssignmentsOptions
@@ -330,6 +508,37 @@ export function useAssignmentEvaluationDetail(
                 return await assignmentEvaluationAPI.getById(evaluationId);
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment evaluation.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        evaluation: query.data ?? null,
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
+export function useAssignmentGroupEvaluationDetail(
+    evaluationId: number | null,
+    options?: UseAssignmentsOptions
+) {
+    const enabled = (options?.enabled ?? true) && typeof evaluationId === 'number' && evaluationId > 0;
+
+    const query = useQuery<AssignmentGroupEvaluation, Error>({
+        queryKey: assignmentKeys.groupEvaluationDetail(evaluationId),
+        queryFn: async () => {
+            if (!evaluationId) {
+                throw new Error('Group evaluation id is required.');
+            }
+
+            try {
+                return await assignmentGroupEvaluationAPI.getById(evaluationId);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load group evaluation.'));
             }
         },
         enabled,
@@ -492,6 +701,128 @@ export function useReopenAssignment() {
     });
 }
 
+export function useCreateAssignmentGroup(assignmentId: number | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: AssignmentGroupCreatePayload) => {
+            if (!assignmentId) {
+                throw new Error('Assignment id is required.');
+            }
+
+            try {
+                return await assignmentsAPI.createAssignmentGroup(assignmentId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to create assignment group.'));
+            }
+        },
+        onSuccess: async (result: AssignmentGroupCreateResponse) => {
+            const firstGroup = result.groups[0] ?? null;
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                assignmentId ?? firstGroup?.assignment ?? null,
+                firstGroup?.id ?? null
+            );
+        },
+    });
+}
+
+export function useUpdateAssignmentGroup() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            groupId,
+            data,
+        }: {
+            groupId: number;
+            data: AssignmentGroupUpdatePayload;
+        }) => {
+            try {
+                return await assignmentGroupAPI.update(groupId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update assignment group.'));
+            }
+        },
+        onSuccess: async (group) => {
+            await invalidateAssignmentGroupDependencies(queryClient, group.assignment, group.id);
+        },
+    });
+}
+
+export function useDeleteAssignmentGroup() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            assignmentId,
+            groupId,
+        }: {
+            assignmentId: number;
+            groupId: number;
+        }) => {
+            try {
+                await assignmentGroupAPI.delete(groupId);
+                return { assignmentId, groupId };
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete assignment group.'));
+            }
+        },
+        onSuccess: async ({ assignmentId, groupId }) => {
+            await invalidateAssignmentGroupDependencies(queryClient, assignmentId, groupId);
+        },
+    });
+}
+
+export function useAddAssignmentGroupMember() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            groupId,
+            data,
+        }: {
+            groupId: number;
+            data: AssignmentGroupMemberCreatePayload;
+        }) => {
+            try {
+                return await assignmentGroupAPI.addMember(groupId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to add learner to group.'));
+            }
+        },
+        onSuccess: async (group) => {
+            await invalidateAssignmentGroupDependencies(queryClient, group.assignment, group.id);
+        },
+    });
+}
+
+export function useRemoveAssignmentGroupMember() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            assignmentId,
+            groupId,
+            studentId,
+        }: {
+            assignmentId: number;
+            groupId: number;
+            studentId: number;
+        }) => {
+            try {
+                await assignmentGroupAPI.removeMember(groupId, studentId);
+                return { assignmentId, groupId };
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to remove learner from group.'));
+            }
+        },
+        onSuccess: async ({ assignmentId, groupId }) => {
+            await invalidateAssignmentGroupDependencies(queryClient, assignmentId, groupId);
+        },
+    });
+}
+
 export function useCreateAssignmentRecipients(assignmentId: number | null) {
     const queryClient = useQueryClient();
 
@@ -547,6 +878,29 @@ export function useCreateAssignmentSubmission() {
     });
 }
 
+export function useCreateAssignmentGroupSubmission() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            groupId,
+            data,
+        }: {
+            groupId: number;
+            data: AssignmentGroupSubmissionCreatePayload;
+        }) => {
+            try {
+                return await assignmentGroupAPI.createSubmission(groupId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to record group submission.'));
+            }
+        },
+        onSuccess: async (submission) => {
+            await invalidateAssignmentGroupDependencies(queryClient, submission.assignment, submission.group);
+        },
+    });
+}
+
 export function useCreateAssignmentEvaluation() {
     const queryClient = useQueryClient();
 
@@ -593,6 +947,56 @@ export function useUpdateAssignmentEvaluation() {
     });
 }
 
+export function useCreateAssignmentGroupEvaluation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: AssignmentGroupEvaluationCreatePayload) => {
+            try {
+                return await assignmentGroupEvaluationAPI.create(data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to create group evaluation.'));
+            }
+        },
+        onSuccess: async (evaluation) => {
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                evaluation.assignment,
+                evaluation.group,
+                evaluation.id
+            );
+        },
+    });
+}
+
+export function useUpdateAssignmentGroupEvaluation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            id,
+            data,
+        }: {
+            id: number;
+            data: AssignmentGroupEvaluationUpdatePayload;
+        }) => {
+            try {
+                return await assignmentGroupEvaluationAPI.update(id, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update group evaluation.'));
+            }
+        },
+        onSuccess: async (evaluation) => {
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                evaluation.assignment,
+                evaluation.group,
+                evaluation.id
+            );
+        },
+    });
+}
+
 export function useBridgeAssignmentEvaluation() {
     const queryClient = useQueryClient();
 
@@ -612,6 +1016,32 @@ export function useBridgeAssignmentEvaluation() {
             await queryClient.invalidateQueries({
                 queryKey: assignmentKeys.evaluationDetail(variables.evaluationId),
             });
+        },
+    });
+}
+
+export function useBridgeAssignmentGroupEvaluation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (variables: {
+            assignmentId: number;
+            groupId: number;
+            evaluationId: number;
+        }): Promise<AssignmentGroupEvidenceBridgeResponse> => {
+            try {
+                return await assignmentGroupEvaluationAPI.bridgeToEvidence(variables.evaluationId);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to bridge group evaluation to evidence.'));
+            }
+        },
+        onSuccess: async (_, variables) => {
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                variables.assignmentId,
+                variables.groupId,
+                variables.evaluationId
+            );
         },
     });
 }

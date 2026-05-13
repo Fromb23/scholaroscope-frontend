@@ -13,6 +13,7 @@ import { useRubricScales } from '@/app/core/hooks/useAssessments';
 import type { CohortSubject } from '@/app/core/types/academic';
 import type {
     Assignment,
+    AssignmentDeliveryMode,
     AssignmentCreatePayload,
     AssignmentEvaluationType,
     AssignmentOutcomeCreatePayload,
@@ -48,6 +49,11 @@ const RECIPIENT_MODE_OPTIONS: Array<{ value: AssignmentRecipientMode; label: str
     { value: 'none', label: 'Draft only' },
     { value: 'ALL_ACTIVE_COHORT_LEARNERS', label: 'All active cohort learners' },
     { value: 'EXPLICIT_STUDENTS', label: 'Explicit learner selection' },
+];
+
+const DELIVERY_MODE_OPTIONS: Array<{ value: AssignmentDeliveryMode; label: string }> = [
+    { value: 'INDIVIDUAL', label: 'Individual learners' },
+    { value: 'GROUP', label: 'Group work' },
 ];
 
 function toDateTimeLocalValue(value: string | null | undefined): string {
@@ -103,6 +109,7 @@ export function AssignmentCreateModal({
     const [instructions, setInstructions] = useState('');
     const [startsAt, setStartsAt] = useState('');
     const [dueAt, setDueAt] = useState('');
+    const [deliveryMode, setDeliveryMode] = useState<AssignmentDeliveryMode>('INDIVIDUAL');
     const [evaluationType, setEvaluationType] = useState<AssignmentEvaluationType>('NUMERIC');
     const [totalMarks, setTotalMarks] = useState('');
     const [rubricScaleId, setRubricScaleId] = useState('');
@@ -121,6 +128,7 @@ export function AssignmentCreateModal({
         setInstructions(assignment?.instructions ?? '');
         setStartsAt(toDateTimeLocalValue(assignment?.starts_at));
         setDueAt(toDateTimeLocalValue(assignment?.due_at));
+        setDeliveryMode(assignment?.delivery_mode ?? 'INDIVIDUAL');
         setEvaluationType(assignment?.evaluation_type ?? 'NUMERIC');
         setTotalMarks(assignment?.total_marks != null ? String(assignment.total_marks) : '');
         setRubricScaleId(assignment?.rubric_scale != null ? String(assignment.rubric_scale) : '');
@@ -251,7 +259,7 @@ export function AssignmentCreateModal({
             return;
         }
 
-        if (publishNow && recipientMode === 'none') {
+        if (deliveryMode === 'INDIVIDUAL' && publishNow && recipientMode === 'none') {
             setFormError('Choose recipients before publishing the assignment.');
             return;
         }
@@ -267,6 +275,7 @@ export function AssignmentCreateModal({
             instructions: instructions.trim(),
             starts_at: fromDateTimeLocalValue(startsAt),
             due_at: fromDateTimeLocalValue(dueAt),
+            delivery_mode: deliveryMode,
             evaluation_type: evaluationType,
             total_marks: evaluationType === 'NUMERIC' && totalMarks ? Number(totalMarks) : null,
             rubric_scale: evaluationType === 'RUBRIC' && rubricScaleId ? Number(rubricScaleId) : null,
@@ -286,8 +295,10 @@ export function AssignmentCreateModal({
             } else {
                 const payload: AssignmentCreatePayload = {
                     ...basePayload,
-                    recipient_mode: recipientMode,
-                    student_ids: recipientMode === 'EXPLICIT_STUDENTS' ? selectedStudentIds : undefined,
+                    recipient_mode: deliveryMode === 'INDIVIDUAL' ? recipientMode : undefined,
+                    student_ids: deliveryMode === 'INDIVIDUAL' && recipientMode === 'EXPLICIT_STUDENTS'
+                        ? selectedStudentIds
+                        : undefined,
                     publish_now: publishNow,
                 };
                 savedAssignment = await createMutation.mutateAsync(payload);
@@ -312,6 +323,12 @@ export function AssignmentCreateModal({
                     <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
                 ) : null}
 
+                {sortedSubjects.length === 0 ? (
+                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                        You do not have an assigned subject in this cohort.
+                    </div>
+                ) : null}
+
                 <div className="grid gap-4 md:grid-cols-2">
                     <Select
                         label="Cohort Subject"
@@ -334,6 +351,13 @@ export function AssignmentCreateModal({
                         placeholder="Assignment title"
                     />
                 </div>
+
+                <Select
+                    label="Delivery Mode"
+                    value={deliveryMode}
+                    onChange={(event) => setDeliveryMode(event.target.value as AssignmentDeliveryMode)}
+                    options={DELIVERY_MODE_OPTIONS}
+                />
 
                 <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Instructions</label>
@@ -403,23 +427,39 @@ export function AssignmentCreateModal({
                     </div>
                 ) : null}
 
+                {deliveryMode === 'GROUP' ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                        Group assignments are published to the assignment workspace. Add groups and members after creating the assignment.
+                    </div>
+                ) : null}
+
                 {!isEditMode ? (
                     <div className="space-y-4 rounded-lg border border-gray-200 p-4">
                         <div className="space-y-1">
-                            <h3 className="text-sm font-semibold text-gray-900">Recipients</h3>
+                            <h3 className="text-sm font-semibold text-gray-900">
+                                {deliveryMode === 'GROUP' ? 'Publishing' : 'Recipients'}
+                            </h3>
                             <p className="text-sm text-gray-500">
-                                Keep the assignment as a draft, assign all active cohort learners, or target explicit learners.
+                                {deliveryMode === 'GROUP'
+                                    ? 'Publish the assignment workspace now, then organize groups and members from the assignment detail page.'
+                                    : 'Keep the assignment as a draft, assign all active cohort learners, or target explicit learners.'}
                             </p>
                         </div>
 
-                        <Select
-                            label="Recipient Mode"
-                            value={recipientMode}
-                            onChange={(event) => setRecipientMode(event.target.value as AssignmentRecipientMode)}
-                            options={RECIPIENT_MODE_OPTIONS}
-                        />
+                        {deliveryMode === 'INDIVIDUAL' ? (
+                            <Select
+                                label="Recipient Mode"
+                                value={recipientMode}
+                                onChange={(event) => setRecipientMode(event.target.value as AssignmentRecipientMode)}
+                                options={RECIPIENT_MODE_OPTIONS}
+                            />
+                        ) : (
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                                Group assignments do not create learner recipients during creation.
+                            </div>
+                        )}
 
-                        {recipientMode === 'EXPLICIT_STUDENTS' ? (
+                        {deliveryMode === 'INDIVIDUAL' && recipientMode === 'EXPLICIT_STUDENTS' ? (
                             <div className="space-y-3">
                                 <Input
                                     label="Find Learners"
@@ -472,7 +512,9 @@ export function AssignmentCreateModal({
                             <div>
                                 <div className="text-sm font-medium text-gray-900">Publish immediately</div>
                                 <p className="text-sm text-gray-500">
-                                    Publish after creation using the selected recipient mode.
+                                    {deliveryMode === 'GROUP'
+                                        ? 'Publish after creation without creating learner recipients.'
+                                        : 'Publish after creation using the selected recipient mode.'}
                                 </p>
                             </div>
                         </label>

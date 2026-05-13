@@ -6,9 +6,15 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/assignments/[assignmentId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/assignments/[assignmentId]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/assignments/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/assignments/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/assignments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/assignments.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assignments/AssignmentCreateModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assignments/AssignmentCreateModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assignments/AssignmentPublishModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assignments/AssignmentPublishModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assignments/assignmentUtils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assignments/assignmentUtils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useAssignments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useAssignments.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/core/lib/queryKeys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/lib/queryKeys.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/assignments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/assignments.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -132,7 +138,8 @@
       <workItem from="1778580169096" duration="3729000" />
       <workItem from="1778586370030" duration="4461000" />
       <workItem from="1778626626223" duration="12217000" />
-      <workItem from="1778666862221" duration="6400000" />
+      <workItem from="1778666862221" duration="6712000" />
+      <workItem from="1778701366271" duration="4152000" />
     </task>
     <servers />
   </component>

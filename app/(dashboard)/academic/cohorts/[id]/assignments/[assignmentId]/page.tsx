@@ -23,9 +23,13 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
+import { AssignmentGroupEvaluationsPanel } from '@/app/core/components/assignments/AssignmentGroupEvaluationsPanel';
+import { AssignmentGroupsPanel } from '@/app/core/components/assignments/AssignmentGroupsPanel';
 import { AssignmentPublishModal } from '@/app/core/components/assignments/AssignmentPublishModal';
 import { AssignmentReviewForm } from '@/app/core/components/assignments/AssignmentReviewForm';
+import { AssignmentGroupSubmissionsPanel } from '@/app/core/components/assignments/AssignmentGroupSubmissionsPanel';
 import {
+    getAssignmentDeliveryBadgeVariant,
     formatDateTime,
     getAssignmentEvaluationBadgeVariant,
     getAssignmentStatusBadgeVariant,
@@ -38,6 +42,7 @@ import {
     useArchiveAssignment,
     useAssignmentDetail,
     useAssignmentEvaluations,
+    useAssignmentGroups,
     useAssignmentRecipients,
     useAssignmentSubmissions,
     useBridgeAssignmentEvaluation,
@@ -50,7 +55,14 @@ import { useAuth } from '@/app/context/AuthContext';
 import type { AssignmentEvaluation } from '@/app/core/types/assignments';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 
-type DetailTab = 'overview' | 'recipients' | 'submissions' | 'evaluations';
+type DetailTab =
+    | 'overview'
+    | 'recipients'
+    | 'submissions'
+    | 'evaluations'
+    | 'groups'
+    | 'group-submissions'
+    | 'group-evaluations';
 
 function summarizeEvaluation(
     evaluation: AssignmentEvaluation,
@@ -121,15 +133,18 @@ export default function CohortAssignmentDetailPage() {
         enabled: isValidRoute,
     });
     const recipientsQuery = useAssignmentRecipients(assignment?.id ?? null, {
-        enabled: Boolean(assignment?.id),
+        enabled: Boolean(assignment?.id) && assignment?.delivery_mode === 'INDIVIDUAL',
     });
     const submissionsQuery = useAssignmentSubmissions(assignment?.id ?? null, {
-        enabled: Boolean(assignment?.id),
+        enabled: Boolean(assignment?.id) && assignment?.delivery_mode === 'INDIVIDUAL',
     });
     const evaluationsQuery = useAssignmentEvaluations({
         assignment: assignment?.id,
     }, {
-        enabled: Boolean(assignment?.id),
+        enabled: Boolean(assignment?.id) && assignment?.delivery_mode === 'INDIVIDUAL',
+    });
+    const groupsQuery = useAssignmentGroups(assignment?.id ?? null, {
+        enabled: Boolean(assignment?.id) && assignment?.delivery_mode === 'GROUP',
     });
     const rubricScaleQuery = useRubricScaleDetail(assignment?.rubric_scale ?? null);
     const closeMutation = useCloseAssignment();
@@ -161,11 +176,35 @@ export default function CohortAssignmentDetailPage() {
         || activeRole === 'ADMIN'
         || activeRole === 'INSTRUCTOR'
     );
+    const isGroupAssignment = assignment?.delivery_mode === 'GROUP';
+    const detailTabs = useMemo<Array<{ value: DetailTab; label: string }>>(() => (
+        isGroupAssignment
+            ? [
+                { value: 'overview', label: 'Overview' },
+                { value: 'groups', label: 'Groups' },
+                { value: 'group-submissions', label: 'Group Submissions' },
+                { value: 'group-evaluations', label: 'Group Evaluations' },
+            ]
+            : [
+                { value: 'overview', label: 'Overview' },
+                { value: 'recipients', label: 'Recipients' },
+                { value: 'submissions', label: 'Submissions' },
+                { value: 'evaluations', label: 'Evaluations' },
+            ]
+    ), [isGroupAssignment]);
 
     useEffect(() => {
         if (accessLoading || allowed || !activeRole) return;
         router.replace(roleHomeRoute[activeRole]);
     }, [accessLoading, activeRole, allowed, router]);
+
+    useEffect(() => {
+        if (detailTabs.some((tab) => tab.value === activeTab)) {
+            return;
+        }
+
+        setActiveTab('overview');
+    }, [activeTab, detailTabs]);
 
     if (!isValidRoute) {
         return (
@@ -292,6 +331,9 @@ export default function CohortAssignmentDetailPage() {
                                 <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)}>
                                     {assignment.status}
                                 </Badge>
+                                <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)}>
+                                    {assignment.delivery_mode}
+                                </Badge>
                                 <Badge variant={getAssignmentEvaluationBadgeVariant(assignment.evaluation_type)}>
                                     {assignment.evaluation_type}
                                 </Badge>
@@ -355,46 +397,77 @@ export default function CohortAssignmentDetailPage() {
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <StatsCard
-                    title="Recipients"
-                    value={assignment.recipients_count}
-                    icon={Users}
-                    color="blue"
-                />
-                <StatsCard
-                    title="Submissions"
-                    value={assignment.submissions_count}
-                    icon={ClipboardList}
-                    color="green"
-                />
-                <StatsCard
-                    title="Reviewed"
-                    value={assignment.reviewed_count}
-                    icon={FileCheck2}
-                    color="purple"
-                />
-                <StatsCard
-                    title="Missing"
-                    value={assignment.missing_count}
-                    icon={Clock}
-                    color={assignment.missing_count > 0 ? 'red' : 'yellow'}
-                />
+                {isGroupAssignment ? (
+                    <>
+                        <StatsCard
+                            title="Groups"
+                            value={assignment.group_count}
+                            icon={Users}
+                            color="blue"
+                        />
+                        <StatsCard
+                            title="Submissions"
+                            value={assignment.group_submission_count}
+                            icon={ClipboardList}
+                            color="green"
+                        />
+                        <StatsCard
+                            title="Evaluations"
+                            value={assignment.group_evaluation_count}
+                            icon={FileCheck2}
+                            color="purple"
+                        />
+                        <StatsCard
+                            title="Pending Review"
+                            value={Math.max(assignment.group_submission_count - assignment.group_evaluation_count, 0)}
+                            icon={Clock}
+                            color={assignment.group_submission_count > assignment.group_evaluation_count ? 'yellow' : 'green'}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <StatsCard
+                            title="Recipients"
+                            value={assignment.recipients_count}
+                            icon={Users}
+                            color="blue"
+                        />
+                        <StatsCard
+                            title="Submissions"
+                            value={assignment.submissions_count}
+                            icon={ClipboardList}
+                            color="green"
+                        />
+                        <StatsCard
+                            title="Reviewed"
+                            value={assignment.reviewed_count}
+                            icon={FileCheck2}
+                            color="purple"
+                        />
+                        <StatsCard
+                            title="Missing"
+                            value={assignment.missing_count}
+                            icon={Clock}
+                            color={assignment.missing_count > 0 ? 'red' : 'yellow'}
+                        />
+                    </>
+                )}
             </div>
 
             <Card>
                 <div className="flex flex-wrap gap-2">
-                    {(['overview', 'recipients', 'submissions', 'evaluations'] as DetailTab[]).map((tab) => (
+                    {detailTabs.map((tab) => (
                         <button
-                            key={tab}
+                            key={tab.value}
                             type="button"
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => setActiveTab(tab.value)}
                             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                                activeTab === tab
+                                activeTab === tab.value
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                         >
-                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            {tab.label}
                         </button>
                     ))}
                 </div>
@@ -417,6 +490,10 @@ export default function CohortAssignmentDetailPage() {
                                 <div className="text-sm font-medium text-gray-900">{assignment.instructor_name}</div>
                             </div>
                             <div className="space-y-1">
+                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Delivery Mode</div>
+                                <div className="text-sm font-medium text-gray-900">{assignment.delivery_mode}</div>
+                            </div>
+                            <div className="space-y-1">
                                 <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Starts At</div>
                                 <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.starts_at)}</div>
                             </div>
@@ -427,6 +504,14 @@ export default function CohortAssignmentDetailPage() {
                             <div className="space-y-1">
                                 <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Curriculum</div>
                                 <div className="text-sm font-medium text-gray-900">{assignment.curriculum_name}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Curriculum Type</div>
+                                <div className="text-sm font-medium text-gray-900">{assignment.curriculum_type}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Cohort Subject</div>
+                                <div className="text-sm font-medium text-gray-900">{assignment.cohort_subject}</div>
                             </div>
                             <div className="space-y-1">
                                 <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Evaluation</div>
@@ -444,6 +529,37 @@ export default function CohortAssignmentDetailPage() {
                                     {assignment.rubric_scale_name ?? 'Not used'}
                                 </div>
                             </div>
+                            <div className="space-y-1">
+                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Created</div>
+                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.created_at)}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Published</div>
+                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.published_at)}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Closed</div>
+                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.closed_at)}</div>
+                            </div>
+                            {assignment.created_from_session_title ? (
+                                <div className="space-y-1">
+                                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Created From Session</div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                        {assignment.created_from_session_title}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </Card>
+
+                    <Card>
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold text-gray-900">Delivery Workflow</h2>
+                            <p className="text-sm leading-6 text-gray-600">
+                                {assignment.delivery_mode === 'GROUP'
+                                    ? 'Group assignments record submissions and evaluations at group level. CBC evidence can be projected to group members when the evaluation projection mode allows it.'
+                                    : 'Individual assignments track learner recipients, learner submissions, and learner-level evaluations inside the selected cohort subject.'}
+                            </p>
                         </div>
                     </Card>
 
@@ -493,7 +609,9 @@ export default function CohortAssignmentDetailPage() {
                                 <div className="space-y-1">
                                     <h2 className="text-lg font-semibold text-gray-900">Publish Draft</h2>
                                     <p className="text-sm text-gray-500">
-                                        Publish this assignment to active cohort learners or an explicit learner list without leaving cohort context.
+                                        {assignment.delivery_mode === 'GROUP'
+                                            ? 'Publish this assignment workspace now, then create groups and add members from the Groups tab.'
+                                            : 'Publish this assignment to active cohort learners or an explicit learner list without leaving cohort context.'}
                                     </p>
                                 </div>
                                 <Button type="button" onClick={() => setPublishOpen(true)}>
@@ -506,7 +624,7 @@ export default function CohortAssignmentDetailPage() {
                 </div>
             ) : null}
 
-            {activeTab === 'recipients' ? (
+            {activeTab === 'recipients' && !isGroupAssignment ? (
                 <Card>
                     {recipientsQuery.loading ? (
                         <LoadingSpinner fullScreen={false} message="Loading recipients..." />
@@ -570,7 +688,7 @@ export default function CohortAssignmentDetailPage() {
                 </Card>
             ) : null}
 
-            {activeTab === 'submissions' ? (
+            {activeTab === 'submissions' && !isGroupAssignment ? (
                 <div className="space-y-4">
                     {submissionsQuery.loading ? (
                         <Card>
@@ -649,7 +767,7 @@ export default function CohortAssignmentDetailPage() {
                 </div>
             ) : null}
 
-            {activeTab === 'evaluations' ? (
+            {activeTab === 'evaluations' && !isGroupAssignment ? (
                 <div className="space-y-4">
                     {evaluationsQuery.loading ? (
                         <Card>
@@ -724,6 +842,34 @@ export default function CohortAssignmentDetailPage() {
                         })
                     )}
                 </div>
+            ) : null}
+
+            {activeTab === 'groups' && isGroupAssignment ? (
+                <AssignmentGroupsPanel
+                    assignment={assignment}
+                    cohortId={cohortId}
+                    groups={groupsQuery.groups}
+                    loading={groupsQuery.loading}
+                    error={groupsQuery.error}
+                    refetch={() => void groupsQuery.refetch()}
+                />
+            ) : null}
+
+            {activeTab === 'group-submissions' && isGroupAssignment ? (
+                <AssignmentGroupSubmissionsPanel
+                    assignment={assignment}
+                    groups={groupsQuery.groups}
+                    groupsLoading={groupsQuery.loading}
+                />
+            ) : null}
+
+            {activeTab === 'group-evaluations' && isGroupAssignment ? (
+                <AssignmentGroupEvaluationsPanel
+                    assignment={assignment}
+                    groups={groupsQuery.groups}
+                    groupsLoading={groupsQuery.loading}
+                    rubricLevels={rubricScaleQuery.scale?.levels ?? []}
+                />
             ) : null}
 
             <AssignmentCreateModal
