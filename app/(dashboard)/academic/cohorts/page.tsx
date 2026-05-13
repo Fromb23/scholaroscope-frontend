@@ -14,6 +14,7 @@ import {
     BookOpen,
     Edit,
     Eye,
+    ClipboardList,
     GraduationCap,
     History,
     Plus,
@@ -742,6 +743,17 @@ function InstructorMyCohortsPageContent() {
                                                     >
                                                         <Button variant="ghost" size="sm" className="w-full sm:w-auto">
                                                             Assessments
+                                                        </Button>
+                                                    </Link>
+                                                    <Link
+                                                        href={subject.cohort_subject_id
+                                                            ? `/academic/cohorts/${group.cohort_id}/assignments?cohort_subject=${subject.cohort_subject_id}`
+                                                            : `/academic/cohorts/${group.cohort_id}/assignments`}
+                                                        className="w-full sm:w-auto"
+                                                    >
+                                                        <Button variant="ghost" size="sm" className="w-full sm:w-auto">
+                                                            <ClipboardList className="mr-1 h-4 w-4" />
+                                                            Assignments
                                                         </Button>
                                                     </Link>
                                                 </div>

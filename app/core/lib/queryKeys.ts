@@ -33,3 +33,34 @@ export const academicKeys = {
             ['academic', 'students', 'detail', studentId] as const,
     },
 } as const;
+
+export const assignmentKeys = {
+    all: ['assignments'] as const,
+    lists: () => ['assignments', 'list'] as const,
+    list: (filters: Record<string, unknown>) =>
+        ['assignments', 'list', filters] as const,
+    detail: (assignmentId: number | null) =>
+        ['assignments', 'detail', assignmentId] as const,
+    recipients: (assignmentId: number | null) =>
+        ['assignments', 'recipients', assignmentId] as const,
+    evaluationsPrefix: (assignmentId: number | null) =>
+        ['assignments', 'evaluations', assignmentId] as const,
+    submissions: (assignmentId: number | null) =>
+        ['assignments', 'submissions', assignmentId] as const,
+    evaluations: (assignmentId: number | null, filters?: Record<string, unknown>) =>
+        ['assignments', 'evaluations', assignmentId, filters ?? {}] as const,
+    evaluationDetail: (evaluationId: number | null) =>
+        ['assignments', 'evaluation-detail', evaluationId] as const,
+    groups: (assignmentId: number | null) =>
+        ['assignments', 'groups', assignmentId] as const,
+    groupDetail: (groupId: number | null) =>
+        ['assignments', 'group-detail', groupId] as const,
+    groupSubmissions: (groupId: number | null) =>
+        ['assignments', 'group-submissions', groupId] as const,
+    groupEvaluationsPrefix: (assignmentId: number | null) =>
+        ['assignments', 'group-evaluations', assignmentId] as const,
+    groupEvaluations: (assignmentId: number | null, filters?: Record<string, unknown>) =>
+        ['assignments', 'group-evaluations', assignmentId, filters ?? {}] as const,
+    groupEvaluationDetail: (evaluationId: number | null) =>
+        ['assignments', 'group-evaluation-detail', evaluationId] as const,
+} as const;
