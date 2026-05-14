@@ -8,6 +8,9 @@ export type AssignmentEvidenceProjectionMode =
     | 'APPLY_TO_ALL_MEMBERS'
     | 'APPLY_WITH_OVERRIDES'
     | 'RECORD_ONLY';
+export type AssignmentAutoGenerateMode =
+    | 'BY_GROUP_COUNT'
+    | 'BY_MEMBERS_PER_GROUP';
 
 export interface AssignmentRecipientCreationResult {
     created: number;
@@ -179,6 +182,7 @@ export interface AssignmentEligibleLearner {
     full_name: string;
     email?: string;
     phone?: string;
+    gender?: string;
 }
 
 export interface AssignmentEligibleLearnersParams {
@@ -320,6 +324,34 @@ export interface AssignmentGroupCreateResponse {
 
 export interface AssignmentGroupMemberCreatePayload {
     student_id: number;
+}
+
+export interface AssignmentGroupBulkMemberCreatePayload {
+    student_ids: number[];
+}
+
+export interface AssignmentGroupBulkMemberCreateResponse {
+    created_count: number;
+    existing_count: number;
+    group: AssignmentGroup;
+}
+
+export interface AssignmentAutoGenerateGroupsPayload {
+    mode: AssignmentAutoGenerateMode;
+    group_count?: number;
+    members_per_group?: number;
+    name_prefix?: string;
+    student_ids?: number[];
+    balance_gender?: boolean;
+    shuffle?: boolean;
+    seed?: number | null;
+    replace_existing?: boolean;
+}
+
+export interface AssignmentAutoGenerateGroupsResponse {
+    created_count: number;
+    member_created_count: number;
+    groups: AssignmentGroup[];
 }
 
 export type AssignmentGroupSubmissionStatus = AssignmentSubmissionStatus;
