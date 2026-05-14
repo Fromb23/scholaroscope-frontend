@@ -200,6 +200,22 @@ export const evidenceAPI = {
     return response.data;
   },
 
+  getBySessionOutcome: async ({
+    sessionId,
+    learningOutcomeId,
+  }: {
+    sessionId: number;
+    learningOutcomeId: number;
+  }) => {
+    const response = await apiClient.get<EvidenceRecord[]>('/cbc/evidence/by_session_outcome/', {
+      params: {
+        session_id: sessionId,
+        learning_outcome_id: learningOutcomeId,
+      },
+    });
+    return response.data;
+  },
+
   create: async (data: EvidenceFormData) => {
     const response = await apiClient.post<EvidenceRecord>('/cbc/evidence/', data);
     return response.data;

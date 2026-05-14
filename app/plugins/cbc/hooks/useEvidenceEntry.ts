@@ -1,40 +1,39 @@
 // app/plugins/cbc/hooks/useEvidenceEntry.ts
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     useTeachingSession, useSessionLearners, useLearningOutcomeDetail,
-    useEvidence, useCreateEvidence,
-    useSessionRubricScale, useBulkCreateClassEvidence,
+    useEvidenceBySessionOutcome, useCreateEvidence,
 } from '@/app/plugins/cbc/hooks/useCBC';
+import { extractErrorMessage } from '@/app/plugins/cbc/components/CBCComponents';
+import {
+    isAttendanceBlocking,
+    isEvidenceEligible,
+    isEvidenceIneligible,
+} from '@/app/plugins/cbc/lib/evidenceEligibility';
 import type {
     BulkClassEvidenceResult,
-    EvidenceRecord,
     EvaluationType,
+    EvidenceRecord,
 } from '@/app/plugins/cbc/types/cbc';
-
-type ApiList<T> = T[] | { results: T[]; count: number };
 
 export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
     const { data: session, isLoading: sessionLoading, error: sessionError } =
         useTeachingSession(sessionId);
     const { data: outcome, isLoading: outcomeLoading, error: outcomeError } =
         useLearningOutcomeDetail(learningOutcomeId);
-    const { data: learners = [], isLoading: learnersLoading } =
+    const {
+        data: learners = [],
+        isLoading: learnersLoading,
+        error: learnersError,
+    } =
         useSessionLearners(sessionId);
-    const { data: allEvidenceRaw, isLoading: evidenceLoading } = useEvidence({
-        learning_outcome: learningOutcomeId,
-        source_type: 'SESSION',
-        source_id: sessionId,
-    });
-    const { data: rubricScale } = useSessionRubricScale(sessionId);
+    const {
+        data: allEvidence = [],
+        isLoading: evidenceLoading,
+        error: evidenceError,
+    } = useEvidenceBySessionOutcome(sessionId, learningOutcomeId);
 
     const createEvidence = useCreateEvidence();
-    const bulkCreate = useBulkCreateClassEvidence();
-
-    const allEvidence: EvidenceRecord[] = useMemo(() => {
-        if (!allEvidenceRaw) return [];
-        const raw = allEvidenceRaw as ApiList<EvidenceRecord>;
-        return Array.isArray(raw) ? raw : raw.results ?? [];
-    }, [allEvidenceRaw]);
 
     const evidenceByStudent = useMemo(() => {
         const map = new Map<number, EvidenceRecord[]>();
@@ -45,12 +44,33 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
         return map;
     }, [allEvidence]);
 
-    const withEvidence = useMemo(() =>
-        learners.filter(l => evidenceByStudent.has(l.id)), [learners, evidenceByStudent]);
-    const withoutEvidence = useMemo(() =>
-        learners.filter(l => !evidenceByStudent.has(l.id)), [learners, evidenceByStudent]);
-    const sortedLearners = useMemo(() =>
-        [...withoutEvidence, ...withEvidence], [withoutEvidence, withEvidence]);
+    const eligibility = useMemo(() => {
+        const eligibleLearners = learners.filter(learner =>
+            isEvidenceEligible(learner.attendance_status),
+        );
+        const ineligibleLearners = learners.filter(learner =>
+            isEvidenceIneligible(learner.attendance_status),
+        );
+        const unmarkedLearners = learners.filter(learner =>
+            isAttendanceBlocking(learner.attendance_status),
+        );
+        const eligibleWithEvidence = eligibleLearners.filter(learner =>
+            evidenceByStudent.has(learner.id),
+        );
+        const eligibleWithoutEvidence = eligibleLearners.filter(learner =>
+            !evidenceByStudent.has(learner.id),
+        );
+
+        return {
+            eligibleLearners,
+            ineligibleLearners,
+            unmarkedLearners,
+            eligibleWithEvidence,
+            eligibleWithoutEvidence,
+            sortedEligibleLearners: [...eligibleWithoutEvidence, ...eligibleWithEvidence],
+            hasBlockingAttendance: unmarkedLearners.length > 0,
+        };
+    }, [learners, evidenceByStudent]);
 
     const [addingFor, setAddingFor] = useState<number | null>(null);
     const [evalType, setEvalType] = useState<EvaluationType>('DESCRIPTIVE');
@@ -84,7 +104,7 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
             });
             resetForm();
         } catch (e: unknown) {
-            setFormError((e as Error).message ?? 'Failed to record evidence');
+            setFormError(extractErrorMessage(e));
         }
     };
 
@@ -93,16 +113,63 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
         if (result) setBulkSuccess(result);
     };
 
-    const isPageLoading = sessionLoading || outcomeLoading || learnersLoading || evidenceLoading;
+    const loadTimerStarted = useRef(false);
+    const loadTimerEnded = useRef(false);
+
+    useEffect(() => {
+        if (process.env.NODE_ENV !== 'development') return;
+        console.time('[CBC Evidence] load');
+        loadTimerStarted.current = true;
+        loadTimerEnded.current = false;
+
+        return () => {
+            if (loadTimerStarted.current && !loadTimerEnded.current) {
+                console.timeEnd('[CBC Evidence] load');
+                loadTimerEnded.current = true;
+            }
+        };
+    }, [sessionId, learningOutcomeId]);
+
+    useEffect(() => {
+        if (process.env.NODE_ENV !== 'development') return;
+        if (!loadTimerStarted.current || loadTimerEnded.current) return;
+
+        const pageReady = (
+            (!sessionLoading && !outcomeLoading && !learnersLoading && !evidenceLoading) ||
+            Boolean(sessionError || outcomeError || learnersError || evidenceError)
+        );
+
+        if (pageReady) {
+            console.timeEnd('[CBC Evidence] load');
+            loadTimerEnded.current = true;
+        }
+    }, [
+        evidenceError,
+        evidenceLoading,
+        learnersError,
+        learnersLoading,
+        outcomeError,
+        outcomeLoading,
+        sessionError,
+        sessionLoading,
+    ]);
 
     return {
         session, sessionError,
         outcome, outcomeError,
-        learners, sortedLearners,
-        withEvidence, withoutEvidence,
+        learners,
+        learnersError,
+        evidenceError,
+        eligibleLearners: eligibility.eligibleLearners,
+        ineligibleLearners: eligibility.ineligibleLearners,
+        unmarkedLearners: eligibility.unmarkedLearners,
+        eligibleWithEvidence: eligibility.eligibleWithEvidence,
+        eligibleWithoutEvidence: eligibility.eligibleWithoutEvidence,
+        sortedEligibleLearners: eligibility.sortedEligibleLearners,
+        hasBlockingAttendance: eligibility.hasBlockingAttendance,
         evidenceByStudent,
-        rubricScale,
-        isPageLoading,
+        isPageLoading: sessionLoading || outcomeLoading,
+        isEvidencePanelLoading: learnersLoading || evidenceLoading,
         addingFor, setAddingFor,
         evalType, setEvalType,
         numericScore, setNumericScore,
@@ -111,8 +178,6 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
         showBulk, setShowBulk,
         bulkSuccess, setBulkSuccess,
         createEvidencePending: createEvidence.isPending,
-        bulkCreatePending: bulkCreate.isPending,
-        bulkCreate,
         resetForm, handleSubmit, handleBulkClose,
     };
 }

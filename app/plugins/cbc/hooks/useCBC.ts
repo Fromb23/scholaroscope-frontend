@@ -3,9 +3,10 @@
 // All server state is managed here — pages/components only call these hooks.
 
 import type { AxiosError } from 'axios';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
 import { apiClient } from '@/app/core/api/client';
+import { isEvidenceEligible } from '@/app/plugins/cbc/lib/evidenceEligibility';
 import {
   strandAPI,
   subStrandAPI,
@@ -156,6 +157,19 @@ function decorateCBCQueryError(
   };
 
   return decorated;
+}
+
+function getEligibleSessionLearnerIds(
+  queryClient: QueryClient,
+  sessionId: number,
+) {
+  const learners = queryClient.getQueryData<SessionLearner[]>(
+    cbcKeys.teachingSessions.learners(sessionId),
+  ) ?? [];
+
+  return learners
+    .filter(learner => isEvidenceEligible(learner.attendance_status))
+    .map(learner => learner.id);
 }
 
 // ============================================================================
@@ -444,6 +458,21 @@ export const useEvidence = (params?: {
     staleTime: 2 * 60 * 1000,
   });
 
+export const useEvidenceBySessionOutcome = (
+  sessionId: number | null,
+  learningOutcomeId: number | null,
+) =>
+  useQuery<EvidenceRecord[]>({
+    queryKey: cbcKeys.evidence.bySessionOutcome(sessionId!, learningOutcomeId!),
+    queryFn: () =>
+      evidenceAPI.getBySessionOutcome({
+        sessionId: sessionId!,
+        learningOutcomeId: learningOutcomeId!,
+      }),
+    enabled: sessionId !== null && learningOutcomeId !== null,
+    staleTime: 2 * 60 * 1000,
+  });
+
 export const useStudentProgress = (studentId: number | null) =>
   useQuery({
     queryKey: cbcKeys.evidence.studentProgress(studentId!),
@@ -464,12 +493,58 @@ export const useCreateEvidence = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: EvidenceFormData) => evidenceAPI.create(data),
-    onSuccess: (created) => {
-      qc.invalidateQueries({ queryKey: cbcKeys.evidence.all });
+    onSuccess: (created, variables) => {
+      const isSessionEvidence =
+        variables.source_type === 'SESSION' &&
+        typeof variables.source_id === 'number';
+
+      if (isSessionEvidence) {
+        qc.invalidateQueries({
+          queryKey: cbcKeys.evidence.bySessionOutcome(
+            variables.source_id!,
+            variables.learning_outcome,
+          ),
+        });
+        qc.invalidateQueries({
+          queryKey: cbcKeys.outcomeSessions.bySession(variables.source_id!),
+        });
+        qc.invalidateQueries({
+          queryKey: cbcKeys.teachingSessions.summary(variables.source_id!),
+        });
+        qc.invalidateQueries({
+          queryKey: cbcKeys.teachingSessions.outcomes(variables.source_id!),
+        });
+        qc.invalidateQueries({
+          queryKey: cbcKeys.teachingSessions.learners(variables.source_id!),
+        });
+      } else {
+        qc.invalidateQueries({ queryKey: cbcKeys.evidence.all });
+      }
+
       qc.invalidateQueries({
         queryKey: cbcKeys.evidence.studentProgress(created.student),
       });
-      qc.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all });
+      qc.invalidateQueries({
+        queryKey: cbcKeys.evidence.studentConfidence(created.student),
+      });
+      qc.invalidateQueries({
+        queryKey: cbcKeys.evidence.outcomeAchievement(created.learning_outcome),
+      });
+      qc.invalidateQueries({
+        queryKey: cbcKeys.outcomeProgress.student(created.student),
+      });
+      qc.invalidateQueries({
+        queryKey: cbcKeys.outcomeProgress.studentSummary(created.student),
+      });
+      qc.invalidateQueries({
+        predicate: query => (
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === 'cbc' &&
+          query.queryKey[1] === 'outcome-progress' &&
+          (query.queryKey[2] === 'distribution' || query.queryKey[2] === 'learners') &&
+          query.queryKey[3] === created.learning_outcome
+        ),
+      });
     },
   });
 };
@@ -681,8 +756,20 @@ export const useBulkCreateClassEvidence = () => {
       }
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: cbcKeys.evidence.all });
-      queryClient.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all });
+      const eligibleLearnerIds = getEligibleSessionLearnerIds(
+        queryClient,
+        variables.session_id,
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: cbcKeys.evidence.bySessionOutcome(
+          variables.session_id,
+          variables.learning_outcome,
+        ),
+      });
+      queryClient.invalidateQueries({
+        queryKey: cbcKeys.outcomeSessions.bySession(variables.session_id),
+      });
       queryClient.invalidateQueries({
         queryKey: cbcKeys.teachingSessions.summary(variables.session_id),
       });
@@ -693,10 +780,32 @@ export const useBulkCreateClassEvidence = () => {
         queryKey: cbcKeys.teachingSessions.learners(variables.session_id),
       });
       queryClient.invalidateQueries({
-        queryKey: cbcKeys.teachingSessions.detail(variables.session_id),
+        queryKey: cbcKeys.evidence.outcomeAchievement(variables.learning_outcome),
       });
-      queryClient.invalidateQueries({ queryKey: cbcKeys.teachingSessions.all });
-      queryClient.invalidateQueries({ queryKey: cbcKeys.outcomeProgress.all });
+      queryClient.invalidateQueries({
+        predicate: query => (
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === 'cbc' &&
+          query.queryKey[1] === 'outcome-progress' &&
+          (query.queryKey[2] === 'distribution' || query.queryKey[2] === 'learners') &&
+          query.queryKey[3] === variables.learning_outcome
+        ),
+      });
+
+      eligibleLearnerIds.forEach(studentId => {
+        queryClient.invalidateQueries({
+          queryKey: cbcKeys.evidence.studentProgress(studentId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: cbcKeys.evidence.studentConfidence(studentId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: cbcKeys.outcomeProgress.student(studentId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: cbcKeys.outcomeProgress.studentSummary(studentId),
+        });
+      });
     },
   });
 };

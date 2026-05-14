@@ -86,7 +86,7 @@ interface Props {
 }
 
 export function BulkClassModal({ sessionId, learningOutcomeId, learners, observedAt, onClose }: Props) {
-    const { data: rubricScale } = useSessionRubricScale(sessionId);
+    const { data: rubricScale, isLoading: rubricScaleLoading } = useSessionRubricScale(sessionId);
     const bulkCreate = useBulkCreateClassEvidence();
     const [form, dispatch] = useReducer(evidenceFormReducer, initialFormState);
     const { evalType, defaultNarrative, defaultRubricLevel, exceptions, error } = form;
@@ -123,7 +123,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                             Record for Class
                         </h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            Evidence will be recorded for present learners based on session attendance.
+                            Evidence will be recorded for learners marked present or late based on session attendance.
                         </p>
                     </div>
                     <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -138,7 +138,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                             <h3 className="font-semibold text-gray-900">Class Default</h3>
                         </div>
                         <p className="text-sm text-gray-500">
-                            Set the default evidence for learners marked present in this session.
+                            Set the default evidence for learners marked present or late in this session.
                         </p>
                         <Select
                             label="Evaluation Type"
@@ -165,7 +165,11 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Default Rubric Level <span className="text-red-500">*</span>
                                 </label>
-                                {rubricScale ? (
+                                {rubricScaleLoading ? (
+                                    <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                                        Loading rubric scale…
+                                    </p>
+                                ) : rubricScale ? (
                                     <div className="grid grid-cols-2 gap-2">
                                         {rubricScale.levels.map(level => (
                                             <button
@@ -255,8 +259,8 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                 <div className="flex items-center justify-between p-6 border-t border-gray-100 bg-gray-50">
                     <p className="text-sm text-gray-500">
                         {exceptions.size > 0
-                            ? `Class default for present learners · ${exceptions.size} override${exceptions.size !== 1 ? 's' : ''}`
-                            : 'Class default will apply to present learners'}
+                            ? `Class default for eligible learners · ${exceptions.size} override${exceptions.size !== 1 ? 's' : ''}`
+                            : 'Class default will apply to eligible learners'}
                     </p>
                     <div className="flex gap-2">
                         <Button variant="ghost" size="md" onClick={() => onClose()}>Cancel</Button>

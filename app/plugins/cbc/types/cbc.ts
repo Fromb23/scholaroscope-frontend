@@ -420,6 +420,8 @@ export interface SessionLearner {
   last_name: string;
   admission_number: string;
   session_evidence_count: number;
+  attendance_status?: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED' | 'SICK' | 'UNMARKED' | null;
+  attendance_status_display?: string | null;
 }
 
 export interface OutcomeLearner {
