@@ -44,6 +44,8 @@ export const cbcKeys = {
     evidence: {
         all: ['cbc', 'evidence'] as const,
         list: (params?: Record<string, unknown>) => ['cbc', 'evidence', 'list', params] as const,
+        bySessionOutcome: (sessionId: number, learningOutcomeId: number) =>
+            ['cbc', 'evidence', 'session-outcome', sessionId, learningOutcomeId] as const,
         studentProgress: (studentId: number) =>
             ['cbc', 'evidence', 'student-progress', studentId] as const,
         classProgress: (cohortId: number) =>

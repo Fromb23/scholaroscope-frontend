@@ -7,7 +7,7 @@ function getAttendanceCounts(result: BulkClassEvidenceResult) {
     const counts = result.attendance ?? result.attendance_counts ?? summary;
 
     return {
-        present: result.present_count ?? result.attendance_summary?.present_count ?? counts?.present ?? result.eligible_count,
+        present: result.present_count ?? result.attendance_summary?.present_count ?? counts?.present,
         absent: result.absent_count ?? counts?.absent,
         excused: result.excused_count ?? counts?.excused,
         sick: result.sick_count ?? counts?.sick,
