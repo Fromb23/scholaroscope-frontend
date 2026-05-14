@@ -173,6 +173,26 @@ export interface AssignmentPublishResponse {
     recipients: AssignmentRecipientCreationResult;
 }
 
+export interface AssignmentEligibleLearner {
+    id: number;
+    admission_number: string;
+    full_name: string;
+    email?: string;
+    phone?: string;
+}
+
+export interface AssignmentEligibleLearnersParams {
+    exclude_grouped?: boolean;
+}
+
+export interface AssignmentEligibleLearnersResponse {
+    assignment: number;
+    cohort_subject: number;
+    cohort: number;
+    subject: number;
+    students: AssignmentEligibleLearner[];
+}
+
 export type AssignmentSubmissionStatus =
     | 'SUBMITTED'
     | 'LATE'

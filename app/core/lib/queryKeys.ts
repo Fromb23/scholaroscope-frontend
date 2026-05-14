@@ -41,6 +41,10 @@ export const assignmentKeys = {
         ['assignments', 'list', filters] as const,
     detail: (assignmentId: number | null) =>
         ['assignments', 'detail', assignmentId] as const,
+    eligibleLearnersPrefix: (assignmentId: number | null) =>
+        ['assignments', assignmentId, 'eligible-learners'] as const,
+    eligibleLearners: (assignmentId: number | null, excludeGrouped?: boolean) =>
+        ['assignments', assignmentId, 'eligible-learners', excludeGrouped] as const,
     recipients: (assignmentId: number | null) =>
         ['assignments', 'recipients', assignmentId] as const,
     evaluationsPrefix: (assignmentId: number | null) =>

@@ -14,6 +14,8 @@ import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
     Assignment,
     AssignmentCreatePayload,
+    AssignmentEligibleLearnersParams,
+    AssignmentEligibleLearnersResponse,
     AssignmentEvidenceBridgeResponse,
     AssignmentEvaluation,
     AssignmentEvaluationCreatePayload,
@@ -95,6 +97,9 @@ async function invalidateAssignmentDependencies(
         queryClient.invalidateQueries({ queryKey: assignmentKeys.all }),
         assignmentId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.detail(assignmentId) })
+            : Promise.resolve(),
+        assignmentId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.eligibleLearnersPrefix(assignmentId) })
             : Promise.resolve(),
         assignmentId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.recipients(assignmentId) })
@@ -274,6 +279,36 @@ export function useAssignmentGroups(assignmentId: number | null, options?: UseAs
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };
+}
+
+export function useAssignmentEligibleLearners(
+    assignmentId: number,
+    options?: AssignmentEligibleLearnersParams
+) {
+    const enabled = Number.isFinite(assignmentId) && assignmentId > 0;
+    const excludeGrouped = options?.exclude_grouped;
+
+    return useQuery<AssignmentEligibleLearnersResponse, Error>({
+        queryKey: assignmentKeys.eligibleLearners(assignmentId, excludeGrouped),
+        queryFn: async () => {
+            if (!assignmentId) {
+                throw new Error('Assignment id is required.');
+            }
+
+            try {
+                return await assignmentsAPI.getEligibleLearners(
+                    assignmentId,
+                    typeof excludeGrouped === 'boolean'
+                        ? { exclude_grouped: excludeGrouped }
+                        : undefined
+                );
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load eligible learners.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
 }
 
 export function useAssignmentGroupDetail(groupId: number | null, options?: UseAssignmentsOptions) {
