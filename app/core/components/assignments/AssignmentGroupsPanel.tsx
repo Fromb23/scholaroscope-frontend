@@ -7,9 +7,9 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import {
     useAddAssignmentGroupMember,
+    useAssignmentEligibleLearners,
     useCreateAssignmentGroup,
     useDeleteAssignmentGroup,
     useRemoveAssignmentGroupMember,
@@ -28,13 +28,12 @@ interface AssignmentGroupsPanelProps {
 
 export function AssignmentGroupsPanel({
     assignment,
-    cohortId,
     groups,
     loading,
     error = null,
     refetch,
 }: AssignmentGroupsPanelProps) {
-    const learnersQuery = useCohortEnrolledStudents(cohortId);
+    const learnersQuery = useAssignmentEligibleLearners(assignment.id, { exclude_grouped: false });
     const createMutation = useCreateAssignmentGroup(assignment.id);
     const updateMutation = useUpdateAssignmentGroup();
     const deleteMutation = useDeleteAssignmentGroup();
@@ -325,7 +324,7 @@ export function AssignmentGroupsPanel({
                                 <div className="space-y-1">
                                     <div className="text-sm font-medium text-gray-900">Members</div>
                                     <p className="text-sm text-gray-500">
-                                        Only learners enrolled in this cohort can be added. Each learner can belong to one group for this assignment.
+                                        Only learners taking this subject in this cohort can be added. Each learner can belong to one group for this assignment.
                                     </p>
                                 </div>
 

@@ -2,6 +2,8 @@ import { apiClient } from '@/app/core/api/client';
 import type {
     Assignment,
     AssignmentCreatePayload,
+    AssignmentEligibleLearnersParams,
+    AssignmentEligibleLearnersResponse,
     AssignmentEvidenceBridgeResponse,
     AssignmentEvaluation,
     AssignmentEvaluationCreatePayload,
@@ -55,6 +57,17 @@ export const assignmentsAPI = {
 
     getById: async (id: number): Promise<Assignment> => {
         const response = await apiClient.get<Assignment>(`${ASSIGNMENTS_BASE}/${id}/`);
+        return response.data;
+    },
+
+    getEligibleLearners: async (
+        id: number,
+        params?: AssignmentEligibleLearnersParams
+    ): Promise<AssignmentEligibleLearnersResponse> => {
+        const response = await apiClient.get<AssignmentEligibleLearnersResponse>(
+            `${ASSIGNMENTS_BASE}/${id}/eligible-learners/`,
+            { params }
+        );
         return response.data;
     },
 
