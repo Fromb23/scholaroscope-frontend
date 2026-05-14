@@ -63,6 +63,7 @@ export function OutcomeRow({
                             onClick={() => onRemove(link.id)}
                             disabled={removeLinkPending}
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                            aria-label="Remove learning goal from this lesson"
                         >
                             <Trash2 className="h-4 w-4" />
                         </button>
@@ -73,16 +74,16 @@ export function OutcomeRow({
                     {isEditing ? (
                         <div className="space-y-2">
                             <Input
-                                label="Session notes"
+                                label="Lesson notes"
                                 value={notesValue}
                                 onChange={e => onNotesChange(e.target.value)}
-                                placeholder="How was this outcome covered?"
+                                placeholder="How was this learning goal taught?"
                             />
                             <div className="flex gap-2">
                                 <Button variant="primary" size="sm"
                                     onClick={() => onSaveNotes(link.id)}
                                     disabled={markCoveredPending}>
-                                    Save Notes
+                                    Save notes
                                 </Button>
                                 <Button variant="ghost" size="sm" onClick={onCancelNotes}>
                                     Cancel
@@ -102,7 +103,7 @@ export function OutcomeRow({
                         <button
                             onClick={() => onEditNotes(link.id, '')}
                             className="text-sm text-blue-600 hover:underline">
-                            + Add session notes
+                            + Add lesson notes
                         </button>
                     )}
 
@@ -112,11 +113,11 @@ export function OutcomeRow({
                             className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
                         >
                             <FileText className="h-4 w-4" />
-                            Record Evidence
+                            Record performance
                         </Link>
                         {link.evidence_count > 0 && (
                             <Badge variant="green" size="sm">
-                                {link.evidence_count} student{link.evidence_count !== 1 ? 's' : ''} recorded
+                                {link.evidence_count} learner{link.evidence_count !== 1 ? 's' : ''} observed
                             </Badge>
                         )}
                     </div>

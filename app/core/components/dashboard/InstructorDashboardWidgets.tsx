@@ -342,7 +342,7 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl">
                         <Users className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">My Cohorts</h3>
+                    <h3 className="text-xl font-bold text-gray-900">My Classes</h3>
                 </div>
                 <button
                     onClick={() => router.push('/academic/cohorts')}
@@ -354,7 +354,7 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
             {preview.length === 0 ? (
                 <div className="py-10 text-center">
                     <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-gray-900">No teaching cohorts assigned yet.</p>
+                    <p className="text-sm font-medium text-gray-900">No classes assigned yet.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

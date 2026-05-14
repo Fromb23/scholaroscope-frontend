@@ -34,7 +34,7 @@ export function CBCEvidenceEntryPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCLoading message="Loading…" />
+                <CBCLoading message="Loading class performance…" />
             </div>
         );
     }
@@ -43,7 +43,7 @@ export function CBCEvidenceEntryPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCError error={page.sessionError ?? 'Session not found'} />
+                <CBCError error={page.sessionError ?? 'Lesson not found'} />
             </div>
         );
     }
@@ -52,7 +52,7 @@ export function CBCEvidenceEntryPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCError error={page.outcomeError ?? 'Outcome not found'} />
+                <CBCError error={page.outcomeError ?? 'Learning goal not found'} />
             </div>
         );
     }
@@ -63,14 +63,14 @@ export function CBCEvidenceEntryPage() {
             <CBCBreadcrumb
                 segments={[
                     { label: 'Teaching', href: '/cbc/teaching' },
-                    { label: 'Sessions', href: '/cbc/teaching/sessions' },
+                    { label: 'Lessons', href: '/cbc/teaching/sessions' },
                     {
-                        label: page.session.subject_name ?? 'Session',
+                        label: page.session.subject_name ?? 'Lesson',
                         href: `/cbc/teaching/sessions/${sessionId}/outcomes`,
                     },
-                    { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                    { label: 'What Was Taught', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                     { label: page.outcome.code },
-                    { label: 'Evidence' },
+                    { label: 'Class Performance' },
                 ]}
             />
             <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
@@ -81,6 +81,28 @@ export function CBCEvidenceEntryPage() {
                     onDismiss={() => page.setBulkSuccess(null)}
                 />
             )}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Class performance</h1>
+                    <p className="mt-1 text-sm text-gray-500">
+                        Record learning observations for this lesson.
+                    </p>
+                </div>
+                <div className="text-sm text-gray-500">
+                    <p className="font-medium text-gray-700">
+                        {page.session.cohort_name} · {page.session.subject_name}
+                    </p>
+                    <p>
+                        Lesson:{' '}
+                        {new Date(page.session.session_date).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                        })}
+                    </p>
+                </div>
+            </div>
 
             <Card className="bg-purple-50 border-purple-200">
                 <div className="flex items-start gap-4">
@@ -104,10 +126,10 @@ export function CBCEvidenceEntryPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {[
                     { label: 'Total Learners', value: page.learners.length, color: 'text-blue-600' },
-                    { label: 'Eligible', value: page.eligibleLearners.length, color: 'text-indigo-600' },
-                    { label: 'With Evidence', value: page.eligibleWithEvidence.length, color: 'text-emerald-600' },
-                    { label: 'Needs Evidence', value: page.eligibleWithoutEvidence.length, color: 'text-red-500' },
-                    { label: 'Not Eligible', value: page.ineligibleLearners.length, color: 'text-amber-600' },
+                    { label: 'In Lesson', value: page.eligibleLearners.length, color: 'text-indigo-600' },
+                    { label: 'Observed', value: page.eligibleWithEvidence.length, color: 'text-emerald-600' },
+                    { label: 'Not yet observed', value: page.eligibleWithoutEvidence.length, color: 'text-slate-600' },
+                    { label: 'Not part of this lesson', value: page.ineligibleLearners.length, color: 'text-gray-500' },
                 ].map(stat => (
                     <Card key={stat.label} className="text-center">
                         <div className={`text-3xl font-bold ${stat.color}`}>
@@ -123,7 +145,7 @@ export function CBCEvidenceEntryPage() {
                     <div>
                         <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                             <Users className="h-5 w-5 text-purple-600" />
-                            Evidence Recording
+                            Learning observations
                         </h2>
                         <p className="text-sm text-gray-500 mt-1">
                             Record class performance or individual observations
@@ -132,7 +154,7 @@ export function CBCEvidenceEntryPage() {
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                         <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`} className="w-full sm:w-auto">
                             <Button variant="ghost" size="md" className="w-full sm:w-auto">
-                                Back to Outcomes
+                                Back to what was taught
                             </Button>
                         </Link>
                         <Button
@@ -143,7 +165,7 @@ export function CBCEvidenceEntryPage() {
                             disabled={page.hasBlockingAttendance || page.eligibleLearners.length === 0}
                         >
                             <Layers className="h-4 w-4 mr-2" />
-                            Record for Class
+                            Record class performance
                         </Button>
                     </div>
                 </div>
@@ -154,7 +176,7 @@ export function CBCEvidenceEntryPage() {
                             <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                             <div className="space-y-1">
                                 <p className="text-sm font-medium text-amber-900">
-                                    Attendance must be completed before class evidence can be recorded.
+                                    Attendance must be completed before class performance can be recorded.
                                 </p>
                                 <p className="text-sm text-amber-800">
                                     {page.unmarkedLearners.length} learner{page.unmarkedLearners.length !== 1 ? 's are' : ' is'} still unmarked for this session.
@@ -167,24 +189,24 @@ export function CBCEvidenceEntryPage() {
                 {page.learnersError || page.evidenceError ? (
                     <CBCError error={extractErrorMessage(page.learnersError ?? page.evidenceError)} />
                 ) : page.isEvidencePanelLoading ? (
-                    <CBCLoading message="Loading learners and evidence…" />
+                    <CBCLoading message="Loading learners and observations…" />
                 ) : page.learners.length === 0 ? (
                     <div className="py-12 text-center">
                         <AlertCircle className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500">No learners in this cohort</p>
+                        <p className="text-gray-500">No learners in this class</p>
                     </div>
                 ) : (
                     <div className="space-y-6">
                         <div className="space-y-3">
                             {page.eligibleWithoutEvidence.length > 0 && (
-                                <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-2">
-                                    🔴 Needs Evidence ({page.eligibleWithoutEvidence.length})
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Not yet observed ({page.eligibleWithoutEvidence.length})
                                 </p>
                             )}
                             {page.sortedEligibleLearners.length === 0 ? (
                                 <div className="py-10 text-center">
                                     <AlertCircle className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                                    <p className="text-gray-600">No learners are currently eligible for class evidence.</p>
+                                    <p className="text-gray-600">No learners can be recorded for this lesson yet.</p>
                                 </div>
                             ) : page.sortedEligibleLearners.map(learner => (
                                 <LearnerEvidenceRow
@@ -212,17 +234,17 @@ export function CBCEvidenceEntryPage() {
                             <div className="space-y-3 border-t border-gray-200 pt-6">
                                 <div>
                                     <h3 className="text-base font-semibold text-gray-900">
-                                        Not eligible for class evidence
+                                        Not part of this lesson
                                     </h3>
                                     <p className="mt-1 text-sm text-gray-500">
-                                        These learners were absent, excused, or sick for this session and are not counted as missing evidence.
+                                        These learners were absent, excused, or sick for this lesson and are not counted as not yet observed.
                                     </p>
                                 </div>
                                 <div className="space-y-2">
                                     {page.ineligibleLearners.map(learner => (
                                         <div
                                             key={learner.id}
-                                            className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 sm:flex-row sm:items-center sm:justify-between"
+                                            className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between"
                                         >
                                             <div className="min-w-0">
                                                 <p className="font-semibold text-gray-900">
@@ -232,7 +254,7 @@ export function CBCEvidenceEntryPage() {
                                                     {learner.admission_number}
                                                 </p>
                                             </div>
-                                            <Badge variant="yellow" size="sm">
+                                            <Badge variant="default" size="sm">
                                                 {attendanceStatusLabel(
                                                     learner.attendance_status,
                                                     learner.attendance_status_display,

@@ -34,7 +34,7 @@ export function CBCOutcomeSessionPage() {
         return (
             <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <CBCNav />
-                <CBCLoading message="Loading outcome…" />
+                <CBCLoading message="Loading learning goal…" />
             </div>
         );
     }
@@ -43,11 +43,11 @@ export function CBCOutcomeSessionPage() {
         return (
             <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <CBCNav />
-                <CBCError error="This learning outcome is not linked to this session." />
+                <CBCError error="This learning goal is not part of this lesson." />
                 <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`}>
                     <Button variant="primary">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Outcomes
+                        Back to what was taught
                     </Button>
                 </Link>
             </div>
@@ -59,9 +59,9 @@ export function CBCOutcomeSessionPage() {
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
-                { label: 'Sessions', href: '/cbc/teaching/sessions' },
-                { label: page.session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
-                { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: 'Lessons', href: '/cbc/teaching/sessions' },
+                { label: page.session.subject_name ?? 'Lesson', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: 'What Was Taught', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: page.learningOutcome.code },
             ]} />
             <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
@@ -85,12 +85,12 @@ export function CBCOutcomeSessionPage() {
                                         {page.outcomeSession.covered ? (
                                             <>
                                                 <CheckCircle className="h-5 w-5 text-green-600" />
-                                                <span className="text-sm font-medium text-green-700">Covered</span>
+                                                <span className="text-sm font-medium text-green-700">Taught</span>
                                             </>
                                         ) : (
                                             <>
                                                 <Circle className="h-5 w-5 text-gray-400" />
-                                                <span className="text-sm font-medium text-gray-600">Mark as Covered</span>
+                                                <span className="text-sm font-medium text-gray-600">Mark as taught</span>
                                             </>
                                         )}
                                     </button>
@@ -110,13 +110,13 @@ export function CBCOutcomeSessionPage() {
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-gray-100">
-                            <h3 className="text-sm font-semibold text-gray-700 mb-2">Session Notes</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 mb-2">Lesson notes</h3>
                             {page.editingNotes ? (
                                 <div className="space-y-2">
                                     <textarea
                                         value={page.notes}
                                         onChange={event => page.setNotes(event.target.value)}
-                                        placeholder="Add notes about how this outcome was covered..."
+                                        placeholder="Add notes about how this learning goal was taught..."
                                         rows={3}
                                         className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                                     />
@@ -127,7 +127,7 @@ export function CBCOutcomeSessionPage() {
                                             onClick={page.handleSaveNotes}
                                             disabled={page.saving}
                                         >
-                                            {page.saving ? 'Saving...' : 'Save Notes'}
+                                            {page.saving ? 'Saving...' : 'Save notes'}
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -156,7 +156,7 @@ export function CBCOutcomeSessionPage() {
                                     onClick={() => page.setEditingNotes(true)}
                                     className="text-sm text-blue-600 hover:underline"
                                 >
-                                    + Add session notes
+                                    + Add lesson notes
                                 </button>
                             )}
                         </div>
@@ -167,7 +167,7 @@ export function CBCOutcomeSessionPage() {
             <Card className="shadow-sm bg-gray-50">
                 <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gray-600" />
-                    Session Context
+                    Lesson context
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
@@ -175,11 +175,11 @@ export function CBCOutcomeSessionPage() {
                         <p className="font-medium text-gray-900 break-words">{page.session.subject_name}</p>
                     </div>
                     <div>
-                        <span className="text-gray-500">Cohort:</span>
+                        <span className="text-gray-500">Class:</span>
                         <p className="font-medium text-gray-900 break-words">{page.session.cohort_name}</p>
                     </div>
                     <div>
-                        <span className="text-gray-500">Date:</span>
+                        <span className="text-gray-500">Lesson date:</span>
                         <p className="font-medium text-gray-900">
                             {new Date(page.session.session_date).toLocaleDateString('en-US', {
                                 month: 'short',
@@ -199,14 +199,14 @@ export function CBCOutcomeSessionPage() {
                         </div>
                         <div>
                             <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                Record Evidence
+                                Learning observations
                             </h3>
                             <p className="text-sm text-gray-600">
-                                Document learner demonstrations of this outcome
+                                Record class performance or learner observations for this learning goal.
                             </p>
                             {page.outcomeSession.evidence_count !== undefined && page.outcomeSession.evidence_count > 0 && (
                                 <Badge variant="blue" size="sm" className="mt-2">
-                                    {page.outcomeSession.evidence_count} evidence record{page.outcomeSession.evidence_count !== 1 ? 's' : ''}
+                                    {page.outcomeSession.evidence_count} performance record{page.outcomeSession.evidence_count !== 1 ? 's' : ''}
                                 </Badge>
                             )}
                         </div>
@@ -217,7 +217,7 @@ export function CBCOutcomeSessionPage() {
                     >
                         <Button variant="primary" size="lg" className="w-full sm:w-auto">
                             <Users className="mr-2 h-5 w-5" />
-                            Record Evidence
+                            Record performance
                         </Button>
                     </Link>
                 </div>

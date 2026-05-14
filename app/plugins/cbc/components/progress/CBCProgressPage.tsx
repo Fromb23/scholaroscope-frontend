@@ -65,8 +65,8 @@ export function CBCProgressPage() {
                     <TrendingUp className="h-8 w-8 text-purple-600" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">CBC Progress</h1>
-                    <p className="text-gray-500 mt-1">Track competency emergence across outcomes</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Learning Progress</h1>
+                    <p className="text-gray-500 mt-1">See how learners are progressing across what you teach</p>
                 </div>
             </div>
 
@@ -75,7 +75,7 @@ export function CBCProgressPage() {
                     <div className="flex flex-wrap items-start gap-6">
                         <div className="space-y-2">
                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                Resolved CBC Subject
+                                Subject
                             </p>
                             {page.resolvedSubject ? (
                                 <div className="flex flex-wrap gap-2">
@@ -85,22 +85,22 @@ export function CBCProgressPage() {
                                     </Badge>
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-600">Across assigned CBC subjects</p>
+                                <p className="text-sm text-gray-600">Across your assigned subjects</p>
                             )}
                         </div>
 
                         <div className="space-y-2">
                             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                Cohort Context
+                                Class
                             </p>
                             {page.effectiveCohort ? (
                                 <div className="flex flex-wrap gap-2">
                                     <Badge variant="indigo" size="md">{page.effectiveCohort.name}</Badge>
-                                    <Badge variant="default" size="md">Cohort {page.effectiveCohort.id}</Badge>
+                                    <Badge variant="default" size="md">Class {page.effectiveCohort.id}</Badge>
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-600">
-                                    Across {page.assignedCohorts.length} assigned CBC cohort
+                                    Across {page.assignedCohorts.length} assigned class
                                     {page.assignedCohorts.length !== 1 ? 's' : ''}
                                 </p>
                             )}
@@ -114,7 +114,7 @@ export function CBCProgressPage() {
                     <Card>
                         <div className="flex items-center gap-2 mb-3">
                             <Filter className="h-4 w-4 text-gray-400" />
-                            <h3 className="text-sm font-semibold text-gray-900">Cohort</h3>
+                            <h3 className="text-sm font-semibold text-gray-900">Class</h3>
                         </div>
                         <Select
                             label=""
@@ -123,7 +123,7 @@ export function CBCProgressPage() {
                                 event.target.value ? Number(event.target.value) : null
                             )}
                             options={[
-                                { value: '', label: 'All cohorts' },
+                                { value: '', label: 'All classes' },
                                 ...(page.isAdmin ? page.cohorts : page.assignedCohorts).map(
                                     (cohort: Cohort | { id: number; name: string }) => ({
                                         value: String(cohort.id),
@@ -138,7 +138,7 @@ export function CBCProgressPage() {
                         <div className="flex items-center gap-2 mb-3">
                             <BookOpen className="h-4 w-4 text-gray-400" />
                             <h3 className="text-sm font-semibold text-gray-900">
-                                {page.isAdmin ? 'Subject' : 'My CBC Subject'}
+                                {page.isAdmin ? 'Subject' : 'My Subject'}
                             </h3>
                         </div>
                         <SubjectGroupPicker
@@ -158,7 +158,7 @@ export function CBCProgressPage() {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <StatsCard title="Strands" value={page.stats.strands} icon={BookOpen} color="blue" />
                             <StatsCard title="Sub-Strands" value={page.stats.subStrands} icon={TrendingUp} color="green" />
-                            <StatsCard title="Outcomes" value={page.stats.outcomes} icon={Target} color="purple" />
+                            <StatsCard title="Learning Goals" value={page.stats.outcomes} icon={Target} color="purple" />
                             <StatsCard title="Subjects" value={page.stats.subjects} icon={Users} color="orange" />
                         </div>
                     )}
@@ -175,15 +175,15 @@ export function CBCProgressPage() {
                                 )}
                             </h2>
                             <p className="text-sm text-gray-500 mt-1">
-                                Click a strand to explore sub-strands and learning outcomes
+                                Open a strand to view sub-strands and learning goals.
                             </p>
                         </div>
 
                         {!page.isAdmin && !page.hasVisibleProfiles ? (
                             <CBCEmpty
                                 icon={BookOpen}
-                                title="No CBC Subjects Attached"
-                                description="No CBC subjects are attached to your assigned cohorts."
+                                title="No CBC Subjects Available"
+                                description="No CBC subjects are attached to your assigned classes."
                             />
                         ) : page.visibleStrands.length === 0 ? (
                             <CBCEmpty
@@ -220,14 +220,14 @@ export function CBCProgressPage() {
                                                 </span>
                                                 {!page.effectiveCohortId && !strand.is_assigned && (
                                                     <Badge variant="warning" size="sm" className="shrink-0">
-                                                        No cohort yet
+                                                        No class yet
                                                     </Badge>
                                                 )}
                                             </div>
 
                                             <div className="flex items-center gap-3 shrink-0 ml-4">
                                                 <span className="text-sm text-gray-500">
-                                                    {subStrandCount} sub-strands · {outcomeCount} outcomes
+                                                    {subStrandCount} sub-strands · {outcomeCount} learning goals
                                                 </span>
                                                 <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
                                             </div>

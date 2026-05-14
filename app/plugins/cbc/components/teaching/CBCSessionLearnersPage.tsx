@@ -35,7 +35,7 @@ export function CBCSessionLearnersPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCLoading message="Loading session…" />
+                <CBCLoading message="Loading lesson…" />
             </div>
         );
     }
@@ -44,7 +44,7 @@ export function CBCSessionLearnersPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCError error={sessionError ?? 'Session not found'} />
+                <CBCError error={sessionError ?? 'Lesson not found'} />
             </div>
         );
     }
@@ -54,8 +54,8 @@ export function CBCSessionLearnersPage() {
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
-                { label: 'Sessions', href: '/cbc/teaching/sessions' },
-                { label: session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: 'Lessons', href: '/cbc/teaching/sessions' },
+                { label: session.subject_name ?? 'Lesson', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
                 { label: 'Learners' },
             ]} />
             <CBCTeachingSessionNav sessionId={sessionId} active="learners" />
@@ -68,7 +68,7 @@ export function CBCSessionLearnersPage() {
                     <div className="flex-1">
                         <div className="flex items-center gap-3 flex-wrap mb-1">
                             <h1 className="text-xl font-bold text-gray-900">
-                                {session.subject_name ?? 'General Session'}
+                                {session.subject_name ?? 'Lesson'}
                             </h1>
                             <SessionStatusBadge status={session.status} />
                         </div>
@@ -83,7 +83,7 @@ export function CBCSessionLearnersPage() {
                                 })}
                             </span>
                             <div className="flex items-center gap-2">
-                                <Badge variant="blue" size="sm">{links.length} outcomes</Badge>
+                                <Badge variant="blue" size="sm">{links.length} learning goal{links.length !== 1 ? 's' : ''}</Badge>
                                 <Badge variant="purple" size="sm">{learners.length} learners</Badge>
                             </div>
                         </div>
@@ -94,8 +94,8 @@ export function CBCSessionLearnersPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
                     { label: 'Total Learners', value: learners.length, color: 'text-purple-600' },
-                    { label: 'With Evidence', value: learnersWithEvidence, color: 'text-emerald-600' },
-                    { label: 'Total Records', value: learners.reduce((sum, learner) => sum + learner.session_evidence_count, 0), color: 'text-blue-600' },
+                    { label: 'Observed', value: learnersWithEvidence, color: 'text-emerald-600' },
+                    { label: 'Performance Records', value: learners.reduce((sum, learner) => sum + learner.session_evidence_count, 0), color: 'text-blue-600' },
                 ].map(stat => (
                     <Card key={stat.label} className="text-center">
                         <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
@@ -108,9 +108,9 @@ export function CBCSessionLearnersPage() {
                 <div className="mb-5">
                     <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                         <Users className="h-5 w-5 text-purple-600" />
-                        Learners
+                        Class performance
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">Evidence recorded for this session</p>
+                    <p className="text-sm text-gray-500 mt-1">See which learners have observations for this lesson.</p>
                 </div>
 
                 {learnersLoading ? (
@@ -162,10 +162,10 @@ export function CBCSessionLearnersPage() {
                                             }}
                                         >
                                             <FileText className="h-4 w-4 mr-2" />
-                                            {learner.session_evidence_count > 0 ? 'View' : 'Record'} Evidence
+                                            {learner.session_evidence_count > 0 ? 'View' : 'Record'} performance
                                         </Button>
                                     ) : (
-                                        <span className="text-xs text-gray-400">Link outcomes first</span>
+                                        <span className="text-xs text-gray-400">Add what was taught first</span>
                                     )}
                                 </div>
                             </div>
@@ -178,12 +178,12 @@ export function CBCSessionLearnersPage() {
                         <div className="flex items-start gap-3">
                             <Target className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
                             <div>
-                                <p className="text-sm font-medium text-yellow-900">No outcomes linked yet</p>
+                                <p className="text-sm font-medium text-yellow-900">No learning goals added yet</p>
                                 <p className="text-sm text-yellow-700 mt-1">
-                                    Link learning outcomes before recording evidence.
+                                    Add what was taught before recording class performance.
                                 </p>
                                 <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`}>
-                                    <Button variant="primary" size="sm" className="mt-3">Add Outcomes</Button>
+                                    <Button variant="primary" size="sm" className="mt-3">Add what was taught</Button>
                                 </Link>
                             </div>
                         </div>

@@ -27,7 +27,7 @@ export function CBCSessionOutcomesPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCLoading message="Loading session…" />
+                <CBCLoading message="Loading lesson…" />
             </div>
         );
     }
@@ -36,7 +36,7 @@ export function CBCSessionOutcomesPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCError error={page.sessionError ?? 'Session not found'} />
+                <CBCError error={page.sessionError ?? 'Lesson not found'} />
             </div>
         );
     }
@@ -46,9 +46,9 @@ export function CBCSessionOutcomesPage() {
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
-                { label: 'Sessions', href: '/cbc/teaching/sessions' },
-                { label: page.session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
-                { label: 'Outcomes' },
+                { label: 'Lessons', href: '/cbc/teaching/sessions' },
+                { label: page.session.subject_name ?? 'Lesson', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: 'What Was Taught' },
             ]} />
             <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
 
@@ -65,14 +65,19 @@ export function CBCSessionOutcomesPage() {
 
             <Card>
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                        <Target className="h-5 w-5 text-blue-600" />
-                        Linked Outcomes
-                        {page.links.length > 0 && <Badge variant="blue" size="sm">{page.links.length}</Badge>}
-                    </h2>
+                    <div>
+                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                            <Target className="h-5 w-5 text-blue-600" />
+                            What was taught
+                            {page.links.length > 0 && <Badge variant="blue" size="sm">{page.links.length}</Badge>}
+                        </h2>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Review the learning goals covered in this lesson.
+                        </p>
+                    </div>
                     <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`} className="w-full sm:w-auto">
                         <Button variant="primary" size="md" className="w-full sm:w-auto">
-                            <Plus className="h-4 w-4 mr-2" />Add Outcomes
+                            <Plus className="h-4 w-4 mr-2" />Add what was taught
                         </Button>
                     </Link>
                 </div>
@@ -88,23 +93,23 @@ export function CBCSessionOutcomesPage() {
                 )}
 
                 {page.linksLoading ? (
-                    <CBCLoading message="Loading outcomes…" />
+                    <CBCLoading message="Loading learning goals…" />
                 ) : page.links.length === 0 ? (
                     <div className="py-16 text-center">
                         <Target className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500 mb-1">No outcomes linked yet</p>
+                        <p className="text-gray-500 mb-1">No learning goals added yet</p>
                         <p className="text-sm text-gray-400 mb-4">
-                            Add curriculum outcomes to track what was taught
+                            Choose learning goals to show what was taught in this lesson.
                         </p>
                         <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`}>
                             <Button variant="primary" size="md">
-                                <Plus className="mr-2 h-4 w-4" />Add Outcomes
+                                <Plus className="mr-2 h-4 w-4" />Add what was taught
                             </Button>
                         </Link>
                     </div>
                 ) : page.filteredLinks.length === 0 ? (
                     <div className="py-8 text-center text-gray-500 text-sm">
-                        No outcomes match this filter
+                        No learning goals match this view
                     </div>
                 ) : (
                     <div className="space-y-3 mt-4">

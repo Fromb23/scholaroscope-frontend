@@ -12,6 +12,13 @@ const EVAL_OPTIONS = [
     { value: 'COMPETENCY', label: 'Competency Check' },
 ];
 
+const EVALUATION_LABELS: Record<EvaluationType, string> = {
+    DESCRIPTIVE: 'Observation',
+    NUMERIC: 'Score',
+    COMPETENCY: 'Competency Check',
+    RUBRIC: 'Performance Level',
+};
+
 interface Props {
     learner: SessionLearner;
     evidence: EvidenceRecord[];
@@ -41,11 +48,11 @@ export function LearnerEvidenceRow({
     return (
         <div className={`border rounded-xl overflow-hidden transition-all ${isHighlighted ? 'border-blue-500 shadow-md' :
             hasEvidence ? 'border-emerald-200 bg-emerald-50/30' :
-                'border-red-100 bg-red-50/20'
+                'border-slate-200 bg-slate-50/40'
             }`}>
-            <div className="flex items-center justify-between p-4 bg-white">
+            <div className="flex flex-col gap-3 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${hasEvidence ? 'bg-emerald-500' : 'bg-red-400'
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${hasEvidence ? 'bg-emerald-500' : 'bg-slate-400'
                         }`} />
                     <div className="min-w-0">
                         <h3 className="font-semibold text-gray-900 truncate">
@@ -57,7 +64,7 @@ export function LearnerEvidenceRow({
                 <div className="flex items-center gap-3 shrink-0">
                     {hasEvidence && (
                         <Badge variant="green" size="sm">
-                            {evidence.length} record{evidence.length !== 1 ? 's' : ''}
+                            {evidence.length} observation{evidence.length !== 1 ? 's' : ''}
                         </Badge>
                     )}
                     {!isAdding && (
@@ -67,7 +74,7 @@ export function LearnerEvidenceRow({
                             onClick={onStartAdding}
                         >
                             <Plus className="h-4 w-4 mr-1" />
-                            {hasEvidence ? 'Add More' : 'Add Evidence'}
+                            {hasEvidence ? 'Add another observation' : 'Record performance'}
                         </Button>
                     )}
                 </div>
@@ -79,7 +86,7 @@ export function LearnerEvidenceRow({
                         {evidence.map(ev => (
                             <div key={ev.id} className="p-3 bg-gray-50 rounded-lg text-sm">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant="blue" size="sm">{ev.evaluation_type}</Badge>
+                                    <Badge variant="blue" size="sm">{EVALUATION_LABELS[ev.evaluation_type]}</Badge>
                                     <span className="text-xs text-gray-500">
                                         {new Date(ev.observed_at).toLocaleDateString('en-GB')}
                                     </span>
@@ -98,7 +105,7 @@ export function LearnerEvidenceRow({
                 <div className="p-4 bg-blue-50 border-t border-blue-200">
                     <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                         <FileText className="h-4 w-4 text-blue-600" />
-                        Individual Evidence
+                        Learner observation
                     </h4>
                     <div className="space-y-3">
                         <Select
@@ -118,7 +125,7 @@ export function LearnerEvidenceRow({
                         )}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Observation Notes
+                                Observation notes
                                 {evalType === 'DESCRIPTIVE' && <span className="text-red-500 ml-1">*</span>}
                             </label>
                             <textarea
@@ -135,14 +142,14 @@ export function LearnerEvidenceRow({
                                 {formError}
                             </p>
                         )}
-                        <div className="flex gap-2">
-                            <Button variant="primary" size="sm"
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button variant="primary" size="sm" className="w-full sm:w-auto"
                                 onClick={onSubmit}
                                 disabled={createPending || (evalType === 'DESCRIPTIVE' && !narrative.trim())}>
                                 <Check className="h-4 w-4 mr-2" />
-                                {createPending ? 'Saving…' : 'Record Evidence'}
+                                {createPending ? 'Saving…' : 'Record performance'}
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={onCancel}>
+                            <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={onCancel}>
                                 Cancel
                             </Button>
                         </div>

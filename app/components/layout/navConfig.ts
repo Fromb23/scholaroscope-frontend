@@ -152,15 +152,15 @@ export function getInstructorNav(
         primary: [
             { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
             ...getPluginNavigationItems('instructor.primary.afterDashboard', pluginContext),
-            { name: 'My Cohorts', href: '/academic/cohorts', icon: Users },
-            { name: 'My Sessions', href: '/sessions', icon: Calendar },
+            { name: 'My Classes', href: '/academic/cohorts', icon: Users },
+            { name: 'My Lessons', href: '/sessions', icon: Calendar },
             ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
             { name: 'My Learners', href: '/learners', icon: Users },
             {
-                name: 'My Reports', href: '/reports/instructor', icon: FileBarChart,
+                name: 'My Class Reports', href: '/reports/instructor', icon: FileBarChart,
                 children: [
                     { name: 'Overview', href: '/reports/instructor', icon: LayoutDashboard },
-                    { name: 'My Cohort Subjects', href: '/reports/instructor/cohort-subjects', icon: BookOpen },
+                    { name: 'My Class Subjects', href: '/reports/instructor/cohort-subjects', icon: BookOpen },
                 ],
             },
             {

@@ -85,7 +85,7 @@ function SubStrandOutcomeList({
                                         <Badge variant="purple" size="sm" className="font-mono shrink-0">
                                             {outcome.code}
                                         </Badge>
-                                        {linked && <Badge variant="green" size="sm">Already Linked</Badge>}
+                                        {linked && <Badge variant="green" size="sm">Already added</Badge>}
                                     </div>
                                     <p className="text-sm text-gray-700">{outcome.description}</p>
                                 </div>
@@ -116,7 +116,7 @@ export function CBCAddSessionOutcomesPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCError error={page.sessionError ?? 'Session not found'} />
+                <CBCError error={page.sessionError ?? 'Lesson not found'} />
             </div>
         );
     }
@@ -126,21 +126,21 @@ export function CBCAddSessionOutcomesPage() {
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
-                { label: 'Sessions', href: '/cbc/teaching/sessions' },
-                { label: page.session.subject_name ?? 'Session', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
-                { label: 'Outcomes', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
-                { label: 'Add' },
+                { label: 'Lessons', href: '/cbc/teaching/sessions' },
+                { label: page.session.subject_name ?? 'Lesson', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: 'What Was Taught', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: 'Add What Was Taught' },
             ]} />
             <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
 
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Add Learning Outcomes</h1>
-                    <p className="text-gray-500 mt-1">Select outcomes to link to this session</p>
+                    <h1 className="text-2xl font-bold text-gray-900">What did you teach?</h1>
+                    <p className="text-gray-500 mt-1">Choose the learning goals covered in this lesson.</p>
                 </div>
                 <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`} className="w-full sm:w-auto">
                     <Button variant="ghost" size="md" className="w-full sm:w-auto">
-                        <ArrowLeft className="mr-2 h-4 w-4" />Cancel
+                        <ArrowLeft className="mr-2 h-4 w-4" />Back
                     </Button>
                 </Link>
             </div>
@@ -148,7 +148,7 @@ export function CBCAddSessionOutcomesPage() {
             <Card className="bg-blue-50 border-blue-200">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                        <p className="text-sm text-gray-600 mb-0.5">Selected</p>
+                        <p className="text-sm text-gray-600 mb-0.5">Selected learning goals</p>
                         <p className="text-3xl font-bold text-blue-600">{page.selectedIds.size}</p>
                     </div>
                     <div className="flex gap-2 flex-wrap">
@@ -160,12 +160,13 @@ export function CBCAddSessionOutcomesPage() {
                         <Button
                             variant="primary"
                             size="md"
+                            className="w-full sm:w-auto"
                             onClick={page.handleAdd}
                             disabled={page.selectedIds.size === 0 || page.bulkTag.isPending}
                         >
                             {page.bulkTag.isPending
                                 ? 'Adding…'
-                                : `Add ${page.selectedIds.size} Outcome${page.selectedIds.size !== 1 ? 's' : ''}`}
+                                : `Add ${page.selectedIds.size} learning goal${page.selectedIds.size !== 1 ? 's' : ''}`}
                         </Button>
                     </div>
                 </div>
@@ -183,7 +184,7 @@ export function CBCAddSessionOutcomesPage() {
                         type="text"
                         value={page.search}
                         onChange={event => page.setSearch(event.target.value)}
-                        placeholder="Search by strand name or code…"
+                        placeholder="Search learning goals by strand or code…"
                         className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
@@ -192,14 +193,14 @@ export function CBCAddSessionOutcomesPage() {
             <Card>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Target className="h-5 w-5 text-blue-600" />
-                    Curriculum Outcomes
+                    Learning goals
                 </h2>
 
                 {page.strandsLoading ? (
                     <CBCLoading />
                 ) : page.visibleStrands.length === 0 ? (
                     <div className="py-12 text-center text-gray-500 text-sm">
-                        No strands found — select a curriculum first
+                        No learning goals found - select a curriculum first
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -235,7 +236,9 @@ export function CBCAddSessionOutcomesPage() {
                                                         </Badge>
                                                         <span className="text-sm font-medium text-gray-800">{subStrand.name}</span>
                                                     </div>
-                                                    <span className="text-xs text-gray-400">{subStrand.outcomes_count} outcomes</span>
+                                                    <span className="text-xs text-gray-400">
+                                                        {subStrand.outcomes_count} learning goal{subStrand.outcomes_count !== 1 ? 's' : ''}
+                                                    </span>
                                                 </button>
 
                                                 {isExpanded && (

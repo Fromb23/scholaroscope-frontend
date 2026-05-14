@@ -339,11 +339,11 @@ function SessionWorkspaceView() {
             <div className="flex justify-between items-start gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        {isInstructor ? 'My Sessions' : 'Session Workspace'}
+                        {isInstructor ? 'My Lessons' : 'Session Workspace'}
                     </h1>
                     <p className="text-gray-600 mt-1 text-sm">
                         {isInstructor
-                            ? 'Track your assigned sessions, attendance, and day-to-day teaching flow.'
+                            ? 'Track your lessons, attendance, and day-to-day teaching flow.'
                             : 'Manage active sessions, attendance, and cohort-specific history from one workspace.'}
                     </p>
                 </div>
@@ -359,7 +359,7 @@ function SessionWorkspaceView() {
                     <Link href="/sessions/new">
                         <Button size="sm">
                             <Plus className="w-4 h-4 sm:mr-1" />
-                            <span className="hidden sm:inline">Create Session</span>
+                            <span className="hidden sm:inline">{isInstructor ? 'Create Lesson' : 'Create Session'}</span>
                         </Button>
                     </Link>
                 </div>
@@ -367,9 +367,9 @@ function SessionWorkspaceView() {
 
             <DesktopOnly>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <StatsCard title="Total Sessions" value={totalSessions} icon={Calendar} color="blue" />
-                    <StatsCard title="Today's Sessions" value={todayCount} icon={Clock} color="green" />
-                    <StatsCard title="Merged Sessions" value={mergedSessionsCount} icon={Layers} color="purple" />
+                    <StatsCard title={isInstructor ? 'Total Lessons' : 'Total Sessions'} value={totalSessions} icon={Calendar} color="blue" />
+                    <StatsCard title={isInstructor ? "Today's Lessons" : "Today's Sessions"} value={todayCount} icon={Clock} color="green" />
+                    <StatsCard title={isInstructor ? 'Combined Lessons' : 'Merged Sessions'} value={mergedSessionsCount} icon={Layers} color="purple" />
                     <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
                 </div>
             </DesktopOnly>
@@ -378,7 +378,9 @@ function SessionWorkspaceView() {
                 <Card>
                     <div className="p-4">
                         <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-base font-semibold text-gray-900">Today&apos;s Sessions</h2>
+                            <h2 className="text-base font-semibold text-gray-900">
+                                {isInstructor ? "Today's Lessons" : "Today's Sessions"}
+                            </h2>
                             {!isInstructor ? (
                                 <Link href="/sessions/today">
                                     <Button variant="ghost" size="sm">View All</Button>
