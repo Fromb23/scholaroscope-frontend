@@ -13,6 +13,8 @@ import { assignmentKeys } from '@/app/core/lib/queryKeys';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
     Assignment,
+    AssignmentAutoGenerateGroupsPayload,
+    AssignmentAutoGenerateGroupsResponse,
     AssignmentCreatePayload,
     AssignmentEligibleLearnersParams,
     AssignmentEligibleLearnersResponse,
@@ -25,6 +27,8 @@ import type {
     AssignmentGroup,
     AssignmentGroupCreatePayload,
     AssignmentGroupCreateResponse,
+    AssignmentGroupBulkMemberCreatePayload,
+    AssignmentGroupBulkMemberCreateResponse,
     AssignmentGroupEvidenceBridgeResponse,
     AssignmentGroupEvaluation,
     AssignmentGroupEvaluationCreatePayload,
@@ -832,6 +836,33 @@ export function useAddAssignmentGroupMember() {
     });
 }
 
+export function useBulkAddAssignmentGroupMembers() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            groupId,
+            data,
+        }: {
+            groupId: number;
+            data: AssignmentGroupBulkMemberCreatePayload;
+        }) => {
+            try {
+                return await assignmentGroupAPI.bulkAddMembers(groupId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to add learners to group.'));
+            }
+        },
+        onSuccess: async (result: AssignmentGroupBulkMemberCreateResponse) => {
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                result.group.assignment,
+                result.group.id
+            );
+        },
+    });
+}
+
 export function useRemoveAssignmentGroupMember() {
     const queryClient = useQueryClient();
 
@@ -854,6 +885,32 @@ export function useRemoveAssignmentGroupMember() {
         },
         onSuccess: async ({ assignmentId, groupId }) => {
             await invalidateAssignmentGroupDependencies(queryClient, assignmentId, groupId);
+        },
+    });
+}
+
+export function useAutoGenerateAssignmentGroups(assignmentId: number | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: AssignmentAutoGenerateGroupsPayload) => {
+            if (!assignmentId) {
+                throw new Error('Assignment id is required.');
+            }
+
+            try {
+                return await assignmentsAPI.autoGenerateGroups(assignmentId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to generate groups.'));
+            }
+        },
+        onSuccess: async (result: AssignmentAutoGenerateGroupsResponse) => {
+            const firstGroup = result.groups[0] ?? null;
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                assignmentId ?? firstGroup?.assignment ?? null,
+                firstGroup?.id ?? null
+            );
         },
     });
 }

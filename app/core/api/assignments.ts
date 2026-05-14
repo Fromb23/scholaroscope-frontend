@@ -2,6 +2,8 @@ import { apiClient } from '@/app/core/api/client';
 import type {
     Assignment,
     AssignmentCreatePayload,
+    AssignmentAutoGenerateGroupsPayload,
+    AssignmentAutoGenerateGroupsResponse,
     AssignmentEligibleLearnersParams,
     AssignmentEligibleLearnersResponse,
     AssignmentEvidenceBridgeResponse,
@@ -19,6 +21,8 @@ import type {
     AssignmentGroup,
     AssignmentGroupCreatePayload,
     AssignmentGroupCreateResponse,
+    AssignmentGroupBulkMemberCreatePayload,
+    AssignmentGroupBulkMemberCreateResponse,
     AssignmentGroupEvidenceBridgeResponse,
     AssignmentGroupEvaluation,
     AssignmentGroupEvaluationCreatePayload,
@@ -157,6 +161,17 @@ export const assignmentsAPI = {
         );
         return response.data;
     },
+
+    autoGenerateGroups: async (
+        assignmentId: number,
+        data: AssignmentAutoGenerateGroupsPayload
+    ): Promise<AssignmentAutoGenerateGroupsResponse> => {
+        const response = await apiClient.post<AssignmentAutoGenerateGroupsResponse>(
+            `${ASSIGNMENTS_BASE}/${assignmentId}/groups/auto-generate/`,
+            data
+        );
+        return response.data;
+    },
 };
 
 export const assignmentOutcomeAPI = {
@@ -259,6 +274,17 @@ export const assignmentGroupAPI = {
     addMember: async (groupId: number, data: AssignmentGroupMemberCreatePayload): Promise<AssignmentGroup> => {
         const response = await apiClient.post<AssignmentGroup>(
             `${ASSIGNMENT_GROUPS_BASE}/${groupId}/members/`,
+            data
+        );
+        return response.data;
+    },
+
+    bulkAddMembers: async (
+        groupId: number,
+        data: AssignmentGroupBulkMemberCreatePayload
+    ): Promise<AssignmentGroupBulkMemberCreateResponse> => {
+        const response = await apiClient.post<AssignmentGroupBulkMemberCreateResponse>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/members/bulk/`,
             data
         );
         return response.data;

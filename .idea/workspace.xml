@@ -4,18 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/browser/CBCBrowserStrandPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/browser/CBCBrowserStrandPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/outcomes/OutcomeRow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/outcomes/OutcomeRow.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/outcomes/SessionHeader.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/outcomes/SessionHeader.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCAddSessionOutcomesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCAddSessionOutcomesPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCOutcomeSessionPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCOutcomeSessionPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBC.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBC.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBCOutcomeSessionPage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBCOutcomeSessionPage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useSessionOutcomes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useSessionOutcomes.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/types/cbc.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/types/cbc.ts" afterDir="false" />
-    </list>
+    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -141,7 +130,7 @@
       <workItem from="1778666862221" duration="6712000" />
       <workItem from="1778701366271" duration="7565000" />
       <workItem from="1778737814486" duration="16637000" />
-      <workItem from="1778789705520" duration="2952000" />
+      <workItem from="1778789705520" duration="3776000" />
     </task>
     <servers />
   </component>
