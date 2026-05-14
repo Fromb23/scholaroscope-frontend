@@ -588,9 +588,12 @@ export const useMarkOutcomeCovered = () => {
 export const useRemoveOutcomeLink = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => outcomeSessionAPI.delete(id),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.all }),
+    mutationFn: ({ id }: { id: number; sessionId: number }) => outcomeSessionAPI.delete(id),
+    onSuccess: (_data, { sessionId }) => {
+      qc.invalidateQueries({ queryKey: cbcKeys.outcomeSessions.bySession(sessionId) });
+      qc.invalidateQueries({ queryKey: cbcKeys.teachingSessions.outcomes(sessionId) });
+      qc.invalidateQueries({ queryKey: cbcKeys.teachingSessions.summary(sessionId) });
+    },
   });
 };
 

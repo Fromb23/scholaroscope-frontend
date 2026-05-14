@@ -75,12 +75,16 @@ export function CBCOutcomeSessionPage() {
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-3">
                             <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-3 mb-2">
-                                    <Badge variant="purple" size="lg" className="font-mono font-semibold">
+                                    <Badge
+                                        variant="purple"
+                                        size="lg"
+                                        className="max-w-full whitespace-normal break-all font-mono font-semibold"
+                                    >
                                         {page.learningOutcome.code}
                                     </Badge>
                                     <button
                                         onClick={page.handleToggleCovered}
-                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all hover:bg-gray-50"
+                                        className="flex min-h-[44px] items-center gap-2 rounded-lg border px-3 py-1.5 text-left transition-all hover:bg-gray-50"
                                     >
                                         {page.outcomeSession.covered ? (
                                             <>
@@ -99,7 +103,7 @@ export function CBCOutcomeSessionPage() {
                                     {page.learningOutcome.description}
                                 </p>
                                 {(page.learningOutcome.strand_name || page.learningOutcome.sub_strand_name) && (
-                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <div className="flex items-start gap-2 text-sm text-gray-500">
                                         <BookOpen className="h-4 w-4 shrink-0" />
                                         <span className="break-words">
                                             {page.learningOutcome.strand_name} → {page.learningOutcome.sub_strand_name}

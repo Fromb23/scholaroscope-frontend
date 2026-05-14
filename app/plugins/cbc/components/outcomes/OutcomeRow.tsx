@@ -1,6 +1,6 @@
 // app/plugins/cbc/components/outcomes/OutcomeRow.tsx
 import Link from 'next/link';
-import { CheckCircle, Circle, Trash2, FileText } from 'lucide-react';
+import { CheckCircle, Circle, FileText, Lock, Trash2 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
@@ -29,19 +29,20 @@ export function OutcomeRow({
     onEditNotes, onSaveNotes, onCancelNotes, onNotesChange,
 }: Props) {
     const isEditing = editingNotes === link.id;
+    const hasEvidence = link.evidence_count > 0;
 
     return (
-        <div className={`border rounded-xl p-5 transition-all ${link.covered
+        <div className={`w-full max-w-full overflow-hidden border rounded-xl p-4 transition-all sm:p-5 ${link.covered
             ? 'border-green-200 bg-green-50'
-            : link.evidence_count > 0
+            : hasEvidence
                 ? 'border-blue-200 bg-blue-50/30'
                 : 'border-gray-200 bg-white hover:border-blue-200'
             }`}>
-            <div className="flex items-start gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <button
                     onClick={() => onToggleCovered(link.id, link.covered, link.notes)}
                     disabled={markCoveredPending}
-                    className="mt-1 shrink-0"
+                    className="shrink-0 self-start sm:mt-1"
                 >
                     {link.covered
                         ? <CheckCircle className="h-6 w-6 text-green-600" />
@@ -50,26 +51,39 @@ export function OutcomeRow({
                 </button>
 
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="purple" size="md" className="font-mono font-semibold">
-                                {link.learning_outcome_code}
-                            </Badge>
-                            <span className="text-xs text-gray-500 hidden sm:inline">
-                                {link.strand_name} → {link.sub_strand_name}
-                            </span>
+                    <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge
+                                    variant="purple"
+                                    size="md"
+                                    className="max-w-full whitespace-normal break-all font-mono font-semibold"
+                                >
+                                    {link.learning_outcome_code}
+                                </Badge>
+                                <span className="text-xs text-gray-500 break-words">
+                                    {link.strand_name} → {link.sub_strand_name}
+                                </span>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => onRemove(link.id)}
-                            disabled={removeLinkPending}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                            aria-label="Remove learning goal from this lesson"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </button>
+                        {hasEvidence ? (
+                            <Badge variant="default" size="sm" className="inline-flex items-center gap-1 self-start">
+                                <Lock className="h-3.5 w-3.5" />
+                                Evidence recorded
+                            </Badge>
+                        ) : (
+                            <button
+                                onClick={() => onRemove(link.id)}
+                                disabled={removeLinkPending}
+                                className="self-start rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                                aria-label="Remove learning goal from this lesson"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
 
-                    <p className="text-sm text-gray-700 mb-3">{link.learning_outcome_description}</p>
+                    <p className="mb-3 text-sm text-gray-700 break-words">{link.learning_outcome_description}</p>
 
                     {isEditing ? (
                         <div className="space-y-2">
@@ -79,7 +93,7 @@ export function OutcomeRow({
                                 onChange={e => onNotesChange(e.target.value)}
                                 placeholder="How was this learning goal taught?"
                             />
-                            <div className="flex gap-2">
+                            <div className="flex flex-col gap-2 sm:flex-row">
                                 <Button variant="primary" size="sm"
                                     onClick={() => onSaveNotes(link.id)}
                                     disabled={markCoveredPending}>
@@ -91,11 +105,11 @@ export function OutcomeRow({
                             </div>
                         </div>
                     ) : link.notes ? (
-                        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-700 italic">{link.notes}</p>
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                            <p className="text-sm text-gray-700 italic break-words">{link.notes}</p>
                             <button
                                 onClick={() => onEditNotes(link.id, link.notes)}
-                                className="text-xs text-blue-600 hover:underline mt-1">
+                                className="mt-1 text-xs text-blue-600 hover:underline">
                                 Edit notes
                             </button>
                         </div>
@@ -107,16 +121,16 @@ export function OutcomeRow({
                         </button>
                     )}
 
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
                         <Link
                             href={`/cbc/teaching/sessions/${sessionId}/outcomes/${link.learning_outcome}`}
-                            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
                         >
-                            <FileText className="h-4 w-4" />
-                            Record performance
+                            <FileText className="h-4 w-4 shrink-0" />
+                            <span className="break-words">Record performance</span>
                         </Link>
-                        {link.evidence_count > 0 && (
-                            <Badge variant="green" size="sm">
+                        {hasEvidence && (
+                            <Badge variant="green" size="sm" className="self-start sm:self-auto">
                                 {link.evidence_count} learner{link.evidence_count !== 1 ? 's' : ''} observed
                             </Badge>
                         )}

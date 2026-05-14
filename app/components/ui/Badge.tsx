@@ -1,5 +1,3 @@
-import { title } from "process";
-
 interface BadgeProps {
     children: React.ReactNode;
     variant?: 'success' | 'warning' | 'danger' | 'info' | 'default' | 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'indigo' | 'orange';
@@ -13,7 +11,7 @@ export function Badge({
     variant = 'default',
     size = 'md',
     className = '',
-    title = ''
+    title = '',
 }: BadgeProps) {
     const variants = {
         success: 'bg-green-100 text-green-800',
@@ -39,6 +37,7 @@ export function Badge({
     return (
         <span
             className={`inline-flex items-center rounded-full font-medium ${variants[variant]} ${sizes[size]} ${className}`}
+            title={title || undefined}
         >
             {children}
         </span>

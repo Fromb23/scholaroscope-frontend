@@ -24,6 +24,10 @@ import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import type { SubStrand } from '@/app/plugins/cbc/types/cbc';
 
+function learningGoalsLabel(count: number) {
+    return `${count} learning goal${count !== 1 ? 's' : ''}`;
+}
+
 function SubStrandOutcomes({ subStrand }: { subStrand: SubStrand }) {
     const { data: outcomes = [], isLoading } = useLearningOutcomes({ sub_strand: subStrand.id });
 
@@ -37,9 +41,9 @@ function SubStrandOutcomes({ subStrand }: { subStrand: SubStrand }) {
 
     if (outcomes.length === 0) {
         return (
-            <div className="px-5 py-6 text-center">
+            <div className="px-4 py-6 text-center sm:px-5">
                 <FileText className="mx-auto h-8 w-8 text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No outcomes recorded</p>
+                <p className="text-sm text-gray-500">No learning goals added yet</p>
             </div>
         );
     }
@@ -49,24 +53,31 @@ function SubStrandOutcomes({ subStrand }: { subStrand: SubStrand }) {
             {outcomes.map(outcome => (
                 <div
                     key={outcome.id}
-                    className="flex flex-col sm:flex-row sm:items-start gap-3 px-5 py-4 hover:bg-gray-50 transition-colors"
+                    className="px-4 py-4 transition-colors hover:bg-gray-50 sm:px-5"
                 >
-                    <div className="flex-1 min-w-0">
-                        <Badge variant="indigo" size="sm" className="font-mono mb-2 inline-block">
+                    <div className="space-y-2">
+                        <Badge
+                            variant="indigo"
+                            size="sm"
+                            className="inline-flex max-w-full whitespace-normal break-all font-mono"
+                            title={outcome.code}
+                        >
                             {outcome.code}
                         </Badge>
-                        <p className="text-sm text-gray-700 leading-relaxed">{outcome.description}</p>
-                        {outcome.grade_name && (
-                            <Badge variant="blue" size="sm" className="mt-2">
-                                {outcome.grade_name}
-                            </Badge>
-                        )}
+                        <p className="text-sm leading-6 text-gray-700 break-words">{outcome.description}</p>
+                        <div className="flex flex-wrap gap-2">
+                            {outcome.grade_name && (
+                                <Badge variant="blue" size="sm">
+                                    {outcome.grade_name}
+                                </Badge>
+                            )}
+                            {outcome.evidence_count > 0 && (
+                                <Badge variant="green" size="sm">
+                                    {outcome.evidence_count} evidence
+                                </Badge>
+                            )}
+                        </div>
                     </div>
-                    {outcome.evidence_count > 0 && (
-                        <Badge variant="green" size="sm" className="shrink-0 self-start">
-                            {outcome.evidence_count} evidence
-                        </Badge>
-                    )}
                 </div>
             ))}
         </div>
@@ -97,30 +108,35 @@ export function CBCBrowserStrandPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="w-full max-w-full space-y-6 overflow-x-hidden">
             <CBCNav />
             <CBCBreadcrumb segments={[
-                { label: 'Browser', href: '/cbc/browser' },
+                { label: 'CBC', href: '/cbc/browser' },
                 { label: page.strand.name },
             ]} />
 
             <Link href="/cbc/browser">
                 <Button variant="ghost" size="md">
-                    <ArrowLeft className="mr-2 h-4 w-4" />Back to Browser
+                    <ArrowLeft className="mr-2 h-4 w-4" />Back to CBC
                 </Button>
             </Link>
 
-            <Card>
-                <div className="flex flex-col sm:flex-row items-start gap-4">
-                    <div className="p-3.5 bg-blue-50 rounded-xl border border-blue-100 shrink-0">
-                        <span className="text-xl font-mono font-bold text-blue-700">{page.strand.code}</span>
+            <Card className="p-4 sm:p-6">
+                <div className="flex flex-col items-start gap-4 sm:flex-row">
+                    <div className="w-full rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 sm:w-auto sm:max-w-xs sm:shrink-0 sm:px-3.5 sm:py-3.5">
+                        <span
+                            className="block break-all text-lg font-mono font-bold text-blue-700 sm:text-xl"
+                            title={page.strand.code}
+                        >
+                            {page.strand.code}
+                        </span>
                     </div>
                     <div className="flex-1 min-w-0">
                         <h1 className="text-2xl font-bold text-gray-900 mb-2">{page.strand.name}</h1>
                         {page.strand.description && (
                             <p className="text-gray-600 mb-3">{page.strand.description}</p>
                         )}
-                        <div className="flex flex-wrap gap-4 pt-3 border-t border-gray-100 text-sm text-gray-500">
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-gray-100 pt-3 text-sm text-gray-500">
                             <div className="flex items-center gap-1.5">
                                 <BookOpen className="h-4 w-4 text-gray-400" />
                                 <span>Curriculum: <span className="font-medium text-gray-900">
@@ -138,7 +154,7 @@ export function CBCBrowserStrandPage() {
                             <div className="flex items-center gap-1.5">
                                 <Layers className="h-4 w-4 text-gray-400" />
                                 <Badge variant="blue" size="sm">
-                                    {page.strand.sub_strands.length} sub-strand
+                                    {page.strand.sub_strands.length} learning area
                                     {page.strand.sub_strands.length !== 1 ? 's' : ''}
                                 </Badge>
                             </div>
@@ -147,19 +163,23 @@ export function CBCBrowserStrandPage() {
                 </div>
             </Card>
 
-            <Card>
-                <div className="flex items-center gap-2 mb-2">
+            <Card className="p-4 sm:p-6">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Layers className="h-5 w-5 text-blue-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">Sub-Strands & Learning Outcomes</h2>
-                    <Badge variant="blue" size="sm">{page.strand.sub_strands.length}</Badge>
+                    <h2 className="text-lg font-semibold text-gray-900">Learning areas and goals</h2>
+                    <Badge variant="blue" size="sm">
+                        {page.strand.sub_strands.length} learning area
+                        {page.strand.sub_strands.length !== 1 ? 's' : ''}
+                    </Badge>
                 </div>
-                <p className="text-sm text-gray-500 mb-5">
-                    Click a sub-strand to expand its learning outcomes
+                <p className="mb-5 text-sm text-gray-500">
+                    Open a learning area to see its goals.
                 </p>
 
                 <div className="space-y-3">
                     {page.strand.sub_strands.map(subStrand => {
                         const isOpen = page.expandedSubStrands.has(subStrand.id);
+                        const actionLabel = isOpen ? 'Close' : 'Open';
 
                         return (
                             <div
@@ -169,37 +189,64 @@ export function CBCBrowserStrandPage() {
                                 <button
                                     type="button"
                                     onClick={() => page.toggleSubStrand(subStrand.id)}
-                                    className="w-full flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 bg-gray-50 hover:bg-gray-100 transition-all text-left"
+                                    aria-expanded={isOpen}
+                                    aria-controls={`sub-strand-${subStrand.id}-goals`}
+                                    aria-label={`${actionLabel} learning area ${subStrand.name}`}
+                                    className="w-full bg-gray-50 px-4 py-4 text-left transition-all hover:bg-gray-100 sm:px-5 sm:py-4"
                                 >
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className="shrink-0">
+                                    <div className="flex items-start gap-3">
+                                        <div className="shrink-0 pt-0.5">
                                             {isOpen
                                                 ? <ChevronDown className="h-5 w-5 text-blue-600" />
                                                 : <ChevronRight className="h-5 w-5 text-gray-400" />
                                             }
                                         </div>
-                                        <Badge variant="purple" size="md" className="font-mono shrink-0">
-                                            {subStrand.code}
-                                        </Badge>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-gray-900">{subStrand.name}</p>
-                                            {subStrand.description && (
-                                                <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">
-                                                    {subStrand.description}
-                                                </p>
-                                            )}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-sm font-medium text-gray-500 sm:hidden">
+                                                {learningGoalsLabel(subStrand.outcomes_count)}
+                                            </div>
+                                            <div className="mt-3 flex flex-col gap-3 sm:mt-0 sm:flex-row sm:items-start sm:justify-between">
+                                                <div className="min-w-0 flex-1 space-y-2">
+                                                    <Badge
+                                                        variant="purple"
+                                                        size="md"
+                                                        className="inline-flex max-w-full whitespace-normal break-all font-mono"
+                                                        title={subStrand.code}
+                                                    >
+                                                        {subStrand.code}
+                                                    </Badge>
+                                                    <div className="min-w-0">
+                                                        <p className="text-base font-semibold leading-6 text-gray-900 break-words">
+                                                            {subStrand.name}
+                                                        </p>
+                                                        {subStrand.description && (
+                                                            <p className="mt-1 text-sm leading-6 text-gray-500 break-words">
+                                                                {subStrand.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <Badge
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="hidden shrink-0 self-start sm:inline-flex"
+                                                >
+                                                    {learningGoalsLabel(subStrand.outcomes_count)}
+                                                </Badge>
+                                            </div>
                                         </div>
                                     </div>
-                                    <Badge variant="default" size="sm" className="shrink-0 self-start sm:self-center">
-                                        {subStrand.outcomes_count} outcome{subStrand.outcomes_count !== 1 ? 's' : ''}
-                                    </Badge>
                                 </button>
 
-                                {isOpen && (
-                                    <div className="border-t border-gray-100 bg-white">
+                                <div
+                                    id={`sub-strand-${subStrand.id}-goals`}
+                                    className="border-t border-gray-100 bg-white"
+                                    hidden={!isOpen}
+                                >
+                                    {isOpen && (
                                         <SubStrandOutcomes subStrand={subStrand} />
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         );
                     })}

@@ -82,12 +82,16 @@ function SubStrandOutcomeList({
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                        <Badge variant="purple" size="sm" className="font-mono shrink-0">
+                                        <Badge
+                                            variant="purple"
+                                            size="sm"
+                                            className="max-w-full whitespace-normal break-all font-mono"
+                                        >
                                             {outcome.code}
                                         </Badge>
                                         {linked && <Badge variant="green" size="sm">Already added</Badge>}
                                     </div>
-                                    <p className="text-sm text-gray-700">{outcome.description}</p>
+                                    <p className="text-sm text-gray-700 break-words">{outcome.description}</p>
                                 </div>
                             </div>
                         </button>
@@ -122,7 +126,7 @@ export function CBCAddSessionOutcomesPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="w-full max-w-full space-y-6 overflow-x-hidden">
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
@@ -133,8 +137,8 @@ export function CBCAddSessionOutcomesPage() {
             ]} />
             <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
 
-            <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                     <h1 className="text-2xl font-bold text-gray-900">What did you teach?</h1>
                     <p className="text-gray-500 mt-1">Choose the learning goals covered in this lesson.</p>
                 </div>
@@ -146,8 +150,8 @@ export function CBCAddSessionOutcomesPage() {
             </div>
 
             <Card className="bg-blue-50 border-blue-200">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
                         <p className="text-sm text-gray-600 mb-0.5">Selected learning goals</p>
                         <p className="text-3xl font-bold text-blue-600">{page.selectedIds.size}</p>
                     </div>
@@ -206,14 +210,26 @@ export function CBCAddSessionOutcomesPage() {
                     <div className="space-y-2">
                         {page.visibleStrands.map(strand => (
                             <div key={strand.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                                <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="blue" size="md" className="font-mono">{strand.code}</Badge>
-                                        <span className="font-semibold text-gray-900">{strand.name}</span>
+                                <div className="bg-gray-50 px-4 py-3">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge
+                                                    variant="blue"
+                                                    size="md"
+                                                    className="max-w-full whitespace-normal break-all font-mono"
+                                                >
+                                                    {strand.code}
+                                                </Badge>
+                                                <span className="font-semibold text-gray-900 break-words">
+                                                    {strand.name}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <Badge variant="default" size="sm" className="self-start">
+                                            {strand.sub_strands_count} sub-strand{strand.sub_strands_count !== 1 ? 's' : ''}
+                                        </Badge>
                                     </div>
-                                    <Badge variant="default" size="sm">
-                                        {strand.sub_strands_count} sub-strand{strand.sub_strands_count !== 1 ? 's' : ''}
-                                    </Badge>
                                 </div>
 
                                 <div className="divide-y divide-gray-100 bg-white">
@@ -224,21 +240,35 @@ export function CBCAddSessionOutcomesPage() {
                                             <div key={subStrand.id}>
                                                 <button
                                                     onClick={() => page.toggleSubStrand(subStrand.id)}
-                                                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                                                    className="w-full px-4 py-3 hover:bg-gray-50 transition-colors text-left"
                                                 >
-                                                    <div className="flex items-center gap-2">
-                                                        {isExpanded
-                                                            ? <ChevronDown className="h-4 w-4 text-blue-600" />
-                                                            : <ChevronRight className="h-4 w-4 text-gray-400" />
-                                                        }
-                                                        <Badge variant="purple" size="sm" className="font-mono">
-                                                            {subStrand.code}
-                                                        </Badge>
-                                                        <span className="text-sm font-medium text-gray-800">{subStrand.name}</span>
+                                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-start gap-2">
+                                                                {isExpanded
+                                                                    ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                                                                    : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                                                                }
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <Badge
+                                                                            variant="purple"
+                                                                            size="sm"
+                                                                            className="max-w-full whitespace-normal break-all font-mono"
+                                                                        >
+                                                                            {subStrand.code}
+                                                                        </Badge>
+                                                                        <span className="text-sm font-medium text-gray-800 break-words">
+                                                                            {subStrand.name}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <span className="pl-6 text-xs text-gray-400 sm:pl-0 sm:text-right">
+                                                            {subStrand.outcomes_count} learning goal{subStrand.outcomes_count !== 1 ? 's' : ''}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-xs text-gray-400">
-                                                        {subStrand.outcomes_count} learning goal{subStrand.outcomes_count !== 1 ? 's' : ''}
-                                                    </span>
                                                 </button>
 
                                                 {isExpanded && (

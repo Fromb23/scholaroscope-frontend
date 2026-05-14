@@ -196,7 +196,7 @@ export interface OutcomeSession {
   covered: boolean;
   notes: string;
   created_at: string;
-  evidence_count: number;
+  evidence_count?: number;
 }
 
 export interface OutcomeSessionWithEvidence extends OutcomeSession {
