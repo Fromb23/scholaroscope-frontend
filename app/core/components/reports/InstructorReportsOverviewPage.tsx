@@ -36,7 +36,7 @@ export function InstructorReportsOverviewPage() {
 
         return {
             title: 'Instructor Overview',
-            subtitle: 'My Reports',
+            subtitle: 'My Class Reports',
             metadata: {
                 assignedCohortSubjects: String(overview.total_assigned_cohort_subjects),
                 visibleLearners: String(overview.total_visible_learners),
@@ -75,7 +75,7 @@ export function InstructorReportsOverviewPage() {
 
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">My Reports</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">My Class Reports</h1>
                     <p className="text-gray-500 mt-1">
                         Responsibility-bound reporting across your assigned cohort subjects.
                     </p>

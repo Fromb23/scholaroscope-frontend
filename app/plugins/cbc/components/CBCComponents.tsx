@@ -26,8 +26,8 @@ import { Select } from '@/app/components/ui/Select';
 // ============================================================================
 
 const NAV_ITEMS = [
-    { href: '/cbc/browser', label: 'Browser' },
-    { href: '/cbc/progress', label: 'Progress' },
+    { href: '/cbc/browser', label: 'Browse' },
+    { href: '/cbc/progress', label: 'Learning Progress' },
     { href: '/cbc/teaching', label: 'Teaching' },
 ] as const;
 
@@ -118,19 +118,19 @@ export function CBCTeachingSessionNav({
         {
             key: 'sessions',
             href: '/cbc/teaching/sessions',
-            label: 'My Sessions',
+            label: 'My Lessons',
             icon: Calendar,
         },
         {
             key: 'shared',
             href: `/sessions/${sessionId}`,
-            label: 'Shared Session',
+            label: 'Lesson Details',
             icon: ArrowLeftRight,
         },
         {
             key: 'outcomes',
             href: `/cbc/teaching/sessions/${sessionId}/outcomes`,
-            label: 'Outcomes',
+            label: 'What Was Taught',
             icon: Target,
         },
         {

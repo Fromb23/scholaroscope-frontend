@@ -24,7 +24,7 @@ export function SessionHeader({ session, links, summary, coveredCount, progress,
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 flex-wrap mb-1">
                         <h1 className="text-xl font-bold text-gray-900">
-                            {session.subject_name ?? 'General Session'}
+                            {session.subject_name ?? 'Lesson'}
                         </h1>
                         <SessionStatusBadge status={session.status} />
                     </div>
@@ -41,7 +41,7 @@ export function SessionHeader({ session, links, summary, coveredCount, progress,
                 <div className="mt-4 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between text-sm mb-2">
                         <span className="text-gray-600">
-                            {coveredCount} of {links.length} outcomes covered
+                            {coveredCount} of {links.length} learning goals marked taught
                         </span>
                         <span className="font-semibold text-blue-600">{progress}%</span>
                     </div>
@@ -57,13 +57,13 @@ export function SessionHeader({ session, links, summary, coveredCount, progress,
             {summary && (
                 <div className="mt-3 flex flex-wrap gap-3">
                     <Badge variant="blue" size="sm">
-                        {summary.evidence.total_records} evidence records
+                        {summary.evidence.total_records} observation record{summary.evidence.total_records !== 1 ? 's' : ''}
                     </Badge>
                     <Badge variant="purple" size="sm">
-                        {summary.evidence.students_with_evidence} students observed
+                        {summary.evidence.students_with_evidence} learner{summary.evidence.students_with_evidence !== 1 ? 's' : ''} observed
                     </Badge>
                     <Badge variant="green" size="sm">
-                        {withEvidenceCount}/{links.length} outcomes with evidence
+                        {withEvidenceCount}/{links.length} learning goal{links.length !== 1 ? 's' : ''} observed
                     </Badge>
                 </div>
             )}

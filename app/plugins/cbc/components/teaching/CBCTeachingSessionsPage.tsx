@@ -38,19 +38,20 @@ export function CBCTeachingSessionsPage() {
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
-                { label: 'All Sessions' },
+                { label: 'All Lessons' },
             ]} />
 
             <div className="flex items-center gap-3">
                 <Link
                     href="/cbc/teaching"
                     className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                    aria-label="Back to teaching"
                 >
                     <ArrowLeft className="h-5 w-5" />
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Teaching Sessions</h1>
-                    <p className="text-gray-500 mt-0.5">View and manage your teaching history</p>
+                    <h1 className="text-2xl font-bold text-gray-900">My Lessons</h1>
+                    <p className="text-gray-500 mt-0.5">View recent lessons and open what was taught.</p>
                 </div>
             </div>
 
@@ -66,7 +67,7 @@ export function CBCTeachingSessionsPage() {
                                 type="text"
                                 value={page.search}
                                 onChange={event => page.setSearch(event.target.value)}
-                                placeholder="Subject, cohort, or title…"
+                                placeholder="Subject, class, or title…"
                                 className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
@@ -105,9 +106,9 @@ export function CBCTeachingSessionsPage() {
             <Card>
                 <div className="flex items-center justify-between mb-5">
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Sessions</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">Lessons</h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            {page.filtered.length} session{page.filtered.length !== 1 ? 's' : ''} found
+                            {page.filtered.length} lesson{page.filtered.length !== 1 ? 's' : ''} found
                         </p>
                     </div>
                     <Badge variant="blue" size="md">{page.filtered.length}</Badge>
@@ -118,7 +119,7 @@ export function CBCTeachingSessionsPage() {
                 ) : page.filtered.length === 0 ? (
                     <div className="py-16 text-center">
                         <Calendar className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500 mb-1">No sessions found</p>
+                        <p className="text-gray-500 mb-1">No lessons found</p>
                         <p className="text-sm text-gray-400">Try adjusting your filters</p>
                     </div>
                 ) : (
@@ -136,7 +137,7 @@ export function CBCTeachingSessionsPage() {
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-3 flex-wrap mb-1">
                                             <h3 className="font-semibold text-gray-900 truncate">
-                                                {session.subject_name ?? 'General Session'}
+                                                {session.subject_name ?? 'Lesson'}
                                             </h3>
                                             <Badge variant="purple" size="sm">
                                                 {new Date(session.session_date).toLocaleDateString('en-GB', {
@@ -152,7 +153,7 @@ export function CBCTeachingSessionsPage() {
                                             {(session.outcome_links_count ?? 0) > 0 && (
                                                 <span className="text-xs text-gray-500 flex items-center gap-1">
                                                     <Target className="h-3.5 w-3.5" />
-                                                    {session.outcome_links_count} outcomes
+                                                    {session.outcome_links_count} learning goal{session.outcome_links_count !== 1 ? 's' : ''}
                                                 </span>
                                             )}
                                         </div>

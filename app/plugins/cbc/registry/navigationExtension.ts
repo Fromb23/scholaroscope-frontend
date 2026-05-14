@@ -44,9 +44,9 @@ registerPluginNavigationEntry({
             href: '/cbc/teaching',
             icon: Award,
             children: [
-                { name: 'My Sessions', href: '/cbc/teaching/sessions', icon: Target },
-                { name: 'Progress View', href: '/cbc/progress', icon: TrendingUp },
-                { name: 'Browse Outcomes', href: '/cbc/browser', icon: BookOpen },
+                { name: 'My Lessons', href: '/cbc/teaching/sessions', icon: Target },
+                { name: 'Learning Progress', href: '/cbc/progress', icon: TrendingUp },
+                { name: 'Browse Learning Goals', href: '/cbc/browser', icon: BookOpen },
             ],
         })
         : null,

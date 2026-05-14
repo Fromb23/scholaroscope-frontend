@@ -12,8 +12,8 @@ interface Props {
 export function OutcomeFilterToggle({ filter, onChange, total, needsEvidence, covered }: Props) {
     const tabs: { key: OutcomeFilter; label: string; count: number }[] = [
         { key: 'all', label: 'All', count: total },
-        { key: 'needs_evidence', label: 'Needs Evidence', count: needsEvidence },
-        { key: 'covered', label: 'Covered', count: covered },
+        { key: 'needs_evidence', label: 'Not yet observed', count: needsEvidence },
+        { key: 'covered', label: 'Taught', count: covered },
     ];
 
     return (

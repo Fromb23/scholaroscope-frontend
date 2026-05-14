@@ -37,7 +37,7 @@ export function EvidenceSuccessBanner({ result, onDismiss }: Props) {
             <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
             <div className="flex-1 space-y-1">
                 <p className="text-sm text-green-700 font-medium">
-                    Evidence recorded for {result.created_count} of {result.eligible_count} eligible learner{result.eligible_count !== 1 ? 's' : ''}
+                    Class performance recorded for {result.created_count} of {result.eligible_count} learner{result.eligible_count !== 1 ? 's' : ''} in this lesson
                 </p>
                 {attendanceParts.length > 0 && (
                     <p className="text-xs text-green-700/80">
@@ -45,7 +45,11 @@ export function EvidenceSuccessBanner({ result, onDismiss }: Props) {
                     </p>
                 )}
             </div>
-            <button onClick={onDismiss} className="text-green-400 hover:text-green-600">
+            <button
+                onClick={onDismiss}
+                className="text-green-400 hover:text-green-600"
+                aria-label="Dismiss success message"
+            >
                 <X className="h-4 w-4" />
             </button>
         </div>

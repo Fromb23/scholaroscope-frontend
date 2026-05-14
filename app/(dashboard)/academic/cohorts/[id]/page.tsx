@@ -262,7 +262,7 @@ export default function CohortHubPage() {
                 <Link href="/academic/cohorts">
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        {isInstructor ? 'Back to My Cohorts' : 'Back to Cohorts'}
+                        {isInstructor ? 'Back to My Classes' : 'Back to Cohorts'}
                     </Button>
                 </Link>
             </div>

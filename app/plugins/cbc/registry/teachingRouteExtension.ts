@@ -11,7 +11,7 @@ registerSessionTeachingWorkflowResolver({
             href: `/cbc/teaching/sessions/${session.id}/outcomes`,
             title: 'CBC Teaching',
             actionLabel: 'Open CBC Teaching',
-            description: 'Manage outcomes, learner evidence, and CBC coverage for this session.',
+            description: 'Record what was taught, review learners, and capture class performance for this lesson.',
         };
     },
 });

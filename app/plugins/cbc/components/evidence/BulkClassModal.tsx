@@ -17,7 +17,7 @@ import type {
 
 const BULK_EVAL_OPTIONS = [
     { value: 'DESCRIPTIVE', label: 'Descriptive (Observation)' },
-    { value: 'RUBRIC', label: 'Rubric Level' },
+    { value: 'RUBRIC', label: 'Performance Level' },
 ];
 
 interface EvidenceFormState {
@@ -115,30 +115,34 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
+                <div className="flex items-start justify-between gap-4 p-4 sm:p-6 border-b border-gray-100">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <Layers className="h-5 w-5 text-purple-600" />
-                            Record for Class
+                            Record class performance
                         </h2>
                         <p className="text-sm text-gray-500 mt-0.5">
-                            Evidence will be recorded for learners marked present or late based on session attendance.
+                            This will apply to learners marked present or late.
                         </p>
                     </div>
-                    <button onClick={() => onClose()} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button
+                        onClick={() => onClose()}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        aria-label="Close class performance form"
+                    >
                         <X className="h-5 w-5 text-gray-400" />
                     </button>
                 </div>
 
-                <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-6">
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">1</div>
-                            <h3 className="font-semibold text-gray-900">Class Default</h3>
+                            <h3 className="font-semibold text-gray-900">Overall class performance</h3>
                         </div>
                         <p className="text-sm text-gray-500">
-                            Set the default evidence for learners marked present or late in this session.
+                            Set the overall class performance for learners marked present or late in this lesson.
                         </p>
                         <Select
                             label="Evaluation Type"
@@ -149,7 +153,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                         {evalType === 'DESCRIPTIVE' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Class Observation <span className="text-red-500">*</span>
+                                    Overall class observation <span className="text-red-500">*</span>
                                 </label>
                                 <textarea
                                     value={defaultNarrative}
@@ -163,7 +167,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                         {evalType === 'RUBRIC' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Default Rubric Level <span className="text-red-500">*</span>
+                                    Overall performance level <span className="text-red-500">*</span>
                                 </label>
                                 {rubricScaleLoading ? (
                                     <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
@@ -194,11 +198,11 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">2</div>
-                            <h3 className="font-semibold text-gray-900">Exceptions (optional)</h3>
-                            <span className="text-xs text-gray-400">Overrides for specific learners</span>
+                            <h3 className="font-semibold text-gray-900">Learner adjustments</h3>
+                            <span className="text-xs text-gray-400">Optional</span>
                         </div>
                         <p className="text-sm text-gray-500">
-                            Use exceptions only when a learner needs different evidence from the class default.
+                            Use adjustments only where a learner performed differently from the class.
                         </p>
                         <div className="space-y-2">
                             {learners.map(learner => {
@@ -217,7 +221,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                                                 <span className="font-medium text-sm text-gray-900">{learner.first_name} {learner.last_name}</span>
                                                 <span className="text-xs text-gray-400 ml-2">{learner.admission_number}</span>
                                             </div>
-                                            {hasException && <Badge variant="yellow" size="sm">Exception</Badge>}
+                                            {hasException && <Badge variant="yellow" size="sm">Adjustment</Badge>}
                                         </div>
                                         {hasException && (
                                             <div className="px-3 pb-3 bg-amber-50 border-t border-amber-100 space-y-2">
@@ -240,7 +244,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                                                         onChange={e => dispatch({ type: 'update_exception', studentId: learner.id, field: 'narrative', value: e.target.value })}
                                                         rows={2}
                                                         className="w-full rounded border border-amber-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none mt-2"
-                                                        placeholder="Override observation for this learner…"
+                                                        placeholder="Adjust the observation for this learner…"
                                                     />
                                                 )}
                                             </div>
@@ -256,17 +260,23 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
                     )}
                 </div>
 
-                <div className="flex items-center justify-between p-6 border-t border-gray-100 bg-gray-50">
+                <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                     <p className="text-sm text-gray-500">
                         {exceptions.size > 0
-                            ? `Class default for eligible learners · ${exceptions.size} override${exceptions.size !== 1 ? 's' : ''}`
-                            : 'Class default will apply to eligible learners'}
+                            ? `Overall class performance for this lesson · ${exceptions.size} adjustment${exceptions.size !== 1 ? 's' : ''}`
+                            : 'Overall class performance will apply to learners in this lesson'}
                     </p>
-                    <div className="flex gap-2">
-                        <Button variant="ghost" size="md" onClick={() => onClose()}>Cancel</Button>
-                        <Button variant="primary" size="md" onClick={handleSubmit} disabled={!canProceed || bulkCreate.isPending}>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Button variant="ghost" size="md" className="w-full sm:w-auto" onClick={() => onClose()}>Cancel</Button>
+                        <Button
+                            variant="primary"
+                            size="md"
+                            className="w-full sm:w-auto"
+                            onClick={handleSubmit}
+                            disabled={!canProceed || bulkCreate.isPending}
+                        >
                             <Check className="h-4 w-4 mr-2" />
-                            {bulkCreate.isPending ? 'Recording…' : 'Record Class Evidence'}
+                            {bulkCreate.isPending ? 'Recording…' : 'Record class performance'}
                         </Button>
                     </div>
                 </div>

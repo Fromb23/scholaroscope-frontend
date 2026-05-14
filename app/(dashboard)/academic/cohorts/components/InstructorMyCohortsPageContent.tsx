@@ -136,7 +136,7 @@ export function InstructorMyCohortsPageContent() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">My Cohorts</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">My Classes</h1>
                     <p className="mt-1 text-gray-500">
                         Assigned cohort subjects grouped by cohort for teaching, learner access, and follow-up actions.
                     </p>
@@ -149,9 +149,9 @@ export function InstructorMyCohortsPageContent() {
 
             <DesktopOnly>
                 <div className="grid gap-4 md:grid-cols-3">
-                    <StatsCard title="Assigned Cohorts" value={filteredGroups.length} icon={GraduationCap} color="blue" />
+                    <StatsCard title="Assigned Classes" value={filteredGroups.length} icon={GraduationCap} color="blue" />
                     <StatsCard title="Assigned Subjects" value={assignedSubjectCount} icon={BookOpen} color="green" />
-                    <StatsCard title="Current Year Cohorts" value={currentYearCohortCount} icon={Users} color="yellow" />
+                    <StatsCard title="Current Year Classes" value={currentYearCohortCount} icon={Users} color="yellow" />
                 </div>
             </DesktopOnly>
 
@@ -172,7 +172,7 @@ export function InstructorMyCohortsPageContent() {
                         <Input
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Search cohorts or subjects..."
+                            placeholder="Search classes or subjects..."
                         />
                         {isHistoricalView && (
                             <div className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">

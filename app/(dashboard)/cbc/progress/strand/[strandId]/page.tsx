@@ -122,6 +122,7 @@ function LearnerDrillDown({
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        aria-label="Close learner list"
                     >
                         <X className="h-5 w-5 text-gray-400" />
                     </button>
@@ -156,7 +157,7 @@ function LearnerDrillDown({
                                     <div className="flex items-center gap-2 shrink-0 ml-3">
                                         <MasteryBadge level={l.mastery_level} size="sm" />
                                         <Badge variant="default" size="sm">
-                                            {l.evidence_count} evidence
+                                            {l.evidence_count} observation{l.evidence_count !== 1 ? 's' : ''}
                                         </Badge>
                                         <button
                                             onClick={() => {
@@ -167,6 +168,7 @@ function LearnerDrillDown({
                                             }}
                                             className="p-1.5 hover:bg-blue-50 rounded-lg
                                                 transition-colors"
+                                            aria-label={`View progress for ${l.student_name}`}
                                             title="View learner progress"
                                         >
                                             <ChevronRight className="h-4 w-4 text-blue-500" />
@@ -267,13 +269,13 @@ export default function StrandCompetencyOverviewPage() {
         <div className="space-y-6">
             <CBCNav />
             <CBCBreadcrumb segments={[
-                { label: 'Progress', href: '/cbc/progress' },
+                { label: 'Learning Progress', href: '/cbc/progress' },
                 { label: strand?.name ?? `Strand ${strandId}` },
             ]} />
 
             <Link href="/cbc/progress">
                 <Button variant="ghost" size="md">
-                    <ArrowLeft className="mr-2 h-4 w-4" />Progress Overview
+                    <ArrowLeft className="mr-2 h-4 w-4" />Learning Progress
                 </Button>
             </Link>
 
@@ -294,7 +296,7 @@ export default function StrandCompetencyOverviewPage() {
                         </div>
                         <h1 className="text-xl font-bold text-gray-900">{strand?.name}</h1>
                         <p className="text-xs text-gray-400 mt-1 uppercase tracking-wide">
-                            Strand Competency Overview
+                            Learning progress overview
                         </p>
                     </div>
                 </div>
@@ -304,29 +306,29 @@ export default function StrandCompetencyOverviewPage() {
             {!resolvedCohortId ? (
                 <Card className="py-12 text-center">
                     <Users className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                    <p className="text-gray-500 mb-4">No cohort context — go back and select a cohort first</p>
+                    <p className="text-gray-500 mb-4">No class selected - go back and choose a class first</p>
                     <Link href="/cbc/progress">
                         <Button variant="secondary" size="sm">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Progress
+                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Learning Progress
                         </Button>
                     </Link>
                 </Card>
             ) : isLoading ? (
-                <CBCLoading message="Computing competency overview…" />
+                <CBCLoading message="Loading learning progress…" />
             ) : error ? (
                 <CBCError error={error} onRetry={refetch} />
             ) : (
                 <>
                     {/* Summary */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         {[
                             {
-                                label: 'Total Outcomes',
+                                label: 'Learning Goals',
                                 value: outcomes.length,
                                 color: 'text-blue-600',
                             },
                             {
-                                label: 'Need Attention',
+                                label: 'Need Support',
                                 value: needsAttention.length,
                                 color: needsAttention.length > 0
                                     ? 'text-amber-500' : 'text-emerald-600',
@@ -388,14 +390,13 @@ export default function StrandCompetencyOverviewPage() {
                                                         }
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2
-                                                            mb-1 flex-wrap">
+                                                    <div className="flex items-center gap-2
+                                                        mb-1 flex-wrap">
                                                             <Badge variant="indigo" size="sm"
                                                                 className="font-mono shrink-0">
                                                                 {outcome.outcome_code}
                                                             </Badge>
                                                             <MasteryBadge level={status} size="sm" />
-                                                            {/* Clickable critical/watch badges */}
                                                             {critical > 0 && (
                                                                 <button
                                                                     onClick={e => {
@@ -403,14 +404,12 @@ export default function StrandCompetencyOverviewPage() {
                                                                         setDrillDown({
                                                                             outcome,
                                                                             levels: 'BELOW',
-                                                                            label: `${critical} Critical`,
+                                                                            label: `Needs support (${critical})`,
                                                                         });
                                                                     }}
-                                                                    className="text-xs text-red-600
-                                                                        font-medium hover:underline
-                                                                        cursor-pointer"
+                                                                    className="text-xs font-medium text-red-600 hover:underline"
                                                                 >
-                                                                    🔴 {critical} critical
+                                                                    Needs support: {critical}
                                                                 </button>
                                                             )}
                                                             {watch > 0 && (
@@ -420,14 +419,12 @@ export default function StrandCompetencyOverviewPage() {
                                                                         setDrillDown({
                                                                             outcome,
                                                                             levels: 'APPROACHING',
-                                                                            label: `${watch} Watch`,
+                                                                            label: `Keep watching (${watch})`,
                                                                         });
                                                                     }}
-                                                                    className="text-xs text-amber-600
-                                                                        font-medium hover:underline
-                                                                        cursor-pointer"
+                                                                    className="text-xs font-medium text-amber-600 hover:underline"
                                                                 >
-                                                                    🟡 {watch} watch
+                                                                    Keep watching: {watch}
                                                                 </button>
                                                             )}
                                                         </div>
@@ -442,7 +439,8 @@ export default function StrandCompetencyOverviewPage() {
                                                         onClick={e => e.stopPropagation()}
                                                         className="shrink-0 p-1.5 hover:bg-blue-50
                                                             rounded-lg transition-colors"
-                                                        title="View evidence for this outcome"
+                                                        aria-label="Open lessons for this strand"
+                                                        title="Open lessons for this strand"
                                                     >
                                                         <FileText className="h-4 w-4 text-blue-400" />
                                                     </Link>
@@ -459,28 +457,25 @@ export default function StrandCompetencyOverviewPage() {
                                                             : 0;
                                                         return (
                                                             <div key={level}
-                                                                className="flex items-center gap-3">
-                                                                <div className="w-36 shrink-0">
+                                                                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                                                                <div className="sm:w-36 sm:shrink-0">
                                                                     <MasteryBadge
                                                                         level={level} size="sm"
                                                                     />
                                                                 </div>
-                                                                <div className="flex-1 bg-gray-200
-                                                                    rounded-full h-2 overflow-hidden">
+                                                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
                                                                     <div
                                                                         className={`h-full rounded-full
                                                                             ${MASTERY_CONFIG[level].segment}`}
                                                                         style={{ width: `${pct}%` }}
                                                                     />
                                                                 </div>
-                                                                <div className="w-20 text-right
-                                                                    shrink-0 text-sm">
+                                                                <div className="text-sm sm:w-20 sm:shrink-0 sm:text-right">
                                                                     <span className="font-semibold
                                                                         text-gray-900">{count}</span>
                                                                     <span className="text-gray-400
                                                                         ml-1">({pct}%)</span>
                                                                 </div>
-                                                                {/* Drill into learners at this level */}
                                                                 {count > 0 && (
                                                                     <button
                                                                         onClick={() => setDrillDown({
@@ -488,10 +483,9 @@ export default function StrandCompetencyOverviewPage() {
                                                                             levels: level,
                                                                             label: MASTERY_CONFIG[level].label,
                                                                         })}
-                                                                        className="text-xs text-blue-500
-                                                                            hover:underline shrink-0"
+                                                                        className="shrink-0 text-xs text-blue-500 hover:underline"
                                                                     >
-                                                                        view
+                                                                        View learners
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -515,10 +509,10 @@ export default function StrandCompetencyOverviewPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                        All outcomes on track
+                                        All learning goals on track
                                     </h3>
                                     <p className="text-sm text-gray-700">
-                                        No learners are Below or Approaching Expectation.
+                                        No learners currently need support or close watching.
                                     </p>
                                 </div>
                             </div>
@@ -531,8 +525,8 @@ export default function StrandCompetencyOverviewPage() {
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                        {needsAttention.length} outcome
-                                        {needsAttention.length !== 1 ? 's' : ''} need attention
+                                        {needsAttention.length} learning goal
+                                        {needsAttention.length !== 1 ? 's' : ''} need support
                                     </h3>
                                     <div className="space-y-1 mt-2">
                                         {needsAttention.map(o => (
@@ -551,12 +545,11 @@ export default function StrandCompetencyOverviewPage() {
                                                             onClick={() => setDrillDown({
                                                                 outcome: o,
                                                                 levels: 'BELOW',
-                                                                label: `${criticalCount(o.distribution)} Critical`,
+                                                                label: `Needs support (${criticalCount(o.distribution)})`,
                                                             })}
-                                                            className="text-xs text-red-600
-                                                                font-medium hover:underline"
+                                                            className="text-xs font-medium text-red-600 hover:underline"
                                                         >
-                                                            🔴 {criticalCount(o.distribution)}
+                                                            Needs support: {criticalCount(o.distribution)}
                                                         </button>
                                                     )}
                                                     {watchCount(o.distribution) > 0 && (
@@ -564,12 +557,11 @@ export default function StrandCompetencyOverviewPage() {
                                                             onClick={() => setDrillDown({
                                                                 outcome: o,
                                                                 levels: 'APPROACHING',
-                                                                label: `${watchCount(o.distribution)} Watch`,
+                                                                label: `Keep watching (${watchCount(o.distribution)})`,
                                                             })}
-                                                            className="text-xs text-amber-600
-                                                                font-medium hover:underline"
+                                                            className="text-xs font-medium text-amber-600 hover:underline"
                                                         >
-                                                            🟡 {watchCount(o.distribution)}
+                                                            Keep watching: {watchCount(o.distribution)}
                                                         </button>
                                                     )}
                                                 </div>

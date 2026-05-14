@@ -39,16 +39,16 @@ export function CBCTeachingPage() {
         <div className="space-y-6">
             <CBCNav />
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Teaching Workspace</h1>
                     <p className="text-gray-500 mt-1">
-                        Manage sessions, link outcomes, and record evidence
+                        Manage lessons, record what was taught, and track class performance
                     </p>
                 </div>
-                <Link href="/cbc/teaching/sessions">
-                    <Button variant="primary" size="md">
-                        <Calendar className="mr-2 h-4 w-4" />All Sessions
+                <Link href="/cbc/teaching/sessions" className="w-full sm:w-auto">
+                    <Button variant="primary" size="md" className="w-full sm:w-auto">
+                        <Calendar className="mr-2 h-4 w-4" />All Lessons
                     </Button>
                 </Link>
             </div>
@@ -62,7 +62,7 @@ export function CBCTeachingPage() {
                             <Clock className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900">Today&apos;s Sessions</h2>
+                            <h2 className="text-xl font-semibold text-gray-900">Today&apos;s Lessons</h2>
                             <p className="text-sm text-gray-500">
                                 {new Date().toLocaleDateString('en-GB', {
                                     weekday: 'long',
@@ -74,19 +74,19 @@ export function CBCTeachingPage() {
                         </div>
                     </div>
                     <Badge variant="blue" size="lg">
-                        {todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''}
+                        {todaySessions.length} lesson{todaySessions.length !== 1 ? 's' : ''}
                     </Badge>
                 </div>
 
                 {loadingToday ? (
-                    <CBCLoading message="Loading today's sessions…" />
+                    <CBCLoading message="Loading today's lessons…" />
                 ) : todaySessions.length === 0 ? (
                     <div className="py-12 text-center">
                         <Calendar className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500 mb-4">No sessions scheduled for today</p>
+                        <p className="text-gray-500 mb-4">No lessons scheduled for today</p>
                         <Link href="/sessions">
                             <Button variant="primary" size="sm">
-                                <Plus className="mr-2 h-4 w-4" />Schedule Session
+                                <Plus className="mr-2 h-4 w-4" />Schedule Lesson
                             </Button>
                         </Link>
                     </div>
@@ -104,7 +104,7 @@ export function CBCTeachingPage() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <h3 className="font-semibold text-gray-900 truncate">
-                                            {session.subject_name ?? 'General Session'}
+                                            {session.subject_name ?? 'Lesson'}
                                         </h3>
                                         <p className="text-sm text-gray-500 truncate">{session.cohort_name}</p>
                                         <div className="flex items-center gap-3 mt-1.5">
@@ -112,7 +112,7 @@ export function CBCTeachingPage() {
                                             {(session.outcome_links_count ?? 0) > 0 && (
                                                 <span className="text-xs text-gray-500 flex items-center gap-1">
                                                     <Target className="h-3.5 w-3.5" />
-                                                    {session.outcome_links_count} outcomes
+                                                    {session.outcome_links_count} learning goal{session.outcome_links_count !== 1 ? 's' : ''}
                                                 </span>
                                             )}
                                         </div>
@@ -132,7 +132,7 @@ export function CBCTeachingPage() {
                             <FileText className="h-6 w-6 text-purple-600" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900">Recent Sessions</h2>
+                            <h2 className="text-xl font-semibold text-gray-900">Recent Lessons</h2>
                             <p className="text-sm text-gray-500">Last 7 days</p>
                         </div>
                     </div>
@@ -142,7 +142,7 @@ export function CBCTeachingPage() {
                     <CBCLoading />
                 ) : recentSessions.length === 0 ? (
                     <div className="py-8 text-center">
-                        <p className="text-sm text-gray-500">No recent sessions</p>
+                        <p className="text-sm text-gray-500">No recent lessons</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
