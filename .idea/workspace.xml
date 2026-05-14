@@ -6,13 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/components/CohortsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/components/CohortsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/AttendanceReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/AttendanceReportPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ComputePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ComputePage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/GradePoliciesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/GradePoliciesPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/PluginsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/PluginsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/sessions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/sessions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/AddCohortModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/AddCohortModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/ParticipatingCohorts.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/ParticipatingCohorts.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useSessions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useSessions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/session.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/session.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -20,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="483" />
+    <option name="cachedIndexableFilesCount" value="501" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -138,7 +137,7 @@
       <workItem from="1778626626223" duration="12217000" />
       <workItem from="1778666862221" duration="6712000" />
       <workItem from="1778701366271" duration="7565000" />
-      <workItem from="1778737814486" duration="6455000" />
+      <workItem from="1778737814486" duration="9768000" />
     </task>
     <servers />
   </component>

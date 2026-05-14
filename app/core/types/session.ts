@@ -184,7 +184,27 @@ export interface SessionCohort {
  * Request payload for linking a cohort to a session
  */
 export interface LinkCohortRequest {
+  cohort_id?: number;
+  cohort_subject_id?: number;
+}
+
+export interface AvailableSessionCohortSubject {
+  cohort_subject_id: number;
   cohort_id: number;
+  cohort_name: string;
+  cohort_level: string;
+  academic_year: string | null;
+  subject_id: number;
+  subject_name: string;
+  learner_count: number;
+}
+
+export interface AvailableSessionCohortSubjectsResponse {
+  session_id: number;
+  source_cohort_subject: number | null;
+  subject: number | null;
+  subject_name: string | null;
+  results: AvailableSessionCohortSubject[];
 }
 
 /**

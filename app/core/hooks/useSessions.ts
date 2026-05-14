@@ -15,6 +15,8 @@ import {
 } from '@/app/core/api/sessions';
 import { cohortAPI, cohortSubjectAPI } from '@/app/core/api/academic';
 import {
+  AvailableSessionCohortSubject,
+  AvailableSessionCohortSubjectsResponse,
   Session,
   SessionDetail,
   AttendanceRecord,
@@ -619,9 +621,9 @@ export const useSessionCohorts = (sessionId: number | null) => {
 
   useEffect(() => { fetchLinkedCohorts(); }, [fetchLinkedCohorts]);
 
-  const linkCohort = async (cohortId: number): Promise<void> => {
+  const linkCohortSubject = async (cohortSubjectId: number): Promise<void> => {
     if (!sessionId) return;
-    await sessionCohortAPI.linkCohort(sessionId, { cohort_id: cohortId });
+    await sessionCohortAPI.linkCohort(sessionId, { cohort_subject_id: cohortSubjectId });
     await fetchLinkedCohorts();
   };
 
@@ -635,6 +637,54 @@ export const useSessionCohorts = (sessionId: number | null) => {
     linkedCohorts, activeCohorts, historicalCohorts,
     totalLearners, loading, error,
     refetch: fetchLinkedCohorts,
-    linkCohort, unlinkCohort,
+    linkCohortSubject, unlinkCohort,
+  };
+};
+
+export const useAvailableSessionCohortSubjects = (
+  sessionId: number | null,
+  enabled = true
+) => {
+  const [data, setData] = useState<AvailableSessionCohortSubjectsResponse | null>(null);
+  const [cohortSubjects, setCohortSubjects] = useState<AvailableSessionCohortSubject[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAvailableCohortSubjects = useCallback(async () => {
+    if (!sessionId || !enabled) {
+      setData(null);
+      setCohortSubjects([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const result = await sessionCohortAPI.getAvailableCohortSubjects(sessionId);
+      setData(result);
+      setCohortSubjects(result.results ?? []);
+      setError(null);
+    } catch (err) {
+      setData(null);
+      setCohortSubjects([]);
+      setError(
+        extractErrorMessage(err as ApiError, 'Failed to fetch available cohort subjects')
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, sessionId]);
+
+  useEffect(() => {
+    fetchAvailableCohortSubjects();
+  }, [fetchAvailableCohortSubjects]);
+
+  return {
+    data,
+    cohortSubjects,
+    loading,
+    error,
+    refetch: fetchAvailableCohortSubjects,
   };
 };
