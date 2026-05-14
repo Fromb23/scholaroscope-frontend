@@ -6,67 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(auth)/forgot-password/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/forgot-password/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(auth)/login/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/login/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(auth)/register/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/register/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(auth)/reset-password/[uid]/[token]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(auth)/reset-password/[uid]/[token]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/students/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/students/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/curricula/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/curricula/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/subjects/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/subjects/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/subjects/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/subjects/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/terms/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/terms/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/years/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/years/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/announcements/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/announcements/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/assessments/[id]/edit/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/assessments/[id]/edit/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/assessments/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/assessments/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/assessments/new/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/assessments/new/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/assessments/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/assessments/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/authoring/strands/[strandId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/authoring/strands/[strandId]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/authoring/strands/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/authoring/strands/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/authoring/sub-strands/[subStrandId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/authoring/sub-strands/[subStrandId]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/browser/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/browser/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/browser/strands/[strandId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/browser/strands/[strandId]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/cohort/[cohortId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/cohort/[cohortId]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/learners/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/learners/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/[learningOutcomeId]/evidence/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/[learningOutcomeId]/evidence/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/[learningOutcomeId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/[learningOutcomeId]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/teaching/sessions/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/admin/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/admin/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/instructor/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/instructor/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/profile/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/profile/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/assessments/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/assessments/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/attendance/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/attendance/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/cohorts/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/cohorts/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/compute/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/compute/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/grade-policies/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/grade-policies/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/instructor/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/instructor/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/students/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/students/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/reports/subjects/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/reports/subjects/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/requests/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/requests/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/requests/new/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/requests/new/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/requests/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/requests/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/sessions/[id]/edit/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/sessions/[id]/edit/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/sessions/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/sessions/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/sessions/new/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/sessions/new/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/sessions/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/sessions/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/sessions/today/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/sessions/today/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/audit/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/audit/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/health/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/health/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/organizations/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/organizations/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/plugins/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/plugins/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/settings/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/settings/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/subscriptions/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/subscriptions/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/support/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/support/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/users/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/users/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/superadmin/users/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/superadmin/users/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/sessions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/sessions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/AddCohortModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/AddCohortModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/ParticipatingCohorts.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/ParticipatingCohorts.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useSessions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useSessions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/session.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/session.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="420" />
+    <option name="cachedIndexableFilesCount" value="501" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -114,7 +59,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;fix/assignment-eligible-learners-ui&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;refactor/split-large-feature-pages&quot;,
     &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
     &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
     &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
@@ -192,7 +137,7 @@
       <workItem from="1778626626223" duration="12217000" />
       <workItem from="1778666862221" duration="6712000" />
       <workItem from="1778701366271" duration="7565000" />
-      <workItem from="1778737814486" duration="3793000" />
+      <workItem from="1778737814486" duration="9768000" />
     </task>
     <servers />
   </component>

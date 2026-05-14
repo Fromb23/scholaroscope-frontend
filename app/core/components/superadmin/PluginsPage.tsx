@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import { Puzzle, Search, AlertTriangle, CheckCircle } from 'lucide-react';
-import { usePlatformPlugins, usePluginInstallations } from '@/app/core/hooks/useSuperAdminPlugins';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { Card } from '@/app/components/ui/Card';
@@ -11,119 +9,43 @@ import {
     PluginDetailModal, InstallationsModal,
     UninstallConfirmModal,
 } from '@/app/core/components/superadmin/PluginComponents';
-import type { Plugin, UninstallImpact } from '@/app/core/types/plugins';
-import { pluginAPI } from '@/app/core/api/plugins';
+import { usePluginsPage } from '@/app/core/hooks/superadmin/usePluginsPage';
 
 export function PluginsPage() {
     const {
-        plugins, loading, error, refetch,
-        syncManifest, installGlobally, uninstallGlobally,
-    } = usePlatformPlugins();
-
-    const [search, setSearch] = useState('');
-    const [sourceFilter, setSourceFilter] = useState('all');
-    const [statusFilter, setStatusFilter] = useState('all');
-
-    const [actingId, setActingId] = useState<number | null>(null);
-    const [syncingId, setSyncingId] = useState<number | null>(null);
-    const [actionError, setActionError] = useState<string | null>(null);
-    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-
-    const [detailPlugin, setDetailPlugin] = useState<Plugin | null>(null);
-    const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
-    const [installationsOpen, setInstallationsOpen] = useState(false);
-    const [impactData, setImpactData] = useState<UninstallImpact | null>(null);
-    const [confirmOpen, setConfirmOpen] = useState(false);
-    const [confirming, setConfirming] = useState(false);
-    const [pendingPlugin, setPendingPlugin] = useState<Plugin | null>(null);
-
-    const {
+        plugins,
+        loading,
+        error,
+        refetch,
+        search,
+        sourceFilter,
+        statusFilter,
+        actingId,
+        syncingId,
+        actionError,
+        actionSuccess,
+        detailPlugin,
+        selectedPlugin,
+        installationsOpen,
+        impactData,
+        confirmOpen,
+        confirming,
         installations,
-        loading: installationsLoading,
-    } = usePluginInstallations(
-        installationsOpen ? selectedPlugin?.id ?? null : null
-    );
-
-    const showSuccess = (msg: string) => {
-        setActionSuccess(msg);
-        setTimeout(() => setActionSuccess(null), 3000);
-    };
-
-    const filtered = useMemo(() => plugins.filter(p => {
-        const q = search.toLowerCase();
-        return (
-            (!search || p.name.toLowerCase().includes(q) || p.key.toLowerCase().includes(q)) &&
-            (sourceFilter === 'all' || p.source === sourceFilter) &&
-            (statusFilter === 'all' ||
-                (statusFilter === 'installed' && p.is_available) ||
-                (statusFilter === 'not_installed' && !p.is_available)
-            )
-        );
-    }), [plugins, search, sourceFilter, statusFilter]);
-
-    const handleSync = async (plugin: Plugin) => {
-        setSyncingId(plugin.id);
-        setActionError(null);
-        try {
-            await syncManifest(plugin.id);
-            showSuccess(`${plugin.name} manifest synced`);
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Sync failed');
-        } finally {
-            setSyncingId(null);
-        }
-    };
-
-    const handleInstallGlobally = async (plugin: Plugin) => {
-        setActingId(plugin.id);
-        setActionError(null);
-        try {
-            const res = await installGlobally(plugin.id);
-            showSuccess(res.message);
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Install failed');
-        } finally {
-            setActingId(null);
-        }
-    };
-
-    const handleUninstallGlobally = async (plugin: Plugin) => {
-        setActingId(plugin.id);
-        setActionError(null);
-        try {
-            // Step 1 — fetch impact
-            const impact = await pluginAPI.getUninstallImpact(plugin.id);
-            setImpactData(impact);
-            setPendingPlugin(plugin);
-            setConfirmOpen(true);
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Failed to fetch impact');
-        } finally {
-            setActingId(null);
-        }
-    };
-
-
-    const handleConfirmUninstall = async () => {
-        if (!pendingPlugin) return;
-        setConfirming(true);
-        try {
-            const res = await uninstallGlobally(pendingPlugin.id);
-            showSuccess(res.message);
-            setConfirmOpen(false);
-            setPendingPlugin(null);
-            setImpactData(null);
-        } catch (err: unknown) {
-            setActionError(err instanceof Error ? err.message : 'Uninstall failed');
-        } finally {
-            setConfirming(false);
-        }
-    };
-
-    const handleViewInstallations = (plugin: Plugin) => {
-        setSelectedPlugin(plugin);
-        setInstallationsOpen(true);
-    };
+        installationsLoading,
+        filtered,
+        setSearch,
+        setSourceFilter,
+        setStatusFilter,
+        setActionError,
+        setDetailPlugin,
+        handleSync,
+        handleInstallGlobally,
+        handleUninstallGlobally,
+        handleConfirmUninstall,
+        handleViewInstallations,
+        closeInstallations,
+        closeConfirm,
+    } = usePluginsPage();
 
     if (loading) return <LoadingSpinner />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
@@ -252,13 +174,13 @@ export function PluginsPage() {
                 installations={installations}
                 loading={installationsLoading}
                 isOpen={installationsOpen}
-                onClose={() => { setInstallationsOpen(false); setSelectedPlugin(null); }}
+                onClose={closeInstallations}
             />
 
             <UninstallConfirmModal
                 impact={impactData}
                 isOpen={confirmOpen}
-                onClose={() => { setConfirmOpen(false); setPendingPlugin(null); setImpactData(null); }}
+                onClose={closeConfirm}
                 onConfirm={handleConfirmUninstall}
                 confirming={confirming}
             />

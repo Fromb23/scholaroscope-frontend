@@ -1,171 +1,166 @@
-// ============================================================================
-// app/components/sessions/AddCohortModal.tsx - NEW: Add Cohort to Session
-// ============================================================================
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Search, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Search, Users } from 'lucide-react';
+import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
-import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
-import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useAvailableSessionCohortSubjects } from '@/app/core/hooks/useSessions';
 
 interface AddCohortModalProps {
+    sessionId: number;
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (cohortId: number) => Promise<void>;
-    excludeCohortIds: number[]; // Already linked cohorts
-    sessionSubjectId?: number; // Optional: filter by subject
+    onAddCohortSubject: (cohortSubjectId: number) => Promise<void>;
 }
 
 export function AddCohortModal({
+    sessionId,
     isOpen,
     onClose,
-    onAdd,
-    excludeCohortIds,
-    sessionSubjectId
+    onAddCohortSubject,
 }: AddCohortModalProps) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCohortId, setSelectedCohortId] = useState<number | null>(null);
-    const [loading, setLoading] = useState(false);
-    const { cohorts } = useCohorts();
+    const [selectedCohortSubjectId, setSelectedCohortSubjectId] = useState<number | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+    const {
+        data,
+        cohortSubjects,
+        loading,
+        error,
+    } = useAvailableSessionCohortSubjects(sessionId, isOpen);
+    const isLoading = loading || (isOpen && !error && data === null);
 
     useEffect(() => {
         if (!isOpen) {
             setSearchQuery('');
-            setSelectedCohortId(null);
+            setSelectedCohortSubjectId(null);
+            setSubmitting(false);
         }
     }, [isOpen]);
 
-    if (!isOpen) return null;
+    const filteredCohortSubjects = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return cohortSubjects;
 
-    // Filter available cohorts
-    const availableCohorts = cohorts
-        .filter(c => !excludeCohortIds.includes(c.id))
-        .filter(c => {
-            if (!searchQuery) return true;
-            const query = searchQuery.toLowerCase();
-            return (
-                c.name.toLowerCase().includes(query) ||
-                c.level.toLowerCase().includes(query)
-            );
-        });
-    console.log("Available Cohorts", availableCohorts);
+        return cohortSubjects.filter((cohortSubject) => (
+            cohortSubject.cohort_name.toLowerCase().includes(query)
+            || cohortSubject.cohort_level.toLowerCase().includes(query)
+            || (cohortSubject.academic_year ?? '').toLowerCase().includes(query)
+            || cohortSubject.subject_name.toLowerCase().includes(query)
+        ));
+    }, [cohortSubjects, searchQuery]);
 
     const handleAdd = async () => {
-        if (!selectedCohortId) return;
+        if (!selectedCohortSubjectId) return;
 
-        setLoading(true);
+        setSubmitting(true);
         try {
-            await onAdd(selectedCohortId);
+            await onAddCohortSubject(selectedCohortSubjectId);
             onClose();
-        } catch (error) {
-            console.error('Failed to add cohort:', error);
+        } catch (err) {
+            console.error('Failed to add cohort subject to session:', err);
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex min-h-screen items-center justify-center p-4">
-                {/* Backdrop */}
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-30 transition-opacity"
-                    onClick={onClose}
-                />
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Add Cohort to Session"
+            size="lg"
+        >
+            <div className="space-y-4">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Search compatible cohorts..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
 
-                {/* Modal */}
-                <Card className="relative z-10 w-full max-w-2xl">
-                    <div className="p-6">
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-semibold text-gray-900">
-                                Add Cohort to Session
-                            </h2>
-                            <button
-                                onClick={onClose}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                {error && (
+                    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                <div className="max-h-96 space-y-2 overflow-y-auto">
+                    {isLoading ? (
+                        <div className="py-8 text-center text-sm text-gray-500">
+                            Loading compatible cohort subjects...
                         </div>
-
-                        {/* Search */}
-                        <div className="mb-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search cohorts..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                            </div>
+                    ) : filteredCohortSubjects.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-gray-500">
+                            {searchQuery
+                                ? 'No compatible cohort subjects match your search.'
+                                : 'No compatible cohort subjects available.'}
                         </div>
+                    ) : (
+                        filteredCohortSubjects.map((cohortSubject) => {
+                            const isSelected = selectedCohortSubjectId === cohortSubject.cohort_subject_id;
 
-                        {/* Cohort List */}
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                            {availableCohorts.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">
-                                    {excludeCohortIds.length > 0
-                                        ? 'No more cohorts available'
-                                        : 'No cohorts found'}
-                                </div>
-                            ) : (
-                                availableCohorts.map((cohort) => (
-                                    <button
-                                        key={cohort.id}
-                                        onClick={() => setSelectedCohortId(cohort.id)}
-                                        className={`w-full p-4 rounded-lg border-2 transition-colors text-left ${selectedCohortId === cohort.id
+                            return (
+                                <button
+                                    key={cohortSubject.cohort_subject_id}
+                                    type="button"
+                                    onClick={() => setSelectedCohortSubjectId(cohortSubject.cohort_subject_id)}
+                                    className={`w-full rounded-lg border-2 p-4 text-left transition-colors ${
+                                        isSelected
                                             ? 'border-blue-500 bg-blue-50'
                                             : 'border-gray-200 hover:border-gray-300'
-                                            }`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <div className="font-medium text-gray-900">
-                                                    {cohort.name}
-                                                </div>
-                                                <div className="text-sm text-gray-500">
-                                                    {cohort.level} • {cohort.academic_year}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Users className="w-4 h-4 text-gray-400" />
-                                                <span className="text-sm text-gray-600">
-                                                    {cohort.students_count || 0} students
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-medium text-gray-900">
+                                                    {cohortSubject.cohort_name}
                                                 </span>
+                                                <Badge variant="info" size="sm">
+                                                    {cohortSubject.subject_name}
+                                                </Badge>
+                                            </div>
+                                            <div className="mt-1 text-sm text-gray-500">
+                                                {cohortSubject.cohort_level}
+                                                {cohortSubject.academic_year ? ` • ${cohortSubject.academic_year}` : ''}
                                             </div>
                                         </div>
-                                    </button>
-                                ))
-                            )}
-                        </div>
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            <Users className="h-4 w-4 text-gray-400" />
+                                            <span>{cohortSubject.learner_count} learners</span>
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
 
-                        {/* Actions */}
-                        <div className="flex gap-3 mt-6">
-                            <Button
-                                variant="ghost"
-                                onClick={onClose}
-                                className="flex-1"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="primary"
-                                onClick={handleAdd}
-                                disabled={!selectedCohortId || loading}
-                                className="flex-1"
-                            >
-                                {loading ? 'Adding...' : 'Add Cohort'}
-                            </Button>
-                        </div>
-                    </div>
-                </Card>
+                <div className="flex gap-3 pt-2">
+                    <Button
+                        variant="ghost"
+                        onClick={onClose}
+                        className="flex-1"
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleAdd}
+                        disabled={!selectedCohortSubjectId || submitting}
+                        className="flex-1"
+                    >
+                        {submitting ? 'Adding...' : 'Add Cohort'}
+                    </Button>
+                </div>
             </div>
-        </div>
+        </Modal>
     );
 }

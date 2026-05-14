@@ -7,6 +7,7 @@
 
 import { apiClient } from './client';
 import {
+  AvailableSessionCohortSubjectsResponse,
   Session,
   SessionDetail,
   AttendanceRecord,
@@ -253,6 +254,15 @@ export const cohortSubjectAPI = {
 export const sessionCohortAPI = {
   getLinkedCohorts: async (sessionId: number): Promise<SessionCohortsResponse> => {
     const res = await apiClient.get<SessionCohortsResponse>(`/sessions/${sessionId}/cohorts/`);
+    return res.data;
+  },
+
+  getAvailableCohortSubjects: async (
+    sessionId: number
+  ): Promise<AvailableSessionCohortSubjectsResponse> => {
+    const res = await apiClient.get<AvailableSessionCohortSubjectsResponse>(
+      `/sessions/${sessionId}/available-cohort-subjects/`
+    );
     return res.data;
   },
 

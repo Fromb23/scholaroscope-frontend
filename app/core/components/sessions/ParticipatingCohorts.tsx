@@ -8,20 +8,41 @@ import { useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { AddCohortModal } from './AddCohortModal';
 
 function getActionErrorMessage(err: unknown, fallback: string): string {
-    const error = err as { response?: { data?: { detail?: string } }; message?: string };
-    return error.response?.data?.detail ?? error.message ?? fallback;
+    const error = err as {
+        response?: { data?: { detail?: string } | Record<string, unknown> | string };
+        message?: string;
+    };
+    const data = error.response?.data;
+
+    if (typeof data === 'string') {
+        return data;
+    }
+
+    if (data && typeof data === 'object') {
+        if ('detail' in data && typeof data.detail === 'string') {
+            return data.detail;
+        }
+
+        for (const value of Object.values(data)) {
+            if (typeof value === 'string') {
+                return value;
+            }
+            if (Array.isArray(value) && typeof value[0] === 'string') {
+                return value[0];
+            }
+        }
+    }
+
+    return error.message ?? fallback;
 }
 
 interface ParticipatingCohortsProps {
     sessionId: number;
-    sessionSubjectId?: number;
-    primaryCohortId: number;
     isHistorical?: boolean;  // past-year session — no add/unlink
 }
 
 export function ParticipatingCohorts({
     sessionId,
-    sessionSubjectId,
     isHistorical = false,
 }: ParticipatingCohortsProps) {
     const [open, setOpen] = useState(false);
@@ -29,15 +50,15 @@ export function ParticipatingCohorts({
     const [confirmUnlink, setConfirmUnlink] = useState<number | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
 
-    const { linkedCohorts, loading, linkCohort, unlinkCohort } = useSessionCohorts(sessionId);
+    const { linkedCohorts, loading, linkCohortSubject, unlinkCohort } = useSessionCohorts(sessionId);
 
-    const handleAddCohort = async (cohortId: number) => {
+    const handleAddCohortSubject = async (cohortSubjectId: number) => {
         setActionError(null);
         try {
-            await linkCohort(cohortId);
-            setShowAddModal(false);
+            await linkCohortSubject(cohortSubjectId);
         } catch (err: unknown) {
             setActionError(getActionErrorMessage(err, 'Failed to add cohort.'));
+            throw err;
         }
     };
 
@@ -181,11 +202,10 @@ export function ParticipatingCohorts({
             </div>
 
             <AddCohortModal
+                sessionId={sessionId}
                 isOpen={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                onAdd={handleAddCohort}
-                excludeCohortIds={linkedCohorts.map(c => c.cohort)}
-                sessionSubjectId={sessionSubjectId}
+                onAddCohortSubject={handleAddCohortSubject}
             />
         </>
     );

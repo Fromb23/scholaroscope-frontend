@@ -192,8 +192,6 @@ export function SessionDetailPage() {
             {/* rest unchanged */}
             <ParticipatingCohorts
                 sessionId={sessionId}
-                sessionSubjectId={session.cohort_subject ?? undefined}
-                primaryCohortId={session.cohort_id}
                 isHistorical={isHistorical}
             />
 

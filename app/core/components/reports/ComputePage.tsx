@@ -4,91 +4,34 @@
 // app/(dashboard)/reports/compute/page.tsx — render only
 // ============================================================================
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { Settings, Play, CheckCircle, AlertCircle, Loader, Zap } from 'lucide-react';
+import { Settings, Play, Loader, Zap } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { useTerms } from '@/app/core/hooks/useAcademic';
-import {
-    useAttendanceSummaries,
-    useGradeSummaries,
-    useCohortSummaries,
-    useSubjectSummaries,
-    useAssessmentTypeSummaries,
-} from '@/app/core/hooks/useReporting';
-import { useComputedGrades } from '@/app/core/hooks/useGradePolicies';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
-
-interface ComputeResult { success: boolean; message: string; }
+import { ComputeOptionCard } from '@/app/core/components/reports/ComputeOptionCard';
+import { ComputeResultBanner } from '@/app/core/components/reports/ComputeResultBanner';
+import { useComputePage } from '@/app/core/hooks/reports/useComputePage';
 
 export function ComputePage() {
-    const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
-    const [computing, setComputing] = useState<string | null>(null);
-    const [results, setResults] = useState<Record<string, ComputeResult>>({});
-    const [globalError, setGlobalError] = useState<string | null>(null);
-
-    const { terms, loading: termsLoading } = useTerms();
-    const { computeSummaries: computeAttendance } = useAttendanceSummaries();
-    const { computeSummaries: computeGrades } = useGradeSummaries();
-    const { computeSummaries: computeCohorts } = useCohortSummaries();
-    const { computeSummaries: computeSubjects } = useSubjectSummaries();
-    const { computeSummaries: computeAssessmentTypes } = useAssessmentTypeSummaries();
-    const { computeWithPolicy } = useComputedGrades();
-
-    const run = async (id: string, fn: () => Promise<void>) => {
-        if (!selectedTerm) return;
-        setComputing(id);
-        try {
-            await fn();
-            setResults(prev => ({ ...prev, [id]: { success: true, message: 'Completed successfully' } }));
-        } catch (err) {
-            setResults(prev => ({
-                ...prev,
-                [id]: { success: false, message: extractErrorMessage(err as ApiError, 'Computation failed') },
-            }));
-        } finally {
-            setComputing(null);
-        }
-    };
-
-    const handleComputeAll = async () => {
-        if (!selectedTerm) return;
-        setComputing('all');
-        const ops = [
-            { id: 'attendance', fn: () => computeAttendance(selectedTerm) },
-            { id: 'grades', fn: () => computeGrades(selectedTerm) },
-            { id: 'cohorts', fn: () => computeCohorts(selectedTerm) },
-            { id: 'subjects', fn: () => computeSubjects(selectedTerm) },
-            { id: 'assessments', fn: () => computeAssessmentTypes(selectedTerm) },
-        ];
-        for (const op of ops) {
-            try {
-                await op.fn();
-                setResults(prev => ({ ...prev, [op.id]: { success: true, message: 'Completed' } }));
-            } catch (err) {
-                setResults(prev => ({
-                    ...prev,
-                    [op.id]: { success: false, message: extractErrorMessage(err as ApiError, 'Failed') },
-                }));
-            }
-        }
-        setComputing(null);
-    };
-
-    const COMPUTE_OPTIONS = [
-        { id: 'attendance', title: 'Attendance Summaries', description: 'Recompute from session records', fn: () => computeAttendance(selectedTerm!) },
-        { id: 'grades', title: 'Grade Summaries', description: 'Recompute from assessment scores', fn: () => computeGrades(selectedTerm!) },
-        { id: 'cohorts', title: 'Cohort Summaries', description: 'Recompute cohort-level aggregates', fn: () => computeCohorts(selectedTerm!) },
-        { id: 'subjects', title: 'Subject Summaries', description: 'Recompute subject statistics', fn: () => computeSubjects(selectedTerm!) },
-        { id: 'assessments', title: 'Assessment Type Summaries', description: 'Recompute assessment breakdowns', fn: () => computeAssessmentTypes(selectedTerm!) },
-    ] as const;
-
-    const successCount = Object.values(results).filter(r => r.success).length;
-    const failCount = Object.values(results).filter(r => !r.success).length;
+    const {
+        selectedTerm,
+        computing,
+        results,
+        globalError,
+        termsLoading,
+        computeOptions,
+        successCount,
+        failCount,
+        termOptions,
+        run,
+        setGlobalError,
+        handleTermChange,
+        handleComputeAll,
+        computeWithPolicy,
+    } = useComputePage();
 
     return (
         <div className="space-y-6">
@@ -111,18 +54,9 @@ export function ComputePage() {
                 <Select
                     label="Select Term"
                     value={selectedTerm?.toString() ?? ''}
-                    onChange={e => {
-                        setSelectedTerm(e.target.value ? Number(e.target.value) : null);
-                        setResults({});
-                    }}
+                    onChange={(event) => handleTermChange(event.target.value)}
                     disabled={termsLoading}
-                    options={[
-                        { value: '', label: 'Select a term…' },
-                        ...terms.map(t => ({
-                            value: String(t.id),
-                            label: `${t.academic_year_name} — ${t.name}`,
-                        })),
-                    ]}
+                    options={termOptions}
                 />
             </Card>
 
@@ -157,9 +91,7 @@ export function ComputePage() {
                                 </Button>
                             </Link>
                         </div>
-                        {results.policy && (
-                            <ResultBanner result={results.policy} />
-                        )}
+                        {results.policy && <ComputeResultBanner result={results.policy} />}
                     </div>
                 </div>
             </div>
@@ -170,28 +102,15 @@ export function ComputePage() {
                     Summary Recomputation
                 </h2>
                 <div className="grid gap-3 md:grid-cols-2">
-                    {COMPUTE_OPTIONS.map(opt => (
-                        <Card key={opt.id}>
-                            <div className="flex items-start justify-between mb-3">
-                                <div>
-                                    <p className="font-medium text-gray-900">{opt.title}</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{opt.description}</p>
-                                </div>
-                            </div>
-                            <Button
-                                onClick={() => run(opt.id, opt.fn)}
-                                disabled={!selectedTerm || computing === opt.id || computing === 'all'}
-                                variant="secondary"
-                                size="sm"
-                                className="w-full"
-                            >
-                                {computing === opt.id
-                                    ? <><Loader className="h-3 w-3 mr-1.5 animate-spin" />Computing…</>
-                                    : <><Play className="h-3 w-3 mr-1.5" />Compute</>
-                                }
-                            </Button>
-                            {results[opt.id] && <ResultBanner result={results[opt.id]} />}
-                        </Card>
+                    {computeOptions.map((option) => (
+                        <ComputeOptionCard
+                            key={option.id}
+                            option={option}
+                            result={results[option.id]}
+                            computing={computing === option.id}
+                            disabled={!selectedTerm || computing === option.id || computing === 'all'}
+                            onCompute={() => run(option.id, option.run)}
+                        />
                     ))}
                 </div>
             </div>
@@ -224,24 +143,6 @@ export function ComputePage() {
                 </Button>
             </Card>
 
-        </div>
-    );
-}
-
-// ── Small helper component ────────────────────────────────────────────────
-
-function ResultBanner({ result }: { result: { success: boolean; message: string } }) {
-    return (
-        <div className={`mt-3 p-2.5 rounded-lg flex items-center gap-2 text-sm
-            ${result.success
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50   text-red-700   border border-red-200'
-            }`}>
-            {result.success
-                ? <CheckCircle className="h-4 w-4 shrink-0" />
-                : <AlertCircle className="h-4 w-4 shrink-0" />
-            }
-            {result.message}
         </div>
     );
 }

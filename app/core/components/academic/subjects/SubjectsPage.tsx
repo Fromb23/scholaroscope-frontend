@@ -7,64 +7,41 @@
 // No alert(). No any. No inline component definitions.
 // ============================================================================
 
-import { useState, useMemo } from 'react';
 import { BookOpen, Plus, Search } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { useAuth } from '@/app/context/AuthContext';
-import { useSubjects, useCurricula } from '@/app/core/hooks/useAcademic';
 import { AssignSubjectToCohortModal } from '@/app/core/components/academic/AssignSubjectToCohortModal';
 import {
-    groupSubjects,
     CurriculumGroup,
     SubjectFormModal,
 } from '@/app/core/components/academic/SubjectComponents';
-import { extractErrorMessage } from '@/app/core/types/errors';
-import type { ApiError } from '@/app/core/types/errors';
-import type { Subject, SubjectFormData } from '@/app/core/types/academic';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { useSubjectsPage } from '@/app/core/hooks/academic/useSubjectsPage';
 
 export function SubjectsPage() {
-    const { user, activeRole } = useAuth();
-    const { subjects, loading, createSubject, updateSubject, deleteSubject } = useSubjects();
-    const { curricula } = useCurricula();
-
-    const [search, setSearch] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editing, setEditing] = useState<Subject | null>(null);
-    const [pageError, setPageError] = useState<string | null>(null);
-    const [addingLevelTo, setAddingLevelTo] = useState<Subject | null>(null);
-    const [assigningSubject, setAssigningSubject] = useState<Subject | null>(null);
-    const canManageSubjects = isAdminOrAbove(user, activeRole);
-
-    const grouped = useMemo(() => groupSubjects(subjects, search), [subjects, search]);
-
-    const openCreate = () => { setEditing(null); setAddingLevelTo(null); setIsModalOpen(true); };
-    const openAddLevel = (s: Subject) => { setEditing(null); setAddingLevelTo(s); setIsModalOpen(true); };
-    const openEdit = (s: Subject) => { setEditing(s); setAddingLevelTo(null); setIsModalOpen(true); };
-    const closeModal = () => { setIsModalOpen(false); setEditing(null); setAddingLevelTo(null); };
-
-    const handleSave = async (data: SubjectFormData, editingId?: number) => {
-        if (editingId) {
-            await updateSubject(editingId, data);
-        } else {
-            await createSubject(data);
-        }
-    };
-
-    const handleDelete = async (id: number) => {
-        if (!confirm('Delete this subject?')) return;
-        setPageError(null);
-        try {
-            await deleteSubject(id);
-        } catch (err) {
-            setPageError(extractErrorMessage(err as ApiError, 'Failed to delete subject.'));
-        }
-    };
-
-    // ── Render ────────────────────────────────────────────────────────────
+    const {
+        subjects,
+        loading,
+        curricula,
+        search,
+        isModalOpen,
+        editing,
+        pageError,
+        addingLevelTo,
+        assigningSubject,
+        canManageSubjects,
+        grouped,
+        setSearch,
+        setPageError,
+        setAssigningSubject,
+        openCreate,
+        openAddLevel,
+        openEdit,
+        closeModal,
+        handleSave,
+        handleDelete,
+    } = useSubjectsPage();
 
     return (
         <div className="space-y-6">
