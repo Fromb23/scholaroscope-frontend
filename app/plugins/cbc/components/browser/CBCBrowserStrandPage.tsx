@@ -56,17 +56,15 @@ function SubStrandOutcomes({ subStrand }: { subStrand: SubStrand }) {
                     className="px-4 py-4 transition-colors hover:bg-gray-50 sm:px-5"
                 >
                     <div className="space-y-2">
-                        <div className="max-w-full overflow-x-auto">
-                            <Badge
-                                variant="indigo"
-                                size="sm"
-                                className="inline-flex whitespace-nowrap font-mono"
-                                title={outcome.code}
-                            >
-                                {outcome.code}
-                            </Badge>
-                        </div>
-                        <p className="text-sm leading-6 text-gray-700">{outcome.description}</p>
+                        <Badge
+                            variant="indigo"
+                            size="sm"
+                            className="inline-flex max-w-full whitespace-normal break-all font-mono"
+                            title={outcome.code}
+                        >
+                            {outcome.code}
+                        </Badge>
+                        <p className="text-sm leading-6 text-gray-700 break-words">{outcome.description}</p>
                         <div className="flex flex-wrap gap-2">
                             {outcome.grade_name && (
                                 <Badge variant="blue" size="sm">
@@ -110,7 +108,7 @@ export function CBCBrowserStrandPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="w-full max-w-full space-y-6 overflow-x-hidden">
             <CBCNav />
             <CBCBreadcrumb segments={[
                 { label: 'CBC', href: '/cbc/browser' },
@@ -125,9 +123,9 @@ export function CBCBrowserStrandPage() {
 
             <Card className="p-4 sm:p-6">
                 <div className="flex flex-col items-start gap-4 sm:flex-row">
-                    <div className="max-w-full overflow-x-auto rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 sm:shrink-0 sm:px-3.5 sm:py-3.5">
+                    <div className="w-full rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 sm:w-auto sm:max-w-xs sm:shrink-0 sm:px-3.5 sm:py-3.5">
                         <span
-                            className="block whitespace-nowrap text-lg font-mono font-bold text-blue-700 sm:text-xl"
+                            className="block break-all text-lg font-mono font-bold text-blue-700 sm:text-xl"
                             title={page.strand.code}
                         >
                             {page.strand.code}
@@ -209,22 +207,20 @@ export function CBCBrowserStrandPage() {
                                             </div>
                                             <div className="mt-3 flex flex-col gap-3 sm:mt-0 sm:flex-row sm:items-start sm:justify-between">
                                                 <div className="min-w-0 flex-1 space-y-2">
-                                                    <div className="max-w-full overflow-x-auto">
-                                                        <Badge
-                                                            variant="purple"
-                                                            size="md"
-                                                            className="inline-flex whitespace-nowrap font-mono"
-                                                            title={subStrand.code}
-                                                        >
-                                                            {subStrand.code}
-                                                        </Badge>
-                                                    </div>
+                                                    <Badge
+                                                        variant="purple"
+                                                        size="md"
+                                                        className="inline-flex max-w-full whitespace-normal break-all font-mono"
+                                                        title={subStrand.code}
+                                                    >
+                                                        {subStrand.code}
+                                                    </Badge>
                                                     <div className="min-w-0">
-                                                        <p className="text-base font-semibold leading-6 text-gray-900">
+                                                        <p className="text-base font-semibold leading-6 text-gray-900 break-words">
                                                             {subStrand.name}
                                                         </p>
                                                         {subStrand.description && (
-                                                            <p className="mt-1 text-sm leading-6 text-gray-500">
+                                                            <p className="mt-1 text-sm leading-6 text-gray-500 break-words">
                                                                 {subStrand.description}
                                                             </p>
                                                         )}

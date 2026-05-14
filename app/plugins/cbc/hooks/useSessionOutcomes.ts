@@ -1,21 +1,19 @@
 // app/plugins/cbc/hooks/useSessionOutcomes.ts
 import { useState, useMemo } from 'react';
 import {
-    useTeachingSession, useOutcomeSessions,
+    useTeachingSession,
+    useSessionOutcomes as useTeachingSessionOutcomes,
     useMarkOutcomeCovered, useRemoveOutcomeLink, useSessionSummary,
 } from '@/app/plugins/cbc/hooks/useCBC';
-import type { OutcomeSessionWithEvidence } from '@/app/plugins/cbc/types/cbc';
 
 export type OutcomeFilter = 'all' | 'needs_evidence' | 'covered';
 
 export function useSessionOutcomes(sessionId: number) {
     const { data: session, isLoading: sessionLoading, error: sessionError } =
         useTeachingSession(sessionId);
-    const { data: rawLinks = [], isLoading: linksLoading, error: linksError, refetch } =
-        useOutcomeSessions(sessionId);
+    const { data: links = [], isLoading: linksLoading, error: linksError, refetch } =
+        useTeachingSessionOutcomes(sessionId);
     const { data: summary } = useSessionSummary(sessionId);
-
-    const links = rawLinks as OutcomeSessionWithEvidence[];
 
     const markCovered = useMarkOutcomeCovered();
     const removeLink = useRemoveOutcomeLink();
@@ -51,7 +49,7 @@ export function useSessionOutcomes(sessionId: number) {
 
     const handleRemove = async (linkId: number) => {
         if (!confirm('Remove this outcome from the session?')) return;
-        await removeLink.mutateAsync(linkId);
+        await removeLink.mutateAsync({ id: linkId, sessionId });
     };
 
     return {

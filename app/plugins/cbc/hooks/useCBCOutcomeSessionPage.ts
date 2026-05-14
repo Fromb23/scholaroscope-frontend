@@ -1,30 +1,19 @@
 import { useEffect, useState } from 'react';
-import { apiClient } from '@/app/core/api/client';
+import {
+    learningOutcomeAPI,
+    outcomeSessionAPI,
+    teachingAPI,
+} from '@/app/plugins/cbc/api/cbc';
 import { useTeachingSession } from '@/app/plugins/cbc/hooks/useCBC';
-
-interface LearningOutcome {
-    id: number;
-    code: string;
-    description: string;
-    sub_strand: number;
-    sub_strand_name?: string;
-    strand_name?: string;
-}
-
-interface OutcomeSession {
-    id: number;
-    session: number;
-    learning_outcome: number;
-    covered: boolean;
-    notes: string;
-    evidence_count?: number;
-    learners_with_evidence?: number;
-}
+import type {
+    LearningOutcome,
+    OutcomeSessionWithEvidence,
+} from '@/app/plugins/cbc/types/cbc';
 
 export function useCBCOutcomeSessionPage(sessionId: number, learningOutcomeId: number) {
     const { data: session } = useTeachingSession(sessionId);
     const [learningOutcome, setLearningOutcome] = useState<LearningOutcome | null>(null);
-    const [outcomeSession, setOutcomeSession] = useState<OutcomeSession | null>(null);
+    const [outcomeSession, setOutcomeSession] = useState<OutcomeSessionWithEvidence | null>(null);
     const [loading, setLoading] = useState(true);
     const [editingNotes, setEditingNotes] = useState(false);
     const [notes, setNotes] = useState('');
@@ -37,17 +26,17 @@ export function useCBCOutcomeSessionPage(sessionId: number, learningOutcomeId: n
             try {
                 setLoading(true);
 
-                const outcomeResponse = await apiClient.get(`/cbc/learning-outcomes/${learningOutcomeId}/`);
-                const sessionOutcomesResponse = await apiClient.get<OutcomeSession[]>(
-                    `/cbc/outcome-sessions/by_session/?session_id=${sessionId}`
-                );
-                const outcomeSessionLink = sessionOutcomesResponse.data.find(
-                    link => link.learning_outcome === learningOutcomeId
+                const [outcome, sessionOutcomes] = await Promise.all([
+                    learningOutcomeAPI.getById(learningOutcomeId),
+                    teachingAPI.getSessionOutcomes(sessionId),
+                ]);
+                const outcomeSessionLink = sessionOutcomes.find(
+                    (link) => link.learning_outcome === learningOutcomeId,
                 );
 
                 if (!isActive) return;
 
-                setLearningOutcome(outcomeResponse.data);
+                setLearningOutcome(outcome);
                 if (outcomeSessionLink) {
                     setOutcomeSession(outcomeSessionLink);
                     setNotes(outcomeSessionLink.notes || '');
@@ -72,11 +61,10 @@ export function useCBCOutcomeSessionPage(sessionId: number, learningOutcomeId: n
         if (!outcomeSession) return;
 
         try {
-            const response = await apiClient.patch(
-                `/cbc/outcome-sessions/${outcomeSession.id}/mark_covered/`,
-                { notes }
-            );
-            setOutcomeSession(response.data);
+            const updated = await outcomeSessionAPI.markCovered(outcomeSession.id, notes);
+            setOutcomeSession(previous => (
+                previous ? { ...previous, ...updated } : null
+            ));
         } catch (error) {
             console.error('Failed to toggle covered:', error);
         }
@@ -87,11 +75,10 @@ export function useCBCOutcomeSessionPage(sessionId: number, learningOutcomeId: n
 
         setSaving(true);
         try {
-            const response = await apiClient.patch(
-                `/cbc/outcome-sessions/${outcomeSession.id}/mark_covered/`,
-                { notes }
-            );
-            setOutcomeSession(response.data);
+            const updated = await outcomeSessionAPI.markCovered(outcomeSession.id, notes);
+            setOutcomeSession(previous => (
+                previous ? { ...previous, ...updated } : null
+            ));
             setEditingNotes(false);
         } catch (error) {
             console.error('Failed to save notes:', error);
