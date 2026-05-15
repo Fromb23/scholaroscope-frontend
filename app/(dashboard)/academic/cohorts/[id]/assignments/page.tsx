@@ -355,7 +355,7 @@ export default function CohortAssignmentsPage() {
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Assignments</h1>
                             <p className="mt-1 text-sm text-gray-500">
-                                Cohort is the navigation context, but assignment creation and instructor authority stay bound to cohort subjects.
+                                Cohort is the navigation context, and assignment work stays scoped to subject groups taught in this cohort.
                             </p>
                         </div>
 
@@ -441,7 +441,7 @@ export default function CohortAssignmentsPage() {
                             value={cohortSubjectFilter}
                             onChange={(event) => setCohortSubjectFilter(event.target.value)}
                             options={[
-                                { value: '', label: 'All cohort subjects' },
+                                { value: '', label: 'All subject groups' },
                                 ...visibleCohortSubjects.map((subject) => ({
                                     value: String(subject.id),
                                     label: subject.subject_name,

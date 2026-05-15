@@ -6,35 +6,42 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { Select } from '@/app/components/ui/Select';
-import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
-import { usePublishAssignment } from '@/app/core/hooks/useAssignments';
-import type { Assignment, AssignmentRecipientMode } from '@/app/core/types/assignments';
+import { AssignmentOptionCards } from '@/app/core/components/assignments/AssignmentOptionCards';
+import {
+    getDefaultTeacherAssignmentAudienceChoice,
+    getPublishAudienceOptions,
+    toAssignmentRecipientMode,
+    type TeacherPublishAudienceChoice,
+} from '@/app/core/components/assignments/assignmentAudienceOptions';
+import { useAssignmentEligibleLearners, usePublishAssignment } from '@/app/core/hooks/useAssignments';
+import type { Assignment } from '@/app/core/types/assignments';
 
 interface AssignmentPublishModalProps {
     assignment: Assignment;
-    cohortId: number;
     isOpen: boolean;
     onClose: () => void;
     onPublished?: () => void;
 }
 
-const PUBLISH_RECIPIENT_OPTIONS: Array<{ value: AssignmentRecipientMode; label: string }> = [
-    { value: 'none', label: 'Use current recipients' },
-    { value: 'ALL_ACTIVE_COHORT_LEARNERS', label: 'All active cohort learners' },
-    { value: 'EXPLICIT_STUDENTS', label: 'Explicit learner selection' },
-];
-
 export function AssignmentPublishModal({
     assignment,
-    cohortId,
     isOpen,
     onClose,
     onPublished,
 }: AssignmentPublishModalProps) {
-    const learnersQuery = useCohortEnrolledStudents(cohortId);
+    const learnersQuery = useAssignmentEligibleLearners(assignment.id, { source: 'all' });
     const publishMutation = usePublishAssignment();
-    const [recipientMode, setRecipientMode] = useState<AssignmentRecipientMode>('none');
+    const hasLinkedLesson = assignment.created_from_session != null;
+    const hasExistingRecipients = assignment.recipients_count > 0;
+    const audienceOptions = useMemo(
+        () => getPublishAudienceOptions(hasLinkedLesson, hasExistingRecipients),
+        [hasExistingRecipients, hasLinkedLesson]
+    );
+    const [audienceChoice, setAudienceChoice] = useState<TeacherPublishAudienceChoice>(
+        hasExistingRecipients
+            ? 'keep_current'
+            : getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson)
+    );
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [learnerSearch, setLearnerSearch] = useState('');
     const [formError, setFormError] = useState<string | null>(null);
@@ -42,11 +49,15 @@ export function AssignmentPublishModal({
     useEffect(() => {
         if (!isOpen) return;
 
-        setRecipientMode('none');
+        setAudienceChoice(
+            hasExistingRecipients
+                ? 'keep_current'
+                : getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson)
+        );
         setSelectedStudentIds([]);
         setLearnerSearch('');
         setFormError(null);
-    }, [isOpen]);
+    }, [hasExistingRecipients, hasLinkedLesson, isOpen]);
 
     const filteredLearners = useMemo(() => {
         const normalizedSearch = learnerSearch.trim().toLowerCase();
@@ -73,34 +84,46 @@ export function AssignmentPublishModal({
 
     const handlePublish = async () => {
         setFormError(null);
+        const usingCurrentRecipients = audienceChoice === 'keep_current';
 
         if (
             assignment.delivery_mode === 'INDIVIDUAL'
             && assignment.recipients_count === 0
-            && recipientMode === 'none'
+            && usingCurrentRecipients
         ) {
-            setFormError('This draft has no recipients yet. Choose a recipient mode before publishing.');
+            setFormError('This draft has no learners yet. Choose who should receive it before publishing.');
             return;
         }
 
         if (
             assignment.delivery_mode === 'INDIVIDUAL'
-            && recipientMode === 'EXPLICIT_STUDENTS'
+            && audienceChoice === 'selected_learners'
             && selectedStudentIds.length === 0
         ) {
-            setFormError('Select at least one learner for explicit publication.');
+            setFormError('Select at least one learner before publishing this assignment.');
             return;
         }
 
         try {
+            let publishData:
+                | {
+                    recipient_mode: ReturnType<typeof toAssignmentRecipientMode>;
+                    student_ids?: number[];
+                }
+                | undefined;
+
+            if (assignment.delivery_mode === 'GROUP' || audienceChoice === 'keep_current') {
+                publishData = undefined;
+            } else {
+                publishData = {
+                    recipient_mode: toAssignmentRecipientMode(audienceChoice),
+                    student_ids: audienceChoice === 'selected_learners' ? selectedStudentIds : undefined,
+                };
+            }
+
             await publishMutation.mutateAsync({
                 assignmentId: assignment.id,
-                data: assignment.delivery_mode === 'GROUP' || recipientMode === 'none'
-                    ? undefined
-                    : {
-                        recipient_mode: recipientMode,
-                        student_ids: recipientMode === 'EXPLICIT_STUDENTS' ? selectedStudentIds : undefined,
-                    },
+                data: publishData,
             });
             onPublished?.();
             onClose();
@@ -118,15 +141,20 @@ export function AssignmentPublishModal({
 
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
                     {assignment.delivery_mode === 'GROUP'
-                        ? 'This is a group assignment. Publishing does not create learner recipients. Add groups from the Groups tab.'
-                        : 'Publishing this draft keeps the cohort as navigation context, but recipients are still assigned through the underlying cohort subject workflow.'}
+                        ? 'This is a group assignment. Publishing opens the workspace, then you add or generate learner groups from the Groups tab.'
+                        : 'Publishing this draft sends it to the learners you choose below.'}
                 </div>
 
                 <div className="space-y-2">
                     <h3 className="text-sm font-semibold text-gray-900">{assignment.title}</h3>
+                    {assignment.created_from_session_title ? (
+                        <p className="text-sm text-gray-500">
+                            Linked lesson: {assignment.created_from_session_title}
+                        </p>
+                    ) : null}
                     {assignment.delivery_mode === 'INDIVIDUAL' ? (
                         <p className="text-sm text-gray-500">
-                            Current recipients: {assignment.recipients_count}
+                            Current learners: {assignment.recipients_count}
                         </p>
                     ) : (
                         <p className="text-sm text-gray-500">
@@ -136,15 +164,15 @@ export function AssignmentPublishModal({
                 </div>
 
                 {assignment.delivery_mode === 'INDIVIDUAL' ? (
-                    <Select
-                        label="Recipient Mode"
-                        value={recipientMode}
-                        onChange={(event) => setRecipientMode(event.target.value as AssignmentRecipientMode)}
-                        options={PUBLISH_RECIPIENT_OPTIONS}
+                    <AssignmentOptionCards
+                        label="Who should receive this assignment?"
+                        value={audienceChoice}
+                        options={audienceOptions}
+                        onChange={setAudienceChoice}
                     />
                 ) : null}
 
-                {assignment.delivery_mode === 'INDIVIDUAL' && recipientMode === 'EXPLICIT_STUDENTS' ? (
+                {assignment.delivery_mode === 'INDIVIDUAL' && audienceChoice === 'selected_learners' ? (
                     <div className="space-y-3">
                         <Input
                             label="Find Learners"
@@ -155,6 +183,11 @@ export function AssignmentPublishModal({
 
                         {learnersQuery.isLoading ? (
                             <LoadingSpinner fullScreen={false} message="Loading learners..." />
+                        ) : learnersQuery.error ? (
+                            <ErrorBanner
+                                message={learnersQuery.error.message}
+                                onDismiss={() => void learnersQuery.refetch()}
+                            />
                         ) : (
                             <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3">
                                 {filteredLearners.map((learner) => (
@@ -178,6 +211,10 @@ export function AssignmentPublishModal({
                                         </div>
                                     </label>
                                 ))}
+
+                                {filteredLearners.length === 0 ? (
+                                    <p className="text-sm text-gray-500">No learners match this search.</p>
+                                ) : null}
                             </div>
                         )}
                     </div>

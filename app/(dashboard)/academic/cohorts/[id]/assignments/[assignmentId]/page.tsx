@@ -510,8 +510,8 @@ export default function CohortAssignmentDetailPage() {
                                 <div className="text-sm font-medium text-gray-900">{assignment.curriculum_type}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Cohort Subject</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.cohort_subject}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Subject Group</div>
+                                <div className="text-sm font-medium text-gray-900">{assignment.subject_name}</div>
                             </div>
                             <div className="space-y-1">
                                 <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Evaluation</div>
@@ -543,7 +543,7 @@ export default function CohortAssignmentDetailPage() {
                             </div>
                             {assignment.created_from_session_title ? (
                                 <div className="space-y-1">
-                                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Created From Session</div>
+                                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Linked Lesson</div>
                                     <div className="text-sm font-medium text-gray-900">
                                         {assignment.created_from_session_title}
                                     </div>
@@ -558,7 +558,7 @@ export default function CohortAssignmentDetailPage() {
                             <p className="text-sm leading-6 text-gray-600">
                                 {assignment.delivery_mode === 'GROUP'
                                     ? 'Group assignments record submissions and evaluations at group level. CBC evidence can be projected to group members when the evaluation projection mode allows it.'
-                                    : 'Individual assignments track learner recipients, learner submissions, and learner-level evaluations inside the selected cohort subject.'}
+                                    : 'Individual assignments track learner recipients, learner submissions, and learner-level evaluations inside the selected subject group.'}
                             </p>
                         </div>
                     </Card>
@@ -847,7 +847,6 @@ export default function CohortAssignmentDetailPage() {
             {activeTab === 'groups' && isGroupAssignment ? (
                 <AssignmentGroupsPanel
                     assignment={assignment}
-                    cohortId={cohortId}
                     groups={groupsQuery.groups}
                     loading={groupsQuery.loading}
                     error={groupsQuery.error}
@@ -887,7 +886,6 @@ export default function CohortAssignmentDetailPage() {
 
             <AssignmentPublishModal
                 assignment={assignment}
-                cohortId={cohortId}
                 isOpen={publishOpen}
                 onClose={() => setPublishOpen(false)}
                 onPublished={() => {

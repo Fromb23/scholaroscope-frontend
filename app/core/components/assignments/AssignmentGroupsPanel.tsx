@@ -16,6 +16,14 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
+import { AssignmentOptionCards } from '@/app/core/components/assignments/AssignmentOptionCards';
+import {
+    getDefaultTeacherAssignmentAudienceChoice,
+    getGroupingAudienceOptions,
+    mapGroupingAudienceError,
+    toAssignmentGroupStudentSource,
+    type TeacherAssignmentAudienceChoice,
+} from '@/app/core/components/assignments/assignmentAudienceOptions';
 import {
     useAssignmentEligibleLearners,
     useAutoGenerateAssignmentGroups,
@@ -34,7 +42,6 @@ import type {
 
 interface AssignmentGroupsPanelProps {
     assignment: Assignment;
-    cohortId: number;
     groups: AssignmentGroup[];
     loading: boolean;
     error?: string | null;
@@ -364,7 +371,10 @@ export function AssignmentGroupsPanel({
     error = null,
     refetch,
 }: AssignmentGroupsPanelProps) {
-    const learnersQuery = useAssignmentEligibleLearners(assignment.id, { exclude_grouped: false });
+    const manualLearnersQuery = useAssignmentEligibleLearners(assignment.id, {
+        source: 'all',
+        exclude_grouped: false,
+    });
     const createMutation = useCreateAssignmentGroup(assignment.id);
     const updateMutation = useUpdateAssignmentGroup();
     const deleteMutation = useDeleteAssignmentGroup();
@@ -384,13 +394,26 @@ export function AssignmentGroupsPanel({
     const [autoGroupCount, setAutoGroupCount] = useState('4');
     const [autoMembersPerGroup, setAutoMembersPerGroup] = useState('4');
     const [autoNamePrefix, setAutoNamePrefix] = useState('Group');
-    const [autoUseAllLearners, setAutoUseAllLearners] = useState(true);
+    const [autoAudienceChoice, setAutoAudienceChoice] = useState<TeacherAssignmentAudienceChoice>(
+        getDefaultTeacherAssignmentAudienceChoice(assignment.created_from_session != null)
+    );
     const [autoSearch, setAutoSearch] = useState('');
     const [autoSelectedLearnerIds, setAutoSelectedLearnerIds] = useState<number[]>([]);
     const [autoBalanceGender, setAutoBalanceGender] = useState(true);
     const [autoReplaceExisting, setAutoReplaceExisting] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const autoLearnerSource = autoAudienceChoice === 'present_in_lesson'
+        ? 'present_in_lesson'
+        : 'all';
+    const autoLearnersQuery = useAssignmentEligibleLearners(assignment.id, {
+        source: autoLearnerSource,
+        exclude_grouped: false,
+    });
+    const autoAudienceOptions = useMemo(
+        () => getGroupingAudienceOptions(assignment.created_from_session != null),
+        [assignment.created_from_session]
+    );
 
     useEffect(() => {
         setRenameDrafts(() => Object.fromEntries(
@@ -423,9 +446,13 @@ export function AssignmentGroupsPanel({
         ));
     }, [groups]);
 
-    const allEligibleLearners = useMemo(
-        () => learnersQuery.data?.students ?? [],
-        [learnersQuery.data?.students]
+    const manualEligibleLearners = useMemo(
+        () => manualLearnersQuery.data?.students ?? [],
+        [manualLearnersQuery.data?.students]
+    );
+    const autoEligibleLearners = useMemo(
+        () => autoLearnersQuery.data?.students ?? [],
+        [autoLearnersQuery.data?.students]
     );
     const assignedStudentIds = useMemo(() => (
         new Set(
@@ -434,8 +461,8 @@ export function AssignmentGroupsPanel({
     ), [groups]);
 
     const ungroupedLearners = useMemo(
-        () => allEligibleLearners.filter((learner) => !assignedStudentIds.has(learner.id)),
-        [allEligibleLearners, assignedStudentIds]
+        () => manualEligibleLearners.filter((learner) => !assignedStudentIds.has(learner.id)),
+        [assignedStudentIds, manualEligibleLearners]
     );
 
     useEffect(() => {
@@ -444,9 +471,9 @@ export function AssignmentGroupsPanel({
     }, [ungroupedLearners]);
 
     useEffect(() => {
-        const eligibleIdSet = new Set(allEligibleLearners.map((learner) => learner.id));
+        const eligibleIdSet = new Set(autoEligibleLearners.map((learner) => learner.id));
         setAutoSelectedLearnerIds((current) => current.filter((id) => eligibleIdSet.has(id)));
-    }, [allEligibleLearners]);
+    }, [autoEligibleLearners]);
 
     const selectedManualGroup = useMemo(
         () => groups.find((group) => group.id === manualGroupId) ?? null,
@@ -464,8 +491,8 @@ export function AssignmentGroupsPanel({
     );
 
     const visibleAutoLearners = useMemo(
-        () => filterLearners(allEligibleLearners, autoSearch),
-        [allEligibleLearners, autoSearch]
+        () => filterLearners(autoEligibleLearners, autoSearch),
+        [autoEligibleLearners, autoSearch]
     );
 
     const groupOptions = useMemo(
@@ -485,6 +512,11 @@ export function AssignmentGroupsPanel({
         setActionError(null);
         setSuccessMessage(null);
     };
+
+    const manualLearnersErrorMessage = manualLearnersQuery.error?.message ?? null;
+    const autoLearnersErrorMessage = autoLearnersQuery.error
+        ? mapGroupingAudienceError(autoLearnersQuery.error.message, autoAudienceChoice)
+        : null;
 
     const handleCreateGroup = async () => {
         resetFeedback();
@@ -617,18 +649,26 @@ export function AssignmentGroupsPanel({
             shuffle: true,
         } as const;
 
-        if (!autoUseAllLearners && autoSelectedLearnerIds.length === 0) {
-            setActionError('Choose at least one learner or use all eligible learners.');
+        if (autoLearnersErrorMessage) {
+            setActionError(autoLearnersErrorMessage);
+            return;
+        }
+
+        if (autoAudienceChoice === 'selected_learners' && autoSelectedLearnerIds.length === 0) {
+            setActionError('Choose at least one learner before generating groups.');
             return;
         }
 
         try {
             const result = await autoGenerateMutation.mutateAsync({
                 ...payload,
+                student_source: toAssignmentGroupStudentSource(autoAudienceChoice),
                 ...(autoMode === 'BY_GROUP_COUNT'
                     ? { group_count: Number(autoGroupCount) }
                     : { members_per_group: Number(autoMembersPerGroup) }),
-                ...(autoUseAllLearners ? {} : { student_ids: autoSelectedLearnerIds }),
+                ...(autoAudienceChoice === 'selected_learners'
+                    ? { student_ids: autoSelectedLearnerIds }
+                    : {}),
             });
             const firstGroup = result.groups[0] ?? null;
             if (firstGroup) {
@@ -651,10 +691,6 @@ export function AssignmentGroupsPanel({
 
             {actionError ? (
                 <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
-            ) : null}
-
-            {learnersQuery.error ? (
-                <ErrorBanner message={learnersQuery.error.message} onDismiss={() => void learnersQuery.refetch()} />
             ) : null}
 
             {successMessage ? (
@@ -741,20 +777,29 @@ export function AssignmentGroupsPanel({
 
                     <Card className="p-5">
                         <div className="space-y-4">
-                            <div className="space-y-1">
-                                <h2 className="text-lg font-semibold text-gray-900">Add learners to a group</h2>
-                                <p className="text-sm text-gray-500">
-                                    Choose a group, then add several learners in one step. Each learner can belong to one group for this assignment.
-                                </p>
-                            </div>
+                        <div className="space-y-1">
+                            <h2 className="text-lg font-semibold text-gray-900">Add learners to a group</h2>
+                            <p className="text-sm text-gray-500">
+                                Choose a group, then add several learners in one step. Each learner can belong to one group for this assignment.
+                            </p>
+                        </div>
 
-                            {groups.length === 0 ? (
-                                <div className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-sm text-gray-500">
-                                    Create a group first, then place learners into it.
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <Select
+                        {manualLearnersErrorMessage ? (
+                            <ErrorBanner
+                                message={manualLearnersErrorMessage}
+                                onDismiss={() => void manualLearnersQuery.refetch()}
+                            />
+                        ) : null}
+
+                        {groups.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-sm text-gray-500">
+                                Create a group first, then place learners into it.
+                            </div>
+                        ) : manualLearnersQuery.isLoading ? (
+                            <LoadingSpinner fullScreen={false} message="Loading learners..." />
+                        ) : (
+                            <div className="space-y-4">
+                                <Select
                                         label="Choose a group"
                                         value={manualGroupId ?? ''}
                                         onChange={(event) => setManualGroupId(Number(event.target.value))}
@@ -812,6 +857,12 @@ export function AssignmentGroupsPanel({
                             </p>
                         </div>
 
+                        {assignment.created_from_session_title ? (
+                            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                                Linked lesson: {assignment.created_from_session_title}
+                            </div>
+                        ) : null}
+
                         <div className="grid gap-4 md:grid-cols-2">
                             <Select
                                 label="Create groups by"
@@ -842,22 +893,21 @@ export function AssignmentGroupsPanel({
                         </div>
 
                         <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                            <label className="flex cursor-pointer items-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    checked={autoUseAllLearners}
-                                    onChange={(event) => setAutoUseAllLearners(event.target.checked)}
-                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <div className="min-w-0">
-                                    <div className="text-sm font-medium text-gray-900">Use all eligible learners</div>
-                                    <p className="text-sm text-gray-500">
-                                        Leave this on to include everyone taking this subject in this cohort.
-                                    </p>
-                                </div>
-                            </label>
+                            <AssignmentOptionCards
+                                label="Which learners should be grouped?"
+                                value={autoAudienceChoice}
+                                options={autoAudienceOptions}
+                                onChange={setAutoAudienceChoice}
+                            />
 
-                            {!autoUseAllLearners ? (
+                            {autoLearnersErrorMessage ? (
+                                <ErrorBanner
+                                    message={autoLearnersErrorMessage}
+                                    onDismiss={() => void autoLearnersQuery.refetch()}
+                                />
+                            ) : autoLearnersQuery.isLoading ? (
+                                <LoadingSpinner fullScreen={false} message="Loading learners..." />
+                            ) : autoAudienceChoice === 'selected_learners' ? (
                                 <LearnerPicker
                                     title="Selected learners"
                                     description="Choose the learners to include in this round of grouping."
@@ -877,7 +927,16 @@ export function AssignmentGroupsPanel({
                                     onClearSelection={() => setAutoSelectedLearnerIds([])}
                                 />
                             ) : (
-                                <p className="text-sm text-gray-500">{formatLearnerSummary(allEligibleLearners)}</p>
+                                <div className="space-y-1">
+                                    <p className="text-sm text-gray-500">
+                                        {autoAudienceChoice === 'present_in_lesson'
+                                            ? 'Grouping will use learners marked present or late in the linked lesson.'
+                                            : 'Grouping will use all active learners in this subject group.'}
+                                    </p>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {formatLearnerSummary(autoEligibleLearners)}
+                                    </p>
+                                </div>
                             )}
                         </div>
 
@@ -920,7 +979,11 @@ export function AssignmentGroupsPanel({
                                 type="button"
                                 className="w-full sm:w-auto"
                                 onClick={handleGenerateGroups}
-                                disabled={autoGenerateMutation.isPending || learnersQuery.isLoading}
+                                disabled={
+                                    autoGenerateMutation.isPending
+                                    || autoLearnersQuery.isLoading
+                                    || Boolean(autoLearnersQuery.error)
+                                }
                             >
                                 <Wand2 className="mr-2 h-4 w-4" />
                                 {autoGenerateMutation.isPending ? 'Generating...' : 'Generate Groups'}

@@ -290,10 +290,11 @@ export function useAssignmentEligibleLearners(
     options?: AssignmentEligibleLearnersParams
 ) {
     const enabled = Number.isFinite(assignmentId) && assignmentId > 0;
+    const source = options?.source;
     const excludeGrouped = options?.exclude_grouped;
 
     return useQuery<AssignmentEligibleLearnersResponse, Error>({
-        queryKey: assignmentKeys.eligibleLearners(assignmentId, excludeGrouped),
+        queryKey: assignmentKeys.eligibleLearners(assignmentId, source, excludeGrouped),
         queryFn: async () => {
             if (!assignmentId) {
                 throw new Error('Assignment id is required.');
@@ -302,9 +303,12 @@ export function useAssignmentEligibleLearners(
             try {
                 return await assignmentsAPI.getEligibleLearners(
                     assignmentId,
-                    typeof excludeGrouped === 'boolean'
-                        ? { exclude_grouped: excludeGrouped }
-                        : undefined
+                    {
+                        ...(source ? { source } : {}),
+                        ...(typeof excludeGrouped === 'boolean'
+                            ? { exclude_grouped: excludeGrouped }
+                            : {}),
+                    }
                 );
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to load eligible learners.'));

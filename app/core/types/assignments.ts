@@ -3,7 +3,11 @@ import type { PaginatedResponse } from '@/app/core/types/api';
 export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
 export type AssignmentDeliveryMode = 'INDIVIDUAL' | 'GROUP';
 export type AssignmentEvaluationType = 'NUMERIC' | 'RUBRIC' | 'DESCRIPTIVE' | 'COMPETENCY';
-export type AssignmentRecipientMode = 'ALL_ACTIVE_COHORT_LEARNERS' | 'EXPLICIT_STUDENTS' | 'none';
+export type AssignmentRecipientMode =
+    | 'ALL_ACTIVE_COHORT_LEARNERS'
+    | 'PRESENT_IN_SOURCE_SESSION'
+    | 'EXPLICIT_STUDENTS'
+    | 'none';
 export type AssignmentEvidenceProjectionMode =
     | 'APPLY_TO_ALL_MEMBERS'
     | 'APPLY_WITH_OVERRIDES'
@@ -11,6 +15,14 @@ export type AssignmentEvidenceProjectionMode =
 export type AssignmentAutoGenerateMode =
     | 'BY_GROUP_COUNT'
     | 'BY_MEMBERS_PER_GROUP';
+export type AssignmentGroupStudentSource =
+    | 'ALL_ACTIVE_COHORT_SUBJECT_LEARNERS'
+    | 'PRESENT_IN_SOURCE_SESSION'
+    | 'EXPLICIT_STUDENTS';
+export type AssignmentEligibleLearnersSource =
+    | 'all'
+    | 'all_subject_learners'
+    | 'present_in_lesson';
 
 export interface AssignmentRecipientCreationResult {
     created: number;
@@ -186,6 +198,7 @@ export interface AssignmentEligibleLearner {
 }
 
 export interface AssignmentEligibleLearnersParams {
+    source?: AssignmentEligibleLearnersSource;
     exclude_grouped?: boolean;
 }
 
@@ -194,6 +207,9 @@ export interface AssignmentEligibleLearnersResponse {
     cohort_subject: number;
     cohort: number;
     subject: number;
+    source: string;
+    created_from_session: number | null;
+    attendance_required: boolean;
     students: AssignmentEligibleLearner[];
 }
 
@@ -342,6 +358,7 @@ export interface AssignmentAutoGenerateGroupsPayload {
     members_per_group?: number;
     name_prefix?: string;
     student_ids?: number[];
+    student_source?: AssignmentGroupStudentSource;
     balance_gender?: boolean;
     shuffle?: boolean;
     seed?: number | null;
