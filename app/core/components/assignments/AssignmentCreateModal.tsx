@@ -7,6 +7,13 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { AssignmentOptionCards } from '@/app/core/components/assignments/AssignmentOptionCards';
+import {
+    getAssignmentAudienceOptions,
+    getDefaultTeacherAssignmentAudienceChoice,
+    toAssignmentRecipientMode,
+    type TeacherAssignmentAudienceChoice,
+} from '@/app/core/components/assignments/assignmentAudienceOptions';
 import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { useCreateAssignment, useUpdateAssignment } from '@/app/core/hooks/useAssignments';
 import { useRubricScales } from '@/app/core/hooks/useAssessments';
@@ -17,7 +24,6 @@ import type {
     AssignmentCreatePayload,
     AssignmentEvaluationType,
     AssignmentOutcomeCreatePayload,
-    AssignmentRecipientMode,
     AssignmentUpdatePayload,
 } from '@/app/core/types/assignments';
 
@@ -28,6 +34,8 @@ interface AssignmentCreateModalProps {
     cohortCurriculumId?: number | null;
     cohortSubjects: CohortSubject[];
     assignment?: Assignment | null;
+    linkedSessionId?: number | null;
+    linkedSessionTitle?: string | null;
     onSaved?: (assignment: Assignment) => void;
 }
 
@@ -43,12 +51,6 @@ const EVALUATION_OPTIONS: Array<{ value: AssignmentEvaluationType; label: string
     { value: 'RUBRIC', label: 'Rubric' },
     { value: 'DESCRIPTIVE', label: 'Descriptive' },
     { value: 'COMPETENCY', label: 'Competency' },
-];
-
-const RECIPIENT_MODE_OPTIONS: Array<{ value: AssignmentRecipientMode; label: string }> = [
-    { value: 'none', label: 'Draft only' },
-    { value: 'ALL_ACTIVE_COHORT_LEARNERS', label: 'All active cohort learners' },
-    { value: 'EXPLICIT_STUDENTS', label: 'Explicit learner selection' },
 ];
 
 const DELIVERY_MODE_OPTIONS: Array<{ value: AssignmentDeliveryMode; label: string }> = [
@@ -91,6 +93,8 @@ export function AssignmentCreateModal({
     cohortCurriculumId,
     cohortSubjects,
     assignment = null,
+    linkedSessionId = null,
+    linkedSessionTitle = null,
     onSaved,
 }: AssignmentCreateModalProps) {
     const createMutation = useCreateAssignment();
@@ -100,6 +104,17 @@ export function AssignmentCreateModal({
     );
     const learnersQuery = useCohortEnrolledStudents(cohortId);
     const isEditMode = Boolean(assignment);
+    const resolvedLinkedSessionId = isEditMode
+        ? assignment?.created_from_session ?? null
+        : linkedSessionId;
+    const resolvedLinkedSessionTitle = isEditMode
+        ? assignment?.created_from_session_title ?? null
+        : linkedSessionTitle;
+    const hasLinkedLesson = resolvedLinkedSessionId != null;
+    const audienceOptions = useMemo(
+        () => getAssignmentAudienceOptions(hasLinkedLesson),
+        [hasLinkedLesson]
+    );
 
     const sortedSubjects = useMemo(() => (
         [...cohortSubjects].sort((left, right) => left.subject_name.localeCompare(right.subject_name))
@@ -113,7 +128,9 @@ export function AssignmentCreateModal({
     const [evaluationType, setEvaluationType] = useState<AssignmentEvaluationType>('NUMERIC');
     const [totalMarks, setTotalMarks] = useState('');
     const [rubricScaleId, setRubricScaleId] = useState('');
-    const [recipientMode, setRecipientMode] = useState<AssignmentRecipientMode>('none');
+    const [audienceChoice, setAudienceChoice] = useState<TeacherAssignmentAudienceChoice>(
+        getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson)
+    );
     const [publishNow, setPublishNow] = useState(false);
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [learnerSearch, setLearnerSearch] = useState('');
@@ -132,13 +149,13 @@ export function AssignmentCreateModal({
         setEvaluationType(assignment?.evaluation_type ?? 'NUMERIC');
         setTotalMarks(assignment?.total_marks != null ? String(assignment.total_marks) : '');
         setRubricScaleId(assignment?.rubric_scale != null ? String(assignment.rubric_scale) : '');
-        setRecipientMode('none');
+        setAudienceChoice(getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson));
         setPublishNow(false);
         setSelectedStudentIds([]);
         setLearnerSearch('');
         setOutcomes(buildInitialOutcomes(assignment));
         setFormError(null);
-    }, [assignment, isOpen]);
+    }, [assignment, hasLinkedLesson, isOpen]);
 
     const filteredLearners = useMemo(() => {
         const normalizedSearch = learnerSearch.trim().toLowerCase();
@@ -230,7 +247,7 @@ export function AssignmentCreateModal({
         setFormError(null);
 
         if (!cohortSubjectId) {
-            setFormError('Select a cohort subject before saving the assignment.');
+            setFormError('Select a subject group before saving the assignment.');
             return;
         }
 
@@ -254,13 +271,8 @@ export function AssignmentCreateModal({
             return;
         }
 
-        if (recipientMode === 'EXPLICIT_STUDENTS' && selectedStudentIds.length === 0) {
-            setFormError('Select at least one learner for explicit recipient mode.');
-            return;
-        }
-
-        if (deliveryMode === 'INDIVIDUAL' && publishNow && recipientMode === 'none') {
-            setFormError('Choose recipients before publishing the assignment.');
+        if (publishNow && deliveryMode === 'INDIVIDUAL' && audienceChoice === 'selected_learners' && selectedStudentIds.length === 0) {
+            setFormError('Select at least one learner before publishing this assignment.');
             return;
         }
 
@@ -295,8 +307,13 @@ export function AssignmentCreateModal({
             } else {
                 const payload: AssignmentCreatePayload = {
                     ...basePayload,
-                    recipient_mode: deliveryMode === 'INDIVIDUAL' ? recipientMode : undefined,
-                    student_ids: deliveryMode === 'INDIVIDUAL' && recipientMode === 'EXPLICIT_STUDENTS'
+                    created_from_session: resolvedLinkedSessionId,
+                    recipient_mode: deliveryMode === 'INDIVIDUAL' && publishNow
+                        ? toAssignmentRecipientMode(audienceChoice)
+                        : undefined,
+                    student_ids: deliveryMode === 'INDIVIDUAL'
+                        && publishNow
+                        && audienceChoice === 'selected_learners'
                         ? selectedStudentIds
                         : undefined,
                     publish_now: publishNow,
@@ -325,17 +342,17 @@ export function AssignmentCreateModal({
 
                 {sortedSubjects.length === 0 ? (
                     <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-                        You do not have an assigned subject in this cohort.
+                        You do not have an assigned subject group in this cohort.
                     </div>
                 ) : null}
 
                 <div className="grid gap-4 md:grid-cols-2">
                     <Select
-                        label="Cohort Subject"
+                        label="Subject Group"
                         value={cohortSubjectId}
                         onChange={(event) => setCohortSubjectId(event.target.value)}
                         options={[
-                            { value: '', label: 'Select cohort subject' },
+                            { value: '', label: 'Select subject group' },
                             ...sortedSubjects.map((subject) => ({
                                 value: String(subject.id),
                                 label: subject.current_instructor_name
@@ -421,15 +438,19 @@ export function AssignmentCreateModal({
 
                 {selectedSubject ? (
                     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                        Creation stays inside <span className="font-medium text-gray-900">{selectedSubject.subject_name}</span>
-                        {' '}for this cohort. Cohort is the navigation context, but the assignment is still created
-                        against cohort subject <code>{selectedSubject.id}</code>.
+                        This assignment belongs to the <span className="font-medium text-gray-900">{selectedSubject.subject_name}</span>
+                        {' '}subject group for this cohort.
+                        {resolvedLinkedSessionTitle ? (
+                            <>
+                                {' '}It is linked to <span className="font-medium text-gray-900">{resolvedLinkedSessionTitle}</span>.
+                            </>
+                        ) : null}
                     </div>
                 ) : null}
 
                 {deliveryMode === 'GROUP' ? (
                     <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                        Group assignments are published to the assignment workspace. Add groups and members after creating the assignment.
+                        Group assignments create a shared assignment workspace. Create or generate learner groups after saving the assignment.
                     </div>
                 ) : null}
 
@@ -437,70 +458,14 @@ export function AssignmentCreateModal({
                     <div className="space-y-4 rounded-lg border border-gray-200 p-4">
                         <div className="space-y-1">
                             <h3 className="text-sm font-semibold text-gray-900">
-                                {deliveryMode === 'GROUP' ? 'Publishing' : 'Recipients'}
+                                Publishing
                             </h3>
                             <p className="text-sm text-gray-500">
                                 {deliveryMode === 'GROUP'
-                                    ? 'Publish the assignment workspace now, then organize groups and members from the assignment detail page.'
-                                    : 'Keep the assignment as a draft, assign all active cohort learners, or target explicit learners.'}
+                                    ? 'Create a draft or publish the assignment workspace now. Learner groups are added from the assignment detail page.'
+                                    : 'Create a draft or publish now using a learner audience chosen in teacher language.'}
                             </p>
                         </div>
-
-                        {deliveryMode === 'INDIVIDUAL' ? (
-                            <Select
-                                label="Recipient Mode"
-                                value={recipientMode}
-                                onChange={(event) => setRecipientMode(event.target.value as AssignmentRecipientMode)}
-                                options={RECIPIENT_MODE_OPTIONS}
-                            />
-                        ) : (
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                                Group assignments do not create learner recipients during creation.
-                            </div>
-                        )}
-
-                        {deliveryMode === 'INDIVIDUAL' && recipientMode === 'EXPLICIT_STUDENTS' ? (
-                            <div className="space-y-3">
-                                <Input
-                                    label="Find Learners"
-                                    value={learnerSearch}
-                                    onChange={(event) => setLearnerSearch(event.target.value)}
-                                    placeholder="Search by learner name or admission number"
-                                />
-
-                                {learnersQuery.isLoading ? (
-                                    <LoadingSpinner fullScreen={false} message="Loading cohort learners..." />
-                                ) : (
-                                    <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3">
-                                        {filteredLearners.map((learner) => (
-                                            <label
-                                                key={learner.id}
-                                                className="flex items-start gap-3 rounded-lg border border-gray-100 px-3 py-2"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedStudentIds.includes(learner.id)}
-                                                    onChange={() => handleToggleStudent(learner.id)}
-                                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                />
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {learner.full_name}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {learner.admission_number}
-                                                    </div>
-                                                </div>
-                                            </label>
-                                        ))}
-
-                                        {filteredLearners.length === 0 ? (
-                                            <p className="text-sm text-gray-500">No learners match this search.</p>
-                                        ) : null}
-                                    </div>
-                                )}
-                            </div>
-                        ) : null}
 
                         <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3">
                             <input
@@ -513,11 +478,79 @@ export function AssignmentCreateModal({
                                 <div className="text-sm font-medium text-gray-900">Publish immediately</div>
                                 <p className="text-sm text-gray-500">
                                     {deliveryMode === 'GROUP'
-                                        ? 'Publish after creation without creating learner recipients.'
-                                        : 'Publish after creation using the selected recipient mode.'}
+                                        ? 'Publish after creation so the group assignment is ready for learner grouping.'
+                                        : 'Publish after creation using the learner audience you choose below.'}
                                 </p>
                             </div>
                         </label>
+
+                        {deliveryMode === 'INDIVIDUAL' ? (
+                            publishNow ? (
+                                <div className="space-y-4">
+                                    <AssignmentOptionCards
+                                        label="Who should receive this assignment?"
+                                        value={audienceChoice}
+                                        options={audienceOptions}
+                                        onChange={setAudienceChoice}
+                                    />
+
+                                    {audienceChoice === 'selected_learners' ? (
+                                        <div className="space-y-3">
+                                            <p className="text-sm text-gray-500">
+                                                Choose learners from this cohort. Only learners in the selected subject group can receive the assignment.
+                                            </p>
+
+                                            <Input
+                                                label="Find Learners"
+                                                value={learnerSearch}
+                                                onChange={(event) => setLearnerSearch(event.target.value)}
+                                                placeholder="Search by learner name or admission number"
+                                            />
+
+                                            {learnersQuery.isLoading ? (
+                                                <LoadingSpinner fullScreen={false} message="Loading learners..." />
+                                            ) : (
+                                                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3">
+                                                    {filteredLearners.map((learner) => (
+                                                        <label
+                                                            key={learner.id}
+                                                            className="flex items-start gap-3 rounded-lg border border-gray-100 px-3 py-2"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedStudentIds.includes(learner.id)}
+                                                                onChange={() => handleToggleStudent(learner.id)}
+                                                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            />
+                                                            <div>
+                                                                <div className="text-sm font-medium text-gray-900">
+                                                                    {learner.full_name}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    {learner.admission_number}
+                                                                </div>
+                                                            </div>
+                                                        </label>
+                                                    ))}
+
+                                                    {filteredLearners.length === 0 ? (
+                                                        <p className="text-sm text-gray-500">No learners match this search.</p>
+                                                    ) : null}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                                    This assignment will stay as a draft. Choose the learner audience when you publish it.
+                                </div>
+                            )
+                        ) : (
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                                Group assignments do not create individual learner recipients.
+                            </div>
+                        )}
                     </div>
                 ) : null}
 
