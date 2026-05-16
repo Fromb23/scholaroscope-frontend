@@ -17,18 +17,8 @@ import { useCreateAssessmentForm } from '@/app/core/hooks/useAssessments';
 import { useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
+import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
 import { useAuth } from '@/app/context/AuthContext';
-
-const ASSESSMENT_TYPES = [
-    { value: 'CAT', label: 'CAT' },
-    { value: 'TEST', label: 'Test' },
-    { value: 'MAIN_EXAM', label: 'Main Exam' },
-    { value: 'MOCK', label: 'Mock' },
-    { value: 'PROJECT', label: 'Project' },
-    { value: 'ASSIGNMENT', label: 'Assignment' },
-    { value: 'PRACTICAL', label: 'Practical' },
-    { value: 'COMPETENCY', label: 'Competency' },
-];
 
 const EVALUATION_TYPES = [
     { value: 'NUMERIC', label: 'Numeric (Marks-based)' },
@@ -146,7 +136,7 @@ export function CreateAssessmentPage() {
                                 value={form.assessment_type}
                                 onChange={e => setField('assessment_type', e.target.value)}
                                 required
-                                options={ASSESSMENT_TYPES}
+                                options={ASSESSMENT_TYPE_OPTIONS}
                             />
 
                             {/* Term */}

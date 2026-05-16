@@ -16,12 +16,16 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ExportModal } from '@/app/components/export/ExportModal';
 import { useAssessmentTypeSummaries } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
+import { getAssessmentTypeLabel } from '@/app/core/types/assessment';
 import type { ExportPayload } from '@/app/types/export';
 
 const TYPE_COLOR: Record<string, string> = {
+    ENTRY: 'bg-slate-50 border-slate-200 text-slate-600',
     CAT: 'bg-blue-50   border-blue-200   text-blue-600',
     TEST: 'bg-purple-50 border-purple-200 text-purple-600',
+    MIDTERM: 'bg-pink-50 border-pink-200 text-pink-600',
     MAIN_EXAM: 'bg-orange-50 border-orange-200 text-orange-600',
+    MOCK: 'bg-cyan-50 border-cyan-200 text-cyan-600',
     PROJECT: 'bg-green-50  border-green-200  text-green-600',
     ASSIGNMENT: 'bg-yellow-50 border-yellow-200 text-yellow-600',
     PRACTICAL: 'bg-indigo-50 border-indigo-200 text-indigo-600',
@@ -142,7 +146,7 @@ export function AssessmentsReportPage() {
                             <div key={s.id}
                                 className={`rounded-2xl border p-5 ${colorClass.split(' ').slice(0, 2).join(' ')}`}>
                                 <div className="flex items-center justify-between mb-3">
-                                    <Badge variant="default">{s.assessment_type}</Badge>
+                                    <Badge variant="default">{getAssessmentTypeLabel(s.assessment_type)}</Badge>
                                     <Award className="h-4 w-4 text-gray-400" />
                                 </div>
                                 <p className="font-semibold text-gray-900">{s.subject_name}</p>

@@ -9,6 +9,7 @@ import Modal from '@/app/components/ui/Modal';
 import { GradingScaleEditor } from '@/app/core/components/gradePolicies/GradingScaleEditor';
 import { PolicyWeightsEditor } from '@/app/core/components/gradePolicies/PolicyWeightsEditor';
 import { useCreatePolicyForm } from '@/app/core/hooks/useGradePolicies';
+import { ASSESSMENT_TYPE_OPTIONS, getAssessmentTypeLabel } from '@/app/core/types/assessment';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 
 const AGGREGATION_METHODS = [
@@ -19,10 +20,7 @@ const AGGREGATION_METHODS = [
     { value: 'EXAM_ONLY', label: 'Exam Only' },
 ];
 
-const ASSESSMENT_TYPES = [
-    'CAT', 'TEST', 'MAIN_EXAM', 'MOCK',
-    'PROJECT', 'ASSIGNMENT', 'PRACTICAL', 'COMPETENCY',
-];
+const ASSESSMENT_TYPES = ASSESSMENT_TYPE_OPTIONS.map(option => option.value);
 
 interface PolicyFormModalProps {
     editingPolicy: GradePolicy | null;
@@ -231,7 +229,7 @@ export function PolicyFormModal({
                                         : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400'
                                 }`}
                             >
-                                {type}
+                                {getAssessmentTypeLabel(type)}
                             </button>
                         ))}
                     </div>

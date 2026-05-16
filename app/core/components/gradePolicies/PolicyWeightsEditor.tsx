@@ -5,11 +5,7 @@ import { Select } from '@/app/components/ui/Select';
 import { Button } from '@/app/components/ui/Button';
 import { Trash2, Plus } from 'lucide-react';
 import { WeightEntry } from '@/app/core/hooks/useGradePolicies';
-
-const ASSESSMENT_TYPES = [
-    'CAT', 'TEST', 'MAIN_EXAM', 'MOCK',
-    'PROJECT', 'ASSIGNMENT', 'PRACTICAL', 'COMPETENCY',
-];
+import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
 
 interface Props {
     entries: WeightEntry[];
@@ -44,7 +40,7 @@ export function PolicyWeightsEditor({ entries, error, onAdd, onRemove, onChange 
                             label="Assessment Type"
                             value={entry.type}
                             onChange={e => onChange(i, 'type', e.target.value)}
-                            options={ASSESSMENT_TYPES.map(t => ({ value: t, label: t }))}
+                            options={ASSESSMENT_TYPE_OPTIONS}
                         />
                     </div>
                     <div className="w-28">

@@ -13,7 +13,11 @@ import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjects } from '@/app/core/hooks/useSessions';
 import { assessmentAPI } from '@/app/core/api/assessments';
-import { AssessmentFormData, AssessmentStatus } from '@/app/core/types/assessment';
+import {
+    ASSESSMENT_TYPE_OPTIONS,
+    AssessmentFormData,
+    AssessmentStatus,
+} from '@/app/core/types/assessment';
 
 export function EditAssessmentPage() {
     const params = useParams();
@@ -45,17 +49,6 @@ export function EditAssessmentPage() {
         status: AssessmentStatus.DRAFT,
         weight: 1.0
     });
-
-    const assessmentTypes = [
-        { value: 'CAT', label: 'CAT' },
-        { value: 'TEST', label: 'Test' },
-        { value: 'MAIN_EXAM', label: 'Main Exam' },
-        { value: 'MOCK', label: 'Mock' },
-        { value: 'PROJECT', label: 'Project' },
-        { value: 'ASSIGNMENT', label: 'Assignment' },
-        { value: 'PRACTICAL', label: 'Practical' },
-        { value: 'COMPETENCY', label: 'Competency' }
-    ];
 
     const evaluationTypes = [
         { value: 'NUMERIC', label: 'Numeric (Marks-based)' },
@@ -267,7 +260,7 @@ export function EditAssessmentPage() {
                                     value={formData.assessment_type}
                                     onChange={(e) => handleChange('assessment_type', e.target.value)}
                                     required
-                                    options={assessmentTypes}
+                                    options={ASSESSMENT_TYPE_OPTIONS}
                                 />
                             </div>
 

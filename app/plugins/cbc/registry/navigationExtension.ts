@@ -1,4 +1,4 @@
-import { Award, BookOpen, Layers, Target, TrendingUp } from 'lucide-react';
+import { Award, BarChart3, BookOpen, Layers, Target, TrendingUp } from 'lucide-react';
 import { registerPluginNavigationEntry } from '@/app/core/registry/pluginNavigation';
 
 registerPluginNavigationEntry({
@@ -27,6 +27,7 @@ registerPluginNavigationEntry({
             icon: Award,
             children: [
                 { name: 'Progress Tracking', href: '/cbc/progress', icon: TrendingUp },
+                { name: 'CBC Results', href: '/cbc/assessment-results', icon: BarChart3 },
                 { name: 'Browser', href: '/cbc/browser', icon: BookOpen },
                 { name: 'Teaching', href: '/cbc/teaching', icon: Target },
             ],
@@ -46,6 +47,7 @@ registerPluginNavigationEntry({
             children: [
                 { name: 'My Lessons', href: '/cbc/teaching/sessions', icon: Target },
                 { name: 'Learning Progress', href: '/cbc/progress', icon: TrendingUp },
+                { name: 'CBC Results', href: '/cbc/assessment-results', icon: BarChart3 },
                 { name: 'Browse Learning Goals', href: '/cbc/browser', icon: BookOpen },
             ],
         })

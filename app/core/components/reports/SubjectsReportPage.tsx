@@ -12,12 +12,16 @@ import { ExportModal } from '@/app/components/export/ExportModal';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { useSubjectAnalysis } from '@/app/core/hooks/useReporting';
 import { useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
+import { getAssessmentTypeLabel } from '@/app/core/types/assessment';
 import type { ExportPayload } from '@/app/types/export';
 
 const TYPE_COLORS: Record<string, string> = {
+    ENTRY: 'default',
     CAT: 'blue',
     TEST: 'purple',
+    MIDTERM: 'red',
     MAIN_EXAM: 'orange',
+    MOCK: 'indigo',
     PROJECT: 'green',
     ASSIGNMENT: 'yellow',
     PRACTICAL: 'indigo',
@@ -224,7 +228,7 @@ export function SubjectsReportPage() {
                                         className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                                         <div className="flex items-center justify-between mb-2">
                                             <Badge variant={(TYPE_COLORS[item.assessment_type] ?? 'default') as BadgeVariant}>
-                                                {item.assessment_type}
+                                                {getAssessmentTypeLabel(item.assessment_type)}
                                             </Badge>
                                             <span className="text-xs text-gray-500">
                                                 {item.total_assessments} records

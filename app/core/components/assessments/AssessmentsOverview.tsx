@@ -12,6 +12,7 @@ import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
 import { useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
+import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
 
 type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
 
@@ -34,14 +35,7 @@ export function AssessmentsOverview() {
 
     const assessmentTypes = [
         { value: '', label: 'All Types' },
-        { value: 'CAT', label: 'CAT' },
-        { value: 'TEST', label: 'Test' },
-        { value: 'MAIN_EXAM', label: 'Main Exam' },
-        { value: 'MOCK', label: 'Mock' },
-        { value: 'PROJECT', label: 'Project' },
-        { value: 'ASSIGNMENT', label: 'Assignment' },
-        { value: 'PRACTICAL', label: 'Practical' },
-        { value: 'COMPETENCY', label: 'Competency' }
+        ...ASSESSMENT_TYPE_OPTIONS,
     ];
 
     const evaluationTypes = [

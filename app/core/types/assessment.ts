@@ -1,8 +1,10 @@
 // app/core/types/assessment.ts
 
 export enum AssessmentType {
+  ENTRY = 'ENTRY',
   CAT = 'CAT',
   TEST = 'TEST',
+  MIDTERM = 'MIDTERM',
   MAIN_EXAM = 'MAIN_EXAM',
   MOCK = 'MOCK',
   PROJECT = 'PROJECT',
@@ -10,6 +12,24 @@ export enum AssessmentType {
   PRACTICAL = 'PRACTICAL',
   COMPETENCY = 'COMPETENCY',
 }
+
+export const ASSESSMENT_TYPE_LABELS: Record<AssessmentType, string> = {
+  [AssessmentType.ENTRY]: 'Entry / Baseline',
+  [AssessmentType.CAT]: 'CAT',
+  [AssessmentType.TEST]: 'Test',
+  [AssessmentType.MIDTERM]: 'Midterm',
+  [AssessmentType.MAIN_EXAM]: 'Main Exam',
+  [AssessmentType.MOCK]: 'Mock',
+  [AssessmentType.PROJECT]: 'Project',
+  [AssessmentType.ASSIGNMENT]: 'Assignment',
+  [AssessmentType.PRACTICAL]: 'Practical',
+  [AssessmentType.COMPETENCY]: 'Competency',
+};
+
+export const ASSESSMENT_TYPE_OPTIONS = Object.values(AssessmentType).map((type) => ({
+  value: type,
+  label: ASSESSMENT_TYPE_LABELS[type],
+}));
 
 export enum EvaluationType {
   NUMERIC = 'NUMERIC',
@@ -174,6 +194,15 @@ export interface GradeInfo {
   label: string;
   percentage: string;
   color: 'success' | 'info' | 'warning' | 'danger';
+}
+
+export function getAssessmentTypeLabel(type: string): string {
+  return ASSESSMENT_TYPE_LABELS[type as AssessmentType]
+    ?? type
+      .toLowerCase()
+      .split('_')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
 }
 
 export function calculateGrade(

@@ -519,3 +519,55 @@ export interface CBCVisibleProfile {
   subject_code: string;
   level: string;
 }
+
+export type CbcAssessmentResultStatus =
+  | 'FINAL'
+  | 'PROVISIONAL'
+  | 'INCOMPLETE';
+
+export type CbcLevel =
+  | 'BE'
+  | 'AE'
+  | 'ME'
+  | 'EE'
+  | '';
+
+export interface CbcAssessmentReportResult {
+  id: number;
+  organization: number;
+  student: number;
+  student_name: string;
+  admission_number: string;
+  term: number | null;
+  term_name: string | null;
+  cbc_cohort_subject: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_profile: number | null;
+  subject_name: string;
+  subject_code: string;
+  policy: number | null;
+  policy_name: string | null;
+  weighted_score: number | null;
+  cbc_level: CbcLevel;
+  cbc_label: string;
+  result_status: CbcAssessmentResultStatus;
+  component_scores: Record<string, unknown>;
+  diagnostic_scores: Record<string, unknown>;
+  missing_components: string[];
+  computation_details: Record<string, unknown>;
+  is_stale: boolean;
+  computed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CbcAssessmentReportResultFilters {
+  student?: number;
+  term?: number;
+  cbc_cohort_subject?: number;
+  cohort?: number;
+  subject_profile?: number;
+  result_status?: CbcAssessmentResultStatus;
+  is_stale?: boolean;
+}
