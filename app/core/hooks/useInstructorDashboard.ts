@@ -10,6 +10,7 @@ import { useStudents } from '@/app/core/hooks/useStudents';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useAssessments, useAssessmentScores } from '@/app/core/hooks/useAssessments';
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
+import { useInstructorAttendanceRisk } from '@/app/core/hooks/useInstructorAttendanceRisk';
 import type { Session } from '@/app/core/types/session';
 import type {
     TeachingAssignment,
@@ -28,6 +29,8 @@ export interface InstructorMetrics {
     };
     attendance: {
         todayRate: number;
+        riskCount: number;
+        riskLearnerCount: number;
     };
     assessments: {
         needsGrading: number;
@@ -49,7 +52,9 @@ function computeInstructorMetrics(
     students: { id: number; status?: string }[],
     assessments: { assessment_date?: string | null }[],
     scores: { score?: number | null; rubric_level?: number | null; assessment?: unknown }[],
-    sessions: Session[]
+    sessions: Session[],
+    attendanceRiskCount: number,
+    attendanceRiskLearnerCount: number,
 ): InstructorMetrics {
     const now = new Date();
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -91,7 +96,11 @@ function computeInstructorMetrics(
 
     return {
         students: { total: students.length, active: activeStudents.length },
-        attendance: { todayRate },
+        attendance: {
+            todayRate,
+            riskCount: attendanceRiskCount,
+            riskLearnerCount: attendanceRiskLearnerCount,
+        },
         assessments: { needsGrading, upcoming: upcomingAssessments },
         sessions: { today: sessions.length, upcoming: upcomingSessions },
         performance: { averageScore, needsSupport },
@@ -202,13 +211,29 @@ export function useInstructorDashboard() {
         term: currentTerm?.id,
     });
     const { scores, loading: scoresLoading } = useAssessmentScores();
+    const {
+        count: attendanceRiskCount,
+        uniqueLearnerCount: attendanceRiskLearnerCount,
+        loading: attendanceRiskLoading,
+        error: attendanceRiskError,
+        refetch: refetchAttendanceRisk,
+    } = useInstructorAttendanceRisk({
+        termId: currentTerm?.id,
+    });
 
     const isLoading = studentsLoading || sessionsLoading ||
         assessmentsLoading || scoresLoading || termLoading || yearLoading || teachingLoadLoading;
 
     const metrics = useMemo(
-        () => computeInstructorMetrics(students, assessments, scores, sessions),
-        [students, assessments, scores, sessions]
+        () => computeInstructorMetrics(
+            students,
+            assessments,
+            scores,
+            sessions,
+            attendanceRiskCount,
+            attendanceRiskLearnerCount,
+        ),
+        [students, assessments, scores, sessions, attendanceRiskCount, attendanceRiskLearnerCount]
     );
 
     const alerts = useMemo(
@@ -253,10 +278,11 @@ export function useInstructorDashboard() {
             refetchStudents(),
             refetchSessions(),
             refetchAssessments(),
+            refetchAttendanceRisk(),
             loadTeachingLoad(),
         ]);
         setLastRefresh(new Date());
-    }, [refetchStudents, refetchSessions, refetchAssessments, loadTeachingLoad]);
+    }, [refetchStudents, refetchSessions, refetchAssessments, refetchAttendanceRisk, loadTeachingLoad]);
 
     useEffect(() => {
         const interval = setInterval(refresh, 5 * 60 * 1000);
@@ -275,5 +301,7 @@ export function useInstructorDashboard() {
         refresh,
         teachingLoad,
         teachingHistory,
+        attendanceRiskLoading,
+        attendanceRiskError,
     };
 }

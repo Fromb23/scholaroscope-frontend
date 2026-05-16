@@ -388,3 +388,36 @@ export interface ReportFilters {
   subject?: number;
   cohort_subject?: number;
 }
+
+export type AttendanceRiskLevel = 'WATCH' | 'RISK' | 'CRITICAL';
+
+export interface InstructorAttendanceRiskItem {
+  student_id: number;
+  student_name: string;
+  admission_number: string;
+  cohort_subject_id: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  subject_name: string;
+  term_id: number | null;
+  total_sessions: number;
+  present_count: number;
+  absent_count: number;
+  late_count: number;
+  excused_count: number;
+  sick_count: number;
+  unmarked_count: number;
+  attendance_percentage: number;
+  threshold: number;
+  risk_level: AttendanceRiskLevel;
+  reasons: string[];
+}
+
+export interface InstructorAttendanceRiskResponse {
+  scope: string;
+  threshold: number;
+  count: number;
+  unique_learner_count: number;
+  items: InstructorAttendanceRiskItem[];
+}

@@ -281,10 +281,25 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
 
 interface LearnersAtRiskProps {
     needsSupport: number;
+    attendanceRiskCount: number;
+    attendanceRiskLearnerCount: number;
+    attendanceRiskLoading: boolean;
+    attendanceRiskError: string | null;
 }
 
-export function LearnersAtRisk({ needsSupport }: LearnersAtRiskProps) {
+export function LearnersAtRisk({
+    needsSupport,
+    attendanceRiskCount,
+    attendanceRiskLearnerCount,
+    attendanceRiskLoading,
+    attendanceRiskError,
+}: LearnersAtRiskProps) {
     const router = useRouter();
+    const attendanceRiskPath = '/reports/instructor/attendance-risk';
+    const attendanceRiskValue = attendanceRiskLearnerCount > 0
+        ? attendanceRiskLearnerCount
+        : attendanceRiskCount;
+    const attendanceRiskDisabled = attendanceRiskLoading || attendanceRiskError !== null;
 
     return (
         <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
@@ -297,16 +312,49 @@ export function LearnersAtRisk({ needsSupport }: LearnersAtRiskProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
                     type="button"
-                    className="p-5 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200 text-left cursor-default"
+                    onClick={() => {
+                        if (!attendanceRiskDisabled) {
+                            router.push(attendanceRiskPath);
+                        }
+                    }}
+                    disabled={attendanceRiskDisabled}
+                    className={`p-5 rounded-xl border text-left transition-all ${
+                        attendanceRiskDisabled
+                            ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 cursor-default'
+                            : 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 hover:from-orange-100 hover:to-red-100 hover:scale-[1.02]'
+                    }`}
                 >
                     <div className="flex items-center gap-3 mb-3">
                         <UserX className="w-6 h-6 text-orange-600" />
                         <p className="font-bold text-gray-900">Attendance Risk</p>
                     </div>
-                    <p className="text-sm font-medium text-gray-700">Unavailable</p>
-                    <p className="text-xs text-gray-600 mt-1">
-                        Frequent-absence indicators are not available on this dashboard yet.
-                    </p>
+                    {attendanceRiskLoading ? (
+                        <div className="space-y-2">
+                            <div className="h-8 w-20 rounded bg-orange-200/70 animate-pulse" />
+                            <div className="h-3 w-40 rounded bg-orange-100 animate-pulse" />
+                        </div>
+                    ) : attendanceRiskError ? (
+                        <>
+                            <p className="text-sm font-medium text-gray-700">Could not load attendance risk</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                                Try refreshing the dashboard.
+                            </p>
+                        </>
+                    ) : attendanceRiskCount === 0 ? (
+                        <>
+                            <p className="text-sm font-medium text-gray-700">No current attendance risk</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                                Based on completed lessons
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-3xl font-bold text-orange-600 mb-1">{attendanceRiskValue}</p>
+                            <p className="text-xs text-gray-600">
+                                Missing your lessons frequently
+                            </p>
+                        </>
+                    )}
                 </button>
 
                 <button
