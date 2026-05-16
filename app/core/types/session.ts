@@ -65,6 +65,18 @@ export interface Session {
   created_at: string;
 }
 
+export type SessionLifecycleReminderType =
+  | 'OPEN_LESSON'
+  | 'NEEDS_CLOSING'
+  | 'UNFINISHED_LESSON';
+
+export interface SessionLifecycleReminder {
+  session: Session;
+  type: SessionLifecycleReminderType;
+  label: string;
+  severity: 'info' | 'warning' | 'danger';
+}
+
 export interface SessionDetail extends Session {
   attendance_records: AttendanceRecord[];
 }

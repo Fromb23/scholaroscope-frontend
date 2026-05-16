@@ -1,7 +1,9 @@
 // app/core/hooks/useNotifications.ts
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationAPI } from '@/app/core/api/notifications';
+import { queueNotificationSound, initializeNotificationSound } from '@/app/core/lib/notificationSound';
+import { isSessionNotification } from '@/app/core/lib/notificationUtils';
 import type { Notification } from '@/app/core/types/notifications';
 
 const POLL_INTERVAL = 30_000;
@@ -10,50 +12,94 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const notificationsRef = useRef<Notification[]>([]);
+  const hasEstablishedBaseline = useRef(false);
+  const previousUnreadIds = useRef<Set<number>>(new Set<number>());
+  const previousUnreadCount = useRef(0);
 
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const count = await notificationAPI.getUnreadCount();
-      setUnreadCount(count);
-    } catch {
-      // Badge is non-critical.
+  const commitNotifications = useCallback((nextNotifications: Notification[], detectNew: boolean) => {
+    const unread = nextNotifications.filter((notification) => !notification.is_read);
+    const nextUnreadIds = new Set(unread.map((notification) => notification.id));
+    const nextUnreadCount = unread.length;
+
+    setNotifications(nextNotifications);
+    notificationsRef.current = nextNotifications;
+    setUnreadCount(nextUnreadCount);
+
+    if (!detectNew) {
+      previousUnreadIds.current = nextUnreadIds;
+      previousUnreadCount.current = nextUnreadCount;
+      return;
     }
+
+    if (!hasEstablishedBaseline.current) {
+      hasEstablishedBaseline.current = true;
+      previousUnreadIds.current = nextUnreadIds;
+      previousUnreadCount.current = nextUnreadCount;
+      return;
+    }
+
+    const newUnreadNotifications = unread.filter(
+      (notification) => !previousUnreadIds.current.has(notification.id)
+    );
+
+    if (newUnreadNotifications.length > 0 || nextUnreadCount > previousUnreadCount.current) {
+      queueNotificationSound(
+        newUnreadNotifications.some(isSessionNotification) ? 'session' : 'normal',
+        newUnreadNotifications.map((notification) => notification.id)
+      );
+    }
+
+    previousUnreadIds.current = nextUnreadIds;
+    previousUnreadCount.current = nextUnreadCount;
   }, []);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const syncNotifications = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+
     try {
       const data = await notificationAPI.getAll();
-      setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.is_read).length);
+      commitNotifications(data, true);
     } catch {
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [commitNotifications]);
+
+  const fetchAll = useCallback(async () => {
+    await syncNotifications(true);
+  }, [syncNotifications]);
 
   const markRead = useCallback(async (ids: number[]) => {
     await notificationAPI.markRead(ids);
 
-    setNotifications((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, is_read: true } : n)));
-
-    setUnreadCount((prev) => Math.max(0, prev - ids.length));
-  }, []);
+    const next = notificationsRef.current.map((notification) =>
+      ids.includes(notification.id) ? { ...notification, is_read: true } : notification
+    );
+    commitNotifications(next, false);
+  }, [commitNotifications]);
 
   const markAllRead = useCallback(async () => {
     await notificationAPI.markAllRead();
 
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnreadCount(0);
-  }, []);
+    const next = notificationsRef.current.map((notification) => ({ ...notification, is_read: true }));
+    commitNotifications(next, false);
+  }, [commitNotifications]);
 
   useEffect(() => {
-    fetchAll();
+    initializeNotificationSound();
+    void syncNotifications();
 
-    const interval = setInterval(fetchUnreadCount, POLL_INTERVAL);
+    const interval = setInterval(() => {
+      void syncNotifications();
+    }, POLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [fetchAll, fetchUnreadCount]);
+  }, [syncNotifications]);
 
   return {
     notifications,
