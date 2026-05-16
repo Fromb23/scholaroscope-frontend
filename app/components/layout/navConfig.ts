@@ -173,7 +173,7 @@ export function getInstructorNav(
             ...getPluginNavigationItems('instructor.primary.afterAssessments', pluginContext),
         ],
         secondary: [
-            { name: 'Learners at Risk', href: '/learners?filter=at-risk', icon: AlertCircle },
+            { name: 'Attendance Risk', href: '/reports/instructor/attendance-risk', icon: AlertCircle },
             ...getPluginNavigationItems('instructor.secondary.beforeSubmitRequest', pluginContext),
             { name: 'Submit Request', href: '/requests/new', icon: FileText },
         ],

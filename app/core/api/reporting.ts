@@ -2,6 +2,7 @@ import { GradePolicy, ComputedGradeDTO } from '../types/gradePolicy';
 import { apiClient } from './client';
 import {
   AttendanceSummary,
+  AttendanceRiskLevel,
   GradeSummary,
   CohortSummary,
   SubjectSummary,
@@ -16,9 +17,109 @@ import {
   InstructorCohortSubjectLearnersReport,
   InstructorCohortSubjectPerformanceReport,
   InstructorCohortSubjectTeachingActivityReport,
+  InstructorAttendanceRiskItem,
+  InstructorAttendanceRiskResponse,
   ComputeResponse,
   ReportFilters,
 } from '@/app/core/types/reporting';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function toNullableNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+}
+
+function toAttendanceRiskLevel(value: unknown): AttendanceRiskLevel {
+  return value === 'WATCH' || value === 'RISK' || value === 'CRITICAL'
+    ? value
+    : 'WATCH';
+}
+
+function normalizeInstructorAttendanceRiskItem(value: unknown): InstructorAttendanceRiskItem | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const studentId = toNumber(value.student_id, Number.NaN);
+  const cohortSubjectId = toNumber(value.cohort_subject_id, Number.NaN);
+
+  if (!Number.isFinite(studentId) || !Number.isFinite(cohortSubjectId)) {
+    return null;
+  }
+
+  return {
+    student_id: studentId,
+    student_name: toString(value.student_name),
+    admission_number: toString(value.admission_number),
+    cohort_subject_id: cohortSubjectId,
+    cohort_id: toNumber(value.cohort_id),
+    cohort_name: toString(value.cohort_name),
+    subject_id: toNumber(value.subject_id),
+    subject_name: toString(value.subject_name),
+    term_id: toNullableNumber(value.term_id),
+    total_sessions: toNumber(value.total_sessions),
+    present_count: toNumber(value.present_count),
+    absent_count: toNumber(value.absent_count),
+    late_count: toNumber(value.late_count),
+    excused_count: toNumber(value.excused_count),
+    sick_count: toNumber(value.sick_count),
+    unmarked_count: toNumber(value.unmarked_count),
+    attendance_percentage: toNumber(value.attendance_percentage),
+    threshold: toNumber(value.threshold),
+    risk_level: toAttendanceRiskLevel(value.risk_level),
+    reasons: toStringArray(value.reasons),
+  };
+}
+
+function normalizeInstructorAttendanceRiskResponse(value: unknown): InstructorAttendanceRiskResponse {
+  if (!isRecord(value)) {
+    return {
+      scope: 'instructor',
+      threshold: 0,
+      count: 0,
+      unique_learner_count: 0,
+      items: [],
+    };
+  }
+
+  const rawItems = Array.isArray(value.items)
+    ? value.items
+    : Array.isArray(value.results)
+      ? value.results
+      : [];
+  const items = rawItems
+    .map((item) => normalizeInstructorAttendanceRiskItem(item))
+    .filter((item): item is InstructorAttendanceRiskItem => item !== null);
+  const uniqueLearnerCount = new Set(items.map((item) => item.student_id)).size;
+  const rawCount = 'count' in value ? value.count : value.total;
+  const rawUniqueLearnerCount = 'unique_learner_count' in value
+    ? value.unique_learner_count
+    : value.uniqueLearnerCount;
+
+  return {
+    scope: toString(value.scope, 'instructor'),
+    threshold: toNumber(value.threshold),
+    count: toNumber(rawCount, items.length),
+    unique_learner_count: toNumber(rawUniqueLearnerCount, uniqueLearnerCount),
+    items,
+  };
+}
 
 // ============================================================================
 // Attendance Summary API
@@ -179,6 +280,29 @@ export const assessmentTypeSummaryAPI = {
     );
     return response.data;
   }
+};
+
+export const reportingAPI = {
+  getInstructorAttendanceRisk: async (params?: {
+    term?: number;
+    threshold?: number;
+    instructor_id?: number;
+  }) => {
+    const queryParams: Record<string, number> = {};
+
+    if (params?.term !== undefined) queryParams.term = params.term;
+    if (params?.threshold !== undefined) queryParams.threshold = params.threshold;
+    if (params?.instructor_id !== undefined) queryParams.instructor_id = params.instructor_id;
+
+    const response = await apiClient.get<unknown>(
+      '/reports/instructor/attendance-risk/',
+      {
+        params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+      }
+    );
+
+    return normalizeInstructorAttendanceRiskResponse(response.data);
+  },
 };
 
 // ============================================================================

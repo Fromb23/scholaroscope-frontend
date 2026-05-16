@@ -35,7 +35,8 @@ export function InstructorDashboard() {
     const {
         metrics, alerts, sessions, teachingCohorts,
         currentTerm, currentYear,
-        lastRefresh, isLoading, refresh, teachingLoad, teachingHistory
+        lastRefresh, isLoading, refresh, teachingLoad, teachingHistory,
+        attendanceRiskLoading, attendanceRiskError,
     } = useInstructorDashboard();
 
     const hasTeachingAssignments = teachingLoad.length > 0;
@@ -75,6 +76,10 @@ export function InstructorDashboard() {
                     <TodayScheduleCard sessions={sessions} />
                     <LearnersAtRisk
                         needsSupport={metrics.performance.needsSupport}
+                        attendanceRiskCount={metrics.attendance.riskCount}
+                        attendanceRiskLearnerCount={metrics.attendance.riskLearnerCount}
+                        attendanceRiskLoading={attendanceRiskLoading}
+                        attendanceRiskError={attendanceRiskError}
                     />
                     <MyCohortsCard cohorts={teachingCohorts} />
                 </div>
