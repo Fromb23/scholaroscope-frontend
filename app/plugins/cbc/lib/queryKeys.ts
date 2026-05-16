@@ -2,6 +2,8 @@
 // All React Query cache keys for the CBC plugin.
 // Import from here — never hardcode strings in hooks.
 
+import type { CbcAssessmentReportResultFilters } from '@/app/plugins/cbc/types/cbc';
+
 export const cbcKeys = {
     instructorContext: {
         detail: (userId: number, organizationId: number, curriculumId: number) =>
@@ -84,6 +86,13 @@ export const cbcKeys = {
     rubricScale: {
         forSession: (sessionId: number) =>
             ['cbc', 'rubricScale', 'session', sessionId] as const,
+    },
+
+    assessmentReportResults: {
+        all: ['cbc', 'assessment-report-results'] as const,
+        list: (filters?: CbcAssessmentReportResultFilters) =>
+            ['cbc', 'assessment-report-results', 'list', filters] as const,
+        detail: (id: number) => ['cbc', 'assessment-report-results', id] as const,
     },
 
     // Teaching sessions

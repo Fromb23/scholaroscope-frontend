@@ -28,6 +28,7 @@ import { Select } from '@/app/components/ui/Select';
 const NAV_ITEMS = [
     { href: '/cbc/browser', label: 'Browse' },
     { href: '/cbc/progress', label: 'Learning Progress' },
+    { href: '/cbc/assessment-results', label: 'Results' },
     { href: '/cbc/teaching', label: 'Teaching' },
 ] as const;
 

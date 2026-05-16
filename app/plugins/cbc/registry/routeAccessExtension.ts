@@ -6,6 +6,7 @@ registerPluginRouteAccess({
         { pattern: /^\/cbc\/authoring/, allowedRoles: ['SUPERADMIN'] },
         { pattern: /^\/cbc\/teaching/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
         { pattern: /^\/cbc\/progress/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+        { pattern: /^\/cbc\/assessment-results/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
         { pattern: /^\/cbc\/browser/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     ],
 });

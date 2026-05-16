@@ -11,6 +11,7 @@
 // ============================================================================
 
 import { apiClient } from '@/app/core/api/client';
+import type { PaginatedResponse } from '@/app/core/types/api';
 import {
   Strand,
   StrandDetail,
@@ -47,6 +48,8 @@ import {
   OutcomeConfidence,
   MyCBCTeachingLoad,
   CBCCatalog,
+  CbcAssessmentReportResult,
+  CbcAssessmentReportResultFilters,
 } from '@/app/plugins/cbc/types/cbc';
 
 
@@ -523,6 +526,24 @@ export const cbcSelectionAPI = {
     }>(
       '/cbc/strands/unregister_sub_strands/',
       { sub_strand_ids: subStrandIds },
+    );
+    return response.data;
+  },
+};
+
+export const cbcAPI = {
+  getAssessmentReportResults: async (
+    filters?: CbcAssessmentReportResultFilters,
+  ): Promise<CbcAssessmentReportResult[] | PaginatedResponse<CbcAssessmentReportResult>> => {
+    const response = await apiClient.get<
+      CbcAssessmentReportResult[] | PaginatedResponse<CbcAssessmentReportResult>
+    >('/cbc/assessment-report-results/', { params: filters });
+    return response.data;
+  },
+
+  getAssessmentReportResult: async (id: number): Promise<CbcAssessmentReportResult> => {
+    const response = await apiClient.get<CbcAssessmentReportResult>(
+      `/cbc/assessment-report-results/${id}/`,
     );
     return response.data;
   },
