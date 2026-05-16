@@ -9,6 +9,7 @@ import { useInstructorDashboard } from '@/app/core/hooks/useInstructorDashboard'
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useMyRequests } from '@/app/plugins/requests/hooks/useRequests';
+import { SessionReminderPanel } from '@/app/core/components/dashboard/SessionReminderPanel';
 import {
     InstructorHeader,
     InstructorAlertsBanner,
@@ -65,6 +66,7 @@ export function InstructorDashboard() {
                 lastRefresh={lastRefresh}
                 onRefresh={refresh}
             />
+            <SessionReminderPanel />
             <InstructorAlertsBanner alerts={alerts} />
             <InstructorKeyMetrics metrics={metrics} />
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

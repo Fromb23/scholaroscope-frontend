@@ -6,8 +6,10 @@
 // mark read/all-read actions. No API calls — receives hook output as props.
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Loader2 } from 'lucide-react';
 import { useNotifications } from '@/app/core/hooks/useNotifications';
+import { getNotificationRoute } from '@/app/core/lib/notificationUtils';
 import type { Notification } from '@/app/core/types/notifications';
 
 function timeAgo(dateStr: string): string {
@@ -29,17 +31,18 @@ const priorityDot: Record<string, string> = {
 
 function NotificationItem({
     notification,
-    onRead,
+    onSelect,
 }: {
     notification: Notification;
-    onRead: (id: number) => void;
+    onSelect: (notification: Notification) => void;
 }) {
     return (
-        <div
-            onClick={() => !notification.is_read && onRead(notification.id)}
+        <button
+            type="button"
+            onClick={() => onSelect(notification)}
             className={`flex gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
                 notification.is_read ? 'opacity-60' : ''
-            }`}
+            } w-full text-left`}
         >
             <span
                 className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${
@@ -59,11 +62,12 @@ function NotificationItem({
                 )}
                 <p className="text-xs text-gray-400 mt-1">{timeAgo(notification.created_at)}</p>
             </div>
-        </div>
+        </button>
     );
 }
 
 export function NotificationBell() {
+    const router = useRouter();
     const { notifications, unreadCount, loading, fetchAll, markRead, markAllRead } =
         useNotifications();
     const [open, setOpen] = useState(false);
@@ -83,7 +87,7 @@ export function NotificationBell() {
 
     const handleOpen = () => {
         setOpen(prev => {
-            if (!prev) fetchAll();
+            if (!prev) void fetchAll();
             return !prev;
         });
     };
@@ -94,6 +98,24 @@ export function NotificationBell() {
             await markAllRead();
         } finally {
             setMarkingAll(false);
+        }
+    };
+
+    const handleNotificationSelect = async (notification: Notification) => {
+        const route = getNotificationRoute(notification);
+
+        try {
+            if (!notification.is_read) {
+                await markRead([notification.id]);
+            }
+        } catch {
+            // Preserve navigation even if read-state sync fails.
+        } finally {
+            setOpen(false);
+        }
+
+        if (route) {
+            router.push(route);
         }
     };
 
@@ -156,7 +178,7 @@ export function NotificationBell() {
                                 <NotificationItem
                                     key={n.id}
                                     notification={n}
-                                    onRead={id => markRead([id])}
+                                    onSelect={handleNotificationSelect}
                                 />
                             ))
                         )}

@@ -14,6 +14,7 @@ import {
   AttendanceQueryParams,
 } from '@/app/core/api/sessions';
 import { cohortAPI, cohortSubjectAPI } from '@/app/core/api/academic';
+import { subscribeToSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import {
   AvailableSessionCohortSubject,
   AvailableSessionCohortSubjectsResponse,
@@ -283,6 +284,12 @@ export const useTodaySessions = () => {
 
   useEffect(() => {
     fetchTodaySessions();
+  }, [fetchTodaySessions]);
+
+  useEffect(() => {
+    return subscribeToSessionDataChanged(() => {
+      void fetchTodaySessions();
+    });
   }, [fetchTodaySessions]);
 
   return { sessions, loading, error, refetch: fetchTodaySessions };
