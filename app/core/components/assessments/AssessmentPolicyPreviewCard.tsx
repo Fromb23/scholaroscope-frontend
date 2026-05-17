@@ -18,6 +18,8 @@ import {
 } from '@/app/core/registry/assessmentPolicyPreviews';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { useAuth } from '@/app/context/AuthContext';
+import { isAdminOrAbove } from '@/app/utils/permissions';
 
 type GenericPreviewState =
     | { status: 'idle' | 'loading'; surface: PolicySurfaceDefinition | null }
@@ -95,7 +97,9 @@ export function AssessmentPolicyPreviewCard({
     cohortSubjectId = null,
     termId = null,
 }: AssessmentPolicyPreviewCardProps) {
+    const { user, activeRole, loading: authLoading } = useAuth();
     const { plugins, loading: pluginsLoading } = usePlugins();
+    const canManagePolicyRoutes = !authLoading && isAdminOrAbove(user, activeRole);
     const { subjects, loading: subjectsLoading } = useCohortSubjects(cohortId ?? undefined);
     const selectedSubject = useMemo(
         () => (subjects as AssessmentPolicyPreviewSubject[]).find((subject) => subject.id === cohortSubjectId) ?? null,
@@ -122,6 +126,29 @@ export function AssessmentPolicyPreviewCard({
             subject: selectedSubject,
         });
     }, [cohortId, cohortSubjectId, selectedSubject, surface?.key, termId]);
+
+    const renderPolicyAction = (href: string, label: string) => {
+        if (authLoading) {
+            return null;
+        }
+
+        if (!canManagePolicyRoutes) {
+            return (
+                <p className="text-sm text-gray-500">
+                    Policy managed by administrator.
+                </p>
+            );
+        }
+
+        return (
+            <Link href={href}>
+                <Button variant="secondary" size="sm">
+                    {label}
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+            </Link>
+        );
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -244,12 +271,7 @@ export function AssessmentPolicyPreviewCard({
                             </div>
                             <Badge variant="default">Unavailable</Badge>
                         </div>
-                        <Link href="/reports/policies">
-                            <Button variant="secondary" size="sm">
-                                Open Policy Hub
-                                <ArrowRight className="ml-1.5 h-4 w-4" />
-                            </Button>
-                        </Link>
+                        {renderPolicyAction('/reports/policies', 'Open Policy Hub')}
                     </div>
                     <p className="text-sm text-gray-600">
                         No report policy module is available for this subject&apos;s curriculum yet.
@@ -271,12 +293,7 @@ export function AssessmentPolicyPreviewCard({
                             </div>
                             <Badge variant="default">Preview unavailable</Badge>
                         </div>
-                        <Link href={surface.href}>
-                            <Button variant="secondary" size="sm">
-                                Open Policy Module
-                                <ArrowRight className="ml-1.5 h-4 w-4" />
-                            </Button>
-                        </Link>
+                        {renderPolicyAction(surface.href, 'Open Policy Module')}
                     </div>
                     <p className="text-sm text-gray-600">
                         Policy authoring is managed by the owning plugin surface for this curriculum.
@@ -315,12 +332,7 @@ export function AssessmentPolicyPreviewCard({
                             )}
                         </div>
                     </div>
-                    <Link href={detailHref}>
-                        <Button variant="secondary" size="sm">
-                            {actionLabel}
-                            <ArrowRight className="ml-1.5 h-4 w-4" />
-                        </Button>
-                    </Link>
+                    {renderPolicyAction(detailHref, actionLabel)}
                 </div>
 
                 {preview.status === 'loading' && (

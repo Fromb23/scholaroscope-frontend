@@ -30,6 +30,10 @@ function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
   return Array.isArray(data) ? data : data?.results ?? [];
 }
 
+function unwrapCount<T>(data: T[] | PaginatedResponse<T>): number {
+  return Array.isArray(data) ? data.length : data?.count ?? data?.results?.length ?? 0;
+}
+
 function toIdSet(idsKey: string): Set<number> {
   if (!idsKey) return new Set<number>();
   return new Set(
@@ -219,12 +223,11 @@ export const useAssessmentScores = (params?: {
       setError(null);
       const data = await assessmentScoreAPI.getAll(scoreFilters);
       setScores(unwrapList(data));
-      setTotalItems(
-        Array.isArray(data) ? data.length : (data as PaginatedResponse<AssessmentScore>).count ?? 0
-      );
+      setTotalItems(unwrapCount(data));
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch scores'));
       setScores([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }

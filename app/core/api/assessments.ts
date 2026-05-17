@@ -10,6 +10,7 @@ import {
   AssessmentStatistics,
   StudentScoresResponse
 } from '../types/assessment';
+import type { PaginatedResponse } from '@/app/core/types/api';
 
 // Rubric Scale API
 export const rubricScaleAPI = {
@@ -81,8 +82,19 @@ export const assessmentAPI = {
     assessment_type?: string;
     evaluation_type?: string;
     status?: string;
-  }) => {
-    const response = await apiClient.get<Assessment[]>('/assessments/', { params });
+  }): Promise<Assessment[] | PaginatedResponse<Assessment>> => {
+    const response = await apiClient.get<Assessment[] | PaginatedResponse<Assessment>>(
+      '/assessments/',
+      {
+        params: {
+          term: params?.term,
+          cohort_subject: params?.cohort_subject,
+          assessment_type: params?.assessment_type,
+          evaluation_type: params?.evaluation_type,
+          status: params?.status,
+        },
+      }
+    );
     return response.data;
   },
 
@@ -153,8 +165,21 @@ export const assessmentScoreAPI = {
     search?: string;
     page?: number;
     page_size?: number;
-  }) => {
-    const response = await apiClient.get<AssessmentScore[]>('/scores/', { params });
+  }): Promise<AssessmentScore[] | PaginatedResponse<AssessmentScore>> => {
+    const response = await apiClient.get<AssessmentScore[] | PaginatedResponse<AssessmentScore>>(
+      '/scores/',
+      {
+        params: {
+          assessment: params?.assessment,
+          student: params?.student,
+          search: params?.search,
+          page: params?.page,
+          page_size: params?.page_size,
+          assessment__term: params?.assessment__term,
+          assessment__subject: params?.assessment__subject,
+        },
+      }
+    );
     return response.data;
   },
 
