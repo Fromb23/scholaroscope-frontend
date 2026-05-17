@@ -21,15 +21,19 @@ import {
     buildCbcCohortSubjectOptions,
     buildCbcSubjectProfileOptions,
 } from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
+import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
 
 export function CbcReportPolicyDetailPage() {
     const params = useParams();
     const policyId = Number(params.id);
-    const { user, activeRole } = useAuth();
+    const { user, activeRole, loading: authLoading } = useAuth();
     const canManagePolicies = isAdminOrAbove(user, activeRole);
     const [showEditModal, setShowEditModal] = useState(false);
 
-    const { policy, loading, error, refetch } = useCbcReportPolicy(Number.isFinite(policyId) ? policyId : null);
+    const { policy, loading, error, refetch } = useCbcReportPolicy(
+        Number.isFinite(policyId) ? policyId : null,
+        { enabled: canManagePolicies && !authLoading },
+    );
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
@@ -51,6 +55,14 @@ export function CbcReportPolicyDetailPage() {
         })),
         [terms],
     );
+
+    if (authLoading) {
+        return <LoadingSpinner />;
+    }
+
+    if (!canManagePolicies) {
+        return <PolicyAdminOnlyState title="CBC Report Policies" />;
+    }
 
     if (loading) {
         return <LoadingSpinner />;

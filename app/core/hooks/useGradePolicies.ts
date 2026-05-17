@@ -14,12 +14,25 @@ import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 
 // ── useGradePolicies ──────────────────────────────────────────────────────
 
-export function useGradePolicies(filters?: PolicyFilters) {
+export function useGradePolicies(
+    filters?: PolicyFilters,
+    options?: {
+        enabled?: boolean;
+    },
+) {
+    const enabled = options?.enabled ?? true;
     const [policies, setPolicies] = useState<GradePolicy[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(enabled);
     const [error, setError] = useState<string | null>(null);
 
     const fetchPolicies = useCallback(async () => {
+        if (!enabled) {
+            setPolicies([]);
+            setError(null);
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
             setError(null);
@@ -30,12 +43,14 @@ export function useGradePolicies(filters?: PolicyFilters) {
             setLoading(false);
         }
     }, [
+        enabled,
         filters,
     ]);
 
     useEffect(() => {
-        fetchPolicies();
+        void fetchPolicies();
     }, [
+        enabled,
         filters?.cohort_subject,
         filters?.cohort,
         filters?.curriculum,

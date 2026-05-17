@@ -48,7 +48,6 @@ export function AssessmentDetailPage() {
         canFinalize,
         canScore,
         setExportOpen,
-        setSearchQuery,
         setSaveError,
         setDeleteError,
         handleScoreChange,
@@ -125,7 +124,6 @@ export function AssessmentDetailPage() {
                 onExport={() => setExportOpen(true)}
                 onSave={handleSaveScores}
                 onScoreChange={handleScoreChange}
-                onSearch={setSearchQuery}
             />
 
             {exportPayload && (

@@ -152,14 +152,6 @@ export function getAdminNav(
 export function getInstructorNav(
     pluginContext: PluginNavigationContext,
 ): NavigationConfig {
-    const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
-        ? [{
-            name: 'Report Policies',
-            href: '/reports/policies',
-            icon: Award,
-        }]
-        : [];
-
     return {
         primary: [
             { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
@@ -180,7 +172,6 @@ export function getInstructorNav(
                 children: [
                     { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
                     { name: 'Needs Grading', href: '/assessments?status=pending', icon: AlertCircle },
-                    ...reportPoliciesChild,
                 ],
             },
             ...getPluginNavigationItems('instructor.primary.afterAssessments', pluginContext),

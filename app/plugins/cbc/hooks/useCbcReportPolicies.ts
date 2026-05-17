@@ -9,12 +9,19 @@ import type {
     CbcReportPolicyPayload,
 } from '@/app/plugins/cbc/types/reportPolicy';
 
-export function useCbcReportPolicies(filters?: CbcReportPolicyFilters) {
+export function useCbcReportPolicies(
+    filters?: CbcReportPolicyFilters,
+    options?: {
+        enabled?: boolean;
+    },
+) {
     const queryClient = useQueryClient();
+    const enabled = options?.enabled ?? true;
 
     const query = useQuery<CbcReportPolicy[]>({
         queryKey: cbcKeys.reportPolicies.list(filters),
         queryFn: () => cbcReportPolicyAPI.getAll(filters),
+        enabled,
         staleTime: 60 * 1000,
     });
 
@@ -55,11 +62,17 @@ export function useCbcReportPolicies(filters?: CbcReportPolicyFilters) {
     };
 }
 
-export function useCbcReportPolicy(id: number | null) {
+export function useCbcReportPolicy(
+    id: number | null,
+    options?: {
+        enabled?: boolean;
+    },
+) {
+    const enabled = options?.enabled ?? true;
     const query = useQuery<CbcReportPolicy>({
         queryKey: cbcKeys.reportPolicies.detail(id ?? 0),
         queryFn: () => cbcReportPolicyAPI.getById(id!),
-        enabled: id !== null,
+        enabled: enabled && id !== null,
         staleTime: 60 * 1000,
     });
 

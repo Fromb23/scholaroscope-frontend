@@ -49,7 +49,6 @@ registerPluginNavigationEntry({
                 { name: 'My Lessons', href: '/cbc/teaching/sessions', icon: Target },
                 { name: 'Learning Progress', href: '/cbc/progress', icon: TrendingUp },
                 { name: 'CBC Results', href: '/cbc/assessment-results', icon: BarChart3 },
-                { name: 'Report Policies', href: '/cbc/report-policies', icon: Award },
                 { name: 'Browse Learning Goals', href: '/cbc/browser', icon: BookOpen },
             ],
         })

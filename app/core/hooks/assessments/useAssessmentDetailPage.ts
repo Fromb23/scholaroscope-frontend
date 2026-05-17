@@ -36,10 +36,9 @@ export function useAssessmentDetailPage() {
         deleteAssessment,
     } = useAssessmentDetail(assessmentId);
 
-    const [searchQuery, setSearchQuery] = useState('');
     const { scores, loading: scoresLoading, bulkEntry } = useAssessmentScores({
         assessment: assessmentId,
-        search: searchQuery || undefined,
+        page_size: 1000,
     });
 
     const [draft, setDraft] = useState<Record<number, ScoreDraft>>({});
@@ -179,7 +178,6 @@ export function useAssessmentDetailPage() {
         canFinalize,
         canScore,
         setExportOpen,
-        setSearchQuery,
         setSaveError,
         setDeleteError,
         handleScoreChange,

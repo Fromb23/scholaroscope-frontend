@@ -9,6 +9,8 @@ import { Card } from '@/app/components/ui/Card';
 import { cbcReportPolicyAPI } from '@/app/plugins/cbc/api/reportPolicies';
 import type { CbcReportPolicy } from '@/app/plugins/cbc/types/reportPolicy';
 import type { AssessmentPolicyPreviewContext } from '@/app/core/registry/assessmentPolicyPreviews';
+import { useAuth } from '@/app/context/AuthContext';
+import { isAdminOrAbove } from '@/app/utils/permissions';
 
 type CbcPreviewState =
     | { status: 'loading' }
@@ -45,7 +47,9 @@ export function CbcAssessmentPolicyPreview({
     termId,
     subject,
 }: AssessmentPolicyPreviewContext) {
+    const { user, activeRole, loading: authLoading } = useAuth();
     const [preview, setPreview] = useState<CbcPreviewState>({ status: 'loading' });
+    const canManagePolicyRoutes = !authLoading && isAdminOrAbove(user, activeRole);
     const cbcSubjectId = subject.cbc_cohort_subject_id ?? subject.id;
 
     useEffect(() => {
@@ -150,6 +154,29 @@ export function CbcAssessmentPolicyPreview({
         ? 'View CBC Report Policy'
         : 'Manage CBC Report Policies';
 
+    const renderPolicyAction = () => {
+        if (authLoading) {
+            return null;
+        }
+
+        if (!canManagePolicyRoutes) {
+            return (
+                <p className="text-sm text-gray-500">
+                    Policy managed by administrator.
+                </p>
+            );
+        }
+
+        return (
+            <Link href={detailHref}>
+                <Button variant="secondary" size="sm">
+                    {actionLabel}
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+            </Link>
+        );
+    };
+
     return (
         <Card>
             <div className="space-y-4">
@@ -169,12 +196,7 @@ export function CbcAssessmentPolicyPreview({
                             )}
                         </div>
                     </div>
-                    <Link href={detailHref}>
-                        <Button variant="secondary" size="sm">
-                            {actionLabel}
-                            <ArrowRight className="ml-1.5 h-4 w-4" />
-                        </Button>
-                    </Link>
+                    {renderPolicyAction()}
                 </div>
 
                 {preview.status === 'loading' && (

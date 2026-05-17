@@ -25,16 +25,20 @@ import {
 } from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
 import { useCbcReportPolicies } from '@/app/plugins/cbc/hooks/useCbcReportPolicies';
 import type { CbcReportPolicy } from '@/app/plugins/cbc/types/reportPolicy';
+import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
 
 export function CbcReportPoliciesPage() {
-    const { user, activeRole } = useAuth();
+    const { user, activeRole, loading: authLoading } = useAuth();
     const canManagePolicies = isAdminOrAbove(user, activeRole);
     const [showModal, setShowModal] = useState(false);
     const [editingPolicy, setEditingPolicy] = useState<CbcReportPolicy | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
-    const { policies, loading, error, refetch, deletePolicy } = useCbcReportPolicies();
+    const { policies, loading, error, refetch, deletePolicy } = useCbcReportPolicies(
+        undefined,
+        { enabled: canManagePolicies },
+    );
     const { cohorts } = useCohorts();
     const { curricula } = useCurricula();
     const { plugins } = usePlugins();
@@ -100,6 +104,14 @@ export function CbcReportPoliciesPage() {
         await refetch();
         handleClose();
     };
+
+    if (authLoading) {
+        return <LoadingSpinner />;
+    }
+
+    if (!canManagePolicies) {
+        return <PolicyAdminOnlyState title="CBC Report Policies" />;
+    }
 
     if (loading && !policies.length) {
         return <LoadingSpinner />;

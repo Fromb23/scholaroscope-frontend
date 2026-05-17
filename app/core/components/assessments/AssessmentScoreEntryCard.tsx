@@ -18,7 +18,6 @@ interface AssessmentScoreEntryCardProps {
     onExport: () => void;
     onSave: () => void;
     onScoreChange: (studentId: number, field: keyof ScoreDraft, value: number | string | null) => void;
-    onSearch: (query: string) => void;
 }
 
 export function AssessmentScoreEntryCard({
@@ -32,16 +31,15 @@ export function AssessmentScoreEntryCard({
     onExport,
     onSave,
     onScoreChange,
-    onSearch,
 }: AssessmentScoreEntryCardProps) {
     return (
         <Card>
             <div className="p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-base font-semibold text-gray-900">
                         {readOnly ? 'Scores' : 'Enter Scores'}
                     </h2>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
                         <Button
                             variant="secondary"
                             size="sm"
@@ -61,19 +59,14 @@ export function AssessmentScoreEntryCard({
                         )}
                     </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <div className="min-w-[480px]">
-                        <AssessmentScoreTable
-                            assessment={assessment}
-                            scores={scores}
-                            draft={draft}
-                            loading={loading}
-                            readOnly={readOnly}
-                            onScoreChange={onScoreChange}
-                            onSearch={onSearch}
-                        />
-                    </div>
-                </div>
+                <AssessmentScoreTable
+                    assessment={assessment}
+                    scores={scores}
+                    draft={draft}
+                    loading={loading}
+                    readOnly={readOnly}
+                    onScoreChange={onScoreChange}
+                />
             </div>
         </Card>
     );

@@ -23,13 +23,14 @@ import {
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 import type { ApiError } from '@/app/core/types/errors';
 import { extractErrorMessage } from '@/app/core/types/errors';
+import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
 
 const CBC_REJECTION_MESSAGE = 'CBC uses CbcReportPolicy. Use CBC report policy endpoints.';
 
 export function GradePolicyDetailPage() {
     const params = useParams();
     const policyId = Number(params.id);
-    const { user, activeRole } = useAuth();
+    const { user, activeRole, loading: authLoading } = useAuth();
     const canManagePolicies = isAdminOrAbove(user, activeRole);
     const [policy, setPolicy] = useState<GradePolicy | null>(null);
     const [loading, setLoading] = useState(true);
@@ -135,8 +136,27 @@ export function GradePolicyDetailPage() {
     }, [policyId]);
 
     useEffect(() => {
+        if (authLoading) {
+            return;
+        }
+
+        if (!canManagePolicies) {
+            setPolicy(null);
+            setError(null);
+            setLoading(false);
+            return;
+        }
+
         void loadPolicy();
-    }, [loadPolicy]);
+    }, [authLoading, canManagePolicies, loadPolicy]);
+
+    if (authLoading) {
+        return <LoadingSpinner />;
+    }
+
+    if (!canManagePolicies) {
+        return <PolicyAdminOnlyState title="Generic Grade Policies" />;
+    }
 
     if (loading) {
         return <LoadingSpinner />;
