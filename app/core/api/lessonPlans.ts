@@ -10,8 +10,9 @@ import type {
     MarkUsedPayload,
 } from '@/app/core/types/lessonPlans';
 
-export const LESSON_PLANS_API_PREFIX = '/lesson-plans';
-export const LESSON_PLANS_BASE_PATH = `${LESSON_PLANS_API_PREFIX}/lesson-plans`;
+// Backend includes apps.lesson_plans.urls flat under /api/, so router endpoints are
+// /lesson-plans/, /reference-resources/, etc.
+export const LESSON_PLANS_BASE_PATH = '/lesson-plans';
 
 export const lessonPlanAPI = {
     getAll: async (params?: LessonPlanQueryParams): Promise<LessonPlan[] | PaginatedResponse<LessonPlan>> => {
