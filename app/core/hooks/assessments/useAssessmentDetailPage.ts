@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { buildExportPayload, buildExportPresets } from '@/app/core/components/assessments/useAssessmentExport';
 import { useAssessmentDetail, useAssessmentScores } from '@/app/core/hooks/useAssessments';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAuth } from '@/app/context/AuthContext';
 import {
     AssessmentStatus,
@@ -19,7 +20,8 @@ export interface ScoreDraft {
 export function useAssessmentDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeRole } = useAuth();
+    const instructorAccess = useInstructorCohortAccess();
     const assessmentId = Number(params.id);
 
     const {
@@ -49,6 +51,18 @@ export function useAssessmentDetailPage() {
     const isFinalized = assessment?.status === AssessmentStatus.FINALIZED;
     const isDraft = assessment?.status === AssessmentStatus.DRAFT;
     const isActive = assessment?.status === AssessmentStatus.ACTIVE;
+    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAssignedInstructor = Boolean(
+        activeRole === 'INSTRUCTOR'
+        && assessment
+        && instructorAccess.cohortSubjectIds.includes(assessment.cohort_subject)
+    );
+    const canManageAssessment = isAdminLike || isAssignedInstructor;
+    const canUpdate = assessment?.can_update ?? (Boolean(assessment) && canManageAssessment && !isFinalized);
+    const canDelete = assessment?.can_delete ?? (Boolean(assessment) && isAdminLike);
+    const canActivate = assessment?.can_activate ?? (Boolean(assessment) && canManageAssessment && isDraft);
+    const canFinalize = assessment?.can_finalize ?? (Boolean(assessment) && canManageAssessment && (isDraft || isActive));
+    const canScore = assessment?.can_score ?? (Boolean(assessment) && canManageAssessment && !isFinalized);
     const stats = useMemo(() => calculateScoreStats(scores), [scores]);
     const scoredBy = user?.email ?? 'system';
     const exportRequestedBy = user?.email ?? 'System';
@@ -65,7 +79,10 @@ export function useAssessmentDetailPage() {
     };
 
     const handleSaveScores = async () => {
-        if (!assessment) return;
+        if (!assessment || !canScore) {
+            setSaveError('You do not have permission to save scores for this assessment.');
+            return;
+        }
 
         setSaving(true);
         setSaveError(null);
@@ -94,6 +111,10 @@ export function useAssessmentDetailPage() {
     };
 
     const handleDelete = async () => {
+        if (!canDelete) {
+            setDeleteError('You do not have permission to delete this assessment.');
+            return;
+        }
         setDeleteError(null);
         try {
             await deleteAssessment();
@@ -104,6 +125,10 @@ export function useAssessmentDetailPage() {
     };
 
     const handleActivate = async () => {
+        if (!canActivate) {
+            setSaveError('You do not have permission to activate this assessment.');
+            return;
+        }
         try {
             await activateAssessment();
         } catch (error) {
@@ -112,6 +137,10 @@ export function useAssessmentDetailPage() {
     };
 
     const handleFinalize = async () => {
+        if (!canFinalize) {
+            setSaveError('You do not have permission to finalize this assessment.');
+            return;
+        }
         try {
             await finalizeAssessment();
         } catch (error) {
@@ -144,6 +173,11 @@ export function useAssessmentDetailPage() {
         isFinalized,
         isDraft,
         isActive,
+        canUpdate,
+        canDelete,
+        canActivate,
+        canFinalize,
+        canScore,
         setExportOpen,
         setSearchQuery,
         setSaveError,

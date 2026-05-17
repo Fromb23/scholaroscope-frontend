@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ClipboardList, Plus, Filter, TrendingUp, Award, FileText } from 'lucide-react';
@@ -11,27 +11,63 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
-import { useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
+import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
+import { useAuth } from '@/app/context/AuthContext';
 
 type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
 
 export function AssessmentsOverview() {
     const router = useRouter();
+    const { user, activeRole } = useAuth();
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
-    const [selectedSubject, setSelectedSubject] = useState<number | undefined>();
+    const [selectedCohortSubject, setSelectedCohortSubject] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const [selectedEvalType, setSelectedEvalType] = useState<string | undefined>();
+    const instructorAccess = useInstructorCohortAccess();
+    const { cohorts } = useCohorts();
+    const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
+    const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
+    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const canCreateAssessment = isAdminLike || (
+        activeRole === 'INSTRUCTOR' && instructorAccess.hasAssignedCohortSubjects
+    );
 
     const { assessments, loading } = useAssessments({
         term: selectedTerm,
-        cohort_subject: selectedSubject,
+        cohort_subject: selectedCohortSubject,
         assessment_type: selectedType,
         evaluation_type: selectedEvalType
     });
 
     const { terms } = useTerms();
-    const { subjects } = useSubjects();
+
+    const availableCohortSubjects = useMemo(() => {
+        if (activeRole === 'INSTRUCTOR') {
+            const items = instructorAccess.assignments
+                .filter((assignment) => typeof assignment.cohort_subject_id === 'number')
+                .map((assignment) => ({
+                    id: assignment.cohort_subject_id as number,
+                    label: `${assignment.subject_code ?? assignment.subject_name} — ${assignment.subject_name}`,
+                    cohortName: assignment.cohort_name,
+                }));
+
+            return Array.from(
+                new Map(items.map((item) => [item.id, item])).values()
+            ).sort((left, right) => left.label.localeCompare(right.label));
+        }
+
+        return cohortSubjects
+            .map((subject) => ({
+                id: subject.id,
+                label: `${subject.subject_code} — ${subject.subject_name}`,
+                cohortName: subject.cohort_name,
+            }))
+            .sort((left, right) => left.label.localeCompare(right.label));
+    }, [activeRole, cohortSubjects, instructorAccess.assignments]);
 
     const assessmentTypes = [
         { value: '', label: 'All Types' },
@@ -70,12 +106,14 @@ export function AssessmentsOverview() {
                     <h1 className="text-2xl font-semibold text-gray-900">Assessments</h1>
                     <p className="text-gray-600 mt-1">Manage assessments and grading</p>
                 </div>
-                <Link href="/assessments/new">
-                    <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Assessment
-                    </Button>
-                </Link>
+                {canCreateAssessment && (
+                    <Link href="/assessments/new">
+                        <Button>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create Assessment
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             {/* Stats */}
@@ -126,12 +164,12 @@ export function AssessmentsOverview() {
 
                             <Select
                                 label=""
-                                value={selectedSubject?.toString() || ''}
-                                onChange={(e) => setSelectedSubject(e.target.value ? Number(e.target.value) : undefined)} options={[]}                            >
-                                <option value="">All Subjects</option>
-                                {subjects.map(s => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.name}
+                                value={selectedCohortSubject?.toString() || ''}
+                                onChange={(e) => setSelectedCohortSubject(e.target.value ? Number(e.target.value) : undefined)} options={[]}                            >
+                                <option value="">All Cohort Subjects</option>
+                                {availableCohortSubjects.map(subject => (
+                                    <option key={subject.id} value={subject.id}>
+                                        {subject.label} {subject.cohortName ? `(${subject.cohortName})` : ''}
                                     </option>
                                 ))}
                             </Select>
@@ -174,11 +212,13 @@ export function AssessmentsOverview() {
                         <ClipboardList className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No assessments found</h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            {selectedTerm || selectedSubject || selectedType || selectedEvalType
+                            {activeRole === 'INSTRUCTOR' && !instructorAccess.hasAssignedCohortSubjects
+                                ? 'No assigned subjects available for assessment creation.'
+                                : selectedTerm || selectedCohortSubject || selectedType || selectedEvalType
                                 ? 'Try adjusting your filters'
                                 : 'Get started by creating a new assessment'}
                         </p>
-                        {!selectedTerm && !selectedSubject && !selectedType && !selectedEvalType && (
+                        {canCreateAssessment && !selectedTerm && !selectedCohortSubject && !selectedType && !selectedEvalType && (
                             <Link href="/assessments/new">
                                 <Button className="mt-4">
                                     <Plus className="mr-2 h-4 w-4" />

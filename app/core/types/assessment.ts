@@ -92,9 +92,13 @@ export interface Assessment {
   status: AssessmentStatus;
   status_display: string;
   scores_count: number;
+  can_update?: boolean;
+  can_delete?: boolean;
+  can_activate?: boolean;
+  can_finalize?: boolean;
+  can_score?: boolean;
   created_at: string;
-  created_by: string;
-  weight: number;
+  created_by: number | null;
 }
 
 export interface AssessmentScore {
@@ -175,8 +179,6 @@ export interface AssessmentFormData {
   rubric_scale: number | null;
   assessment_date: string | null;
   description: string;
-  status: AssessmentStatus;
-  weight: number;
 }
 
 export interface StudentScoresResponse {

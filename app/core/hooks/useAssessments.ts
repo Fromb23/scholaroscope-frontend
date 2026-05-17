@@ -53,10 +53,10 @@ export const useAssessments = (params?: {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const instructorAccess = useInstructorCohortAccess();
-  const cohortIdsKey = instructorAccess.cohortIdsKey;
-  const allowedCohortIds = useMemo(
-    () => toIdSet(cohortIdsKey),
-    [cohortIdsKey]
+  const cohortSubjectIdsKey = instructorAccess.cohortSubjectIdsKey;
+  const allowedCohortSubjectIds = useMemo(
+    () => toIdSet(cohortSubjectIdsKey),
+    [cohortSubjectIdsKey]
   );
   const assessmentFilters = useMemo(
     () => ({
@@ -82,7 +82,7 @@ export const useAssessments = (params?: {
       const allAssessments = unwrapList(data);
       setAssessments(
         instructorAccess.isInstructor
-          ? allAssessments.filter(assessment => allowedCohortIds.has(assessment.cohort_id))
+          ? allAssessments.filter(assessment => allowedCohortSubjectIds.has(assessment.cohort_subject))
           : allAssessments
       );
       setError(null);
@@ -91,7 +91,7 @@ export const useAssessments = (params?: {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortIds, assessmentFilters, instructorAccess.isInstructor]);
+  }, [allowedCohortSubjectIds, assessmentFilters, instructorAccess.isInstructor]);
 
   useEffect(() => {
     void fetchAssessments();
@@ -379,8 +379,13 @@ interface FormErrors {
   rubric_scale?: string;
 }
 
-export const useCreateAssessmentForm = (userEmail: string) => {
+export const useCreateAssessmentForm = (options?: {
+  allowedCohortSubjectIds?: number[];
+  enforceAssignedSubject?: boolean;
+}) => {
   const [selectedCohortId, setSelectedCohortId] = useState<number>(0);
+  const allowedCohortSubjectIds = options?.allowedCohortSubjectIds ?? [];
+  const enforceAssignedSubject = options?.enforceAssignedSubject ?? false;
   const [form, setForm] = useState<AssessmentFormState>({
     cohort_subject: 0,
     term: null,
@@ -423,6 +428,13 @@ export const useCreateAssessmentForm = (userEmail: string) => {
     const e: FormErrors = {};
     if (!selectedCohortId) e.cohort = 'Cohort is required';
     if (!form.cohort_subject) e.cohort_subject = 'Subject is required';
+    if (
+      enforceAssignedSubject
+      && form.cohort_subject
+      && !allowedCohortSubjectIds.includes(form.cohort_subject)
+    ) {
+      e.cohort_subject = 'You are not assigned to this cohort subject';
+    }
     if (!form.name.trim()) e.name = 'Assessment name is required';
     if (form.evaluation_type === 'NUMERIC' && !form.total_marks)
       e.total_marks = 'Total marks required for numeric assessments';
@@ -437,10 +449,7 @@ export const useCreateAssessmentForm = (userEmail: string) => {
     setSaving(true);
     setSaveError(null);
     try {
-      const result = await assessmentAPI.create({
-        ...form,
-        created_by: userEmail,
-      });
+      const result = await assessmentAPI.create(form);
       return result;
     } catch (err) {
       setSaveError(extractErrorMessage(err as ApiError, 'Failed to create assessment'));

@@ -13,6 +13,7 @@ interface AssessmentScoreEntryCardProps {
     draft: Record<number, ScoreDraft>;
     loading: boolean;
     readOnly: boolean;
+    canSave: boolean;
     saving: boolean;
     onExport: () => void;
     onSave: () => void;
@@ -26,6 +27,7 @@ export function AssessmentScoreEntryCard({
     draft,
     loading,
     readOnly,
+    canSave,
     saving,
     onExport,
     onSave,
@@ -49,7 +51,7 @@ export function AssessmentScoreEntryCard({
                             <Download className="h-4 w-4 sm:mr-1.5" />
                             <span className="hidden sm:inline">Export</span>
                         </Button>
-                        {!readOnly && (
+                        {!readOnly && canSave && (
                             <Button size="sm" onClick={onSave} disabled={saving}>
                                 <Save className="h-4 w-4 sm:mr-1.5" />
                                 <span className="hidden sm:inline">

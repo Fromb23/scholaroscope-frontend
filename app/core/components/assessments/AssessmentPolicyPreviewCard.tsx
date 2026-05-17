@@ -288,14 +288,13 @@ export function AssessmentPolicyPreviewCard({
 
     const detailHref = (
         preview.status === 'ready'
-        && preview.source === 'resolved'
         && preview.policy?.id
     )
         ? `/reports/grade-policies/${preview.policy.id}`
         : '/reports/grade-policies';
     const actionLabel = (
         preview.status === 'ready'
-        && preview.source === 'resolved'
+        && preview.policy?.id
     )
         ? 'View Grade Policy'
         : 'Manage Grade Policies';

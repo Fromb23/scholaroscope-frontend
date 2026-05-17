@@ -42,6 +42,11 @@ export function AssessmentDetailPage() {
         isFinalized,
         isDraft,
         isActive,
+        canUpdate,
+        canDelete,
+        canActivate,
+        canFinalize,
+        canScore,
         setExportOpen,
         setSearchQuery,
         setSaveError,
@@ -65,6 +70,10 @@ export function AssessmentDetailPage() {
                 isDraft={isDraft}
                 isActive={isActive}
                 isFinalized={isFinalized}
+                canUpdate={Boolean(canUpdate)}
+                canDelete={Boolean(canDelete)}
+                canActivate={Boolean(canActivate)}
+                canFinalize={Boolean(canFinalize)}
                 finalizing={finalizing}
                 deleting={deleting}
                 onActivate={handleActivate}
@@ -81,6 +90,12 @@ export function AssessmentDetailPage() {
                 <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
                     <CheckCircle className="h-4 w-4 shrink-0" />
                     This assessment is finalized. Scores are locked and grades have been queued for computation.
+                </div>
+            )}
+
+            {!isFinalized && !canScore && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    This assessment is read-only for your account.
                 </div>
             )}
 
@@ -104,7 +119,8 @@ export function AssessmentDetailPage() {
                 scores={scores}
                 draft={draft}
                 loading={scoresLoading}
-                readOnly={isFinalized}
+                readOnly={isFinalized || !canScore}
+                canSave={Boolean(canScore)}
                 saving={saving}
                 onExport={() => setExportOpen(true)}
                 onSave={handleSaveScores}

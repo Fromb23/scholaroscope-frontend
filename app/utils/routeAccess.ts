@@ -25,8 +25,8 @@ const kernelRouteRules: RouteRule[] = [
     { pattern: /^\/academic\/progress/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/new$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/assessments\/new$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/assessments\/new$/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/reports\/instructor/, allowedRoles: ['INSTRUCTOR'] },
     { pattern: /^\/reports/, allowedRoles: ['ADMIN'] },
 
@@ -39,7 +39,7 @@ const kernelRouteRules: RouteRule[] = [
     { pattern: /^\/academic\/cohort-subjects\/\d+\/learners$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/sessions/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/learners/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/assessments/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/assessments/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/profile/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
 ];
 
