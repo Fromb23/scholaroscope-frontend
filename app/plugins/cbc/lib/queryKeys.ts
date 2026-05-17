@@ -3,6 +3,7 @@
 // Import from here — never hardcode strings in hooks.
 
 import type { CbcAssessmentReportResultFilters } from '@/app/plugins/cbc/types/cbc';
+import type { CbcReportPolicyFilters } from '@/app/plugins/cbc/types/reportPolicy';
 
 export const cbcKeys = {
     instructorContext: {
@@ -93,6 +94,12 @@ export const cbcKeys = {
         list: (filters?: CbcAssessmentReportResultFilters) =>
             ['cbc', 'assessment-report-results', 'list', filters] as const,
         detail: (id: number) => ['cbc', 'assessment-report-results', id] as const,
+    },
+
+    reportPolicies: {
+        all: ['cbc', 'report-policies'] as const,
+        list: (filters?: CbcReportPolicyFilters) => ['cbc', 'report-policies', 'list', filters] as const,
+        detail: (id: number) => ['cbc', 'report-policies', id] as const,
     },
 
     // Teaching sessions

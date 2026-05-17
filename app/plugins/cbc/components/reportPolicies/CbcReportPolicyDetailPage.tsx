@@ -1,0 +1,181 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { ArrowLeft, Edit } from 'lucide-react';
+import { Badge } from '@/app/components/ui/Badge';
+import { Button } from '@/app/components/ui/Button';
+import { Card } from '@/app/components/ui/Card';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { useAuth } from '@/app/context/AuthContext';
+import { isAdminOrAbove } from '@/app/utils/permissions';
+import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
+import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCBCCatalog } from '@/app/plugins/cbc/hooks/useCBC';
+import { useCbcReportPolicy } from '@/app/plugins/cbc/hooks/useCbcReportPolicies';
+import { CbcReportPolicyFormModal } from '@/app/plugins/cbc/components/reportPolicies/CbcReportPolicyFormModal';
+import {
+    buildCbcCohortSubjectOptions,
+    buildCbcSubjectProfileOptions,
+} from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
+
+export function CbcReportPolicyDetailPage() {
+    const params = useParams();
+    const policyId = Number(params.id);
+    const { user, activeRole } = useAuth();
+    const canManagePolicies = isAdminOrAbove(user, activeRole);
+    const [showEditModal, setShowEditModal] = useState(false);
+
+    const { policy, loading, error, refetch } = useCbcReportPolicy(Number.isFinite(policyId) ? policyId : null);
+    const { cohorts } = useCohorts();
+    const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
+    const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
+    const { terms } = useTerms();
+    const { data: catalog } = useCBCCatalog();
+
+    const subjectProfileOptions = useMemo(
+        () => buildCbcSubjectProfileOptions(catalog),
+        [catalog],
+    );
+    const cohortSubjectOptions = useMemo(
+        () => buildCbcCohortSubjectOptions(cohortSubjects),
+        [cohortSubjects],
+    );
+    const termOptions = useMemo(
+        () => terms.map((term) => ({
+            id: term.id,
+            label: `${term.academic_year_name} · ${term.name}`,
+        })),
+        [terms],
+    );
+
+    if (loading) {
+        return <LoadingSpinner />;
+    }
+
+    if (error || !policy) {
+        return (
+            <ErrorBanner
+                message={error instanceof Error ? error.message : 'CBC report policy not found.'}
+                onDismiss={() => {}}
+            />
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-start justify-between gap-4">
+                <div className="space-y-3">
+                    <Link href="/cbc/report-policies">
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to CBC Report Policies
+                        </Button>
+                    </Link>
+                    <div>
+                        <h1 className="text-2xl font-semibold text-gray-900">{policy.name}</h1>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            <Badge variant="green">CBC plugin-owned</Badge>
+                            {policy.is_default && <Badge variant="orange">Default</Badge>}
+                            <Badge variant={policy.is_active ? 'green' : 'red'}>
+                                {policy.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                        </div>
+                    </div>
+                    {policy.description && <p className="max-w-3xl text-sm text-gray-600">{policy.description}</p>}
+                </div>
+                {canManagePolicies && (
+                    <Button onClick={() => setShowEditModal(true)}>
+                        <Edit className="mr-1.5 h-4 w-4" />
+                        Edit CBC Report Policy
+                    </Button>
+                )}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                    <h2 className="text-lg font-semibold text-gray-900">Scope</h2>
+                    <div className="mt-4 space-y-2 text-sm text-gray-700">
+                        <p><span className="font-medium text-gray-900">Subject Profile:</span> {policy.subject_profile_name ?? 'Any'}</p>
+                        <p><span className="font-medium text-gray-900">CBC Cohort Subject:</span> {policy.cbc_cohort_subject_name ?? 'Any'}</p>
+                        <p><span className="font-medium text-gray-900">Term:</span> {policy.term_name ?? 'Any'}</p>
+                        <p><span className="font-medium text-gray-900">Rounding Mode:</span> {policy.rounding_mode}</p>
+                    </div>
+                </Card>
+
+                <Card>
+                    <h2 className="text-lg font-semibold text-gray-900">Components</h2>
+                    <div className="mt-4 space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                            {Object.entries(policy.assessment_weights).map(([type, weight]) => (
+                                <Badge key={type} variant="blue">{type} {weight}%</Badge>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {(policy.required_components.length > 0 ? policy.required_components : ['None']).map((entry) => (
+                                <Badge key={entry} variant="purple">{entry}</Badge>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {(policy.diagnostic_assessment_types.length > 0 ? policy.diagnostic_assessment_types : ['None']).map((entry) => (
+                                <Badge key={entry} variant="green">{entry}</Badge>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant={policy.include_assignments ? 'green' : 'default'}>Assignments</Badge>
+                            <Badge variant={policy.include_projects ? 'green' : 'default'}>Projects</Badge>
+                            <Badge variant={policy.include_practicals ? 'green' : 'default'}>Practicals</Badge>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            <Card>
+                <h2 className="text-lg font-semibold text-gray-900">CBC Level Scale</h2>
+                <div className="mt-4 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-4 py-2 text-left font-medium text-gray-500">Min</th>
+                                <th className="px-4 py-2 text-left font-medium text-gray-500">Max</th>
+                                <th className="px-4 py-2 text-left font-medium text-gray-500">Performance Level</th>
+                                <th className="px-4 py-2 text-left font-medium text-gray-500">Actual Level</th>
+                                <th className="px-4 py-2 text-left font-medium text-gray-500">Label</th>
+                                <th className="px-4 py-2 text-left font-medium text-gray-500">Points</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {policy.level_scale.map((row) => (
+                                <tr key={row.code}>
+                                    <td className="px-4 py-3">{row.min}</td>
+                                    <td className="px-4 py-3">{row.max}</td>
+                                    <td className="px-4 py-3">{row.level}</td>
+                                    <td className="px-4 py-3">{row.code}</td>
+                                    <td className="px-4 py-3">{row.label}</td>
+                                    <td className="px-4 py-3">{row.points}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </Card>
+
+            {showEditModal && (
+                <CbcReportPolicyFormModal
+                    editingPolicy={policy}
+                    subjectProfiles={subjectProfileOptions}
+                    cohortSubjects={cohortSubjectOptions}
+                    terms={termOptions}
+                    onSuccess={async () => {
+                        await refetch();
+                        setShowEditModal(false);
+                    }}
+                    onClose={() => setShowEditModal(false)}
+                />
+            )}
+        </div>
+    );
+}

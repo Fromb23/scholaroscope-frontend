@@ -3,14 +3,9 @@
 import Link from 'next/link';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
-import { Badge } from '@/app/components/ui/Badge';
 import { DataTable } from '@/app/components/ui/Table';
 import type { Column } from '@/app/components/ui/Table';
-import {
-    AssessmentScore,
-    AssessmentDetail,
-    calculateGrade,
-} from '@/app/core/types/assessment';
+import { AssessmentScore, AssessmentDetail } from '@/app/core/types/assessment';
 
 interface ScoreDraft {
     score?: number | null;
@@ -52,9 +47,14 @@ export function AssessmentScoreTable({
             key: 'score', header: `Score (out of ${assessment.total_marks})`, sortable: true,
             render: row => {
                 const current = draft[row.student]?.score ?? row.score;
-                const gradeInfo = current != null
-                    ? calculateGrade(current, assessment.total_marks ?? 100)
+                const percentage = (
+                    current != null
+                    && assessment.total_marks
+                    && assessment.total_marks > 0
+                )
+                    ? ((current / assessment.total_marks) * 100).toFixed(1)
                     : null;
+
                 return (
                     <div className="flex items-center gap-2">
                         <Input
@@ -70,11 +70,10 @@ export function AssessmentScoreTable({
                             )}
                             placeholder="Score"
                         />
-                        {gradeInfo && (
-                            <div className="flex flex-col items-center gap-0.5">
-                                <Badge variant={gradeInfo.color}>{gradeInfo.grade}</Badge>
-                                <span className="text-xs text-gray-500">{gradeInfo.percentage}%</span>
-                            </div>
+                        {percentage !== null && (
+                            <span className="text-xs text-gray-500">
+                                {percentage}%
+                            </span>
                         )}
                     </div>
                 );

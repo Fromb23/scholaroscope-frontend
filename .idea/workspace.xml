@@ -4,14 +4,37 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="" />
+    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/layout/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/layout/navConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/navConfig.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentInfoCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentInfoCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentScoreTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentScoreTable.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/CreateAssessmentPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/CreateAssessmentPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/EditAssessmentPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/EditAssessmentPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/useAssessmentExport.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/useAssessmentExport.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/gradePolicies/GradePoliciesTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/gradePolicies/GradePoliciesTable.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/gradePolicies/PolicyFormModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/gradePolicies/PolicyFormModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/gradePolicies/PolicyHelpWidget.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/gradePolicies/PolicyHelpWidget.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ComputePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ComputePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/GradePoliciesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/GradePoliciesPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useGradePolicies.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useGradePolicies.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/registry/pluginNavigation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/registry/pluginNavigation.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/registry/navigationExtension.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/registry/navigationExtension.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/registry/routeAccessExtension.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/registry/routeAccessExtension.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/registerAll.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/registerAll.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="502" />
+    <option name="cachedIndexableFilesCount" value="519" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -33,6 +56,65 @@
     <commands />
     <urls />
   </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.1884680479412613" />
+      <entry key="MS500" value="2.862108096853694" />
+      <entry key="S2" value="4.269939740134676" />
+      <entry key="S5" value="4.687001151815398" />
+      <entry key="S10" value="4.839750083648671" />
+      <entry key="S30" value="4.945724701055857" />
+      <entry key="S60" value="4.972753399381502" />
+      <entry key="M2" value="4.9863493388742075" />
+      <entry key="M5" value="4.994533153136658" />
+      <entry key="M10" value="4.997265478178509" />
+      <entry key="M15" value="4.998176741267759" />
+      <entry key="M30" value="4.99908824851709" />
+      <entry key="H1" value="4.999544093724753" />
+      <entry key="H2" value="4.999772039228354" />
+      <entry key="H4" value="4.9998860177056" />
+      <entry key="D1" value="4.999981002685846" />
+      <entry key="W1" value="4.999997286091486" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="0.0" />
+      <entry key="M10" value="0.0" />
+      <entry key="M15" value="0.0" />
+      <entry key="M30" value="0.0" />
+      <entry key="H1" value="0.0" />
+      <entry key="H2" value="0.0" />
+      <entry key="H4" value="0.0" />
+      <entry key="D1" value="0.0" />
+      <entry key="W1" value="0.0" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="1.1557911017893918" />
+      <entry key="MS500" value="2.801658489993699" />
+      <entry key="S2" value="4.231333673251493" />
+      <entry key="S5" value="4.668188496918054" />
+      <entry key="S10" value="4.829698510681167" />
+      <entry key="S30" value="4.942222161611796" />
+      <entry key="S60" value="4.970982564718514" />
+      <entry key="M2" value="4.985458987153273" />
+      <entry key="M5" value="4.994175822631641" />
+      <entry key="M10" value="4.997086614157974" />
+      <entry key="M15" value="4.9980574543822085" />
+      <entry key="M30" value="4.999028582963081" />
+      <entry key="H1" value="4.999514255418321" />
+      <entry key="H2" value="4.999757118692579" />
+      <entry key="H4" value="4.999878557092047" />
+      <entry key="D1" value="4.999979759202243" />
+      <entry key="W1" value="4.999997108449795" />
+    </decayedShown>
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 6,
   &quot;fromUser&quot;: false
@@ -51,7 +133,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;#43 on polish/cbc-teacher-language&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feat/cbc-assessment-report-results-ui&quot;,
     &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
     &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
     &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
@@ -83,7 +165,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.23567.141" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.24374.125" />
       </set>
     </attachedChunks>
   </component>
@@ -131,6 +213,8 @@
       <workItem from="1778701366271" duration="7565000" />
       <workItem from="1778737814486" duration="16637000" />
       <workItem from="1778789705520" duration="3776000" />
+      <workItem from="1778983786987" duration="224000" />
+      <workItem from="1778984044849" duration="2545000" />
     </task>
     <servers />
   </component>

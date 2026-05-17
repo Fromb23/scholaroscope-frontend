@@ -14,7 +14,9 @@ import { Activity } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
 import { useNavBadges } from '@/app/core/registry/navBadges';
 import { NavItem } from './NavItem';
 import {
@@ -35,7 +37,8 @@ export default function Sidebar() {
   const { user, activeOrg, activeRole } = useAuth();
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
-  const { hasPlugin } = usePlugins();
+  const { plugins, hasPlugin } = usePlugins();
+  const { curricula } = useCurricula();
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
 
@@ -45,10 +48,22 @@ export default function Sidebar() {
     role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
     hasPlugin,
     badges,
+    hasAnyReportPolicySurface: getAvailablePolicySurfaces({
+      curricula,
+      installedPlugins: plugins,
+    }).length > 0,
     instructorAccess: {
       hasCurriculumAccess: instructorAccess.hasCurriculumAccess,
     },
-  }), [activeRole, badges, hasPlugin, instructorAccess.hasCurriculumAccess, user?.is_superadmin]);
+  }), [
+    activeRole,
+    badges,
+    curricula,
+    hasPlugin,
+    instructorAccess.hasCurriculumAccess,
+    plugins,
+    user?.is_superadmin,
+  ]);
 
   // ── Build nav config ──────────────────────────────────────────────────
 

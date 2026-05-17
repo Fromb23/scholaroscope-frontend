@@ -13,6 +13,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
 import { useCreateAssessmentForm } from '@/app/core/hooks/useAssessments';
 import { useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
@@ -168,6 +169,12 @@ export function CreateAssessmentPage() {
                         </div>
                     </div>
                 </Card>
+
+                <AssessmentPolicyPreviewCard
+                    cohortId={selectedCohortId || null}
+                    cohortSubjectId={form.cohort_subject || null}
+                    termId={form.term}
+                />
 
                 {/* Evaluation Settings */}
                 <Card>

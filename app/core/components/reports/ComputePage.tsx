@@ -85,9 +85,9 @@ export function ComputePage() {
                                     : <><Zap className="h-4 w-4 mr-1.5" />Compute with Policies</>
                                 }
                             </Button>
-                            <Link href="/reports/grade-policies">
+                            <Link href="/reports/policies">
                                 <Button variant="secondary" size="sm">
-                                    <Settings className="h-4 w-4 mr-1.5" />Manage Policies
+                                    <Settings className="h-4 w-4 mr-1.5" />Manage Report Policies
                                 </Button>
                             </Link>
                         </div>

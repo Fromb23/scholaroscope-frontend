@@ -11,7 +11,6 @@ import {
     Award,
     CheckCircle,
 } from 'lucide-react';
-import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
@@ -19,7 +18,6 @@ import { ExportModal } from '@/app/components/export/ExportModal';
 import { AssessmentDetailHeader } from '@/app/core/components/assessments/AssessmentDetailHeader';
 import { AssessmentInfoCard } from '@/app/core/components/assessments/AssessmentInfoCard';
 import { AssessmentScoreEntryCard } from '@/app/core/components/assessments/AssessmentScoreEntryCard';
-import { AssessmentGradeDistribution } from '@/app/core/components/assessments/AssessmentGradeDistribution';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { useAssessmentDetailPage } from '@/app/core/hooks/assessments/useAssessmentDetailPage';
 
@@ -113,19 +111,6 @@ export function AssessmentDetailPage() {
                 onScoreChange={handleScoreChange}
                 onSearch={setSearchQuery}
             />
-
-            {/* Grade distribution */}
-            {assessment.evaluation_type === 'NUMERIC' && scores.length > 0 && (
-                <Card>
-                    <div className="p-4">
-                        <h2 className="text-base font-semibold text-gray-900 mb-4">Grade Distribution</h2>
-                        <AssessmentGradeDistribution
-                            scores={scores}
-                            totalMarks={assessment.total_marks ?? 100}
-                        />
-                    </div>
-                </Card>
-            )}
 
             {exportPayload && (
                 <ExportModal

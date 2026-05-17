@@ -18,6 +18,7 @@ const METHOD_LABELS: Record<string, string> = {
 interface GradePoliciesTableProps {
     policies: GradePolicy[];
     deletingId: number | null;
+    canManage?: boolean;
     onCreate: () => void;
     onEdit: (policy: GradePolicy) => void;
     onDelete: (id: number) => void;
@@ -26,6 +27,7 @@ interface GradePoliciesTableProps {
 export function GradePoliciesTable({
     policies,
     deletingId,
+    canManage = true,
     onCreate,
     onEdit,
     onDelete,
@@ -37,12 +39,14 @@ export function GradePoliciesTable({
                     <Settings className="mx-auto h-12 w-12 text-gray-300" />
                     <p className="mt-3 text-sm font-medium text-gray-900">No policies yet</p>
                     <p className="mt-1 text-sm text-gray-500">
-                        Create a policy to define grade computation rules.
+                        Create a generic policy to define grade computation rules.
                     </p>
-                    <Button className="mt-4" onClick={onCreate}>
-                        <Plus className="mr-1.5 h-4 w-4" />
-                        New Policy
-                    </Button>
+                    {canManage && (
+                        <Button className="mt-4" onClick={onCreate}>
+                            <Plus className="mr-1.5 h-4 w-4" />
+                            New Generic Policy
+                        </Button>
+                    )}
                 </div>
             ) : (
                 <Table>
@@ -53,7 +57,7 @@ export function GradePoliciesTable({
                             <TableHead>Scope</TableHead>
                             <TableHead>Scale</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Actions</TableHead>
+                            {canManage && <TableHead>Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -102,21 +106,23 @@ export function GradePoliciesTable({
                                         </Badge>
                                     )}
                                 </TableCell>
-                                <TableCell>
-                                    <div className="flex gap-1">
-                                        <Button size="sm" variant="ghost" onClick={() => onEdit(policy)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => onDelete(policy.id)}
-                                            disabled={deletingId === policy.id}
-                                        >
-                                            <Trash2 className="h-4 w-4 text-red-500" />
-                                        </Button>
-                                    </div>
-                                </TableCell>
+                                {canManage && (
+                                    <TableCell>
+                                        <div className="flex gap-1">
+                                            <Button size="sm" variant="ghost" onClick={() => onEdit(policy)}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => onDelete(policy.id)}
+                                                disabled={deletingId === policy.id}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         ))}
                     </TableBody>
