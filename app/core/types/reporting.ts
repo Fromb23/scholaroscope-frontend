@@ -1,6 +1,43 @@
-// app/core/types/reporting.ts
-
 import { ComputedGradeDTO } from './gradePolicy';
+
+export type ReportingSource =
+  | 'generic'
+  | 'cbc'
+  | 'cambridge_pending'
+  | 'unsupported';
+
+export type PerformanceSource =
+  | 'generic'
+  | 'cbc'
+  | 'unsupported';
+
+export type CbcCode =
+  | 'EE1'
+  | 'EE2'
+  | 'ME1'
+  | 'ME2'
+  | 'AE1'
+  | 'AE2'
+  | 'BE1'
+  | 'BE2';
+
+export interface CbcDistributionByCode {
+  EE1: number;
+  EE2: number;
+  ME1: number;
+  ME2: number;
+  AE1: number;
+  AE2: number;
+  BE1: number;
+  BE2: number;
+}
+
+export interface CbcResultCounts {
+  FINAL: number;
+  PROVISIONAL: number;
+  INCOMPLETE: number;
+  stale_count: number;
+}
 
 export interface AttendanceSummary {
   id: number;
@@ -22,6 +59,8 @@ export interface AttendanceSummary {
   last_updated: string;
 }
 
+// Legacy generic numeric summary. Keep for compatibility with generic-only
+// endpoints and longitudinal views.
 export interface GradeSummary {
   id: number;
   student: number;
@@ -44,6 +83,7 @@ export interface GradeSummary {
   last_updated: string;
 }
 
+// Legacy generic cohort snapshot.
 export interface CohortSummary {
   id: number;
   cohort: number;
@@ -63,39 +103,6 @@ export interface CohortSummary {
   last_updated: string;
 }
 
-export interface SubjectSummary {
-  id: number;
-  cohort_subject: number;
-  cohort_name: string;
-  subject_name: string;
-  subject_code: string;
-  term: number;
-  term_name: string;
-  total_students: number;
-  average_score: number | null;
-  highest_score: number | null;
-  lowest_score: number | null;
-  total_assessments: number;
-  cat_count: number;
-  exam_count: number;
-  project_count: number;
-  last_updated: string;
-}
-
-export interface AssessmentTypeSummary {
-  id: number;
-  cohort_subject: number;
-  cohort_name: string;
-  subject_name: string;
-  term: number;
-  term_name: string;
-  assessment_type: string;
-  total_assessments: number;
-  average_score: number | null;
-  total_weight: number;
-  last_updated: string;
-}
-
 export interface ReportOrganization {
   id: number;
   name: string;
@@ -104,20 +111,6 @@ export interface ReportOrganization {
 export interface AcademicYearInfo {
   id: number;
   name: string;
-}
-
-export interface DashboardOverview {
-  organization: ReportOrganization;
-  academic_year: AcademicYearInfo | null;
-  current_term: TermInfo | null;
-  total_learners: number;
-  total_cohorts: number;
-  total_cohort_subjects: number;
-  total_instructors: number;
-  total_sessions: number;
-  total_assessments: number;
-  average_grade: number | null;
-  average_attendance: number | null;
 }
 
 export interface StudentInfo {
@@ -134,20 +127,6 @@ export interface TermInfo {
   name: string;
   academic_year: string;
   academic_year_id?: number | null;
-}
-
-export interface OverallStats {
-  average_score: number | null;
-  average_attendance: number | null;
-  total_subjects: number;
-}
-
-export interface StudentReportCard {
-  student: StudentInfo;
-  term: TermInfo | null;
-  overall: OverallStats;
-  grades: (ComputedGradeDTO & { position: number; total_in_class: number })[];
-  attendance: AttendanceSummary[];
 }
 
 export interface ReportAssignedInstructor {
@@ -182,6 +161,186 @@ export interface ReportCohortSubjectRef {
   subject_code: string;
 }
 
+export interface ReportAssessmentTypeBreakdown {
+  assessment_type: string;
+  cohort_subjects?: number;
+  average_score: number | null;
+  total_assessments: number;
+}
+
+export interface GenericPerformanceSummary {
+  average_score: number | null;
+  computed_count: number;
+  distribution_by_letter: Record<string, number>;
+  grade_status_counts: Record<string, number>;
+}
+
+export interface GenericPerformance extends GenericPerformanceSummary {
+  highest_score: number | null;
+  lowest_score: number | null;
+  assessment_type_breakdown?: ReportAssessmentTypeBreakdown[];
+}
+
+export interface CbcPerformanceSummary {
+  learner_count: number;
+  result_counts: CbcResultCounts;
+  distribution_by_code: CbcDistributionByCode;
+  average_weighted_score: number | null;
+  average_points: number | null;
+  missing_result_count: number;
+  note?: string | null;
+}
+
+export type CbcPerformance = CbcPerformanceSummary;
+
+export interface AssessmentCompletion {
+  total_assessments: number;
+  finalized_assessments: number;
+  draft_assessments: number;
+  active_assessments: number;
+  missing_scores_count: number;
+  completed_scores?: number;
+}
+
+export type ReportAssessmentCompletion = AssessmentCompletion;
+
+export interface ReportAverageSummary {
+  average: number | null;
+  records: number;
+}
+
+export interface ReportCoverage {
+  [key: string]: unknown;
+}
+
+export interface GenericStudentSection {
+  final_score?: number | null;
+  average_score?: number | null;
+  weighted_average?: number | null;
+  letter_grade?: string | null;
+  letter_label?: string | null;
+  grade_status?: string | null;
+  position?: number | null;
+  total_in_class?: number | null;
+  policy_name?: string | null;
+  component_scores?: Record<string, number | string | null> | null;
+  computed_at?: string | null;
+  note?: string | null;
+  computed_grade?: (ComputedGradeDTO & {
+    position?: number | null;
+    total_in_class?: number | null;
+  }) | null;
+  grade_summary?: ReportGradeSummaryPreview | null;
+}
+
+export interface CbcStudentResult {
+  weighted_score: number | null;
+  cbc_level: string | null;
+  cbc_code: string | null;
+  cbc_label: string | null;
+  cbc_points: number | null;
+  result_status: string | null;
+  missing_components: string[];
+  component_scores: Record<string, number | string | null>;
+  diagnostic_scores: Record<string, number | string | null>;
+  is_stale: boolean;
+  computed_at: string | null;
+}
+
+export interface CbcReadiness {
+  has_result: boolean;
+  is_stale: boolean;
+  is_final: boolean;
+  missing_components: string[];
+}
+
+export interface CbcStudentSection {
+  reporting_source: 'cbc';
+  curriculum_type: 'CBE';
+  cbc_result: CbcStudentResult | null;
+  progress_summary: Record<string, unknown> | null;
+  readiness: CbcReadiness | null;
+  note: string | null;
+}
+
+export interface CurriculumAwareSubjectSection {
+  cohort_subject: ReportCohortSubjectRef;
+  curriculum_type: string | null;
+  reporting_source: ReportingSource;
+  performance_source: PerformanceSource;
+  status: string | null;
+  note: string | null;
+  assessment_completion: AssessmentCompletion | null;
+  attendance: AttendanceSummary | ReportAverageSummary | null;
+  generic: GenericStudentSection | null;
+  cbc: CbcStudentSection | null;
+}
+
+export interface AdminOverviewGenericSummary {
+  average_score: number | null;
+  computed_count: number;
+}
+
+export interface AdminOverviewCbcSummary {
+  reporting_source: 'cbc';
+  curriculum_type: string | null;
+  total_cbc_cohort_subjects: number;
+  total_results: number;
+  final_count: number;
+  provisional_count: number;
+  incomplete_count: number;
+  stale_count: number;
+  average_weighted_score: number | null;
+  average_points: number | null;
+  distribution_by_code: CbcDistributionByCode;
+}
+
+export interface AdminOverviewCambridgeSummary {
+  reporting_source: 'cambridge_pending';
+  status: string;
+  cohort_subject_count: number;
+}
+
+export interface DashboardOverview {
+  organization: ReportOrganization;
+  academic_year: AcademicYearInfo | null;
+  current_term: TermInfo | null;
+  total_learners: number;
+  total_cohorts: number;
+  total_cohort_subjects: number;
+  total_instructors: number;
+  total_sessions: number;
+  total_assessments: number;
+  average_grade: number | null;
+  average_grade_note?: string | null;
+  average_attendance: number | null;
+  performance_summary: {
+    generic: AdminOverviewGenericSummary | null;
+    cbc: AdminOverviewCbcSummary | null;
+    cambridge: AdminOverviewCambridgeSummary | null;
+  };
+}
+
+export interface OverallStats {
+  generic_average_score: number | null;
+  cbc_average_weighted_score: number | null;
+  average_score: number | null;
+  average_score_note: string | null;
+  average_attendance: number | null;
+  total_subjects: number;
+}
+
+export interface StudentReportCard {
+  student: StudentInfo;
+  term: TermInfo | null;
+  overall: OverallStats;
+  subjects: CurriculumAwareSubjectSection[];
+  // Compatibility payloads for generic numeric reporting only.
+  grades: (ComputedGradeDTO & { position: number; total_in_class: number })[];
+  legacy_grades?: GradeSummary[];
+  attendance: AttendanceSummary[];
+}
+
 export interface CohortSummarySnapshot {
   id: number;
   cohort: number;
@@ -212,13 +371,54 @@ export interface SubjectSummarySnapshot {
   last_updated: string;
 }
 
-export interface AdminCohortSubjectSummary {
+export interface SubjectSummary {
+  id: number;
+  cohort_subject: number;
+  cohort_name: string;
+  subject_name: string;
+  subject_code: string;
+  term: number;
+  term_name: string;
+  total_students: number;
+  average_score: number | null;
+  highest_score: number | null;
+  lowest_score: number | null;
+  total_assessments: number;
+  cat_count: number;
+  exam_count: number;
+  project_count: number;
+  last_updated: string;
+  curriculum_type?: string | null;
+  reporting_source?: ReportingSource | null;
+  performance_source?: PerformanceSource | null;
+  status?: string | null;
+  note?: string | null;
+  assessment_completion?: AssessmentCompletion | null;
+  generic_performance?: GenericPerformance | null;
+  cbc_performance?: CbcPerformance | null;
+  average_grade?: number | null;
+  average_grade_note?: string | null;
+  average_attendance?: number | null;
+  coverage?: ReportCoverage | null;
+}
+
+export interface CurriculumAwareCohortSubjectSummary {
   cohort_subject: ReportCohortSubjectRef;
   assigned_instructor: ReportAssignedInstructor | null;
   active_learner_count: number;
-  average_grade: number | null;
-  average_attendance: number | null;
+  curriculum_type: string | null;
+  reporting_source: ReportingSource;
+  performance_source: PerformanceSource;
+  status: string | null;
+  note: string | null;
+  assessment_completion: AssessmentCompletion | null;
+  generic_performance: GenericPerformance | null;
+  cbc_performance: CbcPerformance | null;
   subject_summary: SubjectSummarySnapshot | null;
+  average_grade: number | null;
+  average_grade_note?: string | null;
+  average_attendance: number | null;
+  coverage: ReportCoverage | null;
 }
 
 export interface ClassSummary {
@@ -226,10 +426,12 @@ export interface ClassSummary {
   term: TermInfo | null;
   learner_count: number;
   average_grade: number | null;
+  average_grade_note?: string | null;
   average_attendance: number | null;
   cohort_summary: CohortSummarySnapshot | null;
+  // Compatibility snapshot for generic-only subject aggregates.
   subject_summaries: SubjectSummary[];
-  cohort_subjects: AdminCohortSubjectSummary[];
+  cohort_subjects: CurriculumAwareCohortSubjectSummary[];
 }
 
 export interface SubjectCohortOverview {
@@ -237,25 +439,58 @@ export interface SubjectCohortOverview {
   cohort: ReportCohortInfo;
   active_learner_count: number;
   assigned_instructor: ReportAssignedInstructor | null;
+  curriculum_type: string | null;
+  reporting_source: ReportingSource;
+  performance_source: PerformanceSource;
+  status: string | null;
+  note: string | null;
+  assessment_completion: AssessmentCompletion | null;
   average_score: number | null;
+  average_score_note?: string | null;
+  average_grade: number | null;
+  average_grade_note?: string | null;
   highest_score: number | null;
   lowest_score: number | null;
-}
-
-export interface ReportAssessmentTypeBreakdown {
-  assessment_type: string;
-  cohort_subjects?: number;
-  average_score: number | null;
-  total_assessments: number;
+  generic_performance: GenericPerformance | null;
+  cbc_performance: CbcPerformance | null;
+  average_attendance: number | null;
+  coverage: ReportCoverage | null;
 }
 
 export interface SubjectAnalysis {
   subject: ReportSubjectInfo;
   term: TermInfo | null;
   average_score: number | null;
+  average_score_note?: string | null;
   cohort_subjects: SubjectCohortOverview[];
+  // Compatibility snapshot for generic-only views.
   subject_summaries: SubjectSummary[];
   assessment_type_breakdown: ReportAssessmentTypeBreakdown[];
+}
+
+export interface AssessmentTypeSummary {
+  id: number;
+  cohort_subject: number;
+  cohort_name: string;
+  subject_name: string;
+  term: number;
+  term_name: string;
+  assessment_type: string;
+  total_assessments: number;
+  average_score: number | null;
+  total_weight: number;
+  last_updated: string;
+  subject_code?: string | null;
+  curriculum_type?: string | null;
+  reporting_source?: ReportingSource | null;
+  performance_source?: PerformanceSource | null;
+  status?: string | null;
+  note?: string | null;
+  assessment_completion?: AssessmentCompletion | null;
+  generic_performance?: GenericPerformance | null;
+  cbc_performance?: CbcPerformance | null;
+  average_attendance?: number | null;
+  coverage?: ReportCoverage | null;
 }
 
 export interface LongitudinalTermData {
@@ -281,9 +516,20 @@ export interface InstructorCohortSubjectOverview {
   academic_year: string;
   active_learner_count: number;
   average_grade: number | null;
+  average_grade_note?: string | null;
   average_attendance: number | null;
   session_count: number | null;
   completed_session_count: number | null;
+  reporting_source: ReportingSource;
+  performance_source: PerformanceSource;
+  status: string | null;
+  note: string | null;
+  assessment_completion?: AssessmentCompletion | null;
+  generic_summary?: GenericPerformanceSummary | null;
+  generic_performance?: GenericPerformance | null;
+  cbc_summary?: CbcPerformanceSummary | null;
+  cbc_performance?: CbcPerformance | null;
+  coverage?: ReportCoverage | null;
 }
 
 export interface InstructorOverview {
@@ -299,11 +545,6 @@ export interface ReportStudentRef {
   id: number;
   name: string;
   admission_number: string;
-}
-
-export interface ReportAverageSummary {
-  average: number | null;
-  records: number;
 }
 
 export interface ReportComputedGradePreview {
@@ -324,14 +565,16 @@ export interface ReportGradeSummaryPreview {
   total_assessments: number;
 }
 
-export interface ReportAssessmentCompletion {
-  completed_scores: number;
-  total_assessments: number;
-}
-
 export interface InstructorLearnerReportRow {
   student: ReportStudentRef;
   attendance_summary: ReportAverageSummary | null;
+  reporting_source: ReportingSource;
+  performance_source: PerformanceSource;
+  status: string | null;
+  note: string | null;
+  generic_result?: GenericStudentSection | null;
+  cbc_result?: CbcStudentSection | CbcStudentResult | null;
+  // Compatibility payloads for generic-only reporting.
   computed_grade: ReportComputedGradePreview | null;
   grade_summary: ReportGradeSummaryPreview | null;
   assessment_completion: ReportAssessmentCompletion;
@@ -340,6 +583,14 @@ export interface InstructorLearnerReportRow {
 export interface InstructorCohortSubjectLearnersReport {
   cohort_subject: ReportCohortSubjectRef;
   term: TermInfo | null;
+  curriculum_type?: string | null;
+  reporting_source?: ReportingSource;
+  performance_source?: PerformanceSource;
+  status?: string | null;
+  note?: string | null;
+  assessment_completion?: AssessmentCompletion | null;
+  average_attendance?: number | null;
+  coverage?: ReportCoverage | null;
   learners: InstructorLearnerReportRow[];
   total_learners: number;
 }
@@ -357,6 +608,18 @@ export interface ReportGradeStatusCountItem {
 export interface InstructorCohortSubjectPerformanceReport {
   cohort_subject: ReportCohortSubjectRef;
   term: TermInfo | null;
+  curriculum_type?: string | null;
+  reporting_source?: ReportingSource;
+  performance_source?: PerformanceSource;
+  status?: string | null;
+  note?: string | null;
+  assessment_completion?: AssessmentCompletion | null;
+  average_attendance?: number | null;
+  coverage?: ReportCoverage | null;
+  generic_summary?: GenericPerformanceSummary | null;
+  generic_performance?: GenericPerformance | null;
+  cbc_summary?: CbcPerformanceSummary | null;
+  cbc_performance?: CbcPerformance | null;
   total_learners: number;
   average_score: number | null;
   highest_score: number | null;
@@ -369,6 +632,14 @@ export interface InstructorCohortSubjectPerformanceReport {
 export interface InstructorCohortSubjectTeachingActivityReport {
   cohort_subject: ReportCohortSubjectRef;
   term: TermInfo | null;
+  curriculum_type?: string | null;
+  reporting_source?: ReportingSource;
+  performance_source?: PerformanceSource;
+  status?: string | null;
+  note?: string | null;
+  assessment_completion?: AssessmentCompletion | null;
+  average_attendance?: number | null;
+  coverage?: ReportCoverage | null;
   sessions_created: number;
   sessions_completed: number;
   attendance_marked: number;

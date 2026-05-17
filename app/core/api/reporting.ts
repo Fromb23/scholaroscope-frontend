@@ -308,15 +308,15 @@ export const reportingAPI = {
 // ============================================================================
 // Reports API (Comprehensive Reports)
 // ============================================================================
-export const reportsAPI = {
-  getAdminOverview: async () => {
+export const adminReportsAPI = {
+  getOverview: async () => {
     const response = await apiClient.get<DashboardOverview>(
       '/reports/admin/overview/'
     );
     return response.data;
   },
 
-  getAdminCohortSummary: async (cohortId: number, termId?: number | null) => {
+  getCohortSummary: async (cohortId: number, termId?: number | null) => {
     const response = await apiClient.get<ClassSummary>(
       `/reports/admin/cohorts/${cohortId}/`,
       {
@@ -326,7 +326,7 @@ export const reportsAPI = {
     return response.data;
   },
 
-  getAdminSubjectOverview: async (subjectId: number, termId?: number | null) => {
+  getSubjectOverview: async (subjectId: number, termId?: number | null) => {
     const response = await apiClient.get<SubjectAnalysis>(
       `/reports/admin/subjects/${subjectId}/`,
       {
@@ -336,7 +336,7 @@ export const reportsAPI = {
     return response.data;
   },
 
-  getAdminStudentReportCard: async (studentId: number, termId?: number | null) => {
+  getStudentReportCard: async (studentId: number, termId?: number | null) => {
     const response = await apiClient.get<StudentReportCard>(
       `/reports/admin/students/${studentId}/report-card/`,
       {
@@ -345,22 +345,24 @@ export const reportsAPI = {
     );
     return response.data;
   },
+};
 
-  getInstructorOverview: async () => {
+export const instructorReportsAPI = {
+  getOverview: async () => {
     const response = await apiClient.get<InstructorOverview>(
       '/reports/instructor/overview/'
     );
     return response.data;
   },
 
-  getInstructorCohortSubjects: async () => {
+  getCohortSubjects: async () => {
     const response = await apiClient.get<InstructorCohortSubjectOverview[]>(
       '/reports/instructor/cohort-subjects/'
     );
     return response.data;
   },
 
-  getInstructorCohortSubjectLearners: async (
+  getCohortSubjectLearners: async (
     cohortSubjectId: number,
     termId?: number | null,
   ) => {
@@ -373,7 +375,7 @@ export const reportsAPI = {
     return response.data;
   },
 
-  getInstructorCohortSubjectPerformance: async (
+  getCohortSubjectPerformance: async (
     cohortSubjectId: number,
     termId?: number | null,
   ) => {
@@ -386,7 +388,7 @@ export const reportsAPI = {
     return response.data;
   },
 
-  getInstructorCohortSubjectTeachingActivity: async (
+  getCohortSubjectTeachingActivity: async (
     cohortSubjectId: number,
     termId?: number | null,
   ) => {
@@ -398,24 +400,35 @@ export const reportsAPI = {
     );
     return response.data;
   },
+};
 
+export const reportsAPI = {
+  getAdminOverview: adminReportsAPI.getOverview,
+  getAdminCohortSummary: adminReportsAPI.getCohortSummary,
+  getAdminSubjectOverview: adminReportsAPI.getSubjectOverview,
+  getAdminStudentReportCard: adminReportsAPI.getStudentReportCard,
+  getInstructorOverview: instructorReportsAPI.getOverview,
+  getInstructorCohortSubjects: instructorReportsAPI.getCohortSubjects,
+  getInstructorCohortSubjectLearners: instructorReportsAPI.getCohortSubjectLearners,
+  getInstructorCohortSubjectPerformance: instructorReportsAPI.getCohortSubjectPerformance,
+  getInstructorCohortSubjectTeachingActivity: instructorReportsAPI.getCohortSubjectTeachingActivity,
   getDashboardOverview: async () => {
-    return reportsAPI.getAdminOverview();
+    return adminReportsAPI.getOverview();
   },
 
   getStudentReportCard: async (studentId: number, termId: number) => {
-    return reportsAPI.getAdminStudentReportCard(studentId, termId);
+    return adminReportsAPI.getStudentReportCard(studentId, termId);
   },
 
   getClassSummary: async (termId: number, cohortId: number) => {
-    return reportsAPI.getAdminCohortSummary(cohortId, termId);
+    return adminReportsAPI.getCohortSummary(cohortId, termId);
   },
 
   getSubjectAnalysis: async (termId: number, subjectId?: number): Promise<SubjectAnalysis> => {
     if (!subjectId) {
       throw new Error('Select a subject to view the subject report.');
     }
-    return reportsAPI.getAdminSubjectOverview(subjectId, termId);
+    return adminReportsAPI.getSubjectOverview(subjectId, termId);
   },
 
   getLongitudinalStudent: async (studentId: number) => {
