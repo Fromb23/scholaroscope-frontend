@@ -5,6 +5,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import type { ReportingSource } from '@/app/core/types/reporting';
 import {
   getReportingSourceLabel,
+  getReportingStatusLabel,
   getReportingSourceVariant,
 } from '@/app/core/lib/reportingPresentation';
 
@@ -21,17 +22,18 @@ export function ReportingSourceState({
 }: ReportingSourceStateProps) {
   const Icon = reportingSource === 'cambridge_pending' ? Clock3 : reportingSource === 'unsupported' ? AlertTriangle : Info;
   const stateLabel = status
-    ?? (reportingSource === 'cambridge_pending'
-      ? 'pending'
+    ? getReportingStatusLabel(status)
+    : reportingSource === 'cambridge_pending'
+      ? 'Pending'
       : reportingSource === 'unsupported'
-        ? 'unsupported'
-        : null);
+        ? 'Unavailable'
+        : null;
 
   const defaultMessage = reportingSource === 'cambridge_pending'
-    ? 'Cambridge reporting not implemented yet.'
+    ? 'Cambridge reports for this subject are still pending.'
     : reportingSource === 'unsupported'
-      ? 'This curriculum does not expose a supported reporting adapter.'
-      : note ?? 'No reporting payload is available for this section.';
+      ? 'Reports are not available for this subject yet.'
+      : note ?? 'This class view has no reporting data yet.';
 
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">

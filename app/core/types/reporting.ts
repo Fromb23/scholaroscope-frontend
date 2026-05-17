@@ -572,6 +572,8 @@ export interface InstructorLearnerReportRow {
   performance_source: PerformanceSource;
   status: string | null;
   note: string | null;
+  generic?: GenericStudentSection | null;
+  cbc?: CbcStudentSection | null;
   generic_result?: GenericStudentSection | null;
   cbc_result?: CbcStudentSection | CbcStudentResult | null;
   // Compatibility payloads for generic-only reporting.
@@ -591,7 +593,7 @@ export interface InstructorCohortSubjectLearnersReport {
   assessment_completion?: AssessmentCompletion | null;
   average_attendance?: number | null;
   coverage?: ReportCoverage | null;
-  learners: InstructorLearnerReportRow[];
+  learners?: InstructorLearnerReportRow[] | null;
   total_learners: number;
 }
 
@@ -624,9 +626,9 @@ export interface InstructorCohortSubjectPerformanceReport {
   average_score: number | null;
   highest_score: number | null;
   lowest_score: number | null;
-  grade_distribution: ReportGradeDistributionItem[];
-  grade_status_counts: ReportGradeStatusCountItem[];
-  assessment_type_breakdown: ReportAssessmentTypeBreakdown[];
+  grade_distribution?: ReportGradeDistributionItem[] | null;
+  grade_status_counts?: ReportGradeStatusCountItem[] | null;
+  assessment_type_breakdown?: ReportAssessmentTypeBreakdown[] | null;
 }
 
 export interface InstructorCohortSubjectTeachingActivityReport {

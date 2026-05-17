@@ -36,12 +36,12 @@ export function CbcStudentResultSummary({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <ClipboardList className="h-4 w-4 text-green-600" />
-        <h3 className="text-sm font-medium text-gray-900">CBC Learner Result</h3>
+        <h3 className="text-sm font-medium text-gray-900">CBC Result</h3>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="CBC Weighted Score" value={formatPercent(result.weighted_score)} />
-        <Metric label="CBC Performance Code" value={result.cbc_code ?? '—'} />
+        <Metric label="CBC Result Code" value={result.cbc_code ?? '—'} />
         <Metric label="CBC Level" value={result.cbc_level ?? '—'} />
         <Metric label="CBC Points" value={formatNumber(result.cbc_points)} />
       </div>

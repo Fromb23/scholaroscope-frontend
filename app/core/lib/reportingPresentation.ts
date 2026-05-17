@@ -9,6 +9,7 @@ import type {
   GenericPerformance,
   GenericPerformanceSummary,
   GenericStudentSection,
+  PerformanceSource,
   ReportAverageSummary,
   ReportCoverage,
   ReportingSource,
@@ -24,6 +25,24 @@ export const CBC_CODE_ORDER: CbcCode[] = [
   'BE1',
   'BE2',
 ];
+
+const EMPTY_CBC_RESULT_COUNTS = {
+  FINAL: 0,
+  PROVISIONAL: 0,
+  INCOMPLETE: 0,
+  stale_count: 0,
+} as const;
+
+const EMPTY_CBC_DISTRIBUTION = {
+  EE1: 0,
+  EE2: 0,
+  ME1: 0,
+  ME2: 0,
+  AE1: 0,
+  AE2: 0,
+  BE1: 0,
+  BE2: 0,
+} as const;
 
 export function formatPercent(
   value: number | null | undefined,
@@ -50,15 +69,50 @@ export function formatDateTime(value: string | null | undefined): string {
 export function getReportingSourceLabel(source: ReportingSource): string {
   switch (source) {
     case 'generic':
-      return 'Generic numeric';
+      return 'Marks-based reporting';
     case 'cbc':
-      return 'CBC';
+      return 'CBC reporting';
     case 'cambridge_pending':
-      return 'Curriculum reporting pending';
+      return 'Cambridge reports pending';
     case 'unsupported':
-      return 'Unsupported reporting adapter';
+      return 'Reports unavailable';
     default:
       return source;
+  }
+}
+
+export function getPerformanceSourceLabel(source: PerformanceSource): string {
+  switch (source) {
+    case 'generic':
+      return 'Marks-based results';
+    case 'cbc':
+      return 'CBC results';
+    case 'unsupported':
+    default:
+      return 'Results unavailable';
+  }
+}
+
+export function getCurriculumTypeLabel(curriculumType: string | null | undefined): string | null {
+  if (!curriculumType) return null;
+  if (curriculumType.toUpperCase() === 'CBE') return 'CBC';
+  return curriculumType;
+}
+
+export function getReportingStatusLabel(status: string | null | undefined): string | null {
+  if (!status) return null;
+
+  switch (status.toLowerCase()) {
+    case 'supported':
+      return 'Ready';
+    case 'cambridge_pending':
+      return 'Cambridge reports pending';
+    case 'unsupported':
+      return 'Reports unavailable';
+    default:
+      return status
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (match) => match.toUpperCase());
   }
 }
 
@@ -199,13 +253,13 @@ export function toGenericPerformance(
   return {
     average_score: performance.average_score,
     computed_count: performance.computed_count,
-    distribution_by_letter: performance.distribution_by_letter,
-    grade_status_counts: performance.grade_status_counts,
+    distribution_by_letter: performance.distribution_by_letter ?? {},
+    grade_status_counts: performance.grade_status_counts ?? {},
     highest_score: 'highest_score' in performance ? performance.highest_score : null,
     lowest_score: 'lowest_score' in performance ? performance.lowest_score : null,
     assessment_type_breakdown: 'assessment_type_breakdown' in performance
-      ? performance.assessment_type_breakdown
-      : undefined,
+      ? performance.assessment_type_breakdown ?? []
+      : [],
   };
 }
 
@@ -216,8 +270,22 @@ export function toCbcPerformance(
 
   return {
     learner_count: performance.learner_count,
-    result_counts: performance.result_counts,
-    distribution_by_code: performance.distribution_by_code,
+    result_counts: {
+      FINAL: performance.result_counts?.FINAL ?? EMPTY_CBC_RESULT_COUNTS.FINAL,
+      PROVISIONAL: performance.result_counts?.PROVISIONAL ?? EMPTY_CBC_RESULT_COUNTS.PROVISIONAL,
+      INCOMPLETE: performance.result_counts?.INCOMPLETE ?? EMPTY_CBC_RESULT_COUNTS.INCOMPLETE,
+      stale_count: performance.result_counts?.stale_count ?? EMPTY_CBC_RESULT_COUNTS.stale_count,
+    },
+    distribution_by_code: {
+      EE1: performance.distribution_by_code?.EE1 ?? EMPTY_CBC_DISTRIBUTION.EE1,
+      EE2: performance.distribution_by_code?.EE2 ?? EMPTY_CBC_DISTRIBUTION.EE2,
+      ME1: performance.distribution_by_code?.ME1 ?? EMPTY_CBC_DISTRIBUTION.ME1,
+      ME2: performance.distribution_by_code?.ME2 ?? EMPTY_CBC_DISTRIBUTION.ME2,
+      AE1: performance.distribution_by_code?.AE1 ?? EMPTY_CBC_DISTRIBUTION.AE1,
+      AE2: performance.distribution_by_code?.AE2 ?? EMPTY_CBC_DISTRIBUTION.AE2,
+      BE1: performance.distribution_by_code?.BE1 ?? EMPTY_CBC_DISTRIBUTION.BE1,
+      BE2: performance.distribution_by_code?.BE2 ?? EMPTY_CBC_DISTRIBUTION.BE2,
+    },
     average_weighted_score: performance.average_weighted_score,
     average_points: performance.average_points,
     missing_result_count: performance.missing_result_count,

@@ -28,13 +28,13 @@ export function GenericPerformanceSummary({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <BarChart3 className="h-4 w-4 text-blue-600" />
-        <h3 className="text-sm font-medium text-gray-900">Generic Numeric Performance</h3>
+        <h3 className="text-sm font-medium text-gray-900">Class Marks Summary</h3>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Generic Numeric Average" value={formatPercent(performance?.average_score ?? averageGrade)} />
-        <Metric label="Highest Score" value={formatPercent(performance?.highest_score)} />
-        <Metric label="Lowest Score" value={formatPercent(performance?.lowest_score)} />
+        <Metric label="Average Mark" value={formatPercent(performance?.average_score ?? averageGrade)} />
+        <Metric label="Highest Mark" value={formatPercent(performance?.highest_score)} />
+        <Metric label="Lowest Mark" value={formatPercent(performance?.lowest_score)} />
         <Metric label="Computed Results" value={formatNumber(performance?.computed_count, 0)} />
       </div>
 
@@ -44,14 +44,14 @@ export function GenericPerformanceSummary({
 
       {(distribution.length > 0 || statusCounts.length > 0) && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <CountList title="Generic Numeric Distribution" items={distribution} />
+          <CountList title="Marks Distribution" items={distribution} />
           <CountList title="Result Status" items={statusCounts} />
         </div>
       )}
 
       {performance?.assessment_type_breakdown && performance.assessment_type_breakdown.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-gray-900">Assessment Type Breakdown</h4>
+          <h4 className="text-sm font-medium text-gray-900">Assessment Breakdown</h4>
           <div className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {performance.assessment_type_breakdown.map((item) => (
               <div key={item.assessment_type} className="rounded-lg border border-gray-200 px-3 py-2">

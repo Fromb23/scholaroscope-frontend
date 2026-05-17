@@ -425,11 +425,15 @@ export const useInstructorCohortSubjectLearners = (
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const fetchReport = useCallback(async () => {
-    if (!enabled || !cohortSubjectId) {
+    if (!cohortSubjectId) {
       setReport(null);
       setLoading(false);
       setError(null);
       setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
       return;
     }
     try {
@@ -463,11 +467,15 @@ export const useInstructorCohortSubjectPerformance = (
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const fetchReport = useCallback(async () => {
-    if (!enabled || !cohortSubjectId) {
+    if (!cohortSubjectId) {
       setReport(null);
       setLoading(false);
       setError(null);
       setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
       return;
     }
     try {
@@ -501,11 +509,15 @@ export const useInstructorCohortSubjectTeachingActivity = (
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const fetchReport = useCallback(async () => {
-    if (!enabled || !cohortSubjectId) {
+    if (!cohortSubjectId) {
       setReport(null);
       setLoading(false);
       setError(null);
       setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
       return;
     }
     try {

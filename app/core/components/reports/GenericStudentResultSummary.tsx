@@ -28,7 +28,7 @@ export function GenericStudentResultSummary({
   ) {
     return (
       <p className="text-sm text-gray-500">
-        No generic numeric result is available yet.
+        No marks result is available yet.
       </p>
     );
   }
@@ -39,12 +39,12 @@ export function GenericStudentResultSummary({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <FileDigit className="h-4 w-4 text-blue-600" />
-        <h3 className="text-sm font-medium text-gray-900">Generic Numeric Result</h3>
+        <h3 className="text-sm font-medium text-gray-900">Marks Result</h3>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Final Score" value={formatPercent(resolved.finalScore)} />
-        <Metric label="Generic Numeric Average" value={formatPercent(resolved.averageScore ?? resolved.weightedAverage)} />
+        <Metric label="Average Mark" value={formatPercent(resolved.averageScore ?? resolved.weightedAverage)} />
         <Metric
           label="Position"
           value={
