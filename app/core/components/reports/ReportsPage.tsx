@@ -14,6 +14,9 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ExportModal } from '@/app/components/export/ExportModal';
+import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
 import { useDashboardOverview } from '@/app/core/hooks/useReporting';
 import type { ExportPayload } from '@/app/types/export';
 
@@ -54,10 +57,10 @@ const SECTIONS = [
         color: 'indigo',
     },
     {
-        title: 'Grade Policies',
-        description: 'Configure weighted grading, custom scales, and policy scope.',
+        title: 'Report Policies',
+        description: 'Open the policy modules available for this organization and its active curricula.',
         icon: Settings,
-        href: '/reports/grade-policies',
+        href: '/reports/policies',
         color: 'teal',
     },
     {
@@ -82,6 +85,19 @@ const COLOR_MAP: Record<string, { bg: string; icon: string }> = {
 export function ReportsPage() {
     const [exportOpen, setExportOpen] = useState(false);
     const { overview, loading, error } = useDashboardOverview();
+    const { curricula } = useCurricula();
+    const { plugins } = usePlugins();
+
+    const sections = useMemo(() => {
+        const availableSurfaces = getAvailablePolicySurfaces({
+            curricula,
+            installedPlugins: plugins,
+        });
+
+        return SECTIONS.filter((section) => (
+            section.title !== 'Report Policies' || availableSurfaces.length > 0
+        ));
+    }, [curricula, plugins]);
 
     const exportPayload = useMemo<ExportPayload | null>(() => {
         if (!overview) return null;
@@ -222,7 +238,7 @@ export function ReportsPage() {
                     Report Categories
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {SECTIONS.map(section => {
+                    {sections.map(section => {
                         const { bg, icon } = COLOR_MAP[section.color];
                         return (
                             <Link key={section.title} href={section.href} className="group">

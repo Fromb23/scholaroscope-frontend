@@ -97,6 +97,10 @@ export const SUPERADMIN_NAV: NavigationConfig = {
 export function getAdminNav(
     pluginContext: PluginNavigationContext,
 ): NavigationConfig {
+    const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
+        ? [{ name: 'Report Policies', href: '/reports/policies', icon: Award }]
+        : [];
+
     return {
         primary: [
             { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
@@ -120,7 +124,7 @@ export function getAdminNav(
                 children: [
                     { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
                     { name: 'Create New', href: '/assessments/new', icon: FileText },
-                    { name: 'Grade Policies', href: '/reports/grade-policies', icon: Award },
+                    ...reportPoliciesChild,
                 ],
             },
             ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
@@ -132,7 +136,7 @@ export function getAdminNav(
                     { name: 'Assessments', href: '/reports/assessments', icon: ClipboardCheck },
                     { name: 'Attendance', href: '/reports/attendance', icon: Clock },
                     { name: 'Cohorts', href: '/reports/cohorts', icon: Users },
-                    { name: 'Grade Policies', href: '/reports/grade-policies', icon: Award },
+                    ...reportPoliciesChild,
                 ],
             },
         ],
@@ -148,6 +152,14 @@ export function getAdminNav(
 export function getInstructorNav(
     pluginContext: PluginNavigationContext,
 ): NavigationConfig {
+    const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
+        ? [{
+            name: 'Report Policies',
+            href: '/reports/policies',
+            icon: Award,
+        }]
+        : [];
+
     return {
         primary: [
             { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
@@ -168,6 +180,7 @@ export function getInstructorNav(
                 children: [
                     { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
                     { name: 'Needs Grading', href: '/assessments?status=pending', icon: AlertCircle },
+                    ...reportPoliciesChild,
                 ],
             },
             ...getPluginNavigationItems('instructor.primary.afterAssessments', pluginContext),

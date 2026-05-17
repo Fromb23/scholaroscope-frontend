@@ -118,6 +118,7 @@ interface FormErrors {
     aggregation_method?: string;
     weight_entries?: string;
     grading_scale?: string;
+    scope?: string;
     [key: string]: string | undefined;
 }
 
@@ -151,6 +152,9 @@ const DEFAULT_FORM: PolicyFormState = {
 export function useCreatePolicyForm(
     onSuccess: (policy: GradePolicy) => void,
     editingPolicy?: GradePolicy | null,
+    options?: {
+        validateScope?: (form: PolicyFormState) => string | null;
+    },
 ) {
     const [form, setForm] = useState<PolicyFormState>(
         editingPolicy ? policyToForm(editingPolicy) : DEFAULT_FORM
@@ -165,6 +169,9 @@ export function useCreatePolicyForm(
         setForm(prev => ({ ...prev, [field]: value }));
         if (field in errors) {
             setErrors(prev => { const e = { ...prev }; delete e[field as string]; return e; });
+        }
+        if (field === 'cohort' || field === 'cohort_subject' || field === 'curriculum') {
+            setErrors(prev => { const e = { ...prev }; delete e.scope; return e; });
         }
     };
 
@@ -224,6 +231,11 @@ export function useCreatePolicyForm(
                     break;
                 }
             }
+        }
+
+        const scopeError = options?.validateScope?.(form);
+        if (scopeError) {
+            e.scope = scopeError;
         }
 
         setErrors(e);

@@ -24,6 +24,7 @@ export interface PluginNavigationContext {
     role: Role;
     hasPlugin: (pluginKey: string) => boolean;
     badges: Record<string, number>;
+    hasAnyReportPolicySurface?: boolean;
     instructorAccess?: {
         hasCurriculumAccess: (curriculum: 'CBC' | 'CAMBRIDGE') => boolean;
     };

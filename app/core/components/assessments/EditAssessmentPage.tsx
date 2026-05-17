@@ -8,10 +8,11 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
 import { useAssessmentDetail, useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
-import { useCohortSubjects } from '@/app/core/hooks/useSessions';
+import { useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import {
     ASSESSMENT_TYPE_OPTIONS,
@@ -34,7 +35,7 @@ export function EditAssessmentPage() {
     const { rubricScales } = useRubricScales();
 
     const [selectedCohort, setSelectedCohort] = useState<number>(0);
-    const { cohortSubjects } = useCohortSubjects(selectedCohort || null);
+    const { subjects: cohortSubjects } = useCohortSubjects(selectedCohort || undefined);
 
     const [formData, setFormData] = useState<AssessmentFormData>({
         cohort_subject: 0,
@@ -228,7 +229,7 @@ export function EditAssessmentPage() {
                                             value: '0',
                                             label: selectedCohort ? 'Select Subject' : 'Select a cohort first'
                                         },
-                                        ...cohortSubjects.map(cs => ({
+                                        ...cohortSubjects.map((cs) => ({
                                             value: String(cs.id),
                                             label: `${cs.subject_code} - ${cs.subject_name}${cs.is_compulsory ? ' (Core)' : ''}`
                                         }))
@@ -308,6 +309,12 @@ export function EditAssessmentPage() {
                         </div>
                     </div>
                 </Card>
+
+                <AssessmentPolicyPreviewCard
+                    cohortId={selectedCohort || null}
+                    cohortSubjectId={formData.cohort_subject || null}
+                    termId={formData.term}
+                />
 
                 {/* Evaluation Settings */}
                 <Card>

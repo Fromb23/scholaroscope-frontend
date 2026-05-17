@@ -1,6 +1,7 @@
 'use client';
 
 import '@/app/plugins/cbc/registry/curriculumModalExtension';
+import '@/app/plugins/cbc/registry/assessmentPolicyPreviewExtension';
 import '@/app/plugins/cbc/registry/navigationExtension';
 import '@/app/plugins/cbc/registry/providerExtension';
 import '@/app/plugins/cbc/registry/routeAccessExtension';

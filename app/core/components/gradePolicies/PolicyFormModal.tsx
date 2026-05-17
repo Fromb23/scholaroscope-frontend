@@ -8,8 +8,12 @@ import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import { GradingScaleEditor } from '@/app/core/components/gradePolicies/GradingScaleEditor';
 import { PolicyWeightsEditor } from '@/app/core/components/gradePolicies/PolicyWeightsEditor';
-import { useCreatePolicyForm } from '@/app/core/hooks/useGradePolicies';
+import {
+    useCreatePolicyForm,
+    type PolicyFormState,
+} from '@/app/core/hooks/useGradePolicies';
 import { ASSESSMENT_TYPE_OPTIONS, getAssessmentTypeLabel } from '@/app/core/types/assessment';
+import type { Cohort, CohortSubject, Curriculum } from '@/app/core/types/academic';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 
 const AGGREGATION_METHODS = [
@@ -24,13 +28,14 @@ const ASSESSMENT_TYPES = ASSESSMENT_TYPE_OPTIONS.map(option => option.value);
 
 interface PolicyFormModalProps {
     editingPolicy: GradePolicy | null;
-    cohorts: { id: number; name: string; level: string }[];
-    cohortSubjects: { id: number; subject_name: string; subject_code: string; is_compulsory: boolean }[];
-    curricula: { id: number; name: string }[];
+    cohorts: Array<Pick<Cohort, 'id' | 'name' | 'level' | 'curriculum_type'>>;
+    cohortSubjects: Array<Pick<CohortSubject, 'id' | 'subject_name' | 'subject_code' | 'is_compulsory' | 'curriculum_type'>>;
+    curricula: Array<Pick<Curriculum, 'id' | 'name' | 'curriculum_type'>>;
     selectedCohort: number | null;
     onCohortChange: (id: number | null) => void;
     onSuccess: () => void;
     onClose: () => void;
+    validateScope: (form: PolicyFormState) => string | null;
 }
 
 export function PolicyFormModal({
@@ -42,6 +47,7 @@ export function PolicyFormModal({
     onCohortChange,
     onSuccess,
     onClose,
+    validateScope,
 }: PolicyFormModalProps) {
     const {
         form,
@@ -58,7 +64,7 @@ export function PolicyFormModal({
         toggleRequiredComponent,
         submit,
         dismissError,
-    } = useCreatePolicyForm(onSuccess, editingPolicy);
+    } = useCreatePolicyForm(onSuccess, editingPolicy, { validateScope });
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
@@ -73,11 +79,15 @@ export function PolicyFormModal({
         <Modal
             isOpen
             onClose={onClose}
-            title={editingPolicy ? 'Edit Policy' : 'New Grade Policy'}
+            title={editingPolicy ? 'Edit Generic Grade Policy' : 'New Generic Grade Policy'}
             size="xl"
         >
             <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
                 {saveError && <ErrorBanner message={saveError} onDismiss={dismissError} />}
+
+                <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    Generic grade policies are kernel-owned. CBC/CBE reporting is managed in CBC Report Policies.
+                </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
@@ -198,6 +208,10 @@ export function PolicyFormModal({
                     </div>
                 </div>
 
+                {errors.scope && (
+                    <p className="text-sm text-red-600">{errors.scope}</p>
+                )}
+
                 {showWeights && (
                     <div className="border-t border-gray-100 pt-4">
                         <PolicyWeightsEditor
@@ -285,7 +299,7 @@ export function PolicyFormModal({
                     <Button type="submit" disabled={saving}>
                         {saving
                             ? (editingPolicy ? 'Saving…' : 'Creating…')
-                            : (editingPolicy ? 'Save Changes' : 'Create Policy')}
+                            : (editingPolicy ? 'Save Changes' : 'Create Generic Policy')}
                     </Button>
                 </div>
             </form>

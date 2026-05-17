@@ -18,12 +18,8 @@ const SECTIONS: Section[] = [
         content: "WEIGHTED: Each assessment type has a percentage weight (e.g. CAT 40% + MAIN_EXAM 60%). Weights must sum to 100.\n\nAVERAGE_PLUS_EXAM: Averages all CATs then combines with exam score.\n\nEXAM_ONLY: Final grade is based entirely on the main exam.\n\nDROP_LOWEST: Drops the lowest CAT score before averaging.\n\nPAPERS_AVERAGE: Averages scores across all paper types (PP1, PP2, etc).",
     },
     {
-        title: "CBC / Rubric policies",
-        content: "For CBC curricula, select WEIGHTED or a custom method and leave the grading scale empty to use rubric levels (EE/ME/AE/BE). Assign the policy directly to the CBC cohort or curriculum so it only applies there.",
-    },
-    {
         title: "Policy scope (who does it apply to?)",
-        content: "Policies are resolved from most specific to least specific:\n1. Direct assignment to a cohort-subject (highest priority)\n2. Scoped to a cohort\n3. Scoped to a curriculum\n4. Default policy for the org (fallback)\n\nA CBC-specific policy assigned to the CBC curriculum will only affect CBC cohorts.",
+        content: "Policies are resolved from most specific to least specific:\n1. Direct assignment to a cohort-subject (highest priority)\n2. Scoped to a cohort\n3. Scoped to a curriculum\n4. Default policy for the org (fallback)\n\nUse this module only for generic-compatible reporting workflows. Curriculum-specific policy modules keep their own scope rules.",
     },
     {
         title: "Required components",
@@ -63,7 +59,7 @@ export function PolicyHelpWidget() {
                             <div className="flex items-center gap-2">
                                 <HelpCircle className="h-5 w-5 text-blue-600" />
                                 <h2 className="text-lg font-semibold text-gray-900">
-                                    Grade Policy Guide
+                                    Generic Grade Policy Guide
                                 </h2>
                             </div>
                             <button
