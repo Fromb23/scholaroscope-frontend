@@ -116,6 +116,7 @@ export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
         curriculumTypes,
         hasCBCAccess,
         hasCambridgeAccess,
+        hasAssignedCohortSubjects: cohortSubjectIds.length > 0,
         hasAssignedCohorts: cohortIds.length > 0,
         hasCurriculumAccess,
     };

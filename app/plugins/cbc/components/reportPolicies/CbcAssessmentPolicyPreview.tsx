@@ -139,14 +139,13 @@ export function CbcAssessmentPolicyPreview({
 
     const detailHref = (
         preview.status === 'ready'
-        && preview.source === 'resolved'
         && preview.policy?.id
     )
         ? `/cbc/report-policies/${preview.policy.id}`
         : '/cbc/report-policies';
     const actionLabel = (
         preview.status === 'ready'
-        && preview.source === 'resolved'
+        && preview.policy?.id
     )
         ? 'View CBC Report Policy'
         : 'Manage CBC Report Policies';

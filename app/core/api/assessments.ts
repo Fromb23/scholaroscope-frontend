@@ -77,9 +77,10 @@ export const rubricLevelAPI = {
 export const assessmentAPI = {
   getAll: async (params?: {
     term?: number;
-    subject?: number;
+    cohort_subject?: number;
     assessment_type?: string;
     evaluation_type?: string;
+    status?: string;
   }) => {
     const response = await apiClient.get<Assessment[]>('/assessments/', { params });
     return response.data;

@@ -18,6 +18,10 @@ interface AssessmentDetailHeaderProps {
     isDraft: boolean;
     isActive: boolean;
     isFinalized: boolean;
+    canUpdate: boolean;
+    canDelete: boolean;
+    canActivate: boolean;
+    canFinalize: boolean;
     finalizing: boolean;
     deleting: boolean;
     onActivate: () => void;
@@ -31,6 +35,10 @@ export function AssessmentDetailHeader({
     isDraft,
     isActive,
     isFinalized,
+    canUpdate,
+    canDelete,
+    canActivate,
+    canFinalize,
     finalizing,
     deleting,
     onActivate,
@@ -65,19 +73,19 @@ export function AssessmentDetailHeader({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                {isDraft && (
+                {isDraft && canActivate && (
                     <Button variant="secondary" size="sm" onClick={onActivate}>
                         <PlayCircle className="mr-1.5 h-4 w-4" />
                         Activate
                     </Button>
                 )}
-                {isActive && (
+                {isActive && canFinalize && (
                     <Button variant="primary" size="sm" onClick={onFinalize} disabled={finalizing}>
                         <CheckCircle className="mr-1.5 h-4 w-4" />
                         {finalizing ? 'Finalizing…' : 'Finalize'}
                     </Button>
                 )}
-                {!isFinalized && (
+                {!isFinalized && canUpdate && (
                     <Link href={`/assessments/${assessmentId}/edit`}>
                         <Button variant="secondary" size="sm">
                             <Edit className="mr-1.5 h-4 w-4" />
@@ -85,9 +93,11 @@ export function AssessmentDetailHeader({
                         </Button>
                     </Link>
                 )}
-                <Button variant="ghost" size="sm" onClick={onDelete} disabled={deleting}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
+                {canDelete && (
+                    <Button variant="ghost" size="sm" onClick={onDelete} disabled={deleting}>
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                )}
             </div>
         </div>
     );
