@@ -119,6 +119,7 @@ export function getAdminNav(
             { name: 'Instructors', href: '/admin/instructors', icon: UserCog },
             { name: 'Learners', href: '/learners', icon: Users },
             { name: 'Sessions', href: '/sessions', icon: Calendar },
+            { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
             {
                 name: 'Assessments', href: '/assessments', icon: ClipboardCheck,
                 children: [
@@ -160,6 +161,7 @@ export function getInstructorNav(
             ...getPluginNavigationItems('instructor.primary.afterDashboard', pluginContext),
             { name: 'My Classes', href: '/academic/cohorts', icon: Users },
             { name: 'My Lessons', href: '/sessions', icon: Calendar },
+            { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
             ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
             { name: 'My Learners', href: '/learners', icon: Users },
             {
