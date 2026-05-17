@@ -1,11 +1,7 @@
 'use client';
 
-// ============================================================================
-// app/(dashboard)/reports/assessments/page.tsx — render only
-// ============================================================================
-
 import { useMemo, useState } from 'react';
-import { PieChart, Award, TrendingUp, Target, Download } from 'lucide-react';
+import { ClipboardCheck, Download, PieChart } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
@@ -16,194 +12,184 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ExportModal } from '@/app/components/export/ExportModal';
 import { useAssessmentTypeSummaries } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
-import { getAssessmentTypeLabel } from '@/app/core/types/assessment';
+import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
+import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
+import {
+  formatNumber,
+  formatPercent,
+} from '@/app/core/lib/reportingPresentation';
 import type { ExportPayload } from '@/app/types/export';
 
-const TYPE_COLOR: Record<string, string> = {
-    ENTRY: 'bg-slate-50 border-slate-200 text-slate-600',
-    CAT: 'bg-blue-50   border-blue-200   text-blue-600',
-    TEST: 'bg-purple-50 border-purple-200 text-purple-600',
-    MIDTERM: 'bg-pink-50 border-pink-200 text-pink-600',
-    MAIN_EXAM: 'bg-orange-50 border-orange-200 text-orange-600',
-    MOCK: 'bg-cyan-50 border-cyan-200 text-cyan-600',
-    PROJECT: 'bg-green-50  border-green-200  text-green-600',
-    ASSIGNMENT: 'bg-yellow-50 border-yellow-200 text-yellow-600',
-    PRACTICAL: 'bg-indigo-50 border-indigo-200 text-indigo-600',
-    COMPETENCY: 'bg-teal-50   border-teal-200   text-teal-600',
-};
-
 export function AssessmentsReportPage() {
-    const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
-    const [exportOpen, setExportOpen] = useState(false);
-    const { terms, loading: termsLoading } = useTerms();
-    const { summaries, loading, error } = useAssessmentTypeSummaries({
-        term: selectedTerm ?? undefined,
-    });
+  const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
-    const totalAssessments = summaries.reduce((s, r) => s + r.total_assessments, 0);
-    const avgScore = summaries.length
-        ? summaries.reduce((s, r) => s + (r.average_score ?? 0), 0) / summaries.length
-        : 0;
+  const { terms, loading: termsLoading } = useTerms();
+  const { summaries, loading, error } = useAssessmentTypeSummaries({
+    term: selectedTerm ?? undefined,
+  });
 
-    const exportPayload = useMemo<ExportPayload | null>(() => {
-        if (!selectedTerm || summaries.length === 0) return null;
+  const totalAssessments = summaries.reduce((sum, item) => sum + item.total_assessments, 0);
 
-        return {
-            title: 'Assessment Report',
-            subtitle: 'Assessment type analysis',
-            metadata: {
-                term: terms.find(term => term.id === selectedTerm)?.name ?? 'Selected term',
-                generatedAt: new Date().toLocaleString(),
-            },
-            columns: [
-                { key: 'assessment_type', label: 'Assessment Type', width: 18 },
-                { key: 'subject_name', label: 'Subject', width: 22 },
-                { key: 'cohort_name', label: 'Cohort', width: 18 },
-                { key: 'term_name', label: 'Term', width: 14 },
-                { key: 'average_score', label: 'Average Score', format: 'percentage', width: 16, align: 'right' as const },
-                { key: 'total_assessments', label: 'Assessments', format: 'number', width: 14, align: 'right' as const },
-                { key: 'total_weight', label: 'Total Weight', format: 'number', width: 14, align: 'right' as const },
-            ],
-            rows: summaries,
-            fileName: 'assessment-report',
-            includeMetadata: true,
-            includeTimestamp: true,
-            sheetName: 'Assessment Report',
-            freezeHeader: true,
-            autoFilter: true,
-            orientation: 'landscape' as const,
-        };
-    }, [selectedTerm, summaries, terms]);
+  const exportPayload = useMemo<ExportPayload | null>(() => {
+    if (!selectedTerm || summaries.length === 0) return null;
 
-    return (
-        <div className="space-y-6">
+    return {
+      title: 'Assessment Report',
+      subtitle: 'Assessment completion and curriculum-aware performance',
+      metadata: {
+        term: terms.find((term) => term.id === selectedTerm)?.name ?? 'Selected term',
+        generatedAt: new Date().toLocaleString(),
+      },
+      columns: [
+        { key: 'assessment_type', label: 'Assessment Type', width: 18 },
+        { key: 'subject_name', label: 'Subject', width: 22 },
+        { key: 'cohort_name', label: 'Cohort', width: 18 },
+        { key: 'reporting_source', label: 'Reporting Source', width: 18 },
+        { key: 'status', label: 'Status', width: 16 },
+        { key: 'total_assessments', label: 'Assessments', format: 'number', width: 14, align: 'right' as const },
+        { key: 'missing_scores', label: 'Missing Scores', format: 'number', width: 14, align: 'right' as const },
+        { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
+        { key: 'cbc_weighted_score', label: 'CBC Weighted Score', format: 'percentage', width: 18, align: 'right' as const },
+      ],
+      rows: summaries.map((summary) => ({
+        assessment_type: summary.assessment_type,
+        subject_name: summary.subject_name,
+        cohort_name: summary.cohort_name,
+        reporting_source: summary.reporting_source ?? 'unsupported',
+        status: summary.status ?? '—',
+        total_assessments: summary.total_assessments,
+        missing_scores: summary.assessment_completion?.missing_scores_count ?? null,
+        generic_average: summary.generic_performance?.average_score ?? summary.average_score,
+        cbc_weighted_score: summary.cbc_performance?.average_weighted_score ?? null,
+      })),
+      fileName: 'assessment-report',
+      includeMetadata: true,
+      includeTimestamp: true,
+      sheetName: 'Assessment Report',
+      freezeHeader: true,
+      autoFilter: true,
+      orientation: 'landscape' as const,
+    };
+  }, [selectedTerm, summaries, terms]);
 
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Assessment Reports</h1>
-                    <p className="text-gray-500 mt-1">
-                        Assessment type analysis and pedagogy insights.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {exportPayload && (
-                        <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
-                            <Download className="h-4 w-4 mr-1.5" />
-                            Export
-                        </Button>
-                    )}
-                    <PieChart className="h-7 w-7 text-orange-500" />
-                </div>
-            </div>
-
-            {/* Stats */}
-            {summaries.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <StatsCard title="Type Records" value={summaries.length} icon={PieChart} color="blue" />
-                    <StatsCard title="Avg Score" value={`${avgScore.toFixed(1)}%`} icon={Target} color="green" />
-                    <StatsCard title="Total Assessments" value={totalAssessments} icon={Award} color="purple" />
-                    <StatsCard title="Subjects Covered" value={new Set(summaries.map(s => s.subject_name)).size} icon={TrendingUp} color="orange" />
-                </div>
-            )}
-
-            {/* Filter */}
-            <Card>
-                <Select
-                    label="Select Term"
-                    value={selectedTerm?.toString() ?? ''}
-                    onChange={e => setSelectedTerm(e.target.value ? Number(e.target.value) : null)}
-                    disabled={termsLoading}
-                    options={[
-                        { value: '', label: 'Select term…' },
-                        ...terms.map(t => ({
-                            value: String(t.id),
-                            label: `${t.academic_year_name} — ${t.name}`,
-                        })),
-                    ]}
-                />
-            </Card>
-
-            {error && <ErrorBanner message={error} onDismiss={() => { }} />}
-            {loading && <LoadingSpinner />}
-
-            {/* Empty */}
-            {!loading && !selectedTerm && (
-                <Card>
-                    <div className="py-16 text-center">
-                        <PieChart className="mx-auto h-12 w-12 text-gray-300" />
-                        <p className="mt-3 text-sm text-gray-500">Select a term to view assessment data.</p>
-                    </div>
-                </Card>
-            )}
-
-            {/* Cards grid */}
-            {!loading && summaries.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {summaries.map(s => {
-                        const colorClass = TYPE_COLOR[s.assessment_type] ?? 'bg-gray-50 border-gray-200 text-gray-600';
-                        return (
-                            <div key={s.id}
-                                className={`rounded-2xl border p-5 ${colorClass.split(' ').slice(0, 2).join(' ')}`}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <Badge variant="default">{getAssessmentTypeLabel(s.assessment_type)}</Badge>
-                                    <Award className="h-4 w-4 text-gray-400" />
-                                </div>
-                                <p className="font-semibold text-gray-900">{s.subject_name}</p>
-                                <p className="text-sm text-gray-500 mb-4">{s.cohort_name}</p>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-0.5">Avg Score</p>
-                                        <p className={`text-2xl font-bold ${colorClass.split(' ')[2]}`}>
-                                            {s.average_score?.toFixed(1) ?? '—'}%
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-0.5">Assessments</p>
-                                        <p className="text-2xl font-bold text-gray-900">
-                                            {s.total_assessments}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 pt-3 border-t border-gray-200">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                                            <div
-                                                className={`h-1.5 rounded-full ${colorClass.split(' ')[2].replace('text', 'bg')}`}
-                                                style={{ width: `${Math.min((s.average_score ?? 0), 100)}%` }}
-                                            />
-                                        </div>
-                                        <span className="text-xs text-gray-500">{s.term_name}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* No data */}
-            {!loading && selectedTerm && summaries.length === 0 && (
-                <Card>
-                    <div className="py-12 text-center">
-                        <PieChart className="mx-auto h-10 w-10 text-gray-300" />
-                        <p className="mt-2 text-sm text-gray-500">No assessment data for this term.</p>
-                    </div>
-                </Card>
-            )}
-
+  return (
+    <AdminReportAccessGate>
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Assessment Reports</h1>
+            <p className="mt-1 text-gray-500">
+              Assessment facts and completion rendered separately from curriculum-specific results.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             {exportPayload && (
-                <ExportModal
-                    open={exportOpen}
-                    onClose={() => setExportOpen(false)}
-                    payload={exportPayload}
-                    defaultFormat="excel"
-                    title="Export Assessment Report"
-                />
+              <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
+                <Download className="mr-1.5 h-4 w-4" />
+                Export
+              </Button>
             )}
-
+            <PieChart className="h-7 w-7 text-orange-500" />
+          </div>
         </div>
-    );
+
+        {summaries.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatsCard title="Assessment Records" value={summaries.length} icon={PieChart} color="blue" />
+            <StatsCard title="Total Assessments" value={totalAssessments} icon={ClipboardCheck} color="green" />
+            <StatsCard title="Subjects Covered" value={new Set(summaries.map((summary) => summary.subject_name)).size} icon={PieChart} color="purple" />
+            <StatsCard title="Cohorts Covered" value={new Set(summaries.map((summary) => summary.cohort_name)).size} icon={PieChart} color="orange" />
+          </div>
+        )}
+
+        <Card>
+          <Select
+            label="Select Term"
+            value={selectedTerm?.toString() ?? ''}
+            onChange={(e) => setSelectedTerm(e.target.value ? Number(e.target.value) : null)}
+            disabled={termsLoading}
+            options={[
+              { value: '', label: 'Select term…' },
+              ...terms.map((term) => ({
+                value: String(term.id),
+                label: `${term.academic_year_name} — ${term.name}`,
+              })),
+            ]}
+          />
+        </Card>
+
+        {error && <ErrorBanner message={error} onDismiss={() => {}} />}
+        {loading && <LoadingSpinner />}
+
+        {!loading && !selectedTerm && (
+          <Card>
+            <div className="py-16 text-center">
+              <PieChart className="mx-auto h-12 w-12 text-gray-300" />
+              <p className="mt-3 text-sm text-gray-500">Select a term to view assessment data.</p>
+            </div>
+          </Card>
+        )}
+
+        {!loading && selectedTerm && summaries.length > 0 && (
+          <div className="grid gap-4">
+            {summaries.map((summary) => (
+              <CurriculumSubjectReportCard
+                key={summary.id}
+                heading={summary.subject_name}
+                subheading={`${summary.cohort_name} · ${summary.assessment_type} · ${formatNumber(summary.total_assessments, 0)} assessments`}
+                reportingSource={summary.reporting_source ?? 'unsupported'}
+                performanceSource={summary.performance_source ?? 'unsupported'}
+                curriculumType={summary.curriculum_type}
+                status={summary.status}
+                note={summary.note}
+                averageAttendance={summary.average_attendance}
+                coverage={summary.coverage}
+                assessmentCompletion={summary.assessment_completion ?? {
+                  total_assessments: summary.total_assessments,
+                  finalized_assessments: 0,
+                  draft_assessments: 0,
+                  active_assessments: 0,
+                  missing_scores_count: 0,
+                }}
+                genericPerformance={summary.generic_performance}
+                cbcPerformance={summary.cbc_performance}
+                averageGrade={summary.average_score}
+                averageGradeNote={
+                  summary.reporting_source === 'generic'
+                    ? 'Legacy average score applies only to generic numeric reporting.'
+                    : null
+                }
+                footer={(
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="default">{summary.assessment_type}</Badge>
+                    <Badge variant="blue">{formatPercent(summary.average_score)}</Badge>
+                  </div>
+                )}
+              />
+            ))}
+          </div>
+        )}
+
+        {!loading && selectedTerm && summaries.length === 0 && (
+          <Card>
+            <div className="py-12 text-center">
+              <PieChart className="mx-auto h-10 w-10 text-gray-300" />
+              <p className="mt-2 text-sm text-gray-500">No assessment data for this term.</p>
+            </div>
+          </Card>
+        )}
+
+        {exportPayload && (
+          <ExportModal
+            open={exportOpen}
+            onClose={() => setExportOpen(false)}
+            payload={exportPayload}
+            defaultFormat="excel"
+            title="Export Assessment Report"
+          />
+        )}
+      </div>
+    </AdminReportAccessGate>
+  );
 }

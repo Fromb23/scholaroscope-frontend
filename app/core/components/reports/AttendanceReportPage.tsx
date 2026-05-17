@@ -13,6 +13,7 @@ import { ExportModal } from '@/app/components/export/ExportModal';
 import { AttendanceReportFilters } from '@/app/core/components/reports/AttendanceReportFilters';
 import { AttendanceReportStats } from '@/app/core/components/reports/AttendanceReportStats';
 import { AttendanceReportTable } from '@/app/core/components/reports/AttendanceReportTable';
+import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { useAttendanceReportPage } from '@/app/core/hooks/reports/useAttendanceReportPage';
 
 export function AttendanceReportPage() {
@@ -37,13 +38,14 @@ export function AttendanceReportPage() {
     } = useAttendanceReportPage();
 
     return (
+        <AdminReportAccessGate>
         <div className="space-y-6">
 
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">Attendance Reports</h1>
-                    <p className="text-gray-500 mt-1">Session participation metrics per student and subject.</p>
+                    <p className="text-gray-500 mt-1">Attendance is a kernel fact across generic, CBC, pending, and unsupported reporting sources.</p>
                 </div>
                 <div className="flex items-center gap-2">
                     {exportPayload && (
@@ -116,5 +118,6 @@ export function AttendanceReportPage() {
             )}
 
         </div>
+        </AdminReportAccessGate>
     );
 }

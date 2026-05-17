@@ -7,6 +7,8 @@ import {
   cohortSummaryAPI,
   subjectSummaryAPI,
   assessmentTypeSummaryAPI,
+  adminReportsAPI,
+  instructorReportsAPI,
   reportsAPI,
 } from '@/app/core/api/reporting';
 import {
@@ -63,7 +65,7 @@ export const useDashboardOverview = () => {
   const fetchOverview = useCallback(async () => {
     try {
       setLoading(true);
-      setOverview(await reportsAPI.getDashboardOverview());
+      setOverview(await adminReportsAPI.getOverview());
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch overview'));
@@ -279,7 +281,7 @@ export const useStudentReportCard = (
     }
     try {
       setLoading(true);
-      setReportCard(await reportsAPI.getStudentReportCard(studentId, termId));
+      setReportCard(await adminReportsAPI.getStudentReportCard(studentId, termId));
       setError(null);
     } catch (err) {
       setReportCard(null);
@@ -311,7 +313,7 @@ export const useClassSummary = (
     }
     try {
       setLoading(true);
-      setSummary(await reportsAPI.getClassSummary(termId, cohortId));
+      setSummary(await adminReportsAPI.getCohortSummary(cohortId, termId));
       setError(null);
     } catch (err) {
       setSummary(null);
@@ -343,7 +345,7 @@ export const useSubjectAnalysis = (
     }
     try {
       setLoading(true);
-      setAnalysis(await reportsAPI.getSubjectAnalysis(termId, subjectId));
+      setAnalysis(await adminReportsAPI.getSubjectOverview(subjectId, termId));
       setError(null);
     } catch (err) {
       setAnalysis(null);
@@ -368,7 +370,7 @@ export const useInstructorOverview = () => {
   const fetchOverview = useCallback(async () => {
     try {
       setLoading(true);
-      setOverview(await reportsAPI.getInstructorOverview());
+      setOverview(await instructorReportsAPI.getOverview());
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -394,7 +396,7 @@ export const useInstructorCohortSubjects = () => {
   const fetchCohortSubjects = useCallback(async () => {
     try {
       setLoading(true);
-      setCohortSubjects(await reportsAPI.getInstructorCohortSubjects());
+      setCohortSubjects(await instructorReportsAPI.getCohortSubjects());
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -432,7 +434,7 @@ export const useInstructorCohortSubjectLearners = (
     }
     try {
       setLoading(true);
-      setReport(await reportsAPI.getInstructorCohortSubjectLearners(cohortSubjectId, termId));
+      setReport(await instructorReportsAPI.getCohortSubjectLearners(cohortSubjectId, termId));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -470,7 +472,7 @@ export const useInstructorCohortSubjectPerformance = (
     }
     try {
       setLoading(true);
-      setReport(await reportsAPI.getInstructorCohortSubjectPerformance(cohortSubjectId, termId));
+      setReport(await instructorReportsAPI.getCohortSubjectPerformance(cohortSubjectId, termId));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -508,7 +510,7 @@ export const useInstructorCohortSubjectTeachingActivity = (
     }
     try {
       setLoading(true);
-      setReport(await reportsAPI.getInstructorCohortSubjectTeachingActivity(cohortSubjectId, termId));
+      setReport(await instructorReportsAPI.getCohortSubjectTeachingActivity(cohortSubjectId, termId));
       setError(null);
       setErrorStatus(null);
     } catch (err) {

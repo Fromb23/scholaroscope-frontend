@@ -133,10 +133,12 @@ export function getAdminNav(
                 children: [
                     { name: 'Overview', href: '/reports', icon: FileBarChart },
                     { name: 'Students', href: '/reports/students', icon: Users },
+                    { name: 'Cohorts', href: '/reports/cohorts', icon: Users },
+                    { name: 'Subjects', href: '/reports/subjects', icon: BookOpen },
                     { name: 'Assessments', href: '/reports/assessments', icon: ClipboardCheck },
                     { name: 'Attendance', href: '/reports/attendance', icon: Clock },
-                    { name: 'Cohorts', href: '/reports/cohorts', icon: Users },
                     ...reportPoliciesChild,
+                    { name: 'Compute', href: '/reports/compute', icon: FileBarChart },
                 ],
             },
         ],
