@@ -21,6 +21,9 @@ import {
   formatPercent,
   getAttendancePercentage,
   getCoverageEntries,
+  getCurriculumTypeLabel,
+  getPerformanceSourceLabel,
+  getReportingStatusLabel,
 } from '@/app/core/lib/reportingPresentation';
 import { AssessmentCompletionSummary } from './AssessmentCompletionSummary';
 import { CbcPerformanceSummary } from './CbcPerformanceSummary';
@@ -101,13 +104,13 @@ export function CurriculumSubjectReportCard({
             <div className="text-base font-semibold text-gray-900">{heading}</div>
             <CurriculumPerformanceBadge reportingSource={reportingSource} />
             {status && (
-              <Badge variant="default">{status}</Badge>
+              <Badge variant="default">{getReportingStatusLabel(status) ?? status}</Badge>
             )}
             {performanceSource && performanceSource !== reportingSource && (
-              <Badge variant="indigo">performance: {performanceSource}</Badge>
+              <Badge variant="indigo">Results: {getPerformanceSourceLabel(performanceSource)}</Badge>
             )}
-            {curriculumType && (
-              <Badge variant="purple">{curriculumType}</Badge>
+            {getCurriculumTypeLabel(curriculumType) && (
+              <Badge variant="purple">{getCurriculumTypeLabel(curriculumType)}</Badge>
             )}
           </div>
           {subheading && (

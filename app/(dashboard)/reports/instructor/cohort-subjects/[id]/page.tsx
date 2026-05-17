@@ -1,8 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useMemo, useState, type ElementType } from 'react';
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from 'next/navigation';
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type ElementType,
+} from 'react';
 import {
   Activity,
   ArrowLeft,
@@ -35,12 +45,16 @@ import { useTerms } from '@/app/core/hooks/useAcademic';
 import {
   countMapFromItems,
   formatPercent,
+  getAssessmentCompletionRatio,
+  getCurriculumTypeLabel,
+  getReportingSourceLabel,
+  getReportingSourceVariant,
+  getReportingStatusLabel,
   resolveCbcStudentResult,
   toCbcPerformance,
   toGenericPerformance,
 } from '@/app/core/lib/reportingPresentation';
 import type {
-  CbcPerformance,
   GenericPerformance,
   GenericStudentSection,
   InstructorLearnerReportRow,
@@ -52,11 +66,23 @@ type DetailTab = 'learners' | 'performance' | 'teaching-activity';
 
 const TABS: Array<{ id: DetailTab; label: string; icon: ElementType }> = [
   { id: 'learners', label: 'Learners', icon: Users },
-  { id: 'performance', label: 'Performance', icon: FileBarChart },
-  { id: 'teaching-activity', label: 'Teaching Activity', icon: Activity },
+  { id: 'performance', label: 'Class Results', icon: FileBarChart },
+  { id: 'teaching-activity', label: 'Teaching Progress', icon: Activity },
 ];
+const EMPTY_LEARNERS: InstructorLearnerReportRow[] = [];
 
-function toGenericCompatibilityResult(item: InstructorLearnerReportRow): GenericStudentSection | null {
+function isDetailTab(value: string | null): value is DetailTab {
+  return value === 'learners' || value === 'performance' || value === 'teaching-activity';
+}
+
+function parsePositiveNumber(value: string | null): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function resolveInstructorGenericStudent(item: InstructorLearnerReportRow): GenericStudentSection | null {
+  if (item.generic) return item.generic;
   if (item.generic_result) return item.generic_result;
   if (!item.computed_grade && !item.grade_summary) return null;
 
@@ -67,7 +93,12 @@ function toGenericCompatibilityResult(item: InstructorLearnerReportRow): Generic
     letter_grade: item.computed_grade?.letter_grade ?? item.grade_summary?.final_grade ?? null,
     letter_label: item.computed_grade?.letter_label ?? null,
     grade_status: item.computed_grade?.grade_status ?? null,
+    grade_summary: item.grade_summary ?? null,
   };
+}
+
+function resolveInstructorCbcStudent(item: InstructorLearnerReportRow) {
+  return item.cbc ?? item.cbc_result ?? null;
 }
 
 function buildGenericPerformanceFallback(
@@ -77,14 +108,21 @@ function buildGenericPerformanceFallback(
   if (report.generic_performance || report.generic_summary) {
     return toGenericPerformance(report.generic_performance ?? report.generic_summary);
   }
+  if (report.reporting_source && report.reporting_source !== 'generic') {
+    return null;
+  }
+
+  const gradeDistribution = report.grade_distribution ?? [];
+  const gradeStatusCounts = report.grade_status_counts ?? [];
+  const assessmentBreakdown = report.assessment_type_breakdown ?? [];
 
   if (
     report.average_score == null
     && report.highest_score == null
     && report.lowest_score == null
-    && report.grade_distribution.length === 0
-    && report.grade_status_counts.length === 0
-    && report.assessment_type_breakdown.length === 0
+    && gradeDistribution.length === 0
+    && gradeStatusCounts.length === 0
+    && assessmentBreakdown.length === 0
   ) {
     return null;
   }
@@ -94,20 +132,50 @@ function buildGenericPerformanceFallback(
     highest_score: report.highest_score,
     lowest_score: report.lowest_score,
     computed_count: report.total_learners,
-    distribution_by_letter: countMapFromItems(report.grade_distribution, 'letter_grade'),
-    grade_status_counts: countMapFromItems(report.grade_status_counts, 'grade_status'),
-    assessment_type_breakdown: report.assessment_type_breakdown,
+    distribution_by_letter: countMapFromItems(gradeDistribution, 'letter_grade'),
+    grade_status_counts: countMapFromItems(gradeStatusCounts, 'grade_status'),
+    assessment_type_breakdown: assessmentBreakdown,
   };
 }
 
 export default function InstructorCohortSubjectDetailReportPage() {
   const params = useParams<{ id: string }>();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
   const cohortSubjectId = Number(params.id);
   const isValidCohortSubjectId = Number.isFinite(cohortSubjectId) && cohortSubjectId > 0;
+  const activeTab: DetailTab = isDetailTab(tabParam) ? tabParam : 'learners';
+  const selectedTerm = parsePositiveNumber(searchParams.get('term'));
 
-  const [activeTab, setActiveTab] = useState<DetailTab>('learners');
-  const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+
+  const updateSearchParams = useCallback((updates: {
+    tab?: DetailTab;
+    term?: number | null;
+  }) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    if (updates.tab !== undefined) {
+      nextParams.set('tab', updates.tab);
+    }
+
+    if (updates.term !== undefined) {
+      if (updates.term) {
+        nextParams.set('term', String(updates.term));
+      } else {
+        nextParams.delete('term');
+      }
+    }
+
+    const nextUrl = nextParams.toString()
+      ? `${pathname}?${nextParams.toString()}`
+      : pathname;
+
+    router.replace(nextUrl, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const { terms, loading: termsLoading } = useTerms();
   const {
@@ -132,73 +200,88 @@ export default function InstructorCohortSubjectDetailReportPage() {
     { enabled: activeTab === 'teaching-activity' && isValidCohortSubjectId },
   );
 
-  const cohortSubjectMeta = cohortSubjects.find((item) => item.id === cohortSubjectId) ?? null;
-  const reportMeta = learnersQuery.report ?? performanceQuery.report ?? teachingActivityQuery.report ?? null;
-
-  const pageTitle = cohortSubjectMeta
-    ? `${cohortSubjectMeta.cohort_name} — ${cohortSubjectMeta.subject_name}`
-    : reportMeta?.cohort_subject
-      ? `${reportMeta.cohort_subject.cohort_name} — ${reportMeta.cohort_subject.subject_name}`
-      : `Cohort Subject #${cohortSubjectId}`;
-
-  const reportingSource = (reportMeta?.reporting_source ?? cohortSubjectMeta?.reporting_source ?? 'unsupported') as ReportingSource;
-  const curriculumType = reportMeta?.curriculum_type ?? cohortSubjectMeta?.curriculum_type ?? null;
-  const status = reportMeta?.status ?? cohortSubjectMeta?.status ?? null;
-  const note = reportMeta?.note ?? cohortSubjectMeta?.note ?? null;
-
-  const genericPerformance = buildGenericPerformanceFallback(performanceQuery.report);
-  const cbcPerformance = toCbcPerformance(
-    performanceQuery.report?.cbc_performance ?? performanceQuery.report?.cbc_summary,
-  ) as CbcPerformance | null;
-
   const activeQuery = activeTab === 'learners'
     ? learnersQuery
     : activeTab === 'performance'
       ? performanceQuery
       : teachingActivityQuery;
 
+  const cohortSubjectMeta = cohortSubjects.find((item) => item.id === cohortSubjectId) ?? null;
+  const reportMeta = activeQuery.report
+    ?? learnersQuery.report
+    ?? performanceQuery.report
+    ?? teachingActivityQuery.report
+    ?? null;
+
+  const learners = learnersQuery.report?.learners ?? EMPTY_LEARNERS;
+  const termLabel = selectedTerm
+    ? terms.find((term) => term.id === selectedTerm)?.name ?? `Term ${selectedTerm}`
+    : 'All terms';
+
+  const pageTitle = cohortSubjectMeta
+    ? `${cohortSubjectMeta.cohort_name} — ${cohortSubjectMeta.subject_name}`
+    : reportMeta?.cohort_subject
+      ? `${reportMeta.cohort_subject.cohort_name ?? 'Class'} — ${reportMeta.cohort_subject.subject_name}`
+      : `Class Subject #${cohortSubjectId}`;
+
+  const reportingSource = (reportMeta?.reporting_source ?? cohortSubjectMeta?.reporting_source ?? 'unsupported') as ReportingSource;
+  const curriculumType = getCurriculumTypeLabel(reportMeta?.curriculum_type ?? cohortSubjectMeta?.curriculum_type ?? null);
+  const status = reportMeta?.status ?? cohortSubjectMeta?.status ?? null;
+  const note = reportMeta?.note ?? cohortSubjectMeta?.note ?? null;
+
+  const genericPerformance = reportingSource === 'generic'
+    ? buildGenericPerformanceFallback(performanceQuery.report)
+    : null;
+  const cbcPerformance = reportingSource === 'cbc'
+    ? toCbcPerformance(
+        performanceQuery.report?.cbc_performance ?? performanceQuery.report?.cbc_summary,
+      )
+    : null;
+
   const exportPayload = useMemo<ExportPayload | null>(() => {
     if (!isValidCohortSubjectId) return null;
 
     if (activeTab === 'learners' && learnersQuery.report) {
       return {
-        title: `${pageTitle} Learners`,
-        subtitle: selectedTerm
-          ? terms.find((term) => term.id === selectedTerm)?.name ?? 'Selected term'
-          : 'All terms',
+        title: `${pageTitle} Class Learners`,
+        subtitle: termLabel,
         metadata: {
           generatedAt: new Date().toLocaleString(),
         },
         columns: [
           { key: 'student_name', label: 'Learner', width: 24 },
           { key: 'admission_number', label: 'Admission No.', width: 14 },
-          { key: 'reporting_source', label: 'Reporting Source', width: 18 },
-          { key: 'status', label: 'Result Status', width: 16 },
+          { key: 'report_type', label: 'Report Type', width: 18 },
+          { key: 'status', label: 'Status', width: 16 },
           { key: 'attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
-          { key: 'generic_score', label: 'Generic Score', format: 'percentage', width: 14, align: 'right' as const },
+          { key: 'mark', label: 'Mark', format: 'percentage', width: 14, align: 'right' as const },
           { key: 'cbc_weighted_score', label: 'CBC Weighted Score', format: 'percentage', width: 18, align: 'right' as const },
           { key: 'cbc_code', label: 'CBC Code', width: 12 },
-          { key: 'assessments', label: 'Assessment Completion', width: 20 },
+          { key: 'assessments', label: 'Completed Assessments', width: 22 },
         ],
-        rows: learnersQuery.report.learners.map((item) => {
-          const genericResult = toGenericCompatibilityResult(item);
-          const cbcResult = resolveCbcStudentResult(item.cbc_result ?? null);
+        rows: learners.map((item) => {
+          const genericResult = resolveInstructorGenericStudent(item);
+          const cbcStudent = resolveInstructorCbcStudent(item);
+          const cbcResult = resolveCbcStudentResult(cbcStudent);
           return {
             student_name: item.student.name,
             admission_number: item.student.admission_number,
-            reporting_source: item.reporting_source,
-            status: item.status ?? item.computed_grade?.grade_status ?? '—',
+            report_type: getReportingSourceLabel(item.reporting_source),
+            status: getReportingStatusLabel(item.status)
+              ?? genericResult?.grade_status
+              ?? cbcResult?.result_status
+              ?? '—',
             attendance: item.attendance_summary?.average ?? null,
-            generic_score: genericResult?.final_score ?? genericResult?.average_score ?? genericResult?.weighted_average ?? null,
+            mark: genericResult?.final_score ?? genericResult?.average_score ?? genericResult?.weighted_average ?? null,
             cbc_weighted_score: cbcResult?.weighted_score ?? null,
             cbc_code: cbcResult?.cbc_code ?? '—',
             assessments: `${item.assessment_completion.completed_scores ?? item.assessment_completion.finalized_assessments}/${item.assessment_completion.total_assessments}`,
           };
         }),
-        fileName: `learner-report-${cohortSubjectId}`,
+        fileName: `class-learners-${cohortSubjectId}`,
         includeMetadata: true,
         includeTimestamp: true,
-        sheetName: 'Learners',
+        sheetName: 'Class Learners',
         freezeHeader: true,
         autoFilter: true,
         orientation: 'landscape' as const,
@@ -208,13 +291,13 @@ export default function InstructorCohortSubjectDetailReportPage() {
     if (activeTab === 'performance' && performanceQuery.report) {
       const rows = genericPerformance
         ? [
-            ...Object.entries(genericPerformance.distribution_by_letter).map(([label, count]) => ({
-              section: 'Generic Numeric Distribution',
+            ...Object.entries(genericPerformance.distribution_by_letter ?? {}).map(([label, count]) => ({
+              section: 'Marks Distribution',
               label,
               count,
               score: null,
             })),
-            ...Object.entries(genericPerformance.grade_status_counts).map(([label, count]) => ({
+            ...Object.entries(genericPerformance.grade_status_counts ?? {}).map(([label, count]) => ({
               section: 'Result Status',
               label,
               count,
@@ -229,13 +312,13 @@ export default function InstructorCohortSubjectDetailReportPage() {
           ]
         : cbcPerformance
           ? [
-              ...Object.entries(cbcPerformance.result_counts).map(([label, count]) => ({
+              ...Object.entries(cbcPerformance.result_counts ?? {}).map(([label, count]) => ({
                 section: 'CBC Result Status',
                 label,
                 count,
                 score: null,
               })),
-              ...Object.entries(cbcPerformance.distribution_by_code).map(([label, count]) => ({
+              ...Object.entries(cbcPerformance.distribution_by_code ?? {}).map(([label, count]) => ({
                 section: 'CBC Code',
                 label,
                 count,
@@ -245,12 +328,10 @@ export default function InstructorCohortSubjectDetailReportPage() {
           : [];
 
       return {
-        title: `${pageTitle} Performance`,
-        subtitle: selectedTerm
-          ? terms.find((term) => term.id === selectedTerm)?.name ?? 'Selected term'
-          : 'All terms',
+        title: `${pageTitle} Class Results`,
+        subtitle: termLabel,
         metadata: {
-          reportingSource,
+          reportType: getReportingSourceLabel(reportingSource),
           generatedAt: new Date().toLocaleString(),
         },
         columns: [
@@ -260,10 +341,10 @@ export default function InstructorCohortSubjectDetailReportPage() {
           { key: 'score', label: 'Average Score', format: 'percentage', width: 16, align: 'right' as const },
         ],
         rows,
-        fileName: `performance-report-${cohortSubjectId}`,
+        fileName: `class-results-${cohortSubjectId}`,
         includeMetadata: true,
         includeTimestamp: true,
-        sheetName: 'Performance',
+        sheetName: 'Class Results',
         freezeHeader: true,
         autoFilter: true,
         orientation: 'landscape' as const,
@@ -272,16 +353,14 @@ export default function InstructorCohortSubjectDetailReportPage() {
 
     if (activeTab === 'teaching-activity' && teachingActivityQuery.report) {
       return {
-        title: `${pageTitle} Teaching Activity`,
-        subtitle: selectedTerm
-          ? terms.find((term) => term.id === selectedTerm)?.name ?? 'Selected term'
-          : 'All terms',
+        title: `${pageTitle} Teaching Progress`,
+        subtitle: termLabel,
         metadata: {
           generatedAt: new Date().toLocaleString(),
         },
         columns: [
-          { key: 'sessions_created', label: 'Sessions Created', format: 'number', width: 16, align: 'right' as const },
-          { key: 'sessions_completed', label: 'Sessions Completed', format: 'number', width: 18, align: 'right' as const },
+          { key: 'sessions_created', label: 'Lessons Planned', format: 'number', width: 16, align: 'right' as const },
+          { key: 'sessions_completed', label: 'Lessons Completed', format: 'number', width: 18, align: 'right' as const },
           { key: 'attendance_marked', label: 'Attendance Marked', format: 'number', width: 18, align: 'right' as const },
           { key: 'attendance_expected', label: 'Attendance Expected', format: 'number', width: 18, align: 'right' as const },
           { key: 'attendance_completeness', label: 'Attendance Completeness', format: 'percentage', width: 20, align: 'right' as const },
@@ -293,10 +372,10 @@ export default function InstructorCohortSubjectDetailReportPage() {
           attendance_expected: teachingActivityQuery.report.attendance_expected,
           attendance_completeness: teachingActivityQuery.report.attendance_completeness,
         }],
-        fileName: `teaching-activity-report-${cohortSubjectId}`,
+        fileName: `teaching-progress-${cohortSubjectId}`,
         includeMetadata: true,
         includeTimestamp: true,
-        sheetName: 'Teaching Activity',
+        sheetName: 'Teaching Progress',
         freezeHeader: true,
         autoFilter: true,
         orientation: 'landscape' as const,
@@ -310,25 +389,25 @@ export default function InstructorCohortSubjectDetailReportPage() {
     cohortSubjectId,
     genericPerformance,
     isValidCohortSubjectId,
+    learners,
     learnersQuery.report,
     pageTitle,
     performanceQuery.report,
     reportingSource,
-    selectedTerm,
     teachingActivityQuery.report,
-    terms,
+    termLabel,
   ]);
 
   if (!isValidCohortSubjectId) {
-    return <ErrorState message="Invalid cohort subject." fullScreen={false} />;
+    return <ErrorState message="This class subject could not be found." fullScreen={false} />;
   }
 
-  if (cohortSubjectsLoading && !cohortSubjectMeta && activeQuery.loading) {
+  if (cohortSubjectsLoading && !cohortSubjectMeta && !reportMeta && activeQuery.loading) {
     return <LoadingSpinner />;
   }
 
-  if (cohortSubjectsError && !cohortSubjectMeta) {
-    return <ErrorState message={cohortSubjectsError} fullScreen={false} />;
+  if (cohortSubjectsError && !cohortSubjectMeta && !reportMeta && !activeQuery.loading) {
+    return <ErrorState message="We could not load this class view. Try reloading." fullScreen={false} />;
   }
 
   return (
@@ -345,7 +424,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">{pageTitle}</h1>
             <p className="mt-1 text-gray-500">
-              Assigned-scope reporting for learners, performance, and teaching activity.
+              Your class view for learners, marks, attendance, and teaching progress.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -365,14 +444,20 @@ export default function InstructorCohortSubjectDetailReportPage() {
           <div className="flex flex-wrap gap-2">
             {cohortSubjectMeta && <Badge variant="blue">{cohortSubjectMeta.cohort_name}</Badge>}
             {curriculumType && <Badge variant="purple">{curriculumType}</Badge>}
-            <Badge variant="default">{reportingSource}</Badge>
-            {status && <Badge variant="default">{status}</Badge>}
+            <Badge variant={getReportingSourceVariant(reportingSource)}>
+              {getReportingSourceLabel(reportingSource)}
+            </Badge>
+            {status && (
+              <Badge variant="default">{getReportingStatusLabel(status) ?? status}</Badge>
+            )}
           </div>
           <div className="w-full xl:w-72">
             <Select
-              label="Term (optional)"
+              label="Term"
               value={selectedTerm?.toString() ?? ''}
-              onChange={(event) => setSelectedTerm(event.target.value ? Number(event.target.value) : null)}
+              onChange={(event) => updateSearchParams({
+                term: event.target.value ? Number(event.target.value) : null,
+              })}
               disabled={termsLoading}
               options={[
                 { value: '', label: 'All terms' },
@@ -394,7 +479,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => updateSearchParams({ tab: tab.id })}
               className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                 active
                   ? 'border-blue-600 bg-blue-600 text-white'
@@ -415,22 +500,22 @@ export default function InstructorCohortSubjectDetailReportPage() {
           fullScreen={false}
           message={
             activeQuery.errorStatus === 403
-              ? activeQuery.error || 'You do not have access to this report.'
+              ? 'You do not have access to this class subject.'
               : activeQuery.errorStatus === 404
-                ? activeQuery.error || 'This report could not be found.'
-                : activeQuery.error
+                ? 'This class subject could not be found.'
+                : 'We could not load this class view. Try reloading.'
           }
           onRetry={activeQuery.refetch}
         />
       )}
 
       {!activeQuery.loading && !activeQuery.error && activeTab === 'learners' && learnersQuery.report && (
-        learnersQuery.report.learners.length === 0 ? (
+        learners.length === 0 ? (
           <Card>
             <div className="py-12 text-center">
               <Users className="mx-auto h-10 w-10 text-gray-300" />
               <p className="mt-2 text-sm text-gray-500">
-                No active learners are visible for this cohort subject.
+                No learners are currently enrolled for this subject.
               </p>
             </div>
           </Card>
@@ -441,7 +526,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
               <Badge variant="blue">{learnersQuery.report.total_learners} learners</Badge>
             </div>
             <div className="grid gap-4">
-              {learnersQuery.report.learners.map((item) => (
+              {learners.map((item) => (
                 <CurriculumSubjectReportCard
                   key={item.student.id}
                   heading={item.student.name}
@@ -453,8 +538,8 @@ export default function InstructorCohortSubjectDetailReportPage() {
                   note={item.note}
                   attendance={item.attendance_summary}
                   assessmentCompletion={item.assessment_completion}
-                  genericStudent={toGenericCompatibilityResult(item)}
-                  cbcStudent={item.cbc_result ?? null}
+                  genericStudent={resolveInstructorGenericStudent(item)}
+                  cbcStudent={resolveInstructorCbcStudent(item)}
                 />
               ))}
             </div>
@@ -465,29 +550,84 @@ export default function InstructorCohortSubjectDetailReportPage() {
       {!activeQuery.loading && !activeQuery.error && activeTab === 'performance' && performanceQuery.report && (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard title="Learners" value={performanceQuery.report.total_learners} icon={Users} color="blue" />
-            <StatsCard title="Average Attendance" value={formatPercent(performanceQuery.report.average_attendance)} icon={Users} color="indigo" />
-            <StatsCard title="Generic Average" value={formatPercent(genericPerformance?.average_score)} icon={BookOpen} color="green" />
-            <StatsCard title="CBC Weighted Score" value={formatPercent(cbcPerformance?.average_weighted_score)} icon={BookOpen} color="purple" />
+            {reportingSource === 'generic' && (
+              <>
+                <StatsCard title="Learners" value={performanceQuery.report.total_learners} icon={Users} color="blue" />
+                <StatsCard title="Average Attendance" value={formatPercent(performanceQuery.report.average_attendance)} icon={Users} color="indigo" />
+                <StatsCard title="Average Mark" value={formatPercent(genericPerformance?.average_score ?? performanceQuery.report.average_score)} icon={BookOpen} color="green" />
+                <StatsCard title="Computed Results" value={genericPerformance?.computed_count ?? 0} icon={CheckCircle2} color="purple" />
+              </>
+            )}
+
+            {reportingSource === 'cbc' && (
+              <>
+                <StatsCard title="Learners" value={performanceQuery.report.total_learners} icon={Users} color="blue" />
+                <StatsCard title="Average Attendance" value={formatPercent(performanceQuery.report.average_attendance)} icon={Users} color="indigo" />
+                <StatsCard title="CBC Weighted Score" value={formatPercent(cbcPerformance?.average_weighted_score)} icon={BookOpen} color="green" />
+                <StatsCard
+                  title="Final Results"
+                  value={cbcPerformance?.result_counts?.FINAL ?? 0}
+                  subtitle={`Missing results: ${cbcPerformance?.missing_result_count ?? 0}`}
+                  icon={CheckCircle2}
+                  color="purple"
+                />
+              </>
+            )}
+
+            {(reportingSource === 'cambridge_pending' || reportingSource === 'unsupported') && (
+              <>
+                <StatsCard title="Learners" value={performanceQuery.report.total_learners} icon={Users} color="blue" />
+                <StatsCard title="Average Attendance" value={formatPercent(performanceQuery.report.average_attendance)} icon={Users} color="indigo" />
+                <StatsCard
+                  title="Assessment Completion"
+                  value={formatPercent(getAssessmentCompletionRatio(performanceQuery.report.assessment_completion))}
+                  icon={CheckCircle2}
+                  color="green"
+                />
+                <StatsCard
+                  title="Report Status"
+                  value={reportingSource === 'cambridge_pending' ? 'Pending' : 'Unavailable'}
+                  subtitle={getReportingSourceLabel(reportingSource)}
+                  icon={FileBarChart}
+                  color={reportingSource === 'cambridge_pending' ? 'yellow' : 'orange'}
+                />
+              </>
+            )}
           </div>
 
           {performanceQuery.report.assessment_completion && (
             <AssessmentCompletionSummary completion={performanceQuery.report.assessment_completion} />
           )}
 
-          {reportingSource === 'generic' && genericPerformance && (
+          {reportingSource === 'generic' && (
             <Card>
-              <GenericPerformanceSummary
-                performance={genericPerformance}
-                averageGrade={performanceQuery.report.average_score}
-                averageGradeNote={note}
-              />
+              {genericPerformance ? (
+                <GenericPerformanceSummary
+                  performance={genericPerformance}
+                  averageGrade={performanceQuery.report.average_score}
+                  averageGradeNote={note}
+                />
+              ) : (
+                <ReportingSourceState
+                  reportingSource={reportingSource}
+                  status={status}
+                  note={note}
+                />
+              )}
             </Card>
           )}
 
-          {reportingSource === 'cbc' && cbcPerformance && (
+          {reportingSource === 'cbc' && (
             <Card>
-              <CbcPerformanceSummary performance={cbcPerformance} />
+              {cbcPerformance ? (
+                <CbcPerformanceSummary performance={cbcPerformance} />
+              ) : (
+                <ReportingSourceState
+                  reportingSource={reportingSource}
+                  status={status}
+                  note={note}
+                />
+              )}
             </Card>
           )}
 
@@ -504,8 +644,8 @@ export default function InstructorCohortSubjectDetailReportPage() {
       {!activeQuery.loading && !activeQuery.error && activeTab === 'teaching-activity' && teachingActivityQuery.report && (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatsCard title="Sessions Created" value={teachingActivityQuery.report.sessions_created} icon={BookOpen} color="blue" />
-            <StatsCard title="Sessions Completed" value={teachingActivityQuery.report.sessions_completed} icon={CheckCircle2} color="green" />
+            <StatsCard title="Lessons Planned" value={teachingActivityQuery.report.sessions_created} icon={BookOpen} color="blue" />
+            <StatsCard title="Lessons Completed" value={teachingActivityQuery.report.sessions_completed} icon={CheckCircle2} color="green" />
             <StatsCard title="Attendance Marked" value={teachingActivityQuery.report.attendance_marked} icon={Users} color="purple" />
             <StatsCard title="Attendance Completeness" value={formatPercent(teachingActivityQuery.report.attendance_completeness)} icon={Activity} color="indigo" />
           </div>
@@ -526,7 +666,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
               <div className="py-12 text-center">
                 <Activity className="mx-auto h-10 w-10 text-gray-300" />
                 <p className="mt-2 text-sm text-gray-500">
-                  No teaching activity has been recorded for this cohort subject yet.
+                  No lessons or attendance records have been captured for this subject yet.
                 </p>
               </div>
             </Card>
@@ -540,7 +680,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
           onClose={() => setExportOpen(false)}
           payload={exportPayload}
           defaultFormat="excel"
-          title="Export Report"
+          title="Export Class View"
         />
       )}
     </div>

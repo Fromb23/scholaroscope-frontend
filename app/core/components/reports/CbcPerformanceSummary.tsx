@@ -17,11 +17,18 @@ export function CbcPerformanceSummary({
 }: CbcPerformanceSummaryProps) {
   if (!performance) return null;
 
+  const resultCounts = performance.result_counts ?? {
+    FINAL: 0,
+    PROVISIONAL: 0,
+    INCOMPLETE: 0,
+    stale_count: 0,
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <ClipboardCheck className="h-4 w-4 text-green-600" />
-        <h3 className="text-sm font-medium text-gray-900">CBC Performance</h3>
+        <h3 className="text-sm font-medium text-gray-900">CBC Results Summary</h3>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -32,14 +39,14 @@ export function CbcPerformanceSummary({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Final" value={formatNumber(performance.result_counts.FINAL, 0)} />
-        <Metric label="Provisional" value={formatNumber(performance.result_counts.PROVISIONAL, 0)} />
-        <Metric label="Incomplete" value={formatNumber(performance.result_counts.INCOMPLETE, 0)} />
-        <Metric label="Stale" value={formatNumber(performance.result_counts.stale_count, 0)} />
+        <Metric label="Final" value={formatNumber(resultCounts.FINAL, 0)} />
+        <Metric label="Provisional" value={formatNumber(resultCounts.PROVISIONAL, 0)} />
+        <Metric label="Incomplete" value={formatNumber(resultCounts.INCOMPLETE, 0)} />
+        <Metric label="Stale" value={formatNumber(resultCounts.stale_count, 0)} />
       </div>
 
       <div>
-        <h4 className="text-sm font-medium text-gray-900">CBC Performance Code Distribution</h4>
+        <h4 className="text-sm font-medium text-gray-900">CBC Code Distribution</h4>
         <div className="mt-2">
           <CbcCodeDistribution distribution={performance.distribution_by_code} />
         </div>

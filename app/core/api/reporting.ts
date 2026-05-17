@@ -51,6 +51,28 @@ function toAttendanceRiskLevel(value: unknown): AttendanceRiskLevel {
     : 'WATCH';
 }
 
+function normalizeInstructorLearnersReport(
+  report: InstructorCohortSubjectLearnersReport,
+): InstructorCohortSubjectLearnersReport {
+  return {
+    ...report,
+    learners: Array.isArray(report.learners) ? report.learners : [],
+  };
+}
+
+function normalizeInstructorPerformanceReport(
+  report: InstructorCohortSubjectPerformanceReport,
+): InstructorCohortSubjectPerformanceReport {
+  return {
+    ...report,
+    grade_distribution: Array.isArray(report.grade_distribution) ? report.grade_distribution : [],
+    grade_status_counts: Array.isArray(report.grade_status_counts) ? report.grade_status_counts : [],
+    assessment_type_breakdown: Array.isArray(report.assessment_type_breakdown)
+      ? report.assessment_type_breakdown
+      : [],
+  };
+}
+
 function normalizeInstructorAttendanceRiskItem(value: unknown): InstructorAttendanceRiskItem | null {
   if (!isRecord(value)) {
     return null;
@@ -372,7 +394,7 @@ export const instructorReportsAPI = {
         params: termId ? { term_id: termId } : undefined,
       }
     );
-    return response.data;
+    return normalizeInstructorLearnersReport(response.data);
   },
 
   getCohortSubjectPerformance: async (
@@ -385,7 +407,7 @@ export const instructorReportsAPI = {
         params: termId ? { term_id: termId } : undefined,
       }
     );
-    return response.data;
+    return normalizeInstructorPerformanceReport(response.data);
   },
 
   getCohortSubjectTeachingActivity: async (
