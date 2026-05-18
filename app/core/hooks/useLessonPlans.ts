@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import type { PaginatedResponse } from '@/app/core/types/api';
+import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type {
@@ -387,5 +388,90 @@ export const useGenerateLessonPlan = () => {
         result,
         clearError: () => setError(null),
         clearResult: () => setResult(null),
+    };
+};
+
+export const useCreateLessonPlan = () => {
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+    const createLessonPlan = async (payload: LessonPlanCreatePayload): Promise<LessonPlan> => {
+        try {
+            setSubmitting(true);
+            setError(null);
+            setErrorStatus(null);
+            return await lessonPlanAPI.create(payload);
+        } catch (err) {
+            const apiError = err as ApiError;
+            const message = getLessonPlanCreateMessage(
+                apiError,
+                'Failed to create lesson plan.'
+            );
+            setError(message);
+            setErrorStatus(getStatusCode(apiError));
+            throw new Error(message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return {
+        createLessonPlan,
+        submitting,
+        error,
+        errorStatus,
+        clearError: () => setError(null),
+    };
+};
+
+export const useLessonPlanCurriculumContext = (cohortSubjectId: number | null) => {
+    const [curriculumContext, setCurriculumContext] = useState<LessonPlanCurriculumContext | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+    const fetchCurriculumContext = useCallback(async () => {
+        if (!cohortSubjectId) {
+            setCurriculumContext(null);
+            setLoading(false);
+            setError(null);
+            setErrorStatus(null);
+            return null;
+        }
+
+        try {
+            setLoading(true);
+            const data = await lessonPlanAPI.getCurriculumContext(cohortSubjectId);
+            setCurriculumContext(data);
+            setError(null);
+            setErrorStatus(null);
+            return data;
+        } catch (err) {
+            const apiError = err as ApiError;
+            setCurriculumContext(null);
+            setError(
+                extractErrorMessage(
+                    apiError,
+                    'We could not load lesson planning for this class subject.'
+                )
+            );
+            setErrorStatus(getStatusCode(apiError));
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }, [cohortSubjectId]);
+
+    useEffect(() => {
+        void fetchCurriculumContext();
+    }, [fetchCurriculumContext]);
+
+    return {
+        curriculumContext,
+        loading,
+        error,
+        errorStatus,
+        refetch: fetchCurriculumContext,
     };
 };

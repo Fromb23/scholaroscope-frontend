@@ -60,6 +60,25 @@ export interface LearningOutcome {
   created_at: string;
 }
 
+export interface CbcLessonPlanOutcomeOption {
+  plugin: 'cbc';
+  outcome_id: number;
+  code: string;
+  text: string;
+  strand: {
+    id: number;
+    name: string;
+  };
+  sub_strand: {
+    id: number;
+    name: string;
+  };
+  subject_profile: {
+    id: number | null;
+    name: string;
+  };
+}
+
 // ============================================================================
 // Form data — code + sequence intentionally absent (server-generated)
 // ============================================================================
