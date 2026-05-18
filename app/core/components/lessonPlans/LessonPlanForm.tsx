@@ -191,18 +191,18 @@ export function LessonPlanForm({ lessonPlan, onSubmit }: LessonPlanFormProps) {
             <Card>
                 <div className="space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Session Context
+                        Lesson Context
                     </p>
                     <div className="grid grid-cols-1 gap-4 text-sm text-gray-700 md:grid-cols-2">
                         <div>
-                            <p className="text-xs text-gray-500">Session</p>
+                            <p className="text-xs text-gray-500">Lesson</p>
                             <p className="font-medium text-gray-900">
-                                {lessonPlan.session_title || lessonPlan.title || `Session ${lessonPlan.session}`}
+                                {lessonPlan.session_title || lessonPlan.title || 'Not scheduled yet'}
                             </p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500">Session Date</p>
-                            <p className="font-medium text-gray-900">{lessonPlan.session_date || 'Not set'}</p>
+                            <p className="text-xs text-gray-500">Lesson Date</p>
+                            <p className="font-medium text-gray-900">{lessonPlan.session_date || lessonPlan.planned_date || 'Not set'}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500">Cohort</p>

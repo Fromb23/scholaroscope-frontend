@@ -182,7 +182,7 @@ export function InstructorKeyMetrics({ metrics }: InstructorKeyMetricsProps) {
                 onClick={() => router.push('/learners')}
             />
             <MetricCard
-                title="Today's Sessions"
+                title="Today's Lessons"
                 value={metrics.sessions.today}
                 subtitle={`${metrics.sessions.upcoming} upcoming`}
                 icon={Calendar}
@@ -266,10 +266,10 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
                     <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-sm text-gray-500">No sessions scheduled today</p>
                     <button
-                        onClick={() => router.push('/sessions/new')}
+                        onClick={() => router.push('/lesson-plans/new')}
                         className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                     >
-                        Create Session
+                        Plan a lesson
                     </button>
                 </div>
             )}

@@ -11,6 +11,7 @@ const STATUS_META: Record<
     DRAFT: { label: 'Draft', variant: 'default' },
     GENERATED: { label: 'Generated', variant: 'blue' },
     REVIEWED: { label: 'Reviewed', variant: 'purple' },
+    SCHEDULED: { label: 'Scheduled', variant: 'indigo' },
     USED: { label: 'Used', variant: 'green' },
     ARCHIVED: { label: 'Archived', variant: 'orange' },
 };

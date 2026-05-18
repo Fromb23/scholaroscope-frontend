@@ -1,7 +1,10 @@
+import type { Session } from '@/app/core/types/session';
+
 export type LessonPlanStatus =
     | 'DRAFT'
     | 'GENERATED'
     | 'REVIEWED'
+    | 'SCHEDULED'
     | 'USED'
     | 'ARCHIVED';
 
@@ -17,16 +20,58 @@ export interface LessonPlanQueryParams {
     ordering?: string;
 }
 
+export interface PlannedOutcome {
+    plugin: string;
+    outcome_id: number;
+    code: string;
+    text: string;
+    strand: string;
+    sub_strand: string;
+    status?: 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
+}
+
+export interface ReferencePageInput {
+    resource_title: string;
+    author?: string;
+    publisher?: string;
+    edition?: string;
+    year?: number | null;
+    resource_type?: string;
+    chapter?: string;
+    topic_label?: string;
+    page_start: number;
+    page_end: number;
+    notes?: string;
+    keywords?: string[];
+}
+
 export interface LessonPlanReferenceRecord {
-    [key: string]: unknown;
+    id: number;
+    lesson_plan: number;
+    reference_entry: number;
+    reference_citation: string;
+    resource_title: string;
+    chapter: string;
+    topic_label: string;
+    page_start: number;
+    page_end: number;
+    notes: string;
+    keywords: string[];
+    selected_by_ai: boolean;
+    ai_reason: string;
+    confidence: number;
+    citation_snapshot: string;
+    created_at: string;
 }
 
 export interface LessonPlan {
     id: number;
     organization: number | null;
-    session: number;
+    session: number | null;
     session_title: string | null;
     session_date: string | null;
+    cohort_subject: number | null;
+    cohort_subject_name: string | null;
     teacher: number | null;
     teacher_name: string | null;
     cohort: number | null;
@@ -41,6 +86,10 @@ export interface LessonPlan {
     academic_year_name: string | null;
     title: string;
     status: LessonPlanStatus;
+    planned_outcomes: PlannedOutcome[];
+    planned_date: string | null;
+    planned_start_time: string | null;
+    planned_end_time: string | null;
     objectives: string[];
     prior_knowledge: string | null;
     learning_resources: string[];
@@ -52,39 +101,57 @@ export interface LessonPlan {
     conclusion: string | null;
     reflection: string | null;
     generated_context: Record<string, unknown> | null;
-    references_snapshot: unknown[];
+    references_snapshot: Array<Record<string, unknown>>;
     generated_by_ai: boolean;
     ai_provider: string | null;
     ai_model: string | null;
     generated_at: string | null;
     reviewed_at: string | null;
     used_at: string | null;
-    selected_references: unknown[] | null;
+    selected_references: LessonPlanReferenceRecord[];
     created_at: string;
     updated_at: string;
 }
 
 export interface LessonPlanCreatePayload {
-    session: number;
-    title: string;
-    objectives: string[];
-    prior_knowledge: string;
-    learning_resources: string[];
-    introduction: string;
-    lesson_development: string;
-    learner_activities: string;
-    assessment_strategy: string;
-    differentiation: string;
-    conclusion: string;
-    reflection: string;
+    cohort_subject: number;
+    term: number;
+    title?: string;
+    planned_outcomes: PlannedOutcome[];
+    planned_date?: string | null;
+    planned_start_time?: string | null;
+    planned_end_time?: string | null;
+    reference_pages: ReferencePageInput[];
 }
 
-export type LessonPlanUpdatePayload = Partial<LessonPlanCreatePayload>;
+export interface LessonPlanUpdatePayload {
+    title?: string;
+    planned_outcomes?: PlannedOutcome[];
+    planned_date?: string | null;
+    planned_start_time?: string | null;
+    planned_end_time?: string | null;
+    objectives?: string[];
+    prior_knowledge?: string;
+    learning_resources?: string[];
+    introduction?: string;
+    lesson_development?: string;
+    learner_activities?: string;
+    assessment_strategy?: string;
+    differentiation?: string;
+    conclusion?: string;
+    reflection?: string;
+    reference_pages?: ReferencePageInput[];
+}
 
 export interface GenerateLessonPlanPayload {
+    force_regenerate?: boolean;
+    use_ai?: boolean;
+}
+
+export interface GenerateLessonPlanFromSessionPayload {
     session_id: number;
-    force_regenerate: boolean;
-    use_ai: boolean;
+    force_regenerate?: boolean;
+    use_ai?: boolean;
 }
 
 export interface GenerateLessonPlanResponse {
@@ -92,6 +159,20 @@ export interface GenerateLessonPlanResponse {
     created: boolean;
     selected_references_count: number;
     lesson_plan: LessonPlan;
+}
+
+export interface ScheduleLessonPayload {
+    session_date: string;
+    start_time: string;
+    end_time: string;
+    venue?: string;
+    description?: string;
+}
+
+export interface ScheduleLessonResponse {
+    detail: string;
+    lesson_plan: LessonPlan;
+    session: Session;
 }
 
 export interface MarkUsedPayload {
@@ -105,16 +186,21 @@ export const LESSON_PLAN_STATUS_OPTIONS: Array<{
     { value: 'DRAFT', label: 'Draft' },
     { value: 'GENERATED', label: 'Generated' },
     { value: 'REVIEWED', label: 'Reviewed' },
+    { value: 'SCHEDULED', label: 'Scheduled' },
     { value: 'USED', label: 'Used' },
     { value: 'ARCHIVED', label: 'Archived' },
 ];
 
 export function canMarkLessonPlanReviewed(status: LessonPlanStatus): boolean {
-    return status === 'DRAFT' || status === 'GENERATED';
+    return status === 'GENERATED';
+}
+
+export function canScheduleLesson(status: LessonPlanStatus): boolean {
+    return status === 'GENERATED' || status === 'REVIEWED';
 }
 
 export function canMarkLessonPlanUsed(status: LessonPlanStatus): boolean {
-    return status === 'DRAFT' || status === 'GENERATED' || status === 'REVIEWED';
+    return status === 'SCHEDULED';
 }
 
 export function canArchiveLessonPlan(status: LessonPlanStatus): boolean {

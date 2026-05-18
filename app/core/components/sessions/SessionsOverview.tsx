@@ -339,12 +339,12 @@ function SessionWorkspaceView() {
             <div className="flex justify-between items-start gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        {isInstructor ? 'My Lessons' : 'Session Workspace'}
+                        {isInstructor ? 'My Lessons' : 'Scheduled Lessons'}
                     </h1>
                     <p className="text-gray-600 mt-1 text-sm">
                         {isInstructor
                             ? 'Track your lessons, attendance, and day-to-day teaching flow.'
-                            : 'Manage active sessions, attendance, and cohort-specific history from one workspace.'}
+                            : 'Review scheduled lessons, attendance, and cohort lesson history from one workspace.'}
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -356,10 +356,10 @@ function SessionWorkspaceView() {
                             </Button>
                         </Link>
                     ) : null}
-                    <Link href="/sessions/new">
+                    <Link href="/lesson-plans/new">
                         <Button size="sm">
                             <Plus className="w-4 h-4 sm:mr-1" />
-                            <span className="hidden sm:inline">{isInstructor ? 'Create Lesson' : 'Create Session'}</span>
+                            <span className="hidden sm:inline">Plan a lesson</span>
                         </Button>
                     </Link>
                 </div>
@@ -367,9 +367,9 @@ function SessionWorkspaceView() {
 
             <DesktopOnly>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <StatsCard title={isInstructor ? 'Total Lessons' : 'Total Sessions'} value={totalSessions} icon={Calendar} color="blue" />
-                    <StatsCard title={isInstructor ? "Today's Lessons" : "Today's Sessions"} value={todayCount} icon={Clock} color="green" />
-                    <StatsCard title={isInstructor ? 'Combined Lessons' : 'Merged Sessions'} value={mergedSessionsCount} icon={Layers} color="purple" />
+                    <StatsCard title={isInstructor ? 'Total Lessons' : 'Scheduled Lessons'} value={totalSessions} icon={Calendar} color="blue" />
+                    <StatsCard title="Today's Lessons" value={todayCount} icon={Clock} color="green" />
+                    <StatsCard title={isInstructor ? 'Combined Lessons' : 'Combined Lessons'} value={mergedSessionsCount} icon={Layers} color="purple" />
                     <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
                 </div>
             </DesktopOnly>
@@ -379,7 +379,7 @@ function SessionWorkspaceView() {
                     <div className="p-4">
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-base font-semibold text-gray-900">
-                                {isInstructor ? "Today's Lessons" : "Today's Sessions"}
+                                Today&apos;s Lessons
                             </h2>
                             {!isInstructor ? (
                                 <Link href="/sessions/today">
@@ -480,12 +480,12 @@ function SessionWorkspaceView() {
                         <p className="mt-1 text-sm text-gray-500">
                             {selectedTerm || selectedType
                                 ? 'Try adjusting your filters'
-                                : 'Get started by creating a new session'}
+                                : 'Get started by planning a lesson'}
                         </p>
                         {!selectedTerm && !selectedType ? (
-                            <Link href="/sessions/new">
+                            <Link href="/lesson-plans/new">
                                 <Button className="mt-4">
-                                    <Plus className="mr-2 h-4 w-4" />Create Session
+                                    <Plus className="mr-2 h-4 w-4" />Plan a lesson
                                 </Button>
                             </Link>
                         ) : null}
@@ -719,10 +719,10 @@ function CohortSessionsView({
                 Back to Workspace
               </Button>
             </Link>
-            <Link href="/sessions/new">
+            <Link href="/lesson-plans/new">
               <Button size="sm">
                 <Plus className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Create Session</span>
+                <span className="hidden sm:inline">Plan a lesson</span>
               </Button>
             </Link>
           </div>

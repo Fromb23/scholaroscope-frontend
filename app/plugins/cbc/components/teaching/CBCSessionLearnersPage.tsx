@@ -165,7 +165,7 @@ export function CBCSessionLearnersPage() {
                                             {learner.session_evidence_count > 0 ? 'View' : 'Record'} performance
                                         </Button>
                                     ) : (
-                                        <span className="text-xs text-gray-400">Add what was taught first</span>
+                                        <span className="text-xs text-gray-400">Confirm what was taught first</span>
                                     )}
                                 </div>
                             </div>
@@ -178,12 +178,12 @@ export function CBCSessionLearnersPage() {
                         <div className="flex items-start gap-3">
                             <Target className="h-5 w-5 text-yellow-600 mt-0.5 shrink-0" />
                             <div>
-                                <p className="text-sm font-medium text-yellow-900">No learning goals added yet</p>
+                                <p className="text-sm font-medium text-yellow-900">No taught outcomes have been confirmed yet</p>
                                 <p className="text-sm text-yellow-700 mt-1">
-                                    Add what was taught before recording class performance.
+                                    Confirm what was taught on the lesson page before recording class performance.
                                 </p>
-                                <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`}>
-                                    <Button variant="primary" size="sm" className="mt-3">Add what was taught</Button>
+                                <Link href={`/sessions/${sessionId}`}>
+                                    <Button variant="primary" size="sm" className="mt-3">Open lesson</Button>
                                 </Link>
                             </div>
                         </div>

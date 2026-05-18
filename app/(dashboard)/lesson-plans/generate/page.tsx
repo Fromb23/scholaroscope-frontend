@@ -1,5 +1,5 @@
-import { GenerateLessonPlanPage } from '@/app/core/components/lessonPlans/GenerateLessonPlanPage';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-    return <GenerateLessonPlanPage />;
+    redirect('/lesson-plans/new');
 }

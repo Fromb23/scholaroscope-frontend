@@ -10,8 +10,8 @@ registerSessionTeachingWorkflowResolver({
             pluginKey: 'cbc',
             href: `/cbc/teaching/sessions/${session.id}/outcomes`,
             title: 'CBC Teaching',
-            actionLabel: 'Open CBC Teaching',
-            description: 'Record what was taught, review learners, and capture class performance for this lesson.',
+            actionLabel: 'Record evidence',
+            description: 'Review confirmed taught outcomes, check learners, and record class performance for this lesson.',
         };
     },
 });

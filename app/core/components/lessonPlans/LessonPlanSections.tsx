@@ -161,14 +161,14 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
             <Card>
                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-gray-900">Generated Context</h2>
+                        <h2 className="text-base font-semibold text-gray-900">Planning Notes</h2>
                         <p className="text-sm text-gray-500">
-                            Summary of the session and curriculum context stored with this lesson plan.
+                            Supporting details saved with this lesson plan.
                         </p>
                     </div>
 
                     {contextEntries.length === 0 ? (
-                        <p className="text-sm text-gray-500">No generated context was stored for this lesson plan.</p>
+                        <p className="text-sm text-gray-500">No extra planning notes were saved for this lesson plan.</p>
                     ) : (
                         <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             {contextEntries.map(([key, value]) => (

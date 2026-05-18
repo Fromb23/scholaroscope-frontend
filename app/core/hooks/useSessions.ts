@@ -22,6 +22,7 @@ import {
   SessionDetail,
   AttendanceRecord,
   BulkAttendanceData,
+  ConfirmTaughtOutcomesPayload,
   SessionCohort,
   SessionFormData,
   PaginationState,
@@ -372,11 +373,23 @@ export const useSessionDetail = (
     setSession(updated);
   };
 
+  const confirmTaughtOutcomes = async (
+    data: ConfirmTaughtOutcomesPayload,
+  ): Promise<void> => {
+    if (!sessionId) return;
+    const updated = await sessionAPI.confirmTaughtOutcomes(sessionId, data);
+    setSession(updated);
+  };
+
   return {
     session, attendanceRecords, pagination,
     loading, error,
     refetch: fetchSession,
-    markAttendance, reseedAttendance, completeSession, startSession,
+    markAttendance,
+    reseedAttendance,
+    completeSession,
+    startSession,
+    confirmTaughtOutcomes,
   };
 };
 
