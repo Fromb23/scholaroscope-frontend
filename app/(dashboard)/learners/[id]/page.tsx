@@ -443,7 +443,7 @@ export default function LearnerDetailPage() {
             )}
 
             {/* Attendance */}
-            {attendanceData && (
+            {attendanceData?.statistics && (
                 <Card>
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Attendance Summary</h2>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">

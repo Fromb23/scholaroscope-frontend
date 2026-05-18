@@ -1,7 +1,5 @@
-'use client';
-
-import { CreateSessionPage } from '@/app/core/components/sessions/CreateSessionPage';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-    return <CreateSessionPage />;
+    redirect('/lesson-plans/new');
 }

@@ -13,6 +13,7 @@ import {
   AttendanceRecord,
   AttendanceSummary,
   BulkAttendanceData,
+  ConfirmTaughtOutcomesPayload,
   LinkCohortRequest,
   SessionCohortsResponse,
   SessionCohort,
@@ -164,6 +165,16 @@ export const sessionAPI = {
   },
   complete: async (id: number): Promise<SessionDetail> => {
     const res = await apiClient.post<SessionDetail>(`/sessions/${id}/complete/`);
+    return res.data;
+  },
+  confirmTaughtOutcomes: async (
+    id: number,
+    data: ConfirmTaughtOutcomesPayload,
+  ): Promise<SessionDetail> => {
+    const res = await apiClient.post<SessionDetail>(
+      `/sessions/${id}/confirm_taught_outcomes/`,
+      data,
+    );
     return res.data;
   },
 };

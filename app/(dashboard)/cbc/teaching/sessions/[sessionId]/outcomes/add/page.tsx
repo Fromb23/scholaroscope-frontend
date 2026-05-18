@@ -1,5 +1,9 @@
-import { CBCAddSessionOutcomesPage } from '@/app/plugins/cbc/components/teaching/CBCAddSessionOutcomesPage';
+import { redirect } from 'next/navigation';
 
-export default function Page() {
-    return <CBCAddSessionOutcomesPage />;
+export default function Page({
+    params,
+}: {
+    params: { sessionId: string };
+}) {
+    redirect(`/sessions/${params.sessionId}`);
 }

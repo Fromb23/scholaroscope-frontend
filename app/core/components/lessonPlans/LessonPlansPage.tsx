@@ -41,6 +41,22 @@ function formatDate(value: string | null): string {
     });
 }
 
+function getLessonDate(lessonPlan: LessonPlan): string | null {
+    return lessonPlan.session_date ?? lessonPlan.planned_date;
+}
+
+function getLessonStatusLabel(lessonPlan: LessonPlan): string {
+    if (lessonPlan.session_title?.trim()) {
+        return lessonPlan.session_title;
+    }
+
+    if (lessonPlan.session) {
+        return `Lesson ${lessonPlan.session}`;
+    }
+
+    return 'Not scheduled yet';
+}
+
 function formatUpdatedAt(value: string): string {
     return new Date(value).toLocaleString('en-US', {
         month: 'short',
@@ -302,10 +318,10 @@ export function LessonPlansPage() {
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
 
-                <Link href="/lesson-plans/generate">
+                <Link href="/lesson-plans/new">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" />
-                        Generate Lesson Plan
+                        Plan a lesson
                     </Button>
                 </Link>
             </div>
@@ -387,12 +403,12 @@ export function LessonPlansPage() {
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <h2 className="mt-3 text-base font-semibold text-gray-900">No lesson plans yet</h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            No lesson plans yet. Generate one from a session.
+                            No lesson plans yet. Start by planning what you are preparing to teach.
                         </p>
-                        <Link href="/lesson-plans/generate">
+                        <Link href="/lesson-plans/new">
                             <Button className="mt-4">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Generate Lesson Plan
+                                Plan a lesson
                             </Button>
                         </Link>
                     </div>
@@ -415,7 +431,7 @@ export function LessonPlansPage() {
                                 <TableRow>
                                     <TableHead>Lesson Plan</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Session Date</TableHead>
+                                    <TableHead>Lesson Date</TableHead>
                                     <TableHead>Cohort</TableHead>
                                     <TableHead>Subject</TableHead>
                                     <TableHead>Term</TableHead>
@@ -438,14 +454,14 @@ export function LessonPlansPage() {
                                                     ) : null}
                                                 </div>
                                                 <div className="text-xs text-gray-500">
-                                                    {lessonPlan.session_title || `Session ${lessonPlan.session}`}
+                                                    {getLessonStatusLabel(lessonPlan)}
                                                 </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <LessonPlanStatusBadge status={lessonPlan.status} />
                                         </TableCell>
-                                        <TableCell>{formatDate(lessonPlan.session_date)}</TableCell>
+                                        <TableCell>{formatDate(getLessonDate(lessonPlan))}</TableCell>
                                         <TableCell>{lessonPlan.cohort_name || '-'}</TableCell>
                                         <TableCell>{lessonPlan.subject_name || '-'}</TableCell>
                                         <TableCell>{lessonPlan.term_name || '-'}</TableCell>
@@ -489,13 +505,13 @@ export function LessonPlansPage() {
                                             ) : null}
                                         </div>
                                         <p className="text-sm text-gray-500">
-                                            {lessonPlan.session_title || `Session ${lessonPlan.session}`}
+                                            {getLessonStatusLabel(lessonPlan)}
                                         </p>
                                     </div>
 
                                     <div className="grid grid-cols-1 gap-2 text-sm text-gray-700">
                                         <div>
-                                            <span className="text-gray-500">Session Date:</span> {formatDate(lessonPlan.session_date)}
+                                            <span className="text-gray-500">Lesson Date:</span> {formatDate(getLessonDate(lessonPlan))}
                                         </div>
                                         <div>
                                             <span className="text-gray-500">Cohort:</span> {lessonPlan.cohort_name || '-'}

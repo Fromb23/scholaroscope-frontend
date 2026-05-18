@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Plus, Target } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { useSessionOutcomes } from '@/app/plugins/cbc/hooks/useSessionOutcomes';
 import { SessionHeader } from '@/app/plugins/cbc/components/outcomes/SessionHeader';
 import { OutcomeRow } from '@/app/plugins/cbc/components/outcomes/OutcomeRow';
@@ -72,12 +72,12 @@ export function CBCSessionOutcomesPage() {
                             {page.links.length > 0 && <Badge variant="blue" size="sm">{page.links.length}</Badge>}
                         </h2>
                         <p className="mt-1 text-sm text-gray-500">
-                            Review the learning goals covered in this lesson.
+                            Review the outcomes confirmed from the lesson plan for this lesson.
                         </p>
                     </div>
-                    <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`} className="w-full sm:w-auto">
-                        <Button variant="primary" size="md" className="w-full sm:w-auto">
-                            <Plus className="h-4 w-4 mr-2" />Add what was taught
+                    <Link href={`/sessions/${sessionId}`} className="w-full sm:w-auto">
+                        <Button variant="secondary" size="md" className="w-full sm:w-auto">
+                            Open lesson
                         </Button>
                     </Link>
                 </div>
@@ -97,13 +97,13 @@ export function CBCSessionOutcomesPage() {
                 ) : page.links.length === 0 ? (
                     <div className="py-16 text-center">
                         <Target className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500 mb-1">No learning goals added yet</p>
+                        <p className="text-gray-500 mb-1">No taught outcomes have been confirmed yet</p>
                         <p className="text-sm text-gray-400 mb-4">
-                            Choose learning goals to show what was taught in this lesson.
+                            Open the lesson to confirm what was taught from the lesson plan first.
                         </p>
-                        <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes/add`}>
+                        <Link href={`/sessions/${sessionId}`}>
                             <Button variant="primary" size="md">
-                                <Plus className="mr-2 h-4 w-4" />Add what was taught
+                                Open lesson
                             </Button>
                         </Link>
                     </div>

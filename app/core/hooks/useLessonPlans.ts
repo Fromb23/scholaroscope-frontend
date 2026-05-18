@@ -13,6 +13,8 @@ import type {
     LessonPlanQueryParams,
     LessonPlanUpdatePayload,
     MarkUsedPayload,
+    ScheduleLessonPayload,
+    ScheduleLessonResponse,
 } from '@/app/core/types/lessonPlans';
 
 function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
@@ -46,7 +48,7 @@ function getLessonPlanCreateMessage(error: ApiError, fallback: string): string {
     const status = getStatusCode(error);
 
     if (status === 403) {
-        return 'You cannot create a lesson plan for this session.';
+        return 'You cannot plan a lesson for this class subject.';
     }
 
     return extractErrorMessage(error, fallback);
@@ -317,6 +319,22 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         }
     };
 
+    const scheduleLesson = async (
+        payload: ScheduleLessonPayload,
+    ): Promise<ScheduleLessonResponse> => {
+        if (!lessonPlanId) {
+            throw new Error('This lesson plan could not be found.');
+        }
+
+        try {
+            const response = await lessonPlanAPI.schedule(lessonPlanId, payload);
+            setLessonPlan(response.lesson_plan);
+            return response;
+        } catch (err) {
+            throw new Error(getLessonPlanDetailMessage(err as ApiError));
+        }
+    };
+
     return {
         lessonPlan,
         loading,
@@ -329,6 +347,7 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         markUsed,
         archive,
         restore,
+        scheduleLesson,
     };
 };
 
@@ -339,13 +358,14 @@ export const useGenerateLessonPlan = () => {
     const [result, setResult] = useState<GenerateLessonPlanResponse | null>(null);
 
     const generateLessonPlan = async (
+        lessonPlanId: number,
         payload: GenerateLessonPlanPayload
     ): Promise<GenerateLessonPlanResponse> => {
         try {
             setSubmitting(true);
             setError(null);
             setErrorStatus(null);
-            const response = await lessonPlanAPI.generate(payload);
+            const response = await lessonPlanAPI.generate(lessonPlanId, payload);
             setResult(response);
             return response;
         } catch (err) {

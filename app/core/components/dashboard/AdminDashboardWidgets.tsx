@@ -328,7 +328,7 @@ export function QuickActions({ needsGrading }: QuickActionsProps) {
 
     const actions: ActionButton[] = [
         { icon: ClipboardCheck, label: 'Attendance', path: '/sessions/today' },
-        { icon: Calendar, label: 'New Session', path: '/sessions/new' },
+        { icon: Calendar, label: 'Plan a Lesson', path: '/lesson-plans/new' },
         { icon: Award, label: 'Grade', path: '/assessments', badge: needsGrading },
         { icon: Users, label: 'Add Student', path: '/learners/new' },
         { icon: FileBarChart, label: 'Reports', path: '/reports' },

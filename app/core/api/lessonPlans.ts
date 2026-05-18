@@ -1,6 +1,7 @@
 import { apiClient } from '@/app/core/api/client';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
+    GenerateLessonPlanFromSessionPayload,
     GenerateLessonPlanPayload,
     GenerateLessonPlanResponse,
     LessonPlan,
@@ -8,10 +9,10 @@ import type {
     LessonPlanQueryParams,
     LessonPlanUpdatePayload,
     MarkUsedPayload,
+    ScheduleLessonPayload,
+    ScheduleLessonResponse,
 } from '@/app/core/types/lessonPlans';
 
-// Backend includes apps.lesson_plans.urls flat under /api/, so router endpoints are
-// /lesson-plans/, /reference-resources/, etc.
 export const LESSON_PLANS_BASE_PATH = '/lesson-plans';
 
 export const lessonPlanAPI = {
@@ -42,9 +43,33 @@ export const lessonPlanAPI = {
         await apiClient.delete(`${LESSON_PLANS_BASE_PATH}/${id}/`);
     },
 
-    generate: async (payload: GenerateLessonPlanPayload): Promise<GenerateLessonPlanResponse> => {
+    generate: async (
+        id: number,
+        payload: GenerateLessonPlanPayload,
+    ): Promise<GenerateLessonPlanResponse> => {
+        const response = await apiClient.post<GenerateLessonPlanResponse>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/generate/`,
+            payload
+        );
+        return response.data;
+    },
+
+    generateFromSession: async (
+        payload: GenerateLessonPlanFromSessionPayload,
+    ): Promise<GenerateLessonPlanResponse> => {
         const response = await apiClient.post<GenerateLessonPlanResponse>(
             `${LESSON_PLANS_BASE_PATH}/generate/`,
+            payload
+        );
+        return response.data;
+    },
+
+    schedule: async (
+        id: number,
+        payload: ScheduleLessonPayload,
+    ): Promise<ScheduleLessonResponse> => {
+        const response = await apiClient.post<ScheduleLessonResponse>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/schedule/`,
             payload
         );
         return response.data;

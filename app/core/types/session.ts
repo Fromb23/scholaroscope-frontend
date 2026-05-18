@@ -1,6 +1,4 @@
-// ============================================================================
-// app/types/session.ts - Updated Session Types
-// ============================================================================
+import type { PlannedOutcome } from '@/app/core/types/lessonPlans';
 
 export enum SessionType {
   LESSON = 'LESSON',
@@ -9,7 +7,7 @@ export enum SessionType {
   EXAM = 'EXAM',
   FIELD_TRIP = 'FIELD_TRIP',
   ASSEMBLY = 'ASSEMBLY',
-  OTHER = 'OTHER'
+  OTHER = 'OTHER',
 }
 
 export enum AttendanceStatus {
@@ -17,7 +15,7 @@ export enum AttendanceStatus {
   ABSENT = 'ABSENT',
   LATE = 'LATE',
   EXCUSED = 'EXCUSED',
-  SICK = 'SICK'
+  SICK = 'SICK',
 }
 
 export interface Session {
@@ -53,6 +51,14 @@ export interface Session {
   created_by_id?: number | null;
   created_by_name?: string | null;
   created_by_email?: string | null;
+  lesson_plan_id: number | null;
+  lesson_plan_title: string | null;
+  lesson_plan_status: string | null;
+  planned_outcomes: PlannedOutcome[];
+  taught_outcomes: PlannedOutcome[];
+  is_unplanned: boolean;
+  can_start_now: boolean;
+  start_available_at: string | null;
   attendance_count: {
     total: number;
     present: number;
@@ -91,7 +97,7 @@ export interface AttendanceRecord {
   student: number;
   student_name: string;
   student_admission: string;
-  status: string;
+  status: string | null;
   status_display: string;
   notes: string;
   marked_at: string;
@@ -123,7 +129,13 @@ export interface BulkAttendanceData {
   marked_by?: string;
 }
 
-// Form Data Types
+export interface ConfirmTaughtOutcomesPayload {
+  outcomes: Array<{
+    outcome_id: number;
+    status: 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
+  }>;
+}
+
 export interface SessionFormData {
   cohort_subject: number | null;
   subject_source?: 'kernel' | 'cbc' | 'cambridge';
@@ -137,6 +149,7 @@ export interface SessionFormData {
   description: string;
   venue: string;
   auto_create_attendance: boolean;
+  is_unplanned?: boolean;
 }
 
 export interface CohortSubjectOption {
@@ -164,24 +177,6 @@ export interface AttendanceFormData {
   notes: string;
 }
 
-// Helper type for cohort-subject selection
-// export interface CohortSubject {
-//   id: number;
-//   cohort: number;
-//   cohort_name: string;
-//   cohort_level: string;
-//   subject: number;
-//   subject_name: string;
-//   subject_code: string;
-//   curriculum_name: string;
-//   is_compulsory: boolean;
-//   curriculum_type: string;
-// }
-
-/**
- * Represents a link between a session and a cohort (many-to-many)
- * This is a SYSTEM-WIDE concept, not CBC-specific
- */
 export interface SessionCohort {
   is_active: boolean;
   id: number;
@@ -192,9 +187,6 @@ export interface SessionCohort {
   created_at: string;
 }
 
-/**
- * Request payload for linking a cohort to a session
- */
 export interface LinkCohortRequest {
   cohort_id?: number;
   cohort_subject_id?: number;
@@ -219,18 +211,12 @@ export interface AvailableSessionCohortSubjectsResponse {
   results: AvailableSessionCohortSubject[];
 }
 
-/**
- * Response when fetching all cohorts linked to a session
- */
 export interface SessionCohortsResponse {
   session_id: number;
   cohorts: SessionCohort[];
   total_learners: number;
 }
 
-/**
- * Extended session with linked cohorts
- */
 export interface SessionWithCohorts {
   id: number;
   cohort_subject: number | null;
@@ -245,16 +231,12 @@ export interface SessionWithCohorts {
   total_learners: number;
 }
 
-// ── Pagination ────────────────────────────────────────────────────────────
-
 export interface PaginationState {
   currentPage: number;
   pageSize: number;
   totalItems: number;
   totalPages: number;
 }
-
-// ── Attendance stats ──────────────────────────────────────────────────────
 
 export interface AttendanceStats {
   total: number;
@@ -264,31 +246,20 @@ export interface AttendanceStats {
   excused: number;
   sick: number;
   unmarked: number;
-  attendance_percentage: number;
+  attendancePercentage: number;
 }
 
 export interface StudentAttendanceHistory {
-  statistics: AttendanceStats;
-  records: AttendanceRecord[];
-}
-
-export interface StudentStat {
-  student: number;
-  student__admission_number: string;
-  student__first_name: string;
-  student__last_name: string;
-  total: number;
-  present: number;
-  absent: number;
-  late: number;
-  excused: number;
-  sick: number;
-  unmarked: number;
-  attendance_percentage: number;
+  statistics?: {
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    attendance_percentage: number;
+  };
+  [key: string]: unknown;
 }
 
 export interface CohortAttendanceSummary {
-  cohort_id: number;
-  subject_id?: number;
-  student_statistics: StudentStat[];
+  [key: string]: unknown;
 }
