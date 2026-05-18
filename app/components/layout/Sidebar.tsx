@@ -125,7 +125,7 @@ export default function Sidebar() {
 
       <aside className={`fixed left-0 top-0 z-50 h-screen w-72 transform bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 lg:static lg:z-auto`}>
-        <div className="flex h-full flex-col">
+        <div className="flex h-full min-h-0 flex-col">
 
           {/* Logo */}
           <div className="flex h-16 items-center border-b border-gray-200 px-6">
@@ -163,7 +163,7 @@ export default function Sidebar() {
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
             <div className="space-y-6">
               <div>
                 <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">

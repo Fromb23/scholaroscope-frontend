@@ -370,7 +370,7 @@ export function SessionDetailPage() {
 
     if (loading && !session) {
         return (
-            <div className="mx-auto w-full max-w-6xl pb-12">
+            <div className="mx-auto w-full max-w-6xl pb-8">
                 <LoadingSpinner />
             </div>
         );
@@ -378,14 +378,14 @@ export function SessionDetailPage() {
 
     if (!session) {
         return (
-            <div className="mx-auto w-full max-w-6xl pb-12">
+            <div className="mx-auto w-full max-w-6xl pb-8">
                 <div className="p-10 text-gray-500">Lesson not found.</div>
             </div>
         );
     }
 
     return (
-        <div className="mx-auto w-full max-w-6xl space-y-6 pb-12">
+        <div className="mx-auto w-full max-w-6xl space-y-6 pb-8">
             <div className="space-y-3">
                 <Link href="/sessions">
                     <Button variant="ghost" size="sm">
@@ -777,57 +777,48 @@ export function SessionDetailPage() {
                 </Card>
             ) : null}
 
-            <Card>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h2 className="text-lg font-semibold text-gray-900">Record evidence</h2>
-                            <Badge variant="blue">{curriculumLabel}</Badge>
+            {canRecordEvidence ? (
+                <Card>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h2 className="text-lg font-semibold text-gray-900">Record evidence</h2>
+                                <Badge variant="blue">{curriculumLabel}</Badge>
+                            </div>
+                            <p className="mt-2 text-sm text-gray-600">
+                                Record evidence using the outcomes confirmed for this lesson.
+                            </p>
+                            <p className="mt-3 text-sm text-gray-600">
+                                {taughtOutcomeCount} taught outcome{taughtOutcomeCount === 1 ? '' : 's'} ready for evidence.
+                            </p>
                         </div>
-                        <p className="mt-2 text-sm text-gray-600">
-                            Record evidence using the outcomes confirmed for this lesson.
-                        </p>
-                    </div>
 
-                    {teachingWorkflow && canRecordEvidence ? (
-                        <Link href={teachingWorkflow.href} className="w-full sm:w-auto shrink-0">
-                            <Button className="w-full sm:w-auto" size="sm" disabled={!canRecordEvidence}>
-                                {teachingWorkflow.pluginKey === 'cbc' ? 'Record evidence' : teachingWorkflow.actionLabel}
-                            </Button>
-                        </Link>
-                    ) : teachingWorkflow ? (
-                        <Button className="w-full sm:w-auto shrink-0" size="sm" disabled>
-                            {teachingWorkflow.pluginKey === 'cbc' ? 'Record evidence' : teachingWorkflow.actionLabel}
-                        </Button>
+                        {teachingWorkflow ? (
+                            <Link href={teachingWorkflow.href} className="w-full shrink-0 sm:w-auto">
+                                <Button className="w-full sm:w-auto" size="sm">
+                                    {teachingWorkflow.pluginKey === 'cbc' ? 'Record evidence' : teachingWorkflow.actionLabel}
+                                </Button>
+                            </Link>
+                        ) : (
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                No curriculum evidence workflow is available for this lesson.
+                            </div>
+                        )}
+                    </div>
+                </Card>
+            ) : (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    {!hasMarkedAttendance ? (
+                        'Next step: take attendance, then confirm what was taught before recording evidence.'
+                    ) : confirmedTaughtOutcomes.length === 0 ? (
+                        'Next step: confirm what was taught before recording evidence.'
+                    ) : taughtOutcomeCount === 0 ? (
+                        'No outcomes were marked as taught for this lesson, so there is no evidence step yet.'
                     ) : (
-                        <Button size="sm" disabled>
-                            Record evidence
-                        </Button>
+                        'No curriculum evidence workflow is available for this lesson.'
                     )}
                 </div>
-
-                {!hasMarkedAttendance ? (
-                    <p className="mt-3 text-sm text-amber-700">
-                        Take attendance first, then confirm what was taught.
-                    </p>
-                ) : confirmedTaughtOutcomes.length === 0 ? (
-                    <p className="mt-3 text-sm text-gray-600">
-                        Confirm what was taught before recording evidence.
-                    </p>
-                ) : taughtOutcomeCount === 0 ? (
-                    <p className="mt-3 text-sm text-gray-600">
-                        No outcomes were marked as taught for this lesson.
-                    </p>
-                ) : teachingWorkflow ? (
-                    <p className="mt-3 text-sm text-gray-600">
-                        {taughtOutcomeCount} taught outcome{taughtOutcomeCount === 1 ? '' : 's'} ready for evidence.
-                    </p>
-                ) : (
-                    <p className="mt-3 text-sm text-gray-600">
-                        No curriculum evidence workflow is available for this lesson.
-                    </p>
-                )}
-            </Card>
+            )}
         </div>
     );
 }
