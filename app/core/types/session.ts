@@ -59,6 +59,8 @@ export interface Session {
   is_unplanned: boolean;
   can_start_now: boolean;
   start_available_at: string | null;
+  start_available_date?: string | null;
+  start_available_time?: string | null;
   attendance_count: {
     total: number;
     present: number;
