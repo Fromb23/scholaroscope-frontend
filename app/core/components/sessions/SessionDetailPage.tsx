@@ -17,6 +17,7 @@ import {
     MapPin,
     PlayCircle,
     Target,
+    type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -43,37 +44,52 @@ const TAUGHT_STATUS_OPTIONS: Array<{
     { value: 'NOT_TAUGHT', label: 'Not taught', description: 'Planned but not covered' },
 ];
 
-function formatSessionDate(sessionDate: string) {
-    return new Date(sessionDate).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-    });
-}
-
-function formatTimeLabel(value: string | null) {
-    if (!value) {
-        return 'Not set';
-    }
-
-    const [hours = '0', minutes = '0'] = value.split(':');
-    const formatted = new Date();
-    formatted.setHours(Number(hours), Number(minutes), 0, 0);
-
-    return formatted.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-}
-
-function formatStartAvailableAt(value: string | null) {
+function parseSessionDate(value: string | null | undefined) {
     if (!value) {
         return null;
     }
 
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) {
+        return null;
+    }
+
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseSessionDateTime(dateValue: string | null | undefined, timeValue: string | null | undefined) {
+    const parsedDate = parseSessionDate(dateValue);
+    if (!parsedDate || !timeValue) {
+        return null;
+    }
+
+    const [hours, minutes, seconds = '0'] = timeValue.split(':');
+    parsedDate.setHours(Number(hours), Number(minutes), Number(seconds), 0);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function formatSessionDate(value: string | null | undefined, includeYear = true) {
+    const parsed = parseSessionDate(value);
+    if (!parsed) {
+        return null;
+    }
+
+    return parsed.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        ...(includeYear ? { year: 'numeric' } : {}),
+    });
+}
+
+function formatSessionTime(value: string | null | undefined) {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = parseSessionDateTime('2000-01-01', value);
+    if (!parsed) {
         return null;
     }
 
@@ -83,10 +99,45 @@ function formatStartAvailableAt(value: string | null) {
     });
 }
 
+function formatSessionDateTime(dateValue: string | null | undefined, timeValue: string | null | undefined) {
+    const parsed = parseSessionDateTime(dateValue, timeValue);
+    if (!parsed) {
+        return null;
+    }
+
+    return parsed.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
 function statusBadgeVariant(status: TaughtStatus) {
     if (status === 'TAUGHT') return 'green';
     if (status === 'PARTIALLY_TAUGHT') return 'yellow';
     return 'default';
+}
+
+function SessionMetaItem({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: LucideIcon;
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Icon className="h-4 w-4 shrink-0 text-gray-400" />
+                <span>{label}</span>
+            </div>
+            <p className="text-sm font-medium text-gray-900">{value}</p>
+        </div>
+    );
 }
 
 export function SessionDetailPage() {
@@ -146,7 +197,44 @@ export function SessionDetailPage() {
         confirmedTaughtOutcomes.length > 0 &&
         taughtOutcomeCount > 0
     );
-    const startAvailableAtLabel = formatStartAvailableAt(session?.start_available_at ?? null);
+    const lessonDateLabel = formatSessionDate(session?.session_date);
+    const lessonTimeLabel = [
+        formatSessionTime(session?.start_time),
+        formatSessionTime(session?.end_time),
+    ].filter(Boolean).join(' - ') || 'Not set';
+    const scheduledStartLabel = formatSessionDateTime(session?.session_date, session?.start_time);
+    const startAvailableDateTimeLabel = formatSessionDateTime(
+        session?.start_available_date ?? null,
+        session?.start_available_time ?? null
+    );
+    const startAvailableTimeLabel = formatSessionTime(session?.start_available_time ?? null);
+    const startAvailabilityLabel = (
+        session?.start_available_date === session?.session_date && startAvailableTimeLabel
+    )
+        ? startAvailableTimeLabel
+        : (startAvailableDateTimeLabel || '5 minutes before the scheduled start');
+    const startAvailabilityMessage = useMemo(() => {
+        if (!isScheduled) {
+            return null;
+        }
+
+        if (scheduledStartLabel && startAvailableTimeLabel && session?.start_available_date === session?.session_date) {
+            return `This lesson starts on ${scheduledStartLabel}. You can start it from ${startAvailableTimeLabel}.`;
+        }
+
+        if (scheduledStartLabel && startAvailableDateTimeLabel) {
+            return `This lesson starts on ${scheduledStartLabel}. You can start it from ${startAvailableDateTimeLabel}.`;
+        }
+
+        return 'You can start this lesson 5 minutes before its scheduled start time.';
+    }, [
+        isScheduled,
+        scheduledStartLabel,
+        session?.session_date,
+        session?.start_available_date,
+        startAvailableDateTimeLabel,
+        startAvailableTimeLabel,
+    ]);
 
     useEffect(() => {
         if (!session) {
@@ -281,15 +369,23 @@ export function SessionDetailPage() {
     };
 
     if (loading && !session) {
-        return <LoadingSpinner />;
+        return (
+            <div className="mx-auto w-full max-w-6xl pb-12">
+                <LoadingSpinner />
+            </div>
+        );
     }
 
     if (!session) {
-        return <div className="p-10 text-gray-500">Lesson not found.</div>;
+        return (
+            <div className="mx-auto w-full max-w-6xl pb-12">
+                <div className="p-10 text-gray-500">Lesson not found.</div>
+            </div>
+        );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="mx-auto w-full max-w-6xl space-y-6 pb-12">
             <div className="space-y-3">
                 <Link href="/sessions">
                     <Button variant="ghost" size="sm">
@@ -322,11 +418,12 @@ export function SessionDetailPage() {
                 </div>
 
                 {!isHistorical ? (
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                         {isScheduled ? (
                             <Button
                                 variant="secondary"
                                 size="sm"
+                                className="w-full sm:w-auto"
                                 onClick={handleStartLesson}
                                 disabled={!session.can_start_now}
                             >
@@ -336,15 +433,15 @@ export function SessionDetailPage() {
                         ) : null}
 
                         {isInProgress ? (
-                            <Button variant="primary" size="sm" onClick={handleCompleteLesson}>
+                            <Button variant="primary" size="sm" className="w-full sm:w-auto" onClick={handleCompleteLesson}>
                                 <CheckCircle2 className="mr-1.5 h-4 w-4" />
                                 Complete lesson
                             </Button>
                         ) : null}
 
                         {!isCompleted ? (
-                            <Link href={`/sessions/${session.id}/edit`}>
-                                <Button variant="secondary" size="sm">
+                            <Link href={`/sessions/${session.id}/edit`} className="w-full sm:w-auto">
+                                <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                                     <Edit className="mr-1.5 h-4 w-4" />
                                     Edit
                                 </Button>
@@ -353,9 +450,9 @@ export function SessionDetailPage() {
                     </div>
                 ) : null}
 
-                {isScheduled && !session.can_start_now && startAvailableAtLabel ? (
+                {isScheduled && !session.can_start_now && startAvailabilityMessage ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                        You can start this lesson at {startAvailableAtLabel}.
+                        {startAvailabilityMessage}
                     </div>
                 ) : null}
             </div>
@@ -381,21 +478,57 @@ export function SessionDetailPage() {
             ) : null}
 
             <Card>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <Calendar className="h-4 w-4 shrink-0 text-gray-400" />
-                        {formatSessionDate(session.session_date)}
+                <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                        <SessionMetaItem
+                            icon={BookOpen}
+                            label="Subject"
+                            value={session.subject_name || session.title || 'Not set'}
+                        />
+                        <SessionMetaItem
+                            icon={Layers}
+                            label="Class"
+                            value={session.cohort_name || 'Not set'}
+                        />
+                        <SessionMetaItem
+                            icon={Calendar}
+                            label="Scheduled date"
+                            value={lessonDateLabel || 'Not set'}
+                        />
+                        <SessionMetaItem
+                            icon={Clock}
+                            label="Lesson time"
+                            value={lessonTimeLabel}
+                        />
+                        <SessionMetaItem
+                            icon={MapPin}
+                            label="Venue"
+                            value={session.venue || 'Not set'}
+                        />
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <Clock className="h-4 w-4 shrink-0 text-gray-400" />
-                        {formatTimeLabel(session.start_time)} - {formatTimeLabel(session.end_time)}
+
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <SessionMetaItem
+                            icon={Target}
+                            label="Term"
+                            value={session.term_name || 'Not set'}
+                        />
+                        {isScheduled ? (
+                            <SessionMetaItem
+                                icon={PlayCircle}
+                                label="Start availability"
+                                value={startAvailabilityLabel}
+                            />
+                        ) : null}
+                        {session.session_type_display ? (
+                            <div className="space-y-1">
+                                <div className="text-sm text-gray-500">Session type</div>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="blue">{session.session_type_display}</Badge>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
-                    {session.venue ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-700">
-                            <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
-                            {session.venue}
-                        </div>
-                    ) : null}
                 </div>
             </Card>
 
