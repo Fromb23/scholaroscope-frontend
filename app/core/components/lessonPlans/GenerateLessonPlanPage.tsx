@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Bot, BookOpen, CalendarClock, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bot, BookOpen, CalendarClock } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -12,28 +12,17 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
-import { apiClient } from '@/app/core/api/client';
-import { useGenerateLessonPlan, useLessonPlans } from '@/app/core/hooks/useLessonPlans';
+import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import {
+    useCreateLessonPlan,
+    useGenerateLessonPlan,
+    useLessonPlanCurriculumContext,
+} from '@/app/core/hooks/useLessonPlans';
 import type { PlannedOutcome, ReferencePageInput } from '@/app/core/types/lessonPlans';
 
-interface ManualOutcomeDraft {
-    code: string;
-    text: string;
-    strand: string;
-    sub_strand: string;
-}
-
-interface LearningOutcomeOption {
-    id: number;
-    code: string;
-    description: string;
-    strand_name: string;
-    sub_strand_name: string;
-}
-
-function emptyReference(): ReferencePageInput {
+function emptyReferencePage(): ReferencePageInput {
     return {
         resource_title: '',
         chapter: '',
@@ -42,33 +31,42 @@ function emptyReference(): ReferencePageInput {
         page_end: 1,
         notes: '',
         keywords: [],
+        strand_id: null,
+        strand_name: '',
+        sub_strand_id: null,
+        sub_strand_name: '',
+        outcome_id: null,
+        outcome_code: '',
     };
 }
 
-function emptyManualOutcome(): ManualOutcomeDraft {
-    return {
-        code: '',
-        text: '',
-        strand: '',
-        sub_strand: '',
-    };
-}
+function normalizeReferencePage(
+    reference: ReferencePageInput,
+    plannedOutcomes: Map<number, PlannedOutcome>,
+): ReferencePageInput {
+    const selectedOutcome = reference.outcome_id
+        ? plannedOutcomes.get(reference.outcome_id)
+        : undefined;
 
-async function fetchLearningOutcomesByLevel(level: string): Promise<LearningOutcomeOption[]> {
-    const response = await apiClient.get<LearningOutcomeOption[]>('/cbc/learning-outcomes/', {
-        params: { level },
-    });
-    return response.data;
-}
-
-function toPlannedOutcome(outcome: LearningOutcomeOption): PlannedOutcome {
     return {
-        plugin: 'cbc',
-        outcome_id: outcome.id,
-        code: outcome.code,
-        text: outcome.description,
-        strand: outcome.strand_name,
-        sub_strand: outcome.sub_strand_name,
+        ...reference,
+        resource_title: reference.resource_title.trim(),
+        chapter: reference.chapter?.trim() || '',
+        topic_label: (
+            reference.topic_label?.trim()
+            || reference.sub_strand_name?.trim()
+            || selectedOutcome?.sub_strand
+            || selectedOutcome?.text
+            || ''
+        ),
+        notes: reference.notes?.trim() || '',
+        keywords: [],
+        strand_name: reference.strand_name?.trim() || selectedOutcome?.strand || '',
+        sub_strand_name: reference.sub_strand_name?.trim() || selectedOutcome?.sub_strand || '',
+        outcome_code: reference.outcome_code?.trim() || selectedOutcome?.code || '',
+        strand_id: reference.strand_id ?? selectedOutcome?.strand_id ?? null,
+        sub_strand_id: reference.sub_strand_id ?? selectedOutcome?.sub_strand_id ?? null,
+        outcome_id: reference.outcome_id ?? null,
     };
 }
 
@@ -76,21 +74,33 @@ export function GenerateLessonPlanPage() {
     const router = useRouter();
     const { terms } = useTerms();
     const { assignments, isLoading: assignmentsLoading, error: assignmentsError } = useInstructorCohortAccess();
-    const { createLessonPlan } = useLessonPlans();
-    const { generateLessonPlan, submitting, error, clearError } = useGenerateLessonPlan();
+    const {
+        createLessonPlan,
+        submitting: creatingLessonPlan,
+        error: createError,
+        clearError: clearCreateError,
+    } = useCreateLessonPlan();
+    const {
+        generateLessonPlan,
+        submitting: generatingLessonPlan,
+        error: generateError,
+        clearError: clearGenerateError,
+    } = useGenerateLessonPlan();
 
     const [cohortSubjectId, setCohortSubjectId] = useState('');
     const [termId, setTermId] = useState('');
     const [title, setTitle] = useState('');
-    const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([emptyReference()]);
+    const [plannedOutcomes, setPlannedOutcomes] = useState<PlannedOutcome[]>([]);
+    const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([emptyReferencePage()]);
     const [useAi, setUseAi] = useState(true);
-    const [outcomesLoading, setOutcomesLoading] = useState(false);
-    const [outcomesError, setOutcomesError] = useState<string | null>(null);
-    const [availableOutcomes, setAvailableOutcomes] = useState<LearningOutcomeOption[]>([]);
-    const [selectedOutcomeIds, setSelectedOutcomeIds] = useState<number[]>([]);
-    const [outcomeSearch, setOutcomeSearch] = useState('');
-    const [manualOutcomes, setManualOutcomes] = useState<ManualOutcomeDraft[]>([emptyManualOutcome()]);
     const [submittingError, setSubmittingError] = useState<string | null>(null);
+
+    const selectedCohortSubjectId = cohortSubjectId ? Number(cohortSubjectId) : null;
+    const {
+        curriculumContext,
+        loading: curriculumLoading,
+        error: curriculumError,
+    } = useLessonPlanCurriculumContext(selectedCohortSubjectId);
 
     const assignmentOptions = useMemo(
         () =>
@@ -99,165 +109,62 @@ export function GenerateLessonPlanPage() {
                 .map((assignment) => ({
                     value: String(assignment.cohort_subject_id),
                     label: `${assignment.cohort_name} • ${assignment.subject_name}`,
-                    assignment,
                 })),
         [assignments]
     );
 
-    const selectedAssignment = useMemo(
-        () =>
-            assignmentOptions.find((option) => option.value === cohortSubjectId)?.assignment ?? null,
-        [assignmentOptions, cohortSubjectId]
+    const submitting = creatingLessonPlan || generatingLessonPlan;
+    const plannedOutcomeMap = useMemo(
+        () => new Map(plannedOutcomes.map((outcome) => [outcome.outcome_id, outcome])),
+        [plannedOutcomes]
     );
 
     useEffect(() => {
-        if (!selectedAssignment || selectedAssignment.curriculum_type !== 'CBE' || !selectedAssignment.level) {
-            setAvailableOutcomes([]);
-            setSelectedOutcomeIds([]);
-            return;
-        }
-
-        let cancelled = false;
-        const fetchOutcomes = async () => {
-            try {
-                setOutcomesLoading(true);
-                setOutcomesError(null);
-                const response = await fetchLearningOutcomesByLevel(selectedAssignment.level);
-                if (!cancelled) {
-                    setAvailableOutcomes(response);
-                }
-            } catch {
-                if (!cancelled) {
-                    setAvailableOutcomes([]);
-                    setOutcomesError('We could not load learning outcomes for this class subject.');
-                }
-            } finally {
-                if (!cancelled) {
-                    setOutcomesLoading(false);
-                }
-            }
-        };
-
-        void fetchOutcomes();
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedAssignment]);
-
-    const filteredOutcomes = useMemo(() => {
-        const search = outcomeSearch.trim().toLowerCase();
-        if (!search) {
-            return availableOutcomes;
-        }
-
-        return availableOutcomes.filter((outcome) =>
-            `${outcome.code} ${outcome.description} ${outcome.strand_name} ${outcome.sub_strand_name}`
-                .toLowerCase()
-                .includes(search)
-        );
-    }, [availableOutcomes, outcomeSearch]);
-
-    const addReference = () => {
-        setReferencePages((current) => [...current, emptyReference()]);
-    };
-
-    const updateReference = (index: number, field: keyof ReferencePageInput, value: string) => {
-        setReferencePages((current) =>
-            current.map((reference, currentIndex) =>
-                currentIndex === index
-                    ? {
-                        ...reference,
-                        [field]: field === 'page_start' || field === 'page_end'
-                            ? Number(value)
-                            : value,
-                    }
-                    : reference
-            )
-        );
-    };
-
-    const removeReference = (index: number) => {
-        setReferencePages((current) => current.filter((_, currentIndex) => currentIndex !== index));
-    };
-
-    const addManualOutcome = () => {
-        setManualOutcomes((current) => [...current, emptyManualOutcome()]);
-    };
-
-    const updateManualOutcome = (
-        index: number,
-        field: keyof ManualOutcomeDraft,
-        value: string,
-    ) => {
-        setManualOutcomes((current) =>
-            current.map((outcome, currentIndex) =>
-                currentIndex === index
-                    ? { ...outcome, [field]: value }
-                    : outcome
-            )
-        );
-    };
-
-    const removeManualOutcome = (index: number) => {
-        setManualOutcomes((current) => current.filter((_, currentIndex) => currentIndex !== index));
-    };
-
-    const buildPlannedOutcomes = (): PlannedOutcome[] => {
-        const selectedOutcomes = availableOutcomes
-            .filter((outcome) => selectedOutcomeIds.includes(outcome.id))
-            .map(toPlannedOutcome);
-
-        if (selectedOutcomes.length > 0) {
-            return selectedOutcomes;
-        }
-
-        return manualOutcomes
-            .map((outcome, index) => ({
-                plugin: 'manual',
-                outcome_id: -(index + 1),
-                code: outcome.code.trim(),
-                text: outcome.text.trim(),
-                strand: outcome.strand.trim(),
-                sub_strand: outcome.sub_strand.trim(),
-            }))
-            .filter((outcome) => outcome.code && outcome.text && outcome.strand && outcome.sub_strand);
-    };
+        setPlannedOutcomes([]);
+        setReferencePages([emptyReferencePage()]);
+        setSubmittingError(null);
+        clearCreateError();
+        clearGenerateError();
+    }, [clearCreateError, clearGenerateError, cohortSubjectId]);
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setSubmittingError(null);
-        clearError();
+        clearCreateError();
+        clearGenerateError();
 
-        if (!cohortSubjectId || !termId) {
+        if (!selectedCohortSubjectId || !termId) {
             setSubmittingError('Choose the class subject and term before continuing.');
             return;
         }
 
-        const plannedOutcomes = buildPlannedOutcomes();
+        if (!curriculumContext || !curriculumContext.supports_outcome_selection) {
+            setSubmittingError('Lesson planning is not configured for this curriculum yet.');
+            return;
+        }
+
         if (plannedOutcomes.length === 0) {
-            setSubmittingError('Choose learning outcomes before generating the lesson plan.');
+            setSubmittingError('Choose at least one learning outcome before generating the lesson plan.');
             return;
         }
 
         const cleanedReferences = referencePages
-            .map((reference) => ({
-                ...reference,
-                resource_title: reference.resource_title.trim(),
-                chapter: reference.chapter?.trim() || '',
-                topic_label: reference.topic_label?.trim() || '',
-                notes: reference.notes?.trim() || '',
-                keywords: [],
-            }))
-            .filter((reference) => reference.resource_title && reference.page_start && reference.page_end);
+            .map((reference) => normalizeReferencePage(reference, plannedOutcomeMap))
+            .filter((reference) => (
+                reference.resource_title
+                && reference.page_start > 0
+                && reference.page_end > 0
+                && reference.outcome_id
+            ));
 
         if (cleanedReferences.length === 0) {
-            setSubmittingError('Add reference pages before generating the lesson plan.');
+            setSubmittingError('Add at least one book page before generating the lesson plan.');
             return;
         }
 
         try {
             const lessonPlan = await createLessonPlan({
-                cohort_subject: Number(cohortSubjectId),
+                cohort_subject: selectedCohortSubjectId,
                 term: Number(termId),
                 title: title.trim() || undefined,
                 planned_outcomes: plannedOutcomes,
@@ -312,12 +219,13 @@ export function GenerateLessonPlanPage() {
                 </div>
             </div>
 
-            {error || submittingError ? (
+            {createError || generateError || submittingError ? (
                 <ErrorBanner
-                    message={submittingError || error || 'We could not generate the lesson plan.'}
+                    message={submittingError || createError || generateError || 'We could not generate the lesson plan.'}
                     onDismiss={() => {
                         setSubmittingError(null);
-                        clearError();
+                        clearCreateError();
+                        clearGenerateError();
                     }}
                 />
             ) : null}
@@ -337,10 +245,7 @@ export function GenerateLessonPlanPage() {
                                 onChange={(event) => setCohortSubjectId(event.target.value)}
                                 options={[
                                     { value: '', label: 'Choose class subject' },
-                                    ...assignmentOptions.map((option) => ({
-                                        value: option.value,
-                                        label: option.label,
-                                    })),
+                                    ...assignmentOptions,
                                 ]}
                             />
 
@@ -367,181 +272,26 @@ export function GenerateLessonPlanPage() {
                     </div>
                 </Card>
 
-                <Card>
-                    <div className="space-y-5">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                            <BookOpen className="h-4 w-4 text-gray-500" />
-                            Choose learning outcomes
-                        </div>
-
-                        {selectedAssignment?.curriculum_type === 'CBE' ? (
-                            <>
-                                <Input
-                                    label="Search outcomes"
-                                    value={outcomeSearch}
-                                    onChange={(event) => setOutcomeSearch(event.target.value)}
-                                    placeholder="Search by code or description"
-                                />
-
-                                {outcomesLoading ? (
-                                    <LoadingSpinner message="Loading learning outcomes..." fullScreen={false} />
-                                ) : null}
-
-                                {outcomesError ? (
-                                    <p className="text-sm text-red-600">{outcomesError}</p>
-                                ) : null}
-
-                                <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3">
-                                    {filteredOutcomes.map((outcome) => (
-                                        <label
-                                            key={outcome.id}
-                                            className="flex items-start gap-3 rounded-lg border border-gray-200 p-3"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedOutcomeIds.includes(outcome.id)}
-                                                onChange={(event) => {
-                                                    setSelectedOutcomeIds((current) =>
-                                                        event.target.checked
-                                                            ? [...current, outcome.id]
-                                                            : current.filter((id) => id !== outcome.id)
-                                                    );
-                                                }}
-                                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
-                                            />
-                                            <div className="text-sm">
-                                                <p className="font-medium text-gray-900">{outcome.code}</p>
-                                                <p className="text-gray-700">{outcome.description}</p>
-                                                <p className="mt-1 text-xs text-gray-500">
-                                                    {outcome.strand_name} · {outcome.sub_strand_name}
-                                                </p>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
-                            </>
-                        ) : null}
-
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-medium text-gray-900">Manual outcomes</p>
-                                <Button type="button" variant="ghost" size="sm" onClick={addManualOutcome}>
-                                    <Plus className="mr-1.5 h-4 w-4" />
-                                    Add outcome
-                                </Button>
-                            </div>
-
-                            {manualOutcomes.map((outcome, index) => (
-                                <div key={`manual-outcome-${index}`} className="grid gap-3 rounded-lg border border-gray-200 p-3 md:grid-cols-2">
-                                    <Input
-                                        label="Code"
-                                        value={outcome.code}
-                                        onChange={(event) => updateManualOutcome(index, 'code', event.target.value)}
-                                        placeholder="Outcome code"
-                                    />
-                                    <Input
-                                        label="Strand"
-                                        value={outcome.strand}
-                                        onChange={(event) => updateManualOutcome(index, 'strand', event.target.value)}
-                                        placeholder="Strand"
-                                    />
-                                    <Input
-                                        label="Sub-strand"
-                                        value={outcome.sub_strand}
-                                        onChange={(event) => updateManualOutcome(index, 'sub_strand', event.target.value)}
-                                        placeholder="Sub-strand"
-                                    />
-                                    <Input
-                                        label="Outcome text"
-                                        value={outcome.text}
-                                        onChange={(event) => updateManualOutcome(index, 'text', event.target.value)}
-                                        placeholder="Describe the learning outcome"
-                                    />
-                                    <div className="md:col-span-2 flex justify-end">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => removeManualOutcome(index)}
-                                            disabled={manualOutcomes.length === 1}
-                                        >
-                                            <Trash2 className="mr-1.5 h-4 w-4" />
-                                            Remove
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </Card>
-
-                <Card>
-                    <div className="space-y-5">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                <BookOpen className="h-4 w-4 text-gray-500" />
-                                Add reference pages
-                            </div>
-                            <Button type="button" variant="ghost" size="sm" onClick={addReference}>
-                                <Plus className="mr-1.5 h-4 w-4" />
-                                Add reference
-                            </Button>
-                        </div>
-
-                        {referencePages.map((reference, index) => (
-                            <div key={`reference-${index}`} className="grid gap-3 rounded-lg border border-gray-200 p-3 md:grid-cols-2">
-                                <Input
-                                    label="Book or resource"
-                                    value={reference.resource_title}
-                                    onChange={(event) => updateReference(index, 'resource_title', event.target.value)}
-                                    placeholder="Resource title"
-                                />
-                                <Input
-                                    label="Chapter"
-                                    value={reference.chapter || ''}
-                                    onChange={(event) => updateReference(index, 'chapter', event.target.value)}
-                                    placeholder="Chapter"
-                                />
-                                <Input
-                                    label="Topic"
-                                    value={reference.topic_label || ''}
-                                    onChange={(event) => updateReference(index, 'topic_label', event.target.value)}
-                                    placeholder="Topic"
-                                />
-                                <Input
-                                    label="Notes"
-                                    value={reference.notes || ''}
-                                    onChange={(event) => updateReference(index, 'notes', event.target.value)}
-                                    placeholder="Optional notes"
-                                />
-                                <Input
-                                    label="Page start"
-                                    type="number"
-                                    value={String(reference.page_start)}
-                                    onChange={(event) => updateReference(index, 'page_start', event.target.value)}
-                                />
-                                <Input
-                                    label="Page end"
-                                    type="number"
-                                    value={String(reference.page_end)}
-                                    onChange={(event) => updateReference(index, 'page_end', event.target.value)}
-                                />
-                                <div className="md:col-span-2 flex justify-end">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeReference(index)}
-                                        disabled={referencePages.length === 1}
-                                    >
-                                        <Trash2 className="mr-1.5 h-4 w-4" />
-                                        Remove
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Card>
+                {selectedCohortSubjectId ? (
+                    curriculumLoading ? (
+                        <Card>
+                            <LoadingSpinner message="Loading lesson planning setup..." fullScreen={false} />
+                        </Card>
+                    ) : curriculumError ? (
+                        <Card>
+                            <p className="text-sm text-red-600">{curriculumError}</p>
+                        </Card>
+                    ) : curriculumContext ? (
+                        <LessonPlanOutcomeProviderSlot
+                            cohortSubjectId={selectedCohortSubjectId}
+                            context={curriculumContext}
+                            plannedOutcomes={plannedOutcomes}
+                            onPlannedOutcomesChange={setPlannedOutcomes}
+                            referencePages={referencePages}
+                            onReferencePagesChange={setReferencePages}
+                        />
+                    ) : null
+                ) : null}
 
                 <Card>
                     <div className="space-y-4">
@@ -570,7 +320,7 @@ export function GenerateLessonPlanPage() {
                 </Card>
 
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={submitting}>
+                    <Button type="submit" disabled={submitting || curriculumLoading}>
                         {submitting ? 'Generating...' : 'Generate lesson plan'}
                     </Button>
                 </div>

@@ -1,5 +1,6 @@
 import { apiClient } from '@/app/core/api/client';
 import type { PaginatedResponse } from '@/app/core/types/api';
+import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
 import type {
     GenerateLessonPlanFromSessionPayload,
     GenerateLessonPlanPayload,
@@ -31,6 +32,16 @@ export const lessonPlanAPI = {
 
     create: async (payload: LessonPlanCreatePayload): Promise<LessonPlan> => {
         const response = await apiClient.post<LessonPlan>(`${LESSON_PLANS_BASE_PATH}/`, payload);
+        return response.data;
+    },
+
+    getCurriculumContext: async (cohortSubjectId: number): Promise<LessonPlanCurriculumContext> => {
+        const response = await apiClient.get<LessonPlanCurriculumContext>(
+            `${LESSON_PLANS_BASE_PATH}/curriculum-context/`,
+            {
+                params: { cohort_subject: cohortSubjectId },
+            }
+        );
         return response.data;
     },
 

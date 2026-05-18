@@ -27,6 +27,9 @@ export interface PlannedOutcome {
     text: string;
     strand: string;
     sub_strand: string;
+    strand_id?: number;
+    sub_strand_id?: number;
+    subject_profile_id?: number | null;
     status?: 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 }
 
@@ -43,6 +46,12 @@ export interface ReferencePageInput {
     page_end: number;
     notes?: string;
     keywords?: string[];
+    strand_id?: number | null;
+    strand_name?: string;
+    sub_strand_id?: number | null;
+    sub_strand_name?: string;
+    outcome_id?: number | null;
+    outcome_code?: string;
 }
 
 export interface LessonPlanReferenceRecord {
