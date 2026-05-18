@@ -358,6 +358,14 @@ export const useGenerateLessonPlan = () => {
     const [errorStatus, setErrorStatus] = useState<number | null>(null);
     const [result, setResult] = useState<GenerateLessonPlanResponse | null>(null);
 
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []);
+
+    const clearResult = useCallback(() => {
+        setResult(null);
+    }, []);
+
     const generateLessonPlan = async (
         lessonPlanId: number,
         payload: GenerateLessonPlanPayload
@@ -386,8 +394,8 @@ export const useGenerateLessonPlan = () => {
         error,
         errorStatus,
         result,
-        clearError: () => setError(null),
-        clearResult: () => setResult(null),
+        clearError,
+        clearResult,
     };
 };
 
@@ -395,6 +403,10 @@ export const useCreateLessonPlan = () => {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []);
 
     const createLessonPlan = async (payload: LessonPlanCreatePayload): Promise<LessonPlan> => {
         try {
@@ -421,7 +433,7 @@ export const useCreateLessonPlan = () => {
         submitting,
         error,
         errorStatus,
-        clearError: () => setError(null),
+        clearError,
     };
 };
 

@@ -122,6 +122,9 @@ export function GenerateLessonPlanPage() {
     useEffect(() => {
         setPlannedOutcomes([]);
         setReferencePages([emptyReferencePage()]);
+    }, [cohortSubjectId]);
+
+    useEffect(() => {
         setSubmittingError(null);
         clearCreateError();
         clearGenerateError();
