@@ -15,6 +15,7 @@ import {
   BulkAttendanceData,
   ConfirmTaughtOutcomesPayload,
   LinkCohortRequest,
+  SessionAssignmentDraftResponse,
   SessionCohortsResponse,
   SessionCohort,
   SessionFormData,
@@ -174,6 +175,14 @@ export const sessionAPI = {
     const res = await apiClient.post<SessionDetail>(
       `/sessions/${id}/confirm_taught_outcomes/`,
       data,
+    );
+    return res.data;
+  },
+  createAssignmentFromLesson: async (
+    id: number,
+  ): Promise<SessionAssignmentDraftResponse> => {
+    const res = await apiClient.post<SessionAssignmentDraftResponse>(
+      `/sessions/${id}/create_assignment_from_lesson/`,
     );
     return res.data;
   },

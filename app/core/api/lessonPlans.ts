@@ -5,6 +5,7 @@ import type {
     GenerateLessonPlanFromSessionPayload,
     GenerateLessonPlanPayload,
     GenerateLessonPlanResponse,
+    LessonPlanAssignmentDraftResponse,
     LessonPlan,
     LessonPlanCreatePayload,
     LessonPlanQueryParams,
@@ -103,6 +104,13 @@ export const lessonPlanAPI = {
 
     restore: async (id: number): Promise<LessonPlan> => {
         const response = await apiClient.post<LessonPlan>(`${LESSON_PLANS_BASE_PATH}/${id}/restore/`);
+        return response.data;
+    },
+
+    createAssignmentDraft: async (id: number): Promise<LessonPlanAssignmentDraftResponse> => {
+        const response = await apiClient.post<LessonPlanAssignmentDraftResponse>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/create_assignment_draft/`
+        );
         return response.data;
     },
 };

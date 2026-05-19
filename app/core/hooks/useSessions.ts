@@ -23,6 +23,7 @@ import {
   AttendanceRecord,
   BulkAttendanceData,
   ConfirmTaughtOutcomesPayload,
+  SessionAssignmentDraftResponse,
   SessionCohort,
   SessionFormData,
   PaginationState,
@@ -365,12 +366,14 @@ export const useSessionDetail = (
     if (!sessionId) return;
     const updated = await sessionAPI.start(sessionId);
     setSession(updated);
+    await fetchSession();
   };
 
   const completeSession = async (): Promise<void> => {
     if (!sessionId) return;
     const updated = await sessionAPI.complete(sessionId);
     setSession(updated);
+    await fetchSession();
   };
 
   const confirmTaughtOutcomes = async (
@@ -379,6 +382,15 @@ export const useSessionDetail = (
     if (!sessionId) return;
     const updated = await sessionAPI.confirmTaughtOutcomes(sessionId, data);
     setSession(updated);
+    await fetchSession();
+  };
+
+  const createAssignmentFromLesson = async (): Promise<SessionAssignmentDraftResponse> => {
+    if (!sessionId) {
+      throw new Error('Session not found.');
+    }
+
+    return sessionAPI.createAssignmentFromLesson(sessionId);
   };
 
   return {
@@ -390,6 +402,7 @@ export const useSessionDetail = (
     completeSession,
     startSession,
     confirmTaughtOutcomes,
+    createAssignmentFromLesson,
   };
 };
 

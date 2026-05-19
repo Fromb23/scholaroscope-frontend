@@ -1,64 +1,79 @@
 import { Card } from '@/app/components/ui/Card';
 import type { LessonPlan } from '@/app/core/types/lessonPlans';
 
-function formatLabel(value: string): string {
-    return value
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (match) => match.toUpperCase());
-}
-
-function formatContextValue(value: unknown): string {
-    if (value === null || value === undefined) {
-        return 'Not provided';
-    }
-
-    if (typeof value === 'string') {
-        return value.trim() || 'Not provided';
-    }
-
-    if (typeof value === 'number' || typeof value === 'boolean') {
-        return String(value);
-    }
-
-    if (Array.isArray(value)) {
-        if (value.length === 0) {
-            return 'No items';
-        }
-
-        const primitiveValues = value.filter(
-            (item) =>
-                typeof item === 'string' ||
-                typeof item === 'number' ||
-                typeof item === 'boolean'
-        );
-
-        if (primitiveValues.length === value.length && value.length <= 6) {
-            return primitiveValues.join(', ');
-        }
-
-        return `${value.length} item${value.length === 1 ? '' : 's'}`;
-    }
-
-    if (typeof value === 'object') {
-        const keys = Object.keys(value as Record<string, unknown>);
-
-        if (keys.length === 0) {
-            return 'Structured context available';
-        }
-
-        const preview = keys.slice(0, 3).map(formatLabel).join(', ');
-        return keys.length > 3 ? `${preview}, and ${keys.length - 3} more` : preview;
-    }
-
-    return 'Not provided';
-}
-
 function renderText(value: string | null | undefined): string {
     return value?.trim() || 'Not recorded yet.';
 }
 
 function renderList(values: string[] | null | undefined): string[] {
     return (values ?? []).map((item) => item.trim()).filter(Boolean);
+}
+
+function formatDate(value: string | null | undefined): string {
+    if (!value) {
+        return 'Not set';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return 'Not set';
+    }
+
+    return parsed.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+function formatTime(value: string | null | undefined): string {
+    if (!value) {
+        return 'Not set';
+    }
+
+    const [hours = '0', minutes = '0'] = value.split(':');
+    const parsed = new Date();
+    parsed.setHours(Number(hours), Number(minutes), 0, 0);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return 'Not set';
+    }
+
+    return parsed.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
+function formatPlannedDateTime(lessonPlan: LessonPlan): string {
+    const dateLabel = formatDate(lessonPlan.planned_date);
+    const hasPlannedTime = lessonPlan.planned_start_time || lessonPlan.planned_end_time;
+
+    if (!lessonPlan.planned_date && !hasPlannedTime) {
+        return 'Not set';
+    }
+
+    if (!hasPlannedTime) {
+        return dateLabel;
+    }
+
+    return `${dateLabel} · ${formatTime(lessonPlan.planned_start_time)} - ${formatTime(lessonPlan.planned_end_time)}`;
+}
+
+function formatScheduledSession(lessonPlan: LessonPlan): string {
+    if (lessonPlan.session_title?.trim()) {
+        if (lessonPlan.session_date) {
+            return `${lessonPlan.session_title} (${formatDate(lessonPlan.session_date)})`;
+        }
+        return lessonPlan.session_title;
+    }
+
+    if (lessonPlan.session) {
+        return `Lesson ${lessonPlan.session}`;
+    }
+
+    return 'Not scheduled yet';
 }
 
 interface DocumentSectionProps {
@@ -94,12 +109,55 @@ function DocumentSection({ title, description, body }: DocumentSectionProps) {
     );
 }
 
+function LessonContextItem({
+    label,
+    value,
+}: {
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {label}
+            </dt>
+            <dd className="mt-2 text-sm leading-6 text-gray-800">
+                {value}
+            </dd>
+        </div>
+    );
+}
+
 interface LessonPlanSectionsProps {
     lessonPlan: LessonPlan;
 }
 
 export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
-    const contextEntries = Object.entries(lessonPlan.generated_context ?? {});
+    const selectedReferenceCount = Array.isArray(lessonPlan.selected_references)
+        ? lessonPlan.selected_references.length
+        : 0;
+    const generatedContext = lessonPlan.generated_context ?? {};
+    const hasGeneratedContext = Object.keys(generatedContext).length > 0;
+
+    const lessonContextItems = [
+        { label: 'Class Subject', value: lessonPlan.cohort_subject_name || 'Not set' },
+        { label: 'Subject', value: lessonPlan.subject_name || 'Not set' },
+        { label: 'Cohort', value: lessonPlan.cohort_name || 'Not set' },
+        { label: 'Term', value: lessonPlan.term_name || 'Not set' },
+        { label: 'Curriculum', value: lessonPlan.curriculum_name || 'Not set' },
+        { label: 'Teacher', value: lessonPlan.teacher_name || 'Not set' },
+        { label: 'Academic Year', value: lessonPlan.academic_year_name || 'Not set' },
+        { label: 'Scheduled Session', value: formatScheduledSession(lessonPlan) },
+        { label: 'Planned Date and Time', value: formatPlannedDateTime(lessonPlan) },
+        {
+            label: 'Selected Outcomes',
+            value: `${lessonPlan.planned_outcomes.length} outcome${lessonPlan.planned_outcomes.length === 1 ? '' : 's'}`,
+        },
+        {
+            label: 'Selected References',
+            value: `${selectedReferenceCount} reference${selectedReferenceCount === 1 ? '' : 's'}`,
+        },
+    ];
 
     return (
         <div className="space-y-6">
@@ -161,28 +219,32 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
             <Card>
                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-gray-900">Planning Notes</h2>
+                        <h2 className="text-base font-semibold text-gray-900">Lesson Context</h2>
                         <p className="text-sm text-gray-500">
-                            Supporting details saved with this lesson plan.
+                            Readable planning details saved with this lesson plan.
                         </p>
                     </div>
 
-                    {contextEntries.length === 0 ? (
-                        <p className="text-sm text-gray-500">No extra planning notes were saved for this lesson plan.</p>
-                    ) : (
-                        <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            {contextEntries.map(([key, value]) => (
-                                <div key={key} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                        {formatLabel(key)}
-                                    </dt>
-                                    <dd className="mt-2 text-sm leading-6 text-gray-800">
-                                        {formatContextValue(value)}
-                                    </dd>
-                                </div>
-                            ))}
-                        </dl>
-                    )}
+                    <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {lessonContextItems.map((item) => (
+                            <LessonContextItem
+                                key={item.label}
+                                label={item.label}
+                                value={item.value}
+                            />
+                        ))}
+                    </dl>
+
+                    {hasGeneratedContext ? (
+                        <details className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 print:hidden">
+                            <summary className="cursor-pointer text-sm font-medium text-gray-700">
+                                Developer context
+                            </summary>
+                            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-6 text-gray-600">
+                                {JSON.stringify(generatedContext, null, 2)}
+                            </pre>
+                        </details>
+                    ) : null}
                 </div>
             </Card>
         </div>

@@ -1,4 +1,5 @@
 import type { PlannedOutcome } from '@/app/core/types/lessonPlans';
+import type { Assignment } from '@/app/core/types/assignments';
 
 export enum SessionType {
   LESSON = 'LESSON',
@@ -17,6 +18,14 @@ export enum AttendanceStatus {
   EXCUSED = 'EXCUSED',
   SICK = 'SICK',
 }
+
+export type SessionScheduleState =
+  | 'SCHEDULED_LOCKED'
+  | 'SCHEDULED_READY'
+  | 'SCHEDULED_OVERDUE'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'UNKNOWN';
 
 export interface Session {
   linked_cohorts: SessionCohort[];
@@ -57,6 +66,10 @@ export interface Session {
   planned_outcomes: PlannedOutcome[];
   taught_outcomes: PlannedOutcome[];
   is_unplanned: boolean;
+  schedule_state: SessionScheduleState;
+  is_overdue: boolean;
+  scheduled_start_at: string | null;
+  scheduled_end_at: string | null;
   can_start_now: boolean;
   start_available_at: string | null;
   start_available_date?: string | null;
@@ -136,6 +149,12 @@ export interface ConfirmTaughtOutcomesPayload {
     outcome_id: number;
     status: 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
   }>;
+}
+
+export interface SessionAssignmentDraftResponse {
+  detail: string;
+  created: boolean;
+  assignment: Assignment;
 }
 
 export interface SessionFormData {

@@ -12,6 +12,7 @@ import {
     ClipboardCheck,
     Clock,
     Edit,
+    FilePlus2,
     FileText,
     Layers,
     MapPin,
@@ -30,6 +31,7 @@ import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSession
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
 import { getCurriculumTypeLabel } from '@/app/core/lib/curriculumBridge';
 import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
+import type { Assignment } from '@/app/core/types/assignments';
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
@@ -148,6 +150,8 @@ export function SessionDetailPage() {
     const [workflowError, setWorkflowError] = useState<string | null>(null);
     const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
+    const [creatingAssignment, setCreatingAssignment] = useState(false);
+    const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [taughtSelections, setTaughtSelections] = useState<Record<number, TaughtStatus | ''>>({});
     const {
         session,
@@ -159,16 +163,21 @@ export function SessionDetailPage() {
         startSession,
         completeSession,
         confirmTaughtOutcomes,
+        createAssignmentFromLesson,
     } = useSessionDetail(sessionId, searchQuery);
 
     const { activeCohorts, historicalCohorts } = useSessionCohorts(sessionId);
 
     const isHistorical = session ? !session.is_current_year : false;
     const sessionStatus = session?.status ?? 'SCHEDULED';
+    const scheduleState = session?.schedule_state ?? 'UNKNOWN';
     const isCompleted = sessionStatus === 'COMPLETED';
     const isInProgress = sessionStatus === 'IN_PROGRESS';
     const isScheduled = sessionStatus === 'SCHEDULED';
-    const canTakeAttendance = sessionStatus === 'IN_PROGRESS' && !isHistorical && !isCompleted;
+    const isScheduledLocked = scheduleState === 'SCHEDULED_LOCKED';
+    const isScheduledReady = scheduleState === 'SCHEDULED_READY';
+    const isScheduledOverdue = scheduleState === 'SCHEDULED_OVERDUE';
+    const canEditAttendance = isInProgress && !isHistorical;
     const teachingWorkflow = getSessionTeachingWorkflow(session);
     const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
     const isMerged = useMemo(
@@ -188,14 +197,21 @@ export function SessionDetailPage() {
 
     const hasLessonPlan = Boolean(session?.lesson_plan_id);
     const confirmedTaughtOutcomes = session?.taught_outcomes ?? [];
+    const hasConfirmedTaughtOutcomes = confirmedTaughtOutcomes.length > 0;
     const taughtOutcomeCount = confirmedTaughtOutcomes.filter(
         (outcome) => outcome.status === 'TAUGHT' || outcome.status === 'PARTIALLY_TAUGHT'
     ).length;
     const canRecordEvidence = Boolean(
         teachingWorkflow &&
+        isCompleted &&
         hasMarkedAttendance &&
-        confirmedTaughtOutcomes.length > 0 &&
+        hasConfirmedTaughtOutcomes &&
         taughtOutcomeCount > 0
+    );
+    const canCreateAssignmentFromLesson = Boolean(
+        isCompleted &&
+        hasLessonPlan &&
+        hasConfirmedTaughtOutcomes
     );
     const lessonDateLabel = formatSessionDate(session?.session_date);
     const lessonTimeLabel = [
@@ -235,6 +251,30 @@ export function SessionDetailPage() {
         startAvailableDateTimeLabel,
         startAvailableTimeLabel,
     ]);
+    const currentWorkflowStep = useMemo(() => {
+        if (isScheduled) {
+            return 'scheduled';
+        }
+        if (isInProgress && !hasMarkedAttendance) {
+            return 'attendance';
+        }
+        if (isInProgress && !hasConfirmedTaughtOutcomes) {
+            return 'confirm_taught';
+        }
+        if (isInProgress) {
+            return 'complete';
+        }
+        if (isCompleted) {
+            return 'post_lesson';
+        }
+        return 'scheduled';
+    }, [
+        hasConfirmedTaughtOutcomes,
+        hasMarkedAttendance,
+        isCompleted,
+        isInProgress,
+        isScheduled,
+    ]);
 
     useEffect(() => {
         if (!session) {
@@ -265,10 +305,24 @@ export function SessionDetailPage() {
     } = useAttendanceDraft({
         records: attendanceRecords,
         onSave: markAttendance,
-        readOnly: !canTakeAttendance,
+        readOnly: !canEditAttendance,
     });
 
     const workflowSteps = useMemo(() => ([
+        {
+            title: 'Start lesson',
+            icon: PlayCircle,
+            complete: !isScheduled,
+            description: isCompleted
+                ? 'Lesson started and completed.'
+                : isInProgress
+                    ? 'Lesson is in progress.'
+                    : isScheduledOverdue
+                        ? 'Scheduled time passed. The lesson can still be started late.'
+                        : isScheduledReady
+                            ? 'Start the lesson when you are ready.'
+                            : 'Actions unlock when the start window opens.',
+        },
         {
             title: 'Take attendance',
             icon: ClipboardCheck,
@@ -286,26 +340,21 @@ export function SessionDetailPage() {
                 : 'Use the lesson plan outcomes.',
         },
         {
-            title: 'Record evidence',
-            icon: FileText,
-            complete: taughtOutcomeCount > 0,
-            description: taughtOutcomeCount > 0
-                ? `${taughtOutcomeCount} taught outcome${taughtOutcomeCount === 1 ? '' : 's'} ready for evidence.`
-                : 'Evidence opens after taught outcomes are confirmed.',
-        },
-        {
             title: 'Complete lesson',
             icon: CheckCircle2,
             complete: isCompleted,
             description: isCompleted ? 'Lesson completed.' : 'Finish after class records are updated.',
         },
     ]), [
-        attendanceStats.total,
-        attendanceStats.unmarked,
         confirmedTaughtOutcomes.length,
         hasMarkedAttendance,
         isCompleted,
-        taughtOutcomeCount,
+        isInProgress,
+        isScheduled,
+        isScheduledOverdue,
+        isScheduledReady,
+        attendanceStats.total,
+        attendanceStats.unmarked,
     ]);
 
     const scrollToAttendance = () => {
@@ -368,6 +417,25 @@ export function SessionDetailPage() {
         }
     };
 
+    const handleCreateAssignmentFromLesson = async () => {
+        if (!session) {
+            return;
+        }
+
+        try {
+            setCreatingAssignment(true);
+            setWorkflowError(null);
+            setWorkflowSuccess(null);
+            const response = await createAssignmentFromLesson();
+            setPreparedAssignment(response.assignment);
+            setWorkflowSuccess(response.detail);
+        } catch (error) {
+            setWorkflowError(error instanceof Error ? error.message : 'We could not prepare an assignment draft.');
+        } finally {
+            setCreatingAssignment(false);
+        }
+    };
+
     if (loading && !session) {
         return (
             <div className="mx-auto w-full max-w-6xl pb-8">
@@ -412,6 +480,7 @@ export function SessionDetailPage() {
                     <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
                         <Badge variant="blue">{session.session_type_display}</Badge>
                         {isScheduled ? <Badge variant="default">Scheduled</Badge> : null}
+                        {isScheduledOverdue ? <Badge variant="orange">Overdue</Badge> : null}
                         {isInProgress ? <Badge variant="yellow">In progress</Badge> : null}
                         {isCompleted ? <Badge variant="green">Completed</Badge> : null}
                     </div>
@@ -419,9 +488,9 @@ export function SessionDetailPage() {
 
                 {!isHistorical ? (
                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                        {isScheduled ? (
+                        {(isScheduledReady || isScheduledOverdue) ? (
                             <Button
-                                variant="secondary"
+                                variant="primary"
                                 size="sm"
                                 className="w-full sm:w-auto"
                                 onClick={handleStartLesson}
@@ -432,7 +501,7 @@ export function SessionDetailPage() {
                             </Button>
                         ) : null}
 
-                        {isInProgress ? (
+                        {currentWorkflowStep === 'complete' ? (
                             <Button variant="primary" size="sm" className="w-full sm:w-auto" onClick={handleCompleteLesson}>
                                 <CheckCircle2 className="mr-1.5 h-4 w-4" />
                                 Complete lesson
@@ -450,9 +519,24 @@ export function SessionDetailPage() {
                     </div>
                 ) : null}
 
-                {isScheduled && !session.can_start_now && startAvailabilityMessage ? (
+                {isScheduledLocked ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                        {startAvailabilityMessage}
+                        <p>This lesson is scheduled. Actions unlock when the start window opens.</p>
+                        {startAvailabilityMessage ? (
+                            <p className="mt-1">{startAvailabilityMessage}</p>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {isScheduledReady ? (
+                    <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                        Start lesson when you are ready. Attendance and teaching confirmation open after the lesson starts.
+                    </div>
+                ) : null}
+
+                {isScheduledOverdue ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                        This lesson was scheduled but not started. You can start it late or reschedule.
                     </div>
                 ) : null}
             </div>
@@ -467,6 +551,18 @@ export function SessionDetailPage() {
                 <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     {workflowSuccess}
+                </div>
+            ) : null}
+
+            {preparedAssignment ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                    <span className="font-medium">Assignment draft ready.</span>{' '}
+                    <Link
+                        href={`/academic/cohorts/${preparedAssignment.cohort_id}/assignments/${preparedAssignment.id}?returnTo=/sessions/${session.id}`}
+                        className="font-medium underline underline-offset-2"
+                    >
+                        Open assignment
+                    </Link>
                 </div>
             ) : null}
 
@@ -623,55 +719,160 @@ export function SessionDetailPage() {
                 </div>
             </Card>
 
+            {!isHistorical && currentWorkflowStep === 'attendance' ? (
+                <Card>
+                    <div className="space-y-2">
+                        <h2 className="text-lg font-semibold text-gray-900">Next step: take attendance</h2>
+                        <p className="text-sm text-gray-600">
+                            Start with attendance. After that, the lesson page will unlock confirmation of what was taught.
+                        </p>
+                        <p className="text-sm text-gray-500">
+                            Assignments and learner performance are handled after the lesson so teaching time is not interrupted.
+                        </p>
+                    </div>
+                </Card>
+            ) : null}
+
+            {!isHistorical && currentWorkflowStep === 'confirm_taught' ? (
+                <Card>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold text-gray-900">Next step: confirm what was taught</h2>
+                            <p className="text-sm text-gray-600">
+                                Attendance is saved. Confirm the planned outcomes taught in class before completing the lesson.
+                            </p>
+                            <p className="text-sm text-gray-500">
+                                Assignments and learner performance are handled after the lesson so teaching time is not interrupted.
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={handleConfirmWhatWasTaught}
+                            disabled={confirmingTaughtOutcomes || session.planned_outcomes.length === 0}
+                        >
+                            {confirmingTaughtOutcomes ? 'Saving...' : 'Confirm what was taught'}
+                        </Button>
+                    </div>
+                </Card>
+            ) : null}
+
+            {!isHistorical && currentWorkflowStep === 'complete' ? (
+                <Card>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold text-gray-900">Next step: complete lesson</h2>
+                            <p className="text-sm text-gray-600">
+                                Attendance and taught outcomes are saved. Complete the lesson, then return later for learner performance or assignment follow-up.
+                            </p>
+                        </div>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                            onClick={handleCompleteLesson}
+                        >
+                            <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                            Complete lesson
+                        </Button>
+                    </div>
+                </Card>
+            ) : null}
+
+            {currentWorkflowStep === 'post_lesson' ? (
+                <Card>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold text-gray-900">Record learner performance when ready</h2>
+                            <p className="text-sm text-gray-600">
+                                Post-lesson evidence and assignment work stay outside the live teaching window.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                            {canRecordEvidence && teachingWorkflow ? (
+                                <Link href={teachingWorkflow.href} className="w-full sm:w-auto">
+                                    <Button className="w-full sm:w-auto" size="sm">
+                                        <FileText className="mr-1.5 h-4 w-4" />
+                                        Record learner performance
+                                    </Button>
+                                </Link>
+                            ) : (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                    {!hasMarkedAttendance || !hasConfirmedTaughtOutcomes
+                                        ? 'Learner performance opens after attendance and taught outcomes are confirmed.'
+                                        : taughtOutcomeCount === 0
+                                            ? 'No outcomes were marked as taught for this lesson yet.'
+                                            : 'No curriculum evidence workflow is available for this lesson.'}
+                                </div>
+                            )}
+
+                            {canCreateAssignmentFromLesson ? (
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="w-full sm:w-auto"
+                                    onClick={handleCreateAssignmentFromLesson}
+                                    disabled={creatingAssignment}
+                                >
+                                    <FilePlus2 className="mr-1.5 h-4 w-4" />
+                                    {creatingAssignment ? 'Preparing...' : 'Create assignment from this lesson'}
+                                </Button>
+                            ) : null}
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
+
             <ParticipatingCohorts
                 sessionId={sessionId}
                 isHistorical={isHistorical}
             />
 
-            <AttendanceStatsStrip stats={attendanceStats} />
+            {!isScheduled ? (
+                <AttendanceStatsStrip stats={attendanceStats} />
+            ) : null}
 
-            <div id="attendance-section">
-                <Card>
-                    <div className="space-y-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">Take attendance</h2>
-                                <p className="mt-1 text-sm text-gray-600">
-                                    Attendance must be recorded before you confirm what was taught.
-                                </p>
+            {(currentWorkflowStep === 'attendance' || isCompleted) ? (
+                <div id="attendance-section">
+                    <Card>
+                        <div className="space-y-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">
+                                        {isCompleted ? 'Attendance records' : 'Take attendance'}
+                                    </h2>
+                                    <p className="mt-1 text-sm text-gray-600">
+                                        Attendance must be recorded before you confirm what was taught.
+                                    </p>
+                                </div>
                             </div>
+
+                            <AttendanceTable
+                                records={attendanceRecords}
+                                draft={draft}
+                                loading={loading}
+                                saving={saving}
+                                saveError={saveError}
+                                pagination={pagination}
+                                onUpdateStatus={updateStatus}
+                                onUpdateNotes={updateNotes}
+                                onMarkAll={markAll}
+                                readOnly={!canEditAttendance}
+                                onSave={async () => {
+                                    await save();
+                                    await refetch();
+                                    setWorkflowSuccess('Attendance updated.');
+                                }}
+                                onDismissError={dismissError}
+                                onSearch={setSearchQuery}
+                            />
                         </div>
+                    </Card>
+                </div>
+            ) : null}
 
-                        {isScheduled ? (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-                                Start this lesson before taking attendance.
-                            </div>
-                        ) : null}
-
-                        <AttendanceTable
-                            records={attendanceRecords}
-                            draft={draft}
-                            loading={loading}
-                            saving={saving}
-                            saveError={saveError}
-                            pagination={pagination}
-                            onUpdateStatus={updateStatus}
-                            onUpdateNotes={updateNotes}
-                            onMarkAll={markAll}
-                            readOnly={!canTakeAttendance}
-                            onSave={async () => {
-                                await save();
-                                refetch();
-                                setWorkflowSuccess('Attendance updated.');
-                            }}
-                            onDismissError={dismissError}
-                            onSearch={setSearchQuery}
-                        />
-                    </div>
-                </Card>
-            </div>
-
-            {hasLessonPlan ? (
+            {hasLessonPlan && (currentWorkflowStep === 'confirm_taught' || isCompleted) ? (
                 <Card>
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -682,37 +883,29 @@ export function SessionDetailPage() {
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Button variant="secondary" size="sm" onClick={scrollToAttendance}>
-                                    <ClipboardCheck className="mr-1.5 h-4 w-4" />
-                                    Take attendance
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    onClick={handleConfirmWhatWasTaught}
-                                    disabled={
-                                        confirmingTaughtOutcomes ||
-                                        !isInProgress ||
-                                        !hasMarkedAttendance ||
-                                        isHistorical ||
-                                        session.planned_outcomes.length === 0
-                                    }
-                                >
-                                    {confirmingTaughtOutcomes ? 'Saving...' : 'Confirm what was taught'}
-                                </Button>
+                                {!isCompleted ? (
+                                    <Button variant="secondary" size="sm" onClick={scrollToAttendance}>
+                                        <ClipboardCheck className="mr-1.5 h-4 w-4" />
+                                        Review attendance
+                                    </Button>
+                                ) : null}
+                                {!isCompleted ? (
+                                    <Button
+                                        size="sm"
+                                        onClick={handleConfirmWhatWasTaught}
+                                        disabled={
+                                            confirmingTaughtOutcomes ||
+                                            !isInProgress ||
+                                            !hasMarkedAttendance ||
+                                            isHistorical ||
+                                            session.planned_outcomes.length === 0
+                                        }
+                                    >
+                                        {confirmingTaughtOutcomes ? 'Saving...' : 'Confirm what was taught'}
+                                    </Button>
+                                ) : null}
                             </div>
                         </div>
-
-                        {!isInProgress ? (
-                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-                                Start the lesson before confirming what was taught.
-                            </div>
-                        ) : null}
-
-                        {!hasMarkedAttendance ? (
-                            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-                                Take attendance first, then confirm what was taught.
-                            </div>
-                        ) : null}
 
                         {confirmedTaughtOutcomes.length > 0 ? (
                             <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
@@ -768,7 +961,7 @@ export function SessionDetailPage() {
                                                             [outcome.outcome_id]: option.value,
                                                         }));
                                                     }}
-                                                    disabled={!isInProgress || !hasMarkedAttendance || isHistorical}
+                                                    disabled={!isInProgress || !hasMarkedAttendance || isHistorical || isCompleted}
                                                     className="sr-only"
                                                 />
                                                 <div className="font-medium text-gray-900">{option.label}</div>
@@ -782,49 +975,6 @@ export function SessionDetailPage() {
                     </div>
                 </Card>
             ) : null}
-
-            {canRecordEvidence ? (
-                <Card>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h2 className="text-lg font-semibold text-gray-900">Record evidence</h2>
-                                <Badge variant="blue">{curriculumLabel}</Badge>
-                            </div>
-                            <p className="mt-2 text-sm text-gray-600">
-                                Record evidence using the outcomes confirmed for this lesson.
-                            </p>
-                            <p className="mt-3 text-sm text-gray-600">
-                                {taughtOutcomeCount} taught outcome{taughtOutcomeCount === 1 ? '' : 's'} ready for evidence.
-                            </p>
-                        </div>
-
-                        {teachingWorkflow ? (
-                            <Link href={teachingWorkflow.href} className="w-full shrink-0 sm:w-auto">
-                                <Button className="w-full sm:w-auto" size="sm">
-                                    {teachingWorkflow.pluginKey === 'cbc' ? 'Record evidence' : teachingWorkflow.actionLabel}
-                                </Button>
-                            </Link>
-                        ) : (
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                                No curriculum evidence workflow is available for this lesson.
-                            </div>
-                        )}
-                    </div>
-                </Card>
-            ) : (
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                    {!hasMarkedAttendance ? (
-                        'Next step: take attendance, then confirm what was taught before recording evidence.'
-                    ) : confirmedTaughtOutcomes.length === 0 ? (
-                        'Next step: confirm what was taught before recording evidence.'
-                    ) : taughtOutcomeCount === 0 ? (
-                        'No outcomes were marked as taught for this lesson, so there is no evidence step yet.'
-                    ) : (
-                        'No curriculum evidence workflow is available for this lesson.'
-                    )}
-                </div>
-            )}
         </div>
     );
 }
