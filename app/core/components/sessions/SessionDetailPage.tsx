@@ -168,7 +168,7 @@ export function SessionDetailPage() {
     const isCompleted = sessionStatus === 'COMPLETED';
     const isInProgress = sessionStatus === 'IN_PROGRESS';
     const isScheduled = sessionStatus === 'SCHEDULED';
-    const isReadOnly = isHistorical || isCompleted;
+    const canTakeAttendance = sessionStatus === 'IN_PROGRESS' && !isHistorical && !isCompleted;
     const teachingWorkflow = getSessionTeachingWorkflow(session);
     const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
     const isMerged = useMemo(
@@ -265,7 +265,7 @@ export function SessionDetailPage() {
     } = useAttendanceDraft({
         records: attendanceRecords,
         onSave: markAttendance,
-        readOnly: isHistorical,
+        readOnly: !canTakeAttendance,
     });
 
     const workflowSteps = useMemo(() => ([
@@ -642,6 +642,12 @@ export function SessionDetailPage() {
                             </div>
                         </div>
 
+                        {isScheduled ? (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                                Start this lesson before taking attendance.
+                            </div>
+                        ) : null}
+
                         <AttendanceTable
                             records={attendanceRecords}
                             draft={draft}
@@ -652,7 +658,7 @@ export function SessionDetailPage() {
                             onUpdateStatus={updateStatus}
                             onUpdateNotes={updateNotes}
                             onMarkAll={markAll}
-                            readOnly={isReadOnly}
+                            readOnly={!canTakeAttendance}
                             onSave={async () => {
                                 await save();
                                 refetch();

@@ -21,6 +21,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import Modal from '@/app/components/ui/Modal';
 import { Input } from '@/app/components/ui/Input';
+import { Select } from '@/app/components/ui/Select';
 import { LessonPlanReferences } from '@/app/core/components/lessonPlans/LessonPlanReferences';
 import { LessonPlanSections } from '@/app/core/components/lessonPlans/LessonPlanSections';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
@@ -31,7 +32,9 @@ import {
     canMarkLessonPlanUsed,
     canScheduleLesson,
     canRestoreLessonPlan,
+    SCHEDULE_LESSON_SESSION_TYPE_OPTIONS,
     type LessonPlan,
+    type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
@@ -125,10 +128,18 @@ export function LessonPlanDetailPage() {
     const [markUsedOpen, setMarkUsedOpen] = useState(false);
     const [reflection, setReflection] = useState('');
     const [scheduleOpen, setScheduleOpen] = useState(false);
-    const [scheduleForm, setScheduleForm] = useState({
+    const [scheduleForm, setScheduleForm] = useState<{
+        session_date: string;
+        start_time: string;
+        end_time: string;
+        session_type: ScheduleLessonSessionType;
+        venue: string;
+        description: string;
+    }>({
         session_date: '',
         start_time: '',
         end_time: '',
+        session_type: 'LESSON',
         venue: '',
         description: '',
     });
@@ -203,6 +214,7 @@ export function LessonPlanDetailPage() {
             session_date: lessonPlan.planned_date ?? lessonPlan.session_date ?? '',
             start_time: lessonPlan.planned_start_time ?? '',
             end_time: lessonPlan.planned_end_time ?? '',
+            session_type: 'LESSON',
             venue: '',
             description: '',
         });
@@ -250,6 +262,7 @@ export function LessonPlanDetailPage() {
                 session_date: scheduleForm.session_date,
                 start_time: scheduleForm.start_time,
                 end_time: scheduleForm.end_time,
+                session_type: scheduleForm.session_type,
                 venue: scheduleForm.venue.trim() || undefined,
                 description: scheduleForm.description.trim() || undefined,
             });
@@ -621,6 +634,15 @@ export function LessonPlanDetailPage() {
                                 venue: event.target.value,
                             }))}
                             placeholder="Optional venue"
+                        />
+                        <Select
+                            label="Session category"
+                            value={scheduleForm.session_type}
+                            onChange={(event) => setScheduleForm((current) => ({
+                                ...current,
+                                session_type: event.target.value as ScheduleLessonSessionType,
+                            }))}
+                            options={SCHEDULE_LESSON_SESSION_TYPE_OPTIONS}
                         />
                         <Input
                             label="Start time"

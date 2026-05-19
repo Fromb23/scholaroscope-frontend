@@ -170,10 +170,33 @@ export interface GenerateLessonPlanResponse {
     lesson_plan: LessonPlan;
 }
 
+export type ScheduleLessonSessionType =
+    | 'LESSON'
+    | 'PRACTICAL'
+    | 'PROJECT'
+    | 'EXAM'
+    | 'FIELD_TRIP'
+    | 'ASSEMBLY'
+    | 'OTHER';
+
+export const SCHEDULE_LESSON_SESSION_TYPE_OPTIONS: Array<{
+    value: ScheduleLessonSessionType;
+    label: string;
+}> = [
+    { value: 'LESSON', label: 'Lesson' },
+    { value: 'PRACTICAL', label: 'Practical' },
+    { value: 'PROJECT', label: 'Project' },
+    { value: 'EXAM', label: 'Exam' },
+    { value: 'FIELD_TRIP', label: 'Field Trip' },
+    { value: 'ASSEMBLY', label: 'Assembly' },
+    { value: 'OTHER', label: 'Other' },
+];
+
 export interface ScheduleLessonPayload {
     session_date: string;
     start_time: string;
     end_time: string;
+    session_type?: ScheduleLessonSessionType;
     venue?: string;
     description?: string;
 }
@@ -209,7 +232,16 @@ export function canScheduleLesson(status: LessonPlanStatus): boolean {
 }
 
 export function canMarkLessonPlanUsed(status: LessonPlanStatus): boolean {
-    return status === 'SCHEDULED';
+    switch (status) {
+        case 'DRAFT':
+        case 'GENERATED':
+        case 'REVIEWED':
+        case 'SCHEDULED':
+        case 'USED':
+        case 'ARCHIVED':
+        default:
+            return false;
+    }
 }
 
 export function canArchiveLessonPlan(status: LessonPlanStatus): boolean {
