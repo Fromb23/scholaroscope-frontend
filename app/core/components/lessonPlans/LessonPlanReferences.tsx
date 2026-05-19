@@ -17,6 +17,18 @@ function getStringValue(record: Record<string, unknown>, keys: string[]): string
     return null;
 }
 
+function getKeywords(record: Record<string, unknown>): string[] {
+    const value = record.keywords;
+
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .map((item) => item.trim());
+}
+
 function getPageRange(record: Record<string, unknown>): string | null {
     const directValue = getStringValue(record, ['page_range', 'pages', 'pageRange']);
 
@@ -65,32 +77,65 @@ function normalizeReference(reference: unknown, index: number) {
             key: `reference-${index}`,
             title: `Reference ${index + 1}`,
             citation: formatFallback(reference),
+            context: null as string | null,
             pageRange: null as string | null,
+            notes: null as string | null,
+            keywords: [] as string[],
+            fallback: null as string | null,
         };
     }
 
-    const title = getStringValue(reference, [
-        'title',
-        'resource_title',
-        'name',
-        'label',
-        'entry_title',
-    ]) ?? `Reference ${index + 1}`;
-
     const citation = getStringValue(reference, [
+        'reference_citation',
+        'citation_snapshot',
         'citation',
         'formatted_citation',
         'reference',
         'display_text',
         'summary',
-    ]) ?? formatFallback(reference);
+    ]);
+
+    const title = getStringValue(reference, [
+        'resource_title',
+        'title',
+        'name',
+        'label',
+        'entry_title',
+    ]) ?? citation ?? `Reference ${index + 1}`;
+
+    const chapter = getStringValue(reference, ['chapter']);
+    const topicLabel = getStringValue(reference, ['topic_label']);
+    const context = chapter && topicLabel && chapter !== topicLabel
+        ? `${chapter} / ${topicLabel}`
+        : (chapter ?? topicLabel);
 
     const pageRange = getPageRange(reference);
+    const notes = getStringValue(reference, ['notes']);
+    const keywords = getKeywords(reference);
     const key =
         getStringValue(reference, ['id', 'uuid', 'slug']) ??
         `${title}-${index}`;
 
-    return { key, title, citation, pageRange };
+    const hasStructuredContent = Boolean(
+        citation ||
+        getStringValue(reference, ['citation_snapshot', 'reference_citation']) ||
+        getStringValue(reference, ['resource_title']) ||
+        context ||
+        pageRange ||
+        notes ||
+        keywords.length > 0
+    );
+
+    return {
+        key,
+        title,
+        citation,
+        context,
+        pageRange,
+        notes,
+        keywords,
+        fallback: hasStructuredContent ? null : formatFallback(reference),
+    };
 }
 
 interface LessonPlanReferencesProps {
@@ -128,9 +173,25 @@ export function LessonPlanReferences({ lessonPlan }: LessonPlanReferencesProps) 
                         {references.map((reference) => (
                             <div key={reference.key} className="rounded-lg border border-gray-200 p-4">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div className="space-y-1">
+                                    <div className="space-y-2">
                                         <h3 className="text-sm font-semibold text-gray-900">{reference.title}</h3>
-                                        <p className="text-sm leading-6 text-gray-700">{reference.citation}</p>
+                                        {reference.context ? (
+                                            <p className="text-sm text-gray-600">{reference.context}</p>
+                                        ) : null}
+                                        {reference.citation && reference.citation !== reference.title ? (
+                                            <p className="text-sm leading-6 text-gray-700">{reference.citation}</p>
+                                        ) : null}
+                                        {reference.notes ? (
+                                            <p className="text-sm leading-6 text-gray-700">{reference.notes}</p>
+                                        ) : null}
+                                        {reference.keywords.length > 0 ? (
+                                            <p className="text-xs text-gray-500">
+                                                Keywords: {reference.keywords.join(', ')}
+                                            </p>
+                                        ) : null}
+                                        {reference.fallback ? (
+                                            <p className="text-sm leading-6 text-gray-700">{reference.fallback}</p>
+                                        ) : null}
                                     </div>
 
                                     {reference.pageRange ? (
