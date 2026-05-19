@@ -25,6 +25,10 @@ export function buildAcademicYearOptions(
 export function getInstructorAcademicYearFilterNotice(
     academicYearFilterMode: InstructorAcademicYearFilterMode
 ): string | null {
+    if (process.env.NODE_ENV !== 'development') {
+        return null;
+    }
+
     if (academicYearFilterMode === 'id') {
         return null;
     }

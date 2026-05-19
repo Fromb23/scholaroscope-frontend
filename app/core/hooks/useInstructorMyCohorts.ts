@@ -177,9 +177,10 @@ export function useInstructorMyCohorts(options?: { enabled?: boolean }) {
                     cohort_name: assignment.cohort_name,
                     curriculum_name: assignment.curriculum_name ?? '',
                     curriculum_type: assignment.curriculum_type,
+                    academic_year_name: assignment.academic_year_name ?? assignment.academic_year ?? null,
                     is_current_year: assignment.is_current_year,
                 })
-                ?? normalizeText(assignment.academic_year);
+                ?? normalizeText(assignment.academic_year_name ?? assignment.academic_year);
             const teachingKey = getTeachingAssignmentKey(assignment);
             const existingGroup = groupMap.get(assignment.cohort_id);
 

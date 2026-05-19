@@ -1,10 +1,11 @@
 'use client';
 
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Eye, FileText, Plus, RotateCcw } from 'lucide-react';
+import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -13,7 +14,6 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import Modal from '@/app/components/ui/Modal';
 import { Select } from '@/app/components/ui/Select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
@@ -88,6 +88,36 @@ function teacherLabel(lessonPlan: LessonPlan): string {
     return lessonPlan.teacher_name?.trim() || 'Unassigned teacher';
 }
 
+function normalizeText(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    return normalized.length > 0 ? normalized : null;
+}
+
+function getLessonSummary(lessonPlan: LessonPlan): string | null {
+    const objective = lessonPlan.objectives.find((value) => normalizeText(value));
+    const firstOutcome = lessonPlan.planned_outcomes.find((outcome) => normalizeText(outcome.text));
+
+    return (
+        normalizeText(lessonPlan.introduction)
+        || normalizeText(lessonPlan.prior_knowledge)
+        || normalizeText(objective)
+        || normalizeText(firstOutcome?.text)
+    );
+}
+
+function LessonPlanMetaItem({ label, value }: { label: string; value: ReactNode }) {
+    return (
+        <div className="min-w-0 rounded-lg bg-gray-50 px-3 py-2">
+            <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</dt>
+            <dd className="mt-1 min-w-0 text-sm text-gray-900">{value}</dd>
+        </div>
+    );
+}
+
 interface LessonPlanActionsProps {
     lessonPlan: LessonPlan;
     pendingActionKey: string | null;
@@ -96,6 +126,8 @@ interface LessonPlanActionsProps {
     onMarkUsed: (lessonPlan: LessonPlan) => void;
     onArchive: (lessonPlan: LessonPlan) => void;
     onRestore: (lessonPlan: LessonPlan) => void;
+    className?: string;
+    buttonClassName?: string;
 }
 
 function LessonPlanActions({
@@ -106,12 +138,19 @@ function LessonPlanActions({
     onMarkUsed,
     onArchive,
     onRestore,
+    className = '',
+    buttonClassName = '',
 }: LessonPlanActionsProps) {
     const isPending = (action: string) => pendingActionKey === actionKey(lessonPlan.id, action);
 
     return (
-        <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={() => onView(lessonPlan)}>
+        <div className={`flex flex-wrap gap-2 ${className}`}>
+            <Button
+                type="button"
+                size="sm"
+                onClick={() => onView(lessonPlan)}
+                className={buttonClassName}
+            >
                 <Eye className="mr-1.5 h-4 w-4" />
                 View
             </Button>
@@ -123,6 +162,7 @@ function LessonPlanActions({
                     size="sm"
                     onClick={() => onMarkReviewed(lessonPlan)}
                     disabled={isPending('reviewed')}
+                    className={buttonClassName}
                 >
                     Mark Reviewed
                 </Button>
@@ -134,6 +174,7 @@ function LessonPlanActions({
                     size="sm"
                     onClick={() => onMarkUsed(lessonPlan)}
                     disabled={isPending('used')}
+                    className={buttonClassName}
                 >
                     Mark Used
                 </Button>
@@ -142,10 +183,11 @@ function LessonPlanActions({
             {canArchiveLessonPlan(lessonPlan.status) ? (
                 <Button
                     type="button"
-                    variant="danger"
+                    variant="ghost"
                     size="sm"
                     onClick={() => onArchive(lessonPlan)}
                     disabled={isPending('archived')}
+                    className={`text-red-600 hover:bg-red-50 focus:ring-red-500 ${buttonClassName}`}
                 >
                     Archive
                 </Button>
@@ -158,6 +200,7 @@ function LessonPlanActions({
                     size="sm"
                     onClick={() => onRestore(lessonPlan)}
                     disabled={isPending('restored')}
+                    className={buttonClassName}
                 >
                     <RotateCcw className="mr-1.5 h-4 w-4" />
                     Restore
@@ -424,132 +467,91 @@ export function LessonPlansPage() {
                     </div>
                 </Card>
             ) : (
-                <>
-                    <div className="hidden lg:block">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Lesson Plan</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Lesson Date</TableHead>
-                                    <TableHead>Cohort</TableHead>
-                                    <TableHead>Subject</TableHead>
-                                    <TableHead>Term</TableHead>
-                                    <TableHead>Teacher</TableHead>
-                                    <TableHead>Updated</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredLessonPlans.map((lessonPlan) => (
-                                    <TableRow key={lessonPlan.id}>
-                                        <TableCell>
-                                            <div className="space-y-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="font-medium text-gray-900">{lessonPlan.title}</span>
-                                                    {lessonPlan.generated_by_ai ? (
-                                                        <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700">
-                                                            AI
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {getLessonStatusLabel(lessonPlan)}
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <LessonPlanStatusBadge status={lessonPlan.status} />
-                                        </TableCell>
-                                        <TableCell>{formatDate(getLessonDate(lessonPlan))}</TableCell>
-                                        <TableCell>{lessonPlan.cohort_name || '-'}</TableCell>
-                                        <TableCell>{lessonPlan.subject_name || '-'}</TableCell>
-                                        <TableCell>{lessonPlan.term_name || '-'}</TableCell>
-                                        <TableCell>{teacherLabel(lessonPlan)}</TableCell>
-                                        <TableCell>{formatUpdatedAt(lessonPlan.updated_at)}</TableCell>
-                                        <TableCell>
-                                            <LessonPlanActions
-                                                lessonPlan={lessonPlan}
-                                                pendingActionKey={pendingActionKey}
-                                                onView={(plan) => router.push(`/lesson-plans/${plan.id}`)}
-                                                onMarkReviewed={(plan) => {
-                                                    void handleRowAction(plan, 'reviewed');
-                                                }}
-                                                onMarkUsed={handleOpenMarkUsed}
-                                                onArchive={(plan) => {
-                                                    void handleRowAction(plan, 'archived');
-                                                }}
-                                                onRestore={(plan) => {
-                                                    void handleRowAction(plan, 'restored');
-                                                }}
-                                            />
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                <div className="space-y-4 pb-24">
+                    {filteredLessonPlans.map((lessonPlan) => {
+                        const lessonSummary = getLessonSummary(lessonPlan);
 
-                    <div className="space-y-4 lg:hidden">
-                        {filteredLessonPlans.map((lessonPlan) => (
-                            <Card key={lessonPlan.id} className="p-4">
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h2 className="text-base font-semibold text-gray-900">{lessonPlan.title}</h2>
-                                            <LessonPlanStatusBadge status={lessonPlan.status} size="sm" />
-                                            {lessonPlan.generated_by_ai ? (
-                                                <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700">
-                                                    AI
-                                                </span>
+                        return (
+                            <Card key={lessonPlan.id} className="p-4 sm:p-5">
+                                <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)_auto] xl:items-start">
+                                    <div className="min-w-0 space-y-3">
+                                        <div className="space-y-2">
+                                            <div className="flex flex-wrap items-start gap-2">
+                                                <h2 className="min-w-0 flex-1 text-base font-semibold text-gray-900 line-clamp-2 sm:text-lg">
+                                                    {lessonPlan.title}
+                                                </h2>
+                                                {lessonPlan.generated_by_ai ? (
+                                                    <Badge variant="purple" size="sm">
+                                                        AI
+                                                    </Badge>
+                                                ) : null}
+                                            </div>
+                                            <p className="text-sm text-gray-500">
+                                                {getLessonStatusLabel(lessonPlan)}
+                                            </p>
+                                            {lessonSummary ? (
+                                                <p className="text-sm leading-6 text-gray-600 line-clamp-2">
+                                                    {lessonSummary}
+                                                </p>
                                             ) : null}
                                         </div>
-                                        <p className="text-sm text-gray-500">
-                                            {getLessonStatusLabel(lessonPlan)}
-                                        </p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 gap-2 text-sm text-gray-700">
-                                        <div>
-                                            <span className="text-gray-500">Lesson Date:</span> {formatDate(getLessonDate(lessonPlan))}
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-500">Cohort:</span> {lessonPlan.cohort_name || '-'}
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-500">Subject:</span> {lessonPlan.subject_name || '-'}
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-500">Term:</span> {lessonPlan.term_name || '-'}
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-500">Teacher:</span> {teacherLabel(lessonPlan)}
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-500">Updated:</span> {formatUpdatedAt(lessonPlan.updated_at)}
-                                        </div>
-                                    </div>
+                                    <dl className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                                        <LessonPlanMetaItem
+                                            label="Status"
+                                            value={<LessonPlanStatusBadge status={lessonPlan.status} size="sm" />}
+                                        />
+                                        <LessonPlanMetaItem
+                                            label="Lesson Date"
+                                            value={formatDate(getLessonDate(lessonPlan))}
+                                        />
+                                        <LessonPlanMetaItem
+                                            label="Cohort"
+                                            value={lessonPlan.cohort_name || '-'}
+                                        />
+                                        <LessonPlanMetaItem
+                                            label="Subject"
+                                            value={lessonPlan.subject_name || '-'}
+                                        />
+                                        <LessonPlanMetaItem
+                                            label="Term"
+                                            value={lessonPlan.term_name || '-'}
+                                        />
+                                        <LessonPlanMetaItem
+                                            label="Teacher"
+                                            value={teacherLabel(lessonPlan)}
+                                        />
+                                        <LessonPlanMetaItem
+                                            label="Updated"
+                                            value={formatUpdatedAt(lessonPlan.updated_at)}
+                                        />
+                                    </dl>
 
-                                    <LessonPlanActions
-                                        lessonPlan={lessonPlan}
-                                        pendingActionKey={pendingActionKey}
-                                        onView={(plan) => router.push(`/lesson-plans/${plan.id}`)}
-                                        onMarkReviewed={(plan) => {
-                                            void handleRowAction(plan, 'reviewed');
-                                        }}
-                                        onMarkUsed={handleOpenMarkUsed}
-                                        onArchive={(plan) => {
-                                            void handleRowAction(plan, 'archived');
-                                        }}
-                                        onRestore={(plan) => {
-                                            void handleRowAction(plan, 'restored');
-                                        }}
-                                    />
+                                    <div className="xl:min-w-[12rem]">
+                                        <LessonPlanActions
+                                            lessonPlan={lessonPlan}
+                                            pendingActionKey={pendingActionKey}
+                                            onView={(plan) => router.push(`/lesson-plans/${plan.id}`)}
+                                            onMarkReviewed={(plan) => {
+                                                void handleRowAction(plan, 'reviewed');
+                                            }}
+                                            onMarkUsed={handleOpenMarkUsed}
+                                            onArchive={(plan) => {
+                                                void handleRowAction(plan, 'archived');
+                                            }}
+                                            onRestore={(plan) => {
+                                                void handleRowAction(plan, 'restored');
+                                            }}
+                                            className="w-full xl:flex-col xl:items-stretch"
+                                            buttonClassName="w-full sm:w-auto xl:w-full"
+                                        />
+                                    </div>
                                 </div>
                             </Card>
-                        ))}
-                    </div>
-                </>
+                        );
+                    })}
+                </div>
             )}
 
             <Modal

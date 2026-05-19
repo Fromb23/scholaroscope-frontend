@@ -246,9 +246,13 @@ export interface TeachingAssignment {
   assigned?: boolean;
   subject_name: string;
   subject_code?: string | null;
+  curriculum_id?: number | null;
   curriculum_name?: string | null;
   level: string;
+  stream?: string | null;
   academic_year: string;
+  academic_year_id?: number | null;
+  academic_year_name?: string | null;
   is_current_year: boolean;
   curriculum_type: string;
   covered: number;
