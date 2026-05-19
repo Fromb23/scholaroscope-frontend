@@ -56,6 +56,16 @@ function getLessonPlanCreateMessage(error: ApiError, fallback: string): string {
     return extractErrorMessage(error, fallback);
 }
 
+function getLessonPlanGenerateMessage(error: ApiError, fallback: string): string {
+    const status = getStatusCode(error);
+
+    if (status === 503) {
+        return 'AI-assisted drafting is unavailable right now. You can retry without AI.';
+    }
+
+    return getLessonPlanCreateMessage(error, fallback);
+}
+
 function replaceLessonPlan(items: LessonPlan[], updated: LessonPlan): LessonPlan[] {
     const nextItems = items.map((item) => (item.id === updated.id ? updated : item));
 
@@ -398,10 +408,15 @@ export const useGenerateLessonPlan = () => {
             return response;
         } catch (err) {
             const apiError = err as ApiError;
+            const message = getLessonPlanGenerateMessage(
+                apiError,
+                'Failed to generate lesson plan.'
+            );
+            const status = getStatusCode(apiError);
             setResult(null);
-            setError(getLessonPlanCreateMessage(apiError, 'Failed to generate lesson plan.'));
-            setErrorStatus(getStatusCode(apiError));
-            throw new Error(getLessonPlanCreateMessage(apiError, 'Failed to generate lesson plan.'));
+            setError(message);
+            setErrorStatus(status);
+            throw Object.assign(new Error(message), { status });
         } finally {
             setSubmitting(false);
         }

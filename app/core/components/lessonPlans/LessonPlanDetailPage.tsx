@@ -151,18 +151,22 @@ export function LessonPlanDetailPage() {
 
     const noticeMessage = useMemo(() => {
         const notice = searchParams.get('notice');
+        const mode = searchParams.get('mode');
         const referencesCount = Number(searchParams.get('references') ?? '0');
+        const referencesLabel = `${referencesCount} reference${
+            referencesCount === 1 ? '' : 's'
+        } selected.`;
 
         if (notice === 'generated') {
-            return `Lesson plan generated. ${referencesCount} reference${
-                referencesCount === 1 ? '' : 's'
-            } selected.`;
+            return mode === 'ai'
+                ? `AI-assisted lesson plan generated from selected outcomes and references. ${referencesLabel}`
+                : `Lesson plan generated from selected outcomes and references. ${referencesLabel}`;
         }
 
         if (notice === 'existing') {
-            return `Existing lesson plan found. ${referencesCount} reference${
-                referencesCount === 1 ? '' : 's'
-            } selected.`;
+            return mode === 'ai'
+                ? `Existing AI-assisted lesson plan opened. ${referencesLabel}`
+                : `Existing lesson plan opened. ${referencesLabel}`;
         }
 
         if (notice === 'updated') {
