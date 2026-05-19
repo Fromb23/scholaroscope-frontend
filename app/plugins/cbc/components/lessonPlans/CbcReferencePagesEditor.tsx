@@ -71,6 +71,15 @@ export function CbcReferencePagesEditor({
         })),
         [plannedOutcomes]
     );
+    const completedReferenceCount = useMemo(
+        () => value.filter((reference) => (
+            reference.resource_title.trim().length > 0
+            && reference.page_start > 0
+            && reference.page_end > 0
+            && Boolean(reference.outcome_id)
+        )).length,
+        [value]
+    );
 
     useEffect(() => {
         const normalizedValue = value.map((reference) => {
@@ -103,13 +112,28 @@ export function CbcReferencePagesEditor({
     };
 
     return (
-        <Card>
+        <Card className="border-gray-200 bg-gray-50/60">
             <div className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                        <BookOpen className="h-4 w-4 text-gray-500" />
-                        Add reference pages
+                    <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Step 3
+                        </p>
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                            <BookOpen className="h-4 w-4 text-gray-500" />
+                            Attach references and pages
+                        </div>
                     </div>
+                    <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                        {completedReferenceCount} attached
+                    </span>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                    Add only the references you want this lesson plan to use. Each reference stays linked to one selected outcome.
+                </p>
+
+                <div className="flex justify-end">
                     <Button type="button" variant="ghost" size="sm" onClick={addReference}>
                         <Plus className="mr-1.5 h-4 w-4" />
                         Add reference
@@ -123,91 +147,112 @@ export function CbcReferencePagesEditor({
                 ) : null}
 
                 {value.map((reference, index) => (
-                    <div key={`cbc-reference-${index}`} className="grid gap-3 rounded-lg border border-gray-200 p-3 md:grid-cols-2">
-                        <Input
-                            label={context.reference_language.resource_label}
-                            value={reference.resource_title}
-                            onChange={(event) => updateReference(index, {
-                                ...reference,
-                                resource_title: event.target.value,
-                            })}
-                            placeholder="Resource title"
-                        />
+                    <div
+                        key={`cbc-reference-${index}`}
+                        className="space-y-4 rounded-lg border border-gray-200 bg-white p-4"
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                    Reference {index + 1}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                    Link one page range to one selected outcome.
+                                </p>
+                            </div>
+                            {reference.outcome_id && outcomeMap.get(reference.outcome_id) ? (
+                                <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                                    {outcomeMap.get(reference.outcome_id)?.code}
+                                </span>
+                            ) : null}
+                        </div>
 
-                        <Select
-                            label={context.reference_language.outcome_label ?? 'Learning outcome'}
-                            value={reference.outcome_id ? String(reference.outcome_id) : ''}
-                            onChange={(event) => {
-                                const outcomeId = event.target.value ? Number(event.target.value) : null;
-                                updateReference(
-                                    index,
-                                    applyOutcome(reference, outcomeId ? outcomeMap.get(outcomeId) : undefined),
-                                );
-                            }}
-                            disabled={plannedOutcomes.length === 0}
-                            options={[
-                                { value: '', label: 'Choose learning outcome' },
-                                ...outcomeOptions,
-                            ]}
-                        />
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <Input
+                                label={context.reference_language.resource_label}
+                                value={reference.resource_title}
+                                onChange={(event) => updateReference(index, {
+                                    ...reference,
+                                    resource_title: event.target.value,
+                                })}
+                                placeholder="Resource title"
+                            />
 
-                        <Input
-                            label={context.reference_language.strand_label ?? 'Strand'}
-                            value={reference.strand_name || ''}
-                            readOnly
-                            placeholder="Auto-filled from the selected learning outcome"
-                        />
+                            <Select
+                                label={context.reference_language.outcome_label ?? 'Learning outcome'}
+                                value={reference.outcome_id ? String(reference.outcome_id) : ''}
+                                onChange={(event) => {
+                                    const outcomeId = event.target.value ? Number(event.target.value) : null;
+                                    updateReference(
+                                        index,
+                                        applyOutcome(reference, outcomeId ? outcomeMap.get(outcomeId) : undefined),
+                                    );
+                                }}
+                                disabled={plannedOutcomes.length === 0}
+                                options={[
+                                    { value: '', label: 'Choose learning outcome' },
+                                    ...outcomeOptions,
+                                ]}
+                            />
 
-                        <Input
-                            label={context.reference_language.sub_strand_label ?? 'Sub-strand'}
-                            value={reference.sub_strand_name || ''}
-                            readOnly
-                            placeholder="Auto-filled from the selected learning outcome"
-                        />
+                            <Input
+                                label={context.reference_language.strand_label ?? 'Strand'}
+                                value={reference.strand_name || ''}
+                                readOnly
+                                placeholder="Auto-filled from the selected learning outcome"
+                            />
 
-                        <Input
-                            label={context.reference_language.pages_label === 'Pages' ? 'Page start' : context.reference_language.pages_label}
-                            type="number"
-                            min={1}
-                            value={String(reference.page_start)}
-                            onChange={(event) => updateReference(index, {
-                                ...reference,
-                                page_start: Number(event.target.value) || 1,
-                            })}
-                        />
+                            <Input
+                                label={context.reference_language.sub_strand_label ?? 'Sub-strand'}
+                                value={reference.sub_strand_name || ''}
+                                readOnly
+                                placeholder="Auto-filled from the selected learning outcome"
+                            />
 
-                        <Input
-                            label="Page end"
-                            type="number"
-                            min={1}
-                            value={String(reference.page_end)}
-                            onChange={(event) => updateReference(index, {
-                                ...reference,
-                                page_end: Number(event.target.value) || 1,
-                            })}
-                        />
+                            <Input
+                                label={context.reference_language.pages_label === 'Pages' ? 'Page start' : context.reference_language.pages_label}
+                                type="number"
+                                min={1}
+                                value={String(reference.page_start)}
+                                onChange={(event) => updateReference(index, {
+                                    ...reference,
+                                    page_start: Number(event.target.value) || 1,
+                                })}
+                            />
 
-                        <Input
-                            label={context.reference_language.chapter_label}
-                            value={reference.chapter || ''}
-                            onChange={(event) => updateReference(index, {
-                                ...reference,
-                                chapter: event.target.value,
-                            })}
-                            placeholder="Optional chapter"
-                        />
+                            <Input
+                                label="Page end"
+                                type="number"
+                                min={1}
+                                value={String(reference.page_end)}
+                                onChange={(event) => updateReference(index, {
+                                    ...reference,
+                                    page_end: Number(event.target.value) || 1,
+                                })}
+                            />
 
-                        <Input
-                            label={context.reference_language.notes_label}
-                            value={reference.notes || ''}
-                            onChange={(event) => updateReference(index, {
-                                ...reference,
-                                notes: event.target.value,
-                            })}
-                            placeholder="Optional notes"
-                        />
+                            <Input
+                                label={context.reference_language.chapter_label}
+                                value={reference.chapter || ''}
+                                onChange={(event) => updateReference(index, {
+                                    ...reference,
+                                    chapter: event.target.value,
+                                })}
+                                placeholder="Optional chapter"
+                            />
 
-                        <div className="md:col-span-2 flex justify-end">
+                            <Input
+                                label={context.reference_language.notes_label}
+                                value={reference.notes || ''}
+                                onChange={(event) => updateReference(index, {
+                                    ...reference,
+                                    notes: event.target.value,
+                                })}
+                                placeholder="Optional notes"
+                            />
+                        </div>
+
+                        <div className="flex justify-end">
                             <Button
                                 type="button"
                                 variant="ghost"

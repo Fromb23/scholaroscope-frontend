@@ -16,6 +16,7 @@ export interface LessonPlanCurriculumContext {
     cohort_subject: number;
     curriculum_type: string | null;
     provider: string;
+    ai_generation_available: boolean;
     supports_outcome_selection: boolean;
     supports_reference_alignment: boolean;
     manual_outcomes_allowed: boolean;

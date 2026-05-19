@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Bot, BookOpen, CalendarClock } from 'lucide-react';
+import { ArrowLeft, Bot, BookOpen, CalendarClock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -12,6 +12,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
+import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -20,7 +21,15 @@ import {
     useGenerateLessonPlan,
     useLessonPlanCurriculumContext,
 } from '@/app/core/hooks/useLessonPlans';
-import type { PlannedOutcome, ReferencePageInput } from '@/app/core/types/lessonPlans';
+import type { ApiError } from '@/app/core/types/errors';
+import { extractErrorMessage } from '@/app/core/types/errors';
+import type {
+    LessonPlan,
+    LessonPlanCreatePayload,
+    LessonPlanUpdatePayload,
+    PlannedOutcome,
+    ReferencePageInput,
+} from '@/app/core/types/lessonPlans';
 
 function emptyReferencePage(): ReferencePageInput {
     return {
@@ -94,6 +103,12 @@ export function GenerateLessonPlanPage() {
     const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([emptyReferencePage()]);
     const [useAi, setUseAi] = useState(true);
     const [submittingError, setSubmittingError] = useState<string | null>(null);
+    const [showRetryWithoutAi, setShowRetryWithoutAi] = useState(false);
+    const [draftLessonPlan, setDraftLessonPlan] = useState<{
+        id: number;
+        cohortSubjectId: number;
+        termId: number;
+    } | null>(null);
 
     const selectedCohortSubjectId = cohortSubjectId ? Number(cohortSubjectId) : null;
     const {
@@ -118,6 +133,50 @@ export function GenerateLessonPlanPage() {
         () => new Map(plannedOutcomes.map((outcome) => [outcome.outcome_id, outcome])),
         [plannedOutcomes]
     );
+    const completedReferenceCount = useMemo(
+        () => referencePages.filter((reference) => (
+            reference.resource_title.trim().length > 0
+            && reference.page_start > 0
+            && reference.page_end > 0
+            && Boolean(reference.outcome_id)
+        )).length,
+        [referencePages]
+    );
+    const aiGenerationAvailable = Boolean(curriculumContext?.ai_generation_available);
+    const stepCards = [
+        {
+            step: 'Step 1',
+            title: 'Class subject and term',
+            detail: selectedCohortSubjectId && termId
+                ? 'Ready'
+                : 'Choose the lesson context first.',
+            complete: Boolean(selectedCohortSubjectId && termId),
+        },
+        {
+            step: 'Step 2',
+            title: 'Learning outcomes',
+            detail: plannedOutcomes.length > 0
+                ? `${plannedOutcomes.length} selected`
+                : 'Choose the outcomes to teach.',
+            complete: plannedOutcomes.length > 0,
+        },
+        {
+            step: 'Step 3',
+            title: 'References and pages',
+            detail: completedReferenceCount > 0
+                ? `${completedReferenceCount} attached`
+                : 'Attach the pages the draft may use.',
+            complete: completedReferenceCount > 0,
+        },
+        {
+            step: 'Step 4',
+            title: 'Generate draft',
+            detail: useAi && aiGenerationAvailable
+                ? 'AI-assisted draft'
+                : 'Rule-based draft',
+            complete: false,
+        },
+    ];
 
     useEffect(() => {
         setPlannedOutcomes([]);
@@ -126,13 +185,56 @@ export function GenerateLessonPlanPage() {
 
     useEffect(() => {
         setSubmittingError(null);
+        setShowRetryWithoutAi(false);
         clearCreateError();
         clearGenerateError();
-    }, [clearCreateError, clearGenerateError, cohortSubjectId]);
+    }, [clearCreateError, clearGenerateError, cohortSubjectId, termId]);
 
-    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    useEffect(() => {
+        if (!curriculumContext) {
+            return;
+        }
+
+        setUseAi(Boolean(curriculumContext.ai_generation_available));
+    }, [curriculumContext]);
+
+    const upsertDraftLessonPlan = async (
+        payload: LessonPlanCreatePayload,
+    ): Promise<LessonPlan> => {
+        if (
+            draftLessonPlan
+            && draftLessonPlan.cohortSubjectId === payload.cohort_subject
+            && draftLessonPlan.termId === payload.term
+        ) {
+            try {
+                const updatePayload: LessonPlanUpdatePayload = {
+                    title: payload.title,
+                    planned_outcomes: payload.planned_outcomes,
+                    reference_pages: payload.reference_pages,
+                };
+                return await lessonPlanAPI.update(draftLessonPlan.id, updatePayload);
+            } catch (err) {
+                throw new Error(
+                    extractErrorMessage(
+                        err as ApiError,
+                        'Failed to update the draft lesson plan.'
+                    )
+                );
+            }
+        }
+
+        const lessonPlan = await createLessonPlan(payload);
+        setDraftLessonPlan({
+            id: lessonPlan.id,
+            cohortSubjectId: payload.cohort_subject,
+            termId: payload.term,
+        });
+        return lessonPlan;
+    };
+
+    const submitGeneration = async (requestedUseAi: boolean) => {
         setSubmittingError(null);
+        setShowRetryWithoutAi(false);
         clearCreateError();
         clearGenerateError();
 
@@ -166,7 +268,7 @@ export function GenerateLessonPlanPage() {
         }
 
         try {
-            const lessonPlan = await createLessonPlan({
+            const lessonPlan = await upsertDraftLessonPlan({
                 cohort_subject: selectedCohortSubjectId,
                 term: Number(termId),
                 title: title.trim() || undefined,
@@ -176,19 +278,28 @@ export function GenerateLessonPlanPage() {
 
             const generated = await generateLessonPlan(lessonPlan.id, {
                 force_regenerate: false,
-                use_ai: useAi,
+                use_ai: requestedUseAi,
             });
 
             router.push(
-                `/lesson-plans/${generated.lesson_plan.id}?notice=${generated.created ? 'generated' : 'existing'}&references=${generated.selected_references_count}`
+                `/lesson-plans/${generated.lesson_plan.id}?notice=${generated.created ? 'generated' : 'existing'}&mode=${generated.lesson_plan.generated_by_ai ? 'ai' : 'standard'}&references=${generated.selected_references_count}`
             );
         } catch (submitError) {
+            const status = (submitError as Error & { status?: number }).status;
+            if (status === 503 && requestedUseAi) {
+                setShowRetryWithoutAi(true);
+            }
             setSubmittingError(
                 submitError instanceof Error
                     ? submitError.message
                     : 'We could not generate the lesson plan.'
             );
         }
+    };
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        await submitGeneration(useAi && aiGenerationAvailable);
     };
 
     if (assignmentsLoading) {
@@ -217,12 +328,36 @@ export function GenerateLessonPlanPage() {
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">Plan a lesson</h1>
                     <p className="mt-1 text-gray-600">
-                        What are you preparing to teach?
+                        Prepare an editable draft using teacher-selected outcomes and reference pages.
                     </p>
                 </div>
             </div>
 
-            {createError || generateError || submittingError ? (
+            <div className="grid gap-3 md:grid-cols-4">
+                {stepCards.map((item) => (
+                    <div
+                        key={item.step}
+                        className={`rounded-lg border p-4 ${
+                            item.complete
+                                ? 'border-blue-200 bg-blue-50/70'
+                                : 'border-gray-200 bg-gray-50'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {item.step}
+                            </span>
+                            {item.complete ? (
+                                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                            ) : null}
+                        </div>
+                        <p className="mt-2 text-sm font-medium text-gray-900">{item.title}</p>
+                        <p className="mt-1 text-sm text-gray-600">{item.detail}</p>
+                    </div>
+                ))}
+            </div>
+
+            {(createError || generateError || submittingError) && !showRetryWithoutAi ? (
                 <ErrorBanner
                     message={submittingError || createError || generateError || 'We could not generate the lesson plan.'}
                     onDismiss={() => {
@@ -233,12 +368,49 @@ export function GenerateLessonPlanPage() {
                 />
             ) : null}
 
+            {showRetryWithoutAi ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="space-y-1">
+                            <p className="font-medium text-amber-900">
+                                AI-assisted drafting is unavailable for this lesson right now.
+                            </p>
+                            <p>
+                                You can generate the same lesson plan without AI. The draft will still use the outcomes and references you selected.
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                                setUseAi(false);
+                                void submitGeneration(false);
+                            }}
+                            disabled={submitting}
+                            className="bg-white"
+                        >
+                            Generate without AI
+                        </Button>
+                    </div>
+                </div>
+            ) : null}
+
             <form onSubmit={handleSubmit} className="space-y-6">
-                <Card>
+                <Card className="border-gray-200 bg-gray-50/60">
                     <div className="space-y-5">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                            <BookOpen className="h-4 w-4 text-gray-500" />
-                            What are you preparing to teach?
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Step 1
+                                </p>
+                                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                    <BookOpen className="h-4 w-4 text-gray-500" />
+                                    Select class subject and term
+                                </div>
+                            </div>
+                            <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                                {selectedCohortSubjectId && termId ? 'Ready' : 'Required'}
+                            </span>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
@@ -296,26 +468,44 @@ export function GenerateLessonPlanPage() {
                     ) : null
                 ) : null}
 
-                <Card>
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                            <CalendarClock className="h-4 w-4 text-gray-500" />
-                            Generate lesson plan
+                <Card className="border-gray-200 bg-gray-50/60">
+                    <div className="space-y-5">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    Step 4
+                                </p>
+                                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                    <CalendarClock className="h-4 w-4 text-gray-500" />
+                                    Generate lesson plan
+                                </div>
+                            </div>
+                            <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                                {completedReferenceCount} reference{completedReferenceCount === 1 ? '' : 's'}
+                            </span>
                         </div>
-                        <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-4">
+
+                        <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
+                            AI creates a draft, not a final lesson plan. The plan stays editable, and the outcomes and references you choose constrain what the draft may use.
+                        </div>
+
+                        <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-4">
                             <input
                                 type="checkbox"
                                 checked={useAi}
                                 onChange={(event) => setUseAi(event.target.checked)}
+                                disabled={!aiGenerationAvailable}
                                 className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
                             />
                             <span className="space-y-1 text-sm text-gray-700">
                                 <span className="flex items-center gap-2 font-medium text-gray-900">
                                     <Bot className="h-4 w-4 text-gray-500" />
-                                    Use AI drafting
+                                    Use AI-assisted drafting
                                 </span>
                                 <span className="block text-gray-500">
-                                    AI uses only the selected outcomes and the reference pages you added.
+                                    {aiGenerationAvailable
+                                        ? 'AI uses only the selected outcomes and reference pages you attached.'
+                                        : 'AI-assisted drafting is not configured right now. You can still generate a lesson plan without AI.'}
                                 </span>
                             </span>
                         </label>

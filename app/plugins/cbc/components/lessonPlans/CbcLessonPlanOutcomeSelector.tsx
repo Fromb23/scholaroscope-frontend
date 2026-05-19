@@ -107,15 +107,26 @@ export function CbcLessonPlanOutcomeSelector({
     };
 
     return (
-        <Card>
+        <Card className="border-gray-200 bg-gray-50/60">
             <div className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                        <BookOpen className="h-4 w-4 text-gray-500" />
-                        Choose learning outcomes
+                    <div className="space-y-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            Step 2
+                        </p>
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                            <BookOpen className="h-4 w-4 text-gray-500" />
+                            Choose learning outcomes
+                        </div>
                     </div>
-                    <p className="text-sm text-gray-500">{value.length} selected</p>
+                    <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                        {value.length} selected
+                    </span>
                 </div>
+
+                <p className="text-sm text-gray-600">
+                    Select the exact outcomes this lesson should cover. These teacher-selected outcomes constrain any generated draft.
+                </p>
 
                 <Input
                     label="Search outcomes"
@@ -132,32 +143,73 @@ export function CbcLessonPlanOutcomeSelector({
                     <p className="text-sm text-red-600">{error.message}</p>
                 ) : null}
 
+                {value.length > 0 ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/80 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-medium text-gray-900">Selected outcomes</p>
+                            <span className="text-xs font-medium text-blue-700">
+                                {value.length} chosen
+                            </span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {value.map((outcome) => (
+                                <span
+                                    key={`selected-outcome-${outcome.outcome_id}`}
+                                    className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs text-gray-700"
+                                >
+                                    <span className="font-medium text-gray-900">{outcome.code}</span>
+                                    {' '}
+                                    {outcome.text}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                ) : null}
+
                 {!isLoading && !error ? (
                     groupedOutcomes.length === 0 ? (
                         <p className="text-sm text-gray-600">
                             CBC learning outcomes are not available for this class subject. Ask an administrator to check the CBC setup.
                         </p>
                     ) : (
-                        <div className="max-h-[32rem] space-y-4 overflow-y-auto rounded-lg border border-gray-200 p-4">
+                        <div className="max-h-[32rem] space-y-4 overflow-y-auto rounded-lg border border-gray-200 bg-white p-4">
                             {groupedOutcomes.map((strandGroup) => (
                                 <div key={strandGroup.strandId} className="space-y-3">
-                                    <div>
+                                    <div className="flex items-center justify-between gap-3">
                                         <h3 className="text-sm font-semibold text-gray-900">
                                             {strandGroup.strandName}
                                         </h3>
+                                        <span className="text-xs text-gray-500">
+                                            {
+                                                Array.from(strandGroup.subStrands.values())
+                                                    .flatMap((subStrandGroup) => subStrandGroup.outcomes)
+                                                    .filter((outcome) => selectedIds.has(outcome.outcome_id)).length
+                                            }
+                                            {' '}selected
+                                        </span>
                                     </div>
 
                                     {Array.from(strandGroup.subStrands.entries()).map(([subStrandId, subStrandGroup]) => (
-                                        <div key={subStrandId} className="space-y-2 rounded-lg border border-gray-200 p-3">
-                                            <p className="text-sm font-medium text-gray-800">
-                                                {subStrandGroup.subStrandName}
-                                            </p>
+                                        <div key={subStrandId} className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <p className="text-sm font-medium text-gray-800">
+                                                    {subStrandGroup.subStrandName}
+                                                </p>
+                                                <span className="text-xs text-gray-500">
+                                                    {subStrandGroup.outcomes.filter((outcome) => selectedIds.has(outcome.outcome_id)).length}
+                                                    {' '}selected
+                                                </span>
+                                            </div>
 
                                             <div className="space-y-2">
                                                 {subStrandGroup.outcomes.map((outcome) => (
                                                     <label
                                                         key={outcome.outcome_id}
-                                                        className="flex items-start gap-3 rounded-lg border border-gray-200 p-3"
+                                                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+                                                            selectedIds.has(outcome.outcome_id)
+                                                                ? 'border-blue-300 bg-blue-50'
+                                                                : 'border-gray-200 bg-white hover:border-gray-300'
+                                                        }`}
                                                     >
                                                         <input
                                                             type="checkbox"
@@ -166,7 +218,14 @@ export function CbcLessonPlanOutcomeSelector({
                                                             className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
                                                         />
                                                         <div className="space-y-1 text-sm">
-                                                            <p className="font-medium text-gray-900">{outcome.code}</p>
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <p className="font-medium text-gray-900">{outcome.code}</p>
+                                                                {selectedIds.has(outcome.outcome_id) ? (
+                                                                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                                                                        Selected
+                                                                    </span>
+                                                                ) : null}
+                                                            </div>
                                                             <p className="text-gray-700">{outcome.text}</p>
                                                         </div>
                                                     </label>
