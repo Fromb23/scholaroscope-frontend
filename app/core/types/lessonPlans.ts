@@ -1,4 +1,5 @@
 import type { Session } from '@/app/core/types/session';
+import type { Assignment } from '@/app/core/types/assignments';
 
 export type LessonPlanStatus =
     | 'DRAFT'
@@ -207,6 +208,12 @@ export interface ScheduleLessonResponse {
     session: Session;
 }
 
+export interface LessonPlanAssignmentDraftResponse {
+    detail: string;
+    created: boolean;
+    assignment: Assignment;
+}
+
 export interface MarkUsedPayload {
     reflection: string;
 }
@@ -229,6 +236,10 @@ export function canMarkLessonPlanReviewed(status: LessonPlanStatus): boolean {
 
 export function canScheduleLesson(status: LessonPlanStatus): boolean {
     return status === 'GENERATED' || status === 'REVIEWED';
+}
+
+export function canPrepareAssignmentDraft(status: LessonPlanStatus): boolean {
+    return status === 'GENERATED' || status === 'REVIEWED' || status === 'SCHEDULED';
 }
 
 export function canMarkLessonPlanUsed(status: LessonPlanStatus): boolean {

@@ -10,6 +10,7 @@ import {
     CheckCircle2,
     Clock3,
     Edit,
+    FilePlus2,
     Link2,
     Printer,
     RotateCcw,
@@ -30,12 +31,14 @@ import {
     canArchiveLessonPlan,
     canMarkLessonPlanReviewed,
     canMarkLessonPlanUsed,
+    canPrepareAssignmentDraft,
     canScheduleLesson,
     canRestoreLessonPlan,
     SCHEDULE_LESSON_SESSION_TYPE_OPTIONS,
     type LessonPlan,
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
+import type { Assignment } from '@/app/core/types/assignments';
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -121,6 +124,7 @@ export function LessonPlanDetailPage() {
         archive,
         restore,
         scheduleLesson,
+        createAssignmentDraft,
     } = useLessonPlanDetail(lessonPlanId);
     const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -128,6 +132,7 @@ export function LessonPlanDetailPage() {
     const [markUsedOpen, setMarkUsedOpen] = useState(false);
     const [reflection, setReflection] = useState('');
     const [scheduleOpen, setScheduleOpen] = useState(false);
+    const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [scheduleForm, setScheduleForm] = useState<{
         session_date: string;
         start_time: string;
@@ -221,6 +226,26 @@ export function LessonPlanDetailPage() {
         setActionError(null);
         setActionSuccess(null);
         setScheduleOpen(true);
+    };
+
+    const handleCreateAssignmentDraft = async () => {
+        if (!lessonPlan) {
+            return;
+        }
+
+        setPendingActionKey(actionKey(lessonPlan.id, 'assignment-draft'));
+        setActionError(null);
+        setActionSuccess(null);
+
+        try {
+            const response = await createAssignmentDraft();
+            setPreparedAssignment(response.assignment);
+            setActionSuccess(response.detail);
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Action failed.');
+        } finally {
+            setPendingActionKey(null);
+        }
     };
 
     const handleSubmitMarkUsed = async (event: FormEvent<HTMLFormElement>) => {
@@ -368,6 +393,20 @@ export function LessonPlanDetailPage() {
                             </Button>
                         ) : null}
 
+                        {canPrepareAssignmentDraft(lessonPlan.status) ? (
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    void handleCreateAssignmentDraft();
+                                }}
+                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'assignment-draft')}
+                            >
+                                <FilePlus2 className="mr-1.5 h-4 w-4" />
+                                Prepare assignment draft
+                            </Button>
+                        ) : null}
+
                         {canArchiveLessonPlan(lessonPlan.status) ? (
                             <Button
                                 size="sm"
@@ -418,6 +457,18 @@ export function LessonPlanDetailPage() {
                 <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     {actionSuccess}
+                </div>
+            ) : null}
+
+            {preparedAssignment ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                    <span className="font-medium">Assignment draft ready.</span>{' '}
+                    <Link
+                        href={`/academic/cohorts/${preparedAssignment.cohort_id}/assignments/${preparedAssignment.id}?returnTo=/lesson-plans/${lessonPlan.id}`}
+                        className="font-medium underline underline-offset-2"
+                    >
+                        Open assignment
+                    </Link>
                 </div>
             ) : null}
 

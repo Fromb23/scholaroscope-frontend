@@ -9,6 +9,7 @@ import type { ApiError } from '@/app/core/types/errors';
 import type {
     GenerateLessonPlanPayload,
     GenerateLessonPlanResponse,
+    LessonPlanAssignmentDraftResponse,
     LessonPlan,
     LessonPlanCreatePayload,
     LessonPlanQueryParams,
@@ -336,6 +337,23 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         }
     };
 
+    const createAssignmentDraft = async (): Promise<LessonPlanAssignmentDraftResponse> => {
+        if (!lessonPlanId) {
+            throw new Error('This lesson plan could not be found.');
+        }
+
+        try {
+            return await lessonPlanAPI.createAssignmentDraft(lessonPlanId);
+        } catch (err) {
+            throw new Error(
+                extractErrorMessage(
+                    err as ApiError,
+                    'Failed to prepare an assignment draft.'
+                )
+            );
+        }
+    };
+
     return {
         lessonPlan,
         loading,
@@ -349,6 +367,7 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         archive,
         restore,
         scheduleLesson,
+        createAssignmentDraft,
     };
 };
 

@@ -77,6 +77,8 @@ export interface Assignment {
     created_from_session: number | null;
     created_from_session_title: string | null;
     created_from_session_date: string | null;
+    lesson_plan: number | null;
+    lesson_plan_title: string | null;
     curriculum_context: Record<string, unknown>;
     created_by: number | null;
     published_at: string | null;
