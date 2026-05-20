@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {
     ArrowLeft,
     CheckCircle,
+    Download,
     Edit,
     PlayCircle,
     Trash2,
@@ -22,10 +23,13 @@ interface AssessmentDetailHeaderProps {
     canDelete: boolean;
     canActivate: boolean;
     canFinalize: boolean;
+    canExportPdf: boolean;
     finalizing: boolean;
     deleting: boolean;
+    downloadingPdf: boolean;
     onActivate: () => void;
     onFinalize: () => void;
+    onDownloadPdf: () => void;
     onDelete: () => void;
 }
 
@@ -39,10 +43,13 @@ export function AssessmentDetailHeader({
     canDelete,
     canActivate,
     canFinalize,
+    canExportPdf,
     finalizing,
     deleting,
+    downloadingPdf,
     onActivate,
     onFinalize,
+    onDownloadPdf,
     onDelete,
 }: AssessmentDetailHeaderProps) {
     return (
@@ -73,6 +80,12 @@ export function AssessmentDetailHeader({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+                {canExportPdf && (
+                    <Button variant="secondary" size="sm" onClick={onDownloadPdf} disabled={downloadingPdf}>
+                        <Download className="mr-1.5 h-4 w-4" />
+                        {downloadingPdf ? 'Downloading…' : 'Download PDF'}
+                    </Button>
+                )}
                 {isDraft && canActivate && (
                     <Button variant="secondary" size="sm" onClick={onActivate}>
                         <PlayCircle className="mr-1.5 h-4 w-4" />

@@ -3,21 +3,20 @@
 import Link from 'next/link';
 import { DataTable } from '@/app/components/ui/Table';
 import type { Column } from '@/app/components/ui/Table';
-import { AssessmentScore, AssessmentDetail } from '@/app/core/types/assessment';
-
-interface ScoreDraft {
-    score?: number | null;
-    rubric_level?: number | null;
-    comments?: string;
-}
+import {
+    AssessmentScore,
+    AssessmentDetail,
+    type AssessmentScoreDraft,
+    getAssessmentScoreDraftValue,
+} from '@/app/core/types/assessment';
 
 interface Props {
     assessment: AssessmentDetail;
     scores: AssessmentScore[];
-    draft: Record<number, ScoreDraft>;
+    draft: Record<number, AssessmentScoreDraft>;
     loading: boolean;
     readOnly: boolean;
-    onScoreChange: (studentId: number, field: keyof ScoreDraft, value: number | string | null) => void;
+    onScoreChange: (studentId: number, field: keyof AssessmentScoreDraft, value: number | string | null) => void;
 }
 
 const fieldClasses = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500';
@@ -27,7 +26,7 @@ export function AssessmentScoreTable({
     assessment, scores, draft, loading, readOnly, onScoreChange,
 }: Props) {
     const renderNumericScoreInput = (row: AssessmentScore, stacked = false) => {
-        const current = draft[row.student]?.score ?? row.score;
+        const current = getAssessmentScoreDraftValue(draft[row.student], 'score', row.score);
         const percentage = (
             current != null
             && assessment.total_marks
@@ -64,7 +63,7 @@ export function AssessmentScoreTable({
 
     const renderRubricLevelSelect = (row: AssessmentScore) => (
         <select
-            value={(draft[row.student]?.rubric_level ?? row.rubric_level)?.toString() ?? ''}
+            value={(getAssessmentScoreDraftValue(draft[row.student], 'rubric_level', row.rubric_level))?.toString() ?? ''}
             disabled={readOnly}
             onChange={(event) => onScoreChange(
                 row.student,
@@ -85,7 +84,7 @@ export function AssessmentScoreTable({
     const renderCommentsInput = (row: AssessmentScore) => (
         <input
             type="text"
-            value={draft[row.student]?.comments ?? row.comments ?? ''}
+            value={getAssessmentScoreDraftValue(draft[row.student], 'comments', row.comments ?? '') ?? ''}
             disabled={readOnly}
             onChange={(event) => onScoreChange(row.student, 'comments', event.target.value)}
             className={fieldClasses}
