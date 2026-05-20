@@ -9,13 +9,26 @@ import { Select } from '@/app/components/ui/Select';
 import type { LessonPlanReferenceEditorProps } from '@/app/core/types/lessonPlanCurriculum';
 import type { PlannedOutcome, ReferencePageInput } from '@/app/core/types/lessonPlans';
 
+function hasPositiveInteger(value: number | ''): value is number {
+    return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function parsePageInputValue(value: string): number | '' {
+    if (value === '') {
+        return '';
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : '';
+}
+
 function emptyReference(): ReferencePageInput {
     return {
         resource_title: '',
         chapter: '',
         topic_label: '',
-        page_start: 1,
-        page_end: 1,
+        page_start: '',
+        page_end: '',
         notes: '',
         keywords: [],
         strand_id: null,
@@ -74,8 +87,8 @@ export function CbcReferencePagesEditor({
     const completedReferenceCount = useMemo(
         () => value.filter((reference) => (
             reference.resource_title.trim().length > 0
-            && reference.page_start > 0
-            && reference.page_end > 0
+            && hasPositiveInteger(reference.page_start)
+            && hasPositiveInteger(reference.page_end)
             && Boolean(reference.outcome_id)
         )).length,
         [value]
@@ -213,10 +226,11 @@ export function CbcReferencePagesEditor({
                                 label={context.reference_language.pages_label === 'Pages' ? 'Page start' : context.reference_language.pages_label}
                                 type="number"
                                 min={1}
-                                value={String(reference.page_start)}
+                                step={1}
+                                value={reference.page_start === '' ? '' : String(reference.page_start)}
                                 onChange={(event) => updateReference(index, {
                                     ...reference,
-                                    page_start: Number(event.target.value) || 1,
+                                    page_start: parsePageInputValue(event.target.value),
                                 })}
                             />
 
@@ -224,10 +238,11 @@ export function CbcReferencePagesEditor({
                                 label="Page end"
                                 type="number"
                                 min={1}
-                                value={String(reference.page_end)}
+                                step={1}
+                                value={reference.page_end === '' ? '' : String(reference.page_end)}
                                 onChange={(event) => updateReference(index, {
                                     ...reference,
-                                    page_end: Number(event.target.value) || 1,
+                                    page_end: parsePageInputValue(event.target.value),
                                 })}
                             />
 
