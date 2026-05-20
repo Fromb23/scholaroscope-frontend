@@ -1,5 +1,10 @@
 import { apiClient } from './client';
 import {
+  downloadBlob,
+  getDownloadFileName,
+  normalizeBlobError,
+} from '@/app/core/api/downloads';
+import {
   AcademicYear,
   Term,
   Curriculum,
@@ -64,6 +69,26 @@ export async function bulkUnenrollCohortSubjectLearners(
     { student_ids: studentIds }
   );
   return response.data;
+}
+
+export async function exportCohortSubjectClassListPdf(
+  cohortSubjectId: number,
+): Promise<void> {
+  try {
+    const response = await apiClient.get<Blob>(
+      `${KERNEL_COHORT_SUBJECTS_BASE}/${cohortSubjectId}/export_class_list_pdf/`,
+      {
+        responseType: 'blob',
+      }
+    );
+    const fileName = getDownloadFileName(
+      response.headers['content-disposition'],
+      `class-list-cohort-subject-${cohortSubjectId}.pdf`
+    );
+    downloadBlob(response.data, fileName);
+  } catch (error) {
+    await normalizeBlobError(error);
+  }
 }
 
 

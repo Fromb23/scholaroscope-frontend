@@ -43,8 +43,8 @@ export interface ReferencePageInput {
     resource_type?: string;
     chapter?: string;
     topic_label?: string;
-    page_start: number;
-    page_end: number;
+    page_start: number | '';
+    page_end: number | '';
     notes?: string;
     keywords?: string[];
     strand_id?: number | null;
@@ -53,6 +53,11 @@ export interface ReferencePageInput {
     sub_strand_name?: string;
     outcome_id?: number | null;
     outcome_code?: string;
+}
+
+export interface ReferencePagePayload extends Omit<ReferencePageInput, 'page_start' | 'page_end'> {
+    page_start: number;
+    page_end: number;
 }
 
 export interface LessonPlanReferenceRecord {
@@ -131,7 +136,7 @@ export interface LessonPlanCreatePayload {
     planned_date?: string | null;
     planned_start_time?: string | null;
     planned_end_time?: string | null;
-    reference_pages: ReferencePageInput[];
+    reference_pages: ReferencePagePayload[];
 }
 
 export interface LessonPlanUpdatePayload {
@@ -150,7 +155,7 @@ export interface LessonPlanUpdatePayload {
     differentiation?: string;
     conclusion?: string;
     reflection?: string;
-    reference_pages?: ReferencePageInput[];
+    reference_pages?: ReferencePagePayload[];
 }
 
 export interface GenerateLessonPlanPayload {

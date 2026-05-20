@@ -321,7 +321,7 @@ export function ReportsPage() {
               open={exportOpen}
               onClose={() => setExportOpen(false)}
               payload={exportPayload}
-              defaultFormat="pdf"
+              defaultFormat="excel"
               title="Export Admin Reporting Overview"
             />
           )}

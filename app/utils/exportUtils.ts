@@ -1,11 +1,9 @@
 // ============================================================================
 // utils/exportUtils.ts
-// Export utilities - Handles Excel, PDF, and CSV generation
+// Export utilities - Handles Excel and CSV generation
 // ============================================================================
 
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import type { ExportPayload, ExportFormat, ExportColumn } from '@/app/types/export';
 
 // ============================================================================
@@ -121,97 +119,6 @@ export const exportToExcel = (payload: ExportPayload): void => {
 };
 
 // ============================================================================
-// PDF Export
-// ============================================================================
-
-export const exportToPDF = (payload: ExportPayload): void => {
-    const orientation = payload.orientation || 'portrait';
-    const pageSize = payload.pageSize || 'a4';
-
-    const doc = new jsPDF({
-        orientation,
-        unit: 'mm',
-        format: pageSize
-    });
-
-    let currentY = 15;
-
-    // Add title
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text(payload.title, 14, currentY);
-    currentY += 7;
-
-    // Add subtitle
-    if (payload.subtitle) {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(payload.subtitle, 14, currentY);
-        currentY += 5;
-    }
-
-    // Add metadata if enabled
-    if (payload.includeMetadata && payload.metadata) {
-        doc.setFontSize(8);
-        currentY += 3;
-
-        Object.entries(payload.metadata).forEach(([key, value]) => {
-            if (value) {
-                const label = key.replace(/([A-Z])/g, ' $1').trim();
-                doc.text(`${label}: ${value}`, 14, currentY);
-                currentY += 4;
-            }
-        });
-
-        currentY += 2;
-    }
-
-    // Prepare table data
-    const headers = payload.columns.map(col => col.label);
-    const body = payload.rows.map(row =>
-        payload.columns.map(col => formatValue((row as Record<string, unknown>)[col.key], col.format))
-    );
-
-    // Add table
-    autoTable(doc, {
-        startY: currentY,
-        head: [headers],
-        body: body,
-        theme: 'grid',
-        styles: {
-            fontSize: 8,
-            cellPadding: 2
-        },
-        headStyles: {
-            fillColor: [59, 130, 246], // Blue-600
-            textColor: [255, 255, 255],
-            fontStyle: 'bold'
-        },
-        columnStyles: payload.columns.reduce<Record<number, { halign: ExportColumn['align']; cellWidth: number | 'auto' }>>((acc, col, idx) => {
-            acc[idx] = {
-                halign: col.align || 'left',
-                cellWidth: col.width || 'auto'
-            };
-            return acc;
-        }, {}),
-        didDrawPage: (data) => {
-            // Add page numbers
-            const pageCount = doc.getNumberOfPages();
-            doc.setFontSize(8);
-            doc.text(
-                `Page ${data.pageNumber} of ${pageCount}`,
-                doc.internal.pageSize.width / 2,
-                doc.internal.pageSize.height - 10,
-                { align: 'center' }
-            );
-        }
-    });
-
-    // Save file
-    doc.save(generateFileName(payload, 'pdf'));
-};
-
-// ============================================================================
 // CSV Export
 // ============================================================================
 
@@ -276,9 +183,6 @@ export const exportData = (payload: ExportPayload, format: ExportFormat): void =
         switch (format) {
             case 'excel':
                 exportToExcel(payload);
-                break;
-            case 'pdf':
-                exportToPDF(payload);
                 break;
             case 'csv':
                 exportToCSV(payload);

@@ -2,7 +2,7 @@ export interface ExportColumn {
     key: string;
     label: string;
     width?: number; // For Excel column width
-    align?: 'left' | 'center' | 'right'; // For PDF alignment
+    align?: 'left' | 'center' | 'right'; // For tabular export alignment
     format?: 'text' | 'number' | 'date' | 'percentage' | 'currency';
 }
 
@@ -28,7 +28,7 @@ export interface ExportPayload {
     includeTimestamp?: boolean; // Add timestamp to filename
     sheetName?: string; // Excel sheet name
 
-    // PDF specific
+    // Layout hints for tabular exports
     orientation?: 'portrait' | 'landscape';
     pageSize?: 'a4' | 'letter' | 'legal';
 
@@ -37,7 +37,7 @@ export interface ExportPayload {
     autoFilter?: boolean;
 }
 
-export type ExportFormat = 'excel' | 'pdf' | 'csv';
+export type ExportFormat = 'excel' | 'csv';
 
 export interface ExportOptions {
     format: ExportFormat;

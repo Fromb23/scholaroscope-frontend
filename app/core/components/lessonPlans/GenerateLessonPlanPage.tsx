@@ -29,15 +29,20 @@ import type {
     LessonPlanUpdatePayload,
     PlannedOutcome,
     ReferencePageInput,
+    ReferencePagePayload,
 } from '@/app/core/types/lessonPlans';
+
+function hasPositiveInteger(value: number | ''): value is number {
+    return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
 
 function emptyReferencePage(): ReferencePageInput {
     return {
         resource_title: '',
         chapter: '',
         topic_label: '',
-        page_start: 1,
-        page_end: 1,
+        page_start: '',
+        page_end: '',
         notes: '',
         keywords: [],
         strand_id: null,
@@ -47,6 +52,17 @@ function emptyReferencePage(): ReferencePageInput {
         outcome_id: null,
         outcome_code: '',
     };
+}
+
+function isReferencePageStarted(reference: ReferencePageInput): boolean {
+    return (
+        reference.resource_title.trim().length > 0
+        || Boolean(reference.chapter?.trim())
+        || Boolean(reference.notes?.trim())
+        || reference.page_start !== ''
+        || reference.page_end !== ''
+        || Boolean(reference.outcome_id)
+    );
 }
 
 function normalizeReferencePage(
@@ -76,6 +92,76 @@ function normalizeReferencePage(
         strand_id: reference.strand_id ?? selectedOutcome?.strand_id ?? null,
         sub_strand_id: reference.sub_strand_id ?? selectedOutcome?.sub_strand_id ?? null,
         outcome_id: reference.outcome_id ?? null,
+    };
+}
+
+function validateReferencePages(
+    references: ReferencePageInput[],
+    plannedOutcomes: Map<number, PlannedOutcome>,
+): {
+    error: string | null;
+    payload: ReferencePagePayload[];
+} {
+    const payload: ReferencePagePayload[] = [];
+    const startedReferences = references
+        .map((reference) => normalizeReferencePage(reference, plannedOutcomes))
+        .filter(isReferencePageStarted);
+
+    if (startedReferences.length === 0) {
+        return {
+            error: 'Add at least one book page before generating the lesson plan.',
+            payload: [],
+        };
+    }
+
+    for (const [index, reference] of startedReferences.entries()) {
+        const referenceLabel = `Reference ${index + 1}`;
+
+        if (!reference.resource_title) {
+            return {
+                error: `${referenceLabel}: enter a resource title.`,
+                payload: [],
+            };
+        }
+
+        if (!reference.outcome_id) {
+            return {
+                error: `${referenceLabel}: choose a learning outcome.`,
+                payload: [],
+            };
+        }
+
+        if (!hasPositiveInteger(reference.page_start)) {
+            return {
+                error: `${referenceLabel}: page start must be a positive whole number.`,
+                payload: [],
+            };
+        }
+
+        if (!hasPositiveInteger(reference.page_end)) {
+            return {
+                error: `${referenceLabel}: page end must be a positive whole number.`,
+                payload: [],
+            };
+        }
+
+        if (reference.page_end < reference.page_start) {
+            return {
+                error: `${referenceLabel}: page end must be greater than or equal to page start.`,
+                payload: [],
+            };
+        }
+
+        payload.push({
+            ...reference,
+            page_start: reference.page_start,
+            page_end: reference.page_end,
+        });
+    }
+
+    return {
+        error: null,
+        payload,
     };
 }
 
@@ -136,8 +222,8 @@ export function GenerateLessonPlanPage() {
     const completedReferenceCount = useMemo(
         () => referencePages.filter((reference) => (
             reference.resource_title.trim().length > 0
-            && reference.page_start > 0
-            && reference.page_end > 0
+            && hasPositiveInteger(reference.page_start)
+            && hasPositiveInteger(reference.page_end)
             && Boolean(reference.outcome_id)
         )).length,
         [referencePages]
@@ -260,17 +346,9 @@ export function GenerateLessonPlanPage() {
             return;
         }
 
-        const cleanedReferences = referencePages
-            .map((reference) => normalizeReferencePage(reference, plannedOutcomeMap))
-            .filter((reference) => (
-                reference.resource_title
-                && reference.page_start > 0
-                && reference.page_end > 0
-                && reference.outcome_id
-            ));
-
-        if (cleanedReferences.length === 0) {
-            setSubmittingError('Add at least one book page before generating the lesson plan.');
+        const validatedReferences = validateReferencePages(referencePages, plannedOutcomeMap);
+        if (validatedReferences.error) {
+            setSubmittingError(validatedReferences.error);
             return;
         }
 
@@ -280,7 +358,7 @@ export function GenerateLessonPlanPage() {
                 term: Number(termId),
                 title: title.trim() || undefined,
                 planned_outcomes: plannedOutcomes,
-                reference_pages: cleanedReferences,
+                reference_pages: validatedReferences.payload,
             });
 
             const generated = await generateLessonPlan(lessonPlan.id, {

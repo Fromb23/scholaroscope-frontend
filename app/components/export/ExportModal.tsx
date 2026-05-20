@@ -9,10 +9,8 @@ import { useState } from 'react';
 import {
     Download,
     FileSpreadsheet,
-    FileText,
     FileDown,
     X,
-    CheckCircle,
     Info,
     Settings
 } from 'lucide-react';
@@ -99,15 +97,6 @@ export function ExportModal({
             color: 'text-green-600',
             bgColor: 'bg-green-50',
             borderColor: 'border-green-200'
-        },
-        {
-            value: 'pdf' as ExportFormat,
-            label: 'PDF Document',
-            icon: FileText,
-            description: 'Best for printing and sharing',
-            color: 'text-red-600',
-            bgColor: 'bg-red-50',
-            borderColor: 'border-red-200'
         },
         {
             value: 'csv' as ExportFormat,

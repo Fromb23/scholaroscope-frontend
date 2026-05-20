@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Users, UserPlus, UserMinus, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Download, Users, UserPlus, UserMinus, X } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import {
     bulkEnrollCohortSubjectLearners,
     bulkUnenrollCohortSubjectLearners,
+    exportCohortSubjectClassListPdf,
     getCohortSubjectLearners,
     listCohortSubjects,
 } from '@/app/core/api/academic';
@@ -285,6 +286,7 @@ export default function CohortSubjectLearnersPage() {
     const [selectedEnrolled, setSelectedEnrolled] = useState<Set<number>>(new Set());
     const [selectedAvailable, setSelectedAvailable] = useState<Set<number>>(new Set());
     const [resultBanner, setResultBanner] = useState<ResultBannerState | null>(null);
+    const [downloadingClassList, setDownloadingClassList] = useState(false);
 
     const invalidateParticipationDependencies = async (studentIds: number[]) => {
         const cohortId = learnersQuery.data?.cohort_id;
@@ -441,6 +443,22 @@ export default function CohortSubjectLearnersPage() {
         setter(allSelected ? new Set() : new Set(learners.map((learner) => learner.id)));
     };
 
+    const handleDownloadClassList = async () => {
+        setResultBanner(null);
+        setDownloadingClassList(true);
+
+        try {
+            await exportCohortSubjectClassListPdf(cohortSubjectId);
+        } catch (error) {
+            setResultBanner({
+                tone: 'error',
+                message: extractErrorMessage(error as ApiError, 'Failed to download the class list PDF.'),
+            });
+        } finally {
+            setDownloadingClassList(false);
+        }
+    };
+
     return (
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="space-y-3">
@@ -462,6 +480,19 @@ export default function CohortSubjectLearnersPage() {
                             </Button>
                         </Link>
                     ) : null}
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                            void handleDownloadClassList();
+                        }}
+                        disabled={downloadingClassList}
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        {downloadingClassList ? 'Downloading...' : 'Download Class List'}
+                    </Button>
                 </div>
 
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

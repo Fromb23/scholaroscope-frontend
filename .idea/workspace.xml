@@ -4,14 +4,29 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="" />
+    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohort-subjects/[id]/learners/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohort-subjects/[id]/learners/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/export/ExportModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/export/ExportModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/academic.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/assessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/assessments.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/lessonPlans.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/lessonPlans.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/lessonPlans/CbcReferencePagesEditor.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/lessonPlans/CbcReferencePagesEditor.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/types/export.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/types/export.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/exportUtils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/exportUtils.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="575" />
+    <option name="cachedIndexableFilesCount" value="576" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -195,6 +210,7 @@
       <workItem from="1779085515602" duration="6741000" />
       <workItem from="1779105864055" duration="2541000" />
       <workItem from="1779211046581" duration="6101000" />
+      <workItem from="1779301294701" duration="491000" />
     </task>
     <servers />
   </component>

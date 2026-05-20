@@ -13,7 +13,6 @@ import {
     Edit,
     FilePlus2,
     Link2,
-    Printer,
     RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
@@ -476,11 +475,6 @@ export function LessonPlanDetailPage() {
                                 Restore
                             </Button>
                         ) : null}
-
-                        <Button type="button" size="sm" variant="secondary" onClick={() => window.print()}>
-                            <Printer className="mr-1.5 h-4 w-4" />
-                            Print
-                        </Button>
                     </div>
                 </div>
             </div>
