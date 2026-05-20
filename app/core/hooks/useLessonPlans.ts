@@ -46,6 +46,20 @@ function getLessonPlanDetailMessage(error: ApiError): string {
     return extractErrorMessage(error, 'We could not load this lesson plan. Try again.');
 }
 
+function getLessonPlanExportMessage(error: ApiError): string {
+    const status = getStatusCode(error);
+    const message = extractErrorMessage(error, 'Could not export the lesson plan PDF.');
+
+    if (
+        status === 503
+        && message.toLowerCase().includes('pdf export is not configured')
+    ) {
+        return 'PDF export is not configured on the server yet.';
+    }
+
+    return 'Could not export the lesson plan PDF.';
+}
+
 function getLessonPlanCreateMessage(error: ApiError, fallback: string): string {
     const status = getStatusCode(error);
 
@@ -364,6 +378,18 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         }
     };
 
+    const exportPdf = async (): Promise<void> => {
+        if (!lessonPlanId) {
+            throw new Error('This lesson plan could not be found.');
+        }
+
+        try {
+            await lessonPlanAPI.exportPdf(lessonPlanId);
+        } catch (err) {
+            throw new Error(getLessonPlanExportMessage(err as ApiError));
+        }
+    };
+
     return {
         lessonPlan,
         loading,
@@ -378,6 +404,7 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         restore,
         scheduleLesson,
         createAssignmentDraft,
+        exportPdf,
     };
 };
 
