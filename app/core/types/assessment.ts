@@ -121,6 +121,12 @@ export interface AssessmentScore {
   graded_by: string;
 }
 
+export interface AssessmentScoreDraft {
+  score?: number | null;
+  rubric_level?: number | null;
+  comments?: string;
+}
+
 export interface AssessmentStatistics {
   average?: number;
   highest?: number;
@@ -242,4 +248,45 @@ export function calculateScoreStats(scores: AssessmentScore[]): ScoreStats {
     total,
     completion: total ? Math.round((scored / total) * 100) : 0,
   };
+}
+
+function normalizeAssessmentSortValue(value: string | null | undefined): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
+export function sortAssessmentScores(scores: AssessmentScore[]): AssessmentScore[] {
+  return [...scores].sort((left, right) => {
+    const admissionCompare = normalizeAssessmentSortValue(left.student_admission)
+      .localeCompare(normalizeAssessmentSortValue(right.student_admission), undefined, { numeric: true });
+    if (admissionCompare !== 0) {
+      return admissionCompare;
+    }
+
+    const nameCompare = normalizeAssessmentSortValue(left.student_name)
+      .localeCompare(normalizeAssessmentSortValue(right.student_name));
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+
+    return left.student - right.student;
+  });
+}
+
+export function hasAssessmentScoreDraftField(
+  draft: AssessmentScoreDraft | undefined,
+  field: keyof AssessmentScoreDraft
+): boolean {
+  return Boolean(draft) && Object.prototype.hasOwnProperty.call(draft, field);
+}
+
+export function getAssessmentScoreDraftValue<T extends keyof AssessmentScoreDraft>(
+  draft: AssessmentScoreDraft | undefined,
+  field: T,
+  fallback: AssessmentScoreDraft[T]
+): AssessmentScoreDraft[T] {
+  if (hasAssessmentScoreDraftField(draft, field)) {
+    return draft?.[field] as AssessmentScoreDraft[T];
+  }
+
+  return fallback;
 }

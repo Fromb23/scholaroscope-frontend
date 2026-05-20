@@ -2,19 +2,21 @@
 
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { buildExportPayload, buildExportPresets } from '@/app/core/components/assessments/useAssessmentExport';
+import { assessmentAPI } from '@/app/core/api/assessments';
 import { useAssessmentDetail, useAssessmentScores } from '@/app/core/hooks/useAssessments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAuth } from '@/app/context/AuthContext';
 import {
     AssessmentStatus,
     calculateScoreStats,
+    type AssessmentScore,
+    type AssessmentScoreDraft,
+    getAssessmentScoreDraftValue,
+    sortAssessmentScores,
 } from '@/app/core/types/assessment';
 
-export interface ScoreDraft {
-    score?: number | null;
-    rubric_level?: number | null;
-    comments?: string;
+function normalizeSearchValue(value: string | number | null | undefined): string {
+    return String(value ?? '').trim().toLowerCase();
 }
 
 export function useAssessmentDetailPage() {
@@ -41,11 +43,13 @@ export function useAssessmentDetailPage() {
         page_size: 1000,
     });
 
-    const [draft, setDraft] = useState<Record<number, ScoreDraft>>({});
+    const [draft, setDraft] = useState<Record<number, AssessmentScoreDraft>>({});
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
-    const [exportOpen, setExportOpen] = useState(false);
+    const [exportError, setExportError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
 
     const isFinalized = assessment?.status === AssessmentStatus.FINALIZED;
     const isDraft = assessment?.status === AssessmentStatus.DRAFT;
@@ -62,13 +66,60 @@ export function useAssessmentDetailPage() {
     const canActivate = assessment?.can_activate ?? (Boolean(assessment) && canManageAssessment && isDraft);
     const canFinalize = assessment?.can_finalize ?? (Boolean(assessment) && canManageAssessment && (isDraft || isActive));
     const canScore = assessment?.can_score ?? (Boolean(assessment) && canManageAssessment && !isFinalized);
-    const stats = useMemo(() => calculateScoreStats(scores), [scores]);
+    const canExportPdf = canManageAssessment;
+    const sortedScores = useMemo(() => sortAssessmentScores(scores), [scores]);
+    const rubricLevelById = useMemo(() => new Map(
+        (assessment?.rubric_levels ?? []).map((level) => [level.id, level])
+    ), [assessment?.rubric_levels]);
+    const filteredScores = useMemo(() => {
+        const normalizedQuery = normalizeSearchValue(searchQuery);
+        if (!normalizedQuery) {
+            return sortedScores;
+        }
+
+        return sortedScores.filter((score) => {
+            const scoreDraft = draft[score.student];
+            const currentScore = getAssessmentScoreDraftValue(scoreDraft, 'score', score.score);
+            const currentRubricLevelId = getAssessmentScoreDraftValue(
+                scoreDraft,
+                'rubric_level',
+                score.rubric_level
+            );
+            const currentComments = getAssessmentScoreDraftValue(
+                scoreDraft,
+                'comments',
+                score.comments ?? ''
+            ) ?? '';
+            const currentRubricLevel = currentRubricLevelId != null
+                ? rubricLevelById.get(currentRubricLevelId)
+                : null;
+            const currentRubricCode = currentRubricLevel?.code ?? score.rubric_level_code ?? '';
+            const currentRubricLabel = currentRubricLevel?.label ?? score.rubric_level_label ?? '';
+            const currentPercentage = (
+                currentScore != null
+                && assessment?.total_marks
+                && assessment.total_marks > 0
+            )
+                ? ((currentScore / assessment.total_marks) * 100).toFixed(2)
+                : '';
+
+            return [
+                score.student_admission,
+                score.student_name,
+                currentScore,
+                currentPercentage,
+                currentRubricCode,
+                currentRubricLabel,
+                currentComments,
+            ].some((value) => normalizeSearchValue(value).includes(normalizedQuery));
+        });
+    }, [assessment?.total_marks, draft, rubricLevelById, searchQuery, sortedScores]);
+    const stats = useMemo(() => calculateScoreStats(sortedScores), [sortedScores]);
     const scoredBy = user?.email ?? 'system';
-    const exportRequestedBy = user?.email ?? 'System';
 
     const handleScoreChange = (
         studentId: number,
-        field: keyof ScoreDraft,
+        field: keyof AssessmentScoreDraft,
         value: number | string | null
     ) => {
         setDraft((previous) => ({
@@ -88,16 +139,35 @@ export function useAssessmentDetailPage() {
         try {
             await bulkEntry({
                 assessment: assessmentId,
-                scores: scores.map((score) => ({
+                scores: sortedScores.map((score: AssessmentScore) => {
+                    const scoreDraft = draft[score.student];
+                    const resolvedScore = getAssessmentScoreDraftValue(
+                        scoreDraft,
+                        'score',
+                        score.score
+                    );
+                    const resolvedRubricLevel = getAssessmentScoreDraftValue(
+                        scoreDraft,
+                        'rubric_level',
+                        score.rubric_level
+                    );
+                    const resolvedComments = getAssessmentScoreDraftValue(
+                        scoreDraft,
+                        'comments',
+                        score.comments ?? ''
+                    );
+
+                    return {
                     student_id: score.student,
                     score: assessment.evaluation_type === 'NUMERIC'
-                        ? (draft[score.student]?.score ?? score.score ?? undefined)
+                        ? (resolvedScore ?? undefined)
                         : undefined,
                     rubric_level_id: assessment.evaluation_type === 'RUBRIC'
-                        ? (draft[score.student]?.rubric_level ?? score.rubric_level ?? undefined)
+                        ? (resolvedRubricLevel ?? undefined)
                         : undefined,
-                    comments: draft[score.student]?.comments ?? score.comments ?? '',
-                })),
+                    comments: resolvedComments ?? '',
+                };
+                }),
                 scored_by: scoredBy,
             });
             setDraft({});
@@ -106,6 +176,23 @@ export function useAssessmentDetailPage() {
             setSaveError(error instanceof Error ? error.message : 'Failed to save scores');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!assessmentId || !canExportPdf) {
+            setExportError('Could not export the assessment PDF.');
+            return;
+        }
+
+        setDownloadingPdf(true);
+        setExportError(null);
+        try {
+            await assessmentAPI.exportPdf(assessmentId);
+        } catch {
+            setExportError('Could not export the assessment PDF.');
+        } finally {
+            setDownloadingPdf(false);
         }
     };
 
@@ -147,11 +234,6 @@ export function useAssessmentDetailPage() {
         }
     };
 
-    const exportPayload = assessment && scores.length > 0
-        ? buildExportPayload(assessment, scores, exportRequestedBy)
-        : null;
-    const exportPresets = assessment ? buildExportPresets(assessment) : undefined;
-
     return {
         assessmentId,
         assessment,
@@ -159,15 +241,17 @@ export function useAssessmentDetailPage() {
         error,
         finalizing,
         deleting,
-        scores,
+        scores: filteredScores,
         scoresLoading,
         draft,
         saving,
         saveError,
         deleteError,
-        exportOpen,
-        exportPayload,
-        exportPresets,
+        exportError,
+        searchQuery,
+        downloadingPdf,
+        visibleLearnerCount: filteredScores.length,
+        totalLearnerCount: sortedScores.length,
         stats,
         isFinalized,
         isDraft,
@@ -177,11 +261,14 @@ export function useAssessmentDetailPage() {
         canActivate,
         canFinalize,
         canScore,
-        setExportOpen,
+        canExportPdf,
         setSaveError,
         setDeleteError,
+        setExportError,
+        setSearchQuery,
         handleScoreChange,
         handleSaveScores,
+        handleDownloadPdf,
         handleDelete,
         handleActivate,
         handleFinalize,

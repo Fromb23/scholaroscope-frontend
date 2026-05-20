@@ -14,7 +14,6 @@ import {
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { ExportModal } from '@/app/components/export/ExportModal';
 import { AssessmentDetailHeader } from '@/app/core/components/assessments/AssessmentDetailHeader';
 import { AssessmentInfoCard } from '@/app/core/components/assessments/AssessmentInfoCard';
 import { AssessmentScoreEntryCard } from '@/app/core/components/assessments/AssessmentScoreEntryCard';
@@ -35,9 +34,11 @@ export function AssessmentDetailPage() {
         saving,
         saveError,
         deleteError,
-        exportOpen,
-        exportPayload,
-        exportPresets,
+        exportError,
+        searchQuery,
+        downloadingPdf,
+        visibleLearnerCount,
+        totalLearnerCount,
         stats,
         isFinalized,
         isDraft,
@@ -47,11 +48,14 @@ export function AssessmentDetailPage() {
         canActivate,
         canFinalize,
         canScore,
-        setExportOpen,
+        canExportPdf,
         setSaveError,
         setDeleteError,
+        setExportError,
+        setSearchQuery,
         handleScoreChange,
         handleSaveScores,
+        handleDownloadPdf,
         handleDelete,
         handleActivate,
         handleFinalize,
@@ -73,16 +77,20 @@ export function AssessmentDetailPage() {
                 canDelete={Boolean(canDelete)}
                 canActivate={Boolean(canActivate)}
                 canFinalize={Boolean(canFinalize)}
+                canExportPdf={Boolean(canExportPdf)}
                 finalizing={finalizing}
                 deleting={deleting}
+                downloadingPdf={downloadingPdf}
                 onActivate={handleActivate}
                 onFinalize={handleFinalize}
+                onDownloadPdf={handleDownloadPdf}
                 onDelete={handleDelete}
             />
 
             {/* Error banners */}
             {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
             {deleteError && <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />}
+            {exportError && <ErrorBanner message={exportError} onDismiss={() => setExportError(null)} />}
 
             {/* Finalized notice */}
             {isFinalized && (
@@ -121,21 +129,13 @@ export function AssessmentDetailPage() {
                 readOnly={isFinalized || !canScore}
                 canSave={Boolean(canScore)}
                 saving={saving}
-                onExport={() => setExportOpen(true)}
+                searchQuery={searchQuery}
+                visibleLearnerCount={visibleLearnerCount}
+                totalLearnerCount={totalLearnerCount}
+                onSearchQueryChange={setSearchQuery}
                 onSave={handleSaveScores}
                 onScoreChange={handleScoreChange}
             />
-
-            {exportPayload && (
-                <ExportModal
-                    open={exportOpen}
-                    onClose={() => setExportOpen(false)}
-                    payload={exportPayload}
-                    presets={exportPresets}
-                    defaultFormat="excel"
-                    title="Export Assessment Scores"
-                />
-            )}
         </div>
     );
 }
