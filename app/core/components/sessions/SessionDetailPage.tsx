@@ -827,6 +827,7 @@ export function SessionDetailPage() {
             <ParticipatingCohorts
                 sessionId={sessionId}
                 isHistorical={isHistorical}
+                canManageLinks={!isCompleted}
             />
 
             {!isScheduled ? (

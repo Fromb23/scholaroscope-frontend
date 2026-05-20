@@ -488,10 +488,11 @@ export const useLessonPlanCurriculumContext = (cohortSubjectId: number | null) =
 
         try {
             setLoading(true);
-            const data = await lessonPlanAPI.getCurriculumContext(cohortSubjectId);
-            setCurriculumContext(data);
+            setCurriculumContext(null);
             setError(null);
             setErrorStatus(null);
+            const data = await lessonPlanAPI.getCurriculumContext(cohortSubjectId);
+            setCurriculumContext(data);
             return data;
         } catch (err) {
             const apiError = err as ApiError;
