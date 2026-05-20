@@ -9,6 +9,7 @@ import {
     CalendarDays,
     CheckCircle2,
     Clock3,
+    Download,
     Edit,
     FilePlus2,
     Link2,
@@ -125,6 +126,7 @@ export function LessonPlanDetailPage() {
         restore,
         scheduleLesson,
         createAssignmentDraft,
+        exportPdf,
     } = useLessonPlanDetail(lessonPlanId);
     const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -252,6 +254,28 @@ export function LessonPlanDetailPage() {
         }
     };
 
+    const handleExportPdf = async () => {
+        if (!lessonPlan) {
+            return;
+        }
+
+        setPendingActionKey(actionKey(lessonPlan.id, 'export-pdf'));
+        setActionError(null);
+        setActionSuccess(null);
+
+        try {
+            await exportPdf();
+        } catch (err) {
+            setActionError(
+                err instanceof Error
+                    ? err.message
+                    : 'Could not export the lesson plan PDF.'
+            );
+        } finally {
+            setPendingActionKey(null);
+        }
+    };
+
     const handleSubmitMarkUsed = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
@@ -373,6 +397,21 @@ export function LessonPlanDetailPage() {
                                 Edit
                             </Button>
                         </Link>
+
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                                void handleExportPdf();
+                            }}
+                            disabled={pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')}
+                        >
+                            <Download className="mr-1.5 h-4 w-4" />
+                            {pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')
+                                ? 'Downloading...'
+                                : 'Download PDF'}
+                        </Button>
 
                         {canMarkLessonPlanReviewed(lessonPlan.status) ? (
                             <Button
