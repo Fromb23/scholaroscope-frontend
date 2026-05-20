@@ -39,11 +39,13 @@ function getActionErrorMessage(err: unknown, fallback: string): string {
 interface ParticipatingCohortsProps {
     sessionId: number;
     isHistorical?: boolean;  // past-year session — no add/unlink
+    canManageLinks?: boolean;
 }
 
 export function ParticipatingCohorts({
     sessionId,
     isHistorical = false,
+    canManageLinks = true,
 }: ParticipatingCohortsProps) {
     const [open, setOpen] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -145,7 +147,7 @@ export function ParticipatingCohorts({
                                                 </Badge>
                                             </div>
 
-                                            {isActive && !isHistorical && (
+                                            {isActive && !isHistorical && canManageLinks && (
                                                 isConfirming ? (
                                                     <div className="flex items-center gap-1.5 shrink-0">
                                                         <span className="text-xs text-gray-500">Unlink?</span>
@@ -186,7 +188,7 @@ export function ParticipatingCohorts({
                         )}
 
                         {/* Add button — hidden for historical sessions */}
-                        {!isHistorical && (
+                        {!isHistorical && canManageLinks && (
                             <Button
                                 variant="secondary"
                                 size="sm"
@@ -194,7 +196,7 @@ export function ParticipatingCohorts({
                                 className="w-full"
                             >
                                 <Plus className="h-3.5 w-3.5 mr-2" />
-                                Add Cohort
+                                Link Participation Cohort
                             </Button>
                         )}
                     </div>

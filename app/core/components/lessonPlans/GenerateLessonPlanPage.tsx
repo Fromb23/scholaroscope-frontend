@@ -142,7 +142,10 @@ export function GenerateLessonPlanPage() {
         )).length,
         [referencePages]
     );
-    const aiGenerationAvailable = Boolean(curriculumContext?.ai_generation_available);
+    const aiGenerationAvailability = selectedCohortSubjectId && curriculumLoading
+        ? null
+        : curriculumContext?.ai_generation_available ?? null;
+    const aiGenerationAvailable = aiGenerationAvailability === true;
     const stepCards = [
         {
             step: 'Step 1',
@@ -171,9 +174,13 @@ export function GenerateLessonPlanPage() {
         {
             step: 'Step 4',
             title: 'Generate draft',
-            detail: useAi && aiGenerationAvailable
-                ? 'AI-assisted draft'
-                : 'Rule-based draft',
+            detail: !selectedCohortSubjectId
+                ? 'Choose the lesson context first.'
+                : curriculumLoading || aiGenerationAvailability === null
+                    ? 'Checking AI availability.'
+                    : useAi && aiGenerationAvailable
+                        ? 'AI-assisted draft'
+                        : 'Rule-based draft',
             complete: false,
         },
     ];
@@ -191,12 +198,12 @@ export function GenerateLessonPlanPage() {
     }, [clearCreateError, clearGenerateError, cohortSubjectId, termId]);
 
     useEffect(() => {
-        if (!curriculumContext) {
+        if (aiGenerationAvailability === null) {
             return;
         }
 
-        setUseAi(Boolean(curriculumContext.ai_generation_available));
-    }, [curriculumContext]);
+        setUseAi(aiGenerationAvailability);
+    }, [aiGenerationAvailability]);
 
     const upsertDraftLessonPlan = async (
         payload: LessonPlanCreatePayload,
@@ -494,7 +501,11 @@ export function GenerateLessonPlanPage() {
                                 type="checkbox"
                                 checked={useAi}
                                 onChange={(event) => setUseAi(event.target.checked)}
-                                disabled={!aiGenerationAvailable}
+                                disabled={
+                                    !selectedCohortSubjectId
+                                    || curriculumLoading
+                                    || !aiGenerationAvailable
+                                }
                                 className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
                             />
                             <span className="space-y-1 text-sm text-gray-700">
@@ -503,7 +514,11 @@ export function GenerateLessonPlanPage() {
                                     Use AI-assisted drafting
                                 </span>
                                 <span className="block text-gray-500">
-                                    {aiGenerationAvailable
+                                    {!selectedCohortSubjectId
+                                        ? 'Choose a class subject to check whether AI-assisted drafting is available.'
+                                        : curriculumLoading || aiGenerationAvailability === null
+                                            ? 'Checking AI-assisted drafting availability for this class subject.'
+                                            : aiGenerationAvailable
                                         ? 'AI uses only the selected outcomes and reference pages you attached.'
                                         : 'AI-assisted drafting is not configured right now. You can still generate a lesson plan without AI.'}
                                 </span>

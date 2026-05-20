@@ -136,8 +136,6 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
     const selectedReferenceCount = Array.isArray(lessonPlan.selected_references)
         ? lessonPlan.selected_references.length
         : 0;
-    const generatedContext = lessonPlan.generated_context ?? {};
-    const hasGeneratedContext = Object.keys(generatedContext).length > 0;
 
     const lessonContextItems = [
         { label: 'Class Subject', value: lessonPlan.cohort_subject_name || 'Not set' },
@@ -234,17 +232,6 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
                             />
                         ))}
                     </dl>
-
-                    {hasGeneratedContext ? (
-                        <details className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 print:hidden">
-                            <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                                Developer context
-                            </summary>
-                            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap text-xs leading-6 text-gray-600">
-                                {JSON.stringify(generatedContext, null, 2)}
-                            </pre>
-                        </details>
-                    ) : null}
                 </div>
             </Card>
         </div>

@@ -69,7 +69,7 @@ export function AddCohortModal({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Add Cohort to Session"
+            title="Link Participation Cohort"
             size="lg"
         >
             <div className="space-y-4">
@@ -157,7 +157,7 @@ export function AddCohortModal({
                         disabled={!selectedCohortSubjectId || submitting}
                         className="flex-1"
                     >
-                        {submitting ? 'Adding...' : 'Add Cohort'}
+                        {submitting ? 'Linking...' : 'Link Cohort'}
                     </Button>
                 </div>
             </div>
