@@ -74,7 +74,7 @@ export function AddCohortModal({
         >
             <div className="space-y-4">
                 <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                    Add another class when this lesson is being taught together across active linked classes.
+                    Add another class when this lesson is being taught together. Linked classes stay active here until you unlink them.
                 </div>
 
                 <div className="relative">

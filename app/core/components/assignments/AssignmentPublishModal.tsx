@@ -15,7 +15,7 @@ import {
 } from '@/app/core/components/assignments/assignmentAudienceOptions';
 import {
     getAssignmentParticipatingCohortCount,
-    hasSessionParticipationMetadata,
+    usesExpandedSessionScope,
 } from '@/app/core/components/assignments/assignmentUtils';
 import { useAssignmentEligibleLearners, usePublishAssignment } from '@/app/core/hooks/useAssignments';
 import type { Assignment } from '@/app/core/types/assignments';
@@ -45,7 +45,7 @@ export function AssignmentPublishModal({
         () => getAssignmentParticipatingCohortCount(assignment.curriculum_context),
         [assignment.curriculum_context]
     );
-    const showSessionScopeNote = hasLinkedLesson && hasSessionParticipationMetadata(assignment.curriculum_context);
+    const showSessionScopeNote = usesExpandedSessionScope(assignment);
     const [audienceChoice, setAudienceChoice] = useState<TeacherPublishAudienceChoice>(
         hasExistingRecipients
             ? 'keep_current'
@@ -158,12 +158,8 @@ export function AssignmentPublishModal({
 
                 {showSessionScopeNote ? (
                     <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                        This assignment uses the source session&apos;s active participation scope.
-                        {participatingCohortCount > 1 ? (
-                            <>
-                                {' '}It can include learners from all active classes linked to that session.
-                            </>
-                        ) : null}
+                        This assignment can include learners from all active classes linked to the source session.
+                        {participatingCohortCount > 1 ? ` (${participatingCohortCount} active classes)` : ''}
                     </div>
                 ) : null}
 

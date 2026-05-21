@@ -16,7 +16,7 @@ import {
 } from '@/app/core/components/assignments/assignmentAudienceOptions';
 import {
     getAssignmentParticipatingCohortCount,
-    hasSessionParticipationMetadata,
+    usesExpandedSessionScope,
 } from '@/app/core/components/assignments/assignmentUtils';
 import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { useCreateAssignment, useUpdateAssignment } from '@/app/core/hooks/useAssignments';
@@ -37,6 +37,7 @@ interface AssignmentCreateModalProps {
     cohortId: number;
     cohortCurriculumId?: number | null;
     cohortSubjects: CohortSubject[];
+    defaultCohortSubjectId?: number | null;
     assignment?: Assignment | null;
     linkedSessionId?: number | null;
     linkedSessionTitle?: string | null;
@@ -96,6 +97,7 @@ export function AssignmentCreateModal({
     cohortId,
     cohortCurriculumId,
     cohortSubjects,
+    defaultCohortSubjectId = null,
     assignment = null,
     linkedSessionId = null,
     linkedSessionTitle = null,
@@ -123,7 +125,9 @@ export function AssignmentCreateModal({
         () => getAssignmentParticipatingCohortCount(assignment?.curriculum_context),
         [assignment?.curriculum_context]
     );
-    const showSessionScopeNote = hasLinkedLesson && hasSessionParticipationMetadata(assignment?.curriculum_context);
+    const showSessionScopeNote = Boolean(
+        assignment && usesExpandedSessionScope(assignment)
+    );
 
     const sortedSubjects = useMemo(() => (
         [...cohortSubjects].sort((left, right) => left.subject_name.localeCompare(right.subject_name))
@@ -149,7 +153,13 @@ export function AssignmentCreateModal({
     useEffect(() => {
         if (!isOpen) return;
 
-        setCohortSubjectId(assignment ? String(assignment.cohort_subject) : '');
+        setCohortSubjectId(
+            assignment
+                ? String(assignment.cohort_subject)
+                : defaultCohortSubjectId
+                    ? String(defaultCohortSubjectId)
+                    : (sortedSubjects.length === 1 ? String(sortedSubjects[0].id) : '')
+        );
         setTitle(assignment?.title ?? '');
         setInstructions(assignment?.instructions ?? '');
         setStartsAt(toDateTimeLocalValue(assignment?.starts_at));
@@ -164,7 +174,7 @@ export function AssignmentCreateModal({
         setLearnerSearch('');
         setOutcomes(buildInitialOutcomes(assignment));
         setFormError(null);
-    }, [assignment, hasLinkedLesson, isOpen]);
+    }, [assignment, defaultCohortSubjectId, hasLinkedLesson, isOpen, sortedSubjects]);
 
     const filteredLearners = useMemo(() => {
         const normalizedSearch = learnerSearch.trim().toLowerCase();
@@ -459,12 +469,8 @@ export function AssignmentCreateModal({
 
                 {showSessionScopeNote ? (
                     <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                        This assignment uses the source session&apos;s active participation scope.
-                        {participatingCohortCount > 1 ? (
-                            <>
-                                {' '}It can include learners from all active classes linked to that session.
-                            </>
-                        ) : null}
+                        This assignment can include learners from all active classes linked to the source session.
+                        {participatingCohortCount > 1 ? ` (${participatingCohortCount} active classes)` : ''}
                     </div>
                 ) : null}
 

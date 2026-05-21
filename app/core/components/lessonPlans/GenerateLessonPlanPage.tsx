@@ -1,10 +1,11 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+    AlertCircle,
     ArrowLeft,
     Bot,
     BookOpen,
@@ -176,6 +177,7 @@ function validateReferencePages(
 
 export function GenerateLessonPlanPage() {
     const router = useRouter();
+    const errorContainerRef = useRef<HTMLDivElement | null>(null);
     const { terms } = useTerms();
     const { assignments, isLoading: assignmentsLoading, error: assignmentsError } = useInstructorCohortAccess();
     const {
@@ -242,6 +244,7 @@ export function GenerateLessonPlanPage() {
         ? null
         : curriculumContext?.ai_generation_available ?? null;
     const aiGenerationAvailable = aiGenerationAvailability === true;
+    const activeErrorMessage = submittingError || createError || generateError || null;
     const guidanceSteps = [
         {
             step: 'Step 1',
@@ -301,7 +304,30 @@ export function GenerateLessonPlanPage() {
         setUseAi(aiGenerationAvailability);
     }, [aiGenerationAvailability]);
 
+    useEffect(() => {
+        if (!activeErrorMessage && !showRetryWithoutAi) {
+            return;
+        }
+
+        const node = errorContainerRef.current;
+        if (!node) {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            node.focus({ preventScroll: true });
+        });
+    }, [activeErrorMessage, showRetryWithoutAi]);
+
     const submitButtonDisabled = submitting || curriculumLoading;
+
+    const clearVisibleErrors = () => {
+        setSubmittingError(null);
+        clearCreateError();
+        clearGenerateError();
+        setShowRetryWithoutAi(false);
+    };
 
     const upsertDraftLessonPlan = async (
         payload: LessonPlanCreatePayload,
@@ -413,7 +439,7 @@ export function GenerateLessonPlanPage() {
     }
 
     return (
-        <div className="space-y-6 pb-24 md:pb-0">
+        <div className="space-y-6 pb-32 md:pb-0">
             <div className="space-y-3">
                 <Link href="/lesson-plans">
                     <Button variant="ghost" size="sm">
@@ -485,43 +511,46 @@ export function GenerateLessonPlanPage() {
                 </div>
             </div>
 
-            {(createError || generateError || submittingError) && !showRetryWithoutAi ? (
-                <ErrorBanner
-                    message={submittingError || createError || generateError || 'We could not generate the lesson plan.'}
-                    onDismiss={() => {
-                        setSubmittingError(null);
-                        clearCreateError();
-                        clearGenerateError();
-                    }}
-                />
-            ) : null}
+            <div
+                ref={errorContainerRef}
+                tabIndex={-1}
+                className="space-y-3 outline-none"
+                aria-live="assertive"
+            >
+                {activeErrorMessage && !showRetryWithoutAi ? (
+                    <ErrorBanner
+                        message={activeErrorMessage || 'We could not generate the lesson plan.'}
+                        onDismiss={clearVisibleErrors}
+                    />
+                ) : null}
 
-            {showRetryWithoutAi ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="space-y-1">
-                            <p className="font-medium text-amber-900">
-                                AI-assisted drafting is unavailable for this lesson right now.
-                            </p>
-                            <p>
-                                You can generate the same lesson plan without AI. The draft will still use the outcomes and references you selected.
-                            </p>
+                {showRetryWithoutAi ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="space-y-1">
+                                <p className="font-medium text-amber-900">
+                                    AI-assisted drafting is unavailable for this lesson right now.
+                                </p>
+                                <p>
+                                    You can generate the same lesson plan without AI. The draft will still use the outcomes and references you selected.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => {
+                                    setUseAi(false);
+                                    void submitGeneration(false);
+                                }}
+                                disabled={submitting}
+                                className="bg-white"
+                            >
+                                Generate without AI
+                            </Button>
                         </div>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => {
-                                setUseAi(false);
-                                void submitGeneration(false);
-                            }}
-                            disabled={submitting}
-                            className="bg-white"
-                        >
-                            Generate without AI
-                        </Button>
                     </div>
-                </div>
-            ) : null}
+                ) : null}
+            </div>
 
             <form id="generate-lesson-plan-form" onSubmit={handleSubmit} className="space-y-6 pb-24 md:pb-0">
                 <Card className="border-gray-200 bg-gray-50/60">
@@ -638,6 +667,13 @@ export function GenerateLessonPlanPage() {
                     </div>
                 </Card>
 
+                {activeErrorMessage ? (
+                    <div className="hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:flex md:items-start md:gap-3">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span className="flex-1">{activeErrorMessage}</span>
+                    </div>
+                ) : null}
+
                 <div className="hidden justify-end md:flex">
                     <Button type="submit" disabled={submitButtonDisabled}>
                         {submitting ? 'Generating...' : 'Generate lesson plan'}
@@ -646,7 +682,12 @@ export function GenerateLessonPlanPage() {
             </form>
 
             <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
-                <div className="mx-auto max-w-6xl">
+                <div className="mx-auto max-w-6xl space-y-3">
+                    {activeErrorMessage ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {activeErrorMessage}
+                        </div>
+                    ) : null}
                     <Button
                         type="submit"
                         form="generate-lesson-plan-form"
