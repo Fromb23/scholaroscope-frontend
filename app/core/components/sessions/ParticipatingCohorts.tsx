@@ -129,21 +129,21 @@ export function ParticipatingCohorts({
 
     return (
         <>
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+            <div className="theme-card overflow-hidden rounded-xl">
                 <button
                     type="button"
                     onClick={() => setOpen(v => !v)}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                    className="theme-hover-surface flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
                 >
-                    <Users className="h-4 w-4 text-gray-400 shrink-0" />
-                    <span className="text-sm font-medium text-gray-700 flex-1">
+                    <Users className="h-4 w-4 theme-subtle shrink-0" />
+                    <span className="flex-1 text-sm font-medium theme-text">
                         Participating classes
                     </span>
 
                     {loading ? (
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
                     ) : (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs theme-muted">
                             <Badge variant="info" size="sm">
                                 {activeClassCount} active
                             </Badge>
@@ -152,21 +152,21 @@ export function ParticipatingCohorts({
                     )}
 
                     {open
-                        ? <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
-                        : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                        ? <ChevronDown className="h-4 w-4 theme-subtle shrink-0" />
+                        : <ChevronRight className="h-4 w-4 theme-subtle shrink-0" />
                     }
                 </button>
 
                 {open && (
-                    <div className="space-y-4 border-t border-gray-100 px-4 pb-4 pt-3">
-                        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    <div className="space-y-4 border-t px-4 pb-4 pt-3 theme-border">
+                        <div className="theme-info-surface rounded-lg px-4 py-3 text-sm">
                             <div className="flex items-start gap-3">
-                                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
                                 <div className="space-y-1">
-                                    <p className="font-medium text-blue-900">
+                                    <p className="font-medium theme-text">
                                         Linked classes participate in this session until you unlink them.
                                     </p>
-                                    <p>
+                                    <p className="theme-muted">
                                         Use this when classes are combined for one lesson or for an ongoing merged teaching arrangement.
                                     </p>
                                 </div>
@@ -174,27 +174,27 @@ export function ParticipatingCohorts({
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            <div className="theme-card-muted rounded-lg px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">
                                     Active classes
                                 </p>
-                                <p className="mt-2 text-lg font-semibold text-gray-900">
+                                <p className="mt-2 text-lg font-semibold theme-text">
                                     {activeClassCount}
                                 </p>
                             </div>
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            <div className="theme-card-muted rounded-lg px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">
                                     Total participating learners
                                 </p>
-                                <p className="mt-2 text-lg font-semibold text-gray-900">
+                                <p className="mt-2 text-lg font-semibold theme-text">
                                     {totalLearners}
                                 </p>
                             </div>
                         </div>
 
                         {actionError ? (
-                            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            <div className="theme-danger-surface flex items-center gap-2 rounded-lg p-2 text-xs">
+                                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[color:var(--color-danger)]" />
                                 <span className="flex-1">{actionError}</span>
                                 <button type="button" onClick={() => setActionError(null)}>
                                     <X className="h-3.5 w-3.5" />
@@ -204,8 +204,8 @@ export function ParticipatingCohorts({
 
                         <div className="space-y-3">
                             <div className="flex items-center justify-between gap-3">
-                                <h3 className="text-sm font-semibold text-gray-900">Active participating classes</h3>
-                                <span className="text-xs text-gray-500">
+                                <h3 className="text-sm font-semibold theme-text">Active participating classes</h3>
+                                <span className="text-xs theme-muted">
                                     {currentLinkedClasses.length === 0 && hasPrimaryClass
                                         ? 'Primary class only'
                                         : `${currentLinkedClasses.length} linked`}
@@ -222,14 +222,14 @@ export function ParticipatingCohorts({
                                             key={`${link.id}-${link.cohort}`}
                                             className={`rounded-lg border px-3 py-3 ${
                                                 isPrimary
-                                                    ? 'border-blue-200 bg-blue-50/70'
-                                                    : 'border-gray-200 bg-white'
+                                                    ? 'theme-info-surface'
+                                                    : 'theme-border theme-surface'
                                             }`}
                                         >
                                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                                 <div className="min-w-0 space-y-1">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <span className="truncate text-sm font-medium text-gray-900">
+                                                        <span className="truncate text-sm font-medium theme-text">
                                                             {link.cohort_name}
                                                         </span>
                                                         <Badge variant={isPrimary ? 'blue' : 'green'} size="sm">
@@ -239,14 +239,14 @@ export function ParticipatingCohorts({
                                                             <Badge variant="default" size="sm">Linked</Badge>
                                                         ) : null}
                                                     </div>
-                                                    <p className="text-sm text-gray-500">
+                                                    <p className="text-sm theme-muted">
                                                         {link.cohort_level || 'Class level not set'}
                                                         {typeof link.learner_count === 'number'
                                                             ? ` · ${link.learner_count} learners`
                                                             : ''}
                                                     </p>
                                                     {!isPrimary ? (
-                                                        <p className="text-xs text-gray-500">
+                                                        <p className="text-xs theme-subtle">
                                                             This class stays linked until you unlink it.
                                                         </p>
                                                     ) : null}
@@ -255,7 +255,7 @@ export function ParticipatingCohorts({
                                                 {!isPrimary && !isHistorical && canManageLinks ? (
                                                     isConfirming ? (
                                                         <div className="flex flex-col gap-2 sm:items-end">
-                                                            <span className="text-xs text-gray-500">Unlink this class?</span>
+                                                            <span className="text-xs theme-muted">Unlink this class?</span>
                                                             <div className="flex gap-2">
                                                                 <Button
                                                                     variant="danger"
@@ -277,7 +277,7 @@ export function ParticipatingCohorts({
                                                         <button
                                                             type="button"
                                                             onClick={() => setConfirmUnlink(link.cohort)}
-                                                            className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                                            className="rounded p-1.5 theme-subtle transition-colors theme-hover-danger"
                                                             title="Unlink class"
                                                         >
                                                             <X className="h-3.5 w-3.5" />
@@ -294,24 +294,24 @@ export function ParticipatingCohorts({
                         {historicalCohorts.length > 0 ? (
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between gap-3">
-                                    <h3 className="text-sm font-semibold text-gray-900">Historical / unlinked classes</h3>
-                                    <span className="text-xs text-gray-500">{historicalCohorts.length} unlinked</span>
+                                    <h3 className="text-sm font-semibold theme-text">Historical / unlinked classes</h3>
+                                    <span className="text-xs theme-muted">{historicalCohorts.length} unlinked</span>
                                 </div>
 
                                 <div className="space-y-2">
                                     {historicalCohorts.map((link) => (
                                         <div
                                             key={link.id}
-                                            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3"
+                                            className="theme-card-muted rounded-lg px-3 py-3"
                                         >
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-sm font-medium text-gray-700">
+                                                <span className="text-sm font-medium theme-text">
                                                     {link.cohort_name}
                                                 </span>
                                                 <Badge variant="default" size="sm">Unlinked</Badge>
                                                 <Badge variant="warning" size="sm">Historical</Badge>
                                             </div>
-                                            <p className="mt-1 text-sm text-gray-500">
+                                            <p className="mt-1 text-sm theme-muted">
                                                 {link.cohort_level || 'Class level not set'}
                                             </p>
                                         </div>
@@ -321,7 +321,7 @@ export function ParticipatingCohorts({
                         ) : null}
 
                         {linkedCohorts.length > 0 ? (
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs theme-subtle">
                                 Unlinking a class does not remove attendance records already recorded for this session.
                             </p>
                         ) : null}

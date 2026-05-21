@@ -42,18 +42,18 @@ function SubStrandOutcomes({ subStrand }: { subStrand: SubStrand }) {
     if (outcomes.length === 0) {
         return (
             <div className="px-4 py-6 text-center sm:px-5">
-                <FileText className="mx-auto h-8 w-8 text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No learning goals added yet</p>
+                <FileText className="mx-auto mb-2 h-8 w-8 theme-subtle" />
+                <p className="text-sm theme-muted">No learning goals added yet</p>
             </div>
         );
     }
 
     return (
-        <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-200">
             {outcomes.map(outcome => (
                 <div
                     key={outcome.id}
-                    className="px-4 py-4 transition-colors hover:bg-gray-50 sm:px-5"
+                    className="theme-hover-surface px-4 py-4 transition-colors sm:px-5"
                 >
                     <div className="space-y-2">
                         <Badge
@@ -64,7 +64,7 @@ function SubStrandOutcomes({ subStrand }: { subStrand: SubStrand }) {
                         >
                             {outcome.code}
                         </Badge>
-                        <p className="text-sm leading-6 text-gray-700 break-words">{outcome.description}</p>
+                        <p className="break-words text-sm leading-6 theme-text">{outcome.description}</p>
                         <div className="flex flex-wrap gap-2">
                             {outcome.grade_name && (
                                 <Badge variant="blue" size="sm">
@@ -123,7 +123,7 @@ export function CBCBrowserStrandPage() {
 
             <Card className="p-4 sm:p-6">
                 <div className="flex flex-col items-start gap-4 sm:flex-row">
-                    <div className="w-full rounded-xl border border-blue-100 bg-blue-50 px-3 py-3 sm:w-auto sm:max-w-xs sm:shrink-0 sm:px-3.5 sm:py-3.5">
+                    <div className="theme-info-surface w-full rounded-xl px-3 py-3 sm:w-auto sm:max-w-xs sm:shrink-0 sm:px-3.5 sm:py-3.5">
                         <span
                             className="block break-all text-lg font-mono font-bold text-blue-700 sm:text-xl"
                             title={page.strand.code}
@@ -132,27 +132,27 @@ export function CBCBrowserStrandPage() {
                         </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">{page.strand.name}</h1>
+                        <h1 className="mb-2 text-2xl font-bold theme-text">{page.strand.name}</h1>
                         {page.strand.description && (
-                            <p className="text-gray-600 mb-3">{page.strand.description}</p>
+                            <p className="mb-3 theme-muted">{page.strand.description}</p>
                         )}
-                        <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-gray-100 pt-3 text-sm text-gray-500">
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 border-t pt-3 text-sm theme-muted theme-border">
                             <div className="flex items-center gap-1.5">
-                                <BookOpen className="h-4 w-4 text-gray-400" />
-                                <span>Curriculum: <span className="font-medium text-gray-900">
+                                <BookOpen className="h-4 w-4 theme-subtle" />
+                                <span>Curriculum: <span className="font-medium theme-text">
                                     {page.strand.curriculum_name}
                                 </span></span>
                             </div>
                             {page.strand.subject_name && (
                                 <div className="flex items-center gap-1.5">
-                                    <Target className="h-4 w-4 text-gray-400" />
-                                    <span>Subject: <span className="font-medium text-gray-900">
+                                    <Target className="h-4 w-4 theme-subtle" />
+                                    <span>Subject: <span className="font-medium theme-text">
                                         {page.strand.subject_name}
                                     </span></span>
                                 </div>
                             )}
                             <div className="flex items-center gap-1.5">
-                                <Layers className="h-4 w-4 text-gray-400" />
+                                <Layers className="h-4 w-4 theme-subtle" />
                                 <Badge variant="blue" size="sm">
                                     {page.strand.sub_strands.length} learning area
                                     {page.strand.sub_strands.length !== 1 ? 's' : ''}
@@ -166,13 +166,13 @@ export function CBCBrowserStrandPage() {
             <Card className="p-4 sm:p-6">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Layers className="h-5 w-5 text-blue-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">Learning areas and goals</h2>
+                    <h2 className="text-lg font-semibold theme-text">Learning areas and goals</h2>
                     <Badge variant="blue" size="sm">
                         {page.strand.sub_strands.length} learning area
                         {page.strand.sub_strands.length !== 1 ? 's' : ''}
                     </Badge>
                 </div>
-                <p className="mb-5 text-sm text-gray-500">
+                <p className="mb-5 text-sm theme-muted">
                     Open a learning area to see its goals.
                 </p>
 
@@ -184,7 +184,7 @@ export function CBCBrowserStrandPage() {
                         return (
                             <div
                                 key={subStrand.id}
-                                className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors"
+                                className="theme-hover-border-strong overflow-hidden rounded-xl border theme-border transition-colors"
                             >
                                 <button
                                     type="button"
@@ -192,17 +192,17 @@ export function CBCBrowserStrandPage() {
                                     aria-expanded={isOpen}
                                     aria-controls={`sub-strand-${subStrand.id}-goals`}
                                     aria-label={`${actionLabel} learning area ${subStrand.name}`}
-                                    className="w-full bg-gray-50 px-4 py-4 text-left transition-all hover:bg-gray-100 sm:px-5 sm:py-4"
+                                    className="theme-surface-muted theme-hover-surface w-full px-4 py-4 text-left transition-all sm:px-5 sm:py-4"
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className="shrink-0 pt-0.5">
                                             {isOpen
                                                 ? <ChevronDown className="h-5 w-5 text-blue-600" />
-                                                : <ChevronRight className="h-5 w-5 text-gray-400" />
+                                                : <ChevronRight className="h-5 w-5 theme-subtle" />
                                             }
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <div className="text-sm font-medium text-gray-500 sm:hidden">
+                                            <div className="text-sm font-medium theme-muted sm:hidden">
                                                 {learningGoalsLabel(subStrand.outcomes_count)}
                                             </div>
                                             <div className="mt-3 flex flex-col gap-3 sm:mt-0 sm:flex-row sm:items-start sm:justify-between">
@@ -216,11 +216,11 @@ export function CBCBrowserStrandPage() {
                                                         {subStrand.code}
                                                     </Badge>
                                                     <div className="min-w-0">
-                                                        <p className="text-base font-semibold leading-6 text-gray-900 break-words">
+                                                        <p className="break-words text-base font-semibold leading-6 theme-text">
                                                             {subStrand.name}
                                                         </p>
                                                         {subStrand.description && (
-                                                            <p className="mt-1 text-sm leading-6 text-gray-500 break-words">
+                                                            <p className="mt-1 break-words text-sm leading-6 theme-muted">
                                                                 {subStrand.description}
                                                             </p>
                                                         )}
@@ -240,7 +240,7 @@ export function CBCBrowserStrandPage() {
 
                                 <div
                                     id={`sub-strand-${subStrand.id}-goals`}
-                                    className="border-t border-gray-100 bg-white"
+                                    className="theme-surface border-t theme-border"
                                     hidden={!isOpen}
                                 >
                                     {isOpen && (

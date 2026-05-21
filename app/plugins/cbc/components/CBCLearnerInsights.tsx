@@ -14,7 +14,7 @@ function confidenceColor(c: ConfidenceLevel): string {
     if (c === 'HIGH') return 'text-emerald-600';
     if (c === 'MEDIUM') return 'text-blue-500';
     if (c === 'LOW') return 'text-amber-500';
-    return 'text-gray-400';
+    return 'theme-subtle';
 }
 
 
@@ -42,7 +42,7 @@ const CONFIDENCE_CONFIG: Record<ConfidenceLevel, { label: string; icon: typeof S
     NONE: {
         label: 'No data',
         icon: HelpCircle,
-        className: 'text-gray-400',
+        className: 'theme-subtle',
         tip: 'No evidence recorded yet',
     },
 };
@@ -106,18 +106,18 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
     const overall = overallConfidence(records);
 
     return (
-        <Card className="border-purple-100 bg-purple-50/30">
+        <Card className="theme-surface-elevated">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg shrink-0">
+                    <div className="theme-surface-elevated rounded-lg border p-2 shrink-0 theme-border">
                         <GraduationCap className="h-5 w-5 text-purple-600" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-semibold theme-text">
                             CBC Competency Progress
                         </h3>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs theme-muted">
                             Learning outcome mastery · evidence provenance
                         </p>
                     </div>
@@ -131,9 +131,9 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
             </div>
 
             {isLoading ? (
-                <p className="text-sm text-gray-400 py-2">Loading…</p>
+                <p className="py-2 text-sm theme-subtle">Loading…</p>
             ) : total === 0 ? (
-                <p className="text-sm text-gray-500 py-2">
+                <p className="py-2 text-sm theme-muted">
                     No competency records yet for this learner.
                 </p>
             ) : (
@@ -145,32 +145,33 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                             { label: 'On Track', value: onTrack, color: 'text-emerald-600' },
                             {
                                 label: 'Attention', value: attention,
-                                color: attention > 0 ? 'text-red-500' : 'text-gray-400'
+                                color: attention > 0 ? 'text-red-500' : 'theme-subtle'
                             },
                             {
                                 label: 'Verified', value: verified,
-                                color: verified > 0 ? 'text-emerald-600' : 'text-gray-400'
+                                color: verified > 0 ? 'text-emerald-600' : 'theme-subtle'
                             },
                         ].map(s => (
-                            <div key={s.label} className="text-center p-2 bg-white
-                                rounded-lg border border-gray-100">
+                            <div
+                                key={s.label}
+                                className="theme-card-muted rounded-lg p-2 text-center"
+                            >
                                 <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
-                                <div className="text-xs text-gray-500">{s.label}</div>
+                                <div className="text-xs theme-muted">{s.label}</div>
                             </div>
                         ))}
                     </div>
 
                     {/* Overall evidence quality */}
-                    <div className="flex items-center gap-3 mb-3 px-1 py-1.5 bg-white
-                        rounded-lg border border-gray-100">
-                        <span className="text-xs text-gray-400 shrink-0">
+                    <div className="theme-card-muted mb-3 flex items-center gap-3 rounded-lg px-3 py-2">
+                        <span className="shrink-0 text-xs theme-subtle">
                             Overall confidence:
                         </span>
                         <span className={`text-xs font-semibold ${confidenceColor(overall)}`}>
                             {overall}
                         </span>
-                        <span className="text-gray-200">·</span>
-                        <span className="text-xs text-gray-400">
+                        <span className="theme-subtle">·</span>
+                        <span className="text-xs theme-muted">
                             {verified > 0
                                 ? `${verified} verified by assessment`
                                 : classBased > 0
@@ -185,10 +186,10 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                         {records.slice(0, 5).map((r: OutcomeConfidence) => (
                             <div
                                 key={r.outcome_id}
-                                className="flex items-center justify-between py-1.5 px-3 bg-white rounded-lg border border-gray-100"
+                                className="theme-card flex items-center justify-between rounded-lg px-3 py-2"
                             >
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-xs font-mono text-gray-600 shrink-0">
+                                    <span className="shrink-0 text-xs font-mono theme-muted">
                                         {r.outcome_code}
                                     </span>
                                     <MasteryBadge level={r.mastery_level} size="sm" />
@@ -198,7 +199,7 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                                     <span className={`text-xs font-medium ${confidenceColor(r.confidence)}`}>
                                         {CONFIDENCE_CONFIG[r.confidence].label}
                                     </span>
-                                    <span className="text-xs text-gray-400">
+                                    <span className="text-xs theme-subtle">
                                         {r.evidence_count}{' '}
                                         {r.evidence_count === 1 ? 'record' : 'records'}
                                     </span>
@@ -208,8 +209,7 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                         {records.length > 5 && (
                             <Link
                                 href={`/cbc/progress/learner/${studentId}`}
-                                className="block text-xs text-center text-blue-500
-                                    hover:text-blue-700 py-1.5 transition-colors"
+                                className="theme-link block py-1.5 text-center text-xs transition-colors"
                             >
                                 +{records.length - 5} more outcomes → view full report
                             </Link>
@@ -218,10 +218,9 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
 
                     {/* Class-based warning */}
                     {classBased > 0 && (
-                        <div className="mt-3 flex items-start gap-2 p-2.5 bg-amber-50
-                            border border-amber-200 rounded-lg">
-                            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-700">
+                        <div className="theme-warning-surface mt-3 flex items-start gap-2 rounded-lg p-2.5">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warning)]" />
+                            <p className="text-xs theme-text">
                                 {classBased}{' '}
                                 {classBased === 1 ? 'outcome is' : 'outcomes are'} class-based —
                                 projected from group evidence, not individual observation.

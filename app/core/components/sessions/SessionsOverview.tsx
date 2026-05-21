@@ -110,7 +110,7 @@ function SessionInstructor({
         return (
             <Link
                 href={`/admin/instructors/${session.created_by_id}/progress`}
-                className={linkClassName || `text-blue-600 hover:underline ${className}`.trim()}
+                className={linkClassName || `theme-link hover:underline ${className}`.trim()}
             >
                 {label}
             </Link>
@@ -151,24 +151,24 @@ function CohortSessionsTable({
                                 <TableRow key={session.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <div className="rounded-lg bg-blue-100 p-1.5 shrink-0">
+                                            <div className="theme-info-surface shrink-0 rounded-lg p-1.5">
                                                 <Calendar className="h-3.5 w-3.5 text-blue-600" />
                                             </div>
                                             <div>
-                                                <div className="text-sm font-medium text-gray-900 whitespace-nowrap">
+                                                <div className="whitespace-nowrap text-sm font-medium theme-text">
                                                     {formatSessionDate(session.session_date)}
                                                 </div>
-                                                <div className="text-xs text-gray-500 whitespace-nowrap">
+                                                <div className="whitespace-nowrap text-xs theme-muted">
                                                     {getSessionTimeLabel(session)}
                                                 </div>
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="text-sm font-medium text-gray-900">
+                                        <div className="text-sm font-medium theme-text">
                                             {session.title || session.subject_name}
                                         </div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs theme-muted">
                                             {session.subject_name}
                                             {session.subject_code ? ` · ${session.subject_code}` : ''}
                                         </div>
@@ -176,8 +176,8 @@ function CohortSessionsTable({
                                     <TableCell>
                                         <SessionInstructor
                                             session={session}
-                                            className="text-sm text-gray-700"
-                                            linkClassName="text-sm text-blue-600 hover:underline"
+                                            className="text-sm theme-text"
+                                            linkClassName="text-sm theme-link hover:underline"
                                         />
                                     </TableCell>
                                     <TableCell>
@@ -187,15 +187,15 @@ function CohortSessionsTable({
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1 text-sm text-gray-600 whitespace-nowrap">
-                                            <MapPin className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                        <div className="flex items-center gap-1 whitespace-nowrap text-sm theme-muted">
+                                            <MapPin className="h-3.5 w-3.5 theme-subtle shrink-0" />
                                             {session.venue || '-'}
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <div>
-                                                <div className="text-sm font-medium text-gray-900">
+                                                <div className="text-sm font-medium theme-text">
                                                     {present}/{total}
                                                 </div>
                                                 <Badge variant={getAttendanceColor(percentage)} size="sm">
@@ -242,44 +242,44 @@ function CohortSessionsCards({
                         <div className="space-y-3">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="text-sm font-semibold text-gray-900">
+                                    <h2 className="text-sm font-semibold theme-text">
                                         {session.title || session.subject_name}
                                     </h2>
                                     <Badge variant="blue" size="sm">{session.session_type_display}</Badge>
                                     <SessionLifecycleHint session={session} />
                                 </div>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs theme-muted">
                                     {session.subject_name}
                                     {session.subject_code ? ` · ${session.subject_code}` : ''}
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
+                            <div className="grid grid-cols-1 gap-2 text-sm theme-muted">
                                 <div className="flex items-center gap-2">
-                                    <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
+                                    <Calendar className="h-4 w-4 theme-subtle shrink-0" />
                                     <span>{formatSessionDate(session.session_date)}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-gray-400 shrink-0" />
+                                    <Clock className="h-4 w-4 theme-subtle shrink-0" />
                                     <span>{getSessionTimeLabel(session)}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-gray-400 shrink-0" />
+                                    <Users className="h-4 w-4 theme-subtle shrink-0" />
                                     <SessionInstructor
                                         session={session}
-                                        className="text-gray-700"
-                                        linkClassName="text-blue-600 hover:underline"
+                                        className="theme-text"
+                                        linkClassName="theme-link hover:underline"
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
+                                    <MapPin className="h-4 w-4 theme-subtle shrink-0" />
                                     <span>{session.venue || '-'}</span>
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2">
-                                    <div className="text-sm font-medium text-gray-900">
+                                    <div className="text-sm font-medium theme-text">
                                         {present}/{total}
                                     </div>
                                     <Badge variant={getAttendanceColor(percentage)} size="sm">
@@ -354,10 +354,10 @@ function SessionWorkspaceView() {
         <div className="space-y-6">
             <div className="flex justify-between items-start gap-3">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">
+                    <h1 className="text-2xl font-semibold theme-text">
                         {isInstructor ? 'My Lessons' : 'Scheduled Lessons'}
                     </h1>
-                    <p className="text-gray-600 mt-1 text-sm">
+                    <p className="mt-1 text-sm theme-muted">
                         {isInstructor
                             ? 'Track your lessons, attendance, and day-to-day teaching flow.'
                             : 'Review scheduled lessons, attendance, and cohort lesson history from one workspace.'}
@@ -394,7 +394,7 @@ function SessionWorkspaceView() {
                 <Card>
                     <div className="p-4">
                         <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-base font-semibold text-gray-900">
+                            <h2 className="text-base font-semibold theme-text">
                                 Today&apos;s Lessons
                             </h2>
                             {!isInstructor ? (
@@ -408,13 +408,13 @@ function SessionWorkspaceView() {
                                 const isMerged = session.linked_cohorts && session.linked_cohorts.length > 1;
 
                                 return (
-                                    <div key={session.id} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+                                    <div key={session.id} className="flex items-center gap-3 border-b py-2 last:border-0 theme-border">
                                         <div className="text-center shrink-0 w-14">
-                                            <div className="text-xs font-medium text-gray-900">{session.start_time}</div>
-                                            <div className="text-xs text-gray-400">{session.end_time}</div>
+                                            <div className="text-xs font-medium theme-text">{session.start_time}</div>
+                                            <div className="text-xs theme-subtle">{session.end_time}</div>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-medium text-gray-900 truncate flex items-center gap-1">
+                                            <div className="flex items-center gap-1 truncate text-sm font-medium theme-text">
                                                 {session.subject_name}
                                                 {isMerged ? (
                                                     <Badge variant="purple" size="sm">
@@ -424,7 +424,7 @@ function SessionWorkspaceView() {
                                                 ) : null}
                                                 <SessionLifecycleHint session={session} />
                                             </div>
-                                            <div className="text-xs text-gray-500 truncate">
+                                            <div className="truncate text-xs theme-muted">
                                                 {isMerged
                                                     ? session.linked_cohorts.map((cohort) => cohort.cohort_name).join(', ')
                                                     : session.cohort_name}
@@ -487,14 +487,14 @@ function SessionWorkspaceView() {
             ) : loading ? (
                 <div className="py-12 text-center">
                     <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-                    <p className="mt-2 text-gray-600">Loading sessions...</p>
+                    <p className="mt-2 theme-muted">Loading sessions...</p>
                 </div>
             ) : sessions.length === 0 ? (
                 <Card>
                     <div className="py-12 text-center">
-                        <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions found</h3>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <Calendar className="mx-auto h-12 w-12 theme-subtle" />
+                        <h3 className="mt-2 text-sm font-medium theme-text">No sessions found</h3>
+                        <p className="mt-1 text-sm theme-muted">
                             {selectedTerm || selectedType
                                 ? 'Try adjusting your filters'
                                 : 'Get started by planning a lesson'}
@@ -520,24 +520,24 @@ function SessionWorkspaceView() {
                             <Card key={`group-${cohortId}`} className="overflow-hidden">
                                 <div
                                     onClick={() => toggleGroup(cohortId)}
-                                    className="cursor-pointer select-none bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all px-4 py-3 border-b border-blue-200"
+                                    className="theme-surface-muted theme-hover-surface cursor-pointer select-none border-b px-4 py-3 transition-colors theme-border"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="p-1.5 bg-white rounded-lg shadow-sm shrink-0">
+                                        <div className="theme-surface-elevated shrink-0 rounded-lg border p-1.5 shadow-sm theme-border">
                                             {isCollapsed
                                                 ? <ChevronRight className="h-4 w-4 text-blue-600" />
                                                 : <ChevronDown className="h-4 w-4 text-blue-600" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <h3 className="text-sm font-semibold text-gray-900 truncate">
+                                                <h3 className="truncate text-sm font-semibold theme-text">
                                                     {group.label}
                                                 </h3>
                                                 <Badge variant="blue" size="sm">
                                                     {group.items.length} session{group.items.length !== 1 ? 's' : ''}
                                                 </Badge>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-0.5">
+                                            <p className="mt-0.5 text-xs theme-muted">
                                                 {groupPresent}/{groupTotal} present ·{' '}
                                                 <span className={groupPercentage >= 80 ? 'text-green-600' : groupPercentage >= 60 ? 'text-yellow-600' : 'text-red-600'}>
                                                     {groupPercentage}%
@@ -548,7 +548,7 @@ function SessionWorkspaceView() {
                                 </div>
 
                                 {!isCollapsed ? (
-                                    <div className="bg-white overflow-x-auto">
+                                    <div className="theme-surface overflow-x-auto">
                                         <div className="min-w-[640px]">
                                             <Table>
                                                 <TableHeader>
@@ -572,28 +572,28 @@ function SessionWorkspaceView() {
                                                             <TableRow
                                                                 key={session.id}
                                                                 onClick={() => router.push(`/sessions/${session.id}`)}
-                                                                className="hover:bg-blue-50 transition-colors cursor-pointer"
+                                                                className="cursor-pointer transition-colors theme-hover-surface"
                                                             >
                                                                 <TableCell>
                                                                     <div className="flex items-center gap-2">
-                                                                        <div className="p-1.5 bg-blue-100 rounded-lg shrink-0">
+                                                                        <div className="theme-info-surface shrink-0 rounded-lg p-1.5">
                                                                             <Calendar className="h-3.5 w-3.5 text-blue-600" />
                                                                         </div>
                                                                         <div>
-                                                                            <div className="text-sm font-medium text-gray-900 whitespace-nowrap">
+                                                                            <div className="whitespace-nowrap text-sm font-medium theme-text">
                                                                                 {formatSessionDate(session.session_date)}
                                                                             </div>
-                                                                            <div className="text-xs text-gray-500 whitespace-nowrap">
+                                                                            <div className="whitespace-nowrap text-xs theme-muted">
                                                                                 {getSessionTimeLabel(session)}
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    <div className="text-sm font-medium text-gray-900 whitespace-nowrap">
+                                                                    <div className="whitespace-nowrap text-sm font-medium theme-text">
                                                                         {session.subject_name}
                                                                     </div>
-                                                                    <div className="text-xs text-gray-500">{session.subject_code}</div>
+                                                                    <div className="text-xs theme-muted">{session.subject_code}</div>
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     {isMerged ? (
@@ -602,15 +602,15 @@ function SessionWorkspaceView() {
                                                                                 <Layers className="w-3 h-3 mr-1" />
                                                                                 {session.linked_cohorts.length} cohorts
                                                                             </Badge>
-                                                                            <div className="text-xs text-gray-500 mt-1 whitespace-nowrap">
+                                                                            <div className="mt-1 whitespace-nowrap text-xs theme-muted">
                                                                                 {session.linked_cohorts.slice(0, 2).map((cohort) => cohort.cohort_name).join(', ')}
                                                                                 {session.linked_cohorts.length > 2 ? ` +${session.linked_cohorts.length - 2}` : ''}
                                                                             </div>
                                                                         </div>
                                                                     ) : (
                                                                         <div>
-                                                                            <div className="text-sm font-medium text-gray-900 whitespace-nowrap">{session.cohort_name}</div>
-                                                                            <div className="text-xs text-gray-500">{session.cohort_level}</div>
+                                                                            <div className="whitespace-nowrap text-sm font-medium theme-text">{session.cohort_name}</div>
+                                                                            <div className="text-xs theme-muted">{session.cohort_level}</div>
                                                                         </div>
                                                                     )}
                                                                 </TableCell>
@@ -621,15 +621,15 @@ function SessionWorkspaceView() {
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    <div className="flex items-center gap-1 text-sm text-gray-600 whitespace-nowrap">
-                                                                        <MapPin className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                                                    <div className="flex items-center gap-1 whitespace-nowrap text-sm theme-muted">
+                                                                        <MapPin className="h-3.5 w-3.5 theme-subtle shrink-0" />
                                                                         {session.venue || '-'}
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     <div className="flex items-center gap-2">
                                                                         <div>
-                                                                            <div className="text-sm font-medium text-gray-900">{present}/{total}</div>
+                                                                            <div className="text-sm font-medium theme-text">{present}/{total}</div>
                                                                             <Badge variant={getAttendanceColor(percentage)} size="sm">{percentage}%</Badge>
                                                                         </div>
                                                                         {percentage === 100 ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" /> : null}
@@ -662,10 +662,10 @@ function SessionWorkspaceView() {
             )}
 
             {sessions.length > 0 ? (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm theme-muted">
                     Showing <span className="font-medium">{sessions.length}</span> sessions across{' '}
                     <span className="font-medium">{grouped.size}</span> cohort{grouped.size !== 1 ? 's' : ''}
-                    {mergedSessionsCount > 0 ? <span className="text-purple-600 ml-2">· {mergedSessionsCount} merged</span> : null}
+                    {mergedSessionsCount > 0 ? <span className="ml-2 text-purple-600">· {mergedSessionsCount} merged</span> : null}
                 </p>
             ) : null}
         </div>
@@ -726,12 +726,12 @@ function CohortSessionsView({
         <div className="flex justify-between items-start gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-semibold text-gray-900">{heading}</h1>
+              <h1 className="text-2xl font-semibold theme-text">{heading}</h1>
               <Badge variant="blue" size="sm">
                 Cohort History
               </Badge>
             </div>
-            <p className="text-gray-600 mt-1 text-sm">{subheading}</p>
+            <p className="mt-1 text-sm theme-muted">{subheading}</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <Link href={cohortBackHref}>
@@ -792,14 +792,14 @@ function CohortSessionsView({
         ) : loading ? (
           <div className="py-12 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-            <p className="mt-2 text-gray-600">Loading cohort sessions...</p>
+            <p className="mt-2 theme-muted">Loading cohort sessions...</p>
           </div>
         ) : filteredSessions.length === 0 ? (
           <Card>
             <div className="py-12 text-center">
-              <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions found</h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <Calendar className="mx-auto h-12 w-12 theme-subtle" />
+              <h3 className="mt-2 text-sm font-medium theme-text">No sessions found</h3>
+              <p className="mt-1 text-sm theme-muted">
                 {selectedTerm || selectedType
                   ? 'Try adjusting your filters'
                   : 'No session history is available for this cohort yet'}
@@ -818,7 +818,7 @@ function CohortSessionsView({
         )}
 
         {filteredSessions.length > 0 ? (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm theme-muted">
             Showing <span className="font-medium">{filteredSessions.length}</span> session
             {filteredSessions.length !== 1 ? 's' : ''} for this cohort
             {isInstructor ? ' within your session workspace.' : '.'}

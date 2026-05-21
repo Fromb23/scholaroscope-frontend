@@ -449,60 +449,60 @@ export function GenerateLessonPlanPage() {
                 </Link>
 
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Plan a lesson</h1>
-                    <p className="mt-1 text-gray-600">
+                    <h1 className="text-2xl font-semibold theme-text">Plan a lesson</h1>
+                    <p className="mt-1 theme-muted">
                         Prepare an editable draft using teacher-selected outcomes and reference pages.
                     </p>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50/70">
+                <div className="theme-warning-surface overflow-hidden rounded-xl">
                     <button
                         type="button"
                         onClick={() => setGuidanceOpen((current) => !current)}
                         className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
                     >
                         <div className="flex min-w-0 items-start gap-3">
-                            <div className="rounded-full bg-amber-100 p-2 text-amber-700">
+                            <div className="theme-surface-elevated rounded-full border p-2 text-[color:var(--color-warning)] theme-border">
                                 <Info className="h-4 w-4" />
                             </div>
                             <div className="min-w-0 space-y-1">
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium theme-text">
                                     How to generate a lesson plan
                                 </p>
-                                <p className="text-sm text-amber-800">
+                                <p className="text-sm theme-muted">
                                     Open the quick guide when you want the teacher checklist.
                                 </p>
                             </div>
                         </div>
                         {guidanceOpen ? (
-                            <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                            <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warning)]" />
                         ) : (
-                            <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                            <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warning)]" />
                         )}
                     </button>
 
                     {guidanceOpen ? (
-                        <div className="border-t border-amber-200 px-4 py-4">
+                        <div className="border-t px-4 py-4 theme-border">
                             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                                 {guidanceSteps.map((item) => (
                                     <div
                                         key={item.step}
                                         className={`rounded-lg border p-4 ${
                                             item.complete
-                                                ? 'border-blue-200 bg-blue-50/80'
-                                                : 'border-white/80 bg-white/80'
+                                                ? 'theme-info-surface-strong'
+                                                : 'theme-border theme-surface-elevated'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between gap-3">
-                                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            <span className="text-xs font-semibold uppercase tracking-wide theme-subtle">
                                                 {item.step}
                                             </span>
                                             {item.complete ? (
                                                 <CheckCircle2 className="h-4 w-4 text-blue-600" />
                                             ) : null}
                                         </div>
-                                        <p className="mt-2 text-sm font-medium text-gray-900">{item.title}</p>
-                                        <p className="mt-1 text-sm text-gray-600">{item.detail}</p>
+                                        <p className="mt-2 text-sm font-medium theme-text">{item.title}</p>
+                                        <p className="mt-1 text-sm theme-muted">{item.detail}</p>
                                     </div>
                                 ))}
                             </div>
@@ -525,13 +525,13 @@ export function GenerateLessonPlanPage() {
                 ) : null}
 
                 {showRetryWithoutAi ? (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    <div className="theme-warning-surface rounded-xl p-4 text-sm">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="space-y-1">
-                                <p className="font-medium text-amber-900">
+                                <p className="font-medium theme-text">
                                     AI-assisted drafting is unavailable for this lesson right now.
                                 </p>
-                                <p>
+                                <p className="theme-muted">
                                     You can generate the same lesson plan without AI. The draft will still use the outcomes and references you selected.
                                 </p>
                             </div>
@@ -543,7 +543,6 @@ export function GenerateLessonPlanPage() {
                                     void submitGeneration(false);
                                 }}
                                 disabled={submitting}
-                                className="bg-white"
                             >
                                 Generate without AI
                             </Button>
@@ -553,14 +552,14 @@ export function GenerateLessonPlanPage() {
             </div>
 
             <form id="generate-lesson-plan-form" onSubmit={handleSubmit} className="space-y-6 pb-24 md:pb-0">
-                <Card className="border-gray-200 bg-gray-50/60">
+                <Card className="theme-card-muted">
                     <div className="space-y-5">
                         <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                <BookOpen className="h-4 w-4 text-gray-500" />
+                            <div className="flex items-center gap-2 text-sm font-medium theme-text">
+                                <BookOpen className="h-4 w-4 theme-subtle" />
                                 Lesson context
                             </div>
-                            <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                            <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
                                 {selectedCohortSubjectId && termId ? 'Ready' : 'Required'}
                             </span>
                         </div>
@@ -605,8 +604,8 @@ export function GenerateLessonPlanPage() {
                             <LoadingSpinner message="Loading lesson planning setup..." fullScreen={false} />
                         </Card>
                     ) : curriculumError ? (
-                        <Card>
-                            <p className="text-sm text-red-600">{curriculumError}</p>
+                        <Card className="theme-danger-surface">
+                            <p className="text-sm theme-text">{curriculumError}</p>
                         </Card>
                     ) : curriculumContext ? (
                         <LessonPlanOutcomeProviderSlot
@@ -620,23 +619,23 @@ export function GenerateLessonPlanPage() {
                     ) : null
                 ) : null}
 
-                <Card className="border-gray-200 bg-gray-50/60">
+                <Card className="theme-card-muted">
                     <div className="space-y-5">
                         <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                <CalendarClock className="h-4 w-4 text-gray-500" />
+                            <div className="flex items-center gap-2 text-sm font-medium theme-text">
+                                <CalendarClock className="h-4 w-4 theme-subtle" />
                                 Generate draft
                             </div>
-                            <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                            <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
                                 {completedReferenceCount} reference{completedReferenceCount === 1 ? '' : 's'}
                             </span>
                         </div>
 
-                        <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
+                        <div className="theme-info-surface rounded-lg p-4 text-sm theme-muted">
                             AI creates a draft, not a final lesson plan. The plan stays editable, and the outcomes and references you choose constrain what the draft may use.
                         </div>
 
-                        <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-4">
+                        <label className="theme-card flex items-start gap-3 rounded-lg p-4">
                             <input
                                 type="checkbox"
                                 checked={useAi}
@@ -646,14 +645,14 @@ export function GenerateLessonPlanPage() {
                                     || curriculumLoading
                                     || !aiGenerationAvailable
                                 }
-                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                                className="theme-checkbox theme-border mt-1 h-4 w-4 rounded"
                             />
-                            <span className="space-y-1 text-sm text-gray-700">
-                                <span className="flex items-center gap-2 font-medium text-gray-900">
-                                    <Bot className="h-4 w-4 text-gray-500" />
+                            <span className="space-y-1 text-sm theme-text">
+                                <span className="flex items-center gap-2 font-medium theme-text">
+                                    <Bot className="h-4 w-4 theme-subtle" />
                                     Use AI-assisted drafting
                                 </span>
-                                <span className="block text-gray-500">
+                                <span className="block theme-muted">
                                     {!selectedCohortSubjectId
                                         ? 'Choose a class subject to check whether AI-assisted drafting is available.'
                                         : curriculumLoading || aiGenerationAvailability === null
@@ -668,8 +667,8 @@ export function GenerateLessonPlanPage() {
                 </Card>
 
                 {activeErrorMessage ? (
-                    <div className="hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 md:flex md:items-start md:gap-3">
-                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="theme-danger-surface hidden rounded-lg px-4 py-3 text-sm md:flex md:items-start md:gap-3">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-danger)]" />
                         <span className="flex-1">{activeErrorMessage}</span>
                     </div>
                 ) : null}
@@ -681,10 +680,10 @@ export function GenerateLessonPlanPage() {
                 </div>
             </form>
 
-            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
+            <div className="theme-surface-elevated fixed inset-x-0 bottom-0 z-30 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden theme-border">
                 <div className="mx-auto max-w-6xl space-y-3">
                     {activeErrorMessage ? (
-                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        <div className="theme-danger-surface rounded-lg px-3 py-2 text-sm">
                             {activeErrorMessage}
                         </div>
                     ) : null}

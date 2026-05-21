@@ -90,7 +90,7 @@ export function TableRow({
   return (
     <tr
       onClick={onClick}
-      className={`${onClick ? 'cursor-pointer transition-colors hover:bg-gray-50' : ''} ${className || ''}`}
+      className={`${onClick ? 'cursor-pointer transition-colors theme-hover-surface' : ''} ${className || ''}`}
     >
       {children}
     </tr>
@@ -111,14 +111,14 @@ export function TableHead({
     <th
       onClick={sortable ? onSort : undefined}
       className={`theme-subtle px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-        sortable ? 'cursor-pointer select-none hover:bg-gray-100' : ''
+        sortable ? 'cursor-pointer select-none theme-hover-surface' : ''
       }`}
     >
       <div className="flex items-center gap-2">
         {children}
         {sortable && (
           <span className="flex flex-col">
-            {sortDirection === null && <ChevronsUpDown className="h-4 w-4 text-gray-400" />}
+            {sortDirection === null && <ChevronsUpDown className="h-4 w-4 theme-subtle" />}
             {sortDirection === 'asc' && <ChevronUp className="w-4 h-4 text-blue-600" />}
             {sortDirection === 'desc' && <ChevronDown className="w-4 h-4 text-blue-600" />}
           </span>
@@ -224,7 +224,7 @@ export function DataTable<T extends Record<string, unknown>>({
           {enableSearch && onSearch && (
             <div className="flex-1 min-w-75">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 theme-subtle" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -348,7 +348,7 @@ export function DataTable<T extends Record<string, unknown>>({
               <button
                 onClick={() => handlePageChange(pagination.currentPage - 1)}
                 disabled={pagination.currentPage === 1}
-                className="theme-focus-ring rounded-lg border border-gray-300 p-2 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="theme-focus-ring theme-border theme-text rounded-lg border p-2 transition-colors theme-hover-surface disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -374,7 +374,7 @@ export function DataTable<T extends Record<string, unknown>>({
                       className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                         pageNumber === pagination.currentPage
                           ? 'theme-button-primary'
-                          : 'border border-gray-300 theme-text hover:bg-gray-50'
+                          : 'theme-border theme-text border theme-hover-surface'
                       }`}
                     >
                       {pageNumber}
@@ -386,7 +386,7 @@ export function DataTable<T extends Record<string, unknown>>({
               <button
                 onClick={() => handlePageChange(pagination.currentPage + 1)}
                 disabled={pagination.currentPage === pagination.totalPages}
-                className="theme-focus-ring rounded-lg border border-gray-300 p-2 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="theme-focus-ring theme-border theme-text rounded-lg border p-2 transition-colors theme-hover-surface disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

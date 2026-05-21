@@ -33,10 +33,10 @@ export function OutcomeRow({
 
     return (
         <div className={`w-full max-w-full overflow-hidden border rounded-xl p-4 transition-all sm:p-5 ${link.covered
-            ? 'border-green-200 bg-green-50'
+            ? 'theme-success-surface'
             : hasEvidence
-                ? 'border-blue-200 bg-blue-50/30'
-                : 'border-gray-200 bg-white hover:border-blue-200'
+                ? 'theme-info-surface'
+                : 'theme-border theme-surface theme-hover-border-strong'
             }`}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <button
@@ -46,7 +46,7 @@ export function OutcomeRow({
                 >
                     {link.covered
                         ? <CheckCircle className="h-6 w-6 text-green-600" />
-                        : <Circle className="h-6 w-6 text-gray-300 hover:text-blue-600 transition-colors" />
+                        : <Circle className="h-6 w-6 theme-subtle transition-colors hover:text-blue-600" />
                     }
                 </button>
 
@@ -61,7 +61,7 @@ export function OutcomeRow({
                                 >
                                     {link.learning_outcome_code}
                                 </Badge>
-                                <span className="text-xs text-gray-500 break-words">
+                                <span className="break-words text-xs theme-muted">
                                     {link.strand_name} → {link.sub_strand_name}
                                 </span>
                             </div>
@@ -75,7 +75,7 @@ export function OutcomeRow({
                             <button
                                 onClick={() => onRemove(link.id)}
                                 disabled={removeLinkPending}
-                                className="self-start rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                                className="self-start rounded-lg p-1.5 text-red-500 transition-colors theme-hover-danger"
                                 aria-label="Remove learning goal from this lesson"
                             >
                                 <Trash2 className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function OutcomeRow({
                         )}
                     </div>
 
-                    <p className="mb-3 text-sm text-gray-700 break-words">{link.learning_outcome_description}</p>
+                    <p className="mb-3 break-words text-sm theme-text">{link.learning_outcome_description}</p>
 
                     {isEditing ? (
                         <div className="space-y-2">
@@ -105,26 +105,26 @@ export function OutcomeRow({
                             </div>
                         </div>
                     ) : link.notes ? (
-                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                            <p className="text-sm text-gray-700 italic break-words">{link.notes}</p>
+                        <div className="theme-card-muted rounded-lg p-3">
+                            <p className="break-words text-sm italic theme-text">{link.notes}</p>
                             <button
                                 onClick={() => onEditNotes(link.id, link.notes)}
-                                className="mt-1 text-xs text-blue-600 hover:underline">
+                                className="theme-link mt-1 text-xs hover:underline">
                                 Edit notes
                             </button>
                         </div>
                     ) : link.covered && (
                         <button
                             onClick={() => onEditNotes(link.id, '')}
-                            className="text-sm text-blue-600 hover:underline">
+                            className="theme-link text-sm hover:underline">
                             + Add lesson notes
                         </button>
                     )}
 
-                    <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mt-3 flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between theme-border">
                         <Link
                             href={`/cbc/teaching/sessions/${sessionId}/outcomes/${link.learning_outcome}`}
-                            className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+                            className="theme-link inline-flex items-center gap-2 text-sm font-medium"
                         >
                             <FileText className="h-4 w-4 shrink-0" />
                             <span className="break-words">Record performance</span>

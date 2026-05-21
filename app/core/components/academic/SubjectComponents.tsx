@@ -91,17 +91,17 @@ export function SubjectNameGroup({
     const [open, setOpen] = useState(true);
 
     return (
-        <div className="border border-gray-100 rounded-lg overflow-hidden">
+        <div className="overflow-hidden rounded-lg border theme-border">
             <button
                 type="button"
                 onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left"
+                className="theme-surface theme-hover-surface flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
             >
                 {open
                     ? <ChevronDown className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                    : <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                    : <ChevronRight className="h-3.5 w-3.5 theme-subtle shrink-0" />
                 }
-                <span className="font-semibold text-gray-800 flex-1 text-sm">{name}</span>
+                <span className="flex-1 text-sm font-semibold theme-text">{name}</span>
                 <Badge variant="default" size="sm">
                     {levels.length} level{levels.length !== 1 ? 's' : ''}
                 </Badge>
@@ -109,7 +109,7 @@ export function SubjectNameGroup({
                     <button
                         type="button"
                         onClick={e => { e.stopPropagation(); onAddLevel(levels[0]); }}
-                        className="p-1 rounded-md text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors"
+                        className="rounded-md p-1 theme-subtle transition-colors theme-hover-success"
                         title="Add level"
                     >
                         <Plus className="h-3.5 w-3.5" />
@@ -118,19 +118,19 @@ export function SubjectNameGroup({
             </button>
 
             {open && (
-                <div className="border-t border-gray-100 divide-y divide-gray-50">
+                <div className="divide-y divide-gray-200 border-t theme-border">
                     {levels.map(subject => (
                         <div
                             key={subject.id}
-                            className="flex flex-col gap-3 bg-gray-50 px-4 py-3 pl-9 transition-colors hover:bg-gray-100 sm:flex-row sm:items-center"
+                            className="theme-surface-muted theme-hover-surface flex flex-col gap-3 px-4 py-3 pl-9 transition-colors sm:flex-row sm:items-center"
                         >
                             <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className="w-24 shrink-0 font-mono text-xs text-gray-400">{subject.code}</span>
+                                    <span className="w-24 shrink-0 font-mono text-xs font-medium theme-text">{subject.code}</span>
                                     <Badge variant="blue" size="sm" className="shrink-0">{subject.level}</Badge>
                                 </div>
                                 {subject.description && (
-                                    <p className="truncate text-xs text-gray-400">
+                                    <p className="truncate text-xs theme-muted">
                                         {subject.description}
                                     </p>
                                 )}
@@ -149,7 +149,7 @@ export function SubjectNameGroup({
                                 ) : null}
                                 <a
                                     href={`/academic/subjects/${subject.id}`}
-                                    className="p-1.5 rounded-lg text-gray-400 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                                    className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-info"
                                     title="View Subject"
                                 >
                                     <ExternalLink className="h-3.5 w-3.5" />
@@ -157,14 +157,16 @@ export function SubjectNameGroup({
                                 {canManage ? (
                                     <>
                                         <button
+                                            type="button"
                                             onClick={() => onEdit(subject)}
-                                            className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                            className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-info"
                                         >
                                             <Edit2 className="h-3.5 w-3.5" />
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={() => onDelete(subject.id)}
-                                            className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                            className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-danger"
                                         >
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </button>
@@ -199,33 +201,33 @@ export function CurriculumGroup({
     const totalSubjects = Array.from(subjectGroups.values()).flat().length;
 
     return (
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="overflow-hidden rounded-xl border theme-border">
             <button
                 type="button"
                 onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-blue-50 to-white hover:from-blue-100 hover:to-gray-50 transition-all text-left"
+                className="theme-surface-elevated theme-hover-surface flex w-full items-center gap-3 px-5 py-4 text-left transition-colors"
             >
                 {open
                     ? <ChevronDown className="h-4 w-4 text-blue-600 shrink-0" />
-                    : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                    : <ChevronRight className="h-4 w-4 theme-subtle shrink-0" />
                 }
                 <BookOpen className="h-4 w-4 text-blue-500 shrink-0" />
 
                 {/* mobile: code only, desktop: full name */}
-                <span className="font-bold text-gray-900 flex-1 truncate">
-                    <span className="font-bold text-gray-900 flex-1 min-w-0 truncate">
+                <span className="flex-1 truncate font-bold theme-text">
+                    <span className="flex-1 min-w-0 truncate font-bold theme-text">
                         {curriculumName}
                     </span>
                 </span>
 
                 <Badge variant="blue" size="sm" className="shrink-0">{curriculumType}</Badge>
-                <span className="text-xs text-gray-400 ml-2 hidden sm:inline">
+                <span className="ml-2 hidden text-xs theme-subtle sm:inline">
                     {subjectGroups.size} subject{subjectGroups.size !== 1 ? 's' : ''} · {totalSubjects} level{totalSubjects !== 1 ? 's' : ''}
                 </span>
             </button>
 
             {open && (
-                <div className="border-t border-gray-100 p-4 space-y-2 bg-white">
+                <div className="theme-surface space-y-2 border-t p-4 theme-border">
                     {Array.from(subjectGroups.entries()).map(([name, levels]) => (
                         <SubjectNameGroup
                             key={name}
@@ -359,17 +361,17 @@ export function SubjectFormModal({
                 />
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <label className="mb-1 block text-sm font-medium theme-text">Description</label>
                     <textarea
                         value={form.description}
                         onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                        className="theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-3 py-2 text-sm"
                         rows={3}
                         placeholder="Optional subject description"
                     />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <div className="flex justify-end gap-3 border-t pt-4 theme-border">
                     <Button type="button" variant="secondary" onClick={handleClose} disabled={saving}>
                         Cancel
                     </Button>

@@ -45,8 +45,8 @@ export function CBCAuthoringSubStrandsPage() {
             sortable: true,
             render: row => (
                 <div>
-                    <p className="font-medium text-gray-900">{row.name}</p>
-                    {row.description && <p className="text-xs text-gray-500 line-clamp-1">{row.description}</p>}
+                    <p className="font-medium theme-text">{row.name}</p>
+                    {row.description && <p className="line-clamp-1 text-xs theme-muted">{row.description}</p>}
                 </div>
             ),
         },
@@ -70,7 +70,7 @@ export function CBCAuthoringSubStrandsPage() {
                     <Link
                         href={`/cbc/authoring/sub-strands/${row.id}`}
                         onClick={event => event.stopPropagation()}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="theme-link rounded-lg p-2 transition-colors theme-hover-info"
                     >
                         <ChevronRight className="h-4 w-4" />
                     </Link>
@@ -79,7 +79,7 @@ export function CBCAuthoringSubStrandsPage() {
                             event.stopPropagation();
                             page.startEdit(row);
                         }}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="rounded-lg p-2 theme-muted transition-colors theme-hover-surface"
                     >
                         <Pencil className="h-4 w-4" />
                     </button>
@@ -88,7 +88,7 @@ export function CBCAuthoringSubStrandsPage() {
                             event.stopPropagation();
                             page.setDeleteId(row.id);
                         }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="rounded-lg p-2 text-red-600 transition-colors theme-hover-danger"
                     >
                         <Trash2 className="h-4 w-4" />
                     </button>
@@ -124,19 +124,19 @@ export function CBCAuthoringSubStrandsPage() {
                 <div className="flex items-center gap-3">
                     <Link
                         href="/cbc/authoring/strands"
-                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="rounded-lg p-2 theme-muted transition-colors theme-hover-surface"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Link>
-                    <div className="p-2.5 bg-blue-100 rounded-lg">
+                    <div className="theme-info-surface rounded-lg p-2.5">
                         <Layers className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
                             <Badge variant="blue" size="md" className="font-mono">{page.strand.code}</Badge>
-                            <h1 className="text-xl font-bold text-gray-900">{page.strand.name}</h1>
+                            <h1 className="text-xl font-bold theme-text">{page.strand.name}</h1>
                         </div>
-                        <p className="text-sm text-gray-500 mt-0.5">
+                        <p className="mt-0.5 text-sm theme-muted">
                             {page.strand.subject_name ?? page.strand.curriculum_name}
                         </p>
                     </div>
@@ -156,9 +156,9 @@ export function CBCAuthoringSubStrandsPage() {
             {page.error && <CBCError error={page.error} onRetry={page.refetch} />}
 
             {page.showCreate && (
-                <Card className="border-blue-200 bg-blue-50/50">
+                <Card className="theme-info-surface">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="flex items-center gap-2 font-semibold theme-text">
                             <div className="p-1.5 bg-blue-600 rounded-lg">
                                 <Plus className="h-4 w-4 text-white" />
                             </div>
@@ -166,7 +166,7 @@ export function CBCAuthoringSubStrandsPage() {
                         </h3>
                         <button
                             onClick={() => page.setShowCreate(false)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg"
+                            className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-surface"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -185,7 +185,7 @@ export function CBCAuthoringSubStrandsPage() {
                         />
                     </div>
                     {page.createError && (
-                        <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="theme-danger-surface mt-3 rounded-lg p-3 text-sm">
                             {page.createError}
                         </p>
                     )}
@@ -204,9 +204,9 @@ export function CBCAuthoringSubStrandsPage() {
             )}
 
             {page.editId !== null && (
-                <Card className="border-purple-200 bg-purple-50/50">
+                <Card className="theme-surface-elevated">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="flex items-center gap-2 font-semibold theme-text">
                             <div className="p-1.5 bg-purple-600 rounded-lg">
                                 <Pencil className="h-4 w-4 text-white" />
                             </div>
@@ -214,7 +214,7 @@ export function CBCAuthoringSubStrandsPage() {
                         </h3>
                         <button
                             onClick={() => page.setEditId(null)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg"
+                            className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-surface"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -232,7 +232,7 @@ export function CBCAuthoringSubStrandsPage() {
                         />
                     </div>
                     {page.editError && (
-                        <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="theme-danger-surface mt-3 rounded-lg p-3 text-sm">
                             {page.editError}
                         </p>
                     )}
@@ -252,7 +252,7 @@ export function CBCAuthoringSubStrandsPage() {
 
             <Card>
                 <div className="mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <h2 className="flex items-center gap-2 text-lg font-semibold theme-text">
                         <Layers className="h-5 w-5 text-blue-600" />
                         Sub-Strands
                         {page.subStrands.length > 0 && <Badge variant="blue" size="sm">{page.subStrands.length}</Badge>}
@@ -272,8 +272,8 @@ export function CBCAuthoringSubStrandsPage() {
 
             <Modal isOpen={page.deleteId !== null} onClose={() => page.setDeleteId(null)} title="Delete Sub-Strand" size="sm">
                 <div className="space-y-4">
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-800">
+                    <div className="theme-danger-surface rounded-lg p-4">
+                        <p className="text-sm">
                             This will permanently delete the sub-strand and all its learning outcomes.
                         </p>
                     </div>
