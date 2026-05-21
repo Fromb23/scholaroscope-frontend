@@ -13,90 +13,113 @@ import '@/app/plugins/registerAll';
 import { AlertTriangle } from 'lucide-react';
 import { SuspendedNotice } from '../core/types/auth';
 
-function DashboardContent({ children, notices, onDismissNotice }: {
-    children: React.ReactNode;
-    notices: SuspendedNotice[];
-    onDismissNotice: () => void;
+function DashboardContent({
+  children,
+  notices,
+  onDismissNotice,
+}: {
+  children: React.ReactNode;
+  notices: SuspendedNotice[];
+  onDismissNotice: () => void;
 }) {
-    return (
-        <div className="flex h-screen overflow-hidden bg-gray-50">
-            <Sidebar />
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                <Header />
-                {notices.length > 0 && <SuspendedNoticeBanner notices={notices} onDismiss={onDismissNotice} />}
-                <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6">
-                    {children}
-                </main>
-            </div>
-        </div>
-    );
+  return (
+    <div className="theme-app-bg flex h-screen overflow-hidden">
+      <Sidebar />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Header />
+        {notices.length > 0 && (
+          <SuspendedNoticeBanner notices={notices} onDismiss={onDismissNotice} />
+        )}
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { user, activeRole, loading, suspendedNotices, clearSuspendedNotices } = useAuth();
-    const router = useRouter();
-    const pathname = usePathname();
+  const { user, activeRole, loading, suspendedNotices, clearSuspendedNotices } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
-    useEffect(() => {
-        if (loading) return;
-        if (!user) { router.replace('/login'); return; }
-        if (user.is_superadmin) return;
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    if (user.is_superadmin) return;
 
-        if (activeRole === null) {
-            router.replace('/login?reason=suspended');
-            return;
-        }
-
-        const matchedRule = getRouteRules().find(rule => rule.pattern.test(pathname));
-        if (!matchedRule) return;
-        if (!matchedRule.allowedRoles.includes(activeRole)) {
-            if (activeRole === 'INSTRUCTOR' && pathname.startsWith('/reports')) {
-                router.replace('/reports/instructor');
-                return;
-            }
-            router.replace(roleHomeRoute[activeRole]);
-        }
-    }, [loading, user, activeRole, pathname, router]);
-
-    if (loading || !user) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="text-center">
-                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto" />
-                    <p className="mt-4 text-gray-600">Loading...</p>
-                </div>
-            </div>
-        );
+    if (activeRole === null) {
+      router.replace('/login?reason=suspended');
+      return;
     }
 
+    const matchedRule = getRouteRules().find((rule) => rule.pattern.test(pathname));
+    if (!matchedRule) return;
+    if (!matchedRule.allowedRoles.includes(activeRole)) {
+      if (activeRole === 'INSTRUCTOR' && pathname.startsWith('/reports')) {
+        router.replace('/reports/instructor');
+        return;
+      }
+      router.replace(roleHomeRoute[activeRole]);
+    }
+  }, [loading, user, activeRole, pathname, router]);
+
+  if (loading || !user) {
     return (
-        <SidebarProvider>
-            <NavBadgeProvider>
-                <RegistrySlotProvider>
-                    <DashboardContent notices={suspendedNotices} onDismissNotice={clearSuspendedNotices}>
-                        {children}
-                    </DashboardContent>
-                </RegistrySlotProvider>
-            </NavBadgeProvider>
-        </SidebarProvider>
+      <div className="theme-app-bg flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div
+            className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
+            style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
+          />
+          <p className="theme-muted mt-4">Loading...</p>
+        </div>
+      </div>
     );
+  }
+
+  return (
+    <SidebarProvider>
+      <NavBadgeProvider>
+        <RegistrySlotProvider>
+          <DashboardContent notices={suspendedNotices} onDismissNotice={clearSuspendedNotices}>
+            {children}
+          </DashboardContent>
+        </RegistrySlotProvider>
+      </NavBadgeProvider>
+    </SidebarProvider>
+  );
 }
 
-function SuspendedNoticeBanner({ notices, onDismiss }: { notices: SuspendedNotice[]; onDismiss: () => void }) {
-    if (notices.length === 0) return null;
-    return (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
-            <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                <div className="flex-1 space-y-1">
-                    {notices.map((notice, i) => (
-                        <p key={i} className={`text-sm text-yellow-800 ${i > 0 ? 'mt-1' : ''}`}>
-                            {notice.message}
-                        </p>
-                    ))}
-                </div>
-                <button onClick={onDismiss} className="text-yellow-500 hover:text-yellow-700 text-sm font-medium">✕</button>
-            </div>
+function SuspendedNoticeBanner({
+  notices,
+  onDismiss,
+}: {
+  notices: SuspendedNotice[];
+  onDismiss: () => void;
+}) {
+  if (notices.length === 0) return null;
+  return (
+    <div className="theme-warning-surface border-b px-4 py-3">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--color-warning)]" />
+        <div className="flex-1 space-y-1">
+          {notices.map((notice, i) => (
+            <p key={i} className={`text-sm theme-text ${i > 0 ? 'mt-1' : ''}`}>
+              {notice.message}
+            </p>
+          ))}
         </div>
-    );
+        <button
+          onClick={onDismiss}
+          className="theme-focus-ring text-sm font-medium text-[color:var(--color-warning)] hover:opacity-80"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
 }
