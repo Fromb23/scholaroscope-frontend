@@ -60,6 +60,8 @@ export interface AttendanceQueryParams {
   search?: string;
 }
 
+export type SessionAttendanceQueryParams = Omit<AttendanceQueryParams, 'session'>;
+
 interface DateRangeParams {
   start_date?: string;
   end_date?: string;
@@ -150,6 +152,17 @@ export const sessionAPI = {
 
   getAttendanceSummary: async (id: number): Promise<AttendanceSummary> => {
     const res = await apiClient.get<AttendanceSummary>(`/sessions/${id}/attendance_summary/`);
+    return res.data;
+  },
+
+  getAttendanceRecords: async (
+    id: number,
+    params?: SessionAttendanceQueryParams,
+  ): Promise<AttendanceRecord[] | PaginatedResponse<AttendanceRecord>> => {
+    const res = await apiClient.get<AttendanceRecord[] | PaginatedResponse<AttendanceRecord>>(
+      `/sessions/${id}/attendance-records/`,
+      { params }
+    );
     return res.data;
   },
 

@@ -4,7 +4,16 @@ import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Bot, BookOpen, CalendarClock, CheckCircle2 } from 'lucide-react';
+import {
+    ArrowLeft,
+    Bot,
+    BookOpen,
+    CalendarClock,
+    CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    Info,
+} from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -190,6 +199,7 @@ export function GenerateLessonPlanPage() {
     const [useAi, setUseAi] = useState(true);
     const [submittingError, setSubmittingError] = useState<string | null>(null);
     const [showRetryWithoutAi, setShowRetryWithoutAi] = useState(false);
+    const [guidanceOpen, setGuidanceOpen] = useState(false);
     const [draftLessonPlan, setDraftLessonPlan] = useState<{
         id: number;
         cohortSubjectId: number;
@@ -232,10 +242,10 @@ export function GenerateLessonPlanPage() {
         ? null
         : curriculumContext?.ai_generation_available ?? null;
     const aiGenerationAvailable = aiGenerationAvailability === true;
-    const stepCards = [
+    const guidanceSteps = [
         {
             step: 'Step 1',
-            title: 'Class subject and term',
+            title: 'Choose the lesson context',
             detail: selectedCohortSubjectId && termId
                 ? 'Ready'
                 : 'Choose the lesson context first.',
@@ -243,7 +253,7 @@ export function GenerateLessonPlanPage() {
         },
         {
             step: 'Step 2',
-            title: 'Learning outcomes',
+            title: 'Select learning outcomes',
             detail: plannedOutcomes.length > 0
                 ? `${plannedOutcomes.length} selected`
                 : 'Choose the outcomes to teach.',
@@ -251,7 +261,7 @@ export function GenerateLessonPlanPage() {
         },
         {
             step: 'Step 3',
-            title: 'References and pages',
+            title: 'Attach references and pages',
             detail: completedReferenceCount > 0
                 ? `${completedReferenceCount} attached`
                 : 'Attach the pages the draft may use.',
@@ -259,7 +269,7 @@ export function GenerateLessonPlanPage() {
         },
         {
             step: 'Step 4',
-            title: 'Generate draft',
+            title: 'Generate the draft',
             detail: !selectedCohortSubjectId
                 ? 'Choose the lesson context first.'
                 : curriculumLoading || aiGenerationAvailability === null
@@ -290,6 +300,8 @@ export function GenerateLessonPlanPage() {
 
         setUseAi(aiGenerationAvailability);
     }, [aiGenerationAvailability]);
+
+    const submitButtonDisabled = submitting || curriculumLoading;
 
     const upsertDraftLessonPlan = async (
         payload: LessonPlanCreatePayload,
@@ -401,7 +413,7 @@ export function GenerateLessonPlanPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-24 md:pb-0">
             <div className="space-y-3">
                 <Link href="/lesson-plans">
                     <Button variant="ghost" size="sm">
@@ -416,30 +428,61 @@ export function GenerateLessonPlanPage() {
                         Prepare an editable draft using teacher-selected outcomes and reference pages.
                     </p>
                 </div>
-            </div>
 
-            <div className="grid gap-3 md:grid-cols-4">
-                {stepCards.map((item) => (
-                    <div
-                        key={item.step}
-                        className={`rounded-lg border p-4 ${
-                            item.complete
-                                ? 'border-blue-200 bg-blue-50/70'
-                                : 'border-gray-200 bg-gray-50'
-                        }`}
+                <div className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50/70">
+                    <button
+                        type="button"
+                        onClick={() => setGuidanceOpen((current) => !current)}
+                        className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
                     >
-                        <div className="flex items-center justify-between gap-3">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                {item.step}
-                            </span>
-                            {item.complete ? (
-                                <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                            ) : null}
+                        <div className="flex min-w-0 items-start gap-3">
+                            <div className="rounded-full bg-amber-100 p-2 text-amber-700">
+                                <Info className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 space-y-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                    How to generate a lesson plan
+                                </p>
+                                <p className="text-sm text-amber-800">
+                                    Open the quick guide when you want the teacher checklist.
+                                </p>
+                            </div>
                         </div>
-                        <p className="mt-2 text-sm font-medium text-gray-900">{item.title}</p>
-                        <p className="mt-1 text-sm text-gray-600">{item.detail}</p>
-                    </div>
-                ))}
+                        {guidanceOpen ? (
+                            <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                        ) : (
+                            <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                        )}
+                    </button>
+
+                    {guidanceOpen ? (
+                        <div className="border-t border-amber-200 px-4 py-4">
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                {guidanceSteps.map((item) => (
+                                    <div
+                                        key={item.step}
+                                        className={`rounded-lg border p-4 ${
+                                            item.complete
+                                                ? 'border-blue-200 bg-blue-50/80'
+                                                : 'border-white/80 bg-white/80'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                                {item.step}
+                                            </span>
+                                            {item.complete ? (
+                                                <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                                            ) : null}
+                                        </div>
+                                        <p className="mt-2 text-sm font-medium text-gray-900">{item.title}</p>
+                                        <p className="mt-1 text-sm text-gray-600">{item.detail}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
             </div>
 
             {(createError || generateError || submittingError) && !showRetryWithoutAi ? (
@@ -480,18 +523,13 @@ export function GenerateLessonPlanPage() {
                 </div>
             ) : null}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form id="generate-lesson-plan-form" onSubmit={handleSubmit} className="space-y-6 pb-24 md:pb-0">
                 <Card className="border-gray-200 bg-gray-50/60">
                     <div className="space-y-5">
                         <div className="flex items-center justify-between gap-3">
-                            <div className="space-y-1">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Step 1
-                                </p>
-                                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                    <BookOpen className="h-4 w-4 text-gray-500" />
-                                    Select class subject and term
-                                </div>
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                <BookOpen className="h-4 w-4 text-gray-500" />
+                                Lesson context
                             </div>
                             <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
                                 {selectedCohortSubjectId && termId ? 'Ready' : 'Required'}
@@ -556,14 +594,9 @@ export function GenerateLessonPlanPage() {
                 <Card className="border-gray-200 bg-gray-50/60">
                     <div className="space-y-5">
                         <div className="flex items-center justify-between gap-3">
-                            <div className="space-y-1">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Step 4
-                                </p>
-                                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                    <CalendarClock className="h-4 w-4 text-gray-500" />
-                                    Generate lesson plan
-                                </div>
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                <CalendarClock className="h-4 w-4 text-gray-500" />
+                                Generate draft
                             </div>
                             <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
                                 {completedReferenceCount} reference{completedReferenceCount === 1 ? '' : 's'}
@@ -605,12 +638,25 @@ export function GenerateLessonPlanPage() {
                     </div>
                 </Card>
 
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={submitting || curriculumLoading}>
+                <div className="hidden justify-end md:flex">
+                    <Button type="submit" disabled={submitButtonDisabled}>
                         {submitting ? 'Generating...' : 'Generate lesson plan'}
                     </Button>
                 </div>
             </form>
+
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden">
+                <div className="mx-auto max-w-6xl">
+                    <Button
+                        type="submit"
+                        form="generate-lesson-plan-form"
+                        className="w-full"
+                        disabled={submitButtonDisabled}
+                    >
+                        {submitting ? 'Generating...' : 'Generate lesson plan'}
+                    </Button>
+                </div>
+            </div>
         </div>
     );
 }

@@ -73,6 +73,9 @@ export function CBCSessionLearnersPage() {
                             <SessionStatusBadge status={session.status} />
                         </div>
                         <p className="text-gray-600 mb-2">{session.cohort_name}</p>
+                        <p className="text-sm text-gray-500 mb-2">
+                            Learners shown here reflect the session&apos;s active participation scope.
+                        </p>
                         <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
                             <span>
                                 {new Date(session.session_date).toLocaleDateString('en-GB', {
@@ -93,7 +96,7 @@ export function CBCSessionLearnersPage() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
-                    { label: 'Total Learners', value: learners.length, color: 'text-purple-600' },
+                    { label: 'Total participating learners', value: learners.length, color: 'text-purple-600' },
                     { label: 'Observed', value: learnersWithEvidence, color: 'text-emerald-600' },
                     { label: 'Performance Records', value: learners.reduce((sum, learner) => sum + learner.session_evidence_count, 0), color: 'text-blue-600' },
                 ].map(stat => (
@@ -108,9 +111,9 @@ export function CBCSessionLearnersPage() {
                 <div className="mb-5">
                     <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                         <Users className="h-5 w-5 text-purple-600" />
-                        Class performance
+                        Participating learners
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">See which learners have observations for this lesson.</p>
+                    <p className="text-sm text-gray-500 mt-1">See which learners in the active session scope already have observations for this lesson.</p>
                 </div>
 
                 {learnersLoading ? (
@@ -118,7 +121,7 @@ export function CBCSessionLearnersPage() {
                 ) : learners.length === 0 ? (
                     <div className="py-16 text-center">
                         <Users className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500">No learners in this cohort</p>
+                        <p className="text-gray-500">No learners are active in this session scope.</p>
                     </div>
                 ) : (
                     <div className="space-y-2">

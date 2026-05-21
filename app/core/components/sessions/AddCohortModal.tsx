@@ -69,15 +69,19 @@ export function AddCohortModal({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Link Participation Cohort"
+            title="Add Participating Class"
             size="lg"
         >
             <div className="space-y-4">
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    Add another class when this lesson is being taught together across active linked classes.
+                </div>
+
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Search compatible cohorts..."
+                        placeholder="Search compatible classes..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
@@ -94,13 +98,13 @@ export function AddCohortModal({
                 <div className="max-h-96 space-y-2 overflow-y-auto">
                     {isLoading ? (
                         <div className="py-8 text-center text-sm text-gray-500">
-                            Loading compatible cohort subjects...
+                            Loading compatible classes...
                         </div>
                     ) : filteredCohortSubjects.length === 0 ? (
                         <div className="py-8 text-center text-sm text-gray-500">
                             {searchQuery
-                                ? 'No compatible cohort subjects match your search.'
-                                : 'No compatible cohort subjects available.'}
+                                ? 'No compatible classes match your search.'
+                                : 'No compatible classes are available right now.'}
                         </div>
                     ) : (
                         filteredCohortSubjects.map((cohortSubject) => {
@@ -131,6 +135,9 @@ export function AddCohortModal({
                                                 {cohortSubject.cohort_level}
                                                 {cohortSubject.academic_year ? ` • ${cohortSubject.academic_year}` : ''}
                                             </div>
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                {cohortSubject.subject_name}
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-2 text-sm text-gray-600">
                                             <Users className="h-4 w-4 text-gray-400" />
@@ -157,7 +164,7 @@ export function AddCohortModal({
                         disabled={!selectedCohortSubjectId || submitting}
                         className="flex-1"
                     >
-                        {submitting ? 'Linking...' : 'Link Cohort'}
+                        {submitting ? 'Adding...' : 'Add class'}
                     </Button>
                 </div>
             </div>

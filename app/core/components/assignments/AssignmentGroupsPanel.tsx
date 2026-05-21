@@ -25,6 +25,10 @@ import {
     type TeacherAssignmentAudienceChoice,
 } from '@/app/core/components/assignments/assignmentAudienceOptions';
 import {
+    getAssignmentParticipatingCohortCount,
+    hasSessionParticipationMetadata,
+} from '@/app/core/components/assignments/assignmentUtils';
+import {
     useAssignmentEligibleLearners,
     useAutoGenerateAssignmentGroups,
     useBulkAddAssignmentGroupMembers,
@@ -414,6 +418,12 @@ export function AssignmentGroupsPanel({
         () => getGroupingAudienceOptions(assignment.created_from_session != null),
         [assignment.created_from_session]
     );
+    const participatingCohortCount = useMemo(
+        () => getAssignmentParticipatingCohortCount(assignment.curriculum_context),
+        [assignment.curriculum_context]
+    );
+    const showSessionScopeNote = assignment.created_from_session != null
+        && hasSessionParticipationMetadata(assignment.curriculum_context);
 
     useEffect(() => {
         setRenameDrafts(() => Object.fromEntries(
@@ -859,7 +869,19 @@ export function AssignmentGroupsPanel({
 
                         {assignment.created_from_session_title ? (
                             <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                                Linked lesson: {assignment.created_from_session_title}
+                                <p className="font-medium text-blue-900">
+                                    Linked lesson: {assignment.created_from_session_title}
+                                </p>
+                                {showSessionScopeNote ? (
+                                    <p className="mt-1">
+                                        This assignment uses the source session&apos;s active participation scope.
+                                        {participatingCohortCount > 1 ? (
+                                            <>
+                                                {' '}It can include learners from all active classes linked to that session.
+                                            </>
+                                        ) : null}
+                                    </p>
+                                ) : null}
                             </div>
                         ) : null}
 
@@ -930,8 +952,10 @@ export function AssignmentGroupsPanel({
                                 <div className="space-y-1">
                                     <p className="text-sm text-gray-500">
                                         {autoAudienceChoice === 'present_in_lesson'
-                                            ? 'Grouping will use learners marked present or late in the linked lesson.'
-                                            : 'Grouping will use all active learners in this subject group.'}
+                                            ? 'Grouping will use learners marked present or late across the source session participation scope.'
+                                            : assignment.created_from_session != null
+                                                ? 'Grouping will use all active learners in this assignment scope, including classes linked to the source session.'
+                                                : 'Grouping will use all active learners in this subject group.'}
                                     </p>
                                     <p className="text-sm font-medium text-gray-900">
                                         {formatLearnerSummary(autoEligibleLearners)}
