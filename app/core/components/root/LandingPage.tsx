@@ -4,22 +4,40 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Menu, X, ArrowRight, ChevronDown,
-  BookOpen, Puzzle, Users, Building2,
-  GraduationCap, MonitorPlay, CheckCircle2, XCircle,
-  Layers, Eye, TrendingUp, ShieldCheck, PlugZap,
-  ClipboardList, RefreshCw, FileText
+  Menu,
+  X,
+  ArrowRight,
+  ChevronDown,
+  BookOpen,
+  Puzzle,
+  Users,
+  Building2,
+  GraduationCap,
+  MonitorPlay,
+  CheckCircle2,
+  XCircle,
+  Layers,
+  Eye,
+  TrendingUp,
+  ShieldCheck,
+  PlugZap,
+  ClipboardList,
+  RefreshCw,
+  FileText,
 } from 'lucide-react';
+import { useAuth } from '@/app/context/AuthContext';
 
 export function LandingPage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) router.replace('/dashboard');
-  }, [router]);
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [loading, router, user]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -50,36 +68,100 @@ export function LandingPage() {
   ];
 
   const features = [
-    { icon: <MonitorPlay size={18} />, title: 'Works on any device', desc: 'A smartphone is enough. No special hardware or app install — just open a browser.' },
-    { icon: <Puzzle size={18} />, title: 'Any curriculum', desc: 'CBC, IGCSE, Edexcel, 8-4-4 — attach any curriculum as a plugin without rebuilding anything.' },
-    { icon: <RefreshCw size={18} />, title: 'Automatic reports', desc: 'Define your grading policy once. The system computes results and generates reports automatically.' },
-    { icon: <Eye size={18} />, title: 'Continuous learner tracking', desc: "Track each student's competency and behavior over time, not just at end of term." },
-    { icon: <TrendingUp size={18} />, title: 'Teacher performance insight', desc: 'See patterns in your own teaching — which topics and sessions produce the best outcomes.' },
-    { icon: <Users size={18} />, title: 'Flexible scale', desc: 'Works for a single private tutor with one student, or a full school with hundreds.' },
-    { icon: <ShieldCheck size={18} />, title: 'Org-scoped data', desc: 'Every piece of data belongs to the organization. No cross-org leakage, ever.' },
-    { icon: <PlugZap size={18} />, title: 'Plugin architecture', desc: 'Timetables, billing, student dashboards — optional plugins you add or remove freely.' },
+    {
+      icon: <MonitorPlay size={18} />,
+      title: 'Works on any device',
+      desc: 'A smartphone is enough. No special hardware or app install — just open a browser.',
+    },
+    {
+      icon: <Puzzle size={18} />,
+      title: 'Any curriculum',
+      desc: 'CBC, IGCSE, Edexcel, 8-4-4 — attach any curriculum as a plugin without rebuilding anything.',
+    },
+    {
+      icon: <RefreshCw size={18} />,
+      title: 'Automatic reports',
+      desc: 'Define your grading policy once. The system computes results and generates reports automatically.',
+    },
+    {
+      icon: <Eye size={18} />,
+      title: 'Continuous learner tracking',
+      desc: "Track each student's competency and behavior over time, not just at end of term.",
+    },
+    {
+      icon: <TrendingUp size={18} />,
+      title: 'Teacher performance insight',
+      desc: 'See patterns in your own teaching — which topics and sessions produce the best outcomes.',
+    },
+    {
+      icon: <Users size={18} />,
+      title: 'Flexible scale',
+      desc: 'Works for a single private tutor with one student, or a full school with hundreds.',
+    },
+    {
+      icon: <ShieldCheck size={18} />,
+      title: 'Org-scoped data',
+      desc: 'Every piece of data belongs to the organization. No cross-org leakage, ever.',
+    },
+    {
+      icon: <PlugZap size={18} />,
+      title: 'Plugin architecture',
+      desc: 'Timetables, billing, student dashboards — optional plugins you add or remove freely.',
+    },
   ];
 
   const audience = [
-    { icon: <MonitorPlay size={22} />, title: 'Private Tutors', desc: 'One teacher, one or a few learners. Track progress as precisely as any institution.' },
-    { icon: <BookOpen size={22} />, title: 'Classroom Teachers', desc: 'Record sessions, score assessments, and generate class reports without manual effort.' },
-    { icon: <Building2 size={22} />, title: 'Full Schools', desc: 'Multi-teacher, multi-cohort, multi-curriculum environments with full org structure.' },
-    { icon: <GraduationCap size={22} />, title: 'Bootcamps & Training', desc: 'Technical training institutions that need competency tracking beyond traditional grading.' },
+    {
+      icon: <MonitorPlay size={22} />,
+      title: 'Private Tutors',
+      desc: 'One teacher, one or a few learners. Track progress as precisely as any institution.',
+    },
+    {
+      icon: <BookOpen size={22} />,
+      title: 'Classroom Teachers',
+      desc: 'Record sessions, score assessments, and generate class reports without manual effort.',
+    },
+    {
+      icon: <Building2 size={22} />,
+      title: 'Full Schools',
+      desc: 'Multi-teacher, multi-cohort, multi-curriculum environments with full org structure.',
+    },
+    {
+      icon: <GraduationCap size={22} />,
+      title: 'Bootcamps & Training',
+      desc: 'Technical training institutions that need competency tracking beyond traditional grading.',
+    },
   ];
 
   const steps = [
-    { n: '01', title: 'Record what was taught', desc: 'Log sessions, topics, and activities directly from your phone as class happens.' },
-    { n: '02', title: 'Capture learner responses', desc: 'Score assessments, mark attendance, and note competency levels per student — quickly.' },
-    { n: '03', title: 'Let the system compute', desc: 'ScholaroScope automatically grades, generates progress reports, and identifies weak areas.' },
-    { n: '04', title: 'See your own patterns', desc: 'Understand where learners consistently struggle — a mirror for your own teaching quality.' },
+    {
+      n: '01',
+      title: 'Record what was taught',
+      desc: 'Log sessions, topics, and activities directly from your phone as class happens.',
+    },
+    {
+      n: '02',
+      title: 'Capture learner responses',
+      desc: 'Score assessments, mark attendance, and note competency levels per student — quickly.',
+    },
+    {
+      n: '03',
+      title: 'Let the system compute',
+      desc: 'ScholaroScope automatically grades, generates progress reports, and identifies weak areas.',
+    },
+    {
+      n: '04',
+      title: 'See your own patterns',
+      desc: 'Understand where learners consistently struggle — a mirror for your own teaching quality.',
+    },
   ];
 
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
+        .landing-page, .landing-page *, .landing-page *::before, .landing-page *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        .landing-page {
           --bg: #0b0f14;
           --surface: #121821;
           --surface-2: #1a2332;
@@ -94,13 +176,53 @@ export function LandingPage() {
           --border: #1f2937;
           --border-2: #374151;
           --white: #fff;
+          --nav-stuck-bg: rgba(11,15,20,.95);
+          font-family: 'Inter', sans-serif;
+          background: var(--bg);
+          color: var(--text);
+          line-height: 1.6;
+          overflow-x: hidden;
+          min-height: 100vh;
+        }
+        [data-theme='dark'] .landing-page {
+          --bg: #0b0f14;
+          --surface: #121821;
+          --surface-2: #1a2332;
+          --primary: #2563eb;
+          --primary-h: #1d4ed8;
+          --primary-soft: #60a5fa;
+          --primary-pale: #1e3a5f;
+          --success: #22c55e;
+          --text: #e5e7eb;
+          --muted: #9ca3af;
+          --muted-2: #6b7280;
+          --border: #1f2937;
+          --border-2: #374151;
+          --white: #fff;
+          --nav-stuck-bg: rgba(11,15,20,.95);
+        }
+        [data-theme='light'] .landing-page {
+          --bg: #f6f9fc;
+          --surface: rgba(255,255,255,.9);
+          --surface-2: #eaf1ff;
+          --primary: #2563eb;
+          --primary-h: #1d4ed8;
+          --primary-soft: #2563eb;
+          --primary-pale: #dbeafe;
+          --success: #16a34a;
+          --text: #0f172a;
+          --muted: #475569;
+          --muted-2: #64748b;
+          --border: rgba(148,163,184,.26);
+          --border-2: rgba(100,116,139,.4);
+          --white: #0f172a;
+          --nav-stuck-bg: rgba(246,249,252,.94);
         }
         html { scroll-behavior: smooth; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
 
         /* NAV */
         .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; transition: background .3s, border-color .3s; border-bottom: 1px solid transparent; }
-        .nav.stuck { background: rgba(11,15,20,.95); backdrop-filter: blur(12px); border-color: var(--border); }
+        .nav.stuck { background: var(--nav-stuck-bg); backdrop-filter: blur(12px); border-color: var(--border); }
         .nav-logo { font-size: 1.15rem; font-weight: 700; color: var(--white); text-decoration: none; letter-spacing: -.02em; }
         .nav-logo span { color: var(--primary-soft); }
         .nav-links { display: flex; align-items: center; gap: 1.75rem; list-style: none; }
@@ -134,7 +256,7 @@ export function LandingPage() {
         .hero-stat-label { font-size: .72rem; color: var(--muted-2); font-weight: 500; }
 
         /* SECTIONS */
-        section { padding: 5.5rem 2rem; }
+        .landing-page section { padding: 5.5rem 2rem; }
         .container { max-width: 1100px; margin: 0 auto; }
         .sec-label { font-size: .68rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--primary-soft); margin-bottom: .6rem; }
         .sec-title { font-size: clamp(1.75rem, 3vw, 2.4rem); font-weight: 700; line-height: 1.12; letter-spacing: -.025em; color: var(--white); margin-bottom: .6rem; }
@@ -219,8 +341,8 @@ export function LandingPage() {
         .btn-outline:hover { border-color: var(--primary-soft); color: var(--primary-soft); }
 
         /* FOOTER */
-        footer { background: var(--surface); border-top: 1px solid var(--border); color: var(--muted-2); padding: 2.5rem 2rem; text-align: center; font-size: .8rem; }
-        footer strong { color: var(--muted); font-weight: 600; }
+        .landing-page footer { background: var(--surface); border-top: 1px solid var(--border); color: var(--muted-2); padding: 2.5rem 2rem; text-align: center; font-size: .8rem; }
+        .landing-page footer strong { color: var(--muted); font-weight: 600; }
         .footer-links { display: flex; gap: 1.5rem; justify-content: center; margin-top: .75rem; flex-wrap: wrap; }
         .footer-links a { color: var(--muted-2); text-decoration: none; font-size: .78rem; transition: color .2s; }
         .footer-links a:hover { color: var(--text); }
@@ -243,267 +365,378 @@ export function LandingPage() {
         }
       `}</style>
 
-      {/* NAV */}
-      <nav className={`nav${scrolled ? ' stuck' : ''}`}>
-        <a href="#" className="nav-logo">Scholaro<span>Scope</span></a>
-        <ul className="nav-links">
-          <li><a href="#how">How It Works</a></li>
-          <li><a href="#features">Features</a></li>
-          <li><a href="#who">Who It&apos;s For</a></li>
-          <li><Link href="/login" className="nav-btn-ghost">Log In</Link></li>
-          <li><Link href="/register" className="nav-btn">Get Started <ArrowRight size={13} /></Link></li>
-        </ul>
-        <button className="hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </nav>
+      <div className="landing-page">
+        {/* NAV */}
+        <nav className={`nav${scrolled ? ' stuck' : ''}`}>
+          <a href="#" className="nav-logo">
+            Scholaro<span>Scope</span>
+          </a>
+          <ul className="nav-links">
+            <li>
+              <a href="#how">How It Works</a>
+            </li>
+            <li>
+              <a href="#features">Features</a>
+            </li>
+            <li>
+              <a href="#who">Who It&apos;s For</a>
+            </li>
+            <li>
+              <Link href="/login" className="nav-btn-ghost">
+                Log In
+              </Link>
+            </li>
+            <li>
+              <Link href="/register" className="nav-btn">
+                Get Started <ArrowRight size={13} />
+              </Link>
+            </li>
+          </ul>
+          <button className="hamburger" onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </nav>
 
-      {menuOpen && (
-        <ul className="mobile-menu">
-          <li><a href="#how" onClick={() => setMenuOpen(false)}>How It Works</a></li>
-          <li><a href="#features" onClick={() => setMenuOpen(false)}>Features</a></li>
-          <li><a href="#who" onClick={() => setMenuOpen(false)}>Who It&apos;s For</a></li>
-          <li><Link href="/login" onClick={() => setMenuOpen(false)} style={{ color: 'var(--muted)' }}>Log In</Link></li>
-          <li><Link href="/register" className="nav-btn" onClick={() => setMenuOpen(false)}>Get Started <ArrowRight size={13} /></Link></li>
-        </ul>
-      )}
+        {menuOpen && (
+          <ul className="mobile-menu">
+            <li>
+              <a href="#how" onClick={() => setMenuOpen(false)}>
+                How It Works
+              </a>
+            </li>
+            <li>
+              <a href="#features" onClick={() => setMenuOpen(false)}>
+                Features
+              </a>
+            </li>
+            <li>
+              <a href="#who" onClick={() => setMenuOpen(false)}>
+                Who It&apos;s For
+              </a>
+            </li>
+            <li>
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                style={{ color: 'var(--muted)' }}
+              >
+                Log In
+              </Link>
+            </li>
+            <li>
+              <Link href="/register" className="nav-btn" onClick={() => setMenuOpen(false)}>
+                Get Started <ArrowRight size={13} />
+              </Link>
+            </li>
+          </ul>
+        )}
 
-      {/* HERO */}
-      <div className="hero">
-        <div className="hero-badge">
-          <span className="hero-badge-dot" />
-          Academic Execution Engine · Version 5
-        </div>
-        <h1 className="hero-title">
-          Teaching,<br /><em>made measurable.</em>
-        </h1>
-        <p className="hero-sub">
-          ScholaroScope helps teachers record what was taught, track how learners responded,
-          and generate reports automatically — from any phone or browser.
-        </p>
-        <div className="hero-actions">
-          <Link href="/register" className="btn-p">Create Account <ArrowRight size={15} /></Link>
-          <Link href="/login" className="btn-ghost">Log In</Link>
-          <a href="#how" className="btn-ghost">How it works <ChevronDown size={14} /></a>
-        </div>
-        <div className="hero-stats">
-          <div className="hero-stat"><div className="hero-stat-num">v5</div><div className="hero-stat-label">Current Build</div></div>
-          <div className="hero-stat"><div className="hero-stat-num">1K+</div><div className="hero-stat-label">Target Teachers</div></div>
-          <div className="hero-stat"><div className="hero-stat-num">Any</div><div className="hero-stat-label">Curriculum</div></div>
-          <div className="hero-stat"><div className="hero-stat-num">Multi</div><div className="hero-stat-label">Tenant</div></div>
-        </div>
-      </div>
-
-      {/* PROBLEM */}
-      <section className="problem-s">
-        <div className="container">
-          <p className="sec-label">The Problem</p>
-          <h2 className="sec-title">Teaching without visibility is guesswork.</h2>
-          <div className="rule" />
-          <div className="prob-grid">
-            {[
-              { icon: <ClipboardList size={16} />, title: 'No tracking system', desc: 'Teachers rely on memory or end-term exams — too late to course-correct when students fall behind.' },
-              { icon: <FileText size={16} />, title: 'Manual overload', desc: 'Lesson plans, schemes of work, and report writing consume hours that should go to actual teaching.' },
-              { icon: <Eye size={16} />, title: 'Invisible learner gaps', desc: "Without continuous data, struggling students go unnoticed until it's too late to help them." },
-              { icon: <RefreshCw size={16} />, title: 'No self-feedback loop', desc: 'Teachers cannot see their own teaching patterns or improve without objective performance data.' },
-            ].map((p, i) => (
-              <div className="prob-card" key={i}>
-                <div className="prob-icon">{p.icon}</div>
-                <h3>{p.title}</h3>
-                <p>{p.desc}</p>
-              </div>
-            ))}
+        {/* HERO */}
+        <div className="hero">
+          <div className="hero-badge">
+            <span className="hero-badge-dot" />
+            Academic Execution Engine · Version 5
           </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section id="how">
-        <div className="container">
-          <p className="sec-label">How It Works</p>
-          <h2 className="sec-title">Record once. Understand everything.</h2>
-          <div className="rule" />
-          <div className="how-grid">
-            <div className="steps">
-              {steps.map(s => (
-                <div className="step" key={s.n}>
-                  <span className="step-num">{s.n}</span>
-                  <div>
-                    <h3>{s.title}</h3>
-                    <p>{s.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mock">
-              <div className="mock-bar">
-                <div className="mock-dot" style={{ background: '#ff5f57' }} />
-                <div className="mock-dot" style={{ background: '#febc2e' }} />
-                <div className="mock-dot" style={{ background: '#28c840' }} />
-                <span className="mock-url">scholaroscope.com/dashboard</span>
-              </div>
-              <div className="mock-body">
-                <p className="mock-title-row">Class Overview · Term 2</p>
-                {[
-                  { lbl: 'Attendance rate', val: '94%', w: '94%' },
-                  { lbl: 'Assessments scored', val: '87%', w: '87%' },
-                  { lbl: 'CBC competency avg', val: '78%', w: '78%' },
-                  { lbl: 'Reports generated', val: '100%', w: '100%' },
-                  { lbl: 'Workload saved', val: '~60%', w: '60%' },
-                ].map(m => (
-                  <div className="mock-row" key={m.lbl}>
-                    <span className="mock-lbl">{m.lbl}</span>
-                    <div className="mock-track"><div className="mock-fill" style={{ width: m.w }} /></div>
-                    <span className="mock-val">{m.val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section className="features-s" id="features">
-        <div className="container">
-          <p className="sec-label">What You Get</p>
-          <h2 className="sec-title">Built for real classrooms.</h2>
-          <div className="rule" />
-          <div className="feat-grid">
-            {features.map(f => (
-              <div className="feat-card" key={f.title}>
-                <div className="feat-icon">{f.icon}</div>
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* WHO IT'S FOR */}
-      <section id="who">
-        <div className="container">
-          <p className="sec-label">Who It&apos;s For</p>
-          <h2 className="sec-title">If you teach, this is for you.</h2>
-          <div className="rule" />
-          <p className="sec-desc">ScholaroScope is built primarily for teachers — in any setting, at any scale.</p>
-          <div className="aud-grid">
-            {audience.map(a => (
-              <div className="aud-card" key={a.title}>
-                <div className="aud-icon">{a.icon}</div>
-                <h3>{a.title}</h3>
-                <p>{a.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* DOS & DONTS */}
-      <section className="dos-s">
-        <div className="container">
-          <p className="sec-label">Do&apos;s &amp; Don&apos;ts</p>
-          <h2 className="sec-title">Know what ScholaroScope is — and isn&apos;t.</h2>
-          <div className="rule" />
-          <div className="dos-grid">
-            <div>
-              <p className="dos-col-title can-t"><CheckCircle2 size={13} /> You can</p>
-              <div className="dos-list">
-                {dos.map(item => (
-                  <div className="di yes" key={item}>
-                    <CheckCircle2 size={14} color="#22c55e" style={{ flexShrink: 0, marginTop: 1 }} />
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="dos-col-title cant-t"><XCircle size={13} /> You cannot</p>
-              <div className="dos-list">
-                {donts.map(item => (
-                  <div className="di no" key={item}>
-                    <XCircle size={14} color="#f87171" style={{ flexShrink: 0, marginTop: 1 }} />
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PLUGIN ARCHITECTURE */}
-      <section>
-        <div className="container">
-          <p className="sec-label">Architecture</p>
-          <h2 className="sec-title">The engine. Not the curriculum.</h2>
-          <div className="rule" />
-          <div className="plugin-layout">
-            <div className="arch">
-              <div className="kernel">
-                <div className="kernel-sub">Core Engine</div>
-                ScholaroScope
-              </div>
-              <div className="arch-line" />
-              <div className="plugins-row">
-                {[
-                  { icon: <BookOpen size={13} />, label: 'CBC' },
-                  { icon: <Layers size={13} />, label: '8-4-4' },
-                  { icon: <GraduationCap size={13} />, label: 'IGCSE' },
-                  { icon: <MonitorPlay size={13} />, label: 'Timetable' },
-                  { icon: <PlugZap size={13} />, label: 'Billing' },
-                  { icon: <Users size={13} />, label: 'Student Portal' },
-                ].map(p => (
-                  <div className="plugin-chip" key={p.label}>{p.icon} {p.label}</div>
-                ))}
-              </div>
-            </div>
-            <div className="plugin-points">
-              {[
-                { h: 'Curriculum is a plugin', p: 'The system is the engine. CBC, IGCSE, 8-4-4, or any custom curriculum attaches as a plugin — swap without rebuilding.' },
-                { h: 'Optional extras stay optional', p: 'Timetables, billing, student dashboards — each is a plugin. Schools add only what they need.' },
-                { h: 'One teacher, many schools', p: "A teacher can belong to multiple organizations simultaneously. Each org's data stays fully isolated." },
-              ].map(pt => (
-                <div className="pp" key={pt.h}>
-                  <h3>{pt.h}</h3>
-                  <p>{pt.p}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="cta-s">
-        <div className="container">
-          <p className="sec-label" style={{ textAlign: 'center' }}>Get Started</p>
-          <h2 className="sec-title">Ready to bring clarity to your classroom?</h2>
-          <div className="rule" />
-          <p className="sec-desc">
-            Join teachers already using ScholaroScope to record, track, and improve —
-            from any device, any curriculum, any scale.
+          <h1 className="hero-title">
+            Teaching,
+            <br />
+            <em>made measurable.</em>
+          </h1>
+          <p className="hero-sub">
+            ScholaroScope helps teachers record what was taught, track how learners responded, and
+            generate reports automatically — from any phone or browser.
           </p>
-          <div className="cta-actions">
-            <Link href="/register" className="btn-p">Create Account <ArrowRight size={15} /></Link>
-            <Link href="/login" className="btn-outline">Log In</Link>
+          <div className="hero-actions">
+            <Link href="/register" className="btn-p">
+              Create Account <ArrowRight size={15} />
+            </Link>
+            <Link href="/login" className="btn-ghost">
+              Log In
+            </Link>
+            <a href="#how" className="btn-ghost">
+              How it works <ChevronDown size={14} />
+            </a>
+          </div>
+          <div className="hero-stats">
+            <div className="hero-stat">
+              <div className="hero-stat-num">v5</div>
+              <div className="hero-stat-label">Current Build</div>
+            </div>
+            <div className="hero-stat">
+              <div className="hero-stat-num">1K+</div>
+              <div className="hero-stat-label">Target Teachers</div>
+            </div>
+            <div className="hero-stat">
+              <div className="hero-stat-num">Any</div>
+              <div className="hero-stat-label">Curriculum</div>
+            </div>
+            <div className="hero-stat">
+              <div className="hero-stat-num">Multi</div>
+              <div className="hero-stat-label">Tenant</div>
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* FOOTER */}
-      <footer>
-        <p><strong>ScholaroScope</strong> · Academic Execution Engine · Version 5</p>
-        <div className="footer-links">
-          <a href="#how">How It Works</a>
-          <a href="#features">Features</a>
-          <a href="#who">Who It&apos;s For</a>
-          <Link href="/login">Log In</Link>
-          <Link href="/register">Register</Link>
-        </div>
-        <p style={{ marginTop: '1rem', fontSize: '.75rem' }}>© {new Date().getFullYear()} ScholaroScope. All rights reserved.</p>
-      </footer>
+        {/* PROBLEM */}
+        <section className="problem-s">
+          <div className="container">
+            <p className="sec-label">The Problem</p>
+            <h2 className="sec-title">Teaching without visibility is guesswork.</h2>
+            <div className="rule" />
+            <div className="prob-grid">
+              {[
+                {
+                  icon: <ClipboardList size={16} />,
+                  title: 'No tracking system',
+                  desc: 'Teachers rely on memory or end-term exams — too late to course-correct when students fall behind.',
+                },
+                {
+                  icon: <FileText size={16} />,
+                  title: 'Manual overload',
+                  desc: 'Lesson plans, schemes of work, and report writing consume hours that should go to actual teaching.',
+                },
+                {
+                  icon: <Eye size={16} />,
+                  title: 'Invisible learner gaps',
+                  desc: "Without continuous data, struggling students go unnoticed until it's too late to help them.",
+                },
+                {
+                  icon: <RefreshCw size={16} />,
+                  title: 'No self-feedback loop',
+                  desc: 'Teachers cannot see their own teaching patterns or improve without objective performance data.',
+                },
+              ].map((p, i) => (
+                <div className="prob-card" key={i}>
+                  <div className="prob-icon">{p.icon}</div>
+                  <h3>{p.title}</h3>
+                  <p>{p.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section id="how">
+          <div className="container">
+            <p className="sec-label">How It Works</p>
+            <h2 className="sec-title">Record once. Understand everything.</h2>
+            <div className="rule" />
+            <div className="how-grid">
+              <div className="steps">
+                {steps.map((s) => (
+                  <div className="step" key={s.n}>
+                    <span className="step-num">{s.n}</span>
+                    <div>
+                      <h3>{s.title}</h3>
+                      <p>{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mock">
+                <div className="mock-bar">
+                  <div className="mock-dot" style={{ background: '#ff5f57' }} />
+                  <div className="mock-dot" style={{ background: '#febc2e' }} />
+                  <div className="mock-dot" style={{ background: '#28c840' }} />
+                  <span className="mock-url">scholaroscope.com/dashboard</span>
+                </div>
+                <div className="mock-body">
+                  <p className="mock-title-row">Class Overview · Term 2</p>
+                  {[
+                    { lbl: 'Attendance rate', val: '94%', w: '94%' },
+                    { lbl: 'Assessments scored', val: '87%', w: '87%' },
+                    { lbl: 'CBC competency avg', val: '78%', w: '78%' },
+                    { lbl: 'Reports generated', val: '100%', w: '100%' },
+                    { lbl: 'Workload saved', val: '~60%', w: '60%' },
+                  ].map((m) => (
+                    <div className="mock-row" key={m.lbl}>
+                      <span className="mock-lbl">{m.lbl}</span>
+                      <div className="mock-track">
+                        <div className="mock-fill" style={{ width: m.w }} />
+                      </div>
+                      <span className="mock-val">{m.val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FEATURES */}
+        <section className="features-s" id="features">
+          <div className="container">
+            <p className="sec-label">What You Get</p>
+            <h2 className="sec-title">Built for real classrooms.</h2>
+            <div className="rule" />
+            <div className="feat-grid">
+              {features.map((f) => (
+                <div className="feat-card" key={f.title}>
+                  <div className="feat-icon">{f.icon}</div>
+                  <h3>{f.title}</h3>
+                  <p>{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* WHO IT'S FOR */}
+        <section id="who">
+          <div className="container">
+            <p className="sec-label">Who It&apos;s For</p>
+            <h2 className="sec-title">If you teach, this is for you.</h2>
+            <div className="rule" />
+            <p className="sec-desc">
+              ScholaroScope is built primarily for teachers — in any setting, at any scale.
+            </p>
+            <div className="aud-grid">
+              {audience.map((a) => (
+                <div className="aud-card" key={a.title}>
+                  <div className="aud-icon">{a.icon}</div>
+                  <h3>{a.title}</h3>
+                  <p>{a.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* DOS & DONTS */}
+        <section className="dos-s">
+          <div className="container">
+            <p className="sec-label">Do&apos;s &amp; Don&apos;ts</p>
+            <h2 className="sec-title">Know what ScholaroScope is — and isn&apos;t.</h2>
+            <div className="rule" />
+            <div className="dos-grid">
+              <div>
+                <p className="dos-col-title can-t">
+                  <CheckCircle2 size={13} /> You can
+                </p>
+                <div className="dos-list">
+                  {dos.map((item) => (
+                    <div className="di yes" key={item}>
+                      <CheckCircle2
+                        size={14}
+                        color="#22c55e"
+                        style={{ flexShrink: 0, marginTop: 1 }}
+                      />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="dos-col-title cant-t">
+                  <XCircle size={13} /> You cannot
+                </p>
+                <div className="dos-list">
+                  {donts.map((item) => (
+                    <div className="di no" key={item}>
+                      <XCircle size={14} color="#f87171" style={{ flexShrink: 0, marginTop: 1 }} />
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* PLUGIN ARCHITECTURE */}
+        <section>
+          <div className="container">
+            <p className="sec-label">Architecture</p>
+            <h2 className="sec-title">The engine. Not the curriculum.</h2>
+            <div className="rule" />
+            <div className="plugin-layout">
+              <div className="arch">
+                <div className="kernel">
+                  <div className="kernel-sub">Core Engine</div>
+                  ScholaroScope
+                </div>
+                <div className="arch-line" />
+                <div className="plugins-row">
+                  {[
+                    { icon: <BookOpen size={13} />, label: 'CBC' },
+                    { icon: <Layers size={13} />, label: '8-4-4' },
+                    { icon: <GraduationCap size={13} />, label: 'IGCSE' },
+                    { icon: <MonitorPlay size={13} />, label: 'Timetable' },
+                    { icon: <PlugZap size={13} />, label: 'Billing' },
+                    { icon: <Users size={13} />, label: 'Student Portal' },
+                  ].map((p) => (
+                    <div className="plugin-chip" key={p.label}>
+                      {p.icon} {p.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="plugin-points">
+                {[
+                  {
+                    h: 'Curriculum is a plugin',
+                    p: 'The system is the engine. CBC, IGCSE, 8-4-4, or any custom curriculum attaches as a plugin — swap without rebuilding.',
+                  },
+                  {
+                    h: 'Optional extras stay optional',
+                    p: 'Timetables, billing, student dashboards — each is a plugin. Schools add only what they need.',
+                  },
+                  {
+                    h: 'One teacher, many schools',
+                    p: "A teacher can belong to multiple organizations simultaneously. Each org's data stays fully isolated.",
+                  },
+                ].map((pt) => (
+                  <div className="pp" key={pt.h}>
+                    <h3>{pt.h}</h3>
+                    <p>{pt.p}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="cta-s">
+          <div className="container">
+            <p className="sec-label" style={{ textAlign: 'center' }}>
+              Get Started
+            </p>
+            <h2 className="sec-title">Ready to bring clarity to your classroom?</h2>
+            <div className="rule" />
+            <p className="sec-desc">
+              Join teachers already using ScholaroScope to record, track, and improve — from any
+              device, any curriculum, any scale.
+            </p>
+            <div className="cta-actions">
+              <Link href="/register" className="btn-p">
+                Create Account <ArrowRight size={15} />
+              </Link>
+              <Link href="/login" className="btn-outline">
+                Log In
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer>
+          <p>
+            <strong>ScholaroScope</strong> · Academic Execution Engine · Version 5
+          </p>
+          <div className="footer-links">
+            <a href="#how">How It Works</a>
+            <a href="#features">Features</a>
+            <a href="#who">Who It&apos;s For</a>
+            <Link href="/login">Log In</Link>
+            <Link href="/register">Register</Link>
+          </div>
+          <p style={{ marginTop: '1rem', fontSize: '.75rem' }}>
+            © {new Date().getFullYear()} ScholaroScope. All rights reserved.
+          </p>
+        </footer>
+      </div>
     </>
   );
 }

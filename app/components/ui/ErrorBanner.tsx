@@ -5,35 +5,31 @@ import { useEffect } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 
 interface ErrorBannerProps {
-    message: string;
-    onDismiss: () => void;
-    autoDismissMs?: number | false;
+  message: string;
+  onDismiss: () => void;
+  autoDismissMs?: number | false;
 }
 
-export function ErrorBanner({
-    message,
-    onDismiss,
-    autoDismissMs = false,
-}: ErrorBannerProps) {
-    useEffect(() => {
-        if (typeof autoDismissMs !== 'number' || autoDismissMs <= 0) {
-            return;
-        }
+export function ErrorBanner({ message, onDismiss, autoDismissMs = false }: ErrorBannerProps) {
+  useEffect(() => {
+    if (typeof autoDismissMs !== 'number' || autoDismissMs <= 0) {
+      return;
+    }
 
-        const timer = setTimeout(onDismiss, autoDismissMs);
-        return () => clearTimeout(timer);
-    }, [autoDismissMs, message, onDismiss]);
+    const timer = setTimeout(onDismiss, autoDismissMs);
+    return () => clearTimeout(timer);
+  }, [autoDismissMs, message, onDismiss]);
 
-    return (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span className="flex-1 whitespace-pre-wrap">{message}</span>
-            <button
-                onClick={onDismiss}
-                className="text-red-400 hover:text-red-600 shrink-0"
-            >
-                <X className="h-4 w-4" />
-            </button>
-        </div>
-    );
+  return (
+    <div className="theme-danger-surface flex items-start gap-3 rounded-xl p-4 text-sm">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-danger)]" />
+      <span className="flex-1 whitespace-pre-wrap">{message}</span>
+      <button
+        onClick={onDismiss}
+        className="theme-focus-ring shrink-0 text-[color:var(--color-danger)] opacity-70 hover:opacity-100"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }

@@ -44,26 +44,30 @@ export default function Sidebar() {
 
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
-  const pluginNavigationContext = useMemo<PluginNavigationContext>(() => ({
-    role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
-    hasPlugin,
-    badges,
-    hasAnyReportPolicySurface: getAvailablePolicySurfaces({
+  const pluginNavigationContext = useMemo<PluginNavigationContext>(
+    () => ({
+      role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
+      hasPlugin,
+      badges,
+      hasAnyReportPolicySurface:
+        getAvailablePolicySurfaces({
+          curricula,
+          installedPlugins: plugins,
+        }).length > 0,
+      instructorAccess: {
+        hasCurriculumAccess: instructorAccess.hasCurriculumAccess,
+      },
+    }),
+    [
+      activeRole,
+      badges,
       curricula,
-      installedPlugins: plugins,
-    }).length > 0,
-    instructorAccess: {
-      hasCurriculumAccess: instructorAccess.hasCurriculumAccess,
-    },
-  }), [
-    activeRole,
-    badges,
-    curricula,
-    hasPlugin,
-    instructorAccess.hasCurriculumAccess,
-    plugins,
-    user?.is_superadmin,
-  ]);
+      hasPlugin,
+      instructorAccess.hasCurriculumAccess,
+      plugins,
+      user?.is_superadmin,
+    ],
+  );
 
   // ── Build nav config ──────────────────────────────────────────────────
 
@@ -96,19 +100,19 @@ export default function Sidebar() {
   useEffect(() => {
     if (!user) return;
     const updates: Record<string, boolean> = {};
-    navConfig.primary.forEach(item => {
-      if (item.children?.some(child => isActive(child.href))) {
+    navConfig.primary.forEach((item) => {
+      if (item.children?.some((child) => isActive(child.href))) {
         updates[item.name] = true;
       }
     });
     if (Object.keys(updates).length > 0) {
-      setExpandedItems(prev => ({ ...prev, ...updates }));
+      setExpandedItems((prev) => ({ ...prev, ...updates }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   const toggleExpanded = (name: string) =>
-    setExpandedItems(prev => ({ ...prev, [name]: !prev[name] }));
+    setExpandedItems((prev) => ({ ...prev, [name]: !prev[name] }));
 
   if (!user) return null;
 
@@ -123,17 +127,19 @@ export default function Sidebar() {
         />
       )}
 
-      <aside className={`fixed left-0 top-0 z-50 h-screen w-72 transform bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 lg:static lg:z-auto`}>
+      <aside
+        className={`theme-surface fixed left-0 top-0 z-50 h-screen w-72 transform border-r theme-border transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:static lg:z-auto lg:translate-x-0`}
+      >
         <div className="flex h-full min-h-0 flex-col">
-
           {/* Logo */}
-          <div className="flex h-16 items-center border-b border-gray-200 px-6">
+          <div className="flex h-16 items-center border-b theme-border px-6">
             <div className="flex items-center gap-3">
               <div className={`p-2 ${colors.iconBg} rounded-xl`}>
                 <Logo className="h-5 w-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900">ScholaroScope</h1>
+              <h1 className="text-xl font-bold theme-text">ScholaroScope</h1>
             </div>
           </div>
 
@@ -144,20 +150,18 @@ export default function Sidebar() {
                 <RoleIcon className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <p className="theme-subtle text-xs font-semibold uppercase tracking-wide">
                   {activeRole ?? '—'}
                 </p>
-                <p className="text-sm font-bold text-gray-900">
+                <p className="text-sm font-bold theme-text">
                   {user.first_name} {user.last_name}
                 </p>
               </div>
             </div>
             {!user.is_superadmin && activeOrg && (
               <div className="pl-11">
-                <p className="text-xs text-gray-500">Organization</p>
-                <p className="text-sm font-medium text-gray-800 truncate">
-                  {activeOrg.name}
-                </p>
+                <p className="theme-subtle text-xs">Organization</p>
+                <p className="truncate text-sm font-medium theme-text">{activeOrg.name}</p>
               </div>
             )}
           </div>
@@ -166,11 +170,11 @@ export default function Sidebar() {
           <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
             <div className="space-y-6">
               <div>
-                <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                <h3 className="theme-subtle mb-2 px-4 text-xs font-semibold uppercase tracking-wider">
                   Main Menu
                 </h3>
                 <ul className="space-y-1">
-                  {navConfig.primary.map(item => (
+                  {navConfig.primary.map((item) => (
                     <NavItem
                       key={item.name}
                       item={item}
@@ -186,11 +190,11 @@ export default function Sidebar() {
 
               {navConfig.secondary && navConfig.secondary.length > 0 && (
                 <div>
-                  <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <h3 className="theme-subtle mb-2 px-4 text-xs font-semibold uppercase tracking-wider">
                     Quick Access
                   </h3>
                   <ul className="space-y-1">
-                    {navConfig.secondary.map(item => (
+                    {navConfig.secondary.map((item) => (
                       <NavItem
                         key={item.name}
                         item={item}
@@ -208,16 +212,15 @@ export default function Sidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-gray-200 p-4 bg-gray-50">
-            <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="theme-card-muted border-t p-4">
+            <div className="theme-subtle flex items-center justify-between text-xs">
               <div>
-                <p className="font-semibold text-gray-700">ScholaroScope v0.5.4</p>
+                <p className="font-semibold theme-muted">ScholaroScope v0.5.4</p>
                 <p className="mt-0.5">{ROLE_FOOTER_LABEL[resolvedRole]}</p>
               </div>
               <Activity className="h-4 w-4 text-green-500" />
             </div>
           </div>
-
         </div>
       </aside>
     </>
