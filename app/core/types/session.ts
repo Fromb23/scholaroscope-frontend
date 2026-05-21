@@ -24,6 +24,7 @@ export type SessionScheduleState =
   | 'SCHEDULED_READY'
   | 'SCHEDULED_OVERDUE'
   | 'IN_PROGRESS'
+  | 'IN_PROGRESS_OVERDUE'
   | 'COMPLETED'
   | 'UNKNOWN';
 
@@ -71,6 +72,8 @@ export interface Session {
   scheduled_start_at: string | null;
   scheduled_end_at: string | null;
   can_start_now: boolean;
+  can_reschedule?: boolean;
+  needs_completion?: boolean;
   start_available_at: string | null;
   start_available_date?: string | null;
   start_available_time?: string | null;
@@ -142,6 +145,15 @@ export interface BulkAttendanceData {
     notes?: string;
   }[];
   marked_by?: string;
+}
+
+export interface RescheduleSessionPayload {
+  session_date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string;
+  venue?: string;
+  description?: string;
 }
 
 export interface ConfirmTaughtOutcomesPayload {

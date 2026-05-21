@@ -5,20 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohort-subjects/[id]/learners/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohort-subjects/[id]/learners/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/export/ExportModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/export/ExportModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/academic.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/assessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/assessments.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/lessonPlans.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/lessonPlans.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/lessonPlans/CbcReferencePagesEditor.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/lessonPlans/CbcReferencePagesEditor.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/types/export.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/types/export.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/utils/exportUtils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/exportUtils.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/sessions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/sessions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionStatusBadge.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionStatusBadge.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionsOverview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionsOverview.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useSessions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useSessions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/session.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/session.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/sessionUtils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/sessionUtils.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,7 +21,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="576" />
+    <option name="cachedIndexableFilesCount" value="577" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -50,61 +45,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.8090531329823494" />
-      <entry key="MS500" value="4.350923453846006" />
-      <entry key="S2" value="7.07528164997133" />
-      <entry key="S5" value="10.540198987554875" />
-      <entry key="S10" value="13.850081078426449" />
-      <entry key="S30" value="17.933286807334696" />
-      <entry key="S60" value="19.35661529982224" />
-      <entry key="M2" value="20.149671285660798" />
-      <entry key="M5" value="21.0089950142135" />
-      <entry key="M10" value="23.673822725065417" />
-      <entry key="M15" value="27.172485776028527" />
-      <entry key="M30" value="37.739822085661416" />
-      <entry key="H1" value="59.58777977054394" />
-      <entry key="H2" value="100.37727025428453" />
-      <entry key="H4" value="157.77027577181894" />
-      <entry key="D1" value="316.9986838014552" />
-      <entry key="W1" value="388.0943094031979" />
+      <entry key="MS100" value="1.8802178347090832" />
+      <entry key="MS500" value="4.589124562869895" />
+      <entry key="S2" value="6.7751853317495465" />
+      <entry key="S5" value="7.469149132813877" />
+      <entry key="S10" value="8.05615661469613" />
+      <entry key="S30" value="15.819086491242778" />
+      <entry key="S60" value="25.507434297777188" />
+      <entry key="M2" value="34.13711368521401" />
+      <entry key="M5" value="41.23201866236871" />
+      <entry key="M10" value="44.027733824344246" />
+      <entry key="M15" value="45.29588332671196" />
+      <entry key="M30" value="49.82100563528833" />
+      <entry key="H1" value="59.78716748451161" />
+      <entry key="H2" value="71.79579929840918" />
+      <entry key="H4" value="89.65322008085226" />
+      <entry key="D1" value="293.3240347470267" />
+      <entry key="W1" value="467.5382099068908" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
-      <entry key="S10" value="0.0" />
-      <entry key="S30" value="0.0" />
-      <entry key="S60" value="0.0" />
-      <entry key="M2" value="7.665125640888346E-240" />
-      <entry key="M5" value="2.2584356006158217E-96" />
-      <entry key="M10" value="1.5028092362691437E-48" />
-      <entry key="M15" value="1.312006249469825E-32" />
-      <entry key="M30" value="1.1454284130707726E-16" />
-      <entry key="H1" value="1.0702468935113876E-8" />
-      <entry key="H2" value="1.034527376878632E-4" />
-      <entry key="H4" value="0.010171171893536253" />
-      <entry key="D1" value="0.46547371926872394" />
-      <entry key="W1" value="0.8965127125503856" />
+      <entry key="S10" value="9.824761006013177E-193" />
+      <entry key="S30" value="9.941242433028866E-65" />
+      <entry key="S60" value="9.970577933614918E-33" />
+      <entry key="M2" value="9.985278130134834E-17" />
+      <entry key="M5" value="3.9787263165406234E-7" />
+      <entry key="M10" value="6.307714575454905E-4" />
+      <entry key="M15" value="0.007354977618614371" />
+      <entry key="M30" value="0.08576116614537359" />
+      <entry key="H1" value="0.29285007451838196" />
+      <entry key="H2" value="0.5411565256994849" />
+      <entry key="H4" value="0.7361690889801511" />
+      <entry key="D1" value="1.2351151583402205" />
+      <entry key="W1" value="1.8285512508429105" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.7372188128061394" />
-      <entry key="MS500" value="4.317284754028853" />
-      <entry key="S2" value="7.061294410620374" />
-      <entry key="S5" value="10.531064768419148" />
-      <entry key="S10" value="13.843651256776585" />
-      <entry key="S30" value="17.930343224515287" />
-      <entry key="S60" value="19.35500143138634" />
-      <entry key="M2" value="20.14882456306425" />
-      <entry key="M5" value="21.00863942790359" />
-      <entry key="M10" value="23.67361881827652" />
-      <entry key="M15" value="27.172326015491077" />
-      <entry key="M30" value="37.739698212901196" />
-      <entry key="H1" value="59.58765512127084" />
-      <entry key="H2" value="100.37724596074484" />
-      <entry key="H4" value="157.7803366727744" />
-      <entry key="D1" value="317.46411137552224" />
-      <entry key="W1" value="388.99081315986245" />
+      <entry key="MS100" value="1.799693798242631" />
+      <entry key="MS500" value="4.53716216027585" />
+      <entry key="S2" value="6.756357214411191" />
+      <entry key="S5" value="7.460928605043917" />
+      <entry key="S10" value="8.051682922845657" />
+      <entry key="S30" value="15.815798997401387" />
+      <entry key="S60" value="25.50467741436809" />
+      <entry key="M2" value="34.13524173887378" />
+      <entry key="M5" value="41.23110840664394" />
+      <entry key="M10" value="44.02787542187706" />
+      <entry key="M15" value="45.302888264765734" />
+      <entry key="M30" value="49.906490710925645" />
+      <entry key="H1" value="60.07974935257124" />
+      <entry key="H2" value="72.33674334418903" />
+      <entry key="H4" value="90.3892460213656" />
+      <entry key="D1" value="294.5590917670861" />
+      <entry key="W1" value="469.3667482667447" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -125,7 +120,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/lesson-plans-ui&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/session-participation-assignment-scope&quot;,
     &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
     &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
     &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
@@ -210,7 +205,8 @@
       <workItem from="1779085515602" duration="6741000" />
       <workItem from="1779105864055" duration="2541000" />
       <workItem from="1779211046581" duration="6101000" />
-      <workItem from="1779301294701" duration="491000" />
+      <workItem from="1779301294701" duration="1852000" />
+      <workItem from="1779377744303" duration="7930000" />
     </task>
     <servers />
   </component>
