@@ -147,7 +147,7 @@ export function ParticipatingCohorts({
                             <Badge variant="info" size="sm">
                                 {activeClassCount} active
                             </Badge>
-                            <span>{totalLearners} learners</span>
+                            <span>{totalLearners} total participating learners</span>
                         </div>
                     )}
 
@@ -235,6 +235,9 @@ export function ParticipatingCohorts({
                                                         <Badge variant={isPrimary ? 'blue' : 'green'} size="sm">
                                                             {isPrimary ? 'Primary' : 'Participating'}
                                                         </Badge>
+                                                        {!isPrimary ? (
+                                                            <Badge variant="default" size="sm">Linked</Badge>
+                                                        ) : null}
                                                     </div>
                                                     <p className="text-sm text-gray-500">
                                                         {link.cohort_level || 'Class level not set'}
@@ -291,7 +294,7 @@ export function ParticipatingCohorts({
                         {historicalCohorts.length > 0 ? (
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between gap-3">
-                                    <h3 className="text-sm font-semibold text-gray-900">Historical links</h3>
+                                    <h3 className="text-sm font-semibold text-gray-900">Historical / unlinked classes</h3>
                                     <span className="text-xs text-gray-500">{historicalCohorts.length} unlinked</span>
                                 </div>
 

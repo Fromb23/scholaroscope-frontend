@@ -30,8 +30,7 @@ import { ParticipatingCohorts } from '@/app/core/components/sessions/Participati
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
 import {
-    getAssignmentParticipatingCohortCount,
-    hasSessionParticipationMetadata,
+    usesExpandedSessionScope,
 } from '@/app/core/components/assignments/assignmentUtils';
 import { getCurriculumTypeLabel } from '@/app/core/lib/curriculumBridge';
 import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
@@ -225,13 +224,8 @@ export function SessionDetailPage() {
         hasLessonPlan &&
         hasConfirmedTaughtOutcomes
     );
-    const preparedAssignmentParticipatingCohortCount = useMemo(
-        () => getAssignmentParticipatingCohortCount(preparedAssignment?.curriculum_context),
-        [preparedAssignment?.curriculum_context]
-    );
     const showPreparedAssignmentScopeNote = Boolean(
-        preparedAssignment
-        && hasSessionParticipationMetadata(preparedAssignment.curriculum_context)
+        preparedAssignment && usesExpandedSessionScope(preparedAssignment)
     );
     const lessonDateLabel = formatSessionDate(session?.session_date);
     const lessonTimeLabel = [
@@ -585,12 +579,7 @@ export function SessionDetailPage() {
                     </Link>
                     {showPreparedAssignmentScopeNote ? (
                         <p className="mt-2">
-                            This assignment uses the source session&apos;s active participation scope.
-                            {preparedAssignmentParticipatingCohortCount > 1 ? (
-                                <>
-                                    {' '}It can include learners from all active classes linked to this lesson.
-                                </>
-                            ) : null}
+                            This assignment can include learners from all active classes linked to the source session.
                         </p>
                     ) : null}
                 </div>

@@ -26,7 +26,7 @@ import {
 } from '@/app/core/components/assignments/assignmentAudienceOptions';
 import {
     getAssignmentParticipatingCohortCount,
-    hasSessionParticipationMetadata,
+    usesExpandedSessionScope,
 } from '@/app/core/components/assignments/assignmentUtils';
 import {
     useAssignmentEligibleLearners,
@@ -422,8 +422,7 @@ export function AssignmentGroupsPanel({
         () => getAssignmentParticipatingCohortCount(assignment.curriculum_context),
         [assignment.curriculum_context]
     );
-    const showSessionScopeNote = assignment.created_from_session != null
-        && hasSessionParticipationMetadata(assignment.curriculum_context);
+    const showSessionScopeNote = usesExpandedSessionScope(assignment);
 
     useEffect(() => {
         setRenameDrafts(() => Object.fromEntries(
@@ -874,12 +873,8 @@ export function AssignmentGroupsPanel({
                                 </p>
                                 {showSessionScopeNote ? (
                                     <p className="mt-1">
-                                        This assignment uses the source session&apos;s active participation scope.
-                                        {participatingCohortCount > 1 ? (
-                                            <>
-                                                {' '}It can include learners from all active classes linked to that session.
-                                            </>
-                                        ) : null}
+                                        This assignment can include learners from all active classes linked to the source session.
+                                        {participatingCohortCount > 1 ? ` (${participatingCohortCount} active classes)` : ''}
                                     </p>
                                 ) : null}
                             </div>

@@ -36,8 +36,8 @@ import {
     getAssignmentStatusBadgeVariant,
     getRecipientStatusBadgeVariant,
     getSubmissionStatusBadgeVariant,
-    hasSessionParticipationMetadata,
     hasCBCOutcome,
+    usesExpandedSessionScope,
 } from '@/app/core/components/assignments/assignmentUtils';
 import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
 import {
@@ -183,10 +183,7 @@ export default function CohortAssignmentDetailPage() {
         () => getAssignmentParticipatingCohortCount(assignment?.curriculum_context),
         [assignment?.curriculum_context]
     );
-    const showSessionScopeNote = Boolean(
-        assignment?.created_from_session != null
-        && hasSessionParticipationMetadata(assignment?.curriculum_context)
-    );
+    const showSessionScopeNote = Boolean(assignment && usesExpandedSessionScope(assignment));
     const detailTabs = useMemo<Array<{ value: DetailTab; label: string }>>(() => (
         isGroupAssignment
             ? [
@@ -469,12 +466,8 @@ export default function CohortAssignmentDetailPage() {
                     <div className="space-y-1">
                         <h2 className="text-base font-semibold text-blue-900">Session-based learner scope</h2>
                         <p className="text-sm text-blue-800">
-                            This assignment uses the source session&apos;s active participation scope.
-                            {participatingCohortCount > 1 ? (
-                                <>
-                                    {' '}It can include learners from all active classes linked to the source session.
-                                </>
-                            ) : null}
+                            This assignment can include learners from all active classes linked to the source session.
+                            {participatingCohortCount > 1 ? ` (${participatingCohortCount} active classes)` : ''}
                         </p>
                     </div>
                 </Card>

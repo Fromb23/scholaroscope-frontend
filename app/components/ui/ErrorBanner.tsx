@@ -7,13 +7,22 @@ import { AlertCircle, X } from 'lucide-react';
 interface ErrorBannerProps {
     message: string;
     onDismiss: () => void;
+    autoDismissMs?: number | false;
 }
 
-export function ErrorBanner({ message, onDismiss }: ErrorBannerProps) {
+export function ErrorBanner({
+    message,
+    onDismiss,
+    autoDismissMs = false,
+}: ErrorBannerProps) {
     useEffect(() => {
-        const timer = setTimeout(onDismiss, 4000);
+        if (typeof autoDismissMs !== 'number' || autoDismissMs <= 0) {
+            return;
+        }
+
+        const timer = setTimeout(onDismiss, autoDismissMs);
         return () => clearTimeout(timer);
-    }, [message, onDismiss]);
+    }, [autoDismissMs, message, onDismiss]);
 
     return (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">

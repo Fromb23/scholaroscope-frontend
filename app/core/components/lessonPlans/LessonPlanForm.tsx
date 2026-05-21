@@ -12,7 +12,7 @@ import { Input } from '@/app/components/ui/Input';
 import type { LessonPlan, LessonPlanUpdatePayload } from '@/app/core/types/lessonPlans';
 
 const TEXTAREA_CLASSNAME =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500';
+    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y';
 
 interface LessonPlanFormProps {
     lessonPlan: LessonPlan;
@@ -264,7 +264,7 @@ export function LessonPlanForm({ lessonPlan, onSubmit }: LessonPlanFormProps) {
                             value={formData.title}
                             onChange={(event) => updateField('title', event.target.value)}
                             placeholder="Lesson plan title"
-                            rows={2}
+                            rows={3}
                             className={TEXTAREA_CLASSNAME}
                         />
                     </div>
@@ -367,7 +367,7 @@ export function LessonPlanForm({ lessonPlan, onSubmit }: LessonPlanFormProps) {
                 <div className="space-y-5">
                     <div className="space-y-1">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Assessment And Reflection
+                            Assessment and reflection
                         </p>
                         <p className="text-sm text-gray-500">
                             Review how the lesson closes, how learning is checked, and what you want to improve next time.

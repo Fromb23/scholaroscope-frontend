@@ -1,9 +1,10 @@
 'use client';
 
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
+    ArrowRight,
     ArrowLeft,
     BookOpen,
     CheckCircle2,
@@ -19,14 +20,10 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { AssignmentCard } from '@/app/core/components/assignments/AssignmentCard';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
 import {
-    getAssignmentDeliveryBadgeVariant,
-    formatDate,
-    getAssignmentEvaluationBadgeVariant,
-    getAssignmentStatusBadgeVariant,
     isAssignmentDueSoon,
     isAssignmentOverdue,
 } from '@/app/core/components/assignments/assignmentUtils';
@@ -64,95 +61,86 @@ const DELIVERY_MODE_OPTIONS: Array<{ value: string; label: string }> = [
     { value: 'GROUP', label: 'Group' },
 ];
 
-function AssignmentSummary({
-    assignment,
-    detailHref,
-    onEdit,
+function normalizeQueryParam(
+    value: string | null,
+    options: Array<{ value: string }>,
+): string {
+    return value && options.some((option) => option.value === value) ? value : '';
+}
+
+function CohortSubjectWorkspaceCard({
+    cohortSubjectId,
+    subjectName,
+    cohortName,
+    curriculumName,
+    curriculumType,
+    totalCount,
+    draftCount,
+    publishedCount,
+    dueSoonCount,
+    overdueCount,
+    href,
+    highlighted = false,
 }: {
-    assignment: Assignment;
-    detailHref: string;
-    onEdit: (assignment: Assignment) => void;
+    cohortSubjectId: number;
+    subjectName: string;
+    cohortName: string;
+    curriculumName?: string | null;
+    curriculumType?: string | null;
+    totalCount: number;
+    draftCount: number;
+    publishedCount: number;
+    dueSoonCount: number;
+    overdueCount: number;
+    href: string;
+    highlighted?: boolean;
 }) {
     return (
-        <Card className="p-4 md:hidden">
-            <div className="space-y-3">
+        <Card className={highlighted ? 'border-blue-200 bg-blue-50/40 p-5' : 'p-5'}>
+            <div className="space-y-4">
                 <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-base font-semibold text-gray-900">{assignment.title}</h2>
-                        <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)} size="sm">
-                            {assignment.status}
-                        </Badge>
-                        <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)} size="sm">
-                            {assignment.delivery_mode}
-                        </Badge>
-                        <Badge variant={getAssignmentEvaluationBadgeVariant(assignment.evaluation_type)} size="sm">
-                            {assignment.evaluation_type}
-                        </Badge>
+                        <h2 className="text-lg font-semibold text-gray-900">{subjectName}</h2>
+                        {highlighted ? (
+                            <Badge variant="blue" size="sm">
+                                Your class subject
+                            </Badge>
+                        ) : null}
                     </div>
-                    <p className="text-sm text-gray-500">
-                        {assignment.subject_name} · Due {formatDate(assignment.due_at)}
-                    </p>
+
+                    <div className="space-y-1 text-sm text-gray-600">
+                        <p>{cohortName}</p>
+                        {curriculumName || curriculumType ? (
+                            <p>
+                                {[curriculumName, curriculumType].filter(Boolean).join(' · ')}
+                            </p>
+                        ) : null}
+                        <p className="text-xs text-gray-500">Cohort subject {cohortSubjectId}</p>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                    {assignment.delivery_mode === 'GROUP' ? (
-                        <>
-                            <div>
-                                <span className="font-medium text-gray-900">{assignment.group_count || '0'}</span>
-                                <span className="ml-1">groups</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-900">{assignment.group_submission_count}</span>
-                                <span className="ml-1">submissions</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-900">{assignment.group_evaluation_count}</span>
-                                <span className="ml-1">evaluations</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-900">Group workflow</span>
-                                <span className="ml-1">active</span>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div>
-                                <span className="font-medium text-gray-900">{assignment.recipients_count}</span>
-                                <span className="ml-1">recipients</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-900">{assignment.submissions_count}</span>
-                                <span className="ml-1">submissions</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-900">{assignment.reviewed_count}</span>
-                                <span className="ml-1">reviewed</span>
-                            </div>
-                            <div>
-                                <span className="font-medium text-gray-900">{assignment.missing_count}</span>
-                                <span className="ml-1">missing</span>
-                            </div>
-                        </>
-                    )}
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                    {[
+                        { label: 'Total', value: totalCount, tone: 'text-gray-900' },
+                        { label: 'Draft', value: draftCount, tone: 'text-gray-900' },
+                        { label: 'Published', value: publishedCount, tone: 'text-gray-900' },
+                        { label: 'Due soon', value: dueSoonCount, tone: dueSoonCount > 0 ? 'text-amber-700' : 'text-gray-900' },
+                        { label: 'Overdue', value: overdueCount, tone: overdueCount > 0 ? 'text-red-700' : 'text-gray-900' },
+                    ].map((metric) => (
+                        <div key={metric.label} className="rounded-lg border border-gray-200 bg-white px-3 py-3">
+                            <div className={`text-base font-semibold ${metric.tone}`}>{metric.value}</div>
+                            <div className="text-xs text-gray-500">{metric.label}</div>
+                        </div>
+                    ))}
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row">
-                    <Link href={detailHref} className="w-full sm:w-auto">
+                <div className="flex justify-end">
+                    <Link href={href} className="w-full sm:w-auto">
                         <Button size="sm" className="w-full sm:w-auto">
-                            View Assignment
+                            Open assignments
+                            <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </Link>
-                    {assignment.status === 'DRAFT' ? (
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="w-full sm:w-auto"
-                            onClick={() => onEdit(assignment)}
-                        >
-                            Edit Draft
-                        </Button>
-                    ) : null}
                 </div>
             </div>
         </Card>
@@ -168,27 +156,16 @@ export default function CohortAssignmentsPage() {
     const cohortId = Number(params.id);
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
-    const [statusFilter, setStatusFilter] = useState<AssignmentStatus | ''>(() => {
-        const status = searchParams.get('status');
-        return status && STATUS_OPTIONS.some((option) => option.value === status)
-            ? (status as AssignmentStatus)
-            : '';
-    });
-    const [evaluationTypeFilter, setEvaluationTypeFilter] = useState<AssignmentEvaluationType | ''>(() => {
-        const evaluationType = searchParams.get('evaluation_type');
-        return evaluationType && EVALUATION_OPTIONS.some((option) => option.value === evaluationType)
-            ? (evaluationType as AssignmentEvaluationType)
-            : '';
-    });
-    const [deliveryModeFilter, setDeliveryModeFilter] = useState<AssignmentDeliveryMode | ''>(() => {
-        const deliveryMode = searchParams.get('delivery_mode');
-        return deliveryMode && DELIVERY_MODE_OPTIONS.some((option) => option.value === deliveryMode)
-            ? (deliveryMode as AssignmentDeliveryMode)
-            : '';
-    });
-    const [cohortSubjectFilter, setCohortSubjectFilter] = useState<string>(
-        searchParams.get('cohort_subject') ?? ''
+    const [statusFilter, setStatusFilter] = useState<AssignmentStatus | ''>(
+        normalizeQueryParam(searchParams.get('status'), STATUS_OPTIONS) as AssignmentStatus | ''
     );
+    const [evaluationTypeFilter, setEvaluationTypeFilter] = useState<AssignmentEvaluationType | ''>(
+        normalizeQueryParam(searchParams.get('evaluation_type'), EVALUATION_OPTIONS) as AssignmentEvaluationType | ''
+    );
+    const [deliveryModeFilter, setDeliveryModeFilter] = useState<AssignmentDeliveryMode | ''>(
+        normalizeQueryParam(searchParams.get('delivery_mode'), DELIVERY_MODE_OPTIONS) as AssignmentDeliveryMode | ''
+    );
+    const [cohortSubjectFilter, setCohortSubjectFilter] = useState<string>(searchParams.get('cohort_subject') ?? '');
     const [search, setSearch] = useState(searchParams.get('search') ?? '');
     const [createOpen, setCreateOpen] = useState(false);
     const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
@@ -240,6 +217,20 @@ export default function CohortAssignmentsPage() {
         router.replace(roleHomeRoute[activeRole]);
     }, [accessLoading, activeRole, allowed, router]);
 
+    useEffect(() => {
+        setStatusFilter(
+            normalizeQueryParam(searchParams.get('status'), STATUS_OPTIONS) as AssignmentStatus | ''
+        );
+        setEvaluationTypeFilter(
+            normalizeQueryParam(searchParams.get('evaluation_type'), EVALUATION_OPTIONS) as AssignmentEvaluationType | ''
+        );
+        setDeliveryModeFilter(
+            normalizeQueryParam(searchParams.get('delivery_mode'), DELIVERY_MODE_OPTIONS) as AssignmentDeliveryMode | ''
+        );
+        setCohortSubjectFilter(searchParams.get('cohort_subject') ?? '');
+        setSearch(searchParams.get('search') ?? '');
+    }, [searchParams]);
+
     const canManageAssignments = Boolean(user) && (
         Boolean(user?.is_superadmin)
         || activeRole === 'ADMIN'
@@ -250,12 +241,13 @@ export default function CohortAssignmentsPage() {
         () => assignments.filter((assignment) => isAssignmentDueSoon(assignment)).length,
         [assignments]
     );
-    const assignmentsHref = useMemo(() => {
+
+    const buildAssignmentsHref = useCallback((nextCohortSubjectId?: string | null) => {
         const nextSearchParams = new URLSearchParams();
         const trimmedSearch = search.trim();
 
-        if (cohortSubjectFilter) {
-            nextSearchParams.set('cohort_subject', cohortSubjectFilter);
+        if (nextCohortSubjectId) {
+            nextSearchParams.set('cohort_subject', nextCohortSubjectId);
         }
         if (statusFilter) {
             nextSearchParams.set('status', statusFilter);
@@ -274,7 +266,11 @@ export default function CohortAssignmentsPage() {
         return query
             ? `/academic/cohorts/${cohortId}/assignments?${query}`
             : `/academic/cohorts/${cohortId}/assignments`;
-    }, [cohortId, cohortSubjectFilter, deliveryModeFilter, evaluationTypeFilter, search, statusFilter]);
+    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, search, statusFilter]);
+    const assignmentsHref = useMemo(
+        () => buildAssignmentsHref(cohortSubjectFilter || null),
+        [buildAssignmentsHref, cohortSubjectFilter]
+    );
     const buildAssignmentDetailHref = (nextAssignmentId: number) =>
         `/academic/cohorts/${cohortId}/assignments/${nextAssignmentId}?${new URLSearchParams({
             returnTo: assignmentsHref,
@@ -307,6 +303,31 @@ export default function CohortAssignmentsPage() {
         ), 0),
         [assignments]
     );
+    const selectedCohortSubject = useMemo(() => (
+        visibleCohortSubjects.find((subject) => String(subject.id) === cohortSubjectFilter) ?? null
+    ), [cohortSubjectFilter, visibleCohortSubjects]);
+    const showingWorkspaceSelection = !cohortSubjectFilter;
+    const assignmentFiltersActive = Boolean(
+        search.trim() || statusFilter || deliveryModeFilter || evaluationTypeFilter
+    );
+    const groupedWorkspaces = useMemo(() => (
+        [...visibleCohortSubjects]
+            .sort((left, right) => left.subject_name.localeCompare(right.subject_name))
+            .map((subject) => {
+                const subjectAssignments = assignments.filter(
+                    (assignment) => assignment.cohort_subject === subject.id
+                );
+
+                return {
+                    subject,
+                    totalCount: subjectAssignments.length,
+                    draftCount: subjectAssignments.filter((assignment) => assignment.status === 'DRAFT').length,
+                    publishedCount: subjectAssignments.filter((assignment) => assignment.status === 'PUBLISHED').length,
+                    dueSoonCount: subjectAssignments.filter((assignment) => isAssignmentDueSoon(assignment)).length,
+                    overdueCount: subjectAssignments.filter((assignment) => isAssignmentOverdue(assignment)).length,
+                };
+            })
+    ), [assignments, visibleCohortSubjects]);
 
     if (!isValidCohortId) {
         return (
@@ -386,95 +407,6 @@ export default function CohortAssignmentsPage() {
                 </div>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <StatsCard
-                    title="Total Assignments"
-                    value={assignments.length}
-                    icon={ClipboardList}
-                    color="blue"
-                />
-                <StatsCard
-                    title="Published"
-                    value={publishedCount}
-                    icon={BookOpen}
-                    color="green"
-                />
-                <StatsCard
-                    title="Due Soon"
-                    value={dueSoonCount}
-                    subtitle={`${overdueCount} overdue`}
-                    icon={Clock}
-                    color={overdueCount > 0 ? 'red' : 'yellow'}
-                />
-                <StatsCard
-                    title="Review Progress"
-                    value={`${reviewedTotal}/${submissionTotal}`}
-                    subtitle="Reviewed submissions"
-                    icon={CheckCircle2}
-                    color="purple"
-                />
-            </div>
-
-            <Card>
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Filter className="h-4 w-4" />
-                        Filters
-                    </div>
-
-                    <div className="grid gap-4 lg:grid-cols-5">
-                        <div className="lg:col-span-2">
-                            <label className="mb-1 block text-sm font-medium text-gray-700">Search</label>
-                            <div className="relative">
-                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    value={search}
-                                    onChange={(event) => setSearch(event.target.value)}
-                                    placeholder="Search assignment title or subject"
-                                    className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </div>
-                        </div>
-
-                        <Select
-                            label="Subject"
-                            value={cohortSubjectFilter}
-                            onChange={(event) => setCohortSubjectFilter(event.target.value)}
-                            options={[
-                                { value: '', label: 'All subject groups' },
-                                ...visibleCohortSubjects.map((subject) => ({
-                                    value: String(subject.id),
-                                    label: subject.subject_name,
-                                })),
-                            ]}
-                        />
-
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                            <Select
-                                label="Status"
-                                value={statusFilter}
-                                onChange={(event) => setStatusFilter(event.target.value as AssignmentStatus | '')}
-                                options={STATUS_OPTIONS}
-                            />
-                            <Select
-                                label="Delivery Mode"
-                                value={deliveryModeFilter}
-                                onChange={(event) => setDeliveryModeFilter(event.target.value as AssignmentDeliveryMode | '')}
-                                options={DELIVERY_MODE_OPTIONS}
-                            />
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                            <Select
-                                label="Evaluation"
-                                value={evaluationTypeFilter}
-                                onChange={(event) => setEvaluationTypeFilter(event.target.value as AssignmentEvaluationType | '')}
-                                options={EVALUATION_OPTIONS}
-                            />
-                        </div>
-                    </div>
-                </div>
-            </Card>
-
             {isInstructor && visibleCohortSubjects.length === 0 ? (
                 <Card>
                     <p className="text-sm text-gray-600">
@@ -483,24 +415,215 @@ export default function CohortAssignmentsPage() {
                 </Card>
             ) : null}
 
-            <Card>
-                {assignmentsLoading ? (
-                    <LoadingSpinner fullScreen={false} message="Loading assignments..." />
-                ) : assignments.length === 0 ? (
-                    <div className="py-12 text-center">
-                        <ClipboardList className="mx-auto h-12 w-12 text-gray-300" />
-                        <h2 className="mt-3 text-lg font-semibold text-gray-900">No assignments found</h2>
-                        <p className="mt-2 text-sm text-gray-500">
-                            {search || statusFilter || deliveryModeFilter || evaluationTypeFilter || cohortSubjectFilter
-                                ? 'Adjust the current filters to widen the results.'
-                                : 'Create the first cohort-subject assignment from this cohort workspace.'}
-                        </p>
+            {showingWorkspaceSelection ? (
+                <div className="space-y-6">
+                    <Card className="border-gray-200 bg-gray-50/70">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                <BookOpen className="h-4 w-4 text-gray-500" />
+                                Choose a class subject
+                            </div>
+                            <p className="text-sm text-gray-600">
+                                Open the assignment workspace for a specific class subject before working through drafts, publishing, or review.
+                            </p>
+                            <p className="text-sm text-gray-500">
+                                Assignment counts reflect the current filters and search.
+                            </p>
+                        </div>
+                    </Card>
+
+                    {assignmentsLoading ? (
+                        <LoadingSpinner fullScreen={false} message="Loading assignments..." />
+                    ) : (
+                        <div className="grid gap-4 xl:grid-cols-2">
+                            {groupedWorkspaces.map((workspace) => (
+                                <CohortSubjectWorkspaceCard
+                                    key={workspace.subject.id}
+                                    cohortSubjectId={workspace.subject.id}
+                                    subjectName={workspace.subject.subject_name}
+                                    cohortName={workspace.subject.cohort_name}
+                                    curriculumName={workspace.subject.curriculum_name}
+                                    curriculumType={workspace.subject.curriculum_type}
+                                    totalCount={workspace.totalCount}
+                                    draftCount={workspace.draftCount}
+                                    publishedCount={workspace.publishedCount}
+                                    dueSoonCount={workspace.dueSoonCount}
+                                    overdueCount={workspace.overdueCount}
+                                    href={buildAssignmentsHref(String(workspace.subject.id))}
+                                    highlighted={isInstructor && visibleCohortSubjects.length === 1}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    <Card>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Filter className="h-4 w-4" />
+                                Assignment filters
+                            </div>
+
+                            <div className="grid gap-4 lg:grid-cols-4">
+                                <div className="lg:col-span-2">
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Search</label>
+                                    <div className="relative">
+                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                            value={search}
+                                            onChange={(event) => setSearch(event.target.value)}
+                                            placeholder="Search assignments across visible class subjects"
+                                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <Select
+                                    label="Status"
+                                    value={statusFilter}
+                                    onChange={(event) => setStatusFilter(event.target.value as AssignmentStatus | '')}
+                                    options={STATUS_OPTIONS}
+                                />
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                                    <Select
+                                        label="Delivery Mode"
+                                        value={deliveryModeFilter}
+                                        onChange={(event) => setDeliveryModeFilter(event.target.value as AssignmentDeliveryMode | '')}
+                                        options={DELIVERY_MODE_OPTIONS}
+                                    />
+                                    <Select
+                                        label="Evaluation"
+                                        value={evaluationTypeFilter}
+                                        onChange={(event) => setEvaluationTypeFilter(event.target.value as AssignmentEvaluationType | '')}
+                                        options={EVALUATION_OPTIONS}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            ) : selectedCohortSubject ? (
+                <div className="space-y-6">
+                    <Card className="border-gray-200 bg-gray-50/70">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                            <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-xl font-semibold text-gray-900">
+                                        {selectedCohortSubject.subject_name}
+                                    </h2>
+                                    <Badge variant="info" size="sm">
+                                        {selectedCohortSubject.cohort_name}
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                    This workspace stays scoped to one class subject. Search and filters apply inside this class only.
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                    {[selectedCohortSubject.curriculum_name, selectedCohortSubject.curriculum_type]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                </p>
+                            </div>
+
+                            <Link href={buildAssignmentsHref(null)} className="w-full lg:w-auto">
+                                <Button variant="secondary" className="w-full lg:w-auto">
+                                    Change class/subject
+                                </Button>
+                            </Link>
+                        </div>
+                    </Card>
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <StatsCard
+                            title="Total Assignments"
+                            value={assignments.length}
+                            icon={ClipboardList}
+                            color="blue"
+                        />
+                        <StatsCard
+                            title="Published"
+                            value={publishedCount}
+                            icon={BookOpen}
+                            color="green"
+                        />
+                        <StatsCard
+                            title="Due Soon"
+                            value={dueSoonCount}
+                            subtitle={`${overdueCount} overdue`}
+                            icon={Clock}
+                            color={overdueCount > 0 ? 'red' : 'yellow'}
+                        />
+                        <StatsCard
+                            title="Review Progress"
+                            value={`${reviewedTotal}/${submissionTotal}`}
+                            subtitle="Reviewed submissions"
+                            icon={CheckCircle2}
+                            color="purple"
+                        />
                     </div>
-                ) : (
-                    <>
-                        <div className="space-y-3 md:hidden">
+
+                    <Card>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Filter className="h-4 w-4" />
+                                Filters
+                            </div>
+
+                            <div className="grid gap-4 lg:grid-cols-4">
+                                <div className="lg:col-span-2">
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Search</label>
+                                    <div className="relative">
+                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <input
+                                            value={search}
+                                            onChange={(event) => setSearch(event.target.value)}
+                                            placeholder="Search assignment title or instructions"
+                                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <Select
+                                    label="Status"
+                                    value={statusFilter}
+                                    onChange={(event) => setStatusFilter(event.target.value as AssignmentStatus | '')}
+                                    options={STATUS_OPTIONS}
+                                />
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                                    <Select
+                                        label="Delivery Mode"
+                                        value={deliveryModeFilter}
+                                        onChange={(event) => setDeliveryModeFilter(event.target.value as AssignmentDeliveryMode | '')}
+                                        options={DELIVERY_MODE_OPTIONS}
+                                    />
+                                    <Select
+                                        label="Evaluation"
+                                        value={evaluationTypeFilter}
+                                        onChange={(event) => setEvaluationTypeFilter(event.target.value as AssignmentEvaluationType | '')}
+                                        options={EVALUATION_OPTIONS}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {assignmentsLoading ? (
+                        <LoadingSpinner fullScreen={false} message="Loading assignments..." />
+                    ) : assignments.length === 0 ? (
+                        <Card>
+                            <div className="py-12 text-center">
+                                <ClipboardList className="mx-auto h-12 w-12 text-gray-300" />
+                                <h2 className="mt-3 text-lg font-semibold text-gray-900">No assignments found</h2>
+                                <p className="mt-2 text-sm text-gray-500">
+                                    {assignmentFiltersActive
+                                        ? 'Adjust the current filters to widen the results.'
+                                        : 'Create the first assignment for this class subject.'}
+                                </p>
+                            </div>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-4">
                             {assignments.map((assignment) => (
-                                <AssignmentSummary
+                                <AssignmentCard
                                     key={assignment.id}
                                     assignment={assignment}
                                     detailHref={buildAssignmentDetailHref(assignment.id)}
@@ -511,114 +634,23 @@ export default function CohortAssignmentsPage() {
                                 />
                             ))}
                         </div>
-
-                        <div className="hidden md:block">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Assignment</TableHead>
-                                        <TableHead>Subject</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Delivery</TableHead>
-                                        <TableHead>Evaluation</TableHead>
-                                        <TableHead>Due</TableHead>
-                                        <TableHead>Progress</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {assignments.map((assignment) => (
-                                        <TableRow key={assignment.id}>
-                                            <TableCell>
-                                                <div>
-                                                    <div className="font-medium text-gray-900">{assignment.title}</div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {assignment.instructions || 'No instructions provided.'}
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="font-medium text-gray-900">{assignment.subject_name}</div>
-                                                <div className="text-xs text-gray-500">
-                                                    Cohort subject {assignment.cohort_subject}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)}>
-                                                    {assignment.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)}>
-                                                    {assignment.delivery_mode}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant={getAssignmentEvaluationBadgeVariant(assignment.evaluation_type)}>
-                                                    {assignment.evaluation_type}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="text-sm text-gray-900">{formatDate(assignment.due_at)}</div>
-                                                <div className="text-xs text-gray-500">
-                                                    {isAssignmentOverdue(assignment)
-                                                        ? 'Overdue'
-                                                        : isAssignmentDueSoon(assignment)
-                                                            ? 'Due soon'
-                                                            : 'On schedule'}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {assignment.delivery_mode === 'GROUP' ? (
-                                                    <>
-                                                        <div className="text-sm text-gray-900">
-                                                            {assignment.group_evaluation_count}/{assignment.group_submission_count} evaluated
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {assignment.group_count > 0
-                                                                ? `${assignment.group_count} groups`
-                                                                : 'Group workflow'}
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <div className="text-sm text-gray-900">
-                                                            {assignment.reviewed_count}/{assignment.submissions_count} reviewed
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {assignment.recipients_count} recipients · {assignment.missing_count} missing
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-wrap gap-2">
-                                                    <Link href={buildAssignmentDetailHref(assignment.id)}>
-                                                        <Button size="sm">View</Button>
-                                                    </Link>
-                                                    {assignment.status === 'DRAFT' ? (
-                                                        <Button
-                                                            type="button"
-                                                            variant="secondary"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                setEditingAssignment(assignment);
-                                                                setCreateOpen(true);
-                                                            }}
-                                                        >
-                                                            Edit
-                                                        </Button>
-                                                    ) : null}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                    )}
+                </div>
+            ) : (
+                <Card>
+                    <div className="space-y-3">
+                        <h2 className="text-lg font-semibold text-gray-900">Class subject not available</h2>
+                        <p className="text-sm text-gray-600">
+                            This class subject is not visible in the current cohort workspace.
+                        </p>
+                        <div>
+                            <Link href={buildAssignmentsHref(null)}>
+                                <Button variant="secondary">Back to subject groups</Button>
+                            </Link>
                         </div>
-                    </>
-                )}
-            </Card>
+                    </div>
+                </Card>
+            )}
 
             <AssignmentCreateModal
                 isOpen={createOpen}
@@ -629,6 +661,7 @@ export default function CohortAssignmentsPage() {
                 cohortId={cohortId}
                 cohortCurriculumId={cohort?.curriculum ?? null}
                 cohortSubjects={visibleCohortSubjects}
+                defaultCohortSubjectId={selectedCohortSubject?.id ?? (visibleCohortSubjects.length === 1 ? visibleCohortSubjects[0].id : null)}
                 assignment={editingAssignment}
                 onSaved={(savedAssignment) => {
                     setResultMessage(
