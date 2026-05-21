@@ -68,7 +68,7 @@ export function CBCNav() {
                 />
             </div>
 
-            <nav className="hidden md:flex gap-1.5 bg-white rounded-xl p-1.5 shadow-sm border border-gray-200">
+            <nav className="theme-card hidden gap-1.5 rounded-xl p-1.5 md:flex">
                 {NAV_ITEMS.map(({ href, label }) => {
                     const active = pathname.startsWith(href);
                     return (
@@ -79,7 +79,7 @@ export function CBCNav() {
                 flex-1 text-center text-sm font-medium rounded-lg py-2.5 transition-colors
                 ${active
                                     ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}
+                                    : 'theme-muted theme-hover-surface'}
               `}
                             aria-current={active ? 'page' : undefined}
                         >
@@ -105,7 +105,7 @@ const teachingSessionNavLinkClass = (active: boolean) => `
     inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors
     ${active
         ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
-        : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700'}
+        : 'theme-border theme-surface theme-text theme-hover-border-strong theme-hover-surface'}
 `;
 
 export function CBCTeachingSessionNav({
@@ -192,16 +192,16 @@ export interface BreadcrumbSegment {
 
 export function CBCBreadcrumb({ segments }: { segments: BreadcrumbSegment[] }) {
     return (
-        <nav className="flex items-center flex-wrap gap-1.5 text-sm text-gray-500">
+        <nav className="flex items-center flex-wrap gap-1.5 text-sm theme-muted">
             {segments.map((seg, i) => (
                 <span key={i} className="flex items-center gap-1.5">
-                    {i > 0 && <span className="text-gray-300">→</span>}
+                    {i > 0 && <span className="theme-subtle">→</span>}
                     {seg.href ? (
                         <Link href={seg.href} className="hover:text-blue-600 transition-colors">
                             {seg.label}
                         </Link>
                     ) : (
-                        <span className="text-gray-900 font-medium">{seg.label}</span>
+                        <span className="font-medium theme-text">{seg.label}</span>
                     )}
                 </span>
             ))}
@@ -268,7 +268,7 @@ export function MasteryDistributionLegend() {
             {MASTERY_ORDER.map(level => (
                 <div key={level} className="flex items-center gap-1.5">
                     <div className={`w-3 h-3 rounded-sm ${MASTERY_CONFIG[level].segment}`} />
-                    <span className="text-xs text-gray-500">{MASTERY_CONFIG[level].label}</span>
+                    <span className="text-xs theme-muted">{MASTERY_CONFIG[level].label}</span>
                 </div>
             ))}
         </div>
@@ -290,7 +290,7 @@ function labelColor(pct: number) {
     if (pct >= 80) return 'text-emerald-600';
     if (pct >= 60) return 'text-blue-600';
     if (pct >= 40) return 'text-amber-600';
-    return 'text-gray-500';
+    return 'theme-subtle';
 }
 
 export function ProgressBar({
@@ -306,7 +306,7 @@ export function ProgressBar({
     const val = Math.min(100, Math.max(0, percentage));
     return (
         <div className="flex items-center gap-3">
-            <div className={`flex-1 bg-gray-200 rounded-full ${h} overflow-hidden`}>
+            <div className={`theme-surface-muted flex-1 overflow-hidden rounded-full ${h}`}>
                 <div
                     className={`${h} rounded-full ${barColor(val)} transition-all duration-500`}
                     style={{ width: `${val}%` }}
@@ -332,9 +332,9 @@ function MasteryDistributionBar({
     distribution: MasteryDistribution;
     total: number;
 }) {
-    if (total === 0) return <div className="w-full h-3 bg-gray-200 rounded-full" />;
+    if (total === 0) return <div className="theme-surface-muted h-3 w-full rounded-full" />;
     return (
-        <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex">
+        <div className="theme-surface-muted flex h-3 w-full overflow-hidden rounded-full">
             {MASTERY_ORDER.map(level => {
                 const count = distribution[level];
                 const pct = (count / total) * 100;
@@ -372,13 +372,13 @@ export function StrandProgressRow({
     masteryDistribution?: MasteryDistribution;
 }) {
     return (
-        <div className="py-4 border-b last:border-0 last:pb-0">
+        <div className="border-b py-4 last:border-0 last:pb-0 theme-border">
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-mono font-semibold text-gray-400 shrink-0">
+                    <span className="shrink-0 text-xs font-mono font-semibold theme-subtle">
                         {strandCode}
                     </span>
-                    <span className="font-medium text-gray-900 truncate">{strandName}</span>
+                    <span className="truncate font-medium theme-text">{strandName}</span>
                 </div>
                 <span className={`text-sm font-bold shrink-0 ml-4 ${labelColor(percentage)}`}>
                     {percentage}%
@@ -391,7 +391,7 @@ export function StrandProgressRow({
                 <ProgressBar percentage={percentage} />
             )}
 
-            <p className="text-xs text-gray-500 mt-1.5">
+            <p className="mt-1.5 text-xs theme-muted">
                 {completedOutcomes} of {totalOutcomes} outcome{totalOutcomes !== 1 ? 's' : ''}
             </p>
         </div>
@@ -469,15 +469,15 @@ export function CBCError({
     const showDiagnostic = process.env.NODE_ENV === 'development' && resolvedDebugContext !== null;
 
     return (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-5 flex items-start gap-4">
-            <div className="p-2 bg-red-100 rounded-lg shrink-0">
+        <div className="theme-danger-surface flex items-start gap-4 rounded-xl p-5">
+            <div className="theme-surface-elevated rounded-lg border p-2 shrink-0 border-red-200">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
             </div>
             <div className="flex-1 min-w-0">
-                <p className="font-semibold text-red-900">{title}</p>
-                <p className="text-sm text-red-700 mt-1">{msg}</p>
+                <p className="font-semibold theme-text">{title}</p>
+                <p className="mt-1 text-sm theme-muted">{msg}</p>
                 {showDiagnostic && (
-                    <div className="mt-3 rounded-lg border border-red-200 bg-white/70 p-3 text-xs text-red-900 space-y-2">
+                    <div className="theme-card-muted mt-3 space-y-2 rounded-lg p-3 text-xs text-red-900">
                         <div>
                             <p className="font-semibold">Request URL</p>
                             <pre className="mt-1 whitespace-pre-wrap break-all font-mono">
@@ -583,7 +583,7 @@ export function CBCLoading({ message = 'Loading…' }: { message?: string }) {
         <div className="py-20 text-center">
             <div className="inline-block h-10 w-10 animate-spin rounded-full border-4
         border-blue-600 border-t-transparent mb-3" />
-            <p className="text-sm text-gray-500">{message}</p>
+            <p className="text-sm theme-muted">{message}</p>
         </div>
     );
 }
@@ -605,12 +605,12 @@ export function CBCEmpty({
 }) {
     return (
         <div className="py-16 text-center">
-            <div className="p-4 bg-gray-50 rounded-full inline-flex mb-4">
-                <Icon className="h-12 w-12 text-gray-400" />
+            <div className="theme-surface-muted mb-4 inline-flex rounded-full p-4">
+                <Icon className="h-12 w-12 theme-subtle" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
+            <h3 className="mb-1 text-lg font-semibold theme-text">{title}</h3>
             {description && (
-                <p className="text-sm text-gray-500 max-w-sm mx-auto mb-4">{description}</p>
+                <p className="mx-auto mb-4 max-w-sm text-sm theme-muted">{description}</p>
             )}
             {action}
         </div>
@@ -738,16 +738,16 @@ export function SubjectGroupPicker({
                             key={selection.cohort_subject_id ?? selection.filter_id}
                             onClick={() => onSelect(selection.filter_id)}
                             className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${isSelected
-                                ? 'border-blue-300 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                ? 'theme-info-surface-strong'
+                                : 'theme-border theme-surface theme-hover-border-strong theme-hover-surface'
                                 }`}
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                    <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>
+                                    <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'theme-text'}`}>
                                         {selection.subject.name}
                                     </p>
-                                    <p className="mt-1 text-sm text-gray-500">
+                                    <p className="mt-1 text-sm theme-muted">
                                         {metaLabel}
                                     </p>
                                 </div>
@@ -770,8 +770,8 @@ export function SubjectGroupPicker({
                 <button
                     onClick={() => onSelect(null)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedSubjectId === null
-                        ? 'bg-blue-50 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50'
+                        ? 'theme-info-surface theme-text font-medium'
+                        : 'theme-muted theme-hover-surface'
                         }`}
                 >
                     All Subjects
@@ -784,19 +784,19 @@ export function SubjectGroupPicker({
                     <div key={groupName}>
                         <button
                             onClick={() => toggleGroup(groupName)}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${hasSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${hasSelected ? 'theme-info-surface' : 'theme-hover-surface'
                                 }`}
                         >
                             <div className="flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-gray-400 shrink-0" />
-                                <span className={`font-medium ${hasSelected ? 'text-blue-700' : 'text-gray-800'}`}>
+                                <BookOpen className="h-4 w-4 theme-subtle shrink-0" />
+                                <span className={`font-medium ${hasSelected ? 'text-blue-700' : 'theme-text'}`}>
                                     {groupName}
                                 </span>
-                                <span className="text-xs text-gray-400">
+                                <span className="text-xs theme-subtle">
                                     {groupSubjects.length} level{groupSubjects.length !== 1 ? 's' : ''}
                                 </span>
                             </div>
-                            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`h-4 w-4 theme-subtle transition-transform ${expanded ? 'rotate-180' : ''}`} />
                         </button>
                         {expanded && (
                             <div className="ml-4 mt-1 space-y-0.5">
@@ -806,8 +806,8 @@ export function SubjectGroupPicker({
                                             key={s.id}
                                             onClick={() => onSelect(s.id)}
                                             className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedSubjectId === s.id
-                                                ? 'bg-blue-100 text-blue-700 font-medium'
-                                                : 'text-gray-600 hover:bg-gray-50'
+                                                ? 'theme-info-surface-strong theme-text font-medium'
+                                                : 'theme-muted theme-hover-surface'
                                                 }`}
                                         >
                                             {s.levelLabel}

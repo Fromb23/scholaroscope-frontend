@@ -47,7 +47,7 @@ export function CBCAuthoringOutcomesPage() {
             key: 'description',
             header: 'Learning Outcome',
             render: row => (
-                <p className="text-sm text-gray-900 line-clamp-2 max-w-md">
+                <p className="max-w-md line-clamp-2 text-sm theme-text">
                     {row.description as string}
                 </p>
             ),
@@ -58,7 +58,7 @@ export function CBCAuthoringOutcomesPage() {
             sortable: true,
             render: row => row.level
                 ? <Badge variant="blue" size="sm">{row.level as string}</Badge>
-                : <span className="text-xs text-gray-400">—</span>,
+                : <span className="text-xs theme-subtle">—</span>,
             headerClassName: 'text-center',
             className: 'text-center',
         },
@@ -68,7 +68,7 @@ export function CBCAuthoringOutcomesPage() {
             sortable: true,
             render: row => (
                 <div className="flex items-center justify-center gap-1.5">
-                    <FileText className="h-4 w-4 text-gray-400" />
+                    <FileText className="h-4 w-4 theme-subtle" />
                     <span className="text-sm font-medium">{row.evidence_count as number}</span>
                 </div>
             ),
@@ -85,7 +85,7 @@ export function CBCAuthoringOutcomesPage() {
                             event.stopPropagation();
                             page.startEdit(row as unknown as LearningOutcome);
                         }}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                        className="rounded-lg p-2 theme-muted transition-colors theme-hover-surface"
                     >
                         <Pencil className="h-4 w-4" />
                     </button>
@@ -95,7 +95,7 @@ export function CBCAuthoringOutcomesPage() {
                             page.setDeleteId(row.id as number);
                         }}
                         disabled={(row.evidence_count as number) > 0}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="rounded-lg p-2 text-red-600 transition-colors theme-hover-danger disabled:cursor-not-allowed disabled:opacity-30"
                         title={(row.evidence_count as number) > 0 ? 'Has evidence records' : 'Delete'}
                     >
                         <Trash2 className="h-4 w-4" />
@@ -133,19 +133,19 @@ export function CBCAuthoringOutcomesPage() {
                 <div className="flex items-center gap-3">
                     <Link
                         href={`/cbc/authoring/strands/${page.subStrand.strand}`}
-                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="rounded-lg p-2 theme-muted transition-colors theme-hover-surface"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Link>
-                    <div className="p-2.5 bg-purple-100 rounded-lg">
+                    <div className="theme-surface-elevated rounded-lg border p-2.5 theme-border">
                         <BookOpen className="h-6 w-6 text-purple-600" />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">{page.subStrand.strand_name} /</span>
+                            <span className="text-xs theme-muted">{page.subStrand.strand_name} /</span>
                             <Badge variant="purple" size="lg" className="font-mono">{page.subStrand.code}</Badge>
                         </div>
-                        <h1 className="text-xl font-bold text-gray-900 mt-0.5">{page.subStrand.name}</h1>
+                        <h1 className="mt-0.5 text-xl font-bold theme-text">{page.subStrand.name}</h1>
                     </div>
                 </div>
                 <Button
@@ -163,26 +163,26 @@ export function CBCAuthoringOutcomesPage() {
             {page.error && <CBCError error={page.error} onRetry={page.refetch} />}
 
             {page.showCreate && (
-                <Card className="border-blue-200 bg-blue-50/50">
+                <Card className="theme-info-surface">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="flex items-center gap-2 font-semibold theme-text">
                             <div className="p-1.5 bg-blue-600 rounded-lg">
                                 <Plus className="h-4 w-4 text-white" />
                             </div>
                             New Learning Outcome
-                            <span className="text-xs text-gray-400 font-normal">
+                            <span className="text-xs font-normal theme-subtle">
                                 — code assigned automatically
                             </span>
                         </h3>
                         <button
                             onClick={() => page.setShowCreate(false)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg"
+                            className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-surface"
                         >
                             <X className="h-5 w-5" />
                         </button>
                     </div>
                     <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="mb-1 block text-sm font-medium theme-text">
                             Description *
                         </label>
                         <textarea
@@ -190,11 +190,11 @@ export function CBCAuthoringOutcomesPage() {
                             value={page.createForm.description ?? ''}
                             onChange={event => page.setCreateForm(previous => ({ ...previous, description: event.target.value }))}
                             rows={3}
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            className="theme-focus-ring theme-input w-full resize-none rounded-lg px-4 py-2 text-sm"
                         />
                     </div>
                     {page.createError && (
-                        <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="theme-danger-surface mt-3 rounded-lg p-3 text-sm">
                             {page.createError}
                         </p>
                     )}
@@ -213,9 +213,9 @@ export function CBCAuthoringOutcomesPage() {
             )}
 
             {page.editId !== null && (
-                <Card className="border-purple-200 bg-purple-50/50">
+                <Card className="theme-surface-elevated">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="flex items-center gap-2 font-semibold theme-text">
                             <div className="p-1.5 bg-purple-600 rounded-lg">
                                 <Pencil className="h-4 w-4 text-white" />
                             </div>
@@ -223,7 +223,7 @@ export function CBCAuthoringOutcomesPage() {
                         </h3>
                         <button
                             onClick={() => page.setEditId(null)}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg"
+                            className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-surface"
                         >
                             <X className="h-5 w-5" />
                         </button>
@@ -236,18 +236,18 @@ export function CBCAuthoringOutcomesPage() {
                         />
                     </div>
                     <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="mb-1 block text-sm font-medium theme-text">
                             Description *
                         </label>
                         <textarea
                             value={page.editForm.description ?? ''}
                             onChange={event => page.setEditForm(previous => ({ ...previous, description: event.target.value }))}
                             rows={3}
-                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                            className="theme-focus-ring theme-input w-full resize-none rounded-lg px-4 py-2 text-sm"
                         />
                     </div>
                     {page.editError && (
-                        <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="theme-danger-surface mt-3 rounded-lg p-3 text-sm">
                             {page.editError}
                         </p>
                     )}
@@ -268,14 +268,14 @@ export function CBCAuthoringOutcomesPage() {
             <Card>
                 <div className="flex items-center justify-between mb-5">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                        <h2 className="flex items-center gap-2 text-xl font-semibold theme-text">
                             <Target className="h-5 w-5 text-blue-600" />
                             Learning Outcomes
                             <Badge variant="blue" size="sm">{page.outcomes.length}</Badge>
                         </h2>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="mt-1 text-sm theme-muted">
                             Codes auto-generated as{' '}
-                            <span className="font-mono text-xs bg-gray-100 px-1 rounded">
+                            <span className="theme-surface-muted rounded px-1 font-mono text-xs theme-text">
                                 {page.subStrand.code}.N
                             </span>
                         </p>
@@ -294,8 +294,8 @@ export function CBCAuthoringOutcomesPage() {
 
             <Modal isOpen={page.deleteId !== null} onClose={() => page.setDeleteId(null)} title="Delete Learning Outcome" size="sm">
                 <div className="space-y-4">
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-800">
+                    <div className="theme-danger-surface rounded-lg p-4">
+                        <p className="text-sm">
                             This will permanently delete this learning outcome.
                         </p>
                     </div>

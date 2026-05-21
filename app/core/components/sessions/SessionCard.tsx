@@ -22,9 +22,9 @@ interface SessionCardProps {
 }
 
 const variantStyles: Record<CardVariant, string> = {
-    ongoing: 'bg-green-50 border-l-4 border-green-600',
-    upcoming: 'bg-gray-50',
-    completed: 'bg-gray-50 opacity-75',
+    ongoing: 'theme-success-surface border-l-4 border-green-600',
+    upcoming: 'theme-card-muted',
+    completed: 'theme-card-muted opacity-80',
 };
 
 export function SessionCard({ session, variant, currentMinutes }: SessionCardProps) {
@@ -43,18 +43,18 @@ export function SessionCard({ session, variant, currentMinutes }: SessionCardPro
         >
             {/* Time block */}
             <div className="text-center min-w-[80px] shrink-0">
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold theme-text">
                     {session.start_time ?? '—'}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs theme-muted">
                     {session.end_time ?? '—'}
                 </p>
             </div>
 
             {/* Session info */}
             <div className="flex-1 px-4 min-w-0">
-                <p className="font-medium text-gray-900 truncate">{session.subject_name}</p>
-                <div className="flex items-center gap-2 mt-1 text-sm text-gray-600 flex-wrap">
+                <p className="truncate font-medium theme-text">{session.subject_name}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm theme-muted">
                     <span>{session.cohort_name}</span>
                     <span>•</span>
                     <span>{session.session_type_display}</span>
@@ -71,7 +71,7 @@ export function SessionCard({ session, variant, currentMinutes }: SessionCardPro
             {/* Actions */}
             <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium theme-text">
                         {session.attendance_count.present}/{session.attendance_count.total}
                     </p>
                     <AttendanceBadge counts={session.attendance_count} />

@@ -125,19 +125,19 @@ export function CbcReferencePagesEditor({
     };
 
     return (
-        <Card className="border-gray-200 bg-gray-50/60">
+        <Card className="theme-card-muted">
             <div className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                        <BookOpen className="h-4 w-4 text-gray-500" />
+                    <div className="flex items-center gap-2 text-sm font-medium theme-text">
+                        <BookOpen className="h-4 w-4 theme-subtle" />
                         References and pages
                     </div>
-                    <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                    <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
                         {completedReferenceCount} attached
                     </span>
                 </div>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm theme-muted">
                     Add only the references you want this lesson plan to use. Each reference stays linked to one selected outcome.
                 </p>
 
@@ -149,7 +149,7 @@ export function CbcReferencePagesEditor({
                 </div>
 
                 {plannedOutcomes.length === 0 ? (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm theme-muted">
                         Choose at least one learning outcome before adding book pages.
                     </p>
                 ) : null}
@@ -157,19 +157,19 @@ export function CbcReferencePagesEditor({
                 {value.map((reference, index) => (
                     <div
                         key={`cbc-reference-${index}`}
-                        className="space-y-4 rounded-lg border border-gray-200 bg-white p-4"
+                        className="theme-card space-y-4 rounded-lg p-4"
                     >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="space-y-1">
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium theme-text">
                                     Reference {index + 1}
                                 </p>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs theme-muted">
                                     Link one page range to one selected outcome.
                                 </p>
                             </div>
                             {reference.outcome_id && outcomeMap.get(reference.outcome_id) ? (
-                                <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                                <span className="theme-info-surface rounded-full px-2.5 py-1 text-xs font-medium">
                                     {outcomeMap.get(reference.outcome_id)?.code}
                                 </span>
                             ) : null}

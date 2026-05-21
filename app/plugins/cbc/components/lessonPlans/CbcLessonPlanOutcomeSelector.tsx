@@ -195,37 +195,37 @@ export function CbcLessonPlanOutcomeSelector({
     };
 
     return (
-        <Card className="border-gray-200 bg-gray-50/60">
+        <Card className="theme-card-muted">
             <div className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                        <BookOpen className="h-4 w-4 text-gray-500" />
+                    <div className="flex items-center gap-2 text-sm font-medium theme-text">
+                        <BookOpen className="h-4 w-4 theme-subtle" />
                         Learning outcomes
                     </div>
-                    <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
+                    <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
                         {value.length} selected
                     </span>
                 </div>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm theme-muted">
                     Select the exact outcomes this lesson should cover. These teacher-selected outcomes constrain any generated draft.
                 </p>
 
-                <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+                <div className="theme-card space-y-3 rounded-lg p-4">
                     <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                            <p className="text-sm font-medium text-gray-900">Selected outcomes</p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm font-medium theme-text">Selected outcomes</p>
+                            <p className="text-sm theme-muted">
                                 Keep the outcomes you want the draft to use. You can remove any selection at any time.
                             </p>
                         </div>
-                        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                        <span className="theme-info-surface rounded-full px-2.5 py-1 text-xs font-medium">
                             {value.length} chosen
                         </span>
                     </div>
 
                     {orderedSelectedOutcomes.length === 0 ? (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm theme-muted">
                             No outcomes selected yet.
                         </p>
                     ) : (
@@ -233,26 +233,26 @@ export function CbcLessonPlanOutcomeSelector({
                             {orderedSelectedOutcomes.map((outcome) => (
                                 <div
                                     key={`selected-outcome-${outcome.outcome_id}`}
-                                    className="rounded-lg border border-blue-200 bg-blue-50/70 p-3"
+                                    className="theme-info-surface-strong rounded-lg p-3"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1 space-y-1">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className="rounded-full border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-700">
+                                                <span className="theme-surface-elevated rounded-full border px-2 py-0.5 text-xs font-medium theme-border theme-text">
                                                     {outcome.code}
                                                 </span>
-                                                <span className="text-xs text-gray-500">
+                                                <span className="text-xs theme-muted">
                                                     {outcome.strand} · {outcome.sub_strand}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-gray-700 line-clamp-2">
+                                            <p className="line-clamp-2 text-sm theme-text">
                                                 {outcome.text}
                                             </p>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => onChange(value.filter((item) => item.outcome_id !== outcome.outcome_id))}
-                                            className="rounded-full p-1 text-gray-400 transition-colors hover:bg-white hover:text-red-600"
+                                            className="rounded-full p-1 theme-subtle transition-colors theme-hover-danger"
                                             aria-label={`Remove ${outcome.code}`}
                                         >
                                             <X className="h-4 w-4" />
@@ -269,27 +269,27 @@ export function CbcLessonPlanOutcomeSelector({
                 ) : null}
 
                 {error ? (
-                    <p className="text-sm text-red-600">{error.message}</p>
+                    <p className="text-sm text-[color:var(--color-danger)]">{error.message}</p>
                 ) : null}
 
                 {!isLoading && !error ? (
                     outcomes.length === 0 ? (
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm theme-muted">
                             CBC learning outcomes are not available for this class subject. Ask an administrator to check the CBC setup.
                         </p>
                     ) : (
-                        <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+                        <div className="theme-card space-y-4 rounded-lg p-4">
                             <div className="space-y-1">
-                                <label className="block text-sm font-medium text-gray-700">
+                                <label className="block text-sm font-medium theme-text">
                                     Search outcomes
                                 </label>
                                 <div className="relative">
-                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 theme-subtle" />
                                     <input
                                         value={search}
                                         onChange={(event) => setSearch(event.target.value)}
                                         placeholder="Search by code, strand, sub-strand, or learning outcome"
-                                        className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="theme-focus-ring theme-input w-full rounded-lg py-2 pl-9 pr-3 text-sm"
                                     />
                                 </div>
                             </div>
@@ -337,50 +337,50 @@ export function CbcLessonPlanOutcomeSelector({
                                     </div>
 
                                     {selectedStrandId === '' ? (
-                                        <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-4 text-sm text-gray-500">
+                                        <p className="theme-card-muted rounded-lg border border-dashed px-4 py-4 text-sm theme-muted">
                                             Start by choosing the strand you want to teach.
                                         </p>
                                     ) : selectedSubStrandId === '' ? (
-                                        <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-4 text-sm text-gray-500">
+                                        <p className="theme-card-muted rounded-lg border border-dashed px-4 py-4 text-sm theme-muted">
                                             Choose the sub-strand to see the matching outcomes.
                                         </p>
                                     ) : (
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between gap-3">
-                                                <h3 className="text-sm font-semibold text-gray-900">
+                                                <h3 className="text-sm font-semibold theme-text">
                                                     Outcomes in this sub-strand
                                                 </h3>
-                                                <span className="text-xs text-gray-500">
+                                                <span className="text-xs theme-muted">
                                                     {visibleOutcomes.length} available
                                                 </span>
                                             </div>
 
-                                            <div className="max-h-[28rem] space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                            <div className="theme-card-muted max-h-[28rem] space-y-2 overflow-y-auto rounded-lg p-3">
                                                 {visibleOutcomes.map((outcome) => (
                                                     <label
                                                         key={outcome.outcome_id}
                                                         className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
                                                             selectedIds.has(outcome.outcome_id)
-                                                                ? 'border-blue-300 bg-blue-50'
-                                                                : 'border-gray-200 bg-white hover:border-gray-300'
+                                                                ? 'theme-info-surface-strong'
+                                                                : 'theme-border theme-surface theme-hover-border-strong'
                                                         }`}
                                                     >
                                                         <input
                                                             type="checkbox"
                                                             checked={selectedIds.has(outcome.outcome_id)}
                                                             onChange={(event) => toggleOutcome(outcome, event.target.checked)}
-                                                            className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                                                            className="theme-checkbox theme-border mt-1 h-4 w-4 rounded"
                                                         />
                                                         <div className="min-w-0 space-y-1 text-sm">
                                                             <div className="flex flex-wrap items-center gap-2">
-                                                                <p className="font-medium text-gray-900">{outcome.code}</p>
+                                                                <p className="font-medium theme-text">{outcome.code}</p>
                                                                 {selectedIds.has(outcome.outcome_id) ? (
-                                                                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                                                                    <span className="theme-surface-elevated rounded-full border px-2 py-0.5 text-[11px] font-medium theme-border theme-text">
                                                                         Selected
                                                                     </span>
                                                                 ) : null}
                                                             </div>
-                                                            <p className="text-gray-700">{outcome.text}</p>
+                                                            <p className="theme-text">{outcome.text}</p>
                                                         </div>
                                                     </label>
                                                 ))}
@@ -389,26 +389,26 @@ export function CbcLessonPlanOutcomeSelector({
                                     )}
                                 </div>
                             ) : searchGroups.length === 0 ? (
-                                <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-4 text-sm text-gray-500">
+                                <p className="theme-card-muted rounded-lg border border-dashed px-4 py-4 text-sm theme-muted">
                                     No outcomes match this search.
                                 </p>
                             ) : (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between gap-3">
-                                        <h3 className="text-sm font-semibold text-gray-900">Search results</h3>
-                                        <span className="text-xs text-gray-500">
+                                        <h3 className="text-sm font-semibold theme-text">Search results</h3>
+                                        <span className="text-xs theme-muted">
                                             {searchGroups.reduce((count, group) => count + group.outcomes.length, 0)} matches
                                         </span>
                                     </div>
 
-                                    <div className="max-h-[32rem] space-y-4 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                    <div className="theme-card-muted max-h-[32rem] space-y-4 overflow-y-auto rounded-lg p-3">
                                         {searchGroups.map((group) => (
                                             <div key={group.key} className="space-y-2">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="text-sm font-medium text-gray-900">
+                                                    <span className="text-sm font-medium theme-text">
                                                         {group.strandName}
                                                     </span>
-                                                    <span className="text-xs text-gray-500">
+                                                    <span className="text-xs theme-muted">
                                                         {group.subStrandName}
                                                     </span>
                                                 </div>
@@ -419,26 +419,26 @@ export function CbcLessonPlanOutcomeSelector({
                                                             key={outcome.outcome_id}
                                                             className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
                                                                 selectedIds.has(outcome.outcome_id)
-                                                                    ? 'border-blue-300 bg-blue-50'
-                                                                    : 'border-gray-200 bg-white hover:border-gray-300'
+                                                                    ? 'theme-info-surface-strong'
+                                                                    : 'theme-border theme-surface theme-hover-border-strong'
                                                             }`}
                                                         >
                                                             <input
                                                                 type="checkbox"
                                                                 checked={selectedIds.has(outcome.outcome_id)}
                                                                 onChange={(event) => toggleOutcome(outcome, event.target.checked)}
-                                                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                                                                className="theme-checkbox theme-border mt-1 h-4 w-4 rounded"
                                                             />
                                                             <div className="min-w-0 space-y-1 text-sm">
                                                                 <div className="flex flex-wrap items-center gap-2">
-                                                                    <p className="font-medium text-gray-900">{outcome.code}</p>
+                                                                    <p className="font-medium theme-text">{outcome.code}</p>
                                                                     {selectedIds.has(outcome.outcome_id) ? (
-                                                                        <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                                                                        <span className="theme-surface-elevated rounded-full border px-2 py-0.5 text-[11px] font-medium theme-border theme-text">
                                                                             Selected
                                                                         </span>
                                                                     ) : null}
                                                                 </div>
-                                                                <p className="text-gray-700">{outcome.text}</p>
+                                                                <p className="theme-text">{outcome.text}</p>
                                                             </div>
                                                         </label>
                                                     ))}
