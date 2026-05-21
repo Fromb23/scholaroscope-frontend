@@ -24,6 +24,14 @@ export type AssignmentEligibleLearnersSource =
     | 'all_subject_learners'
     | 'present_in_lesson';
 
+export interface AssignmentCurriculumContext {
+    source_session_id?: number | null;
+    participating_cohort_subject_ids?: number[];
+    participating_cohort_ids?: number[];
+    participating_cohort_count?: number | null;
+    [key: string]: unknown;
+}
+
 export interface AssignmentRecipientCreationResult {
     created: number;
     existing: number;
@@ -79,7 +87,7 @@ export interface Assignment {
     created_from_session_date: string | null;
     lesson_plan: number | null;
     lesson_plan_title: string | null;
-    curriculum_context: Record<string, unknown>;
+    curriculum_context: AssignmentCurriculumContext;
     created_by: number | null;
     published_at: string | null;
     closed_at: string | null;
@@ -110,7 +118,7 @@ export interface AssignmentCreatePayload {
     rubric_scale?: number | null;
     total_marks?: number | null;
     created_from_session?: number | null;
-    curriculum_context?: Record<string, unknown>;
+    curriculum_context?: AssignmentCurriculumContext;
     outcomes?: AssignmentOutcomeCreatePayload[];
     recipient_mode?: AssignmentRecipientMode;
     student_ids?: number[];
@@ -129,7 +137,7 @@ export interface AssignmentUpdatePayload {
     rubric_scale?: number | null;
     total_marks?: number | null;
     created_from_session?: number | null;
-    curriculum_context?: Record<string, unknown>;
+    curriculum_context?: AssignmentCurriculumContext;
     outcomes?: AssignmentOutcomeCreatePayload[];
 }
 

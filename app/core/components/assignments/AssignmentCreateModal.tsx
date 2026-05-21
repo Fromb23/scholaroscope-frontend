@@ -14,6 +14,10 @@ import {
     toAssignmentRecipientMode,
     type TeacherAssignmentAudienceChoice,
 } from '@/app/core/components/assignments/assignmentAudienceOptions';
+import {
+    getAssignmentParticipatingCohortCount,
+    hasSessionParticipationMetadata,
+} from '@/app/core/components/assignments/assignmentUtils';
 import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { useCreateAssignment, useUpdateAssignment } from '@/app/core/hooks/useAssignments';
 import { useRubricScales } from '@/app/core/hooks/useAssessments';
@@ -115,6 +119,11 @@ export function AssignmentCreateModal({
         () => getAssignmentAudienceOptions(hasLinkedLesson),
         [hasLinkedLesson]
     );
+    const participatingCohortCount = useMemo(
+        () => getAssignmentParticipatingCohortCount(assignment?.curriculum_context),
+        [assignment?.curriculum_context]
+    );
+    const showSessionScopeNote = hasLinkedLesson && hasSessionParticipationMetadata(assignment?.curriculum_context);
 
     const sortedSubjects = useMemo(() => (
         [...cohortSubjects].sort((left, right) => left.subject_name.localeCompare(right.subject_name))
@@ -291,8 +300,8 @@ export function AssignmentCreateModal({
             evaluation_type: evaluationType,
             total_marks: evaluationType === 'NUMERIC' && totalMarks ? Number(totalMarks) : null,
             rubric_scale: evaluationType === 'RUBRIC' && rubricScaleId ? Number(rubricScaleId) : null,
-            curriculum_context: {},
             outcomes: normalizedOutcomes,
+            ...(assignment?.curriculum_context ? { curriculum_context: assignment.curriculum_context } : {}),
         };
 
         try {
@@ -448,6 +457,17 @@ export function AssignmentCreateModal({
                     </div>
                 ) : null}
 
+                {showSessionScopeNote ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                        This assignment uses the source session&apos;s active participation scope.
+                        {participatingCohortCount > 1 ? (
+                            <>
+                                {' '}It can include learners from all active classes linked to that session.
+                            </>
+                        ) : null}
+                    </div>
+                ) : null}
+
                 {deliveryMode === 'GROUP' ? (
                     <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                         Group assignments create a shared assignment workspace. Create or generate learner groups after saving the assignment.
@@ -497,7 +517,9 @@ export function AssignmentCreateModal({
                                     {audienceChoice === 'selected_learners' ? (
                                         <div className="space-y-3">
                                             <p className="text-sm text-gray-500">
-                                                Choose learners from this cohort. Only learners in the selected subject group can receive the assignment.
+                                                {hasLinkedLesson
+                                                    ? 'Choose learners from the assignment scope. The backend still decides which learners are eligible for this session-linked assignment.'
+                                                    : 'Choose learners from this cohort. Only learners in the selected subject group can receive the assignment.'}
                                             </p>
 
                                             <Input

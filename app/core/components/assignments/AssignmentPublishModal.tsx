@@ -13,6 +13,10 @@ import {
     toAssignmentRecipientMode,
     type TeacherPublishAudienceChoice,
 } from '@/app/core/components/assignments/assignmentAudienceOptions';
+import {
+    getAssignmentParticipatingCohortCount,
+    hasSessionParticipationMetadata,
+} from '@/app/core/components/assignments/assignmentUtils';
 import { useAssignmentEligibleLearners, usePublishAssignment } from '@/app/core/hooks/useAssignments';
 import type { Assignment } from '@/app/core/types/assignments';
 
@@ -37,6 +41,11 @@ export function AssignmentPublishModal({
         () => getPublishAudienceOptions(hasLinkedLesson, hasExistingRecipients),
         [hasExistingRecipients, hasLinkedLesson]
     );
+    const participatingCohortCount = useMemo(
+        () => getAssignmentParticipatingCohortCount(assignment.curriculum_context),
+        [assignment.curriculum_context]
+    );
+    const showSessionScopeNote = hasLinkedLesson && hasSessionParticipationMetadata(assignment.curriculum_context);
     const [audienceChoice, setAudienceChoice] = useState<TeacherPublishAudienceChoice>(
         hasExistingRecipients
             ? 'keep_current'
@@ -142,8 +151,21 @@ export function AssignmentPublishModal({
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
                     {assignment.delivery_mode === 'GROUP'
                         ? 'This is a group assignment. Publishing opens the workspace, then you add or generate learner groups from the Groups tab.'
-                        : 'Publishing this draft sends it to the learners you choose below.'}
+                        : hasLinkedLesson
+                            ? 'Publishing this draft uses the source session scope and sends it to the learners you choose below.'
+                            : 'Publishing this draft sends it to the learners you choose below.'}
                 </div>
+
+                {showSessionScopeNote ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                        This assignment uses the source session&apos;s active participation scope.
+                        {participatingCohortCount > 1 ? (
+                            <>
+                                {' '}It can include learners from all active classes linked to that session.
+                            </>
+                        ) : null}
+                    </div>
+                ) : null}
 
                 <div className="space-y-2">
                     <h3 className="text-sm font-semibold text-gray-900">{assignment.title}</h3>
@@ -174,6 +196,12 @@ export function AssignmentPublishModal({
 
                 {assignment.delivery_mode === 'INDIVIDUAL' && audienceChoice === 'selected_learners' ? (
                     <div className="space-y-3">
+                        {hasLinkedLesson ? (
+                            <p className="text-sm text-gray-500">
+                                Choose learners from the eligible session scope. The backend remains the authority for who can be published.
+                            </p>
+                        ) : null}
+
                         <Input
                             label="Find Learners"
                             value={learnerSearch}

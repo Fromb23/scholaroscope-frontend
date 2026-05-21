@@ -30,11 +30,13 @@ import { AssignmentReviewForm } from '@/app/core/components/assignments/Assignme
 import { AssignmentGroupSubmissionsPanel } from '@/app/core/components/assignments/AssignmentGroupSubmissionsPanel';
 import {
     getAssignmentDeliveryBadgeVariant,
+    getAssignmentParticipatingCohortCount,
     formatDateTime,
     getAssignmentEvaluationBadgeVariant,
     getAssignmentStatusBadgeVariant,
     getRecipientStatusBadgeVariant,
     getSubmissionStatusBadgeVariant,
+    hasSessionParticipationMetadata,
     hasCBCOutcome,
 } from '@/app/core/components/assignments/assignmentUtils';
 import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
@@ -177,6 +179,14 @@ export default function CohortAssignmentDetailPage() {
         || activeRole === 'INSTRUCTOR'
     );
     const isGroupAssignment = assignment?.delivery_mode === 'GROUP';
+    const participatingCohortCount = useMemo(
+        () => getAssignmentParticipatingCohortCount(assignment?.curriculum_context),
+        [assignment?.curriculum_context]
+    );
+    const showSessionScopeNote = Boolean(
+        assignment?.created_from_session != null
+        && hasSessionParticipationMetadata(assignment?.curriculum_context)
+    );
     const detailTabs = useMemo<Array<{ value: DetailTab; label: string }>>(() => (
         isGroupAssignment
             ? [
@@ -454,6 +464,22 @@ export default function CohortAssignmentDetailPage() {
                 )}
             </div>
 
+            {showSessionScopeNote ? (
+                <Card className="border-blue-200 bg-blue-50/70">
+                    <div className="space-y-1">
+                        <h2 className="text-base font-semibold text-blue-900">Session-based learner scope</h2>
+                        <p className="text-sm text-blue-800">
+                            This assignment uses the source session&apos;s active participation scope.
+                            {participatingCohortCount > 1 ? (
+                                <>
+                                    {' '}It can include learners from all active classes linked to the source session.
+                                </>
+                            ) : null}
+                        </p>
+                    </div>
+                </Card>
+            ) : null}
+
             <Card>
                 <div className="flex flex-wrap gap-2">
                     {detailTabs.map((tab) => (
@@ -549,6 +575,16 @@ export default function CohortAssignmentDetailPage() {
                                     </div>
                                 </div>
                             ) : null}
+                            {showSessionScopeNote ? (
+                                <div className="space-y-1">
+                                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Participation Scope</div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                        {participatingCohortCount > 0
+                                            ? `${participatingCohortCount} active class${participatingCohortCount === 1 ? '' : 'es'}`
+                                            : 'Source session scope'}
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     </Card>
 
@@ -611,7 +647,9 @@ export default function CohortAssignmentDetailPage() {
                                     <p className="text-sm text-gray-500">
                                         {assignment.delivery_mode === 'GROUP'
                                             ? 'Publish this assignment workspace now, then create groups and add members from the Groups tab.'
-                                            : 'Publish this assignment to active cohort learners or an explicit learner list without leaving cohort context.'}
+                                            : assignment.created_from_session != null
+                                                ? 'Publish this assignment to the active source-session scope or an explicit learner list without leaving cohort context.'
+                                                : 'Publish this assignment to active cohort learners or an explicit learner list without leaving cohort context.'}
                                     </p>
                                 </div>
                                 <Button type="button" onClick={() => setPublishOpen(true)}>

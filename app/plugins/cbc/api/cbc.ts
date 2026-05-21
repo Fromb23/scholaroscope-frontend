@@ -48,6 +48,7 @@ import {
   OutcomeConfidence,
   MyCBCTeachingLoad,
   CBCCatalog,
+  SessionLearner,
   CbcAssessmentReportResult,
   CbcAssessmentReportResultFilters,
 } from '@/app/plugins/cbc/types/cbc';
@@ -464,7 +465,7 @@ export const teachingAPI = {
   },
 
   getSessionLearners: async (sessionId: number) => {
-    const response = await apiClient.get(`/cbc/teaching-sessions/${sessionId}/learners/`);
+    const response = await apiClient.get<SessionLearner[]>(`/sessions/${sessionId}/learners/`);
     return response.data;
   },
 

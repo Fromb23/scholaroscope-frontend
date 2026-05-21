@@ -29,6 +29,10 @@ import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable'
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
+import {
+    getAssignmentParticipatingCohortCount,
+    hasSessionParticipationMetadata,
+} from '@/app/core/components/assignments/assignmentUtils';
 import { getCurriculumTypeLabel } from '@/app/core/lib/curriculumBridge';
 import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
 import type { Assignment } from '@/app/core/types/assignments';
@@ -166,7 +170,7 @@ export function SessionDetailPage() {
         createAssignmentFromLesson,
     } = useSessionDetail(sessionId, searchQuery);
 
-    const { activeCohorts, historicalCohorts } = useSessionCohorts(sessionId);
+    const { activeCohorts } = useSessionCohorts(sessionId);
 
     const isHistorical = session ? !session.is_current_year : false;
     const sessionStatus = session?.status ?? 'SCHEDULED';
@@ -180,10 +184,18 @@ export function SessionDetailPage() {
     const canEditAttendance = isInProgress && !isHistorical;
     const teachingWorkflow = getSessionTeachingWorkflow(session);
     const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
-    const isMerged = useMemo(
-        () => (activeCohorts?.length ?? 0) + (historicalCohorts?.length ?? 0) > 1,
-        [activeCohorts, historicalCohorts]
-    );
+    const activeParticipationCount = useMemo(() => {
+        if (!session) {
+            return 0;
+        }
+
+        const activeClassIds = new Set<number>([session.cohort_id]);
+        activeCohorts.forEach((cohort) => {
+            activeClassIds.add(cohort.cohort);
+        });
+        return activeClassIds.size;
+    }, [activeCohorts, session]);
+    const isMerged = activeParticipationCount > 1;
 
     const attendanceStats = useMemo(
         () => calcAttendanceStats(attendanceRecords),
@@ -212,6 +224,14 @@ export function SessionDetailPage() {
         isCompleted &&
         hasLessonPlan &&
         hasConfirmedTaughtOutcomes
+    );
+    const preparedAssignmentParticipatingCohortCount = useMemo(
+        () => getAssignmentParticipatingCohortCount(preparedAssignment?.curriculum_context),
+        [preparedAssignment?.curriculum_context]
+    );
+    const showPreparedAssignmentScopeNote = Boolean(
+        preparedAssignment
+        && hasSessionParticipationMetadata(preparedAssignment.curriculum_context)
     );
     const lessonDateLabel = formatSessionDate(session?.session_date);
     const lessonTimeLabel = [
@@ -563,6 +583,16 @@ export function SessionDetailPage() {
                     >
                         Open assignment
                     </Link>
+                    {showPreparedAssignmentScopeNote ? (
+                        <p className="mt-2">
+                            This assignment uses the source session&apos;s active participation scope.
+                            {preparedAssignmentParticipatingCohortCount > 1 ? (
+                                <>
+                                    {' '}It can include learners from all active classes linked to this lesson.
+                                </>
+                            ) : null}
+                        </p>
+                    ) : null}
                 </div>
             ) : null}
 
@@ -827,7 +857,12 @@ export function SessionDetailPage() {
             <ParticipatingCohorts
                 sessionId={sessionId}
                 isHistorical={isHistorical}
-                canManageLinks={!isCompleted}
+                canManageLinks={!isHistorical}
+                primaryCohort={{
+                    id: session.cohort_id,
+                    name: session.cohort_name,
+                    level: session.cohort_level,
+                }}
             />
 
             {!isScheduled ? (

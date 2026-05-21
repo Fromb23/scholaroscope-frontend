@@ -128,14 +128,9 @@ export function CbcReferencePagesEditor({
         <Card className="border-gray-200 bg-gray-50/60">
             <div className="space-y-5">
                 <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-1">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Step 3
-                        </p>
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                            <BookOpen className="h-4 w-4 text-gray-500" />
-                            Attach references and pages
-                        </div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                        <BookOpen className="h-4 w-4 text-gray-500" />
+                        References and pages
                     </div>
                     <span className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600">
                         {completedReferenceCount} attached
@@ -149,7 +144,7 @@ export function CbcReferencePagesEditor({
                 <div className="flex justify-end">
                     <Button type="button" variant="ghost" size="sm" onClick={addReference}>
                         <Plus className="mr-1.5 h-4 w-4" />
-                        Add reference
+                        Add another reference
                     </Button>
                 </div>
 

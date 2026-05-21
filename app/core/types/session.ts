@@ -203,8 +203,13 @@ export interface SessionCohort {
   id: number;
   session: number;
   cohort: number;
+  cohort_subject_id?: number | null;
   cohort_name: string;
   cohort_level: string;
+  learner_count?: number | null;
+  is_primary?: boolean;
+  linked_at?: string | null;
+  unlinked_at?: string | null;
   created_at: string;
 }
 
@@ -235,7 +240,10 @@ export interface AvailableSessionCohortSubjectsResponse {
 export interface SessionCohortsResponse {
   session_id: number;
   cohorts: SessionCohort[];
+  active_cohorts?: SessionCohort[];
+  historical_cohorts?: SessionCohort[];
   total_learners: number;
+  total_participating_learners?: number;
 }
 
 export interface SessionWithCohorts {
@@ -250,6 +258,7 @@ export interface SessionWithCohorts {
   venue: string;
   linked_cohorts: SessionCohort[];
   total_learners: number;
+  total_participating_learners?: number;
 }
 
 export interface PaginationState {

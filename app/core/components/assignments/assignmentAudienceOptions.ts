@@ -60,16 +60,18 @@ export function getAssignmentAudienceOptions(
     return [
         {
             value: 'present_in_lesson',
-            label: 'Learners who attended this lesson',
+            label: 'Present in source session',
             helper: hasLinkedLesson
-                ? 'Uses attendance from the linked lesson. Present and late learners will receive the assignment.'
+                ? 'Uses attendance from the source session. Present and late learners across the active participating classes stay in scope.'
                 : LESSON_LINK_REQUIRED_HELPER,
             disabled: !hasLinkedLesson,
         },
         {
             value: 'all_subject_learners',
-            label: 'All learners taking this subject',
-            helper: 'Everyone actively enrolled in this subject group will receive it.',
+            label: 'All active subject learners',
+            helper: hasLinkedLesson
+                ? 'All active learners in this assignment scope can receive it, including classes linked to the source session.'
+                : 'Everyone actively enrolled in this subject group will receive it.',
         },
         {
             value: 'selected_learners',
@@ -109,16 +111,18 @@ export function getGroupingAudienceOptions(
     return [
         {
             value: 'present_in_lesson',
-            label: 'Learners who attended the linked lesson',
+            label: 'Present in source session',
             helper: hasLinkedLesson
-                ? 'Uses attendance from the linked lesson. Present and late learners will be grouped.'
+                ? 'Uses attendance from the source session. Present and late learners across the active participating classes will be grouped.'
                 : LESSON_LINK_REQUIRED_HELPER,
             disabled: !hasLinkedLesson,
         },
         {
             value: 'all_subject_learners',
-            label: 'All learners taking this subject',
-            helper: 'Use everyone actively enrolled in this subject group.',
+            label: 'All active subject learners',
+            helper: hasLinkedLesson
+                ? 'Use all active learners in this assignment scope, including classes linked to the source session.'
+                : 'Use everyone actively enrolled in this subject group.',
         },
         {
             value: 'selected_learners',

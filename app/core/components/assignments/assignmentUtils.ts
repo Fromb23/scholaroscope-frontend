@@ -1,5 +1,6 @@
 import type {
     Assignment,
+    AssignmentCurriculumContext,
     AssignmentDeliveryMode,
     AssignmentEvaluationType,
     AssignmentRecipientStatus,
@@ -132,4 +133,41 @@ export function isAssignmentDueSoon(assignment: Assignment, now = new Date()): b
 
 export function hasCBCOutcome(assignment: Assignment): boolean {
     return assignment.outcomes.some((outcome) => outcome.plugin === 'cbc');
+}
+
+export function getAssignmentParticipatingCohortCount(
+    context: AssignmentCurriculumContext | null | undefined
+): number {
+    if (typeof context?.participating_cohort_count === 'number' && context.participating_cohort_count > 0) {
+        return context.participating_cohort_count;
+    }
+
+    if (Array.isArray(context?.participating_cohort_ids) && context.participating_cohort_ids.length > 0) {
+        return context.participating_cohort_ids.length;
+    }
+
+    if (
+        Array.isArray(context?.participating_cohort_subject_ids)
+        && context.participating_cohort_subject_ids.length > 0
+    ) {
+        return context.participating_cohort_subject_ids.length;
+    }
+
+    return 0;
+}
+
+export function hasSessionParticipationMetadata(
+    context: AssignmentCurriculumContext | null | undefined
+): boolean {
+    return (
+        typeof context?.source_session_id === 'number'
+        || getAssignmentParticipatingCohortCount(context) > 0
+    );
+}
+
+export function usesExpandedSessionScope(assignment: Pick<Assignment, 'created_from_session' | 'curriculum_context'>): boolean {
+    return (
+        assignment.created_from_session != null
+        && getAssignmentParticipatingCohortCount(assignment.curriculum_context) > 1
+    );
 }

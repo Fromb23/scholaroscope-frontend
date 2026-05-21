@@ -66,6 +66,18 @@ function firstFiniteNumber(...values: Array<number | null | undefined>): number 
   return null;
 }
 
+function mergeUniqueSessionCohorts(...collections: SessionCohort[][]): SessionCohort[] {
+  const cohorts = new Map<number, SessionCohort>();
+
+  collections.flat().forEach((cohort) => {
+    if (!cohorts.has(cohort.id)) {
+      cohorts.set(cohort.id, cohort);
+    }
+  });
+
+  return Array.from(cohorts.values());
+}
+
 function normalizeTeachingSource(source?: string | null, curriculumType?: string | null) {
   if (curriculumType === 'CBE') {
     return 'cbc';
@@ -319,8 +331,7 @@ export const useSessionDetail = (
 
       const [sessionData, attendanceData] = await Promise.all([
         sessionAPI.getById(sessionId),
-        attendanceAPI.getAll({
-          session: sessionId,
+        sessionAPI.getAttendanceRecords(sessionId, {
           page_size: 1000,
           ...(searchQuery ? { search: searchQuery } : {}),
         }),
@@ -640,10 +651,17 @@ export const useSessionCohorts = (sessionId: number | null) => {
     try {
       setLoading(true);
       const data = await sessionCohortAPI.getLinkedCohorts(sessionId);
-      setLinkedCohorts(data.cohorts);
-      setTotalLearners(data.total_learners);
-      setActiveCohorts(data.cohorts.filter(c => c.is_active !== false));
-      setHistoricalCohorts(data.cohorts.filter(c => c.is_active === false));
+      const fallbackCohorts = data.cohorts ?? [];
+      const activeItems = data.active_cohorts ?? fallbackCohorts.filter((cohort) => cohort.is_active !== false);
+      const historicalItems = data.historical_cohorts ?? fallbackCohorts.filter((cohort) => cohort.is_active === false);
+      const allItems = fallbackCohorts.length > 0
+        ? fallbackCohorts
+        : mergeUniqueSessionCohorts(activeItems, historicalItems);
+
+      setLinkedCohorts(allItems);
+      setTotalLearners(data.total_participating_learners ?? data.total_learners ?? 0);
+      setActiveCohorts(activeItems);
+      setHistoricalCohorts(historicalItems);
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch linked cohorts'));
