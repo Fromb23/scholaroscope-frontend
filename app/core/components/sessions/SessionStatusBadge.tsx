@@ -7,13 +7,19 @@
 // Also renders an attendance badge based on attendance counts.
 // ============================================================================
 
-import { CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import type { Session } from '@/app/core/types/session';
 
-type SessionStatus = 'upcoming' | 'ongoing' | 'completed';
+type SessionStatus = 'upcoming' | 'ongoing' | 'completed' | 'missed' | 'needs_completion';
 
 function getSessionStatus(session: Session, currentMinutes: number): SessionStatus {
+    if (session.schedule_state === 'SCHEDULED_OVERDUE') return 'missed';
+    if (session.schedule_state === 'IN_PROGRESS_OVERDUE') return 'needs_completion';
+    if (session.status === 'COMPLETED') return 'completed';
+    if (session.status === 'IN_PROGRESS') return 'ongoing';
+    if (session.status === 'SCHEDULED') return 'upcoming';
+
     if (!session.start_time || !session.end_time) return 'upcoming';
 
     const [startH, startM] = session.start_time.split(':').map(Number);
@@ -35,9 +41,15 @@ export function SessionStatusBadge({ session, currentMinutes }: SessionStatusBad
     const status = getSessionStatus(session, currentMinutes);
 
     const config = {
-        upcoming: { label: 'Upcoming', variant: 'info' as const, Icon: Clock },
-        ongoing: { label: 'Ongoing', variant: 'success' as const, Icon: CheckCircle },
+        upcoming: {
+            label: session.schedule_state === 'SCHEDULED_READY' ? 'Ready to start' : 'Scheduled',
+            variant: session.schedule_state === 'SCHEDULED_READY' ? 'info' as const : 'default' as const,
+            Icon: Clock,
+        },
+        ongoing: { label: 'In progress', variant: 'success' as const, Icon: CheckCircle },
         completed: { label: 'Completed', variant: 'default' as const, Icon: CheckCircle },
+        missed: { label: 'Missed / overdue', variant: 'warning' as const, Icon: AlertTriangle },
+        needs_completion: { label: 'Needs completion', variant: 'danger' as const, Icon: AlertTriangle },
     }[status];
 
     return <Badge variant={config.variant}>{config.label}</Badge>;

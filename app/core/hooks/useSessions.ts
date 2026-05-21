@@ -27,6 +27,7 @@ import {
   SessionCohort,
   SessionFormData,
   PaginationState,
+  RescheduleSessionPayload,
   StudentAttendanceHistory,
   CohortAttendanceSummary,
   CohortSubjectOption,
@@ -387,6 +388,15 @@ export const useSessionDetail = (
     await fetchSession();
   };
 
+  const rescheduleSession = async (
+    data: RescheduleSessionPayload,
+  ): Promise<void> => {
+    if (!sessionId) return;
+    const updated = await sessionAPI.reschedule(sessionId, data);
+    setSession(updated);
+    await fetchSession();
+  };
+
   const confirmTaughtOutcomes = async (
     data: ConfirmTaughtOutcomesPayload,
   ): Promise<void> => {
@@ -411,6 +421,7 @@ export const useSessionDetail = (
     markAttendance,
     reseedAttendance,
     completeSession,
+    rescheduleSession,
     startSession,
     confirmTaughtOutcomes,
     createAssignmentFromLesson,

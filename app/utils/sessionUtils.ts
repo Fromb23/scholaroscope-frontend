@@ -5,6 +5,8 @@
 // ============================================================================
 
 interface SessionLike {
+    status?: string | null;
+    schedule_state?: string | null;
     start_time: string | null;
     end_time: string | null;
     attendance_count: {
@@ -20,6 +22,10 @@ interface AttendanceRecordLike {
 export type SessionStatus = 'upcoming' | 'ongoing' | 'completed';
 
 export function getSessionStatus(session: SessionLike, currentMinutes: number): SessionStatus {
+    if (session.status === 'COMPLETED') return 'completed';
+    if (session.status === 'IN_PROGRESS') return 'ongoing';
+    if (session.status === 'SCHEDULED') return 'upcoming';
+
     if (!session.start_time || !session.end_time) return 'upcoming';
 
     const [startH, startM] = session.start_time.split(':').map(Number);

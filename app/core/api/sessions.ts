@@ -15,6 +15,7 @@ import {
   BulkAttendanceData,
   ConfirmTaughtOutcomesPayload,
   LinkCohortRequest,
+  RescheduleSessionPayload,
   SessionAssignmentDraftResponse,
   SessionCohortsResponse,
   SessionCohort,
@@ -179,6 +180,13 @@ export const sessionAPI = {
   },
   complete: async (id: number): Promise<SessionDetail> => {
     const res = await apiClient.post<SessionDetail>(`/sessions/${id}/complete/`);
+    return res.data;
+  },
+  reschedule: async (
+    id: number,
+    data: RescheduleSessionPayload,
+  ): Promise<SessionDetail> => {
+    const res = await apiClient.post<SessionDetail>(`/sessions/${id}/reschedule/`, data);
     return res.data;
   },
   confirmTaughtOutcomes: async (

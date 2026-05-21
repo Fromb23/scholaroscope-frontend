@@ -83,6 +83,18 @@ function getSessionInstructorLabel(session: Session) {
         || 'Unknown instructor';
 }
 
+function SessionLifecycleHint({ session }: { session: Session }) {
+    if (session.schedule_state === 'SCHEDULED_OVERDUE') {
+        return <Badge variant="orange" size="sm">Missed / overdue</Badge>;
+    }
+
+    if (session.schedule_state === 'IN_PROGRESS_OVERDUE') {
+        return <Badge variant="red" size="sm">Needs completion</Badge>;
+    }
+
+    return null;
+}
+
 function SessionInstructor({
     session,
     className = '',
@@ -169,7 +181,10 @@ function CohortSessionsTable({
                                         />
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="blue">{session.session_type_display}</Badge>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="blue">{session.session_type_display}</Badge>
+                                            <SessionLifecycleHint session={session} />
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-1 text-sm text-gray-600 whitespace-nowrap">
@@ -231,6 +246,7 @@ function CohortSessionsCards({
                                         {session.title || session.subject_name}
                                     </h2>
                                     <Badge variant="blue" size="sm">{session.session_type_display}</Badge>
+                                    <SessionLifecycleHint session={session} />
                                 </div>
                                 <p className="text-xs text-gray-500">
                                     {session.subject_name}
@@ -406,6 +422,7 @@ function SessionWorkspaceView() {
                                                         {session.linked_cohorts.length}
                                                     </Badge>
                                                 ) : null}
+                                                <SessionLifecycleHint session={session} />
                                             </div>
                                             <div className="text-xs text-gray-500 truncate">
                                                 {isMerged
@@ -598,7 +615,10 @@ function SessionWorkspaceView() {
                                                                     )}
                                                                 </TableCell>
                                                                 <TableCell>
-                                                                    <Badge variant="blue">{session.session_type_display}</Badge>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Badge variant="blue">{session.session_type_display}</Badge>
+                                                                        <SessionLifecycleHint session={session} />
+                                                                    </div>
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     <div className="flex items-center gap-1 text-sm text-gray-600 whitespace-nowrap">

@@ -27,6 +27,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AttendanceStatsStrip } from '@/app/core/components/sessions/AttendanceStats';
 import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable';
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
+import { RescheduleLessonModal } from '@/app/core/components/sessions/RescheduleLessonModal';
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
 import {
@@ -35,6 +36,7 @@ import {
 import { getCurriculumTypeLabel } from '@/app/core/lib/curriculumBridge';
 import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
 import type { Assignment } from '@/app/core/types/assignments';
+import type { RescheduleSessionPayload } from '@/app/core/types/session';
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
@@ -154,6 +156,7 @@ export function SessionDetailPage() {
     const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
     const [creatingAssignment, setCreatingAssignment] = useState(false);
+    const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [taughtSelections, setTaughtSelections] = useState<Record<number, TaughtStatus | ''>>({});
     const {
@@ -165,6 +168,7 @@ export function SessionDetailPage() {
         refetch,
         startSession,
         completeSession,
+        rescheduleSession,
         confirmTaughtOutcomes,
         createAssignmentFromLesson,
     } = useSessionDetail(sessionId, searchQuery);
@@ -180,6 +184,9 @@ export function SessionDetailPage() {
     const isScheduledLocked = scheduleState === 'SCHEDULED_LOCKED';
     const isScheduledReady = scheduleState === 'SCHEDULED_READY';
     const isScheduledOverdue = scheduleState === 'SCHEDULED_OVERDUE';
+    const isInProgressOverdue = scheduleState === 'IN_PROGRESS_OVERDUE';
+    const needsCompletion = Boolean(session?.needs_completion || isInProgressOverdue);
+    const canReschedule = Boolean(session?.can_reschedule && !isHistorical);
     const canEditAttendance = isInProgress && !isHistorical;
     const teachingWorkflow = getSessionTeachingWorkflow(session);
     const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
@@ -289,6 +296,12 @@ export function SessionDetailPage() {
         isInProgress,
         isScheduled,
     ]);
+    const showAttendanceSection = currentWorkflowStep === 'attendance' || isCompleted || needsCompletion;
+    const showTaughtOutcomesSection = hasLessonPlan && (
+        currentWorkflowStep === 'confirm_taught'
+        || isCompleted
+        || needsCompletion
+    );
 
     useEffect(() => {
         if (!session) {
@@ -357,7 +370,11 @@ export function SessionDetailPage() {
             title: 'Complete lesson',
             icon: CheckCircle2,
             complete: isCompleted,
-            description: isCompleted ? 'Lesson completed.' : 'Finish after class records are updated.',
+            description: isCompleted
+                ? 'Lesson completed.'
+                : needsCompletion
+                    ? 'Scheduled end passed. Review the lesson and complete it explicitly.'
+                    : 'Finish after class records are updated.',
         },
     ]), [
         confirmedTaughtOutcomes.length,
@@ -367,6 +384,7 @@ export function SessionDetailPage() {
         isScheduled,
         isScheduledOverdue,
         isScheduledReady,
+        needsCompletion,
         attendanceStats.total,
         attendanceStats.unmarked,
     ]);
@@ -397,6 +415,19 @@ export function SessionDetailPage() {
             setWorkflowSuccess('Lesson completed.');
         } catch (error) {
             setWorkflowError(error instanceof Error ? error.message : 'We could not complete this lesson.');
+        }
+    };
+
+    const handleRescheduleLesson = async (
+        payload: RescheduleSessionPayload,
+    ) => {
+        try {
+            setWorkflowError(null);
+            setWorkflowSuccess(null);
+            await rescheduleSession(payload);
+            setWorkflowSuccess('Lesson rescheduled.');
+        } catch (error) {
+            throw error;
         }
     };
 
@@ -495,7 +526,8 @@ export function SessionDetailPage() {
                         <Badge variant="blue">{session.session_type_display}</Badge>
                         {isScheduled ? <Badge variant="default">Scheduled</Badge> : null}
                         {isScheduledOverdue ? <Badge variant="orange">Overdue</Badge> : null}
-                        {isInProgress ? <Badge variant="yellow">In progress</Badge> : null}
+                        {isInProgress && !isInProgressOverdue ? <Badge variant="yellow">In progress</Badge> : null}
+                        {isInProgressOverdue ? <Badge variant="red">Needs completion</Badge> : null}
                         {isCompleted ? <Badge variant="green">Completed</Badge> : null}
                     </div>
                 </div>
@@ -511,14 +543,38 @@ export function SessionDetailPage() {
                                 disabled={!session.can_start_now}
                             >
                                 <PlayCircle className="mr-1.5 h-4 w-4" />
-                                Start lesson
+                                {isScheduledOverdue ? 'Start late' : 'Start lesson'}
                             </Button>
                         ) : null}
 
-                        {currentWorkflowStep === 'complete' ? (
+                        {canReschedule ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={() => setShowRescheduleModal(true)}
+                            >
+                                <Calendar className="mr-1.5 h-4 w-4" />
+                                Reschedule lesson
+                            </Button>
+                        ) : null}
+
+                        {needsCompletion ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={scrollToAttendance}
+                            >
+                                <ClipboardCheck className="mr-1.5 h-4 w-4" />
+                                Review attendance
+                            </Button>
+                        ) : null}
+
+                        {(currentWorkflowStep === 'complete' || needsCompletion) ? (
                             <Button variant="primary" size="sm" className="w-full sm:w-auto" onClick={handleCompleteLesson}>
                                 <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                                Complete lesson
+                                Complete session
                             </Button>
                         ) : null}
 
@@ -535,7 +591,7 @@ export function SessionDetailPage() {
 
                 {isScheduledLocked ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                        <p>This lesson is scheduled. Actions unlock when the start window opens.</p>
+                        <p>Lesson is scheduled. Start stays locked until the allowed window opens.</p>
                         {startAvailabilityMessage ? (
                             <p className="mt-1">{startAvailabilityMessage}</p>
                         ) : null}
@@ -544,13 +600,23 @@ export function SessionDetailPage() {
 
                 {isScheduledReady ? (
                     <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                        Start lesson when you are ready. Attendance and teaching confirmation open after the lesson starts.
+                        Start lesson when you are ready, or reschedule it before class begins.
                     </div>
                 ) : null}
 
                 {isScheduledOverdue ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-                        This lesson was scheduled but not started. You can start it late or reschedule.
+                        <p>This lesson time has passed and the lesson was not started.</p>
+                        <p className="mt-1">You can start it late or reschedule it.</p>
+                    </div>
+                ) : null}
+
+                {isInProgressOverdue ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        <p>This lesson is still in progress past its scheduled end time.</p>
+                        <p className="mt-1">
+                            Complete the session after reviewing attendance and taught outcomes. ScholaroScope does not auto-complete lessons because completion finalizes attendance and marks unmarked learners absent.
+                        </p>
                     </div>
                 ) : null}
             </div>
@@ -782,7 +848,9 @@ export function SessionDetailPage() {
                         <div className="space-y-2">
                             <h2 className="text-lg font-semibold text-gray-900">Next step: complete lesson</h2>
                             <p className="text-sm text-gray-600">
-                                Attendance and taught outcomes are saved. Complete the lesson, then return later for learner performance or assignment follow-up.
+                                {needsCompletion
+                                    ? 'This lesson ran past its scheduled end time. Review attendance, confirm taught outcomes if needed, and complete it manually.'
+                                    : 'Attendance and taught outcomes are saved. Complete the lesson, then return later for learner performance or assignment follow-up.'}
                             </p>
                         </div>
                         <Button
@@ -792,7 +860,7 @@ export function SessionDetailPage() {
                             onClick={handleCompleteLesson}
                         >
                             <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                            Complete lesson
+                            Complete session
                         </Button>
                     </div>
                 </Card>
@@ -858,17 +926,23 @@ export function SessionDetailPage() {
                 <AttendanceStatsStrip stats={attendanceStats} />
             ) : null}
 
-            {(currentWorkflowStep === 'attendance' || isCompleted) ? (
+            {showAttendanceSection ? (
                 <div id="attendance-section">
                     <Card>
                         <div className="space-y-4">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h2 className="text-lg font-semibold text-gray-900">
-                                        {isCompleted ? 'Attendance records' : 'Take attendance'}
+                                        {isCompleted
+                                            ? 'Attendance records'
+                                            : needsCompletion
+                                                ? 'Review attendance'
+                                                : 'Take attendance'}
                                     </h2>
                                     <p className="mt-1 text-sm text-gray-600">
-                                        Attendance must be recorded before you confirm what was taught.
+                                        {needsCompletion
+                                            ? 'Review the attendance record before you complete this lesson.'
+                                            : 'Attendance must be recorded before you confirm what was taught.'}
                                     </p>
                                 </div>
                             </div>
@@ -897,7 +971,7 @@ export function SessionDetailPage() {
                 </div>
             ) : null}
 
-            {hasLessonPlan && (currentWorkflowStep === 'confirm_taught' || isCompleted) ? (
+            {showTaughtOutcomesSection ? (
                 <Card>
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1000,6 +1074,13 @@ export function SessionDetailPage() {
                     </div>
                 </Card>
             ) : null}
+
+            <RescheduleLessonModal
+                isOpen={showRescheduleModal}
+                session={session}
+                onClose={() => setShowRescheduleModal(false)}
+                onSubmit={handleRescheduleLesson}
+            />
         </div>
     );
 }

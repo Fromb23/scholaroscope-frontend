@@ -29,6 +29,10 @@ const variantStyles: Record<CardVariant, string> = {
 
 export function SessionCard({ session, variant, currentMinutes }: SessionCardProps) {
     const router = useRouter();
+    const showStateBadge = (
+        variant === 'upcoming'
+        || session.schedule_state === 'IN_PROGRESS_OVERDUE'
+    );
 
     const handleClick = () => router.push(`/sessions/${session.id}`);
 
@@ -73,7 +77,21 @@ export function SessionCard({ session, variant, currentMinutes }: SessionCardPro
                     <AttendanceBadge counts={session.attendance_count} />
                 </div>
 
-                {variant === 'upcoming' ? (
+                {showStateBadge && variant !== 'upcoming' ? (
+                    <div className="flex flex-col items-end gap-2">
+                        <SessionStatusBadge session={session} currentMinutes={currentMinutes} />
+                        <Button
+                            variant={variant === 'ongoing' ? 'primary' : 'ghost'}
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleClick(); }}
+                        >
+                            {variant === 'ongoing' || session.attendance_count.unmarked > 0
+                                ? 'Mark Attendance'
+                                : 'View Details'
+                            }
+                        </Button>
+                    </div>
+                ) : variant === 'upcoming' ? (
                     <SessionStatusBadge session={session} currentMinutes={currentMinutes} />
                 ) : (
                     <Button
