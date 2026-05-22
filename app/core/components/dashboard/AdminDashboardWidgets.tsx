@@ -17,6 +17,12 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { DashboardAlert, DashboardMetrics } from '@/app/core/hooks/useAdminDashboard';
 import type { Session } from '@/app/core/types/session';
+import { themeClasses } from '@/app/core/theme/themeClasses';
+
+const dashboardHeaderCardClass = `${themeClasses.dashboardCard} rounded-3xl p-8`;
+const dashboardCardClass = `${themeClasses.dashboardCard} p-6`;
+const dashboardMetricCardClass = `${themeClasses.dashboardMetricCard} cursor-pointer overflow-hidden p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl`;
+const dashboardActionRowClass = `${themeClasses.dashboardActionRow} p-4`;
 
 // ── DashboardHeader ───────────────────────────────────────────────────────
 
@@ -33,17 +39,17 @@ export function DashboardHeader({
     lastRefresh, onRefresh,
 }: DashboardHeaderProps) {
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-8 mb-6">
+        <div className={`${dashboardHeaderCardClass} mb-6`}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
                         <Activity className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-900 bg-clip-text text-transparent">
+                        <h1 className="text-3xl md:text-4xl font-bold theme-text">
                             Welcome back, {firstName}!
                         </h1>
-                        <p className="text-gray-600 mt-1 flex items-center gap-2">
+                        <p className="theme-muted mt-1 flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
                             {termName} • {yearName}
                         </p>
@@ -53,16 +59,16 @@ export function DashboardHeader({
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onRefresh}
-                        className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-300 hover:scale-110"
+                        className="theme-focus-ring theme-button-ghost theme-hover-info rounded-xl p-3 transition-all duration-300 hover:scale-110"
                     >
                         <RefreshCw className="w-5 h-5" />
                     </button>
 
-                    <div className="hidden lg:block text-right px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                        <p className="text-sm font-semibold text-gray-900">
+                    <div className={`${themeClasses.dashboardMutedPanel} hidden px-4 py-2 text-right lg:block`}>
+                        <p className="text-sm font-semibold theme-text">
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs theme-muted">
                             Updated {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                     </div>
@@ -82,21 +88,33 @@ export function AlertsBanner({ alerts }: AlertsBannerProps) {
     const router = useRouter();
     if (alerts.length === 0) return null;
 
-    const styles: Record<DashboardAlert['type'], string> = {
-        error: 'bg-red-100/80 border-red-300 text-red-800',
-        warning: 'bg-amber-100/80 border-amber-300 text-amber-800',
-        info: 'bg-blue-100/80 border-blue-300 text-blue-800',
-        success: 'bg-green-100/80 border-green-300 text-green-800',
+    const styles: Record<DashboardAlert['type'], { container: string; accent: string }> = {
+        error: {
+            container: 'theme-danger-surface',
+            accent: 'text-[color:var(--color-danger)]',
+        },
+        warning: {
+            container: 'theme-warning-surface',
+            accent: 'text-[color:var(--color-warning)]',
+        },
+        info: {
+            container: 'theme-info-surface',
+            accent: 'text-[color:var(--color-primary)]',
+        },
+        success: {
+            container: 'theme-success-surface',
+            accent: 'text-[color:var(--color-success)]',
+        },
     };
 
     return (
-        <div className="bg-gradient-to-r from-orange-50 via-red-50 to-pink-50 backdrop-blur-xl rounded-2xl shadow-lg border border-orange-200/50 p-6 mb-6">
+        <div className={`${themeClasses.warningSurface} mb-6 p-6`}>
             <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-orange-500 rounded-xl">
                     <AlertCircle className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Action Required</h2>
-                <span className="ml-auto px-3 py-1 bg-white/80 text-orange-600 text-xs font-bold rounded-full">
+                <h2 className="text-lg font-bold theme-text">Action Required</h2>
+                <span className="ml-auto rounded-full px-3 py-1 text-xs font-bold theme-warning-surface text-[color:var(--color-warning)]">
                     {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
                 </span>
             </div>
@@ -105,11 +123,11 @@ export function AlertsBanner({ alerts }: AlertsBannerProps) {
                     <div
                         key={alert.id}
                         onClick={() => router.push(alert.link)}
-                        className={`flex items-center gap-3 p-4 rounded-xl border backdrop-blur-sm cursor-pointer transition-all hover:scale-[1.02] ${styles[alert.type]}`}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl p-4 transition-all hover:scale-[1.02] ${styles[alert.type].container}`}
                     >
-                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                        <span className="text-sm font-medium flex-1">{alert.message}</span>
-                        <span className="text-sm font-bold whitespace-nowrap flex items-center gap-1">
+                        <AlertCircle className={`w-5 h-5 flex-shrink-0 ${styles[alert.type].accent}`} />
+                        <span className="flex-1 text-sm font-medium theme-text">{alert.message}</span>
+                        <span className={`flex items-center gap-1 whitespace-nowrap text-sm font-bold ${styles[alert.type].accent}`}>
                             {alert.action}<ChevronRight className="w-4 h-4" />
                         </span>
                     </div>
@@ -135,7 +153,7 @@ export function MetricCard({ title, value, subtitle, icon: Icon, gradient, alert
     return (
         <div
             onClick={onClick}
-            className="group relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl overflow-hidden"
+            className={`group relative ${dashboardMetricCardClass}`}
         >
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
@@ -150,9 +168,9 @@ export function MetricCard({ title, value, subtitle, icon: Icon, gradient, alert
                         </span>
                     )}
                 </div>
-                <p className="text-sm font-medium text-gray-600 mb-2">{title}</p>
-                <p className="text-4xl font-bold text-gray-900 mb-2">{value}</p>
-                <p className="text-xs text-gray-500">{subtitle}</p>
+                <p className="mb-2 text-sm font-medium theme-muted">{title}</p>
+                <p className="mb-2 text-4xl font-bold theme-text">{value}</p>
+                <p className="text-xs theme-subtle">{subtitle}</p>
             </div>
         </div>
     );
@@ -219,18 +237,18 @@ export function AttendanceWidget({ rate, sessionsToday }: AttendanceWidgetProps)
     const isWarning = rate >= 60 && rate < 80;
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2 rounded-xl ${isGood ? 'bg-green-500' : isWarning ? 'bg-amber-500' : 'bg-red-500'}`}>
                     <ClipboardCheck className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Attendance</h3>
+                <h3 className="text-lg font-bold theme-text">Attendance</h3>
             </div>
             <div className="text-center py-6">
-                <p className="text-5xl font-bold text-gray-900 mb-2">
+                <p className="mb-2 text-5xl font-bold theme-text">
                     {rate > 0 ? `${rate}%` : 'N/A'}
                 </p>
-                <p className="text-sm text-gray-600">{sessionsToday} sessions today</p>
+                <p className="text-sm theme-muted">{sessionsToday} sessions today</p>
             </div>
         </div>
     );
@@ -245,23 +263,23 @@ interface PerformanceWidgetProps {
 
 export function PerformanceWidget({ averageScore, needsSupport }: PerformanceWidgetProps) {
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
                     <TrendingUp className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Performance</h3>
+                <h3 className="text-lg font-bold theme-text">Performance</h3>
             </div>
             <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+                <div className="rounded-xl p-4 text-center theme-info-surface">
                     <p className="text-3xl font-bold text-blue-600">
                         {averageScore > 0 ? `${averageScore}%` : 'N/A'}
                     </p>
-                    <p className="text-xs text-gray-600 mt-2">Average</p>
+                    <p className="mt-2 text-xs theme-muted">Average</p>
                 </div>
-                <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl">
+                <div className="rounded-xl p-4 text-center theme-warning-surface">
                     <p className="text-3xl font-bold text-orange-600">{needsSupport}</p>
-                    <p className="text-xs text-gray-600 mt-2">At Risk</p>
+                    <p className="mt-2 text-xs theme-muted">At Risk</p>
                 </div>
             </div>
         </div>
@@ -283,21 +301,21 @@ export function AssessmentPipeline({ assessments }: AssessmentPipelineProps) {
     ];
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl">
                     <Award className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Assessment Pipeline</h3>
+                <h3 className="text-xl font-bold theme-text">Assessment Pipeline</h3>
             </div>
             <div className="space-y-3">
                 {stages.map(stage => (
                     <div key={stage.label}>
                         <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-700">{stage.label}</span>
-                            <span className="text-sm font-bold text-gray-900">{stage.value}</span>
+                            <span className="text-sm font-medium theme-muted">{stage.label}</span>
+                            <span className="text-sm font-bold theme-text">{stage.value}</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 overflow-hidden rounded-full theme-surface-muted">
                             <div
                                 className={`h-full ${stage.color} rounded-full transition-all duration-500`}
                                 style={{ width: `${Math.min(assessments.total > 0 ? (stage.value / assessments.total) * 100 : 0, 100)}%` }}
@@ -336,22 +354,22 @@ export function QuickActions({ needsGrading }: QuickActionsProps) {
     ];
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
                     <Zap className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Quick Actions</h3>
+                <h3 className="text-xl font-bold theme-text">Quick Actions</h3>
             </div>
             <div className="grid grid-cols-2 gap-3">
                 {actions.map(action => (
                     <button
                         key={action.label}
                         onClick={() => router.push(action.path)}
-                        className="relative p-4 bg-gradient-to-br from-gray-50 to-blue-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl border border-gray-200 transition-all hover:scale-105 flex flex-col items-center gap-2"
+                        className={`${dashboardActionRowClass} relative flex flex-col items-center gap-2 hover:scale-105`}
                     >
-                        <action.icon className="w-5 h-5 text-blue-600" />
-                        <span className="text-xs font-semibold text-gray-700">{action.label}</span>
+                        <action.icon className="w-5 h-5 text-[color:var(--color-primary)]" />
+                        <span className="text-xs font-semibold theme-text">{action.label}</span>
                         {action.badge && action.badge > 0 && (
                             <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
                                 {action.badge}
@@ -375,17 +393,17 @@ export function TodaySessionsWidget({ sessions }: TodaySessionsWidgetProps) {
     const preview = sessions.slice(0, 3);
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
                         <Calendar className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">Today&apos;s Sessions</h3>
+                    <h3 className="text-xl font-bold theme-text">Today&apos;s Sessions</h3>
                 </div>
                 <button
                     onClick={() => router.push('/sessions')}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 hover:gap-2 transition-all"
+                    className="flex items-center gap-1 text-sm font-semibold theme-link transition-all hover:gap-2"
                 >
                     View All →
                 </button>
@@ -397,11 +415,11 @@ export function TodaySessionsWidget({ sessions }: TodaySessionsWidgetProps) {
                         <div
                             key={session.id}
                             onClick={() => router.push(`/sessions/${session.id}`)}
-                            className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl border border-blue-200 transition-all cursor-pointer"
+                            className="cursor-pointer rounded-xl p-4 theme-info-surface transition-all hover:shadow-md"
                         >
-                            <p className="font-bold text-gray-900">{session.subject_name}</p>
-                            <p className="text-sm text-gray-600 mt-1">{session.cohort_name}</p>
-                            <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                            <p className="font-bold theme-text">{session.subject_name}</p>
+                            <p className="mt-1 text-sm theme-muted">{session.cohort_name}</p>
+                            <div className="mt-2 flex items-center justify-between text-xs theme-subtle">
                                 <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />{session.start_time ?? 'TBA'}
                                 </span>
@@ -412,8 +430,8 @@ export function TodaySessionsWidget({ sessions }: TodaySessionsWidgetProps) {
                 </div>
             ) : (
                 <div className="py-12 text-center">
-                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No sessions today</p>
+                    <Calendar className="mx-auto mb-3 h-12 w-12 theme-subtle" />
+                    <p className="text-sm theme-muted">No sessions today</p>
                 </div>
             )}
         </div>
@@ -430,24 +448,24 @@ interface SystemOverviewProps {
 
 export function SystemOverview({ cohortCount, assessmentCount, studentCount }: SystemOverviewProps) {
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-gradient-to-br from-slate-500 to-gray-600 rounded-xl">
                     <BarChart3 className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">System Overview</h3>
+                <h3 className="text-xl font-bold theme-text">System Overview</h3>
             </div>
             <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl">
-                    <span className="text-sm font-medium text-gray-700">Active Cohorts</span>
+                <div className="flex items-center justify-between rounded-xl p-3 theme-info-surface">
+                    <span className="text-sm font-medium theme-text">Active Cohorts</span>
                     <span className="text-xl font-bold text-blue-600">{cohortCount}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl">
-                    <span className="text-sm font-medium text-gray-700">Total Assessments</span>
+                <div className="flex items-center justify-between rounded-xl p-3 theme-surface-muted">
+                    <span className="text-sm font-medium theme-text">Total Assessments</span>
                     <span className="text-xl font-bold text-purple-600">{assessmentCount}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
-                    <span className="text-sm font-medium text-gray-700">Enrolled Students</span>
+                <div className="flex items-center justify-between rounded-xl p-3 theme-success-surface">
+                    <span className="text-sm font-medium theme-text">Enrolled Students</span>
                     <span className="text-xl font-bold text-green-600">{studentCount}</span>
                 </div>
             </div>
@@ -474,22 +492,22 @@ export function PendingApprovals({ requests, loading, pendingCount }: PendingApp
     const router = useRouter();
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl">
                         <Inbox className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">Pending Approvals</h3>
+                    <h3 className="text-xl font-bold theme-text">Pending Approvals</h3>
                     {pendingCount > 0 && (
-                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
+                        <span className="rounded-full px-2 py-1 text-xs font-bold theme-danger-surface text-[color:var(--color-danger)]">
                             {pendingCount} pending
                         </span>
                     )}
                 </div>
                 <button
                     onClick={() => router.push('/requests')}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 hover:gap-2 transition-all"
+                    className="flex items-center gap-1 text-sm font-semibold theme-link transition-all hover:gap-2"
                 >
                     View All →
                 </button>
@@ -497,23 +515,23 @@ export function PendingApprovals({ requests, loading, pendingCount }: PendingApp
 
             <div className="space-y-3">
                 {loading ? (
-                    <p className="text-sm text-gray-400 py-2">Loading…</p>
+                    <p className="py-2 text-sm theme-subtle">Loading…</p>
                 ) : requests.length === 0 ? (
-                    <p className="text-sm text-gray-500 py-2">No pending approvals.</p>
+                    <p className="py-2 text-sm theme-muted">No pending approvals.</p>
                 ) : (
                     requests.slice(0, 5).map(req => (
                         <div
                             key={req.id}
                             onClick={() => router.push('/requests')}
-                            className="p-4 bg-gradient-to-r from-orange-50 to-red-50 hover:from-orange-100 hover:to-red-100 rounded-xl border border-orange-200 transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-between"
+                            className="flex cursor-pointer items-center justify-between rounded-xl p-4 theme-warning-surface transition-all hover:scale-[1.02] hover:shadow-md"
                         >
                             <div>
-                                <p className="font-medium text-gray-900">{req.title}</p>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="font-medium theme-text">{req.title}</p>
+                                <p className="mt-1 text-xs theme-subtle">
                                     {req.submitted_by_name} · {new Date(req.created_at).toLocaleDateString()}
                                 </p>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-orange-600" />
+                            <ChevronRight className="w-5 h-5 text-[color:var(--color-warning)]" />
                         </div>
                     ))
                 )}

@@ -14,9 +14,9 @@ interface Activity {
 
 export function RecentActivity({ activities }: { activities: Activity[] }) {
     const typeColors = {
-        session: 'bg-blue-100 text-blue-600',
-        student: 'bg-green-100 text-green-600',
-        assessment: 'bg-yellow-100 text-yellow-600',
+        session: 'bg-blue-500',
+        student: 'bg-green-500',
+        assessment: 'bg-amber-500',
     };
 
     return (
@@ -30,9 +30,9 @@ export function RecentActivity({ activities }: { activities: Activity[] }) {
                         <div key={activity.id} className="flex items-start gap-4">
                             <div className={`mt-1 h-2 w-2 rounded-full ${typeColors[activity.type]}`} />
                             <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                                <p className="text-sm text-gray-600">{activity.description}</p>
-                                <p className="mt-1 text-xs text-gray-500">{activity.time}</p>
+                                <p className="text-sm font-medium theme-text">{activity.title}</p>
+                                <p className="text-sm theme-muted">{activity.description}</p>
+                                <p className="mt-1 text-xs theme-subtle">{activity.time}</p>
                             </div>
                         </div>
                     ))}

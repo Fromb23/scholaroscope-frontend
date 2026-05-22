@@ -11,6 +11,11 @@ import { useGlobalUserStats } from '@/app/core/hooks/useGlobalUsers';
 import { usePlatformHealth } from '@/app/core/hooks/usePlatformHealth';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Organization } from '@/app/core/types/organization';
+import { themeClasses } from '@/app/core/theme/themeClasses';
+
+const dashboardCardClass = `${themeClasses.dashboardCard} p-6`;
+const dashboardMetricCardClass = `${themeClasses.dashboardMetricCard} cursor-pointer p-5 transition-shadow hover:shadow-md`;
+const dashboardActionRowClass = `${themeClasses.dashboardActionRow} p-4`;
 
 export default function SuperAdminDashboard() {
     const router = useRouter();
@@ -38,15 +43,15 @@ export default function SuperAdminDashboard() {
     return (
         <>
             {/* Header */}
-            <div className="bg-white rounded-2xl shadow border border-gray-100 p-6 mb-6">
+            <div className={`${dashboardCardClass} mb-6`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="p-3 bg-purple-600 rounded-xl">
                             <ShieldCheck className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">System Command Center</h1>
-                            <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                            <h1 className="text-2xl font-bold theme-text">System Command Center</h1>
+                            <p className="mt-0.5 flex items-center gap-1 text-sm theme-muted">
                                 <Globe className="w-4 h-4" />
                                 Managing {organizations.length} organizations
                             </p>
@@ -54,7 +59,7 @@ export default function SuperAdminDashboard() {
                     </div>
                     <button
                         onClick={handleRefresh}
-                        className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        className="theme-focus-ring theme-button-ghost theme-hover-surface rounded-lg p-2 transition-colors hover:text-purple-600"
                     >
                         <RefreshCw className="w-5 h-5" />
                     </button>
@@ -63,12 +68,12 @@ export default function SuperAdminDashboard() {
 
             {/* Health banner */}
             {health && health.overall_severity !== 'OK' && (
-                <div className={`flex items-center gap-3 p-4 rounded-xl border mb-6 ${health.overall_severity === 'CRITICAL' ? 'bg-red-50 border-red-200 text-red-800' :
-                    health.overall_severity === 'HIGH' ? 'bg-orange-50 border-orange-200 text-orange-800' :
-                        'bg-amber-50 border-amber-200 text-amber-800'
+                <div className={`mb-6 flex items-center gap-3 rounded-xl p-4 ${health.overall_severity === 'CRITICAL' ? 'theme-danger-surface text-[color:var(--color-danger)]' :
+                    health.overall_severity === 'HIGH' ? 'theme-warning-surface text-[color:var(--color-warning)]' :
+                        'theme-warning-surface text-[color:var(--color-warning)]'
                     }`}>
                     <AlertCircle className="w-5 h-5 shrink-0" />
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium theme-text">
                         Platform health: <strong>{health.overall_severity}</strong> —
                         {health.signals.pending_tier2_requests.count > 0 && ` ${health.signals.pending_tier2_requests.count} pending requests,`}
                         {health.signals.suspended_orgs.count > 0 && ` ${health.signals.suspended_orgs.count} suspended orgs,`}
@@ -76,7 +81,7 @@ export default function SuperAdminDashboard() {
                     </span>
                     <button
                         onClick={() => router.push('/superadmin/health')}
-                        className="ml-auto text-sm font-semibold underline"
+                        className="ml-auto text-sm font-semibold underline theme-text"
                     >
                         View details
                     </button>
@@ -123,22 +128,22 @@ export default function SuperAdminDashboard() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 {/* Recent organizations */}
                 <div className="xl:col-span-2">
-                    <div className="bg-white rounded-2xl shadow border border-gray-100 p-6">
+                    <div className={dashboardCardClass}>
                         <div className="flex items-center justify-between mb-5">
                             <div className="flex items-center gap-2">
                                 <Building2 className="w-5 h-5 text-purple-600" />
-                                <h3 className="text-lg font-bold text-gray-900">Recent Organizations</h3>
+                                <h3 className="text-lg font-bold theme-text">Recent Organizations</h3>
                             </div>
                             <button
                                 onClick={() => router.push('/superadmin/organizations')}
-                                className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                                className="text-sm font-medium text-purple-600 transition-colors hover:text-purple-500"
                             >
                                 View all →
                             </button>
                         </div>
                         <div className="space-y-3">
                             {recentOrgs.length === 0 ? (
-                                <p className="text-sm text-gray-500 text-center py-8">No organizations yet</p>
+                                <p className="py-8 text-center text-sm theme-muted">No organizations yet</p>
                             ) : recentOrgs.map(org => (
                                 <OrgRow
                                     key={org.id}
@@ -153,10 +158,10 @@ export default function SuperAdminDashboard() {
                 {/* Right column */}
                 <div className="space-y-6">
                     {/* Health signals */}
-                    <div className="bg-white rounded-2xl shadow border border-gray-100 p-6">
+                    <div className={dashboardCardClass}>
                         <div className="flex items-center gap-2 mb-5">
                             <Activity className="w-5 h-5 text-orange-500" />
-                            <h3 className="text-lg font-bold text-gray-900">Health Signals</h3>
+                            <h3 className="text-lg font-bold theme-text">Health Signals</h3>
                         </div>
                         {healthLoading ? (
                             <LoadingSpinner fullScreen={false} />
@@ -189,15 +194,15 @@ export default function SuperAdminDashboard() {
                                 />
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500">Health data unavailable</p>
+                            <p className="text-sm theme-muted">Health data unavailable</p>
                         )}
                     </div>
 
                     {/* Quick actions */}
-                    <div className="bg-white rounded-2xl shadow border border-gray-100 p-6">
+                    <div className={dashboardCardClass}>
                         <div className="flex items-center gap-2 mb-5">
                             <Zap className="w-5 h-5 text-blue-500" />
-                            <h3 className="text-lg font-bold text-gray-900">Quick Actions</h3>
+                            <h3 className="text-lg font-bold theme-text">Quick Actions</h3>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <QuickAction icon={FileText} label="Audit Log" onClick={() => router.push('/superadmin/audit')} />
@@ -225,22 +230,22 @@ function MetricCard({
     onClick: () => void;
 }) {
     const colors = {
-        purple: 'bg-purple-100 text-purple-600',
-        blue: 'bg-blue-100 text-blue-600',
-        green: 'bg-green-100 text-green-600',
-        orange: 'bg-orange-100 text-orange-600',
+        purple: 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg',
+        blue: 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg',
+        green: 'bg-gradient-to-br from-green-500 to-emerald-500 text-white shadow-lg',
+        orange: 'bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg',
     };
     return (
         <div
             onClick={onClick}
-            className="bg-white rounded-2xl shadow border border-gray-100 p-5 cursor-pointer hover:shadow-md transition-shadow"
+            className={dashboardMetricCardClass}
         >
             <div className={`inline-flex p-2 rounded-lg mb-3 ${colors[color]}`}>
                 <Icon className="w-5 h-5" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            <p className="text-sm font-medium text-gray-700 mt-0.5">{title}</p>
-            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+            <p className="text-2xl font-bold theme-text">{value}</p>
+            <p className="mt-0.5 text-sm font-medium theme-muted">{title}</p>
+            <p className="mt-1 text-xs theme-subtle">{subtitle}</p>
         </div>
     );
 }
@@ -249,11 +254,11 @@ function OrgRow({ org, onClick }: { org: Organization; onClick: () => void }) {
     return (
         <div
             onClick={onClick}
-            className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex cursor-pointer items-center justify-between rounded-xl p-3 theme-surface-muted theme-hover-surface transition-colors"
         >
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{org.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{org.member_count} members · {org.plan_type}</p>
+                <p className="truncate text-sm font-semibold theme-text">{org.name}</p>
+                <p className="mt-0.5 text-xs theme-muted">{org.member_count} members · {org.plan_type}</p>
             </div>
             <span className={`ml-3 px-2 py-1 rounded-full text-xs font-medium ${org.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                 }`}>
@@ -266,10 +271,10 @@ function OrgRow({ org, onClick }: { org: Organization; onClick: () => void }) {
 function SignalRow({ label, count, severity }: { label: string; count: number; severity: string }) {
     const isOk = severity === 'OK' || count === 0;
     return (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-            <span className="text-sm text-gray-700">{label}</span>
+        <div className="flex items-center justify-between rounded-xl p-3 theme-surface-muted">
+            <span className="text-sm theme-muted">{label}</span>
             <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-900">{count}</span>
+                <span className="text-sm font-bold theme-text">{count}</span>
                 {isOk
                     ? <CheckCircle2 className="w-4 h-4 text-green-500" />
                     : <XCircle className="w-4 h-4 text-red-500" />
@@ -283,10 +288,10 @@ function QuickAction({ icon: Icon, label, onClick }: { icon: React.ElementType; 
     return (
         <button
             onClick={onClick}
-            className="p-4 bg-gray-50 hover:bg-purple-50 rounded-xl border border-gray-200 hover:border-purple-200 transition-colors flex flex-col items-center gap-2"
+            className={`${dashboardActionRowClass} flex flex-col items-center gap-2`}
         >
             <Icon className="w-5 h-5 text-purple-600" />
-            <span className="text-xs font-semibold text-gray-700">{label}</span>
+            <span className="text-xs font-semibold theme-text">{label}</span>
         </button>
     );
 }

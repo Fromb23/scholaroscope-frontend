@@ -23,6 +23,13 @@ import type {
 } from '@/app/core/types/academic';
 import type { InstructorMetrics } from '@/app/core/hooks/useInstructorDashboard';
 import type { DashboardAlert } from '@/app/core/hooks/useAdminDashboard';
+import { themeClasses } from '@/app/core/theme/themeClasses';
+
+const dashboardHeaderCardClass = `${themeClasses.dashboardCard} rounded-3xl p-8`;
+const dashboardCardClass = `${themeClasses.dashboardCard} p-6`;
+const dashboardMetricCardClass = `${themeClasses.dashboardMetricCard} cursor-pointer overflow-hidden p-6 transition-all duration-300 hover:scale-105 hover:shadow-2xl`;
+const dashboardMutedPanelClass = `${themeClasses.dashboardMutedPanel} p-4`;
+const dashboardActionRowClass = `${themeClasses.dashboardActionRow} p-3`;
 
 // ── InstructorHeader ──────────────────────────────────────────────────────
 
@@ -39,17 +46,17 @@ export function InstructorHeader({
     lastRefresh, onRefresh,
 }: InstructorHeaderProps) {
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-8">
+        <div className={dashboardHeaderCardClass}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg">
                         <Target className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-900 via-emerald-900 to-green-900 bg-clip-text text-transparent">
+                        <h1 className="text-3xl md:text-4xl font-bold theme-text">
                             Welcome back, {firstName}!
                         </h1>
-                        <p className="text-gray-600 mt-1 flex items-center gap-2">
+                        <p className="theme-muted mt-1 flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
                             {termName} • {yearName}
                         </p>
@@ -59,16 +66,16 @@ export function InstructorHeader({
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onRefresh}
-                        className="p-3 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all duration-300 hover:scale-110"
+                        className="theme-focus-ring theme-button-ghost theme-hover-success rounded-xl p-3 transition-all duration-300 hover:scale-110"
                     >
                         <RefreshCw className="w-5 h-5" />
                     </button>
 
-                    <div className="hidden lg:block text-right px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                        <p className="text-sm font-semibold text-gray-900">
+                    <div className={`${themeClasses.dashboardMutedPanel} hidden px-4 py-2 text-right lg:block`}>
+                        <p className="text-sm font-semibold theme-text">
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs theme-muted">
                             Updated {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </p>
                     </div>
@@ -88,21 +95,33 @@ export function InstructorAlertsBanner({ alerts }: InstructorAlertsBannerProps) 
     const router = useRouter();
     if (alerts.length === 0) return null;
 
-    const styles: Record<DashboardAlert['type'], string> = {
-        error: 'bg-red-100/80 border-red-300 text-red-800',
-        warning: 'bg-amber-100/80 border-amber-300 text-amber-800',
-        info: 'bg-blue-100/80 border-blue-300 text-blue-800',
-        success: 'bg-green-100/80 border-green-300 text-green-800',
+    const styles: Record<DashboardAlert['type'], { container: string; accent: string }> = {
+        error: {
+            container: 'theme-danger-surface',
+            accent: 'text-[color:var(--color-danger)]',
+        },
+        warning: {
+            container: 'theme-warning-surface',
+            accent: 'text-[color:var(--color-warning)]',
+        },
+        info: {
+            container: 'theme-info-surface',
+            accent: 'text-[color:var(--color-primary)]',
+        },
+        success: {
+            container: 'theme-success-surface',
+            accent: 'text-[color:var(--color-success)]',
+        },
     };
 
     return (
-        <div className="bg-gradient-to-r from-orange-50 via-red-50 to-pink-50 backdrop-blur-xl rounded-2xl shadow-lg border border-orange-200/50 p-6">
+        <div className={`${themeClasses.warningSurface} p-6`}>
             <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-orange-500 rounded-xl">
                     <AlertCircle className="w-5 h-5 text-white" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Teaching Alerts</h2>
-                <span className="ml-auto px-3 py-1 bg-white/80 text-orange-600 text-xs font-bold rounded-full">
+                <h2 className="text-lg font-bold theme-text">Teaching Alerts</h2>
+                <span className="ml-auto rounded-full px-3 py-1 text-xs font-bold theme-warning-surface text-[color:var(--color-warning)]">
                     {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
                 </span>
             </div>
@@ -111,11 +130,11 @@ export function InstructorAlertsBanner({ alerts }: InstructorAlertsBannerProps) 
                     <div
                         key={alert.id}
                         onClick={() => router.push(alert.link)}
-                        className={`flex items-center gap-3 p-4 rounded-xl border backdrop-blur-sm cursor-pointer transition-all hover:scale-[1.02] ${styles[alert.type]}`}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl p-4 transition-all hover:scale-[1.02] ${styles[alert.type].container}`}
                     >
-                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                        <span className="text-sm font-medium flex-1">{alert.message}</span>
-                        <span className="text-sm font-bold whitespace-nowrap flex items-center gap-1">
+                        <AlertCircle className={`w-5 h-5 flex-shrink-0 ${styles[alert.type].accent}`} />
+                        <span className="flex-1 text-sm font-medium theme-text">{alert.message}</span>
+                        <span className={`flex items-center gap-1 whitespace-nowrap text-sm font-bold ${styles[alert.type].accent}`}>
                             {alert.action}<ChevronRight className="w-4 h-4" />
                         </span>
                     </div>
@@ -145,7 +164,7 @@ function MetricCard({ title, value, subtitle, icon: Icon, gradient, alert, onCli
     return (
         <div
             onClick={onClick}
-            className="group relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl overflow-hidden"
+            className={`group relative ${dashboardMetricCardClass}`}
         >
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
@@ -160,9 +179,9 @@ function MetricCard({ title, value, subtitle, icon: Icon, gradient, alert, onCli
                         </span>
                     )}
                 </div>
-                <p className="text-sm font-medium text-gray-600 mb-2">{title}</p>
-                <p className="text-4xl font-bold text-gray-900 mb-2">{value}</p>
-                <p className="text-xs text-gray-500">{subtitle}</p>
+                <p className="mb-2 text-sm font-medium theme-muted">{title}</p>
+                <p className="mb-2 text-4xl font-bold theme-text">{value}</p>
+                <p className="text-xs theme-subtle">{subtitle}</p>
             </div>
         </div>
     );
@@ -221,17 +240,17 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
     const preview = sessions.slice(0, 4);
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl">
                         <Calendar className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">Today&apos;s Teaching Schedule</h3>
+                    <h3 className="text-xl font-bold theme-text">Today&apos;s Teaching Schedule</h3>
                 </div>
                 <button
                     onClick={() => router.push('/sessions')}
-                    className="text-sm text-green-600 hover:text-green-700 font-semibold flex items-center gap-1 hover:gap-2 transition-all"
+                    className="flex items-center gap-1 text-sm font-semibold text-[color:var(--color-success)] transition-all hover:gap-2 hover:opacity-80"
                 >
                     View All →
                 </button>
@@ -243,31 +262,31 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
                         <div
                             key={session.id}
                             onClick={() => router.push(`/sessions/${session.id}`)}
-                            className="group p-4 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 rounded-xl border border-green-200 transition-all hover:scale-[1.02] cursor-pointer"
+                            className="group cursor-pointer rounded-xl p-4 theme-success-surface transition-all hover:scale-[1.02] hover:shadow-md"
                         >
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <Clock className="w-4 h-4 text-green-600" />
-                                        <span className="font-bold text-gray-900">
+                                        <Clock className="w-4 h-4 text-[color:var(--color-success)]" />
+                                        <span className="font-bold theme-text">
                                             {session.start_time ?? 'TBA'} – {session.end_time ?? 'TBA'}
                                         </span>
                                     </div>
-                                    <p className="font-semibold text-gray-900">{session.subject_name}</p>
-                                    <p className="text-sm text-gray-600">{session.cohort_name} • {session.venue || 'TBA'}</p>
+                                    <p className="font-semibold theme-text">{session.subject_name}</p>
+                                    <p className="text-sm theme-muted">{session.cohort_name} • {session.venue || 'TBA'}</p>
                                 </div>
-                                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-green-600 transition-colors" />
+                                <ChevronRight className="w-5 h-5 theme-subtle transition-colors group-hover:text-[color:var(--color-success)]" />
                             </div>
                         </div>
                     ))}
                 </div>
             ) : (
                 <div className="py-12 text-center">
-                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No sessions scheduled today</p>
+                    <Calendar className="mx-auto mb-3 h-12 w-12 theme-subtle" />
+                    <p className="text-sm theme-muted">No sessions scheduled today</p>
                     <button
                         onClick={() => router.push('/lesson-plans/new')}
-                        className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        className="theme-focus-ring theme-button-primary mt-4 rounded-lg px-4 py-2 text-sm font-semibold"
                     >
                         Plan a lesson
                     </button>
@@ -302,12 +321,12 @@ export function LearnersAtRisk({
     const attendanceRiskDisabled = attendanceRiskLoading || attendanceRiskError !== null;
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl">
                     <AlertCircle className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Learners Requiring Attention</h3>
+                <h3 className="text-xl font-bold theme-text">Learners Requiring Attention</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
@@ -320,13 +339,13 @@ export function LearnersAtRisk({
                     disabled={attendanceRiskDisabled}
                     className={`p-5 rounded-xl border text-left transition-all ${
                         attendanceRiskDisabled
-                            ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 cursor-default'
-                            : 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 hover:from-orange-100 hover:to-red-100 hover:scale-[1.02]'
+                            ? 'theme-warning-surface cursor-default'
+                            : 'theme-warning-surface hover:scale-[1.02] hover:shadow-md'
                     }`}
                 >
                     <div className="flex items-center gap-3 mb-3">
-                        <UserX className="w-6 h-6 text-orange-600" />
-                        <p className="font-bold text-gray-900">Attendance Risk</p>
+                        <UserX className="w-6 h-6 text-[color:var(--color-warning)]" />
+                        <p className="font-bold theme-text">Attendance Risk</p>
                     </div>
                     {attendanceRiskLoading ? (
                         <div className="space-y-2">
@@ -335,22 +354,22 @@ export function LearnersAtRisk({
                         </div>
                     ) : attendanceRiskError ? (
                         <>
-                            <p className="text-sm font-medium text-gray-700">Could not load attendance risk</p>
-                            <p className="text-xs text-gray-600 mt-1">
+                            <p className="text-sm font-medium theme-text">Could not load attendance risk</p>
+                            <p className="mt-1 text-xs theme-muted">
                                 Try refreshing the dashboard.
                             </p>
                         </>
                     ) : attendanceRiskCount === 0 ? (
                         <>
-                            <p className="text-sm font-medium text-gray-700">No current attendance risk</p>
-                            <p className="text-xs text-gray-600 mt-1">
+                            <p className="text-sm font-medium theme-text">No current attendance risk</p>
+                            <p className="mt-1 text-xs theme-muted">
                                 Based on completed lessons
                             </p>
                         </>
                     ) : (
                         <>
-                            <p className="text-3xl font-bold text-orange-600 mb-1">{attendanceRiskValue}</p>
-                            <p className="text-xs text-gray-600">
+                            <p className="mb-1 text-3xl font-bold text-[color:var(--color-warning)]">{attendanceRiskValue}</p>
+                            <p className="text-xs theme-muted">
                                 Missing your lessons frequently
                             </p>
                         </>
@@ -359,14 +378,14 @@ export function LearnersAtRisk({
 
                 <button
                     onClick={() => router.push('/learners?filter=struggling')}
-                    className="p-5 bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100 rounded-xl border border-red-200 transition-all hover:scale-[1.02] text-left"
+                    className="rounded-xl p-5 text-left theme-danger-surface transition-all hover:scale-[1.02] hover:shadow-md"
                 >
                     <div className="flex items-center gap-3 mb-3">
-                        <TrendingDown className="w-6 h-6 text-red-600" />
-                        <p className="font-bold text-gray-900">Academic Struggle</p>
+                        <TrendingDown className="w-6 h-6 text-[color:var(--color-danger)]" />
+                        <p className="font-bold theme-text">Academic Struggle</p>
                     </div>
                     <p className="text-3xl font-bold text-red-600 mb-1">{needsSupport}</p>
-                    <p className="text-xs text-gray-600">Scoring below 50%</p>
+                    <p className="text-xs theme-muted">Scoring below 50%</p>
                 </button>
             </div>
         </div>
@@ -384,25 +403,25 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
     const preview = cohorts.slice(0, 4);
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl">
                         <Users className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900">My Classes</h3>
+                    <h3 className="text-xl font-bold theme-text">My Classes</h3>
                 </div>
                 <button
                     onClick={() => router.push('/academic/cohorts')}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
+                    className="text-sm font-semibold theme-link"
                 >
                     View All →
                 </button>
             </div>
             {preview.length === 0 ? (
                 <div className="py-10 text-center">
-                    <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-gray-900">No classes assigned yet.</p>
+                    <Users className="mx-auto mb-3 h-10 w-10 theme-subtle" />
+                    <p className="text-sm font-medium theme-text">No classes assigned yet.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -410,16 +429,16 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
                         <div
                             key={cohort.cohort_id}
                             onClick={() => router.push(`/academic/cohorts/${cohort.cohort_id}`)}
-                            className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 cursor-pointer hover:scale-[1.02] transition-all"
+                            className="cursor-pointer rounded-xl p-4 theme-info-surface transition-all hover:scale-[1.02] hover:shadow-md"
                         >
-                            <p className="font-bold text-gray-900">{cohort.cohort_name}</p>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="font-bold theme-text">{cohort.cohort_name}</p>
+                            <p className="mt-1 text-sm theme-muted">
                                 {[cohort.level, cohort.curriculum_type].filter(Boolean).join(' · ') || 'Teaching cohort'}
                             </p>
-                            <p className="text-xs text-blue-700 mt-2 font-medium">
+                            <p className="mt-2 text-xs font-medium text-[color:var(--color-primary)]">
                                 {cohort.subject_count} subject{cohort.subject_count !== 1 ? 's' : ''}
                             </p>
-                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                            <p className="mt-1 line-clamp-2 text-xs theme-subtle">
                                 {cohort.subjects.map((subject) => subject.subject_name).join(', ')}
                             </p>
                         </div>
@@ -434,11 +453,11 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
 
 export function NoCohortsAssignedCard() {
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="py-10 text-center">
-                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-lg font-semibold text-gray-900">No cohorts assigned yet.</p>
-                <p className="text-sm text-gray-500 mt-2">
+                <Users className="mx-auto mb-3 h-12 w-12 theme-subtle" />
+                <p className="text-lg font-semibold theme-text">No cohorts assigned yet.</p>
+                <p className="mt-2 text-sm theme-muted">
                     Your teaching dashboard will show cohort, session, and curriculum tools after assignments are added.
                 </p>
             </div>
@@ -462,23 +481,23 @@ export function InstructorQuickActions({ needsGrading }: InstructorQuickActionsP
     ];
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl">
                     <Zap className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Quick Actions</h3>
+                <h3 className="text-xl font-bold theme-text">Quick Actions</h3>
             </div>
             <div className="space-y-2">
                 {actions.map(action => (
                     <button
                         key={action.label}
                         onClick={() => router.push(action.path)}
-                        className="relative w-full flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-green-50 hover:from-green-100 hover:to-emerald-100 rounded-xl border border-gray-200 transition-all hover:scale-[1.02]"
+                        className={`${dashboardActionRowClass} relative flex w-full items-center justify-between hover:scale-[1.02]`}
                     >
                         <div className="flex items-center gap-3">
-                            <action.icon className="w-5 h-5 text-green-600" />
-                            <span className="text-sm font-semibold text-gray-700">{action.label}</span>
+                            <action.icon className="w-5 h-5 text-[color:var(--color-success)]" />
+                            <span className="text-sm font-semibold theme-text">{action.label}</span>
                         </div>
                         {action.badge && action.badge > 0 && (
                             <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
@@ -512,27 +531,27 @@ export function MyRequestsCard({ requests, loading, error }: MyRequestsCardProps
     const recentRequests = requests.slice(0, 3);
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl">
                         <Inbox className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">My Requests</h3>
+                    <h3 className="text-lg font-bold theme-text">My Requests</h3>
                 </div>
                 {requests.length > 0 && (
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                    <span className="rounded-full px-2 py-1 text-xs font-bold theme-info-surface text-[color:var(--color-primary)]">
                         {requests.length}
                     </span>
                 )}
             </div>
 
             {loading ? (
-                <p className="text-sm text-gray-500 py-4">Loading requests…</p>
+                <p className="py-4 text-sm theme-muted">Loading requests…</p>
             ) : error ? (
-                <p className="text-sm text-gray-500 py-4">Requests are unavailable right now.</p>
+                <p className="py-4 text-sm theme-muted">Requests are unavailable right now.</p>
             ) : recentRequests.length === 0 ? (
-                <p className="text-sm text-gray-500 py-4">No requests submitted yet.</p>
+                <p className="py-4 text-sm theme-muted">No requests submitted yet.</p>
             ) : (
                 <>
                     <div className="space-y-3">
@@ -540,10 +559,10 @@ export function MyRequestsCard({ requests, loading, error }: MyRequestsCardProps
                             <Link
                                 key={request.id}
                                 href={`/requests/${request.id}`}
-                                className="block rounded-xl bg-blue-50 p-3 transition-colors hover:bg-blue-100"
+                                className="block rounded-xl p-3 theme-info-surface transition-colors hover:opacity-90"
                             >
-                                <p className="text-sm font-medium text-gray-900">{request.title}</p>
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="text-sm font-medium theme-text">{request.title}</p>
+                                <p className="mt-1 text-xs theme-subtle">
                                     {request.status_display} · {request.request_type_display}
                                 </p>
                             </Link>
@@ -551,7 +570,7 @@ export function MyRequestsCard({ requests, loading, error }: MyRequestsCardProps
                     </div>
                     <button
                         onClick={() => router.push('/requests')}
-                        className="w-full mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                        className="theme-focus-ring theme-button-primary mt-4 w-full rounded-lg px-4 py-2 text-sm font-semibold"
                     >
                         View All Requests
                     </button>
@@ -587,25 +606,25 @@ export function CurriculumToolCard({
     const router = useRouter();
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
                     <Icon className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                <h3 className="text-lg font-bold theme-text">{title}</h3>
             </div>
-            <p className="text-sm text-gray-600 mb-4">{description}</p>
+            <p className="mb-4 text-sm theme-muted">{description}</p>
             <div className="space-y-2">
                 <button
                     onClick={() => router.push(primaryAction.path)}
-                    className="w-full px-4 py-2 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                    className="theme-focus-ring w-full rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700"
                 >
                     {primaryAction.label}
                 </button>
                 {secondaryAction && (
                     <button
                         onClick={() => router.push(secondaryAction.path)}
-                        className="w-full px-4 py-2 bg-purple-50 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-100 transition-colors"
+                        className="theme-focus-ring theme-button-secondary w-full rounded-lg px-4 py-2 text-sm font-semibold"
                     >
                         {secondaryAction.label}
                     </button>
@@ -625,24 +644,24 @@ interface TeachingStatsProps {
 
 export function TeachingStats({ attendance, sessions, assessments }: TeachingStatsProps) {
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-gradient-to-br from-slate-500 to-gray-600 rounded-xl">
                     <Activity className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Teaching Stats</h3>
+                <h3 className="text-lg font-bold theme-text">Teaching Stats</h3>
             </div>
             <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
-                    <span className="text-sm font-medium text-gray-700">Today&apos;s Attendance</span>
+                <div className="flex items-center justify-between rounded-xl p-3 theme-success-surface">
+                    <span className="text-sm font-medium theme-text">Today&apos;s Attendance</span>
                     <span className="text-lg font-bold text-green-600">{attendance > 0 ? `${attendance}%` : 'N/A'}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl">
-                    <span className="text-sm font-medium text-gray-700">Sessions Today</span>
+                <div className="flex items-center justify-between rounded-xl p-3 theme-info-surface">
+                    <span className="text-sm font-medium theme-text">Sessions Today</span>
                     <span className="text-lg font-bold text-blue-600">{sessions}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl">
-                    <span className="text-sm font-medium text-gray-700">Upcoming Assessments</span>
+                <div className="flex items-center justify-between rounded-xl p-3 theme-warning-surface">
+                    <span className="text-sm font-medium theme-text">Upcoming Assessments</span>
                     <span className="text-lg font-bold text-amber-600">{assessments}</span>
                 </div>
             </div>
@@ -661,30 +680,30 @@ export function TeachingHistoryCard({ history }: TeachingHistoryCardProps) {
     if (past.length === 0) return null;
 
     return (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6">
+        <div className={dashboardCardClass}>
             <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-gradient-to-br from-gray-500 to-slate-600 rounded-xl">
                     <Clock className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Teaching History</h3>
-                <span className="ml-auto px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full">
+                <h3 className="text-lg font-bold theme-text">Teaching History</h3>
+                <span className={`${themeClasses.dashboardStatusSurface} ml-auto px-2 py-1 text-xs font-bold theme-muted`}>
                     {past.length} past
                 </span>
             </div>
             <div className="space-y-2">
                 {past.slice(0, 5).map((h, index) => (
-                    <div key={h.log_id} className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <div key={h.log_id} className={`${dashboardMutedPanelClass} p-3`}>
                         <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-300 font-mono">#{past.length - index}</span>
-                                    <p className="text-sm font-medium text-gray-900 truncate">{h.subject_name}</p>
+                                    <span className="font-mono text-xs theme-subtle">#{past.length - index}</span>
+                                    <p className="truncate text-sm font-medium theme-text">{h.subject_name}</p>
                                 </div>
-                                <p className="text-xs text-gray-500">{h.cohort_name} · {h.academic_year}</p>
+                                <p className="text-xs theme-muted">{h.cohort_name} · {h.academic_year}</p>
                                 <p className="text-xs text-blue-500 mt-0.5">{h.organization_name}</p>
                             </div>
                             <div className="text-right shrink-0">
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs theme-subtle">
                                     {new Date(h.assigned_at).toLocaleDateString('en-GB', {
                                         day: '2-digit', month: 'short', year: '2-digit',
                                     })}
@@ -694,7 +713,7 @@ export function TeachingHistoryCard({ history }: TeachingHistoryCardProps) {
                                         })}</>
                                     )}
                                 </p>
-                                <p className="text-xs text-gray-300 mt-0.5">{h.duration_days}d</p>
+                                <p className="mt-0.5 text-xs theme-subtle">{h.duration_days}d</p>
                                 {h.end_reason && (
                                     <p className="text-xs text-orange-400 mt-0.5">{h.end_reason}</p>
                                 )}
