@@ -31,7 +31,7 @@ export interface SuspendedOrg {
 export function useRegister() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { login, logout, register: ctxRegister } = useAuth();
+    const { login, logout, register: ctxRegister, restoreWorkspace } = useAuth();
 
     const inviteToken = searchParams.get('invite');
     const mode = searchParams.get('mode');
@@ -134,36 +134,16 @@ export function useRegister() {
         try {
             // ── New workspace or suspended recovery ───────────────────────
             if (isNewWorkspaceFlow || isSuspendedRecovery) {
-                const res = await authAPI.register({
+                const res = await ctxRegister({
                     workspace_name: form.workspace_name,
                     org_type: form.org_type,
                 });
-                if (!res.access || !res.refresh || !res.organization) {
+                if (!res.access || !res.organization) {
                     setApiError('Something went wrong. Please try again.');
                     return;
                 }
-                localStorage.setItem('access_token', res.access);
-                localStorage.setItem('refresh_token', res.refresh);
-                localStorage.setItem('active_org', JSON.stringify({
-                    id: res.organization.id,
-                    name: res.organization.name,
-                    slug: res.organization.slug ?? '',
-                    org_type: res.organization.type,
-                }));
-                localStorage.setItem('memberships', JSON.stringify([{
-                    organization: {
-                        id: res.organization.id,
-                        name: res.organization.name,
-                        slug: res.organization.slug ?? '',
-                        org_type: res.organization.type,
-                    },
-                    role: 'ADMIN',
-                    role_display: 'Admin',
-                    status: 'ACTIVE',
-                    joined_at: new Date().toISOString(),
-                }]));
                 setSuccess(true);
-                setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+                setTimeout(() => { router.replace('/dashboard'); }, 1500);
                 return;
             }
 
@@ -172,13 +152,13 @@ export function useRegister() {
                 const isExistingUser = !!invite?.user_exists;
                 if (isExistingUser) {
                     await login(form.email, form.password);
-                    await authAPI.register({
+                    await ctxRegister({
                         email: form.email,
                         password: form.password,
                         invite_code: inviteToken,
                     });
                 } else {
-                    const res = await authAPI.register({
+                    const res = await ctxRegister({
                         first_name: form.first_name,
                         last_name: form.last_name,
                         org_type: form.org_type,
@@ -186,12 +166,10 @@ export function useRegister() {
                         password: form.password,
                         invite_code: inviteToken,
                     });
-                    if (!res.access || !res.refresh) {
+                    if (!res.access) {
                         setApiError('Something went wrong. Please try again.');
                         return;
                     }
-                    localStorage.setItem('access_token', res.access);
-                    localStorage.setItem('refresh_token', res.refresh);
                 }
                 setSuccess(true);
                 setTimeout(() => router.replace('/dashboard'), 1500);
@@ -246,13 +224,9 @@ export function useRegister() {
         setRestoring(orgId);
         setApiError(null);
         try {
-            const res = await authAPI.restoreWorkspace(orgId);
-            localStorage.setItem('access_token', res.access);
-            localStorage.setItem('refresh_token', res.refresh);
-            localStorage.setItem('active_org', JSON.stringify(res.active_org));
-            localStorage.setItem('memberships', JSON.stringify(res.memberships ?? []));
+            await restoreWorkspace(orgId);
             setSuccess(true);
-            setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+            setTimeout(() => { router.replace('/dashboard'); }, 1500);
         } catch (err: unknown) {
             const e = err as { message?: string };
             setApiError(e.message ?? 'Failed to restore workspace.');
@@ -263,7 +237,7 @@ export function useRegister() {
 
     const handleLogout = async () => {
         await logout();
-        window.location.href = '/login';
+        router.replace('/login');
     };
 
     return {

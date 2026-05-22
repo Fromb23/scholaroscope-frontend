@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
 export function DashboardResolver() {
     const router = useRouter();
@@ -13,7 +14,7 @@ export function DashboardResolver() {
         if (loading) return;
 
         if (!user) {
-            router.push('/login');
+            router.replace(buildLoginPath(getCurrentPath()));
             return;
         }
 
@@ -27,7 +28,7 @@ export function DashboardResolver() {
                 : '/dashboard/admin';
 
         router.replace(destination);
-    }, [user, activeRole, loading, router]);
+    }, [activeRole, loading, router, user]);
 
     return (
         <div className="flex items-center justify-center min-h-screen">

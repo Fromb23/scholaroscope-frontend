@@ -4,6 +4,7 @@
 import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
+import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
 interface AuthGuardProps {
     children: ReactNode;
@@ -20,9 +21,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     useEffect(() => {
         if (!loading && !user) {
-            router.replace('/login');
+            router.replace(buildLoginPath(getCurrentPath()));
         }
-    }, [loading, user, router]);
+    }, [loading, router, user]);
 
     if (loading) return null;
     if (!user) return null;

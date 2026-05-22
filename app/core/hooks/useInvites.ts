@@ -6,20 +6,9 @@
 // ============================================================================
 
 import { useState, useCallback } from 'react';
+import { apiClient } from '@/app/core/api/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
-
-function getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('access_token');
-}
-
-function authHeaders(): HeadersInit {
-    return {
-        Authorization: `Bearer ${getToken()}`,
-        'Content-Type': 'application/json',
-    };
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,13 +55,10 @@ export function useInvites() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(
-                `${API_URL}/users/invites/?frontend_url=${encodeURIComponent(window.location.origin)}`,
-                { headers: authHeaders() }
+            const response = await apiClient.get<Invite[]>(
+                `/users/invites/?frontend_url=${encodeURIComponent(window.location.origin)}`
             );
-            if (!res.ok) throw new Error('Failed to load invites');
-            const data = await res.json();
-            setInvites(data);
+            setInvites(response.data);
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to load invites');
         } finally {
@@ -81,30 +67,22 @@ export function useInvites() {
     }, []);
 
     const createInvite = useCallback(async (payload: CreateInvitePayload): Promise<Invite> => {
-        const res = await fetch(`${API_URL}/users/create_invite/`, {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({
+        try {
+            const response = await apiClient.post<Invite>('/users/create_invite/', {
                 ...payload,
                 frontend_url: payload.frontend_url ?? window.location.origin,
-            }),
-        });
-        if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
+            });
+            const invite = response.data;
+            await fetchInvites();
+            return invite;
+        } catch (error) {
+            const data = (error as { response?: { data?: object } }).response?.data ?? {};
             throw Object.assign(new Error('Failed to create invite'), { data });
         }
-        const invite = await res.json();
-        await fetchInvites();
-        return invite;
     }, [fetchInvites]);
 
     const revokeInvite = useCallback(async (token: string): Promise<void> => {
-        const res = await fetch(`${API_URL}/users/revoke_invite/`, {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({ token }),
-        });
-        if (!res.ok) throw new Error('Failed to revoke invite');
+        await apiClient.post('/users/revoke_invite/', { token });
         await fetchInvites();
     }, [fetchInvites]);
 

@@ -10,6 +10,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useRouter } from 'next/navigation';
 import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -22,6 +23,7 @@ function LoginForm() {
 
   const inviteToken = searchParams.get('invite');
   const orgName = searchParams.get('org');
+  const next = searchParams.get('next');
 
   useEffect(() => {
     if (searchParams.get('reason') === 'suspended') {
@@ -96,7 +98,7 @@ function LoginForm() {
       } else {
         await login(email, password);
       }
-      window.location.href = '/dashboard';
+      router.replace(isSafeNextPath(next) ? next : '/dashboard');
     } catch (err: unknown) {
       const e = err as { data?: Record<string, unknown>; message?: string };
       const data = e?.data ?? {};

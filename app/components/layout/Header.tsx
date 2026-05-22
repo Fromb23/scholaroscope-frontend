@@ -32,9 +32,7 @@ export default function Header() {
     try {
       await switchOrg(orgId);
       setOrgDropdownOpen(false);
-      window.location.href = activeRole
-        ? (roleHomeRoute[activeRole] ?? '/dashboard')
-        : '/dashboard';
+      router.replace(activeRole ? (roleHomeRoute[activeRole] ?? '/dashboard') : '/dashboard');
     } catch (err) {
       console.error('Failed to switch org:', err);
     } finally {

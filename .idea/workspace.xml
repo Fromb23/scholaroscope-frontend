@@ -4,20 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/components/DashboardResolver.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/components/DashboardResolver.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/superadmin/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/superadmin/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/dashboard/AlertBanner.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/dashboard/AlertBanner.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/dashboard/MetricCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/dashboard/MetricCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/dashboard/QuickActions.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/dashboard/QuickActions.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/dashboard/RecentActivity.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/dashboard/RecentActivity.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/dashboard/StatsCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/dashboard/StatsCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/AdminDashboardWidgets.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/AdminDashboardWidgets.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/SessionReminderPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/SessionReminderPanel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/theme/themeClasses.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/theme/themeClasses.ts" afterDir="false" />
-    </list>
+    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -48,61 +35,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.725159470147867" />
-      <entry key="MS500" value="4.093227260349385" />
-      <entry key="S2" value="5.986819954825114" />
-      <entry key="S5" value="6.709279838235395" />
-      <entry key="S10" value="7.788504596725434" />
-      <entry key="S30" value="10.598466471409534" />
-      <entry key="S60" value="12.033507629778416" />
-      <entry key="M2" value="12.986219143351388" />
-      <entry key="M5" value="15.27854613169013" />
-      <entry key="M10" value="19.56538872606556" />
-      <entry key="M15" value="22.96521210559868" />
-      <entry key="M30" value="32.57264547799585" />
-      <entry key="H1" value="52.75715875928226" />
-      <entry key="H2" value="83.26633053181806" />
-      <entry key="H4" value="119.1922207558294" />
-      <entry key="D1" value="342.44405636834944" />
-      <entry key="W1" value="534.3304605392832" />
+      <entry key="MS100" value="1.6587414825812539" />
+      <entry key="MS500" value="3.8756046900980308" />
+      <entry key="S2" value="6.146389709650392" />
+      <entry key="S5" value="8.342464452917785" />
+      <entry key="S10" value="10.31230741116223" />
+      <entry key="S30" value="12.49867208583803" />
+      <entry key="S60" value="13.208452537809684" />
+      <entry key="M2" value="13.593402887071987" />
+      <entry key="M5" value="13.834682246569328" />
+      <entry key="M10" value="13.916887681822853" />
+      <entry key="M15" value="13.944490619383084" />
+      <entry key="M30" value="13.97453161375189" />
+      <entry key="H1" value="14.432970808893193" />
+      <entry key="H2" value="21.65654049392121" />
+      <entry key="H4" value="50.15638532824407" />
+      <entry key="D1" value="294.70612320858476" />
+      <entry key="W1" value="533.3690046095862" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
-      <entry key="S2" value="5.371610537290214E-155" />
-      <entry key="S5" value="1.9590332484175563E-62" />
-      <entry key="S10" value="1.3996546889920947E-31" />
-      <entry key="S30" value="5.192067155944203E-11" />
-      <entry key="S60" value="7.205600013839379E-6" />
-      <entry key="M2" value="0.0026843248711434643" />
-      <entry key="M5" value="0.09365566030033157" />
-      <entry key="M10" value="0.30603213733741363" />
-      <entry key="M15" value="0.45413362299062754" />
-      <entry key="M30" value="0.6763200374811589" />
-      <entry key="H1" value="0.8702035449222052" />
-      <entry key="H2" value="1.1280658060298785" />
-      <entry key="H4" value="1.4234007268069366" />
-      <entry key="D1" value="2.138549042416902" />
-      <entry key="W1" value="2.8080859283486275" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="1.1620267196745491E-259" />
+      <entry key="S60" value="3.40885130164774E-130" />
+      <entry key="M2" value="1.8463074775474792E-65" />
+      <entry key="M5" value="1.2779728026809469E-26" />
+      <entry key="M10" value="1.130474644796823E-13" />
+      <entry key="M15" value="2.3380090308497737E-9" />
+      <entry key="M30" value="4.852700833462572E-5" />
+      <entry key="H1" value="0.007371170891694696" />
+      <entry key="H2" value="0.10382268375965914" />
+      <entry key="H4" value="0.43182331911355615" />
+      <entry key="D1" value="1.753001814070622" />
+      <entry key="W1" value="2.7294588910366135" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.6674446648148475" />
-      <entry key="MS500" value="4.062316311482033" />
-      <entry key="S2" value="5.975294622274009" />
-      <entry key="S5" value="6.703688101546911" />
-      <entry key="S10" value="7.784053881242266" />
-      <entry key="S30" value="10.59534759766066" />
-      <entry key="S60" value="12.03152770123735" />
-      <entry key="M2" value="12.98770540277526" />
-      <entry key="M5" value="15.3707437947165" />
-      <entry key="M10" value="19.869582942133718" />
-      <entry key="M15" value="23.417602764619385" />
-      <entry key="M30" value="33.247691245431476" />
-      <entry key="H1" value="53.62654128206152" />
-      <entry key="H2" value="84.393876060918" />
-      <entry key="H4" value="120.61530022958567" />
-      <entry key="D1" value="344.58251117977784" />
-      <entry key="W1" value="537.1385279107105" />
+      <entry key="MS100" value="1.6083894464218207" />
+      <entry key="MS500" value="3.84711840186182" />
+      <entry key="S2" value="6.133865264434015" />
+      <entry key="S5" value="8.334398878988509" />
+      <entry key="S10" value="10.30682865702445" />
+      <entry key="S30" value="12.496311005443363" />
+      <entry key="S60" value="13.207185534414641" />
+      <entry key="M2" value="13.592745980578202" />
+      <entry key="M5" value="13.83441362223255" />
+      <entry key="M10" value="13.916752371630684" />
+      <entry key="M15" value="13.944400191548556" />
+      <entry key="M30" value="13.974534722164396" />
+      <entry key="H1" value="14.440312333533072" />
+      <entry key="H2" value="21.76030394059197" />
+      <entry key="H4" value="50.58810550921541" />
+      <entry key="D1" value="296.4590468334424" />
+      <entry key="W1" value="536.0984453280637" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -114,29 +101,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/global-theme-system&quot;,
-    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
-    &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
-    &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "feature/redis-cookie-auth",
+    "javascript.preferred.runtime.type.id": "node",
+    "js.debugger.nextJs.config.created.client": "true",
+    "js.debugger.nextJs.config.created.server": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
+    "ts.external.directory.path": "/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="npm.Next.js: server-side">
     <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
       <method v="2" />
@@ -210,7 +197,7 @@
       <workItem from="1779211046581" duration="6101000" />
       <workItem from="1779301294701" duration="1852000" />
       <workItem from="1779377744303" duration="10917000" />
-      <workItem from="1779398303191" duration="2576000" />
+      <workItem from="1779398303191" duration="3246000" />
     </task>
     <servers />
   </component>
