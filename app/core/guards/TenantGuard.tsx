@@ -4,10 +4,10 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
 interface TenantGuardProps {
     children: ReactNode;
-    fallback?: ReactNode;
 }
 
 /**
@@ -15,12 +15,15 @@ interface TenantGuardProps {
  * Superadmins bypass — they operate platform-wide without an org.
  * Regular users must have an activeOrg before seeing tenant-scoped UI.
  */
-export function TenantGuard({ children, fallback = null }: TenantGuardProps) {
+export function TenantGuard({ children }: TenantGuardProps) {
     const { user, activeOrg, loading } = useAuth();
     const router = useRouter();
 
     if (loading) return null;
-    if (!user) return null;
+    if (!user) {
+        router.replace(buildLoginPath(getCurrentPath()));
+        return null;
+    }
     if (user.is_superadmin) return <>{children}</>;
 
     if (!activeOrg) {

@@ -2,24 +2,27 @@
 
 import {
   createContext,
-  useState,
+  ReactNode,
+  useCallback,
   useContext,
   useEffect,
-  useCallback,
-  ReactNode,
   useMemo,
+  useState,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+
 import { authAPI } from '@/app/core/api/auth';
+import { registerAuthFailureHandler } from '@/app/core/api/client';
+import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 import type {
-  User,
   ActiveOrg,
   OrgMembership,
   RegisterPayload,
+  RegisterResponse,
   Role,
   SuspendedNotice,
-  RegisterResponse,
+  User,
 } from '@/app/core/types/auth';
-import { useQueryClient } from '@tanstack/react-query';
 
 interface AuthContextType {
   user: User | null;
@@ -31,31 +34,50 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   switchOrg: (organizationId: number) => Promise<void>;
+  restoreWorkspace: (organizationId: number) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<RegisterResponse>;
   acceptInvite: (inviteToken: string, email: string, password: string) => Promise<void>;
   suspendedNotices: SuspendedNotice[];
   clearSuspendedNotices: () => void;
 }
 
-function persist(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
+type AuthStatePayload = {
+  access: string;
+  user: User;
+  active_org: ActiveOrg | null;
+  memberships: OrgMembership[];
+  membership_version: number;
+  suspended_orgs?: { org: string; role: string }[];
+};
 
-function restore<T>(key: string): T | null {
-  if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(key);
-  try {
-    return stored ? (JSON.parse(stored) as T) : null;
-  } catch {
-    return null;
+function clearLegacyTokenStorage() {
+  if (typeof window === 'undefined') {
+    return;
   }
+  window.localStorage.removeItem('access_token');
+  window.localStorage.removeItem('refresh_token');
 }
 
-function clearStorage() {
+function clearStoredAuthState() {
+  if (typeof window === 'undefined') {
+    return;
+  }
   [
-    'access_token', 'refresh_token', 'user',
-    'active_org', 'memberships', 'suspended_notices',
-  ].forEach(k => localStorage.removeItem(k));
+    'access_token',
+    'refresh_token',
+    'user',
+    'active_org',
+    'memberships',
+    'suspended_notices',
+    'membership_version',
+  ].forEach((key) => window.localStorage.removeItem(key));
+}
+
+function storeMembershipVersion(version: number) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.localStorage.setItem('membership_version', String(version));
 }
 
 function resolveActiveRole(
@@ -63,22 +85,43 @@ function resolveActiveRole(
   activeOrg: ActiveOrg | null,
   memberships: OrgMembership[]
 ): Role | null {
-  if (!user) return null;
-  if (user.is_superadmin) return 'SUPERADMIN';
-  if (!activeOrg) return null;
-  const membership = memberships.find(m => m.organization.id === activeOrg.id && m.status);
+  if (!user) {
+    return null;
+  }
+  if (user.is_superadmin) {
+    return 'SUPERADMIN';
+  }
+  if (!activeOrg) {
+    return null;
+  }
+  const membership = memberships.find((item) => item.organization.id === activeOrg.id && item.status);
   return membership?.role ?? null;
 }
 
 function buildSuspendedNotices(
   suspendedOrgs: { org: string; role: string }[]
 ): SuspendedNotice[] {
-  return suspendedOrgs.map(o => ({
-    org: o.org,
-    message: o.role === 'ADMIN'
-      ? `'${o.org}' has been suspended. Contact platform support.`
-      : `'${o.org}' has been suspended. Contact your organization administrator.`,
+  return suspendedOrgs.map((item) => ({
+    org: item.org,
+    message: item.role === 'ADMIN'
+      ? `'${item.org}' has been suspended. Contact platform support.`
+      : `'${item.org}' has been suspended. Contact your organization administrator.`,
   }));
+}
+
+function registerResponseActiveOrg(response: RegisterResponse): ActiveOrg | null {
+  if (response.active_org) {
+    return response.active_org;
+  }
+  if (!response.organization) {
+    return null;
+  }
+  return {
+    id: response.organization.id,
+    name: response.organization.name,
+    slug: response.organization.slug ?? '',
+    org_type: response.organization.type,
+  };
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -86,17 +129,11 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
-  const [user, setUser] = useState<User | null>(() => restore<User>('user'));
-  const [activeOrg, setActiveOrg] = useState<ActiveOrg | null>(() => restore<ActiveOrg>('active_org'));
-  const [memberships, setMemberships] = useState<OrgMembership[]>(
-    () => restore<OrgMembership[]>('memberships') ?? []
-  );
-  const [membershipVersion, setMembershipVersion] = useState<number>(
-    () => Number(typeof window !== 'undefined' ? localStorage.getItem('membership_version') ?? 0 : 0)
-  );
-  const [suspendedNotices, setSuspendedNotices] = useState<SuspendedNotice[]>(
-    () => restore<SuspendedNotice[]>('suspended_notices') ?? []
-  );
+  const [user, setUser] = useState<User | null>(null);
+  const [activeOrg, setActiveOrg] = useState<ActiveOrg | null>(null);
+  const [memberships, setMemberships] = useState<OrgMembership[]>([]);
+  const [membershipVersion, setMembershipVersion] = useState<number>(0);
+  const [suspendedNotices, setSuspendedNotices] = useState<SuspendedNotice[]>([]);
   const [loading, setLoading] = useState(true);
 
   const activeRole = useMemo(
@@ -104,169 +141,168 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, activeOrg, memberships]
   );
 
+  const clearAuthState = useCallback(() => {
+    clearAccessToken();
+    clearStoredAuthState();
+    setUser(null);
+    setActiveOrg(null);
+    setMemberships([]);
+    setMembershipVersion(0);
+    setSuspendedNotices([]);
+    queryClient.clear();
+  }, [queryClient]);
+
+  const applyAuthState = useCallback((payload: AuthStatePayload) => {
+    setAccessToken(payload.access);
+    setUser(payload.user);
+    setActiveOrg(payload.active_org);
+    setMemberships(payload.memberships ?? []);
+    setMembershipVersion(payload.membership_version ?? 0);
+    setSuspendedNotices(buildSuspendedNotices(payload.suspended_orgs ?? []));
+    storeMembershipVersion(payload.membership_version ?? 0);
+  }, []);
+
+  const applyMembershipContext = useCallback((payload: {
+    active_org: ActiveOrg | null;
+    memberships: OrgMembership[];
+    membership_version: number;
+    suspended_orgs?: { org: string; role: string }[];
+  }) => {
+    setActiveOrg(payload.active_org);
+    setMemberships(payload.memberships ?? []);
+    setMembershipVersion(payload.membership_version ?? 0);
+    setSuspendedNotices(buildSuspendedNotices(payload.suspended_orgs ?? []));
+    storeMembershipVersion(payload.membership_version ?? 0);
+  }, []);
+
   const syncContext = useCallback(async () => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-    try {
-      const ctx = await authAPI.meContext();
-      const suspendedOrgs = (ctx as unknown as {
-        suspended_orgs?: { org: string; role: string }[]
-      }).suspended_orgs ?? [];
-      const notices = buildSuspendedNotices(suspendedOrgs);
-      persist('active_org', ctx.active_org);
-      persist('memberships', ctx.memberships);
-      persist('suspended_notices', notices);
-      localStorage.setItem('membership_version', String(ctx.membership_version));
-      setActiveOrg(ctx.active_org);
-      setMemberships(ctx.memberships);
-      setMembershipVersion(ctx.membership_version);
-      setSuspendedNotices(notices);
-    } catch {
-      // silent
+    if (!user) {
+      return;
     }
-  }, []);
+    try {
+      const context = await authAPI.meContext();
+      applyMembershipContext(context);
+    } catch {
+      // Request interceptor handles refresh/retry and terminal redirect.
+    }
+  }, [applyMembershipContext, user]);
 
   useEffect(() => {
-    const access = localStorage.getItem('access_token');
-    if (!access) { setLoading(false); return; }
-    authAPI.getProfile()
-      .then(u => { setUser(u); persist('user', u); })
-      .catch(() => { clearStorage(); setUser(null); setActiveOrg(null); setMemberships([]); })
-      .finally(() => setLoading(false));
-  }, []);
+    registerAuthFailureHandler(() => {
+      clearAuthState();
+      setLoading(false);
+    });
+    return () => registerAuthFailureHandler(null);
+  }, [clearAuthState]);
 
   useEffect(() => {
-    const handleMismatch = () => syncContext();
+    let cancelled = false;
+
+    clearLegacyTokenStorage();
+
+    const boot = async () => {
+      try {
+        const response = await authAPI.refresh();
+        if (cancelled) {
+          return;
+        }
+        applyAuthState(response);
+      } catch {
+        if (cancelled) {
+          return;
+        }
+        clearAuthState();
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void boot();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyAuthState, clearAuthState]);
+
+  useEffect(() => {
+    const handleMismatch = () => {
+      void syncContext();
+    };
     window.addEventListener('membership-version-mismatch', handleMismatch);
     return () => window.removeEventListener('membership-version-mismatch', handleMismatch);
   }, [syncContext]);
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') syncContext();
+      if (document.visibilityState === 'visible') {
+        void syncContext();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [syncContext]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await authAPI.login({ email, password });
-    localStorage.setItem('access_token', res.access);
-    localStorage.setItem('refresh_token', res.refresh);
-    const profile = await authAPI.getProfile();
-    const suspendedOrgs = (res as unknown as {
-      suspended_orgs?: { org: string; role: string }[]
-    }).suspended_orgs ?? [];
-    const notices = buildSuspendedNotices(suspendedOrgs);
-    const version = (res as unknown as { membership_version?: number }).membership_version ?? 0;
-    persist('user', profile);
-    persist('active_org', res.active_org ?? null);
-    persist('memberships', res.memberships ?? []);
-    persist('suspended_notices', notices);
-    localStorage.setItem('membership_version', String(version));
-    setUser(profile);
-    setActiveOrg(res.active_org ?? null);
-    setMemberships(res.memberships ?? []);
-    setSuspendedNotices(notices);
-    setMembershipVersion(version);
+    const response = await authAPI.login({ email, password });
+    applyAuthState(response);
     setLoading(false);
-  }, []);
+  }, [applyAuthState]);
 
   const logout = useCallback(async () => {
-    try { await authAPI.logout(); }
-    finally {
-      clearStorage();
-      setUser(null);
-      setActiveOrg(null);
-      setMemberships([]);
-      setSuspendedNotices([]);
+    try {
+      await authAPI.logout();
+    } finally {
+      clearAuthState();
       setLoading(false);
     }
-  }, []);
+  }, [clearAuthState]);
 
   const switchOrg = useCallback(async (organizationId: number) => {
-    const res = await authAPI.switchOrg(organizationId);
-    localStorage.setItem('access_token', res.access);
-    localStorage.setItem('refresh_token', res.refresh);
-    const updatedUser = await authAPI.getProfile();
-    persist('user', updatedUser);
-    persist('active_org', res.active_org);
-    persist('memberships', res.memberships ?? memberships);
-    setUser(updatedUser);
-    setActiveOrg(res.active_org);
-    setMemberships(res.memberships ?? memberships);
+    const response = await authAPI.switchOrg(organizationId);
+    applyAuthState(response);
     queryClient.clear();
-  }, [memberships, queryClient]);
+  }, [applyAuthState, queryClient]);
+
+  const restoreWorkspace = useCallback(async (organizationId: number) => {
+    const response = await authAPI.restoreWorkspace(organizationId);
+    applyAuthState(response);
+    queryClient.clear();
+  }, [applyAuthState, queryClient]);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResponse> => {
-    const res: RegisterResponse = await authAPI.register(payload);
+    const response = await authAPI.register(payload);
 
-    if (res.status === 'pending') {
-      return res;
+    if (response.status === 'pending') {
+      return response;
     }
 
-    if (!res.access || !res.refresh || !res.organization || !res.user) {
-      return res;
+    if (!response.access || !response.user) {
+      return response;
     }
 
-    localStorage.setItem('access_token', res.access);
-    localStorage.setItem('refresh_token', res.refresh);
-
-    const newActiveOrg: ActiveOrg = {
-      id: res.organization.id,
-      name: res.organization.name,
-      slug: res.organization.slug ?? '',
-      org_type: res.organization.type,
-    };
-    const membership: OrgMembership = {
-      organization: newActiveOrg,
-      role: 'ADMIN',
-      role_display: 'Admin',
-      status: 'ACTIVE',
-      joined_at: new Date().toISOString(),
-    };
-    persist('user', res.user);
-    persist('active_org', newActiveOrg);
-    persist('memberships', [membership]);
-    setUser(res.user);
-    setActiveOrg(newActiveOrg);
-    setMemberships([membership]);
+    applyAuthState({
+      access: response.access,
+      user: response.user,
+      active_org: registerResponseActiveOrg(response),
+      memberships: response.memberships ?? [],
+      membership_version: response.membership_version ?? membershipVersion,
+    });
     setLoading(false);
-    return res;
-  }, []);
+    return response;
+  }, [applyAuthState, membershipVersion]);
 
   const acceptInvite = useCallback(async (
-    inviteToken: string, email: string, password: string
+    inviteToken: string,
+    email: string,
+    password: string
   ) => {
-    const loginRes = await authAPI.login({ email, password });
-    localStorage.setItem('access_token', loginRes.access);
-    localStorage.setItem('refresh_token', loginRes.refresh);
-
-    const res: RegisterResponse = await authAPI.register({ email, password, invite_code: inviteToken });
-
-    if (!res.access || !res.refresh || !res.organization || !res.user) {
-      return;
-    }
-
-    const newActiveOrg: ActiveOrg = {
-      id: res.organization.id,
-      name: res.organization.name,
-      slug: res.organization.slug ?? '',
-      org_type: res.organization.type,
-    };
-    localStorage.setItem('access_token', res.access);
-    localStorage.setItem('refresh_token', res.refresh);
-    persist('user', res.user);
-    persist('active_org', newActiveOrg);
-    persist('memberships', res.memberships ?? []);
-    setUser(res.user);
-    setActiveOrg(newActiveOrg);
-    setMemberships((res.memberships as OrgMembership[]) ?? []);
-    setLoading(false);
-  }, []);
+    await login(email, password);
+    await register({ email, password, invite_code: inviteToken });
+  }, [login, register]);
 
   const clearSuspendedNotices = useCallback(() => {
-    localStorage.removeItem('suspended_notices');
     setSuspendedNotices([]);
   }, []);
 
@@ -281,6 +317,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       switchOrg,
+      restoreWorkspace,
       register,
       acceptInvite,
       suspendedNotices,
@@ -292,7 +329,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
 }

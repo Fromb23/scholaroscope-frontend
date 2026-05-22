@@ -12,6 +12,7 @@ import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import '@/app/plugins/registerAll';
 import { AlertTriangle } from 'lucide-react';
 import { SuspendedNotice } from '../core/types/auth';
+import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
 function DashboardContent({
   children,
@@ -44,15 +45,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   useEffect(() => {
+    const currentPath = getCurrentPath();
     if (loading) return;
     if (!user) {
-      router.replace('/login');
+      router.replace(buildLoginPath(currentPath));
       return;
     }
     if (user.is_superadmin) return;
 
     if (activeRole === null) {
-      router.replace('/login?reason=suspended');
+      router.replace(buildLoginPath(currentPath, { reason: 'suspended' }));
       return;
     }
 
@@ -65,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       router.replace(roleHomeRoute[activeRole]);
     }
-  }, [loading, user, activeRole, pathname, router]);
+  }, [activeRole, loading, pathname, router, user]);
 
   if (loading || !user) {
     return (

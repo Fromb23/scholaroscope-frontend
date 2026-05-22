@@ -17,7 +17,7 @@ export interface User {
   is_superadmin: boolean;
   is_active: boolean;
   phone: string;
-  profile_image: string;
+  profile_image?: string;
   date_joined: string;
   last_login: string;
 }
@@ -44,11 +44,13 @@ export interface ActiveOrg {
 
 export interface LoginResponse {
   access: string;
-  refresh: string;
   user: User;
   message: string;
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
+  membership_version: number;
+  state?: string;
+  suspended_orgs?: { org: string; role: string }[];
   requires_workspace_recovery?: boolean;
   suspended_notices?: SuspendedNotice[];
 }
@@ -60,10 +62,21 @@ export interface LoginCredentials {
 
 export interface SwitchOrgResponse {
   access: string;
-  refresh: string;
   user: User;
   active_org: ActiveOrg;
   memberships: OrgMembership[];
+  membership_version: number;
+  message: string;
+}
+
+export interface RefreshResponse {
+  access: string;
+  user: User;
+  active_org: ActiveOrg | null;
+  memberships: OrgMembership[];
+  membership_version: number;
+  state?: string;
+  message?: string;
 }
 
 export interface RegisterPayload {
@@ -80,8 +93,10 @@ export interface RegisterResponse {
   status?: 'pending';
   message?: string;
   access?: string;
-  refresh?: string;
   user?: User;
+  active_org?: ActiveOrg | null;
+  membership_version?: number;
+  state?: string;
   organization?: {
     id: number;
     name: string;
