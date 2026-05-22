@@ -22,17 +22,17 @@ export function StatsCard({
   subtitle,
 }: StatsCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-100 text-blue-600',
-    green: 'bg-green-100 text-green-600',
-    yellow: 'bg-yellow-100 text-yellow-600',
-    red: 'bg-red-100 text-red-600',
-    purple: 'bg-purple-100 text-purple-600',
-    indigo: 'bg-indigo-100 text-indigo-600',
-    orange: 'bg-orange-100 text-orange-600',
+    blue: 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg',
+    green: 'bg-gradient-to-br from-green-500 to-emerald-500 text-white shadow-lg',
+    yellow: 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg',
+    red: 'bg-gradient-to-br from-red-500 to-rose-500 text-white shadow-lg',
+    purple: 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg',
+    indigo: 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-lg',
+    orange: 'bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg',
   };
 
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-[var(--shadow-soft)]">
       <div className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">

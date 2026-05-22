@@ -17,4 +17,12 @@ export const themeClasses = {
   authShell: 'relative z-10 mx-auto w-full max-w-md space-y-6',
   authCard: 'theme-card rounded-2xl p-8',
   settingsSection: 'space-y-4',
+  dashboardCard: 'theme-card rounded-2xl shadow-[var(--shadow-soft)]',
+  dashboardPanel: 'theme-surface-elevated rounded-xl border theme-border shadow-[var(--shadow-soft)]',
+  dashboardMutedPanel: 'theme-surface-muted rounded-xl border theme-border',
+  dashboardMetricCard: 'theme-surface-elevated rounded-2xl border theme-border shadow-[var(--shadow-soft)]',
+  dashboardActionRow: 'theme-surface-muted rounded-xl border theme-border theme-hover-surface theme-hover-border-strong',
+  dashboardIconTile: 'rounded-xl shadow-lg',
+  dashboardLink: 'theme-link font-semibold transition-colors',
+  dashboardStatusSurface: 'theme-surface-muted rounded-full border theme-border',
 } as const;

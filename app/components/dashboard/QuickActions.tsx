@@ -4,6 +4,7 @@
 
 import { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
+import { themeClasses } from '@/app/core/theme/themeClasses';
 
 interface QuickAction {
     title: string;
@@ -20,13 +21,13 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
                 <Link
                     key={action.title}
                     href={action.href}
-                    className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white p-6 transition-all hover:border-blue-300 hover:shadow-md"
+                    className={`${themeClasses.dashboardCard} group relative overflow-hidden p-6 transition-all hover:shadow-md`}
                 >
                     <div className={`mb-4 inline-flex rounded-lg ${action.color} p-3`}>
                         <action.icon className="h-6 w-6" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">{action.title}</h3>
-                    <p className="mt-1 text-sm text-gray-600">{action.description}</p>
+                    <h3 className="text-lg font-semibold theme-text">{action.title}</h3>
+                    <p className="mt-1 text-sm theme-muted">{action.description}</p>
                 </Link>
             ))}
         </div>

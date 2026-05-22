@@ -83,7 +83,7 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
                 {alert.onDismiss && (
                   <button
                     onClick={alert.onDismiss}
-                    className="theme-focus-ring text-gray-400 hover:text-gray-600"
+                    className="theme-focus-ring rounded-md p-1 theme-muted transition-colors hover:text-[color:var(--color-text)]"
                   >
                     <XCircle className="w-4 h-4" />
                   </button>
