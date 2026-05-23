@@ -3,7 +3,26 @@
 
 export type MemberRole = 'ADMIN' | 'INSTRUCTOR';
 export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
-export type MembershipStatus = 'ACTIVE' | 'INACTIVE';
+export type GlobalAccountStatus = 'ACTIVE' | 'GLOBAL_DEACTIVATED';
+export type MembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+
+export interface MembershipSummary {
+    user_id: number;
+    user_name: string;
+    organization_id: number;
+    organization_name: string;
+    role: MemberRole;
+    status: MembershipStatus;
+}
+
+export interface GlobalUserActionResponse {
+    message?: string;
+    detail?: string;
+    membership_status?: MembershipStatus;
+    membership_version?: number;
+    membership?: MembershipSummary;
+    user?: GlobalUser;
+}
 
 export interface GlobalUser {
     id: number;
@@ -17,7 +36,13 @@ export interface GlobalUser {
     profile_image?: string;
     date_joined: string;
     last_login: string | null;
+    global_status?: GlobalAccountStatus;
     membership_status?: MembershipStatus | null;
+    state_message?: string | null;
+    can_restrict_access?: boolean;
+    can_reactivate_access?: boolean;
+    can_remove_from_org?: boolean;
+    can_readd_to_org?: boolean;
     role?: UserRole;
     role_display?: string;
     organization?: number | null;
@@ -34,6 +59,7 @@ export interface UserMembership {
         name: string;
         slug: string;
         org_type: string;
+        status: string;
     };
     status: MembershipStatus;
     joined_at: string;
@@ -77,6 +103,61 @@ export const ROLE_LABELS: Record<UserRole, string> = {
     ADMIN: 'Admin',
     INSTRUCTOR: 'Instructor',
 };
+
+export function resolveGlobalStatus(user: Pick<GlobalUser, 'global_status' | 'is_active'>): GlobalAccountStatus {
+    if (user.global_status) {
+        return user.global_status;
+    }
+    return user.is_active ? 'ACTIVE' : 'GLOBAL_DEACTIVATED';
+}
+
+export function isGloballyActive(user: Pick<GlobalUser, 'global_status' | 'is_active'>): boolean {
+    return resolveGlobalStatus(user) === 'ACTIVE';
+}
+
+export function isEffectivelyActiveInCurrentOrg(
+    user: Pick<GlobalUser, 'global_status' | 'is_active' | 'membership_status'>
+): boolean {
+    return isGloballyActive(user) && user.membership_status === 'ACTIVE';
+}
+
+export function membershipStatusLabel(status?: MembershipStatus | null): string {
+    switch (status) {
+        case 'ACTIVE':
+            return 'Active';
+        case 'SUSPENDED':
+            return 'Access Restricted';
+        case 'REVOKED':
+            return 'Removed';
+        default:
+            return 'No Membership';
+    }
+}
+
+export function membershipStatusVariant(
+    status?: MembershipStatus | null
+): 'success' | 'warning' | 'danger' | 'default' {
+    switch (status) {
+        case 'ACTIVE':
+            return 'success';
+        case 'SUSPENDED':
+            return 'warning';
+        case 'REVOKED':
+            return 'danger';
+        default:
+            return 'default';
+    }
+}
+
+export function globalStatusLabel(status?: GlobalAccountStatus): string {
+    return status === 'GLOBAL_DEACTIVATED' ? 'Platform Restricted' : 'Platform Active';
+}
+
+export function globalStatusVariant(
+    status?: GlobalAccountStatus
+): 'success' | 'danger' {
+    return status === 'GLOBAL_DEACTIVATED' ? 'danger' : 'success';
+}
 
 export interface AvailableCohort {
     id: number;

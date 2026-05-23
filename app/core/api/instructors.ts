@@ -11,6 +11,7 @@ import {
     AvailableCohort,
     AvailableCohortSubject,
     CohortAssignment,
+    GlobalUserActionResponse,
     GlobalUser,
     InstructorStats,
     SourceAwareSubjectReference,
@@ -95,15 +96,20 @@ export const instructorsAPI = {
         await apiClient.delete(`/users/${id}/`);
     },
 
+    removeFromOrganization: async (id: number): Promise<GlobalUserActionResponse> => {
+        const response = await apiClient.post<GlobalUserActionResponse>(`/users/${id}/remove_from_org/`);
+        return response.data;
+    },
+
     // POST /api/users/{id}/activate/
-    activate: async (id: number): Promise<GlobalUser> => {
-        const response = await apiClient.post<GlobalUser>(`/users/${id}/activate/`);
+    activate: async (id: number): Promise<GlobalUserActionResponse> => {
+        const response = await apiClient.post<GlobalUserActionResponse>(`/users/${id}/activate/`);
         return response.data;
     },
 
     // POST /api/users/{id}/deactivate/
-    deactivate: async (id: number): Promise<GlobalUser> => {
-        const response = await apiClient.post<GlobalUser>(`/users/${id}/deactivate/`);
+    deactivate: async (id: number): Promise<GlobalUserActionResponse> => {
+        const response = await apiClient.post<GlobalUserActionResponse>(`/users/${id}/deactivate/`);
         return response.data;
     },
 

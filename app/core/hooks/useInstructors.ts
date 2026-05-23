@@ -1,7 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
-import { GlobalUser, UserCreatePayload, InstructorStats, UserUpdatePayload } from '@/app/core/types/globalUsers';
+import {
+    GlobalUser,
+    GlobalUserActionResponse,
+    UserCreatePayload,
+    InstructorStats,
+    UserUpdatePayload,
+} from '@/app/core/types/globalUsers';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+
+function resolveActionUser(
+    response: GlobalUserActionResponse,
+    fallback: GlobalUser | undefined,
+): GlobalUser {
+    if (response.user) {
+        return response.user;
+    }
+
+    if (!fallback) {
+        throw new Error(response.detail || response.message || 'Instructor state was not returned.');
+    }
+
+    return {
+        ...fallback,
+        membership_status: response.membership_status ?? fallback.membership_status ?? null,
+    };
+}
 
 export const useInstructors = () => {
     const [instructors, setInstructors] = useState<GlobalUser[]>([]);
@@ -45,10 +69,14 @@ export const useInstructors = () => {
 
     const deleteInstructor = async (id: number) => {
         try {
-            await instructorsAPI.remove(id);
-            setInstructors(prev => prev.filter(i => i.id !== id));
+            await instructorsAPI.removeFromOrganization(id);
+            setInstructors(prev => prev.map((i) => (
+                i.id === id
+                    ? { ...i, membership_status: 'REVOKED' }
+                    : i
+            )));
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete instructor'));
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to remove instructor from organization'));
         }
     };
 
@@ -57,14 +85,10 @@ export const useInstructors = () => {
             const updated = activate
                 ? await instructorsAPI.activate(id)
                 : await instructorsAPI.deactivate(id);
-            const resolved = (typeof updated === 'object' && updated !== null && 'user' in updated)
-                ? {
-                    ...(updated as { user: GlobalUser }).user,
-                    is_active: (updated as { membership_status?: string }).membership_status === 'INACTIVE'
-                        ? false
-                        : (updated as { user: GlobalUser }).user.is_active,
-                }
-                : updated;
+            const resolved = resolveActionUser(
+                updated,
+                instructors.find((instructor) => instructor.id === id),
+            );
             setInstructors(prev => prev.map(i => i.id === id ? resolved : i));
             return resolved;
         } catch (err) {

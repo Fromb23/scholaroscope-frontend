@@ -21,6 +21,7 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   loading?: boolean;
   pagination?: PaginationConfig;
+  initialSort?: SortConfig | null;
   onPaginationChange?: (page: number, pageSize: number) => void;
   onSearch?: (query: string) => void;
   onSort?: (field: string, direction: 'asc' | 'desc') => void;
@@ -141,6 +142,7 @@ export function DataTable<T extends Record<string, unknown>>({
   columns,
   loading = false,
   pagination,
+  initialSort = null,
   onPaginationChange,
   onSearch,
   onSort,
@@ -154,9 +156,13 @@ export function DataTable<T extends Record<string, unknown>>({
   onRowClick,
 }: DataTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(initialSort);
   const [filters, setFilters] = useState<FilterConfig[]>([]);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setSortConfig(initialSort);
+  }, [initialSort]);
 
   // Handle search with debounce
   useEffect(() => {

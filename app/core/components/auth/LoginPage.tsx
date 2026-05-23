@@ -15,6 +15,7 @@ import {
   isPlatformSuperadminBlockedPath,
   roleHomeRoute,
 } from '@/app/utils/routeAccess';
+import type { AccessNotice } from '@/app/core/types/auth';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -34,6 +35,8 @@ function LoginForm() {
       setError(
         'Your organization has been suspended. Contact your administrator for more information.',
       );
+    } else if (searchParams.get('reason') === 'no_access') {
+      setError('You do not currently have access to any active workspace.');
     }
   }, [searchParams]);
 
@@ -45,47 +48,39 @@ function LoginForm() {
   const resolveErrorMessage = (data: Record<string, unknown>): string => {
     const state = data?.state as string;
     const errorCode = data?.error as string;
+    const restrictedOrgs = (data?.restricted_orgs as AccessNotice[]) ?? [];
+    const orgSuspendedOrgs = (data?.org_suspended_orgs as AccessNotice[]) ?? [];
+    const removedOrgs = (data?.removed_orgs as AccessNotice[]) ?? [];
+    const pendingOrgs = (data?.pending_orgs as AccessNotice[]) ?? [];
+    const platformRestrictionMessage = (data?.non_field_errors as string[])?.[0];
 
-    if (errorCode === 'suspended' || state === 'ONLY_SUSPENDED') {
-      const orgs = (data?.suspended_orgs as { org: string; role: string }[]) ?? [];
-      return orgs
-        .map((o) =>
-          o.role === 'ADMIN'
-            ? `'${o.org}' has been suspended. Contact platform support.`
-            : `'${o.org}' has been suspended. Contact your organization administrator.`,
-        )
+    if (platformRestrictionMessage) {
+      return platformRestrictionMessage;
+    }
+
+    if (errorCode === 'restricted' || state === 'ONLY_SUSPENDED') {
+      return [...restrictedOrgs, ...orgSuspendedOrgs]
+        .map((notice) => notice.message)
         .join('\n');
     }
 
-    if (errorCode === 'revoked' || state === 'ONLY_REVOKED') {
-      const orgs = (data?.revoked_orgs as { org: string }[]) ?? [];
-      return orgs
-        .map(
-          (o) =>
-            `Your access to '${o.org}' has been revoked. Contact your organization administrator.`,
-        )
-        .join('\n');
+    if (errorCode === 'removed' || state === 'ONLY_REVOKED') {
+      return removedOrgs.map((notice) => notice.message).join('\n');
     }
 
     if (errorCode === 'mixed_inactive' || state === 'MIXED_INACTIVE') {
-      const suspended = (data?.suspended_orgs as { org: string; role: string }[]) ?? [];
-      const revoked = (data?.revoked_orgs as { org: string }[]) ?? [];
-      const lines = [
-        ...suspended.map((o) =>
-          o.role === 'ADMIN'
-            ? `'${o.org}' has been suspended. Contact platform support.`
-            : `'${o.org}' has been suspended. Contact your organization administrator.`,
-        ),
-        ...revoked.map(
-          (o) =>
-            `Your access to '${o.org}' has been revoked. Contact your organization administrator.`,
-        ),
-      ];
-      return lines.join('\n');
+      return [...restrictedOrgs, ...orgSuspendedOrgs, ...removedOrgs]
+        .map((notice) => notice.message)
+        .join('\n');
     }
 
-    if (errorCode === 'no_org') {
-      return 'No active organization found. Contact your administrator.';
+    if (errorCode === 'no_active_workspace') {
+      const detail = typeof data?.detail === 'string'
+        ? data.detail
+        : 'You do not currently have access to any active workspace.';
+      return [detail, ...pendingOrgs.map((notice) => notice.message)]
+        .filter(Boolean)
+        .join('\n');
     }
 
     return (data?.non_field_errors as string[])?.[0] || 'Login failed. Please try again.';

@@ -15,7 +15,15 @@ import {
     UserCheck, UserX, BookOpen, LayoutGrid, List, Mail, Phone,
 } from 'lucide-react';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
-import { GlobalUser } from '@/app/core/types/globalUsers';
+import {
+    GlobalUser,
+    globalStatusLabel,
+    globalStatusVariant,
+    isEffectivelyActiveInCurrentOrg,
+    membershipStatusLabel,
+    membershipStatusVariant,
+    resolveGlobalStatus,
+} from '@/app/core/types/globalUsers';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -30,16 +38,21 @@ type ViewMode = 'table' | 'grid';
 // ── Stats bar ─────────────────────────────────────────────────────────────
 
 function StatsBar({ instructors }: { instructors: GlobalUser[] }) {
-    const active = instructors.filter(i => i.is_active).length;
-    const inactive = instructors.filter(i => !i.is_active).length;
+    const active = instructors.filter((instructor) => isEffectivelyActiveInCurrentOrg(instructor)).length;
+    const restricted = instructors.filter(
+        (instructor) => resolveGlobalStatus(instructor) === 'ACTIVE' && instructor.membership_status === 'SUSPENDED'
+    ).length;
+    const platformRestricted = instructors.filter(
+        (instructor) => resolveGlobalStatus(instructor) === 'GLOBAL_DEACTIVATED'
+    ).length;
 
     return (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
                 { label: 'Total Instructors', value: instructors.length, color: 'text-blue-600', bg: 'bg-blue-50', icon: Users },
                 { label: 'Active', value: active, color: 'text-green-600', bg: 'bg-green-50', icon: UserCheck },
-                { label: 'Inactive', value: inactive, color: 'text-red-600', bg: 'bg-red-50', icon: UserX },
-                { label: 'With Cohorts', value: '—', color: 'text-purple-600', bg: 'bg-purple-50', icon: BookOpen },
+                { label: 'Access Restricted', value: restricted, color: 'text-yellow-600', bg: 'bg-yellow-50', icon: UserX },
+                { label: 'Platform Restricted', value: platformRestricted, color: 'text-red-600', bg: 'bg-red-50', icon: BookOpen },
             ].map(s => (
                 <Card key={s.label} className="py-4 px-5">
                     <div className="flex items-center gap-3">
@@ -182,10 +195,18 @@ function InstructorGridCard({
                         <p className="text-sm font-bold text-gray-900 truncate">{instructor.full_name}</p>
                         <p className="text-xs text-gray-500 truncate">{instructor.email}</p>
                         {instructor.phone && <p className="text-xs text-gray-400">{instructor.phone}</p>}
+                        {instructor.state_message ? (
+                            <p className="mt-1 text-xs text-gray-500">{instructor.state_message}</p>
+                        ) : null}
                     </div>
-                    <Badge variant={instructor.is_active ? 'success' : 'danger'} size="sm">
-                        {instructor.is_active ? 'Active' : 'Off'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1">
+                        <Badge variant={globalStatusVariant(resolveGlobalStatus(instructor))} size="sm">
+                            {globalStatusLabel(resolveGlobalStatus(instructor))}
+                        </Badge>
+                        <Badge variant={membershipStatusVariant(instructor.membership_status)} size="sm">
+                            {membershipStatusLabel(instructor.membership_status)}
+                        </Badge>
+                    </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100 pt-3">
                     <span className="flex items-center gap-1">
@@ -223,10 +244,13 @@ export default function InstructorManagementPage() {
         return instructors.filter(i => {
             const matchSearch = !search ||
                 i.full_name.toLowerCase().includes(search.toLowerCase()) ||
-                i.email.toLowerCase().includes(search.toLowerCase());
-            const matchStatus = statusFilter === 'all' ||
-                (statusFilter === 'active' && i.is_active) ||
-                (statusFilter === 'inactive' && !i.is_active);
+                i.email.toLowerCase().includes(search.toLowerCase()) ||
+                (i.state_message ?? '').toLowerCase().includes(search.toLowerCase());
+            const matchStatus = statusFilter === 'all'
+                || (statusFilter === 'active' && isEffectivelyActiveInCurrentOrg(i))
+                || (statusFilter === 'access_restricted' && resolveGlobalStatus(i) === 'ACTIVE' && i.membership_status === 'SUSPENDED')
+                || (statusFilter === 'removed' && i.membership_status === 'REVOKED')
+                || (statusFilter === 'platform_restricted' && resolveGlobalStatus(i) === 'GLOBAL_DEACTIVATED');
             return matchSearch && matchStatus;
         });
     }, [instructors, search, statusFilter]);
@@ -306,12 +330,22 @@ export default function InstructorManagementPage() {
             ),
         },
         {
-            key: 'is_active',
-            header: 'Status',
+            key: 'status',
+            header: 'Lifecycle',
             render: row => (
-                <Badge variant={row.is_active ? 'success' : 'danger'}>
-                    {row.is_active ? 'Active' : 'Inactive'}
-                </Badge>
+                <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant={globalStatusVariant(resolveGlobalStatus(row))}>
+                            {globalStatusLabel(resolveGlobalStatus(row))}
+                        </Badge>
+                        <Badge variant={membershipStatusVariant(row.membership_status)}>
+                            {membershipStatusLabel(row.membership_status)}
+                        </Badge>
+                    </div>
+                    {row.state_message ? (
+                        <p className="max-w-sm text-xs text-gray-500">{row.state_message}</p>
+                    ) : null}
+                </div>
             ),
         },
         {
@@ -413,9 +447,11 @@ export default function InstructorManagementPage() {
                     onChange={e => setStatusFilter(e.target.value)}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="all">All Lifecycle States</option>
+                    <option value="active">Org Active</option>
+                    <option value="access_restricted">Access Restricted</option>
+                    <option value="removed">Removed from Org</option>
+                    <option value="platform_restricted">Platform Restricted</option>
                 </select>
                 <div className="flex rounded-lg border border-gray-200 overflow-hidden ml-auto">
                     <button

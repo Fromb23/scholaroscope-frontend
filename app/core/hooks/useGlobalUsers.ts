@@ -5,6 +5,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
 import {
+    GlobalUserActionResponse,
     GlobalUser,
     UserCreatePayload,
     UserUpdatePayload,
@@ -12,6 +13,24 @@ import {
     UserOrgMembership,
 } from '@/app/core/types/globalUsers';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+
+function resolveActionUser(
+    response: GlobalUserActionResponse,
+    fallback: GlobalUser | undefined,
+): GlobalUser {
+    if (response.user) {
+        return response.user;
+    }
+
+    if (!fallback) {
+        throw new Error(response.detail || response.message || 'User state was not returned.');
+    }
+
+    return {
+        ...fallback,
+        membership_status: response.membership_status ?? fallback.membership_status ?? null,
+    };
+}
 
 // ---------------------------------------------------------------------------
 // useGlobalUsers
@@ -70,7 +89,11 @@ export const useGlobalUsers = () => {
             const updated = activate
                 ? await globalUsersAPI.activate(id)
                 : await globalUsersAPI.deactivate(id);
-            setUsers(prev => prev.map(u => (u.id === id ? updated : u)));
+            setUsers(prev => prev.map((u) => (
+                u.id === id
+                    ? resolveActionUser(updated, u)
+                    : u
+            )));
             return updated;
         } catch (err) {
             throw new Error(extractErrorMessage(err as ApiError, 'Failed to change user status'));
@@ -92,6 +115,7 @@ export const useGlobalUsers = () => {
     const removeFromOrg = async (userId: number, organizationId: number): Promise<void> => {
         try {
             await globalUsersAPI.removeFromOrg(userId, organizationId);
+            await fetchUsers();
         } catch (err) {
             throw new Error(extractErrorMessage(err as ApiError, 'Failed to remove from organization'));
         }

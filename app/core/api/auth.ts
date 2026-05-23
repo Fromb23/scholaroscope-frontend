@@ -2,6 +2,7 @@ import { apiClient, refreshClient } from './client';
 import { getAccessToken } from '@/app/core/auth/tokenStore';
 import type {
   ActiveOrg,
+  AccessNotice,
   LoginCredentials,
   LoginResponse,
   MeContextResponse,
@@ -40,11 +41,19 @@ function normalizeMemberships(memberships?: OrgMembership[]): OrgMembership[] {
   return memberships ?? [];
 }
 
+function normalizeNotices(notices?: AccessNotice[]): AccessNotice[] {
+  return notices ?? [];
+}
+
 function normalizeLoginResponse(payload: LoginResponse): LoginResponse {
   return {
     ...payload,
     active_org: normalizeActiveOrg(payload.active_org as RawActiveOrg),
     memberships: normalizeMemberships(payload.memberships),
+    restricted_orgs: normalizeNotices(payload.restricted_orgs),
+    org_suspended_orgs: normalizeNotices(payload.org_suspended_orgs),
+    removed_orgs: normalizeNotices(payload.removed_orgs),
+    pending_orgs: normalizeNotices(payload.pending_orgs),
   };
 }
 
@@ -53,6 +62,9 @@ function normalizeRefreshResponse(payload: RefreshResponse): RefreshResponse {
     ...payload,
     active_org: normalizeActiveOrg(payload.active_org as RawActiveOrg),
     memberships: normalizeMemberships(payload.memberships),
+    restricted_orgs: normalizeNotices(payload.restricted_orgs),
+    org_suspended_orgs: normalizeNotices(payload.org_suspended_orgs),
+    removed_orgs: normalizeNotices(payload.removed_orgs),
   };
 }
 
@@ -74,7 +86,15 @@ function normalizeRegisterResponse(payload: RegisterResponse): RegisterResponse 
 
 async function parseError(response: Response, fallbackMessage: string) {
   const data = await response.json().catch(() => ({}));
-  throw Object.assign(new Error((data as { message?: string }).message || fallbackMessage), {
+  const resolvedMessage = (
+    (data as { message?: string }).message
+    || (data as { detail?: string }).detail
+    || (Array.isArray((data as { non_field_errors?: string[] }).non_field_errors)
+      ? (data as { non_field_errors?: string[] }).non_field_errors?.[0]
+      : undefined)
+    || fallbackMessage
+  );
+  throw Object.assign(new Error(resolvedMessage), {
     data,
     status: response.status,
   });
@@ -162,7 +182,14 @@ export const authAPI = {
 
   meContext: async (): Promise<MeContextResponse> => {
     const response = await apiClient.get<MeContextResponse>('/users/me_context/');
-    return response.data;
+    return {
+      ...response.data,
+      active_org: normalizeActiveOrg((response.data.active_org ?? null) as RawActiveOrg),
+      memberships: normalizeMemberships(response.data.memberships),
+      restricted_orgs: normalizeNotices(response.data.restricted_orgs),
+      org_suspended_orgs: normalizeNotices(response.data.org_suspended_orgs),
+      removed_orgs: normalizeNotices(response.data.removed_orgs),
+    };
   },
 
   forgotPassword: async (email: string) => {

@@ -138,8 +138,14 @@ export function useRegister() {
                     workspace_name: form.workspace_name,
                     org_type: form.org_type,
                 });
-                if (!res.access || !res.organization) {
+                if (!res.organization) {
                     setApiError('Something went wrong. Please try again.');
+                    return;
+                }
+                if (res.status === 'pending') {
+                    setIsPending(true);
+                    setSuccess(true);
+                    setTimeout(() => { router.replace('/dashboard'); }, 1500);
                     return;
                 }
                 setSuccess(true);

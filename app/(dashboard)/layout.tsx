@@ -15,7 +15,7 @@ import { RegistrySlotProvider } from '@/app/core/registry/slots';
 import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import '@/app/plugins/registerAll';
 import { AlertTriangle } from 'lucide-react';
-import { SuspendedNotice } from '../core/types/auth';
+import { AccessNotice } from '../core/types/auth';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
 function DashboardContent({
@@ -24,7 +24,7 @@ function DashboardContent({
   onDismissNotice,
 }: {
   children: React.ReactNode;
-  notices: SuspendedNotice[];
+  notices: AccessNotice[];
   onDismissNotice: () => void;
 }) {
   return (
@@ -44,7 +44,7 @@ function DashboardContent({
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, activeOrg, activeRole, loading, suspendedNotices, clearSuspendedNotices } = useAuth();
+  const { user, activeOrg, activeRole, loading, accessNotices, clearAccessNotices } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     if (activeRole === null) {
-      router.replace(buildLoginPath(currentPath, { reason: 'suspended' }));
+      router.replace(buildLoginPath(currentPath, { reason: 'no_access' }));
       return;
     }
 
@@ -96,7 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <SidebarProvider>
       <NavBadgeProvider>
         <RegistrySlotProvider>
-          <DashboardContent notices={suspendedNotices} onDismissNotice={clearSuspendedNotices}>
+          <DashboardContent notices={accessNotices} onDismissNotice={clearAccessNotices}>
             {children}
           </DashboardContent>
         </RegistrySlotProvider>
@@ -109,7 +109,7 @@ function SuspendedNoticeBanner({
   notices,
   onDismiss,
 }: {
-  notices: SuspendedNotice[];
+  notices: AccessNotice[];
   onDismiss: () => void;
 }) {
   if (notices.length === 0) return null;

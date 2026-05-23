@@ -1,10 +1,10 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FileSpreadsheet, FileText, UserPlus, Users } from 'lucide-react';
-import { useStudents, useStudentStats, useStudentsByCohort } from '@/app/core/hooks/useStudents';
+import { useStudentStats, useStudentsByCohort } from '@/app/core/hooks/useStudents';
 import { useCurricula, useCohorts, useCohortSubjects } from '@/app/core/hooks/useAcademic';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -35,16 +35,42 @@ type PersistedLearnerFilters = {
     cohort: number | null;
     cohort_subject: number | null;
     status: string;
-    admission_number: string;
-    name: string;
+    q: string;
+    sort: string;
     page: number;
     page_size: number;
 };
 
+type LearnerSortField = 'admission_number' | 'full_name' | 'primary_cohort_name' | 'status';
+type LearnerSortDirection = 'asc' | 'desc';
+type LearnerSort = {
+    field: LearnerSortField;
+    direction: LearnerSortDirection;
+};
+
 type LearnerTableRow = Student & Record<string, unknown>;
+
+const DEFAULT_SORT = 'admission_number:asc';
+const TEXT_COLLATOR = new Intl.Collator(undefined, {
+    numeric: true,
+    sensitivity: 'base',
+});
 
 function normalizeText(value?: string | null): string {
     return (value ?? '').trim().toLowerCase();
+}
+
+function matchesLearnerSearch(student: Student, query: string): boolean {
+    const normalizedQuery = normalizeText(query);
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    return normalizeText(student.admission_number).includes(normalizedQuery)
+        || normalizeText(student.first_name).includes(normalizedQuery)
+        || normalizeText(student.middle_name).includes(normalizedQuery)
+        || normalizeText(student.last_name).includes(normalizedQuery)
+        || normalizeText(student.full_name).includes(normalizedQuery);
 }
 
 function studentMatchesLocalFilters(student: Student, filters: PersistedLearnerFilters): boolean {
@@ -59,52 +85,93 @@ function studentMatchesLocalFilters(student: Student, filters: PersistedLearnerF
         return false;
     }
 
-    if (
-        filters.admission_number
-        && !normalizeText(student.admission_number).includes(normalizeText(filters.admission_number))
-    ) {
+    if (!matchesLearnerSearch(student, filters.q)) {
         return false;
-    }
-
-    if (filters.name) {
-        const fullName = normalizeText(student.full_name);
-        const splitTerms = normalizeText(filters.name).split(/\s+/).filter(Boolean);
-        if (!splitTerms.every((term) => fullName.includes(term))) {
-            return false;
-        }
     }
 
     return true;
 }
 
+function parseSort(value: string): LearnerSort {
+    const [field, direction] = value.split(':');
+    const resolvedField = (
+        field === 'full_name'
+        || field === 'primary_cohort_name'
+        || field === 'status'
+    ) ? field : 'admission_number';
+
+    return {
+        field: resolvedField,
+        direction: direction === 'desc' ? 'desc' : 'asc',
+    };
+}
+
 function compareAdmissionNumbers(left: Student, right: Student): number {
-    return left.admission_number.localeCompare(right.admission_number, undefined, {
-        numeric: true,
-        sensitivity: 'base',
-    });
+    return TEXT_COLLATOR.compare(left.admission_number, right.admission_number);
+}
+
+function compareLearners(left: Student, right: Student, sort: LearnerSort): number {
+    const direction = sort.direction === 'asc' ? 1 : -1;
+
+    if (sort.field === 'admission_number') {
+        return compareAdmissionNumbers(left, right) * direction;
+    }
+
+    if (sort.field === 'full_name') {
+        return TEXT_COLLATOR.compare(left.full_name, right.full_name) * direction;
+    }
+
+    if (sort.field === 'primary_cohort_name') {
+        return TEXT_COLLATOR.compare(
+            left.primary_cohort_name ?? '',
+            right.primary_cohort_name ?? '',
+        ) * direction;
+    }
+
+    return TEXT_COLLATOR.compare(left.status, right.status) * direction;
 }
 
 function LearnersPageInner() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { activeRole } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdmin = activeRole === 'ADMIN';
     const canCreate = hasCapability(activeRole, 'CREATE_LEARNER');
+    const legacyQuery = useMemo(() => {
+        const directQuery = (searchParams.get('q') ?? '').trim();
+        if (directQuery) {
+            return directQuery;
+        }
+
+        return [
+            searchParams.get('admission_number')?.trim(),
+            searchParams.get('name')?.trim(),
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+    }, [searchParams]);
 
     const [filters, updateFilters, backUrl] = usePersistedFilters<PersistedLearnerFilters>('/learners', {
         curriculum: null,
         cohort: null,
         cohort_subject: null,
         status: '',
-        admission_number: '',
-        name: '',
+        q: legacyQuery,
+        sort: DEFAULT_SORT,
         page: 1,
         page_size: 20,
     }, {
         numericKeys: ['curriculum', 'cohort', 'cohort_subject', 'page', 'page_size'],
+        staleKeys: ['admission_number', 'name'],
     });
     const [exportingFormat, setExportingFormat] = useState<'xlsx' | 'pdf' | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
+    const [instructorStudents, setInstructorStudents] = useState<Student[]>([]);
+    const [instructorStudentsLoading, setInstructorStudentsLoading] = useState(false);
+    const [instructorStudentsError, setInstructorStudentsError] = useState<string | null>(null);
+    const sort = useMemo(() => parseSort(filters.sort), [filters.sort]);
 
     const { stats } = useStudentStats();
 
@@ -125,19 +192,6 @@ function LearnersPageInner() {
         hasAssignedCohorts,
         isLoading: instructorAssignmentsLoading,
     } = useInstructorCohortAccess({ enabled: isInstructor });
-
-    const instructorStudentsQuery = useStudents(
-        {
-            cohort: filters.cohort ?? undefined,
-            cohort_subject: filters.cohort_subject ?? undefined,
-            status: filters.status || undefined,
-            admission_number: filters.admission_number || undefined,
-            name: filters.name || undefined,
-            page: filters.page,
-            page_size: filters.page_size,
-        },
-        { enabled: isInstructor }
-    );
     const adminStudentsQuery = useStudentsByCohort(
         isAdmin ? (filters.cohort ?? undefined) : undefined
     );
@@ -192,6 +246,7 @@ function LearnersPageInner() {
             ).values()
         ).sort((left, right) => left.label.localeCompare(right.label))
     ), [assignments, filters.cohort]);
+
     const hasInstructorLearnerScope = hasAssignedCohorts || assignments.length > 0;
 
     useEffect(() => {
@@ -214,67 +269,124 @@ function LearnersPageInner() {
         updateFilters,
     ]);
 
-    const adminFilteredStudents = useMemo(() => {
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!isInstructor) {
+            setInstructorStudents([]);
+            setInstructorStudentsError(null);
+            setInstructorStudentsLoading(false);
+            return;
+        }
+
+        if (!hasInstructorLearnerScope) {
+            setInstructorStudents([]);
+            setInstructorStudentsError(null);
+            setInstructorStudentsLoading(false);
+            return;
+        }
+
+        setInstructorStudentsLoading(true);
+        setInstructorStudentsError(null);
+
+        learnersAPI.getAllStudents({
+            cohort: filters.cohort ?? undefined,
+            cohort_subject: filters.cohort_subject ?? undefined,
+        })
+            .then((data) => {
+                if (cancelled) {
+                    return;
+                }
+                setInstructorStudents(data);
+            })
+            .catch((err) => {
+                if (cancelled) {
+                    return;
+                }
+                setInstructorStudents([]);
+                setInstructorStudentsError(
+                    extractErrorMessage(err as ApiError, 'Failed to load learners')
+                );
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setInstructorStudentsLoading(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        filters.cohort,
+        filters.cohort_subject,
+        hasInstructorLearnerScope,
+        isInstructor,
+    ]);
+
+    const baseStudents = useMemo(() => {
+        if (isInstructor) {
+            return instructorStudents;
+        }
+
         if (!isAdmin || !filters.cohort) {
             return [];
         }
 
-        return [...adminStudentsQuery.students]
+        return adminStudentsQuery.students;
+    }, [adminStudentsQuery.students, filters.cohort, instructorStudents, isAdmin, isInstructor]);
+
+    const filteredStudents = useMemo(() => (
+        [...baseStudents]
             .filter((student) => studentMatchesLocalFilters(student, filters))
-            .sort(compareAdmissionNumbers);
-    }, [adminStudentsQuery.students, filters, isAdmin]);
+            .sort((left, right) => compareLearners(left, right, sort))
+    ), [baseStudents, filters, sort]);
 
-    const adminTotalPages = adminFilteredStudents.length > 0
-        ? Math.ceil(adminFilteredStudents.length / filters.page_size)
+    const totalPages = filteredStudents.length > 0
+        ? Math.ceil(filteredStudents.length / filters.page_size)
         : 0;
-    const adminCurrentPage = adminTotalPages === 0
+    const currentPage = totalPages === 0
         ? 1
-        : Math.min(filters.page, adminTotalPages);
-    const adminVisibleStudents = useMemo(() => {
-        if (!isAdmin) {
-            return [];
-        }
-
-        const startIndex = (adminCurrentPage - 1) * filters.page_size;
-        return adminFilteredStudents.slice(startIndex, startIndex + filters.page_size);
-    }, [adminCurrentPage, adminFilteredStudents, filters.page_size, isAdmin]);
+        : Math.min(filters.page, totalPages);
+    const visibleStudents = useMemo(() => {
+        const startIndex = (currentPage - 1) * filters.page_size;
+        return filteredStudents.slice(startIndex, startIndex + filters.page_size);
+    }, [currentPage, filteredStudents, filters.page_size]);
 
     useEffect(() => {
-        if (!isAdmin || adminTotalPages === 0 || filters.page <= adminTotalPages) {
+        if (totalPages === 0) {
+            if (filters.page !== 1) {
+                updateFilters({ page: 1 });
+            }
             return;
         }
 
-        updateFilters({ page: adminTotalPages });
-    }, [adminTotalPages, filters.page, isAdmin, updateFilters]);
+        if (filters.page > totalPages) {
+            updateFilters({ page: totalPages });
+        }
+    }, [filters.page, totalPages, updateFilters]);
 
-    const adminPagination = useMemo(() => ({
-        currentPage: adminCurrentPage,
+    const displayedPagination = useMemo(() => ({
+        currentPage,
         pageSize: filters.page_size,
-        totalItems: adminFilteredStudents.length,
-        totalPages: adminTotalPages,
-    }), [adminCurrentPage, adminFilteredStudents.length, adminTotalPages, filters.page_size]);
+        totalItems: filteredStudents.length,
+        totalPages,
+    }), [currentPage, filteredStudents.length, filters.page_size, totalPages]);
 
-    const displayedStudents = isInstructor
-        ? instructorStudentsQuery.students
-        : adminVisibleStudents;
-    const displayedPagination = isInstructor
-        ? instructorStudentsQuery.pagination
-        : adminPagination;
     const displayedLoading = isInstructor
-        ? (instructorAssignmentsLoading || instructorStudentsQuery.loading)
+        ? (instructorAssignmentsLoading || instructorStudentsLoading)
         : adminStudentsQuery.loading;
     const displayedError = isInstructor
-        ? instructorStudentsQuery.error
+        ? instructorStudentsError
         : adminStudentsQuery.error;
     const hasGeneratedAdminList = isAdmin && Boolean(filters.cohort);
-    const currentVisibleCount = isInstructor
-        ? instructorStudentsQuery.pagination.totalItems
-        : adminFilteredStudents.length;
+    const currentVisibleCount = filteredStudents.length;
 
     const columns: Column<LearnerTableRow>[] = [
         {
             key: 'admission_number',
-            header: 'Adm No.',
+            header: 'Admission No.',
+            sortable: true,
             render: (row) => (
                 <span className="font-mono text-sm font-medium text-blue-700">
                     {row.admission_number}
@@ -284,11 +396,13 @@ function LearnersPageInner() {
         {
             key: 'full_name',
             header: 'Full Name',
+            sortable: true,
             render: (row) => row.full_name,
         },
         {
             key: 'primary_cohort_name',
-            header: 'Primary Cohort',
+            header: 'Cohort',
+            sortable: true,
             render: (row) => (
                 <div>
                     <p className="font-medium text-gray-900">{row.primary_cohort_name ?? '-'}</p>
@@ -299,6 +413,7 @@ function LearnersPageInner() {
         {
             key: 'status',
             header: 'Status',
+            sortable: true,
             render: (row) => (
                 <Badge variant={STATUS_VARIANTS[row.status] ?? 'default'}>
                     {row.status}
@@ -334,7 +449,7 @@ function LearnersPageInner() {
 
     const pageTitle = isInstructor ? 'My Learners' : 'Learners';
     const pageDescription = isInstructor
-        ? 'Search learners across your assigned cohorts and class subjects.'
+        ? 'View and manage learners inside your assigned teaching scope.'
         : 'Generate a cohort learner list, then refine the loaded rows locally.';
 
     const handleCurriculumChange = (value: string) => {
@@ -363,8 +478,7 @@ function LearnersPageInner() {
                 cohort: filters.cohort ?? undefined,
                 cohort_subject: filters.cohort_subject ?? undefined,
                 status: filters.status || undefined,
-                admission_number: filters.admission_number || undefined,
-                name: filters.name || undefined,
+                q: filters.q || undefined,
                 format,
             });
         } catch (err) {
@@ -384,11 +498,11 @@ function LearnersPageInner() {
                         <div>
                             <p className="text-sm font-medium text-gray-900">Search assigned learners</p>
                             <p className="text-sm text-gray-500">
-                                Cohort and subject filters only narrow within your assigned teaching load.
+                                Search, filter, and sort within your assigned learner scope.
                             </p>
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                             <select
                                 value={filters.cohort ?? ''}
                                 onChange={(event) => handleCohortChange(event.target.value)}
@@ -415,22 +529,12 @@ function LearnersPageInner() {
                             </select>
 
                             <input
-                                value={filters.admission_number}
+                                value={filters.q}
                                 onChange={(event) => updateFilters({
-                                    admission_number: event.target.value,
+                                    q: event.target.value,
                                     page: 1,
                                 })}
-                                placeholder="Admission number"
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-
-                            <input
-                                value={filters.name}
-                                onChange={(event) => updateFilters({
-                                    name: event.target.value,
-                                    page: 1,
-                                })}
-                                placeholder="Learner name"
+                                placeholder="Search by admission number or name"
                                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
 
@@ -514,24 +618,14 @@ function LearnersPageInner() {
                                 </p>
                             </div>
 
-                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                                 <input
-                                    value={filters.admission_number}
+                                    value={filters.q}
                                     onChange={(event) => updateFilters({
-                                        admission_number: event.target.value,
+                                        q: event.target.value,
                                         page: 1,
                                     })}
-                                    placeholder="Admission number"
-                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-
-                                <input
-                                    value={filters.name}
-                                    onChange={(event) => updateFilters({
-                                        name: event.target.value,
-                                        page: 1,
-                                    })}
-                                    placeholder="Learner name"
+                                    placeholder="Search by admission number or name"
                                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
 
@@ -552,7 +646,7 @@ function LearnersPageInner() {
                                 </select>
 
                                 <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                                    {adminFilteredStudents.length} learner{adminFilteredStudents.length === 1 ? '' : 's'} match
+                                    {filteredStudents.length} learner{filteredStudents.length === 1 ? '' : 's'} match
                                 </div>
                             </div>
                         </div>
@@ -640,16 +734,21 @@ function LearnersPageInner() {
                 </Card>
             ) : (
                 <DataTable
-                    data={displayedStudents as LearnerTableRow[]}
+                    data={visibleStudents as LearnerTableRow[]}
                     columns={columns}
                     loading={displayedLoading}
                     pagination={displayedPagination}
+                    initialSort={{ field: sort.field, direction: sort.direction }}
                     onPaginationChange={(page, pageSize) => updateFilters({ page, page_size: pageSize })}
+                    onSort={(field, direction) => updateFilters({
+                        sort: `${field}:${direction}`,
+                        page: 1,
+                    })}
                     emptyMessage={isInstructor
                         ? 'No learners match the current assigned-learner filters.'
                         : 'No learners match the current cohort filters.'}
                     enableSearch={false}
-                    enableSort={false}
+                    enableSort
                     onRowClick={(row) => router.push(`/learners/${row.id}?back=${backUrl}`)}
                 />
             )}

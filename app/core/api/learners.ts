@@ -38,6 +38,41 @@ export const learnersAPI = {
     return data;
   },
 
+  getAllStudents: async (params?: {
+    cohort?: number;
+    cohort_subject?: number;
+    status?: string;
+    gender?: string;
+    search?: string;
+    q?: string;
+    admission_number?: string;
+    name?: string;
+    ordering?: string;
+    page_size?: number;
+  }): Promise<Student[]> => {
+    const pageSize = params?.page_size ?? 100;
+    const results: Student[] = [];
+    let page = 1;
+
+    while (true) {
+      const data = await learnersAPI.getStudents({
+        ...params,
+        page,
+        page_size: pageSize,
+      });
+
+      results.push(...(data.results ?? []));
+
+      if (!data.next || results.length >= data.count) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return results;
+  },
+
   // Get student by ID (detailed)
   getStudent: async (id: number) => {
     const { data } = await apiClient.get<StudentDetail>(`/students/${id}/`);

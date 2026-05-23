@@ -16,9 +16,15 @@ import Modal from '@/app/components/ui/Modal';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import type {
     GlobalUser, UserCreatePayload, UserUpdatePayload, UserRole,
-    UserOrgMembership,
 } from '@/app/core/types/globalUsers';
-import { ROLE_COLORS } from '@/app/core/types/globalUsers';
+import {
+    ROLE_COLORS,
+    globalStatusLabel,
+    globalStatusVariant,
+    membershipStatusLabel,
+    membershipStatusVariant,
+    resolveGlobalStatus,
+} from '@/app/core/types/globalUsers';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 
 // ── RoleIcon ──────────────────────────────────────────────────────────────
@@ -39,13 +45,15 @@ export function StatsBar({ users }: StatsBarProps) {
     const superadmins = users.filter(u => u.is_superadmin).length;
     const admins = users.filter(u => u.role === 'ADMIN').length;
     const instructors = users.filter(u => u.role === 'INSTRUCTOR').length;
-    const inactive = users.filter(u => !u.is_active).length;
+    const platformRestricted = users.filter(
+        (user) => resolveGlobalStatus(user) === 'GLOBAL_DEACTIVATED'
+    ).length;
 
     const stats = [
         { label: 'Super Admins', value: superadmins, icon: Shield, color: 'text-purple-600', bg: 'bg-purple-50' },
         { label: 'Admins', value: admins, icon: UserCog, color: 'text-blue-600', bg: 'bg-blue-50' },
         { label: 'Instructors', value: instructors, icon: GraduationCap, color: 'text-green-600', bg: 'bg-green-50' },
-        { label: 'Inactive', value: inactive, icon: PowerOff, color: 'text-red-600', bg: 'bg-red-50' },
+        { label: 'Platform Restricted', value: platformRestricted, icon: PowerOff, color: 'text-red-600', bg: 'bg-red-50' },
     ];
 
     return (
@@ -278,12 +286,12 @@ export function DeleteUserModal({
     isOpen, onClose, onConfirm, userName, submitting,
 }: DeleteUserModalProps) {
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Delete User" size="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title="Delete Account" size="sm">
             <div className="space-y-4">
                 <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-100">
                     <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                     <p className="text-sm text-red-700">
-                        Permanently delete <strong>{userName}</strong>? This cannot be undone.
+                        Permanently delete <strong>{userName}</strong>? This removes the global identity and should only be used when platform-level deletion is intentional.
                     </p>
                 </div>
                 <div className="flex justify-end gap-3">
@@ -358,11 +366,21 @@ export function UsersTable({
             ),
         },
         {
-            key: 'is_active', header: 'Status',
+            key: 'status', header: 'Lifecycle',
             render: row => (
-                <Badge variant={row.is_active ? 'success' : 'danger'}>
-                    {row.is_active ? 'Active' : 'Inactive'}
-                </Badge>
+                <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant={globalStatusVariant(resolveGlobalStatus(row))}>
+                            {globalStatusLabel(resolveGlobalStatus(row))}
+                        </Badge>
+                        <Badge variant={membershipStatusVariant(row.membership_status)}>
+                            {membershipStatusLabel(row.membership_status)}
+                        </Badge>
+                    </div>
+                    {row.state_message ? (
+                        <p className="max-w-sm text-xs text-gray-500">{row.state_message}</p>
+                    ) : null}
+                </div>
             ),
         },
         {
@@ -398,12 +416,14 @@ export function UsersTable({
                         <Network className="h-4 w-4" />
                     </button>
                     <button onClick={() => onToggleActive(row)}
-                        className={`p-1.5 rounded-lg transition-colors ${row.is_active
+                        className={`p-1.5 rounded-lg transition-colors ${resolveGlobalStatus(row) === 'ACTIVE'
                             ? 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
                             : 'text-gray-500 hover:bg-green-50 hover:text-green-600'
                             }`}
-                        title={row.is_active ? 'Deactivate' : 'Activate'}>
-                        {row.is_active
+                        title={resolveGlobalStatus(row) === 'ACTIVE'
+                            ? 'Globally deactivate account'
+                            : 'Globally reactivate account'}>
+                        {resolveGlobalStatus(row) === 'ACTIVE'
                             ? <PowerOff className="h-4 w-4" />
                             : <Power className="h-4 w-4" />
                         }
@@ -411,7 +431,7 @@ export function UsersTable({
                     {row.role !== 'SUPERADMIN' && (
                         <button onClick={() => onDelete(row)}
                             className="p-1.5 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title="Delete user">
+                            title="Delete account">
                             <Trash2 className="h-4 w-4" />
                         </button>
                     )}
@@ -522,4 +542,3 @@ export function AddToOrgModal({
         </Modal>
     );
 }
-

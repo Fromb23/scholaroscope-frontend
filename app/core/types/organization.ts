@@ -1,3 +1,5 @@
+import type { GlobalUser } from './globalUsers';
+
 // ============================================================================
 // app/core/types/organization.ts
 // Mirrors: apps/users/models.py Organization + OrganizationSerializer
@@ -70,19 +72,7 @@ export interface OrganizationStats {
     };
 }
 
-export interface OrgUser {
-    id: number;
-    email: string;
-    first_name: string;
-    last_name: string;
-    full_name: string;
-    role: 'ADMIN' | 'INSTRUCTOR';
-    role_display: string;
-    is_active: boolean;
-    phone: string;
-    date_joined: string;
-    last_login: string | null;
-}
+export type OrgUser = GlobalUser;
 
 export const PLAN_LABELS: Record<PlanType, string> = {
     FREE: 'Free',
