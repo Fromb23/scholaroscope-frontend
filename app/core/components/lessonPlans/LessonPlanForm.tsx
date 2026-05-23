@@ -293,22 +293,30 @@ export function LessonPlanForm({
             {curriculumContextError ? (
                 <Card>
                     <p className="text-sm text-amber-700">
-                        Reference editing is unavailable right now. Lesson plan text can still be updated.
+                        Reference editing is unavailable because curriculum context could not be resolved.
                     </p>
                 </Card>
             ) : null}
 
-            {lessonPlan.cohort_subject && curriculumContext ? (
-                <LessonPlanReferenceEditorSlot
-                    cohortSubjectId={lessonPlan.cohort_subject}
-                    context={curriculumContext}
-                    plannedOutcomes={lessonPlan.planned_outcomes}
-                    referencePages={referencePages}
-                    onReferencePagesChange={(nextValue) => {
-                        setReferencePages(nextValue);
-                        setFormError(null);
-                    }}
-                />
+            {lessonPlan.cohort_subject ? (
+                curriculumContext ? (
+                    <LessonPlanReferenceEditorSlot
+                        cohortSubjectId={lessonPlan.cohort_subject}
+                        context={curriculumContext}
+                        plannedOutcomes={lessonPlan.planned_outcomes}
+                        referencePages={referencePages}
+                        onReferencePagesChange={(nextValue) => {
+                            setReferencePages(nextValue);
+                            setFormError(null);
+                        }}
+                    />
+                ) : curriculumContextError ? null : (
+                    <Card>
+                        <p className="text-sm text-amber-700">
+                            Reference editing is unavailable because curriculum context could not be resolved.
+                        </p>
+                    </Card>
+                )
             ) : null}
 
             <Card>

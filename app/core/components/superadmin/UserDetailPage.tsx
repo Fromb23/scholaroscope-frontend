@@ -7,7 +7,7 @@ import {
     UserCog, GraduationCap, Pencil, KeyRound,
     Power, PowerOff, Trash2, Network, AlertTriangle,
 } from 'lucide-react';
-import { useGlobalUsers } from '@/app/core/hooks/useGlobalUsers';
+import { useGlobalUserDetail } from '@/app/core/hooks/useGlobalUsers';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -35,13 +35,11 @@ export function UserDetailPage() {
     const userId = Number(params.id);
 
     const {
-        users, loading, error, refetch,
+        user, loading, error, refetch,
         updateUser, deleteUser, toggleUserActive,
-        resetPassword, getUserMemberships, removeFromOrg,
-    } = useGlobalUsers();
+        resetPassword, getUserMemberships, addToOrg, removeFromOrg,
+    } = useGlobalUserDetail(Number.isFinite(userId) ? userId : null);
     const { organizations } = useOrganizations();
-
-    const user = users.find(u => u.id === userId) ?? null;
 
     const [memberships, setMemberships] = useState<UserOrgMembership[]>([]);
     const [membershipsLoading, setMembershipsLoading] = useState(false);
@@ -61,7 +59,7 @@ export function UserDetailPage() {
             .then(setMemberships)
             .catch(() => setMemberships([]))
             .finally(() => setMembershipsLoading(false));
-    }, [getUserMemberships, userId, users]);
+    }, [getUserMemberships, userId, user]);
 
     const handleEdit = (data: UserUpdatePayload) =>
         withSubmit(async () => {
@@ -91,8 +89,7 @@ export function UserDetailPage() {
 
     const handleAddToOrg = async (uid: number, organizationId: number, role: string) => {
         try {
-            const { globalUsersAPI } = await import('@/app/core/api/globalUsers');
-            await globalUsersAPI.addToOrg(uid, organizationId, role);
+            await addToOrg(uid, organizationId, role);
             showSuccess('User added to organization');
             addToOrgModal.close();
             const updated = await getUserMemberships(userId);

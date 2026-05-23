@@ -105,6 +105,115 @@ export const useGlobalUsers = () => {
     };
 };
 
+export const useGlobalUserDetail = (userId: number | null) => {
+    const [user, setUser] = useState<GlobalUser | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchUser = useCallback(async () => {
+        if (!userId) {
+            setUser(null);
+            setLoading(false);
+            setError('User not found');
+            return null;
+        }
+
+        try {
+            setLoading(true);
+            const data = await globalUsersAPI.getById(userId);
+            setUser(data);
+            setError(null);
+            return data;
+        } catch (err) {
+            setUser(null);
+            setError(extractErrorMessage(err as ApiError, 'Failed to fetch user'));
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }, [userId]);
+
+    useEffect(() => {
+        void fetchUser();
+    }, [fetchUser]);
+
+    const updateUser = async (id: number, data: UserUpdatePayload) => {
+        try {
+            const updated = await globalUsersAPI.update(id, data);
+            await fetchUser();
+            return updated;
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update user'));
+        }
+    };
+
+    const deleteUser = async (id: number) => {
+        try {
+            await globalUsersAPI.delete(id);
+            setUser(null);
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete user'));
+        }
+    };
+
+    const toggleUserActive = async (id: number, activate: boolean) => {
+        try {
+            const updated = activate
+                ? await globalUsersAPI.activate(id)
+                : await globalUsersAPI.deactivate(id);
+            await fetchUser();
+            return updated;
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to change user status'));
+        }
+    };
+
+    const resetPassword = async (id: number, new_password: string) => {
+        try {
+            await globalUsersAPI.resetPassword(id, new_password);
+            await fetchUser();
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to reset password'));
+        }
+    };
+
+    const getUserMemberships = useCallback(async (id: number): Promise<UserOrgMembership[]> => {
+        return await globalUsersAPI.getMemberships(id);
+    }, []);
+
+    const addToOrg = async (id: number, organizationId: number, role: string): Promise<void> => {
+        try {
+            await globalUsersAPI.addToOrg(id, organizationId, role);
+            await fetchUser();
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to add user to organization'));
+        }
+    };
+
+    const removeFromOrg = async (id: number, organizationId: number): Promise<void> => {
+        try {
+            await globalUsersAPI.removeFromOrg(id, organizationId);
+            await fetchUser();
+        } catch (err) {
+            throw new Error(extractErrorMessage(err as ApiError, 'Failed to remove from organization'));
+        }
+    };
+
+    return {
+        user,
+        loading,
+        error,
+        refetch: fetchUser,
+        updateUser,
+        deleteUser,
+        toggleUserActive,
+        resetPassword,
+        getUserMemberships,
+        addToOrg,
+        removeFromOrg,
+    };
+};
+
 // ---------------------------------------------------------------------------
 // useGlobalUserStats
 // ---------------------------------------------------------------------------

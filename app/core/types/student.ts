@@ -68,6 +68,7 @@ export interface Student {
   // All active cohort enrollments
   active_cohorts: CohortEnrollment[];
   cohort_count: number;
+  current_subject_ids?: number[];
 
   status: 'ACTIVE' | 'GRADUATED' | 'TRANSFERRED' | 'SUSPENDED' | 'WITHDRAWN';
   status_display: string;

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Search } from 'lucide-react';
 import { apiClient } from '@/app/core/api/client';
+import { useAuth } from '@/app/context/AuthContext';
 
 interface PeopleSearchResult {
     kind: 'student' | 'instructor' | 'admin' | 'user';
@@ -35,6 +36,7 @@ function kindLabel(kind: PeopleSearchResult['kind']): string {
 
 export function GlobalPeopleSearch() {
     const router = useRouter();
+    const { user } = useAuth();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<PeopleSearchResult[]>([]);
@@ -108,6 +110,20 @@ export function GlobalPeopleSearch() {
         || Boolean(error)
     );
 
+    const buildTargetUrl = (result: PeopleSearchResult): string => {
+        if (user?.is_superadmin) {
+            if (result.kind === 'student' && result.organization?.id) {
+                return `/superadmin/learners/${result.id}?organization=${result.organization.id}`;
+            }
+
+            if (result.kind !== 'student') {
+                return `/superadmin/users/${result.id}`;
+            }
+        }
+
+        return result.target_url;
+    };
+
     return (
         <div ref={containerRef} className="relative hidden md:block">
             <div className="relative">
@@ -147,7 +163,7 @@ export function GlobalPeopleSearch() {
                             onClick={() => {
                                 setOpen(false);
                                 setQuery('');
-                                router.push(result.target_url);
+                                router.push(buildTargetUrl(result));
                             }}
                             className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-[color:var(--color-surface-muted)]"
                         >
@@ -165,7 +181,9 @@ export function GlobalPeopleSearch() {
                                 </p>
                                 {result.organization?.name ? (
                                     <p className="mt-1 text-xs theme-subtle">
-                                        {result.organization.name}
+                                        {result.organization.code
+                                            ? `${result.organization.name} (${result.organization.code})`
+                                            : result.organization.name}
                                     </p>
                                 ) : null}
                             </div>

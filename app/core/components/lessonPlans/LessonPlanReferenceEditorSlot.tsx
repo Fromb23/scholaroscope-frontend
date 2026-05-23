@@ -1,6 +1,7 @@
 'use client';
 
 import { Card } from '@/app/components/ui/Card';
+import { GenericReferencePagesEditor } from '@/app/core/components/lessonPlans/GenericReferencePagesEditor';
 import { getLessonPlanOutcomeProvider } from '@/app/core/registry/lessonPlanOutcomeProviders';
 import type { LessonPlanReferenceEditorProps } from '@/app/core/types/lessonPlanCurriculum';
 
@@ -20,7 +21,13 @@ export function LessonPlanReferenceEditorSlot({
     onReferencePagesChange,
 }: LessonPlanReferenceEditorSlotProps) {
     if (!context.supports_reference_alignment) {
-        return null;
+        return (
+            <Card>
+                <p className="text-sm text-amber-700">
+                    Reference editing is unavailable because this curriculum context does not support reference alignment.
+                </p>
+            </Card>
+        );
     }
 
     const provider = getLessonPlanOutcomeProvider(context.provider);
@@ -28,11 +35,13 @@ export function LessonPlanReferenceEditorSlot({
 
     if (!ReferenceEditor) {
         return (
-            <Card>
-                <p className="text-sm text-gray-700">
-                    Reference editing is not configured for this curriculum yet.
-                </p>
-            </Card>
+            <GenericReferencePagesEditor
+                cohortSubjectId={cohortSubjectId}
+                context={context}
+                plannedOutcomes={plannedOutcomes}
+                value={referencePages}
+                onChange={onReferencePagesChange}
+            />
         );
     }
 

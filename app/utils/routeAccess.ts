@@ -53,6 +53,23 @@ export function getRouteRules(): RouteRule[] {
     return [...kernelRouteRules, ...getPluginRouteAccessRules()];
 }
 
+const platformContextBlockedPatterns: RegExp[] = [
+    /^\/dashboard\/admin/,
+    /^\/dashboard\/instructor/,
+    /^\/admin/,
+    /^\/academic/,
+    /^\/learners/,
+    /^\/sessions/,
+    /^\/lesson-plans/,
+    /^\/assessments/,
+    /^\/reports/,
+    /^\/cbc/,
+];
+
+export function isPlatformSuperadminBlockedPath(path: string): boolean {
+    return platformContextBlockedPatterns.some((pattern) => pattern.test(path));
+}
+
 export const roleHomeRoute: Record<Role, string> = {
     SUPERADMIN: '/dashboard/superadmin',
     ADMIN: '/dashboard/admin',

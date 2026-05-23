@@ -6,10 +6,12 @@ type FilterState = Record<string, FilterValue>;
 
 export function usePersistedFilters<T extends FilterState>(
     basePath: string,
-    defaults: T
+    defaults: T,
+    options?: { numericKeys?: Array<keyof T> }
 ): [T, (updates: Partial<T>) => void, string] {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const numericKeys = new Set<string>((options?.numericKeys ?? []).map(String));
 
     const [filters, setFilters] = useState<T>(() => {
         const initial = { ...defaults };
@@ -17,7 +19,11 @@ export function usePersistedFilters<T extends FilterState>(
             const val = searchParams.get(key);
             if (val !== null) {
                 const def = defaults[key];
-                (initial as FilterState)[key] = typeof def === 'number' ? Number(val) : val;
+                (initial as FilterState)[key] = (
+                    typeof def === 'number' || numericKeys.has(key)
+                )
+                    ? Number(val)
+                    : val;
             }
         }
         return initial;
