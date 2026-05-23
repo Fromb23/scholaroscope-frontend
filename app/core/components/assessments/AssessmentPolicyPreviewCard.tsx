@@ -25,8 +25,8 @@ type GenericPreviewState =
     | { status: 'idle' | 'loading'; surface: PolicySurfaceDefinition | null }
     | {
         status: 'ready';
-        surface: PolicySurfaceDefinition | null;
-        source: 'resolved' | 'module_only';
+        surface: PolicySurfaceDefinition;
+        source: 'resolved' | 'no_policy';
         policy: GradePolicy | null;
     }
     | { status: 'error'; surface: PolicySurfaceDefinition | null; message: string };
@@ -105,9 +105,10 @@ export function AssessmentPolicyPreviewCard({
         () => (subjects as AssessmentPolicyPreviewSubject[]).find((subject) => subject.id === cohortSubjectId) ?? null,
         [cohortSubjectId, subjects],
     );
+    const subjectCurriculumType = selectedSubject?.curriculum_type ?? null;
     const surface = useMemo(
-        () => getPolicySurfaceForCurriculumType(selectedSubject?.curriculum_type, plugins),
-        [plugins, selectedSubject?.curriculum_type],
+        () => getPolicySurfaceForCurriculumType(subjectCurriculumType, plugins),
+        [plugins, subjectCurriculumType],
     );
     const [preview, setPreview] = useState<GenericPreviewState>({
         status: cohortSubjectId ? 'loading' : 'idle',
@@ -174,22 +175,12 @@ export function AssessmentPolicyPreviewCard({
             }
 
             if (!surface) {
-                setPreview({
-                    status: 'ready',
-                    surface: null,
-                    source: 'module_only',
-                    policy: null,
-                });
+                setPreview({ status: 'idle', surface: null });
                 return;
             }
 
             if (surface.key !== 'generic') {
-                setPreview({
-                    status: 'ready',
-                    surface,
-                    source: 'module_only',
-                    policy: null,
-                });
+                setPreview({ status: 'idle', surface });
                 return;
             }
 
@@ -221,7 +212,7 @@ export function AssessmentPolicyPreviewCard({
                     setPreview({
                         status: 'ready',
                         surface,
-                        source: 'module_only',
+                        source: 'no_policy',
                         policy: null,
                     });
                     return;
@@ -274,7 +265,9 @@ export function AssessmentPolicyPreviewCard({
                         {renderPolicyAction('/reports/policies', 'Open Policy Hub')}
                     </div>
                     <p className="text-sm text-gray-600">
-                        No report policy module is available for this subject&apos;s curriculum yet.
+                        {subjectCurriculumType
+                            ? 'No policy module is available for this curriculum.'
+                            : 'Policy preview is unavailable until the cohort subject curriculum metadata loads.'}
                     </p>
                 </div>
             </Card>
@@ -327,8 +320,8 @@ export function AssessmentPolicyPreviewCard({
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Badge variant="blue">Kernel-owned</Badge>
-                            {preview.status === 'ready' && preview.source === 'module_only' && (
-                                <Badge variant="default">Preview unavailable</Badge>
+                            {preview.status === 'ready' && preview.source === 'no_policy' && (
+                                <Badge variant="orange">No policy assigned</Badge>
                             )}
                         </div>
                     </div>
@@ -343,9 +336,9 @@ export function AssessmentPolicyPreviewCard({
                     <p className="text-sm text-red-600">{preview.message}</p>
                 )}
 
-                {preview.status === 'ready' && preview.source === 'module_only' && (
+                {preview.status === 'ready' && preview.source === 'no_policy' && (
                     <p className="text-sm text-gray-600">
-                        Policy authoring is managed in the generic grade policy module. No resolved policy preview is available from the current API surface.
+                        No policy assigned for this context.
                     </p>
                 )}
 

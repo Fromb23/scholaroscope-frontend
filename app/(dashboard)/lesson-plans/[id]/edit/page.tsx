@@ -7,7 +7,10 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { LessonPlanForm } from '@/app/core/components/lessonPlans/LessonPlanForm';
-import { useLessonPlanDetail } from '@/app/core/hooks/useLessonPlans';
+import {
+    useLessonPlanCurriculumContext,
+    useLessonPlanDetail,
+} from '@/app/core/hooks/useLessonPlans';
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -21,6 +24,11 @@ export default function Page() {
     const params = useParams();
     const lessonPlanId = getLessonPlanId(params);
     const { lessonPlan, loading, error, refetch, updateLessonPlan } = useLessonPlanDetail(lessonPlanId);
+    const {
+        curriculumContext,
+        loading: curriculumLoading,
+        error: curriculumError,
+    } = useLessonPlanCurriculumContext(lessonPlan?.cohort_subject ?? null);
 
     if (loading && !lessonPlan) {
         return <LoadingSpinner message="Loading lesson plan..." fullScreen={false} />;
@@ -47,6 +55,10 @@ export default function Page() {
         );
     }
 
+    if (lessonPlan.cohort_subject && curriculumLoading && !curriculumContext && !curriculumError) {
+        return <LoadingSpinner message="Loading lesson plan references..." fullScreen={false} />;
+    }
+
     return (
         <div className="space-y-6">
             <div className="space-y-3">
@@ -65,7 +77,12 @@ export default function Page() {
                 </div>
             </div>
 
-            <LessonPlanForm lessonPlan={lessonPlan} onSubmit={updateLessonPlan} />
+            <LessonPlanForm
+                lessonPlan={lessonPlan}
+                onSubmit={updateLessonPlan}
+                curriculumContext={curriculumContext}
+                curriculumContextError={curriculumError}
+            />
         </div>
     );
 }

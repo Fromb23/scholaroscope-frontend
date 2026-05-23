@@ -13,7 +13,7 @@ import {
     type PolicyFormState,
 } from '@/app/core/hooks/useGradePolicies';
 import { ASSESSMENT_TYPE_OPTIONS, getAssessmentTypeLabel } from '@/app/core/types/assessment';
-import type { Cohort, CohortSubject, Curriculum } from '@/app/core/types/academic';
+import type { Cohort, CohortSubject, Curriculum, Term } from '@/app/core/types/academic';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 
 const AGGREGATION_METHODS = [
@@ -31,6 +31,7 @@ interface PolicyFormModalProps {
     cohorts: Array<Pick<Cohort, 'id' | 'name' | 'level' | 'curriculum_type'>>;
     cohortSubjects: Array<Pick<CohortSubject, 'id' | 'subject_name' | 'subject_code' | 'is_compulsory' | 'curriculum_type'>>;
     curricula: Array<Pick<Curriculum, 'id' | 'name' | 'curriculum_type'>>;
+    terms: Array<Pick<Term, 'id' | 'name'>>;
     selectedCohort: number | null;
     onCohortChange: (id: number | null) => void;
     onSuccess: () => void;
@@ -43,6 +44,7 @@ export function PolicyFormModal({
     cohorts,
     cohortSubjects,
     curricula,
+    terms,
     selectedCohort,
     onCohortChange,
     onSuccess,
@@ -127,12 +129,15 @@ export function PolicyFormModal({
                 />
 
                 <div className="border-t border-gray-100 pt-4">
-                    <p className="mb-3 text-sm font-medium text-gray-700">
-                        Scope <span className="font-normal text-gray-400">(optional — leave blank for org-wide)</span>
+                    <p className="mb-1 text-sm font-medium text-gray-700">
+                        Scope
+                    </p>
+                    <p className="mb-3 text-sm text-gray-500">
+                        Choose the narrowest scope that should own this rule. Leave all scope fields blank to make it the organization default.
                     </p>
                     <div className="grid gap-4 md:grid-cols-2">
                         <Select
-                            label="Cohort"
+                            label="Cohort override"
                             value={selectedCohort?.toString() ?? ''}
                             onChange={(event) => {
                                 const id = event.target.value ? Number(event.target.value) : null;
@@ -150,7 +155,7 @@ export function PolicyFormModal({
                         />
 
                         <Select
-                            label="Subject (within cohort)"
+                            label="Cohort subject override"
                             value={form.cohort_subject?.toString() ?? ''}
                             onChange={(event) => setField(
                                 'cohort_subject',
@@ -170,7 +175,7 @@ export function PolicyFormModal({
                         />
 
                         <Select
-                            label="Curriculum"
+                            label="Curriculum default"
                             value={form.curriculum?.toString() ?? ''}
                             onChange={(event) => setField(
                                 'curriculum',
@@ -185,6 +190,22 @@ export function PolicyFormModal({
                             ]}
                         />
 
+                        <Select
+                            label="Term override"
+                            value={form.term?.toString() ?? ''}
+                            onChange={(event) => setField(
+                                'term',
+                                event.target.value ? Number(event.target.value) : null
+                            )}
+                            options={[
+                                { value: '', label: 'All terms' },
+                                ...terms.map((term) => ({
+                                    value: String(term.id),
+                                    label: term.name,
+                                })),
+                            ]}
+                        />
+
                         <div className="flex items-center gap-6 pt-6">
                             <label className="flex cursor-pointer items-center gap-2">
                                 <input
@@ -193,7 +214,7 @@ export function PolicyFormModal({
                                     onChange={(event) => setField('is_default', event.target.checked)}
                                     className="rounded border-gray-300"
                                 />
-                                <span className="text-sm text-gray-700">Default policy</span>
+                                <span className="text-sm text-gray-700">Organization default</span>
                             </label>
                             <label className="flex cursor-pointer items-center gap-2">
                                 <input

@@ -7,6 +7,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useSidebar } from '@/app/context/SidebarContext';
+import { GlobalPeopleSearch } from '@/app/components/layout/GlobalPeopleSearch';
 import { NotificationBell } from '@/app/components/layout/NotificationBell';
 import { ThemeModeSelector } from '@/app/components/theme/ThemeModeSelector';
 
@@ -42,6 +43,7 @@ export default function Header() {
 
   // Superadmins never see workspace controls
   const showWorkspaceControl = user && !user.is_superadmin;
+  const showPeopleSearch = !!user && (user.is_superadmin || activeRole === 'ADMIN');
 
   return (
     <header className="theme-surface sticky top-0 z-30 flex h-16 items-center justify-between border-b theme-border px-4 lg:px-6">
@@ -132,6 +134,8 @@ export default function Header() {
             )}
           </div>
         )}
+
+        {showPeopleSearch && <GlobalPeopleSearch />}
 
         {/* Notification bell */}
         <NotificationBell />

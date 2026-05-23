@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentProps } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ClipboardList, Plus, Filter, TrendingUp, Award, FileText } from 'lucide-react';
@@ -15,10 +15,23 @@ import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
-import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
+import { ASSESSMENT_TYPE_OPTIONS, type Assessment } from '@/app/core/types/assessment';
 import { useAuth } from '@/app/context/AuthContext';
 
-type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
+type BadgeVariant = NonNullable<ComponentProps<typeof Badge>['variant']>;
+type GroupView = 'cohort' | 'subject';
+
+interface AssessmentSubgroup {
+    key: string;
+    label: string;
+    items: Assessment[];
+}
+
+interface AssessmentGroup {
+    key: string;
+    label: string;
+    subgroups: AssessmentSubgroup[];
+}
 
 export function AssessmentsOverview() {
     const router = useRouter();
@@ -27,6 +40,7 @@ export function AssessmentsOverview() {
     const [selectedCohortSubject, setSelectedCohortSubject] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const [selectedEvalType, setSelectedEvalType] = useState<string | undefined>();
+    const [groupView, setGroupView] = useState<GroupView>('cohort');
     const instructorAccess = useInstructorCohortAccess();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
@@ -97,6 +111,62 @@ export function AssessmentsOverview() {
     const numericAssessments = assessments.filter(a => a.evaluation_type === 'NUMERIC').length;
     const rubricAssessments = assessments.filter(a => a.evaluation_type === 'RUBRIC').length;
     const totalScored = assessments.reduce((sum, a) => sum + a.scores_count, 0);
+    const groupedAssessments = useMemo<AssessmentGroup[]>(() => {
+        const groups = new Map<string, {
+            label: string;
+            subgroups: Map<string, AssessmentSubgroup>;
+        }>();
+
+        assessments.forEach((assessment) => {
+            const majorKey = groupView === 'cohort'
+                ? `cohort:${assessment.cohort_id}`
+                : `subject:${assessment.subject_id}`;
+            const majorLabel = groupView === 'cohort'
+                ? assessment.cohort_name
+                : `${assessment.subject_code} — ${assessment.subject_name}`;
+            const subgroupKey = groupView === 'cohort'
+                ? `subject:${assessment.subject_id}`
+                : `cohort:${assessment.cohort_id}`;
+            const subgroupLabel = groupView === 'cohort'
+                ? `${assessment.subject_code} — ${assessment.subject_name}`
+                : assessment.cohort_name;
+
+            if (!groups.has(majorKey)) {
+                groups.set(majorKey, {
+                    label: majorLabel,
+                    subgroups: new Map<string, AssessmentSubgroup>(),
+                });
+            }
+
+            const group = groups.get(majorKey)!;
+            if (!group.subgroups.has(subgroupKey)) {
+                group.subgroups.set(subgroupKey, {
+                    key: subgroupKey,
+                    label: subgroupLabel,
+                    items: [],
+                });
+            }
+
+            group.subgroups.get(subgroupKey)!.items.push(assessment);
+        });
+
+        return Array.from(groups.entries())
+            .map(([key, group]) => ({
+                key,
+                label: group.label,
+                subgroups: Array.from(group.subgroups.values())
+                    .map((subgroup) => ({
+                        ...subgroup,
+                        items: [...subgroup.items].sort((left, right) => {
+                            const leftDate = left.assessment_date ?? '';
+                            const rightDate = right.assessment_date ?? '';
+                            return rightDate.localeCompare(leftDate) || left.name.localeCompare(right.name);
+                        }),
+                    }))
+                    .sort((left, right) => left.label.localeCompare(right.label)),
+            }))
+            .sort((left, right) => left.label.localeCompare(right.label));
+    }, [assessments, groupView]);
 
     return (
         <div className="space-y-6">
@@ -228,72 +298,112 @@ export function AssessmentsOverview() {
                         )}
                     </div>
                 ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Assessment Name</TableHead>
-                                <TableHead>Subject</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Evaluation</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Scores</TableHead>
-                                <TableHead>Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {assessments.map((assessment) => (
-                                <TableRow
-                                    key={assessment.id}
-                                    onClick={() => router.push(`/assessments/${assessment.id}`)}
+                    <div className="space-y-6 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-base font-semibold text-gray-900">Assessment Groups</h2>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    Default view groups by cohort, then subject.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={groupView === 'cohort' ? 'secondary' : 'ghost'}
+                                    onClick={() => setGroupView('cohort')}
                                 >
-                                    <TableCell>
-                                        <div>
-                                            <div className="font-medium text-gray-900">{assessment.name}</div>
-                                            {assessment.term_name && (
-                                                <div className="text-sm text-gray-500">{assessment.term_name}</div>
-                                            )}
+                                    View by Cohort
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={groupView === 'subject' ? 'secondary' : 'ghost'}
+                                    onClick={() => setGroupView('subject')}
+                                >
+                                    View by Subject
+                                </Button>
+                            </div>
+                        </div>
+
+                        {groupedAssessments.map((group) => (
+                            <div key={group.key} className="rounded-lg border border-gray-200">
+                                <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                                    <h3 className="text-sm font-semibold text-gray-900">{group.label}</h3>
+                                </div>
+
+                                <div className="space-y-4 p-4">
+                                    {group.subgroups.map((subgroup) => (
+                                        <div key={subgroup.key} className="overflow-hidden rounded-lg border border-gray-200">
+                                            <div className="bg-white px-4 py-3">
+                                                <p className="text-sm font-medium text-gray-900">{subgroup.label}</p>
+                                            </div>
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Assessment</TableHead>
+                                                        <TableHead>Term</TableHead>
+                                                        <TableHead>Type</TableHead>
+                                                        <TableHead>Evaluation</TableHead>
+                                                        <TableHead>Date</TableHead>
+                                                        <TableHead>Scores</TableHead>
+                                                        <TableHead>Actions</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {subgroup.items.map((assessment) => (
+                                                        <TableRow
+                                                            key={assessment.id}
+                                                            onClick={() => router.push(`/assessments/${assessment.id}`)}
+                                                        >
+                                                            <TableCell>
+                                                                <div className="font-medium text-gray-900">{assessment.name}</div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <span className="text-sm text-gray-600">
+                                                                    {assessment.term_name ?? '-'}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="blue">{assessment.assessment_type_display}</Badge>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant={getEvaluationBadge(assessment.evaluation_type)}>
+                                                                    {assessment.evaluation_type_display}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <span className="text-sm text-gray-600">
+                                                                    {assessment.assessment_date
+                                                                        ? new Date(assessment.assessment_date).toLocaleDateString()
+                                                                        : '-'}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="purple">{assessment.scores_count}</Badge>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Button
+                                                                    variant="primary"
+                                                                    size="sm"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        router.push(`/assessments/${assessment.id}`);
+                                                                    }}
+                                                                >
+                                                                    View Details
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
                                         </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div>
-                                            <div className="font-medium text-gray-900">{assessment.subject_name}</div>
-                                            <div className="text-sm text-gray-500">{assessment.subject_code}</div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="blue">{assessment.assessment_type_display}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={getEvaluationBadge(assessment.evaluation_type)}>
-                                            {assessment.evaluation_type_display}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-sm text-gray-600">
-                                            {assessment.assessment_date
-                                                ? new Date(assessment.assessment_date).toLocaleDateString()
-                                                : '-'}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="purple">{assessment.scores_count}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Button
-                                            variant="primary"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                router.push(`/assessments/${assessment.id}`);
-                                            }}
-                                        >
-                                            View Details
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
             </Card>
 
