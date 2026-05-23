@@ -196,9 +196,6 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0 ml-2">
                                     <SourcePip level={r.confidence} />
-                                    <span className={`text-xs font-medium ${confidenceColor(r.confidence)}`}>
-                                        {CONFIDENCE_CONFIG[r.confidence].label}
-                                    </span>
                                     <span className="text-xs theme-subtle">
                                         {r.evidence_count}{' '}
                                         {r.evidence_count === 1 ? 'record' : 'records'}

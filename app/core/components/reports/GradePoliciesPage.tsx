@@ -19,7 +19,7 @@ import { PolicyFormModal } from '@/app/core/components/gradePolicies/PolicyFormM
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
-import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import {
     getAvailablePolicySurfaces,
@@ -49,6 +49,7 @@ export function GradePoliciesPage() {
 
     const { cohorts } = useCohorts();
     const { curricula } = useCurricula();
+    const { terms } = useTerms();
     const { plugins } = usePlugins();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: allCohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
@@ -255,6 +256,7 @@ export function GradePoliciesPage() {
                     cohorts={genericCohorts}
                     cohortSubjects={genericCohortSubjects}
                     curricula={genericCurricula}
+                    terms={terms}
                     selectedCohort={selectedCohort}
                     onCohortChange={setSelectedCohort}
                     onSuccess={handleSuccess}

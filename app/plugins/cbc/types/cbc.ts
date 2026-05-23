@@ -277,20 +277,68 @@ export interface MasteryDistribution {
 export type CompetencyDistribution = MasteryDistribution;
 
 export interface StrandMasterySummary {
+  subject_id?: number;
+  subject_name?: string;
+  subject_code?: string;
+  cohort_subject_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
+  subject_profile_id?: number | null;
   strand_code: string;
   strand_name: string;
   total_outcomes: number;
+  taught_outcomes?: number;
+  selected_outcomes?: number;
+  selected_outcome_ids?: number[];
+  planned_outcome_ids?: number[];
+  taught_outcome_ids?: number[];
+  mastered_outcome_ids?: number[];
+  not_yet_taught_count?: number;
+  not_yet_taught_outcome_ids?: number[];
+  needs_remediation_count?: number;
+  needs_remediation_outcome_ids?: number[];
   mastery_distribution: MasteryDistribution;
   mastered_count: number;
   completion_percentage: number;
+  coverage_percentage?: number;
+  taught_mastery_percentage?: number;
+  status?: 'NEEDS_TEACHING' | 'NEEDS_REMEDIATION' | 'MIXED' | 'ON_TRACK';
+}
+
+export interface StudentProgressSubjectSummary {
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  cohort_subject_id?: number | null;
+  cohort_subject_ids?: number[];
+  cbc_cohort_subject_id?: number | null;
+  cbc_cohort_subject_ids?: number[];
+  subject_profile_id?: number | null;
+  strands: StrandMasterySummary[];
+  total_outcomes: number;
+  total_selected_outcomes?: number;
+  taught_outcomes?: number;
+  total_taught_outcomes?: number;
+  not_yet_taught_count?: number;
+  needs_remediation_count?: number;
+  mastered_count?: number;
+  total_mastered?: number;
+  completion_percentage?: number;
+  coverage_percentage?: number;
+  taught_mastery_percentage?: number;
 }
 
 export interface StudentProgressSummary {
   student: { id: number; name: string; admission_number: string };
   strand_summary: StrandMasterySummary[];
+  subjects?: StudentProgressSubjectSummary[];
   total_outcomes: number;
+  total_selected_outcomes?: number;
+  total_taught_outcomes?: number;
+  total_not_yet_taught?: number;
   total_mastered: number;
   overall_mastery_percentage: number;
+  overall_coverage_percentage?: number;
+  overall_taught_mastery_percentage?: number;
 }
 
 export interface CohortSummaryEntry {

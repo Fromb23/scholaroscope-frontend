@@ -12,14 +12,11 @@ import { academicKeys } from '@/app/core/lib/queryKeys';
 import type { CohortSubject } from '@/app/core/types/academic';
 
 // ── Extended type ─────────────────────────────────────────────────────────
-// The API returns more fields than the base CohortSubject type declares.
-// Extend rather than cast to any.
+// The API may include additional metadata beyond the base CohortSubject type.
 
 export interface CohortSubjectExtended extends CohortSubject {
     academic_year?: number;
     is_current_year?: boolean;
-    curriculum_name: string; // already on base type
-    // curriculum_type is NOT returned — filter by curriculum_name instead
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────
@@ -42,12 +39,7 @@ export function useCohortSubjects(academicYearId?: number) {
                     ? data
                     : (data as { results?: CohortSubjectExtended[] })?.results ?? [];
 
-                // Filter out CBE curriculum by name — no curriculum_type field on type
-                setCohortSubjects(
-                    (arr as CohortSubjectExtended[]).filter(
-                        cs => !cs.curriculum_name?.includes('CBE')
-                    )
-                );
+                setCohortSubjects(arr as CohortSubjectExtended[]);
             })
             .catch(() => {
                 setError('Failed to load cohort subjects');

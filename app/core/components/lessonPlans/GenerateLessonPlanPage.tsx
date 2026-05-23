@@ -23,6 +23,11 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
+import {
+    emptyReferencePage,
+    hasPositiveInteger,
+    validateReferencePages,
+} from '@/app/core/lib/lessonPlanReferences';
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -39,141 +44,7 @@ import type {
     LessonPlanUpdatePayload,
     PlannedOutcome,
     ReferencePageInput,
-    ReferencePagePayload,
 } from '@/app/core/types/lessonPlans';
-
-function hasPositiveInteger(value: number | ''): value is number {
-    return typeof value === 'number' && Number.isInteger(value) && value > 0;
-}
-
-function emptyReferencePage(): ReferencePageInput {
-    return {
-        resource_title: '',
-        chapter: '',
-        topic_label: '',
-        page_start: '',
-        page_end: '',
-        notes: '',
-        keywords: [],
-        strand_id: null,
-        strand_name: '',
-        sub_strand_id: null,
-        sub_strand_name: '',
-        outcome_id: null,
-        outcome_code: '',
-    };
-}
-
-function isReferencePageStarted(reference: ReferencePageInput): boolean {
-    return (
-        reference.resource_title.trim().length > 0
-        || Boolean(reference.chapter?.trim())
-        || Boolean(reference.notes?.trim())
-        || reference.page_start !== ''
-        || reference.page_end !== ''
-        || Boolean(reference.outcome_id)
-    );
-}
-
-function normalizeReferencePage(
-    reference: ReferencePageInput,
-    plannedOutcomes: Map<number, PlannedOutcome>,
-): ReferencePageInput {
-    const selectedOutcome = reference.outcome_id
-        ? plannedOutcomes.get(reference.outcome_id)
-        : undefined;
-
-    return {
-        ...reference,
-        resource_title: reference.resource_title.trim(),
-        chapter: reference.chapter?.trim() || '',
-        topic_label: (
-            reference.topic_label?.trim()
-            || reference.sub_strand_name?.trim()
-            || selectedOutcome?.sub_strand
-            || selectedOutcome?.text
-            || ''
-        ),
-        notes: reference.notes?.trim() || '',
-        keywords: [],
-        strand_name: reference.strand_name?.trim() || selectedOutcome?.strand || '',
-        sub_strand_name: reference.sub_strand_name?.trim() || selectedOutcome?.sub_strand || '',
-        outcome_code: reference.outcome_code?.trim() || selectedOutcome?.code || '',
-        strand_id: reference.strand_id ?? selectedOutcome?.strand_id ?? null,
-        sub_strand_id: reference.sub_strand_id ?? selectedOutcome?.sub_strand_id ?? null,
-        outcome_id: reference.outcome_id ?? null,
-    };
-}
-
-function validateReferencePages(
-    references: ReferencePageInput[],
-    plannedOutcomes: Map<number, PlannedOutcome>,
-): {
-    error: string | null;
-    payload: ReferencePagePayload[];
-} {
-    const payload: ReferencePagePayload[] = [];
-    const startedReferences = references
-        .map((reference) => normalizeReferencePage(reference, plannedOutcomes))
-        .filter(isReferencePageStarted);
-
-    if (startedReferences.length === 0) {
-        return {
-            error: 'Add at least one book page before generating the lesson plan.',
-            payload: [],
-        };
-    }
-
-    for (const [index, reference] of startedReferences.entries()) {
-        const referenceLabel = `Reference ${index + 1}`;
-
-        if (!reference.resource_title) {
-            return {
-                error: `${referenceLabel}: enter a resource title.`,
-                payload: [],
-            };
-        }
-
-        if (!reference.outcome_id) {
-            return {
-                error: `${referenceLabel}: choose a learning outcome.`,
-                payload: [],
-            };
-        }
-
-        if (!hasPositiveInteger(reference.page_start)) {
-            return {
-                error: `${referenceLabel}: page start must be a positive whole number.`,
-                payload: [],
-            };
-        }
-
-        if (!hasPositiveInteger(reference.page_end)) {
-            return {
-                error: `${referenceLabel}: page end must be a positive whole number.`,
-                payload: [],
-            };
-        }
-
-        if (reference.page_end < reference.page_start) {
-            return {
-                error: `${referenceLabel}: page end must be greater than or equal to page start.`,
-                payload: [],
-            };
-        }
-
-        payload.push({
-            ...reference,
-            page_start: reference.page_start,
-            page_end: reference.page_end,
-        });
-    }
-
-    return {
-        error: null,
-        payload,
-    };
-}
 
 export function GenerateLessonPlanPage() {
     const router = useRouter();
@@ -384,7 +255,9 @@ export function GenerateLessonPlanPage() {
             return;
         }
 
-        const validatedReferences = validateReferencePages(referencePages, plannedOutcomeMap);
+        const validatedReferences = validateReferencePages(referencePages, plannedOutcomeMap, {
+            requireAtLeastOne: true,
+        });
         if (validatedReferences.error) {
             setSubmittingError(validatedReferences.error);
             return;

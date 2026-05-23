@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, Edit, Mail, Phone, User,
@@ -46,6 +46,21 @@ const END_REASON_LABELS: Record<string, string> = {
 import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
 import '@/app/plugins/cbc/registry/learnerExtension';
 
+function buildLearnersBackHref(back: string | null): string {
+    if (!back) {
+        return '/learners';
+    }
+
+    try {
+        const decoded = decodeURIComponent(back);
+        const params = new URLSearchParams(decoded);
+        const normalized = params.toString();
+        return normalized ? `/learners?${normalized}` : '/learners';
+    } catch {
+        return '/learners';
+    }
+}
+
 function calculateAge(dob?: string): string {
     if (!dob) return 'N/A';
     const today = new Date();
@@ -59,8 +74,13 @@ function calculateAge(dob?: string): string {
 export default function LearnerDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, activeRole } = useAuth();
     const studentId = Number(params.id);
+    const backHref = useMemo(
+        () => buildLearnersBackHref(searchParams.get('back')),
+        [searchParams],
+    );
 
     const {
         student, loading, error,
@@ -122,7 +142,7 @@ export default function LearnerDetailPage() {
 
     const handleDelete = async () => {
         await deleteStudent();
-        router.push('/learners');
+        router.push(backHref);
     };
 
     const activeColumns: Column<StudentCohortEnrollment>[] = [
@@ -188,7 +208,7 @@ export default function LearnerDetailPage() {
     if (error || !student) return (
         <div className="flex items-center justify-center h-64 flex-col gap-3">
             <p className="text-sm text-gray-500">{error ?? 'Student not found'}</p>
-            <Link href="/learners">
+            <Link href={backHref}>
                 <Button variant="secondary">Back to Learners</Button>
             </Link>
         </div>
@@ -198,7 +218,7 @@ export default function LearnerDetailPage() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <Link href="/learners">
+                <Link href={backHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />Back to Learners
                     </Button>

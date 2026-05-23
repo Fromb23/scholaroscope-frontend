@@ -1,9 +1,9 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
     CalendarDays,
@@ -112,6 +112,8 @@ function getLinkedLessonLabel(lessonPlan: LessonPlan): string {
 
 export function LessonPlanDetailPage() {
     const params = useParams();
+    const pathname = usePathname();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const lessonPlanId = getLessonPlanId(params);
     const {
@@ -134,6 +136,7 @@ export function LessonPlanDetailPage() {
     const [reflection, setReflection] = useState('');
     const [scheduleOpen, setScheduleOpen] = useState(false);
     const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
+    const [transientNotice, setTransientNotice] = useState<string | null>(null);
     const [scheduleForm, setScheduleForm] = useState<{
         session_date: string;
         start_time: string;
@@ -176,6 +179,42 @@ export function LessonPlanDetailPage() {
 
         return null;
     }, [searchParams]);
+
+    useEffect(() => {
+        if (!noticeMessage) {
+            return;
+        }
+
+        setTransientNotice(noticeMessage);
+        const timer = window.setTimeout(() => {
+            setTransientNotice(null);
+        }, 5000);
+
+        return () => {
+            window.clearTimeout(timer);
+        };
+    }, [noticeMessage]);
+
+    useEffect(() => {
+        const notice = searchParams.get('notice');
+        if (!notice || !pathname) {
+            return;
+        }
+
+        const nextSearchParams = new URLSearchParams(searchParams.toString());
+        nextSearchParams.delete('notice');
+
+        if (notice === 'generated' || notice === 'existing') {
+            nextSearchParams.delete('mode');
+            nextSearchParams.delete('references');
+        }
+
+        const nextUrl = nextSearchParams.toString()
+            ? `${pathname}?${nextSearchParams.toString()}`
+            : pathname;
+
+        router.replace(nextUrl, { scroll: false });
+    }, [pathname, router, searchParams]);
 
     const handleSimpleAction = async (action: 'reviewed' | 'archived' | 'restored') => {
         if (!lessonPlan) {
@@ -479,10 +518,10 @@ export function LessonPlanDetailPage() {
                 </div>
             </div>
 
-            {noticeMessage ? (
+            {(noticeMessage ?? transientNotice) ? (
                 <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    {noticeMessage}
+                    {noticeMessage ?? transientNotice}
                 </div>
             ) : null}
 

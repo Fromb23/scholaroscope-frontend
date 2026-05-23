@@ -11,7 +11,7 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { PolicyFormModal } from '@/app/core/components/gradePolicies/PolicyFormModal';
 import { gradePolicyAPI } from '@/app/core/api/gradePolicy';
-import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useAuth } from '@/app/context/AuthContext';
@@ -39,6 +39,7 @@ export function GradePolicyDetailPage() {
     const [selectedCohort, setSelectedCohort] = useState<number | null>(null);
 
     const { curricula } = useCurricula();
+    const { terms } = useTerms();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: allCohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
@@ -271,6 +272,7 @@ export function GradePolicyDetailPage() {
                     cohorts={genericCohorts}
                     cohortSubjects={genericScopedSubjects}
                     curricula={genericCurricula}
+                    terms={terms}
                     selectedCohort={selectedCohort}
                     onCohortChange={setSelectedCohort}
                     onSuccess={async () => {

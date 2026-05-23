@@ -115,6 +115,10 @@ export interface CohortSubject {
   curriculum_name: string;
   curriculum_type: CurriculumType;
   is_compulsory: boolean;
+  subject_source?: string | null;
+  teaching_link_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
+  subject_profile_id?: number | null;
 
   has_active_instructor?: boolean;
   active_instructor?: {

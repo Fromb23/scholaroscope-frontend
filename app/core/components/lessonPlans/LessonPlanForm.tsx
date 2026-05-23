@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Save, Trash2 } from 'lucide-react';
@@ -9,7 +9,18 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
-import type { LessonPlan, LessonPlanUpdatePayload } from '@/app/core/types/lessonPlans';
+import { LessonPlanReferenceEditorSlot } from '@/app/core/components/lessonPlans/LessonPlanReferenceEditorSlot';
+import {
+    emptyReferencePage,
+    referenceRecordToInput,
+    validateReferencePages,
+} from '@/app/core/lib/lessonPlanReferences';
+import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
+import type {
+    LessonPlan,
+    LessonPlanUpdatePayload,
+    ReferencePageInput,
+} from '@/app/core/types/lessonPlans';
 
 const TEXTAREA_CLASSNAME =
     'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm leading-6 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y';
@@ -17,6 +28,8 @@ const TEXTAREA_CLASSNAME =
 interface LessonPlanFormProps {
     lessonPlan: LessonPlan;
     onSubmit: (payload: LessonPlanUpdatePayload) => Promise<LessonPlan>;
+    curriculumContext?: LessonPlanCurriculumContext | null;
+    curriculumContextError?: string | null;
 }
 
 interface LessonPlanFormState {
@@ -51,6 +64,11 @@ function buildInitialState(lessonPlan: LessonPlan): LessonPlanFormState {
 
 function cleanStringList(values: string[]): string[] {
     return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function buildInitialReferencePages(lessonPlan: LessonPlan): ReferencePageInput[] {
+    const references = lessonPlan.selected_references.map(referenceRecordToInput);
+    return references.length > 0 ? references : [emptyReferencePage()];
 }
 
 function RepeatableListField({
@@ -134,14 +152,27 @@ function RepeatableListField({
     );
 }
 
-export function LessonPlanForm({ lessonPlan, onSubmit }: LessonPlanFormProps) {
+export function LessonPlanForm({
+    lessonPlan,
+    onSubmit,
+    curriculumContext = null,
+    curriculumContextError = null,
+}: LessonPlanFormProps) {
     const router = useRouter();
     const [formData, setFormData] = useState<LessonPlanFormState>(() => buildInitialState(lessonPlan));
+    const [referencePages, setReferencePages] = useState<ReferencePageInput[]>(() => (
+        buildInitialReferencePages(lessonPlan)
+    ));
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const plannedOutcomeMap = useMemo(
+        () => new Map(lessonPlan.planned_outcomes.map((outcome) => [outcome.outcome_id, outcome])),
+        [lessonPlan.planned_outcomes],
+    );
 
     useEffect(() => {
         setFormData(buildInitialState(lessonPlan));
+        setReferencePages(buildInitialReferencePages(lessonPlan));
     }, [lessonPlan]);
 
     const updateField = (field: keyof LessonPlanFormState, value: string) => {
@@ -186,23 +217,35 @@ export function LessonPlanForm({ lessonPlan, onSubmit }: LessonPlanFormProps) {
             return;
         }
 
+        const payload: LessonPlanUpdatePayload = {
+            title: formData.title.trim(),
+            objectives: cleanStringList(formData.objectives),
+            prior_knowledge: formData.prior_knowledge.trim(),
+            learning_resources: cleanStringList(formData.learning_resources),
+            introduction: formData.introduction.trim(),
+            lesson_development: formData.lesson_development.trim(),
+            learner_activities: formData.learner_activities.trim(),
+            assessment_strategy: formData.assessment_strategy.trim(),
+            differentiation: formData.differentiation.trim(),
+            conclusion: formData.conclusion.trim(),
+            reflection: formData.reflection.trim(),
+        };
+
+        if (curriculumContext?.supports_reference_alignment) {
+            const validatedReferences = validateReferencePages(referencePages, plannedOutcomeMap);
+            if (validatedReferences.error) {
+                setFormError(validatedReferences.error);
+                return;
+            }
+
+            payload.reference_pages = validatedReferences.payload;
+        }
+
         setSaving(true);
         setFormError(null);
 
         try {
-            const updated = await onSubmit({
-                title: formData.title.trim(),
-                objectives: cleanStringList(formData.objectives),
-                prior_knowledge: formData.prior_knowledge.trim(),
-                learning_resources: cleanStringList(formData.learning_resources),
-                introduction: formData.introduction.trim(),
-                lesson_development: formData.lesson_development.trim(),
-                learner_activities: formData.learner_activities.trim(),
-                assessment_strategy: formData.assessment_strategy.trim(),
-                differentiation: formData.differentiation.trim(),
-                conclusion: formData.conclusion.trim(),
-                reflection: formData.reflection.trim(),
-            });
+            const updated = await onSubmit(payload);
 
             router.push(`/lesson-plans/${updated.id}?notice=updated`);
         } catch (err) {
@@ -246,6 +289,27 @@ export function LessonPlanForm({ lessonPlan, onSubmit }: LessonPlanFormProps) {
                     </div>
                 </div>
             </Card>
+
+            {curriculumContextError ? (
+                <Card>
+                    <p className="text-sm text-amber-700">
+                        Reference editing is unavailable right now. Lesson plan text can still be updated.
+                    </p>
+                </Card>
+            ) : null}
+
+            {lessonPlan.cohort_subject && curriculumContext ? (
+                <LessonPlanReferenceEditorSlot
+                    cohortSubjectId={lessonPlan.cohort_subject}
+                    context={curriculumContext}
+                    plannedOutcomes={lessonPlan.planned_outcomes}
+                    referencePages={referencePages}
+                    onReferencePagesChange={(nextValue) => {
+                        setReferencePages(nextValue);
+                        setFormError(null);
+                    }}
+                />
+            ) : null}
 
             <Card>
                 <div className="space-y-5">
