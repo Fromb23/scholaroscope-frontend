@@ -18,6 +18,10 @@ import {
     AddToOrgModal,
 } from '@/app/core/components/superadmin/GlobalUserComponents';
 import type { GlobalUser, UserCreatePayload, UserUpdatePayload } from '@/app/core/types/globalUsers';
+import {
+    isEffectivelyActiveInCurrentOrg,
+    resolveGlobalStatus,
+} from '@/app/core/types/globalUsers';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
 
 function GlobalUsersPageInner() {
@@ -55,11 +59,15 @@ function GlobalUsersPageInner() {
         const matchSearch = !filters.search ||
             u.full_name.toLowerCase().includes(q) ||
             u.email.toLowerCase().includes(q) ||
-            (u.organization_name ?? '').toLowerCase().includes(q);
+            (u.organization_name ?? '').toLowerCase().includes(q) ||
+            (u.state_message ?? '').toLowerCase().includes(q);
         const matchRole = filters.role === 'all' || u.role === filters.role;
-        const matchStatus = filters.status === 'all' ||
-            (filters.status === 'active' && u.is_active) ||
-            (filters.status === 'inactive' && !u.is_active);
+        const matchStatus = filters.status === 'all'
+            || (filters.status === 'platform_active' && resolveGlobalStatus(u) === 'ACTIVE')
+            || (filters.status === 'platform_restricted' && resolveGlobalStatus(u) === 'GLOBAL_DEACTIVATED')
+            || (filters.status === 'org_active' && isEffectivelyActiveInCurrentOrg(u))
+            || (filters.status === 'access_restricted' && resolveGlobalStatus(u) === 'ACTIVE' && u.membership_status === 'SUSPENDED')
+            || (filters.status === 'removed' && u.membership_status === 'REVOKED');
         const matchOrg = filters.org === 'all' || String(u.organization ?? '') === filters.org;
         return matchSearch && matchRole && matchStatus && matchOrg;
     }), [users, filters]);
@@ -80,8 +88,9 @@ function GlobalUsersPageInner() {
 
     const handleToggleActive = (user: GlobalUser) =>
         withSubmit(async () => {
-            await toggleUserActive(user.id, !user.is_active);
-            showSuccess(`User ${user.is_active ? 'deactivated' : 'activated'}`);
+            const activate = resolveGlobalStatus(user) !== 'ACTIVE';
+            await toggleUserActive(user.id, activate);
+            showSuccess(activate ? 'Account globally reactivated' : 'Account globally deactivated');
         });
 
     const handleResetPassword = (password: string) =>
@@ -95,6 +104,7 @@ function GlobalUsersPageInner() {
         setAddToOrgSubmitting(true);
         try {
             await globalUsersAPI.addToOrg(userId, organizationId, role);
+            await refetch();
             showSuccess('User added to organization successfully');
             addToOrgModal.close();
         } catch (err) {
@@ -108,7 +118,7 @@ function GlobalUsersPageInner() {
         withSubmit(async () => {
             await deleteUser(deleteModal.target!.id);
             deleteModal.close();
-            showSuccess('User deleted successfully');
+            showSuccess('Account deleted successfully');
         });
 
     if (loading) return <LoadingSpinner />;
@@ -156,9 +166,12 @@ function GlobalUsersPageInner() {
                 </select>
                 <select value={filters.status} onChange={e => updateFilters({ status: e.target.value })}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="all">All Lifecycle States</option>
+                    <option value="platform_active">Platform Active</option>
+                    <option value="platform_restricted">Platform Restricted</option>
+                    <option value="org_active">Org Active</option>
+                    <option value="access_restricted">Access Restricted</option>
+                    <option value="removed">Removed from Org</option>
                 </select>
                 <select value={filters.org} onChange={e => updateFilters({ org: e.target.value })}
                     className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
@@ -170,7 +183,7 @@ function GlobalUsersPageInner() {
                 <input
                     value={filters.search}
                     onChange={e => updateFilters({ search: e.target.value })}
-                    placeholder="Search by name, email or organization..."
+                    placeholder="Search by name, email, organization, or state..."
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
             </div>

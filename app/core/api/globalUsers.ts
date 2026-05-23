@@ -6,6 +6,7 @@
 import { HistoryEntry, InstructorCohortAccessAssignment, TeachingAssignment } from '../types/academic';
 import { apiClient } from './client';
 import {
+    GlobalUserActionResponse,
     GlobalUser,
     UserCreatePayload,
     UserUpdatePayload,
@@ -44,14 +45,18 @@ export const globalUsersAPI = {
     },
 
     // POST /api/users/{id}/activate/
-    activate: async (id: number): Promise<GlobalUser> => {
-        const response = await apiClient.post<GlobalUser>(`/users/${id}/activate/`);
+    activate: async (id: number, organizationId?: number): Promise<GlobalUserActionResponse> => {
+        const response = await apiClient.post<GlobalUserActionResponse>(`/users/${id}/activate/`, (
+            organizationId ? { organization_id: organizationId } : {}
+        ));
         return response.data;
     },
 
     // POST /api/users/{id}/deactivate/
-    deactivate: async (id: number): Promise<GlobalUser> => {
-        const response = await apiClient.post<GlobalUser>(`/users/${id}/deactivate/`);
+    deactivate: async (id: number, organizationId?: number): Promise<GlobalUserActionResponse> => {
+        const response = await apiClient.post<GlobalUserActionResponse>(`/users/${id}/deactivate/`, (
+            organizationId ? { organization_id: organizationId } : {}
+        ));
         return response.data;
     },
 
@@ -65,11 +70,12 @@ export const globalUsersAPI = {
         const response = await apiClient.get<GlobalUserStats>('/users/statistics/');
         return response.data;
     },
-    addToOrg: async (userId: number, organizationId: number, role: string): Promise<void> => {
-        await apiClient.post(`/users/${userId}/add_to_org/`, {
+    addToOrg: async (userId: number, organizationId: number, role: string): Promise<GlobalUserActionResponse> => {
+        const response = await apiClient.post<GlobalUserActionResponse>(`/users/${userId}/add_to_org/`, {
             organization_id: organizationId,
             role,
         });
+        return response.data;
     },
     // Add inside globalUsersAPI object
     getMyTeachingLoad: async (): Promise<{
@@ -93,9 +99,10 @@ export const globalUsersAPI = {
         const response = await apiClient.get<UserOrgMembership[]>(`/users/${id}/memberships/`);
         return response.data;
     },
-    removeFromOrg: async (userId: number, organizationId: number): Promise<void> => {
-        await apiClient.post(`/users/${userId}/remove_from_org/`, {
+    removeFromOrg: async (userId: number, organizationId: number): Promise<GlobalUserActionResponse> => {
+        const response = await apiClient.post<GlobalUserActionResponse>(`/users/${userId}/remove_from_org/`, {
             organization_id: organizationId,
         });
+        return response.data;
     },
 };

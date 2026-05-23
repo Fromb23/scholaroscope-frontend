@@ -29,6 +29,13 @@ import {
     GroupedSessions,
 } from '@/app/core/components/instructors/InstructorProgressComponents';
 import type { UserUpdatePayload } from '@/app/core/types/globalUsers';
+import {
+    globalStatusLabel,
+    globalStatusVariant,
+    membershipStatusLabel,
+    membershipStatusVariant,
+    resolveGlobalStatus,
+} from '@/app/core/types/globalUsers';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 export default function InstructorProgressPage() {
@@ -89,23 +96,23 @@ export default function InstructorProgressPage() {
         }, 'Password reset successfully', 'Failed to reset password');
 
     const handleToggle = () => {
-        const isActive = instructor?.is_active && instructor?.membership_status !== 'INACTIVE';
+        const isRestricted = instructor?.membership_status === 'SUSPENDED';
         withSubmit(async () => {
-            await (isActive
-                ? instructorsAPI.deactivate(instructorId)
-                : instructorsAPI.activate(instructorId));
+            await (isRestricted
+                ? instructorsAPI.activate(instructorId)
+                : instructorsAPI.deactivate(instructorId));
             await refetch();
         },
-            `Instructor ${isActive ? 'deactivated' : 'activated'}`,
+            isRestricted ? 'Instructor access reactivated' : 'Instructor access restricted',
             'Failed to update status'
         );
     };
 
     const handleDelete = () =>
         withSubmit(async () => {
-            await instructorsAPI.remove(instructorId);
+            await instructorsAPI.removeFromOrganization(instructorId);
             router.push('/admin/instructors');
-        }, 'Instructor removed from organization', 'Failed to remove instructor');
+        }, 'Instructor removed from organization', 'Failed to remove instructor from organization');
 
     if (loading) return <LoadingSpinner message="Loading instructor..." />;
 
@@ -119,7 +126,9 @@ export default function InstructorProgressPage() {
         </div>
     );
 
-    const isEffectivelyActive = instructor.is_active && instructor.membership_status !== 'INACTIVE';
+    const globalStatus = resolveGlobalStatus(instructor);
+    const isMembershipRestricted = instructor.membership_status === 'SUSPENDED';
+    const isMembershipRemoved = instructor.membership_status === 'REVOKED';
 
     const attendanceItems = [
         { label: 'Total Records', value: attendanceStats.total, color: 'text-gray-900' },
@@ -164,11 +173,17 @@ export default function InstructorProgressPage() {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                             <h1 className="text-lg font-bold text-gray-900 truncate">{instructor.full_name}</h1>
-                            <Badge variant={isEffectivelyActive ? 'success' : 'danger'} size="sm">
-                                {isEffectivelyActive ? 'Active' : 'Inactive'}
+                            <Badge variant={globalStatusVariant(globalStatus)} size="sm">
+                                {globalStatusLabel(globalStatus)}
+                            </Badge>
+                            <Badge variant={membershipStatusVariant(instructor.membership_status)} size="sm">
+                                {membershipStatusLabel(instructor.membership_status)}
                             </Badge>
                         </div>
                         <p className="text-gray-500 text-sm truncate">{instructor.email}</p>
+                        {instructor.state_message ? (
+                            <p className="mt-1 text-sm text-gray-500">{instructor.state_message}</p>
+                        ) : null}
                     </div>
                 </div>
 
@@ -187,17 +202,25 @@ export default function InstructorProgressPage() {
                         <span className="hidden md:inline">Password</span>
                     </Button>
                     <Button
-                        size="sm" variant="secondary" onClick={handleToggle}
-                        className={isEffectivelyActive ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleToggle}
+                        disabled={globalStatus !== 'ACTIVE' || isMembershipRemoved}
+                        className={isMembershipRestricted ? 'text-green-600 hover:bg-green-50' : 'text-orange-600 hover:bg-orange-50'}
                     >
-                        {isEffectivelyActive
-                            ? <><PowerOff className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Deactivate</span></>
-                            : <><Power className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Activate</span></>
+                        {isMembershipRestricted
+                            ? <><Power className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Reactivate Access</span></>
+                            : <><PowerOff className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Restrict Access</span></>
                         }
                     </Button>
-                    <Button size="sm" variant="danger" onClick={() => setDeleteOpen(true)}>
+                    <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => setDeleteOpen(true)}
+                        disabled={isMembershipRemoved}
+                    >
                         <Trash2 className="h-3.5 w-3.5 md:mr-1" />
-                        <span className="hidden md:inline">Delete</span>
+                        <span className="hidden md:inline">Remove from Organization</span>
                     </Button>
                 </div>
 

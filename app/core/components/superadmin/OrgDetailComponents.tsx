@@ -18,7 +18,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/Ca
 import type { Organization, OrgUser, OrganizationStats, OrgFormData, OrganizationUpdatePayload, SuspensionReason } from '@/app/core/types/organization';
 import { PLAN_LABELS as PlanLabels, PLAN_COLORS as PlanColors, SUSPENSION_REASON_LABELS } from '@/app/core/types/organization';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { GlobalUser } from '../../types/globalUsers';
+import {
+    GlobalUser,
+    globalStatusLabel,
+    globalStatusVariant,
+    membershipStatusLabel,
+    membershipStatusVariant,
+    resolveGlobalStatus,
+} from '../../types/globalUsers';
 
 // ── Tab types ────────────────────────────────────────────────────────────────
 
@@ -180,7 +187,7 @@ export function UsersTable({ users, loading }: UsersTableProps) {
             <table className="w-full">
                 <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
-                        {['Name', 'Email', 'Role', 'Status', 'Joined'].map(h => (
+                        {['Name', 'Email', 'Role', 'Lifecycle', 'Joined'].map(h => (
                             <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                                 {h}
                             </th>
@@ -204,9 +211,19 @@ export function UsersTable({ users, loading }: UsersTableProps) {
                                 </div>
                             </td>
                             <td className="px-5 py-3">
-                                <Badge variant={user.is_active ? 'success' : 'danger'}>
-                                    {user.is_active ? 'Active' : 'Inactive'}
-                                </Badge>
+                                <div className="space-y-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <Badge variant={globalStatusVariant(resolveGlobalStatus(user))}>
+                                            {globalStatusLabel(resolveGlobalStatus(user))}
+                                        </Badge>
+                                        <Badge variant={membershipStatusVariant(user.membership_status)}>
+                                            {membershipStatusLabel(user.membership_status)}
+                                        </Badge>
+                                    </div>
+                                    {user.state_message ? (
+                                        <p className="max-w-xs text-xs text-gray-500">{user.state_message}</p>
+                                    ) : null}
+                                </div>
                             </td>
                             <td className="px-5 py-3 text-sm text-gray-500">
                                 {new Date(user.date_joined).toLocaleDateString('en-GB', {

@@ -147,18 +147,18 @@ interface DeleteModalProps {
 
 export function DeleteModal({ isOpen, onClose, onConfirm, name, submitting }: DeleteModalProps) {
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Remove Instructor" size="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title="Remove from Organization" size="sm">
             <div className="space-y-4">
                 <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-100">
                     <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                     <p className="text-sm text-red-700">
-                        Delete <strong>{name}</strong>? Their sessions, grades, and activity records will also be removed.
+                        Remove <strong>{name}</strong> from this organization? Access will be revoked, active teaching assignments will be closed, and historical records will remain attributed to them.
                     </p>
                 </div>
                 <div className="flex justify-end gap-3">
                     <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
                     <Button variant="danger" onClick={onConfirm} disabled={submitting}>
-                        {submitting ? 'Deleting...' : 'Delete Instructor'}
+                        {submitting ? 'Removing...' : 'Remove from Organization'}
                     </Button>
                 </div>
             </div>

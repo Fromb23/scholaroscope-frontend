@@ -108,16 +108,16 @@ function RegisterForm() {
           </div>
           <h2 className="text-xl font-semibold theme-text">
             {isPending
-              ? 'Application submitted!'
+              ? 'Workspace request submitted'
               : isSuspendedRecovery
                 ? 'Workspace restored!'
                 : isInviteFlow
                   ? "You're in!"
-                  : 'Workspace created!'}
+                  : 'Workspace request submitted'}
           </h2>
           <p className="theme-muted mt-2 text-sm">
             {isPending
-              ? "Your organization is pending approval. We'll notify you by email once it's approved."
+              ? 'Platform approval is required before this workspace becomes active.'
               : isInviteFlow
                 ? `Welcome to ${invite?.organization}. Redirecting...`
                 : 'Redirecting to your dashboard...'}
@@ -248,7 +248,7 @@ function RegisterForm() {
   }
 
   const title = isNewWorkspaceFlow
-    ? 'New Workspace'
+    ? 'Request New Workspace'
     : isInviteFlow
       ? isExistingUser
         ? 'Accept Invitation'
@@ -256,7 +256,7 @@ function RegisterForm() {
       : 'Create Your Account';
 
   const subtitle = isNewWorkspaceFlow
-    ? 'Add a new workspace to your account'
+    ? 'Submit a new workspace request for platform approval'
     : isInviteFlow
       ? isExistingUser
         ? 'Sign in to accept this invitation'
@@ -264,12 +264,12 @@ function RegisterForm() {
       : 'Register yourself and your organization on ScholaroScope';
 
   const submitLabel = isNewWorkspaceFlow
-    ? 'Create Workspace'
+    ? 'Request Workspace'
     : isInviteFlow
       ? isExistingUser
         ? 'Accept & Sign In'
         : 'Create Account & Join'
-      : 'Create Workspace';
+      : 'Request Workspace';
 
   return (
     <AuthFrame>

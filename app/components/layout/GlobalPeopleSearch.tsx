@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Search } from 'lucide-react';
 import { apiClient } from '@/app/core/api/client';
 import { useAuth } from '@/app/context/AuthContext';
+import {
+    globalStatusLabel,
+    membershipStatusLabel,
+} from '@/app/core/types/globalUsers';
 
 interface PeopleSearchResult {
     kind: 'student' | 'instructor' | 'admin' | 'user';
@@ -13,6 +17,9 @@ interface PeopleSearchResult {
     secondary_label: string;
     role: string | null;
     status: string | null;
+    global_status?: 'ACTIVE' | 'GLOBAL_DEACTIVATED' | null;
+    membership_status?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
+    state_message?: string | null;
     organization?: {
         id: number;
         name: string | null;
@@ -186,12 +193,28 @@ export function GlobalPeopleSearch() {
                                             : result.organization.name}
                                     </p>
                                 ) : null}
+                                {result.state_message ? (
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        {result.state_message}
+                                    </p>
+                                ) : null}
                             </div>
-                            {result.status ? (
-                                <span className="shrink-0 text-xs uppercase tracking-wide theme-subtle">
-                                    {result.status}
-                                </span>
-                            ) : null}
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                                {result.global_status ? (
+                                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">
+                                        {globalStatusLabel(result.global_status)}
+                                    </span>
+                                ) : null}
+                                {result.membership_status ? (
+                                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                                        {membershipStatusLabel(result.membership_status)}
+                                    </span>
+                                ) : result.status ? (
+                                    <span className="shrink-0 text-xs uppercase tracking-wide theme-subtle">
+                                        {result.status}
+                                    </span>
+                                ) : null}
+                            </div>
                         </button>
                     ))}
                 </div>

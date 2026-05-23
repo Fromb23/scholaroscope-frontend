@@ -6,6 +6,32 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/learners/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/learners/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/layout/GlobalPeopleSearch.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/GlobalPeopleSearch.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/ui/Table.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/ui/Table.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/context/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/globalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/globalUsers.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/instructors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/instructors.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/learners.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/learners.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUserComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUserComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUsersPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUsersPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/OrgDetailComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/OrgDetailComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/UserDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/UserDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useGlobalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useGlobalUsers.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useInstructors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useInstructors.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useOrganizationDetailPage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useOrganizationDetailPage.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/usePersistedFilters.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/usePersistedFilters.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useRegister.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useRegister.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/auth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/globalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/globalUsers.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/organization.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/organization.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,7 +39,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="588" />
+    <option name="cachedIndexableFilesCount" value="590" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -37,23 +63,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.9194944312847984" />
-      <entry key="MS500" value="4.40051204571237" />
-      <entry key="S2" value="6.141008938651725" />
-      <entry key="S5" value="6.671436812335862" />
-      <entry key="S10" value="7.73831424712036" />
-      <entry key="S30" value="15.015572352047844" />
-      <entry key="S60" value="20.88688329458094" />
-      <entry key="M2" value="25.2591493329523" />
-      <entry key="M5" value="28.51448132689409" />
-      <entry key="M10" value="29.723365887486825" />
-      <entry key="M15" value="30.141198668053658" />
-      <entry key="M30" value="30.566696262277507" />
-      <entry key="H1" value="30.782367852849145" />
-      <entry key="H2" value="30.90451949708406" />
-      <entry key="H4" value="32.03097033816725" />
-      <entry key="D1" value="183.18739694381105" />
-      <entry key="W1" value="536.8720157002122" />
+      <entry key="MS100" value="1.4945281129980046" />
+      <entry key="MS500" value="4.480866953455784" />
+      <entry key="S2" value="14.837224137271408" />
+      <entry key="S5" value="29.519551024933822" />
+      <entry key="S10" value="40.60644673516238" />
+      <entry key="S30" value="51.763733976013015" />
+      <entry key="S60" value="55.219490804012736" />
+      <entry key="M2" value="57.06704917621577" />
+      <entry key="M5" value="58.21630275837257" />
+      <entry key="M10" value="58.619754552682494" />
+      <entry key="M15" value="58.87328700454625" />
+      <entry key="M30" value="60.32978046017973" />
+      <entry key="H1" value="64.92378423321816" />
+      <entry key="H2" value="73.84605643071201" />
+      <entry key="H4" value="84.74543149577723" />
+      <entry key="D1" value="234.27024480017997" />
+      <entry key="W1" value="600.3994802112063" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -63,35 +89,35 @@
       <entry key="S10" value="0.0" />
       <entry key="S30" value="0.0" />
       <entry key="S60" value="0.0" />
-      <entry key="M2" value="2.1817904531524243E-206" />
-      <entry key="M5" value="5.43907709703542E-83" />
-      <entry key="M10" value="7.375009896288565E-42" />
-      <entry key="M15" value="3.788858662933144E-28" />
-      <entry key="M30" value="1.9464994648861394E-14" />
-      <entry key="H1" value="1.3958275796502967E-7" />
-      <entry key="H2" value="3.833265443301335E-4" />
-      <entry key="H4" value="0.023523512727283202" />
-      <entry key="D1" value="1.3278495195902438" />
-      <entry key="W1" value="3.3546663428856305" />
+      <entry key="M2" value="5.9592602247200046E-245" />
+      <entry key="M5" value="2.0420996934027017E-98" />
+      <entry key="M10" value="1.4290205363824235E-49" />
+      <entry key="M15" value="2.733331544084358E-33" />
+      <entry key="M30" value="5.228128373514547E-17" />
+      <entry key="H1" value="7.233987471078513E-9" />
+      <entry key="H2" value="8.726535958415062E-5" />
+      <entry key="H4" value="0.01122376768825263" />
+      <entry key="D1" value="1.1737842465105168" />
+      <entry key="W1" value="3.2960805722374524" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.8437360343237674" />
-      <entry key="MS500" value="4.363866075303647" />
-      <entry key="S2" value="6.1282177731566945" />
-      <entry key="S5" value="6.665847440932898" />
-      <entry key="S10" value="7.734573573397383" />
-      <entry key="S30" value="15.011846515607639" />
-      <entry key="S60" value="20.883993403493342" />
-      <entry key="M2" value="25.257318869996435" />
-      <entry key="M5" value="28.51363384137502" />
-      <entry key="M10" value="29.722920691825802" />
-      <entry key="M15" value="30.14089692429488" />
-      <entry key="M30" value="30.566542870832954" />
-      <entry key="H1" value="30.78229065786862" />
-      <entry key="H2" value="30.904863796557347" />
-      <entry key="H4" value="32.054468387529035" />
-      <entry key="D1" value="184.51518472454222" />
-      <entry key="W1" value="540.2266596886262" />
+      <entry key="MS100" value="1.4215955532554165" />
+      <entry key="MS500" value="4.4411025064089875" />
+      <entry key="S2" value="14.801494345403" />
+      <entry key="S5" value="29.485530833848834" />
+      <entry key="S10" value="40.580514853037144" />
+      <entry key="S30" value="51.751793099376" />
+      <entry key="S60" value="55.21298444434107" />
+      <entry key="M2" value="57.063650540422856" />
+      <entry key="M5" value="58.214906816177255" />
+      <entry key="M10" value="58.61905027037987" />
+      <entry key="M15" value="58.8728155170512" />
+      <entry key="M30" value="60.329540702282436" />
+      <entry key="H1" value="64.92365686076943" />
+      <entry key="H2" value="73.84607106555798" />
+      <entry key="H4" value="84.75661045982783" />
+      <entry key="D1" value="235.4439688878369" />
+      <entry key="W1" value="603.6955380177924" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -103,29 +129,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/redis-cookie-auth&quot;,
-    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
-    &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
-    &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "feature/user-membership-lifecycle",
+    "javascript.preferred.runtime.type.id": "node",
+    "js.debugger.nextJs.config.created.client": "true",
+    "js.debugger.nextJs.config.created.server": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
+    "ts.external.directory.path": "/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="npm.Next.js: server-side">
     <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
       <method v="2" />
@@ -200,7 +226,7 @@
       <workItem from="1779301294701" duration="1852000" />
       <workItem from="1779377744303" duration="10917000" />
       <workItem from="1779398303191" duration="7025000" />
-      <workItem from="1779525345858" duration="5087000" />
+      <workItem from="1779525345858" duration="8619000" />
     </task>
     <servers />
   </component>

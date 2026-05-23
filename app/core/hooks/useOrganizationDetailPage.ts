@@ -47,6 +47,7 @@ export function useOrganizationDetailPage(id: number) {
         try {
             await organizationAPI.suspend(id, reason);
             setOrganization({ ...organization, status: 'SUSPENDED', suspension_reason: reason });
+            await refetchUsers();
             showSuccess('Organization suspended');
         } catch (err: unknown) {
             const e = err as { response?: { data?: { error?: string } }; message?: string };
@@ -60,6 +61,7 @@ export function useOrganizationDetailPage(id: number) {
         try {
             await organizationAPI.unsuspend(id);
             setOrganization({ ...organization, status: 'ACTIVE', suspension_reason: null });
+            await refetchUsers();
             showSuccess('Organization reactivated');
         } catch (err: unknown) {
             const e = err as { response?: { data?: { error?: string } }; message?: string };
@@ -73,6 +75,7 @@ export function useOrganizationDetailPage(id: number) {
         try {
             await organizationAPI.approve(id);
             setOrganization({ ...organization, status: 'ACTIVE' });
+            await refetchUsers();
             showSuccess('Organization approved and is now active');
         } catch (err: unknown) {
             const e = err as { response?: { data?: { error?: string } }; message?: string };

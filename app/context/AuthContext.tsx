@@ -16,12 +16,12 @@ import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 import type {
   ActiveOrg,
+  AccessNotice,
   LoginResponse,
   OrgMembership,
   RegisterPayload,
   RegisterResponse,
   Role,
-  SuspendedNotice,
   User,
 } from '@/app/core/types/auth';
 
@@ -38,8 +38,8 @@ interface AuthContextType {
   restoreWorkspace: (organizationId: number) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<RegisterResponse>;
   acceptInvite: (inviteToken: string, email: string, password: string) => Promise<void>;
-  suspendedNotices: SuspendedNotice[];
-  clearSuspendedNotices: () => void;
+  accessNotices: AccessNotice[];
+  clearAccessNotices: () => void;
 }
 
 type AuthStatePayload = {
@@ -48,7 +48,9 @@ type AuthStatePayload = {
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
   membership_version: number;
-  suspended_orgs?: { org: string; role: string }[];
+  restricted_orgs?: AccessNotice[];
+  org_suspended_orgs?: AccessNotice[];
+  removed_orgs?: AccessNotice[];
 };
 
 function clearLegacyTokenStorage() {
@@ -99,15 +101,17 @@ function resolveActiveRole(
   return membership?.role ?? null;
 }
 
-function buildSuspendedNotices(
-  suspendedOrgs: { org: string; role: string }[]
-): SuspendedNotice[] {
-  return suspendedOrgs.map((item) => ({
-    org: item.org,
-    message: item.role === 'ADMIN'
-      ? `'${item.org}' has been suspended. Contact platform support.`
-      : `'${item.org}' has been suspended. Contact your organization administrator.`,
-  }));
+function buildAccessNotices(...noticeGroups: Array<AccessNotice[] | undefined>): AccessNotice[] {
+  const notices = noticeGroups.flatMap((group) => group ?? []);
+  const seen = new Set<string>();
+  return notices.filter((notice) => {
+    const key = `${notice.kind ?? ''}:${notice.organization_id ?? notice.org}:${notice.message}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function registerResponseActiveOrg(response: RegisterResponse): ActiveOrg | null {
@@ -134,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeOrg, setActiveOrg] = useState<ActiveOrg | null>(null);
   const [memberships, setMemberships] = useState<OrgMembership[]>([]);
   const [membershipVersion, setMembershipVersion] = useState<number>(0);
-  const [suspendedNotices, setSuspendedNotices] = useState<SuspendedNotice[]>([]);
+  const [accessNotices, setAccessNotices] = useState<AccessNotice[]>([]);
   const [loading, setLoading] = useState(true);
 
   const activeRole = useMemo(
@@ -149,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveOrg(null);
     setMemberships([]);
     setMembershipVersion(0);
-    setSuspendedNotices([]);
+    setAccessNotices([]);
     queryClient.clear();
   }, [queryClient]);
 
@@ -159,7 +163,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveOrg(payload.active_org);
     setMemberships(payload.memberships ?? []);
     setMembershipVersion(payload.membership_version ?? 0);
-    setSuspendedNotices(buildSuspendedNotices(payload.suspended_orgs ?? []));
+    setAccessNotices(
+      buildAccessNotices(
+        payload.restricted_orgs,
+        payload.org_suspended_orgs,
+        payload.removed_orgs,
+      )
+    );
     storeMembershipVersion(payload.membership_version ?? 0);
   }, []);
 
@@ -167,12 +177,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     active_org: ActiveOrg | null;
     memberships: OrgMembership[];
     membership_version: number;
-    suspended_orgs?: { org: string; role: string }[];
+    restricted_orgs?: AccessNotice[];
+    org_suspended_orgs?: AccessNotice[];
+    removed_orgs?: AccessNotice[];
   }) => {
     setActiveOrg(payload.active_org);
     setMemberships(payload.memberships ?? []);
     setMembershipVersion(payload.membership_version ?? 0);
-    setSuspendedNotices(buildSuspendedNotices(payload.suspended_orgs ?? []));
+    setAccessNotices(
+      buildAccessNotices(
+        payload.restricted_orgs,
+        payload.org_suspended_orgs,
+        payload.removed_orgs,
+      )
+    );
     storeMembershipVersion(payload.membership_version ?? 0);
   }, []);
 
@@ -304,8 +322,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await register({ email, password, invite_code: inviteToken });
   }, [login, register]);
 
-  const clearSuspendedNotices = useCallback(() => {
-    setSuspendedNotices([]);
+  const clearAccessNotices = useCallback(() => {
+    setAccessNotices([]);
   }, []);
 
   return (
@@ -322,8 +340,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       restoreWorkspace,
       register,
       acceptInvite,
-      suspendedNotices,
-      clearSuspendedNotices,
+      accessNotices,
+      clearAccessNotices,
     }}>
       {children}
     </AuthContext.Provider>

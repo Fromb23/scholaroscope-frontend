@@ -2,11 +2,16 @@
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
 export type OrgType = 'INSTITUTION' | 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
-export interface SuspendedNotice {
+export type MembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+
+export interface AccessNotice {
   org: string;
+  organization_id?: number;
+  role?: string;
+  status?: MembershipStatus;
+  kind?: 'MEMBERSHIP_RESTRICTED' | 'ORG_SUSPENDED' | 'MEMBERSHIP_REVOKED' | 'ORG_PENDING_APPROVAL';
   message: string;
 }
-
 
 export interface User {
   id: number;
@@ -28,10 +33,11 @@ export interface OrgMembership {
     name: string;
     slug: string;
     org_type: OrgType;
+    status?: string;
   };
   role: Role;
   role_display: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: MembershipStatus;
   joined_at: string;
 }
 
@@ -50,9 +56,11 @@ export interface LoginResponse {
   memberships: OrgMembership[];
   membership_version: number;
   state?: string;
-  suspended_orgs?: { org: string; role: string }[];
+  restricted_orgs?: AccessNotice[];
+  org_suspended_orgs?: AccessNotice[];
+  removed_orgs?: AccessNotice[];
+  pending_orgs?: AccessNotice[];
   requires_workspace_recovery?: boolean;
-  suspended_notices?: SuspendedNotice[];
 }
 
 export interface LoginCredentials {
@@ -77,6 +85,9 @@ export interface RefreshResponse {
   membership_version: number;
   state?: string;
   message?: string;
+  restricted_orgs?: AccessNotice[];
+  org_suspended_orgs?: AccessNotice[];
+  removed_orgs?: AccessNotice[];
 }
 
 export interface RegisterPayload {
@@ -118,5 +129,7 @@ export interface MeContextResponse {
   state: string;
   active_org: ActiveOrg | null;
   memberships: OrgMembership[];
-  suspended_orgs: { org: string; role: string }[];
+  restricted_orgs: AccessNotice[];
+  org_suspended_orgs: AccessNotice[];
+  removed_orgs: AccessNotice[];
 }
