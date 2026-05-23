@@ -9,14 +9,19 @@ import { academicKeys } from '@/app/core/lib/queryKeys';
 
 interface StudentsFilters {
   cohort?: number;
+  cohort_subject?: number;
   status?: string;
   gender?: string;
   search?: string;
+  q?: string;
+  admission_number?: string;
+  name?: string;
   page?: number;
   page_size?: number;
+  ordering?: string;
 }
 
-export function useStudents(filters?: StudentsFilters) {
+export function useStudents(filters?: StudentsFilters, options?: { enabled?: boolean }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,14 +33,29 @@ export function useStudents(filters?: StudentsFilters) {
   });
 
   const abortRef = useRef<AbortController | null>(null);
+  const enabled = options?.enabled ?? true;
   const cohort = filters?.cohort;
+  const cohortSubject = filters?.cohort_subject;
   const status = filters?.status;
   const gender = filters?.gender;
   const search = filters?.search;
+  const q = filters?.q;
+  const admissionNumber = filters?.admission_number;
+  const name = filters?.name;
   const page = filters?.page ?? 1;
   const pageSize = filters?.page_size ?? 10;
+  const ordering = filters?.ordering;
 
   const loadStudents = useCallback(async () => {
+    if (!enabled) {
+      abortRef.current?.abort();
+      setStudents([]);
+      setError(null);
+      setLoading(false);
+      setPagination({ currentPage: 1, pageSize, totalItems: 0, totalPages: 0 });
+      return;
+    }
+
     const controller = new AbortController();
     abortRef.current?.abort();
     abortRef.current = controller;
@@ -46,11 +66,16 @@ export function useStudents(filters?: StudentsFilters) {
     try {
       const data = await learnersAPI.getStudents({
         cohort,
+        cohort_subject: cohortSubject,
         status,
         gender,
         search,
+        q,
+        admission_number: admissionNumber,
+        name,
         page,
         page_size: pageSize,
+        ordering,
       });
 
       if (controller.signal.aborted) return;
@@ -83,10 +108,16 @@ export function useStudents(filters?: StudentsFilters) {
       if (!controller.signal.aborted) setLoading(false);
     }
   }, [
+    admissionNumber,
+    cohortSubject,
+    enabled,
     cohort,
     gender,
+    name,
+    ordering,
     page,
     pageSize,
+    q,
     search,
     status,
   ]);

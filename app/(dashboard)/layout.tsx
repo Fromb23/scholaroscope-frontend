@@ -3,7 +3,11 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { getRouteRules, roleHomeRoute } from '@/app/utils/routeAccess';
+import {
+  getRouteRules,
+  isPlatformSuperadminBlockedPath,
+  roleHomeRoute,
+} from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
 import { SidebarProvider } from '@/app/context/SidebarContext';
 import Header from '@/app/components/layout/Header';
@@ -40,7 +44,7 @@ function DashboardContent({
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, activeRole, loading, suspendedNotices, clearSuspendedNotices } = useAuth();
+  const { user, activeOrg, activeRole, loading, suspendedNotices, clearSuspendedNotices } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -51,7 +55,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace(buildLoginPath(currentPath));
       return;
     }
-    if (user.is_superadmin) return;
+    if (user.is_superadmin) {
+      if (!activeOrg && isPlatformSuperadminBlockedPath(pathname)) {
+        router.replace(roleHomeRoute.SUPERADMIN);
+      }
+      return;
+    }
 
     if (activeRole === null) {
       router.replace(buildLoginPath(currentPath, { reason: 'suspended' }));
@@ -67,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
       router.replace(roleHomeRoute[activeRole]);
     }
-  }, [activeRole, loading, pathname, router, user]);
+  }, [activeOrg, activeRole, loading, pathname, router, user]);
 
   if (loading || !user) {
     return (

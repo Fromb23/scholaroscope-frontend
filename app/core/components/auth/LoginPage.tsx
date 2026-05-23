@@ -11,6 +11,10 @@ import { useRouter } from 'next/navigation';
 import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
+import {
+  isPlatformSuperadminBlockedPath,
+  roleHomeRoute,
+} from '@/app/utils/routeAccess';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -95,10 +99,19 @@ function LoginForm() {
     try {
       if (inviteToken) {
         await acceptInvite(inviteToken, email, password);
+        router.replace('/dashboard');
       } else {
-        await login(email, password);
+        const response = await login(email, password);
+        const nextPath = isSafeNextPath(next) ? next : '/dashboard';
+        const redirectTarget = (
+          response.user.is_superadmin
+          && !response.active_org
+          && isPlatformSuperadminBlockedPath(nextPath)
+        )
+          ? roleHomeRoute.SUPERADMIN
+          : nextPath;
+        router.replace(redirectTarget);
       }
-      router.replace(isSafeNextPath(next) ? next : '/dashboard');
     } catch (err: unknown) {
       const e = err as { data?: Record<string, unknown>; message?: string };
       const data = e?.data ?? {};

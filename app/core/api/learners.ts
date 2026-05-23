@@ -1,5 +1,10 @@
 import { apiClient } from './client';
 import {
+  downloadBlob,
+  getDownloadFileName,
+  normalizeBlobError,
+} from './downloads';
+import {
   Student,
   StudentDetail,
   StudentFormData,
@@ -13,11 +18,16 @@ export const learnersAPI = {
   // Get all students with optional filters
   getStudents: async (params?: {
     cohort?: number;
+    cohort_subject?: number;
     status?: string;
     gender?: string;
     search?: string;
+    q?: string;
+    admission_number?: string;
+    name?: string;
     page?: number;
     page_size?: number;
+    ordering?: string;
   }) => {
     const { data } = await apiClient.get<{
       count: number;
@@ -40,6 +50,34 @@ export const learnersAPI = {
       params: { cohort_id: cohortId }
     });
     return data;
+  },
+
+  exportStudents: async (params: {
+    cohort?: number;
+    cohort_subject?: number;
+    organization?: number;
+    status?: string;
+    search?: string;
+    q?: string;
+    admission_number?: string;
+    name?: string;
+    ordering?: string;
+    format: 'xlsx' | 'pdf';
+  }) => {
+    try {
+      const response = await apiClient.get<Blob>('/students/export/', {
+        params,
+        responseType: 'blob',
+      });
+      const fallbackFileName = `learners.${params.format}`;
+      const fileName = getDownloadFileName(
+        response.headers['content-disposition'],
+        fallbackFileName,
+      );
+      downloadBlob(response.data, fileName);
+    } catch (error) {
+      await normalizeBlobError(error);
+    }
   },
 
   // Get students enrolled in multiple cohorts

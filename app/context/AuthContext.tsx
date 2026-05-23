@@ -16,6 +16,7 @@ import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 import type {
   ActiveOrg,
+  LoginResponse,
   OrgMembership,
   RegisterPayload,
   RegisterResponse,
@@ -31,7 +32,7 @@ interface AuthContextType {
   activeRole: Role | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
   switchOrg: (organizationId: number) => Promise<void>;
   restoreWorkspace: (organizationId: number) => Promise<void>;
@@ -248,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await authAPI.login({ email, password });
     applyAuthState(response);
     setLoading(false);
+    return response;
   }, [applyAuthState]);
 
   const logout = useCallback(async () => {
