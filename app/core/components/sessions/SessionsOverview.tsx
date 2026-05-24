@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+    ClipboardCheck,
     Calendar,
     CheckCircle2,
     ChevronDown,
@@ -11,6 +12,7 @@ import {
     Clock,
     Layers,
     MapPin,
+    PlayCircle,
     Plus,
     Users,
 } from 'lucide-react';
@@ -93,6 +95,62 @@ function SessionLifecycleHint({ session }: { session: Session }) {
     }
 
     return null;
+}
+
+interface PriorityLessonAction {
+    session: Session;
+    title: string;
+    description: string;
+}
+
+function getPriorityLessonAction(sessions: Session[]): PriorityLessonAction | null {
+    const ordered = [...sessions].sort((left, right) => {
+        const leftTime = new Date(`${left.session_date}T${left.start_time ?? '00:00:00'}`).getTime();
+        const rightTime = new Date(`${right.session_date}T${right.start_time ?? '00:00:00'}`).getTime();
+        return leftTime - rightTime;
+    });
+
+    const needsCompletion = ordered.find((session) => (
+        session.schedule_state === 'IN_PROGRESS_OVERDUE' || Boolean(session.needs_completion)
+    ));
+    if (needsCompletion) {
+        return {
+            session: needsCompletion,
+            title: 'Complete lesson',
+            description: `${needsCompletion.subject_name} with ${needsCompletion.cohort_name} is still open. Review attendance and finish your teaching record.`,
+        };
+    }
+
+    const openLesson = ordered.find((session) => session.status === 'IN_PROGRESS');
+    if (openLesson) {
+        return {
+            session: openLesson,
+            title: 'Continue lesson',
+            description: `${openLesson.subject_name} with ${openLesson.cohort_name} is in progress. Keep attendance and taught outcomes up to date.`,
+        };
+    }
+
+    return null;
+}
+
+function getTodayLessonActionLabel(session: Session) {
+    if (session.schedule_state === 'IN_PROGRESS_OVERDUE' || session.needs_completion) {
+        return 'Complete lesson';
+    }
+
+    if (session.status === 'IN_PROGRESS') {
+        return 'Continue lesson';
+    }
+
+    if (session.schedule_state === 'SCHEDULED_READY' || session.can_start_now) {
+        return 'Start lesson';
+    }
+
+    if (session.schedule_state === 'SCHEDULED_OVERDUE') {
+        return 'Start late';
+    }
+
+    return 'Open lesson';
 }
 
 function SessionInstructor({
@@ -317,6 +375,10 @@ function SessionWorkspaceView() {
     const mergedSessionsCount = sessions.filter((session) => (
         session.linked_cohorts && session.linked_cohorts.length > 1
     )).length;
+    const priorityTodayAction = useMemo(
+        () => getPriorityLessonAction(todaySessions),
+        [todaySessions]
+    );
     const avgAttendance = sessions.length > 0
         ? sessions.reduce((sum, session) => {
             const total = session.attendance_count.total;
@@ -359,7 +421,7 @@ function SessionWorkspaceView() {
                     </h1>
                     <p className="mt-1 text-sm theme-muted">
                         {isInstructor
-                            ? 'Track your lessons, attendance, and day-to-day teaching flow.'
+                            ? 'Start lessons, take attendance, and complete your teaching records.'
                             : 'Review scheduled lessons, attendance, and cohort lesson history from one workspace.'}
                     </p>
                 </div>
@@ -375,7 +437,7 @@ function SessionWorkspaceView() {
                     <Link href="/lesson-plans/new">
                         <Button size="sm">
                             <Plus className="w-4 h-4 sm:mr-1" />
-                            <span className="hidden sm:inline">Plan a lesson</span>
+                            <span className="hidden sm:inline">Prepare a lesson</span>
                         </Button>
                     </Link>
                 </div>
@@ -389,6 +451,46 @@ function SessionWorkspaceView() {
                     <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
                 </div>
             </DesktopOnly>
+
+            {isInstructor && priorityTodayAction ? (
+                <Card>
+                    <div className="space-y-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <PlayCircle className="h-5 w-5 text-amber-600" />
+                                    <h2 className="text-base font-semibold theme-text">{priorityTodayAction.title}</h2>
+                                </div>
+                                <p className="mt-2 text-sm theme-muted">
+                                    {priorityTodayAction.description}
+                                </p>
+                            </div>
+                            <Badge variant="orange" size="sm">
+                                Needs attention now
+                            </Badge>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                            <Link href={`/sessions/${priorityTodayAction.session.id}`} className="w-full sm:w-auto">
+                                <Button className="w-full sm:w-auto">
+                                    Continue lesson
+                                </Button>
+                            </Link>
+                            <Link href={`/sessions/${priorityTodayAction.session.id}`} className="w-full sm:w-auto">
+                                <Button variant="secondary" className="w-full sm:w-auto">
+                                    <ClipboardCheck className="h-4 w-4" />
+                                    Review attendance
+                                </Button>
+                            </Link>
+                            <Link href={`/sessions/${priorityTodayAction.session.id}`} className="w-full sm:w-auto">
+                                <Button variant="secondary" className="w-full sm:w-auto">
+                                    Complete lesson
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
 
             {todaySessions.length > 0 ? (
                 <Card>
@@ -433,13 +535,35 @@ function SessionWorkspaceView() {
                                         </div>
                                         <Link href={`/sessions/${session.id}`} className="shrink-0">
                                             <Button variant="primary" size="sm">
-                                                <span className="hidden sm:inline">Mark Attendance</span>
-                                                <span className="sm:hidden">Mark</span>
+                                                <span className="hidden sm:inline">{getTodayLessonActionLabel(session)}</span>
+                                                <span className="sm:hidden">Open</span>
                                             </Button>
                                         </Link>
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+                </Card>
+            ) : isInstructor ? (
+                <Card>
+                    <div className="py-10 text-center">
+                        <Calendar className="mx-auto h-12 w-12 theme-subtle" />
+                        <h2 className="mt-3 text-base font-semibold theme-text">No lessons scheduled today.</h2>
+                        <p className="mt-2 text-sm theme-muted">
+                            Prepare a lesson or review your assigned classes before your next teaching slot.
+                        </p>
+                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                            <Link href="/lesson-plans/new" className="w-full sm:w-auto">
+                                <Button className="w-full sm:w-auto">
+                                    Prepare a lesson
+                                </Button>
+                            </Link>
+                            <Link href="/academic/cohorts" className="w-full sm:w-auto">
+                                <Button variant="secondary" className="w-full sm:w-auto">
+                                    View my classes
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </Card>
@@ -493,18 +617,32 @@ function SessionWorkspaceView() {
                 <Card>
                     <div className="py-12 text-center">
                         <Calendar className="mx-auto h-12 w-12 theme-subtle" />
-                        <h3 className="mt-2 text-sm font-medium theme-text">No sessions found</h3>
+                        <h3 className="mt-2 text-sm font-medium theme-text">
+                            {isInstructor ? 'No lessons scheduled yet' : 'No sessions found'}
+                        </h3>
                         <p className="mt-1 text-sm theme-muted">
                             {selectedTerm || selectedType
                                 ? 'Try adjusting your filters'
-                                : 'Get started by planning a lesson'}
+                                : isInstructor
+                                    ? 'No lessons scheduled yet. Prepare a lesson plan or check your assigned classes.'
+                                    : 'Get started by planning a lesson'}
                         </p>
                         {!selectedTerm && !selectedType ? (
-                            <Link href="/lesson-plans/new">
-                                <Button className="mt-4">
-                                    <Plus className="mr-2 h-4 w-4" />Plan a lesson
-                                </Button>
-                            </Link>
+                            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                                <Link href="/lesson-plans/new" className="w-full sm:w-auto">
+                                    <Button className="w-full sm:w-auto">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        {isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}
+                                    </Button>
+                                </Link>
+                                {isInstructor ? (
+                                    <Link href="/academic/cohorts" className="w-full sm:w-auto">
+                                        <Button variant="secondary" className="w-full sm:w-auto">
+                                            View my classes
+                                        </Button>
+                                    </Link>
+                                ) : null}
+                            </div>
                         ) : null}
                     </div>
                 </Card>
@@ -548,8 +686,12 @@ function SessionWorkspaceView() {
                                 </div>
 
                                 {!isCollapsed ? (
-                                    <div className="theme-surface overflow-x-auto">
-                                        <div className="min-w-[640px]">
+                                    <>
+                                        <div className="p-4 md:hidden">
+                                            <CohortSessionsCards sessions={group.items} />
+                                        </div>
+                                        <div className="hidden overflow-x-auto md:block theme-surface">
+                                            <div className="min-w-[640px]">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
@@ -653,7 +795,8 @@ function SessionWorkspaceView() {
                                                 </TableBody>
                                             </Table>
                                         </div>
-                                    </div>
+                                        </div>
+                                    </>
                                 ) : null}
                             </Card>
                         );
@@ -736,13 +879,13 @@ function CohortSessionsView({
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <Link href={cohortBackHref}>
               <Button variant="ghost" size="sm">
-                Back to Workspace
+                {isInstructor ? 'Back to My Lessons' : 'Back to Workspace'}
               </Button>
             </Link>
             <Link href="/lesson-plans/new">
               <Button size="sm">
                 <Plus className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Plan a lesson</span>
+                <span className="hidden sm:inline">{isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}</span>
               </Button>
             </Link>
           </div>

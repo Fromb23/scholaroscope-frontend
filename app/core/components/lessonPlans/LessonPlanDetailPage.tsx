@@ -39,6 +39,7 @@ import {
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
 import type { Assignment } from '@/app/core/types/assignments';
+import { useAuth } from '@/app/context/AuthContext';
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -115,6 +116,8 @@ export function LessonPlanDetailPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { activeRole } = useAuth();
+    const isInstructor = activeRole === 'INSTRUCTOR';
     const lessonPlanId = getLessonPlanId(params);
     const {
         lessonPlan,
@@ -397,7 +400,7 @@ export function LessonPlanDetailPage() {
                 <Link href="/lesson-plans">
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back
+                        {isInstructor ? 'Back to Lesson Preparation' : 'Back'}
                     </Button>
                 </Link>
 
@@ -425,7 +428,7 @@ export function LessonPlanDetailPage() {
                                 disabled={pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
                             >
                                 <CalendarDays className="mr-1.5 h-4 w-4" />
-                                Schedule lesson
+                                {isInstructor ? 'Schedule this lesson' : 'Schedule lesson'}
                             </Button>
                         ) : null}
 
@@ -448,7 +451,9 @@ export function LessonPlanDetailPage() {
                             <Download className="mr-1.5 h-4 w-4" />
                             {pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')
                                 ? 'Downloading...'
-                                : 'Download PDF'}
+                                : isInstructor
+                                    ? 'Download lesson plan'
+                                    : 'Download PDF'}
                         </Button>
 
                         {canMarkLessonPlanReviewed(lessonPlan.status) ? (
@@ -548,6 +553,83 @@ export function LessonPlanDetailPage() {
                 </div>
             ) : null}
 
+            {isInstructor ? (
+                <Card>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold text-gray-900">
+                                {canScheduleLesson(lessonPlan.status)
+                                    ? 'Next step: schedule this lesson'
+                                    : lessonPlan.status === 'USED'
+                                        ? 'Post-lesson follow-up'
+                                        : lessonPlan.session
+                                            ? 'Next step: use this plan in class'
+                                            : 'Lesson preparation is ready'}
+                            </h2>
+                            <p className="text-sm text-gray-600">
+                                {canScheduleLesson(lessonPlan.status)
+                                    ? 'Choose when this lesson should happen so it appears in your teaching day.'
+                                    : lessonPlan.status === 'USED'
+                                        ? 'This lesson preparation has already been used in class. Reopen the lesson or download the plan for follow-up work.'
+                                        : lessonPlan.session
+                                            ? 'This lesson preparation is already linked to a scheduled lesson. Open it when you are ready to teach.'
+                                            : 'Review the plan, then continue with your next teaching action.'}
+                            </p>
+                        </div>
+
+                        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
+                            {canScheduleLesson(lessonPlan.status) ? (
+                                <Button
+                                    className="w-full sm:w-auto"
+                                    onClick={handleOpenSchedule}
+                                    disabled={pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
+                                >
+                                    <CalendarDays className="mr-1.5 h-4 w-4" />
+                                    Schedule this lesson
+                                </Button>
+                            ) : null}
+
+                            {lessonPlan.session ? (
+                                <Link href={`/sessions/${lessonPlan.session}`} className="w-full sm:w-auto">
+                                    <Button variant="secondary" className="w-full sm:w-auto">
+                                        <Link2 className="mr-1.5 h-4 w-4" />
+                                        Open scheduled lesson
+                                    </Button>
+                                </Link>
+                            ) : null}
+
+                            {canPrepareAssignmentDraft(lessonPlan.status) ? (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="w-full sm:w-auto"
+                                    onClick={() => {
+                                        void handleCreateAssignmentDraft();
+                                    }}
+                                    disabled={pendingActionKey === actionKey(lessonPlan.id, 'assignment-draft')}
+                                >
+                                    <FilePlus2 className="mr-1.5 h-4 w-4" />
+                                    Prepare assignment draft
+                                </Button>
+                            ) : null}
+
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="w-full sm:w-auto"
+                                onClick={() => {
+                                    void handleExportPdf();
+                                }}
+                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')}
+                            >
+                                <Download className="mr-1.5 h-4 w-4" />
+                                Download lesson plan
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
+
             {lessonPlan.status === 'ARCHIVED' ? (
                 <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
                     This lesson plan is archived. Restore it to continue using it in active workflows.
@@ -617,7 +699,9 @@ export function LessonPlanDetailPage() {
             <Card>
                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-gray-900">Chosen Learning Outcomes</h2>
+                        <h2 className="text-base font-semibold text-gray-900">
+                            {isInstructor ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
+                        </h2>
                         <p className="text-sm text-gray-500">
                             These outcomes guide the objectives, lesson flow, and evidence recorded for this lesson.
                         </p>
@@ -734,12 +818,14 @@ export function LessonPlanDetailPage() {
             <Modal
                 isOpen={scheduleOpen}
                 onClose={() => setScheduleOpen(false)}
-                title="Schedule Lesson"
+                title={isInstructor ? 'Schedule This Lesson' : 'Schedule Lesson'}
                 size="md"
             >
                 <form onSubmit={handleSubmitSchedule} className="space-y-4">
                     <p className="text-sm text-gray-600">
-                        Choose when this lesson should take place.
+                        {isInstructor
+                            ? 'Choose when you want to teach this lesson.'
+                            : 'Choose when this lesson should take place.'}
                     </p>
 
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -816,7 +902,7 @@ export function LessonPlanDetailPage() {
                             disabled={pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
                         >
                             <CalendarDays className="mr-1.5 h-4 w-4" />
-                            Schedule lesson
+                            {isInstructor ? 'Schedule this lesson' : 'Schedule lesson'}
                         </Button>
                     </div>
                 </form>

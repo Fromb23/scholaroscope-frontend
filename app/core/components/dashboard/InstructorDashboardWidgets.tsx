@@ -31,6 +31,26 @@ const dashboardMetricCardClass = `${themeClasses.dashboardMetricCard} cursor-poi
 const dashboardMutedPanelClass = `${themeClasses.dashboardMutedPanel} p-4`;
 const dashboardActionRowClass = `${themeClasses.dashboardActionRow} p-3`;
 
+function getTodayScheduleActionLabel(session: Session) {
+    if (session.schedule_state === 'IN_PROGRESS_OVERDUE' || session.needs_completion) {
+        return 'Complete lesson';
+    }
+
+    if (session.status === 'IN_PROGRESS') {
+        return 'Continue lesson';
+    }
+
+    if (session.schedule_state === 'SCHEDULED_READY' || session.can_start_now) {
+        return 'Start lesson';
+    }
+
+    if (session.schedule_state === 'SCHEDULED_OVERDUE') {
+        return 'Start late';
+    }
+
+    return 'Open lesson';
+}
+
 // ── InstructorHeader ──────────────────────────────────────────────────────
 
 interface InstructorHeaderProps {
@@ -58,7 +78,7 @@ export function InstructorHeader({
                         </h1>
                         <p className="theme-muted mt-1 flex items-center gap-2">
                             <Calendar className="w-4 h-4" />
-                            {termName} • {yearName}
+                            {termName} - {yearName}
                         </p>
                     </div>
                 </div>
@@ -269,13 +289,18 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
                                     <div className="flex items-center gap-2 mb-1">
                                         <Clock className="w-4 h-4 text-[color:var(--color-success)]" />
                                         <span className="font-bold theme-text">
-                                            {session.start_time ?? 'TBA'} – {session.end_time ?? 'TBA'}
+                                            {session.start_time ?? 'TBA'} - {session.end_time ?? 'TBA'}
                                         </span>
                                     </div>
                                     <p className="font-semibold theme-text">{session.subject_name}</p>
-                                    <p className="text-sm theme-muted">{session.cohort_name} • {session.venue || 'TBA'}</p>
+                                    <p className="text-sm theme-muted">{session.cohort_name} - {session.venue || 'TBA'}</p>
                                 </div>
-                                <ChevronRight className="w-5 h-5 theme-subtle transition-colors group-hover:text-[color:var(--color-success)]" />
+                                <div className="flex items-center gap-2">
+                                    <span className="hidden text-sm font-semibold text-[color:var(--color-success)] md:inline">
+                                        {getTodayScheduleActionLabel(session)}
+                                    </span>
+                                    <ChevronRight className="w-5 h-5 theme-subtle transition-colors group-hover:text-[color:var(--color-success)]" />
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -283,13 +308,24 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
             ) : (
                 <div className="py-12 text-center">
                     <Calendar className="mx-auto mb-3 h-12 w-12 theme-subtle" />
-                    <p className="text-sm theme-muted">No sessions scheduled today</p>
-                    <button
-                        onClick={() => router.push('/lesson-plans/new')}
-                        className="theme-focus-ring theme-button-primary mt-4 rounded-lg px-4 py-2 text-sm font-semibold"
-                    >
-                        Plan a lesson
-                    </button>
+                    <p className="text-sm font-medium theme-text">No lessons scheduled today.</p>
+                    <p className="mt-1 text-sm theme-muted">
+                        Prepare a lesson or review your assigned classes before the next teaching day.
+                    </p>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                        <button
+                            onClick={() => router.push('/lesson-plans/new')}
+                            className="theme-focus-ring theme-button-primary rounded-lg px-4 py-2 text-sm font-semibold"
+                        >
+                            Prepare a lesson
+                        </button>
+                        <button
+                            onClick={() => router.push('/academic/cohorts')}
+                            className="theme-focus-ring theme-button-secondary rounded-lg px-4 py-2 text-sm font-semibold"
+                        >
+                            View my classes
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
@@ -409,7 +445,7 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl">
                         <Users className="w-5 h-5 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold theme-text">My Classes</h3>
+                    <h3 className="text-xl font-bold theme-text">My Teaching Load</h3>
                 </div>
                 <button
                     onClick={() => router.push('/academic/cohorts')}
@@ -421,7 +457,10 @@ export function MyCohortsCard({ cohorts }: MyCohortsCardProps) {
             {preview.length === 0 ? (
                 <div className="py-10 text-center">
                     <Users className="mx-auto mb-3 h-10 w-10 theme-subtle" />
-                    <p className="text-sm font-medium theme-text">No classes assigned yet.</p>
+                    <p className="text-sm font-medium theme-text">Your teaching load is not assigned yet.</p>
+                    <p className="mt-1 text-sm theme-muted">
+                        Once your administrator assigns classes or subjects, they will appear here.
+                    </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -456,9 +495,9 @@ export function NoCohortsAssignedCard() {
         <div className={dashboardCardClass}>
             <div className="py-10 text-center">
                 <Users className="mx-auto mb-3 h-12 w-12 theme-subtle" />
-                <p className="text-lg font-semibold theme-text">No cohorts assigned yet.</p>
+                <p className="text-lg font-semibold theme-text">Your teaching load is not assigned yet.</p>
                 <p className="mt-2 text-sm theme-muted">
-                    Your teaching dashboard will show cohort, session, and curriculum tools after assignments are added.
+                    Once your administrator assigns classes or subjects, your lessons, learners, and progress tools will appear here.
                 </p>
             </div>
         </div>
@@ -469,15 +508,18 @@ export function NoCohortsAssignedCard() {
 
 interface InstructorQuickActionsProps {
     needsGrading: number;
+    todayLessons: number;
 }
 
-export function InstructorQuickActions({ needsGrading }: InstructorQuickActionsProps) {
+export function InstructorQuickActions({ needsGrading, todayLessons }: InstructorQuickActionsProps) {
     const router = useRouter();
 
     const actions: { icon: LucideIcon; label: string; path: string; badge?: number }[] = [
-        { icon: Clock, label: 'Mark Attendance', path: '/sessions' },
-        { icon: Award, label: 'Grade Work', path: '/assessments?status=pending', badge: needsGrading },
-        { icon: FileText, label: 'Submit Request', path: '/requests/new' },
+        { icon: Calendar, label: "Today's lessons", path: '/sessions', badge: todayLessons },
+        { icon: FileText, label: 'Prepare lesson', path: '/lesson-plans/new' },
+        { icon: Award, label: 'Grade work', path: '/assessments?status=pending', badge: needsGrading },
+        { icon: Users, label: 'My learners', path: '/learners' },
+        { icon: Inbox, label: 'Submit request', path: '/requests/new' },
     ];
 
     return (
@@ -506,6 +548,69 @@ export function InstructorQuickActions({ needsGrading }: InstructorQuickActionsP
                         )}
                     </button>
                 ))}
+            </div>
+        </div>
+    );
+}
+
+interface AssessmentsSummaryCardProps {
+    needsGrading: number;
+    upcomingAssessments: number;
+}
+
+export function AssessmentsSummaryCard({
+    needsGrading,
+    upcomingAssessments,
+}: AssessmentsSummaryCardProps) {
+    const router = useRouter();
+
+    return (
+        <div className={dashboardCardClass}>
+            <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl">
+                    <Award className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-bold theme-text">Assessments &amp; Grading</h3>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                    type="button"
+                    onClick={() => router.push('/assessments?status=pending')}
+                    className="rounded-xl p-4 text-left theme-warning-surface transition-all hover:scale-[1.02] hover:shadow-md"
+                >
+                    <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Needs grading</p>
+                    <p className="mt-2 text-3xl font-bold text-amber-700">{needsGrading}</p>
+                    <p className="mt-1 text-xs theme-muted">
+                        {needsGrading > 0 ? 'Open your grading queue.' : 'No grading backlog right now.'}
+                    </p>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => router.push('/assessments')}
+                    className="rounded-xl p-4 text-left theme-info-surface transition-all hover:scale-[1.02] hover:shadow-md"
+                >
+                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Upcoming</p>
+                    <p className="mt-2 text-3xl font-bold text-blue-700">{upcomingAssessments}</p>
+                    <p className="mt-1 text-xs theme-muted">
+                        Assessment{upcomingAssessments === 1 ? '' : 's'} due in the next week.
+                    </p>
+                </button>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <button
+                    type="button"
+                    onClick={() => router.push('/assessments?status=pending')}
+                    className="theme-focus-ring theme-button-primary w-full rounded-lg px-4 py-2 text-sm font-semibold sm:w-auto"
+                >
+                    Grade work
+                </button>
+                <button
+                    type="button"
+                    onClick={() => router.push('/assessments')}
+                    className="theme-focus-ring theme-button-secondary w-full rounded-lg px-4 py-2 text-sm font-semibold sm:w-auto"
+                >
+                    View assessments
+                </button>
             </div>
         </div>
     );

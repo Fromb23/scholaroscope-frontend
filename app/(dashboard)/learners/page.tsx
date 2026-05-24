@@ -449,7 +449,7 @@ function LearnersPageInner() {
 
     const pageTitle = isInstructor ? 'My Learners' : 'Learners';
     const pageDescription = isInstructor
-        ? 'View and manage learners inside your assigned teaching scope.'
+        ? 'Track learners in your assigned classes and follow up where support is needed.'
         : 'Generate a cohort learner list, then refine the loaded rows locally.';
 
     const handleCurriculumChange = (value: string) => {
@@ -723,7 +723,7 @@ function LearnersPageInner() {
             {isInstructor && !instructorAssignmentsLoading && !hasInstructorLearnerScope ? (
                 <Card>
                     <p className="py-10 text-center text-sm text-gray-500">
-                        No assigned cohorts or class subjects were found for this instructor.
+                        Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, your learners will appear here.
                     </p>
                 </Card>
             ) : isAdmin && !filters.cohort ? (
@@ -745,7 +745,7 @@ function LearnersPageInner() {
                         page: 1,
                     })}
                     emptyMessage={isInstructor
-                        ? 'No learners match the current assigned-learner filters.'
+                        ? 'No learners found in your assigned classes. Try clearing filters or contact your administrator if your class assignment is missing.'
                         : 'No learners match the current cohort filters.'}
                     enableSearch={false}
                     enableSort
