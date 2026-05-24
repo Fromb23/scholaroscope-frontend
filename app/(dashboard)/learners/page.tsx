@@ -21,6 +21,7 @@ import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success',
@@ -451,6 +452,38 @@ function LearnersPageInner() {
     const pageDescription = isInstructor
         ? 'Track learners in your assigned classes and follow up where support is needed.'
         : 'Generate a cohort learner list, then refine the loaded rows locally.';
+    const assistantContext = useMemo(() => ({
+        pageKey: 'learners_overview',
+        pageTitle,
+        state: {
+            is_loading: displayedLoading,
+            no_results: !displayedLoading && currentVisibleCount === 0 && Boolean(
+                filters.q || filters.cohort || filters.cohort_subject || filters.status
+            ),
+            current_visible_count: currentVisibleCount,
+            scope: isInstructor ? 'assigned' : 'school',
+        },
+        visibleActions: [
+            ...(canCreate
+                ? [{ label: 'Add Learner', type: 'navigate' as const, href: '/learners/new' }]
+                : []),
+            ...(isInstructor
+                ? [{ label: 'Open Attendance Risk', type: 'navigate' as const, href: '/reports/instructor/attendance-risk' }]
+                : []),
+        ],
+    }), [
+        canCreate,
+        currentVisibleCount,
+        displayedLoading,
+        filters.cohort,
+        filters.cohort_subject,
+        filters.q,
+        filters.status,
+        isInstructor,
+        pageTitle,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     const handleCurriculumChange = (value: string) => {
         updateFilters({

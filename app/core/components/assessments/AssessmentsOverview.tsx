@@ -17,6 +17,7 @@ import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { ASSESSMENT_TYPE_OPTIONS, type Assessment } from '@/app/core/types/assessment';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 type BadgeVariant = NonNullable<ComponentProps<typeof Badge>['variant']>;
 type GroupView = 'cohort' | 'subject';
@@ -168,6 +169,31 @@ export function AssessmentsOverview() {
             }))
             .sort((left, right) => left.label.localeCompare(right.label));
     }, [assessments, groupView]);
+    const assistantContext = useMemo(() => ({
+        pageKey: 'assessments_overview',
+        pageTitle: isInstructor ? 'Assessments & Grading' : 'Assessments',
+        state: {
+            is_loading: loading,
+            total_assessments: totalAssessments,
+            no_results: !loading && assessments.length === 0,
+            can_create_assessment: canCreateAssessment,
+            has_assigned_cohort_subjects: instructorAccess.hasAssignedCohortSubjects,
+        },
+        visibleActions: [
+            ...(canCreateAssessment
+                ? [{ label: 'Create Assessment', type: 'navigate' as const, href: '/assessments/new' }]
+                : []),
+        ],
+    }), [
+        assessments.length,
+        canCreateAssessment,
+        instructorAccess.hasAssignedCohortSubjects,
+        isInstructor,
+        loading,
+        totalAssessments,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     return (
         <div className="space-y-6">

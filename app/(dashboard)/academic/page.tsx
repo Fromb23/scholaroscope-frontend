@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import {
     Calendar,
@@ -14,6 +15,7 @@ import { useAcademicYears, useCurricula, useCohorts, useTerms } from '@/app/core
 import { Badge } from '@/app/components/ui/Badge';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 export default function AcademicOverview() {
     const { academicYears, loading: yearsLoading } = useAcademicYears();
@@ -25,6 +27,23 @@ export default function AcademicOverview() {
     const activeCurricula = curricula.filter(c => c.is_active);
 
     const loading = yearsLoading || curriculaLoading || cohortsLoading || termsLoading;
+    const assistantContext = useMemo(() => ({
+        pageKey: 'academic_overview',
+        pageTitle: 'Academic Management',
+        state: {
+            is_loading: loading,
+            has_current_year: Boolean(currentYear),
+            has_current_term: terms.length > 0,
+            active_curricula_count: activeCurricula.length,
+            cohort_count: cohorts.length,
+        },
+        visibleActions: [
+            { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' },
+            { label: 'Open Academic Years', type: 'navigate' as const, href: '/academic/years' },
+        ],
+    }), [activeCurricula.length, cohorts.length, currentYear, loading, terms.length]);
+
+    useAssistantPageContext(assistantContext);
 
     type QuickLinkColor = 'blue' | 'green' | 'purple' | 'orange' | 'indigo';
 

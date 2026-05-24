@@ -1,7 +1,7 @@
 // app/(dashboard)/dashboard/admin/page.tsx
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -19,6 +19,7 @@ import {
     SystemOverview,
     PendingApprovals,
 } from '@/app/core/components/dashboard/AdminDashboardWidgets';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 export function AdminDashboard() {
     const router = useRouter();
@@ -31,6 +32,22 @@ export function AdminDashboard() {
     } = useAdminDashboard();
     const { requests, loading: requestsLoading } = useRequests({ status: 'PENDING' });
     const { stats: requestStats } = useRequestStats();
+    const assistantContext = useMemo(() => ({
+        pageKey: 'admin_dashboard',
+        pageTitle: 'Admin Dashboard',
+        state: {
+            is_loading: isLoading,
+            has_current_term: Boolean(currentTerm),
+            pending_requests: requestStats?.pending ?? 0,
+            sessions_today: sessions.length,
+        },
+        visibleActions: [
+            { label: 'Open Academic Setup', type: 'navigate' as const, href: '/academic' },
+            { label: 'Review Requests', type: 'navigate' as const, href: '/requests' },
+        ],
+    }), [currentTerm, isLoading, requestStats?.pending, sessions.length]);
+
+    useAssistantPageContext(assistantContext);
 
     useEffect(() => {
         if (activeRole && activeRole !== 'ADMIN') {
