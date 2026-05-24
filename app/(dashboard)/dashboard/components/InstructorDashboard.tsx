@@ -64,6 +64,13 @@ export function InstructorDashboard() {
             { label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' },
             { label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' },
         ],
+        nextSafeAction: hasTeachingAssignments
+            ? { label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' }
+            : { label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' },
+        workflowStep: hasTeachingAssignments ? 'teaching_overview' : 'awaiting_assignments',
+        emptyStateReason: !dashboardLoading && !hasTeachingAssignments
+            ? 'No teaching assignments are visible yet.'
+            : undefined,
     }), [
         dashboardLoading,
         hasTeachingAssignments,

@@ -184,6 +184,13 @@ export function AssessmentsOverview() {
                 ? [{ label: 'Create Assessment', type: 'navigate' as const, href: '/assessments/new' }]
                 : []),
         ],
+        nextSafeAction: canCreateAssessment
+            ? { label: 'Create Assessment', type: 'navigate' as const, href: '/assessments/new' }
+            : undefined,
+        workflowStep: 'assessment_overview',
+        emptyStateReason: !loading && assessments.length === 0
+            ? 'No assessments are visible with the current filters.'
+            : undefined,
     }), [
         assessments.length,
         canCreateAssessment,

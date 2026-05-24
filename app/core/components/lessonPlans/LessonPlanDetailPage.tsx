@@ -395,6 +395,24 @@ export function LessonPlanDetailPage() {
                 }]
                 : []),
         ],
+        nextSafeAction: lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
+            ? {
+                label: 'Schedule this lesson',
+                type: 'page_action' as const,
+                target: 'open_schedule_modal',
+                handler: handleOpenSchedule,
+            }
+            : (lessonPlan?.session
+                ? {
+                    label: 'Open linked lesson',
+                    type: 'navigate' as const,
+                    href: `/sessions/${lessonPlan.session}`,
+                }
+                : undefined),
+        workflowStep: lessonPlan?.session ? 'scheduled' : 'lesson_preparation',
+        emptyStateReason: !loading && !lessonPlan
+            ? 'This lesson plan could not be loaded.'
+            : undefined,
     }), [handleOpenSchedule, isInstructor, lessonPlan, loading]);
 
     useAssistantPageContext(assistantContext);
