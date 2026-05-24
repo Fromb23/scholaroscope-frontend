@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Megaphone, Plus, AlertCircle, MessageSquare } from 'lucide-react';
 import { useAnnouncements } from '@/app/plugins/announcements/hooks/useAnnouncements';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -27,7 +28,7 @@ type Filter = 'all' | 'unread' | 'needs_feedback';
 export function AnnouncementsPage() {
     const { user, activeRole } = useAuth();
     const {
-        announcements, loading, error,
+        announcements, loading, error, refetch,
         create, update, remove, markRead, submitFeedback,
     } = useAnnouncements();
 
@@ -66,6 +67,70 @@ export function AnnouncementsPage() {
         { key: 'unread', label: `Unread (${unreadCount})` },
         { key: 'needs_feedback', label: `Needs Response (${needsFeedbackCount})` },
     ];
+    const assistantContext = {
+        pageKey: 'announcements_overview',
+        pageTitle: 'Announcements',
+        state: {
+            is_loading: loading,
+            is_empty: !loading && filtered.length === 0,
+            unread_count: unreadCount,
+            can_create_announcement: isAdmin,
+            role: activeRole ?? null,
+        },
+        visibleActions: [
+            {
+                label: 'Refresh announcements',
+                type: 'page_action' as const,
+                target: 'refresh_announcements',
+                handler: refetch,
+            },
+            ...(isAdmin
+                ? [{
+                    label: 'Create announcement',
+                    type: 'page_action' as const,
+                    target: 'create_announcement',
+                    handler: openCreate,
+                }]
+                : []),
+            ...(filtered.length > 0
+                ? [{
+                    label: 'View announcement',
+                    type: 'page_action' as const,
+                    target: 'view_announcement_list',
+                    handler: () => {
+                        document.getElementById('announcements-list')?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                        });
+                    },
+                }]
+                : []),
+        ],
+        nextSafeAction: filtered.length > 0
+            ? {
+                label: 'View announcement',
+                type: 'page_action' as const,
+                target: 'view_announcement_list',
+                handler: () => {
+                    document.getElementById('announcements-list')?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                    });
+                },
+            }
+            : {
+                label: 'Refresh announcements',
+                type: 'page_action' as const,
+                target: 'refresh_announcements',
+                handler: refetch,
+            },
+        workflowStep: unreadCount > 0 ? 'review_announcements' : 'announcements_overview',
+        emptyStateReason: !loading && filtered.length === 0
+            ? 'No announcements match the current view.'
+            : undefined,
+    };
+
+    useAssistantPageContext(assistantContext);
 
     return (
         <div className="max-w-3xl mx-auto space-y-6">
@@ -119,7 +184,7 @@ export function AnnouncementsPage() {
                     </div>
                 </Card>
             ) : (
-                <div className="space-y-3">
+                <div id="announcements-list" className="space-y-3">
                     {filtered.map(a => (
                         <AnnouncementCard
                             key={a.id}

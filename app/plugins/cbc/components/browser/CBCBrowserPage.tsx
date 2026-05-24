@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { BookOpen, ChevronRight, Layers, Search } from 'lucide-react';
 import { useCBCBrowserPage } from '@/app/plugins/cbc/hooks/useCBCBrowserPage';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import {
     CBCNav,
     CBCError,
@@ -25,6 +26,70 @@ function formatLevelLabel(level: string | null | undefined) {
 
 export function CBCBrowserPage() {
     const page = useCBCBrowserPage();
+    const firstVisibleStrand = page.visible[0];
+    const contextParams = new URLSearchParams();
+    if (page.effectiveCohortId) {
+        contextParams.set('cohort', String(page.effectiveCohortId));
+    }
+    if (page.resolvedSubject?.id) {
+        contextParams.set('subject', String(page.resolvedSubject.id));
+    }
+    const contextQuery = contextParams.toString();
+    const cbcProgressHref = contextQuery ? `/cbc/progress?${contextQuery}` : '/cbc/progress';
+    const assistantContext = {
+        pageKey: 'cbc_browser',
+        pageTitle: 'Curriculum Browser',
+        state: {
+            selected_subject: page.resolvedSubject?.name ?? '',
+            selected_cohort: page.effectiveCohort?.name ?? '',
+            has_subject_filter: page.subjectsForCurriculum.length > 0,
+            has_cohort_filter: false,
+            is_empty: !page.isLoading && page.visible.length === 0,
+            is_loading: page.isLoading,
+        },
+        visibleActions: [
+            {
+                label: 'Open CBC Teaching',
+                type: 'navigate' as const,
+                href: '/cbc/teaching',
+            },
+            {
+                label: 'Open CBC Sessions',
+                type: 'navigate' as const,
+                href: '/cbc/teaching/sessions',
+            },
+            {
+                label: 'Open CBC Progress',
+                type: 'navigate' as const,
+                href: cbcProgressHref,
+            },
+            {
+                label: 'Open CBC Results',
+                type: 'navigate' as const,
+                href: '/cbc/assessment-results',
+            },
+            ...(firstVisibleStrand
+                ? [{
+                    label: 'Open strand',
+                    type: 'navigate' as const,
+                    href: `/cbc/browser/strands/${firstVisibleStrand.id}`,
+                }]
+                : []),
+        ],
+        nextSafeAction: firstVisibleStrand
+            ? {
+                label: 'Open strand',
+                type: 'navigate' as const,
+                href: `/cbc/browser/strands/${firstVisibleStrand.id}`,
+            }
+            : undefined,
+        workflowStep: firstVisibleStrand ? 'browse_strands' : 'resolve_cbc_context',
+        emptyStateReason: !page.isLoading && page.visible.length === 0
+            ? 'No CBC strands match the current context.'
+            : undefined,
+    };
+
+    useAssistantPageContext(assistantContext);
 
     if (page.isLoading) {
         return <CBCLoading message="Loading your assignments…" />;

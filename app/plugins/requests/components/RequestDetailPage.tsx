@@ -5,9 +5,11 @@
 // Role determines what actions are available
 // ============================================================================
 
+import { useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { useRequestDetail } from '@/app/plugins/requests/hooks/useRequests';
 import { Button } from '@/app/components/ui/Button';
 import { RequestDetailPanel } from '@/app/plugins/requests/components/RequestShared';
@@ -35,6 +37,63 @@ export function RequestDetailPage() {
     const handleAddComment = async (content: string, is_internal: boolean) => {
         await addComment(content, is_internal);
     };
+    const assistantContext = useMemo(() => {
+        const isPending = request ? ['PENDING', 'IN_REVIEW'].includes(request.status) : false;
+        return {
+            pageKey: 'request_detail',
+            pageTitle: 'Request Detail',
+            state: {
+                is_loading: loading,
+                is_empty: !loading && !request,
+                request_status: request?.status ?? null,
+                can_submit_request: activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR',
+                can_review_request: Boolean(canReview && isPending),
+            },
+            visibleActions: [
+                ...(canReview && isPending
+                    ? [{
+                        label: 'Review Request',
+                        type: 'page_action' as const,
+                        target: 'review_request_section',
+                        handler: () => {
+                            document.getElementById('request-review-section')?.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start',
+                            });
+                        },
+                    }]
+                    : []),
+                {
+                    label: 'Back to Requests',
+                    type: 'navigate' as const,
+                    href: '/requests',
+                },
+            ],
+            nextSafeAction: canReview && isPending
+                ? {
+                    label: 'Review Request',
+                    type: 'page_action' as const,
+                    target: 'review_request_section',
+                    handler: () => {
+                        document.getElementById('request-review-section')?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                        });
+                    },
+                }
+                : {
+                    label: 'Back to Requests',
+                    type: 'navigate' as const,
+                    href: '/requests',
+                },
+            workflowStep: canReview && isPending ? 'review_request' : 'track_request_status',
+            emptyStateReason: !loading && !request
+                ? 'This request could not be loaded.'
+                : undefined,
+        };
+    }, [activeRole, canReview, loading, request]);
+
+    useAssistantPageContext(assistantContext);
 
     if (loading) return (
         <div className="flex items-center justify-center h-64">

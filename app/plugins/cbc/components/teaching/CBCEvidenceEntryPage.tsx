@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { AlertCircle, Layers, ShieldAlert, Target, Users } from 'lucide-react';
 import { useEvidenceEntry } from '@/app/plugins/cbc/hooks/useEvidenceEntry';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { LearnerEvidenceRow } from '@/app/plugins/cbc/components/evidence/LearnerEvidenceRow';
 import { BulkClassModal } from '@/app/plugins/cbc/components/evidence/BulkClassModal';
 import { EvidenceSuccessBanner } from '@/app/plugins/cbc/components/evidence/EvidenceSuccessBanner';
@@ -29,6 +30,61 @@ export function CBCEvidenceEntryPage() {
     const highlightStudentId = searchParams.get('student');
 
     const page = useEvidenceEntry(sessionId, learningOutcomeId);
+    const assistantContext = {
+        pageKey: 'cbc_evidence_entry',
+        pageTitle: 'CBC Evidence Entry',
+        state: {
+            is_loading: page.isPageLoading || page.isEvidencePanelLoading,
+            is_empty: !page.isPageLoading && !page.isEvidencePanelLoading && page.learners.length === 0,
+            has_sessions: Boolean(page.session),
+            session_status: page.session?.status ?? null,
+            has_subject_filter: false,
+            has_cohort_filter: false,
+            has_taught_outcomes: Boolean(page.outcome),
+            has_learner_evidence: page.eligibleWithEvidence.length > 0,
+            coverage_percentage: page.eligibleLearners.length > 0
+                ? Math.round((page.eligibleWithEvidence.length / page.eligibleLearners.length) * 100)
+                : 0,
+        },
+        visibleActions: [
+            {
+                label: 'Open CBC Sessions',
+                type: 'navigate' as const,
+                href: '/cbc/teaching/sessions',
+            },
+            {
+                label: 'Back to what was taught',
+                type: 'navigate' as const,
+                href: `/cbc/teaching/sessions/${sessionId}/outcomes`,
+            },
+            ...(!page.hasBlockingAttendance && page.eligibleLearners.length > 0
+                ? [{
+                    label: 'Record learner evidence',
+                    type: 'page_action' as const,
+                    target: 'open_bulk_evidence_modal',
+                    handler: () => page.setShowBulk(true),
+                }]
+                : []),
+        ],
+        nextSafeAction: !page.hasBlockingAttendance && page.eligibleLearners.length > 0
+            ? {
+                label: 'Record learner evidence',
+                type: 'page_action' as const,
+                target: 'open_bulk_evidence_modal',
+                handler: () => page.setShowBulk(true),
+            }
+            : {
+                label: 'Back to what was taught',
+                type: 'navigate' as const,
+                href: `/cbc/teaching/sessions/${sessionId}/outcomes`,
+            },
+        workflowStep: page.hasBlockingAttendance ? 'complete_attendance_first' : 'record_cbc_evidence',
+        emptyStateReason: !page.isPageLoading && !page.isEvidencePanelLoading && page.learners.length === 0
+            ? 'No learners are available for evidence entry on this lesson outcome.'
+            : undefined,
+    };
+
+    useAssistantPageContext(assistantContext);
 
     if (page.isPageLoading) {
         return (

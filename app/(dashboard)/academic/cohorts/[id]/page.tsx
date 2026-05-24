@@ -25,6 +25,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
 import { CohortSubjectParticipationSection } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
@@ -226,6 +227,71 @@ export default function CohortHubPage() {
 
     const isCambridge = cohort ? isCambridgeCurriculumType(cohort.curriculum_type) : false;
     const isCBC = cohort?.curriculum_type === 'CBE';
+    const canViewCohortLearners = isAdminOrAbove(user, activeRole);
+    const hasCBCPlugin = hasPlugin('cbc');
+    const hasCambridgePlugin = hasPlugin('cambridge');
+    const learnerCount = enrolledStudentsQuery.data?.students.length ?? 0;
+    const subjectCount = cohortSubjects.length;
+    const assignedInstructorCount = Object.values(subjectParticipationQuery.summaries)
+        .filter((summary) => summary.instructorState === 'assigned')
+        .length;
+    const sessionsHref = isValidCohortId ? `/sessions?cohort=${cohortId}` : '/sessions';
+    const assistantContext = {
+        pageKey: 'cohort_detail',
+        pageTitle: cohort?.name ?? 'Cohort',
+        state: {
+            academic_year: cohort?.academic_year_name ?? null,
+            is_empty: !cohort,
+            selected_cohort: cohort?.name ?? '',
+            subject_count: visibleCohortSubjects.length,
+            learner_count: learnerCount,
+            instructor_count: assignedInstructorCount,
+            role: activeRole ?? null,
+        },
+        visibleActions: [
+            {
+                label: 'Back to Cohorts',
+                type: 'navigate' as const,
+                href: '/academic/cohorts',
+            },
+            {
+                label: 'Open Sessions',
+                type: 'navigate' as const,
+                href: sessionsHref,
+            },
+            ...(cohort && isCBC && hasCBCPlugin && subjectCount > 0
+                ? [
+                    {
+                        label: 'Browse CBC',
+                        type: 'navigate' as const,
+                        href: `/cbc/browser?cohort=${cohort.id}`,
+                    },
+                    {
+                        label: 'Open CBC Progress',
+                        type: 'navigate' as const,
+                        href: `/cbc/progress?cohort=${cohort.id}`,
+                    },
+                ]
+                : []),
+        ],
+        nextSafeAction: cohort && isCBC && hasCBCPlugin && subjectCount > 0
+            ? {
+                label: 'Browse CBC',
+                type: 'navigate' as const,
+                href: `/cbc/browser?cohort=${cohort.id}`,
+            }
+            : {
+                label: 'Open Sessions',
+                type: 'navigate' as const,
+                href: sessionsHref,
+            },
+        workflowStep: cohort && isCBC ? 'cohort_cbc_tools' : 'cohort_actions',
+        emptyStateReason: !cohort && !cohortLoading
+            ? 'This cohort could not be loaded.'
+            : undefined,
+    };
+
+    useAssistantPageContext(assistantContext);
 
     if (!isValidCohortId) {
         return <ErrorState fullScreen={false} message="Invalid cohort." />;
@@ -247,13 +313,8 @@ export default function CohortHubPage() {
     }
 
     const curriculumName = getCurriculumBridgeName(cohort);
-    const learnerCount = String(enrolledStudentsQuery.data?.students.length ?? 0);
-    const subjectCount = cohortSubjects.length;
-    const canViewCohortLearners = isAdminOrAbove(user, activeRole);
+    const learnerCountLabel = String(learnerCount);
     const cohortLearnersHref = `/academic/cohorts/${cohort.id}/students`;
-    const sessionsHref = `/sessions?cohort=${cohort.id}`;
-    const hasCBCPlugin = hasPlugin('cbc');
-    const hasCambridgePlugin = hasPlugin('cambridge');
     const unknownCurriculumReason = `No workflow is configured yet for ${curriculumName}.`;
 
     return (
@@ -289,7 +350,7 @@ export default function CohortHubPage() {
                     <MetadataItem label="Curriculum" value={curriculumName} />
                     <MetadataItem label="Level" value={cohort.level} />
                     <MetadataItem label="Stream" value={cohort.stream || '—'} />
-                    <MetadataItem label="Learners" value={learnerCount} />
+                    <MetadataItem label="Learners" value={learnerCountLabel} />
                 </dl>
             </Card>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     BookOpen,
@@ -12,6 +13,7 @@ import {
     ArrowRight,
 } from 'lucide-react';
 import { useTodaySessions, useRecentSessions } from '@/app/plugins/cbc/hooks/useCBC';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import {
     CBCNav,
     CBCError,
@@ -34,6 +36,64 @@ export function CBCTeachingPage() {
     const router = useRouter();
     const { data: todaySessions = [], isLoading: loadingToday, error: todayError } = useTodaySessions();
     const { data: recentSessions = [], isLoading: loadingRecent } = useRecentSessions(7);
+    const primarySession = todaySessions[0] ?? recentSessions[0];
+    const assistantContext = useMemo(() => ({
+        pageKey: 'cbc_teaching',
+        pageTitle: 'Teaching Workspace',
+        state: {
+            is_loading: loadingToday || loadingRecent,
+            is_empty: !loadingToday && !loadingRecent && todaySessions.length === 0 && recentSessions.length === 0,
+            has_sessions: todaySessions.length + recentSessions.length > 0,
+            has_subject_filter: false,
+            has_cohort_filter: false,
+        },
+        visibleActions: [
+            {
+                label: 'Open CBC Sessions',
+                type: 'navigate' as const,
+                href: '/cbc/teaching/sessions',
+            },
+            {
+                label: 'Browse CBC',
+                type: 'navigate' as const,
+                href: '/cbc/browser',
+            },
+            {
+                label: 'Open CBC Progress',
+                type: 'navigate' as const,
+                href: '/cbc/progress',
+            },
+            {
+                label: 'Open CBC Results',
+                type: 'navigate' as const,
+                href: '/cbc/assessment-results',
+            },
+            ...(primarySession
+                ? [{
+                    label: 'Open CBC Session',
+                    type: 'navigate' as const,
+                    href: `/cbc/teaching/sessions/${primarySession.id}/outcomes`,
+                }]
+                : []),
+        ],
+        nextSafeAction: primarySession
+            ? {
+                label: 'Open CBC Session',
+                type: 'navigate' as const,
+                href: `/cbc/teaching/sessions/${primarySession.id}/outcomes`,
+            }
+            : {
+                label: 'Open CBC Sessions',
+                type: 'navigate' as const,
+                href: '/cbc/teaching/sessions',
+            },
+        workflowStep: primarySession ? 'continue_cbc_session' : 'cbc_teaching_overview',
+        emptyStateReason: !loadingToday && !loadingRecent && todaySessions.length === 0 && recentSessions.length === 0
+            ? 'No CBC teaching sessions are visible yet.'
+            : undefined,
+    }), [loadingRecent, loadingToday, primarySession, recentSessions.length, todaySessions.length]);
+
+    useAssistantPageContext(assistantContext);
 
     return (
         <div className="space-y-6">
