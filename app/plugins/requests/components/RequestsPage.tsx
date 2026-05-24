@@ -10,6 +10,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, Inbox, AlertTriangle, Send } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { useRequests } from '@/app/plugins/requests/hooks/useRequests';
 import { Request } from '@/app/plugins/requests/types/requests';
 import { Button } from '@/app/components/ui/Button';
@@ -55,6 +56,64 @@ export function RequestsPage() {
         [...new Map(requests.map(r => [r.request_type, r.request_type_display])).entries()],
         [requests]
     );
+    const pendingCount = useMemo(
+        () => requests.filter((request) => ['PENDING', 'IN_REVIEW'].includes(request.status)).length,
+        [requests]
+    );
+    const resolvedCount = useMemo(
+        () => requests.filter((request) => ['APPROVED', 'REJECTED', 'CLOSED'].includes(request.status)).length,
+        [requests]
+    );
+    const reviewableRequest = useMemo(
+        () => (
+            isAdmin
+                ? filtered.find((request) => request.submitted_by_role === 'INSTRUCTOR')
+                : null
+        ),
+        [filtered, isAdmin]
+    );
+    const assistantContext = useMemo(() => ({
+        pageKey: 'requests_overview',
+        pageTitle: isAdmin ? 'Pending Requests' : 'My Requests',
+        state: {
+            is_loading: loading,
+            is_empty: !loading && filtered.length === 0,
+            pending_count: pendingCount,
+            resolved_count: resolvedCount,
+            can_submit_request: isInstructor || isAdmin,
+            can_review_request: Boolean(reviewableRequest),
+        },
+        visibleActions: [
+            ...(isInstructor || isAdmin
+                ? [{ label: 'Submit Request', type: 'navigate' as const, href: '/requests/new' }]
+                : []),
+            ...(filtered[0]
+                ? [{ label: 'View Request', type: 'navigate' as const, href: `/requests/${filtered[0].id}` }]
+                : []),
+            ...(reviewableRequest
+                ? [{ label: 'Review Request', type: 'navigate' as const, href: `/requests/${reviewableRequest.id}` }]
+                : []),
+        ],
+        nextSafeAction: reviewableRequest
+            ? { label: 'Review Request', type: 'navigate' as const, href: `/requests/${reviewableRequest.id}` }
+            : (isInstructor || isAdmin
+                ? { label: 'Submit Request', type: 'navigate' as const, href: '/requests/new' }
+                : undefined),
+        workflowStep: pendingCount > 0 ? 'review_requests' : 'submit_request',
+        emptyStateReason: !loading && filtered.length === 0
+            ? 'No requests are visible with the current filters.'
+            : undefined,
+    }), [
+        filtered,
+        isAdmin,
+        isInstructor,
+        loading,
+        pendingCount,
+        resolvedCount,
+        reviewableRequest,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     const handleDelete = async () => {
         if (!deleteTarget) return;

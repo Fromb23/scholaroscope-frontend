@@ -24,6 +24,7 @@ import {
     CBCLoading,
     CBCNav,
 } from '@/app/plugins/cbc/components/CBCComponents';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { useCbcAssessmentReportResults } from '@/app/plugins/cbc/hooks/useCbcAssessmentReportResults';
 import {
     CBC_ASSESSMENT_RESULT_STATUS_HELPER_TEXT,
@@ -135,6 +136,66 @@ export function CBCAssessmentReportResultsPage() {
         () => results.filter(result => matchesSearch(result, searchQuery)),
         [results, searchQuery],
     );
+    const assistantContext = useMemo(() => ({
+        pageKey: 'cbc_assessment_results',
+        pageTitle: 'CBC Results',
+        state: {
+            selected_subject: '',
+            selected_cohort: '',
+            has_subject_filter: false,
+            has_cohort_filter: false,
+            is_empty: !loading && filteredResults.length === 0,
+            is_loading: loading,
+        },
+        visibleActions: [
+            {
+                label: 'Refresh results',
+                type: 'page_action' as const,
+                target: 'refresh_cbc_results',
+                handler: refetch,
+            },
+            {
+                label: 'Browse CBC',
+                type: 'navigate' as const,
+                href: '/cbc/browser',
+            },
+            {
+                label: 'Open CBC Teaching',
+                type: 'navigate' as const,
+                href: '/cbc/teaching',
+            },
+            {
+                label: 'Open CBC Progress',
+                type: 'navigate' as const,
+                href: '/cbc/progress',
+            },
+            ...(filteredResults[0]
+                ? [{
+                    label: 'View result',
+                    type: 'navigate' as const,
+                    href: `/cbc/assessment-results/${filteredResults[0].id}`,
+                }]
+                : []),
+        ],
+        nextSafeAction: filteredResults[0]
+            ? {
+                label: 'View result',
+                type: 'navigate' as const,
+                href: `/cbc/assessment-results/${filteredResults[0].id}`,
+            }
+            : {
+                label: 'Refresh results',
+                type: 'page_action' as const,
+                target: 'refresh_cbc_results',
+                handler: refetch,
+            },
+        workflowStep: filteredResults.length > 0 ? 'review_cbc_results' : 'cbc_results_filters',
+        emptyStateReason: !loading && filteredResults.length === 0
+            ? 'No CBC assessment results match the current filters.'
+            : undefined,
+    }), [filteredResults, loading, refetch]);
+
+    useAssistantPageContext(assistantContext);
 
     if (loading && results.length === 0) {
         return <CBCLoading message="Loading CBC assessment results…" />;

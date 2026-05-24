@@ -19,6 +19,7 @@ import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { useAcademicYears } from '@/app/core/hooks/useAcademic';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import {
     type InstructorTeachingLoadGroup,
@@ -131,6 +132,52 @@ export function InstructorMyCohortsPageContent() {
         [filteredGroups]
     );
     const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
+    const learnerCount = useMemo(
+        () => filteredGroups.reduce((count, group) => count + (group.learner_count ?? 0), 0),
+        [filteredGroups]
+    );
+    const assistantContext = useMemo(() => ({
+        pageKey: 'my_classes_overview',
+        pageTitle: 'My Teaching Load',
+        state: {
+            academic_year: selectedYear?.name ?? selectedYearId ?? null,
+            is_empty: !loading && filteredGroups.length === 0,
+            selected_cohort: filteredGroups[0]?.cohort_name ?? '',
+            subject_count: assignedSubjectCount,
+            learner_count: learnerCount,
+            instructor_count: 1,
+            role: 'INSTRUCTOR',
+        },
+        visibleActions: [
+            ...(filteredGroups[0]
+                ? [{
+                    label: 'Open Cohort',
+                    type: 'navigate' as const,
+                    href: `/academic/cohorts/${filteredGroups[0].cohort_id}`,
+                }]
+                : []),
+        ],
+        nextSafeAction: filteredGroups[0]
+            ? {
+                label: 'Open Cohort',
+                type: 'navigate' as const,
+                href: `/academic/cohorts/${filteredGroups[0].cohort_id}`,
+            }
+            : undefined,
+        workflowStep: filteredGroups.length > 0 ? 'open_assigned_class' : 'await_teaching_load',
+        emptyStateReason: !loading && filteredGroups.length === 0
+            ? 'No teaching assignments match the current academic year or search filters.'
+            : undefined,
+    }), [
+        assignedSubjectCount,
+        filteredGroups,
+        learnerCount,
+        loading,
+        selectedYear?.name,
+        selectedYearId,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     return (
         <div className="space-y-6">

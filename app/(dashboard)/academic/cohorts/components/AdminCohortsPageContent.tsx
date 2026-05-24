@@ -23,6 +23,7 @@ import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAcademicYears, useCohorts, useCurricula } from '@/app/core/hooks/useAcademic';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
 import { extractErrorMessage } from '@/app/core/types/errors';
@@ -87,6 +88,10 @@ export function AdminCohortsPageContent() {
     const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
     const totalStudents = cohorts.reduce(
         (studentCount, cohort) => studentCount + (cohort.students_count ?? 0),
+        0
+    );
+    const totalSubjects = cohorts.reduce(
+        (subjectCount, cohort) => subjectCount + (cohort.subjects_count ?? 0),
         0
     );
 
@@ -267,6 +272,56 @@ export function AdminCohortsPageContent() {
             },
         },
     ];
+    const assistantContext = {
+        pageKey: 'academic_cohorts_overview',
+        pageTitle: 'Cohorts',
+        state: {
+            academic_year: selectedYear?.name ?? selectedYearId ?? null,
+            is_empty: !loading && cohorts.length === 0,
+            selected_cohort: cohorts[0]?.name ?? '',
+            subject_count: totalSubjects,
+            learner_count: totalStudents,
+            instructor_count: null,
+            role: 'ADMIN',
+        },
+        visibleActions: [
+            ...(!isHistoricalView
+                ? [{
+                    label: 'Add Cohort',
+                    type: 'page_action' as const,
+                    target: 'open_add_cohort',
+                    handler: openCreate,
+                }]
+                : []),
+            ...(cohorts[0]
+                ? [{
+                    label: 'Open Cohort',
+                    type: 'navigate' as const,
+                    href: `/academic/cohorts/${cohorts[0].id}`,
+                }]
+                : []),
+        ],
+        nextSafeAction: !isHistoricalView
+            ? {
+                label: 'Add Cohort',
+                type: 'page_action' as const,
+                target: 'open_add_cohort',
+                handler: openCreate,
+            }
+            : (cohorts[0]
+                ? {
+                    label: 'Open Cohort',
+                    type: 'navigate' as const,
+                    href: `/academic/cohorts/${cohorts[0].id}`,
+                }
+                : undefined),
+        workflowStep: isHistoricalView ? 'review_historical_cohorts' : 'manage_cohorts',
+        emptyStateReason: !loading && cohorts.length === 0
+            ? 'No cohorts match the current academic year or curriculum filters.'
+            : undefined,
+    };
+
+    useAssistantPageContext(assistantContext);
 
     return (
         <div className="space-y-6">

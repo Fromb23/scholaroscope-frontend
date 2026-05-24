@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Send, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { requestsAPI } from '@/app/plugins/requests/api/requests';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
@@ -89,6 +90,49 @@ export function NewRequestPage() {
             setSubmitting(false);
         }
     };
+    const assistantContext = {
+        pageKey: 'request_new',
+        pageTitle: 'Submit a Request',
+        state: {
+            is_loading: submitting,
+            is_empty: false,
+            pending_count: 0,
+            resolved_count: 0,
+            request_status: submitted ? 'SUBMITTED' : null,
+            can_submit_request: !submitted,
+            can_review_request: false,
+        },
+        visibleActions: [
+            ...(!submitted
+                ? [{
+                    label: 'Submit Request',
+                    type: 'page_action' as const,
+                    target: 'submit_request_form',
+                    handler: handleSubmit,
+                }]
+                : []),
+            {
+                label: 'Back to Requests',
+                type: 'navigate' as const,
+                href: '/requests',
+            },
+        ],
+        nextSafeAction: !submitted
+            ? {
+                label: 'Submit Request',
+                type: 'page_action' as const,
+                target: 'submit_request_form',
+                handler: handleSubmit,
+            }
+            : {
+                label: 'Back to Requests',
+                type: 'navigate' as const,
+                href: '/requests',
+            },
+        workflowStep: submitted ? 'request_submitted' : 'request_form',
+    };
+
+    useAssistantPageContext(assistantContext);
 
     // ── Success screen ────────────────────────────────────────────────────────
     if (submitted) {

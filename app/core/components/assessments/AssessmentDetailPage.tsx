@@ -11,9 +11,11 @@ import {
     Award,
     CheckCircle,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { AssessmentDetailHeader } from '@/app/core/components/assessments/AssessmentDetailHeader';
 import { AssessmentInfoCard } from '@/app/core/components/assessments/AssessmentInfoCard';
 import { AssessmentScoreEntryCard } from '@/app/core/components/assessments/AssessmentScoreEntryCard';
@@ -60,6 +62,91 @@ export function AssessmentDetailPage() {
         handleActivate,
         handleFinalize,
     } = useAssessmentDetailPage();
+    const unscoredCount = Math.max(totalLearnerCount - stats.scored, 0);
+    const assistantContext = useMemo(() => ({
+        pageKey: 'assessment_detail',
+        pageTitle: assessment?.name ?? 'Assessment Detail',
+        state: {
+            assessment_id: assessmentId,
+            status: assessment?.status ?? null,
+            is_finalized: isFinalized,
+            learner_count: totalLearnerCount,
+            scored_count: stats.scored,
+            unscored_count: unscoredCount,
+            can_grade: Boolean(canScore),
+            can_finalize: Boolean(canFinalize),
+            has_results: totalLearnerCount > 0 && stats.scored > 0,
+            is_loading: loading || scoresLoading,
+        },
+        visibleActions: [
+            ...(!isFinalized && canScore
+                ? [{
+                    label: 'Grade learners',
+                    type: 'page_action' as const,
+                    target: 'grade_assessment_learners',
+                    handler: () => {
+                        document.getElementById('assessment-score-entry')?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                        });
+                    },
+                }]
+                : []),
+            ...(totalLearnerCount > 0 && stats.scored > 0
+                ? [{
+                    label: 'View results',
+                    type: 'page_action' as const,
+                    target: 'view_assessment_results',
+                    handler: () => {
+                        document.getElementById('assessment-results-summary')?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                        });
+                    },
+                }]
+                : []),
+            {
+                label: 'Back to assessments',
+                type: 'navigate' as const,
+                href: '/assessments',
+            },
+        ],
+        nextSafeAction: !isFinalized && canScore
+            ? {
+                label: 'Grade learners',
+                type: 'page_action' as const,
+                target: 'grade_assessment_learners',
+                handler: () => {
+                    document.getElementById('assessment-score-entry')?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                    });
+                },
+            }
+            : (totalLearnerCount > 0 && stats.scored > 0
+                ? {
+                    label: 'View results',
+                    type: 'page_action' as const,
+                    target: 'view_assessment_results',
+                    handler: () => {
+                        document.getElementById('assessment-results-summary')?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start',
+                        });
+                    },
+                }
+                : {
+                    label: 'Back to assessments',
+                    type: 'navigate' as const,
+                    href: '/assessments',
+                }),
+        workflowStep: isFinalized ? 'review_assessment_results' : 'grade_assessment',
+        emptyStateReason: !loading && !assessment
+            ? 'This assessment could not be loaded.'
+            : undefined,
+    }), [assessment, assessmentId, canFinalize, canScore, isFinalized, loading, scoresLoading, stats.scored, totalLearnerCount, unscoredCount]);
+
+    useAssistantPageContext(assistantContext);
 
     if (loading && !assessment) return <LoadingSpinner />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
@@ -111,7 +198,7 @@ export function AssessmentDetailPage() {
             {/* Stats — desktop only */}
             {assessment.evaluation_type === 'NUMERIC' && (
                 <DesktopOnly>
-                    <div className="grid gap-4 md:grid-cols-5">
+                    <div id="assessment-results-summary" className="grid gap-4 md:grid-cols-5">
                         <StatsCard title="Scored" value={`${stats.scored}/${stats.total}`} icon={ClipboardList} color="blue" />
                         <StatsCard title="Average" value={stats.average.toFixed(1)} icon={TrendingUp} color="green" />
                         <StatsCard title="Highest" value={stats.highest} icon={Award} color="yellow" />
@@ -121,21 +208,27 @@ export function AssessmentDetailPage() {
                 </DesktopOnly>
             )}
 
-            <AssessmentScoreEntryCard
-                assessment={assessment}
-                scores={scores}
-                draft={draft}
-                loading={scoresLoading}
-                readOnly={isFinalized || !canScore}
-                canSave={Boolean(canScore)}
-                saving={saving}
-                searchQuery={searchQuery}
-                visibleLearnerCount={visibleLearnerCount}
-                totalLearnerCount={totalLearnerCount}
-                onSearchQueryChange={setSearchQuery}
-                onSave={handleSaveScores}
-                onScoreChange={handleScoreChange}
-            />
+            {assessment.evaluation_type !== 'NUMERIC' && (
+                <div id="assessment-results-summary" />
+            )}
+
+            <div id="assessment-score-entry">
+                <AssessmentScoreEntryCard
+                    assessment={assessment}
+                    scores={scores}
+                    draft={draft}
+                    loading={scoresLoading}
+                    readOnly={isFinalized || !canScore}
+                    canSave={Boolean(canScore)}
+                    saving={saving}
+                    searchQuery={searchQuery}
+                    visibleLearnerCount={visibleLearnerCount}
+                    totalLearnerCount={totalLearnerCount}
+                    onSearchQueryChange={setSearchQuery}
+                    onSave={handleSaveScores}
+                    onScoreChange={handleScoreChange}
+                />
+            </div>
         </div>
     );
 }

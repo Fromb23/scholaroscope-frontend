@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Target } from 'lucide-react';
 import { useSessionOutcomes } from '@/app/plugins/cbc/hooks/useSessionOutcomes';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { SessionHeader } from '@/app/plugins/cbc/components/outcomes/SessionHeader';
 import { OutcomeRow } from '@/app/plugins/cbc/components/outcomes/OutcomeRow';
 import { OutcomeFilterToggle } from '@/app/plugins/cbc/components/outcomes/OutcomeFilterToggle';
@@ -22,6 +24,64 @@ export function CBCSessionOutcomesPage() {
     const { sessionId: raw } = useParams<{ sessionId: string }>();
     const sessionId = Number(raw);
     const page = useSessionOutcomes(sessionId);
+    const addOutcomesHref = `/cbc/teaching/sessions/${sessionId}/outcomes/add`;
+    const learnersHref = `/cbc/teaching/sessions/${sessionId}/learners`;
+    const assistantContext = useMemo(() => ({
+        pageKey: 'cbc_session_outcomes',
+        pageTitle: 'CBC Session Outcomes',
+        state: {
+            is_loading: page.sessionLoading || page.linksLoading,
+            is_empty: !page.sessionLoading && !page.linksLoading && page.links.length === 0,
+            has_sessions: Boolean(page.session),
+            session_status: page.session?.status ?? null,
+            has_subject_filter: false,
+            has_cohort_filter: false,
+            has_taught_outcomes: page.links.length > 0,
+            has_learner_evidence: page.withEvidenceCount > 0,
+            coverage_percentage: page.progress,
+        },
+        visibleActions: [
+            {
+                label: 'Open CBC Teaching',
+                type: 'navigate' as const,
+                href: '/cbc/teaching',
+            },
+            {
+                label: 'Open CBC Sessions',
+                type: 'navigate' as const,
+                href: '/cbc/teaching/sessions',
+            },
+            {
+                label: 'Add taught outcomes',
+                type: 'navigate' as const,
+                href: addOutcomesHref,
+            },
+            {
+                label: 'Record learner evidence',
+                type: 'navigate' as const,
+                href: learnersHref,
+            },
+        ],
+        nextSafeAction: page.links.length === 0
+            ? {
+                label: 'Add taught outcomes',
+                type: 'navigate' as const,
+                href: addOutcomesHref,
+            }
+            : (page.progress === 100
+                ? {
+                    label: 'Record learner evidence',
+                    type: 'navigate' as const,
+                    href: learnersHref,
+                }
+                : undefined),
+        workflowStep: page.links.length === 0 ? 'confirm_taught_outcomes' : 'record_cbc_evidence',
+        emptyStateReason: !page.sessionLoading && !page.linksLoading && page.links.length === 0
+            ? 'No taught outcomes are confirmed for this CBC session yet.'
+            : undefined,
+    }), [addOutcomesHref, learnersHref, page.links.length, page.linksLoading, page.progress, page.session, page.sessionLoading, page.withEvidenceCount]);
+
+    useAssistantPageContext(assistantContext);
 
     if (page.sessionLoading) {
         return (

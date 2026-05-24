@@ -264,7 +264,7 @@ export function RequestDetailPanel({
 
             {/* Review Actions — only for admin/superadmin on open requests */}
             {canReview && isPending && (
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                <div id="request-review-section" className="px-6 py-4 border-b border-gray-100 bg-gray-50">
                     <p className="text-sm font-semibold text-gray-700 mb-3">Review this Request</p>
                     <textarea
                         value={reviewNote}
@@ -308,7 +308,7 @@ export function RequestDetailPanel({
             )}
 
             {/* Comments */}
-            <div className="px-6 py-4">
+            <div id="request-comments-section" className="px-6 py-4">
                 <p className="text-sm font-semibold text-gray-700 mb-3">
                     Comments {localRequest.comments.length > 0 && `(${localRequest.comments.length})`}
                 </p>
