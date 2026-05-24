@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -40,6 +40,7 @@ import {
 } from '@/app/core/types/lessonPlans';
 import type { Assignment } from '@/app/core/types/assignments';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -257,7 +258,7 @@ export function LessonPlanDetailPage() {
         setMarkUsedOpen(true);
     };
 
-    const handleOpenSchedule = () => {
+    const handleOpenSchedule = useCallback(() => {
         if (!lessonPlan) {
             return;
         }
@@ -273,7 +274,7 @@ export function LessonPlanDetailPage() {
         setActionError(null);
         setActionSuccess(null);
         setScheduleOpen(true);
-    };
+    }, [lessonPlan]);
 
     const handleCreateAssignmentDraft = async () => {
         if (!lessonPlan) {
@@ -368,6 +369,35 @@ export function LessonPlanDetailPage() {
             setPendingActionKey(null);
         }
     };
+    const assistantContext = useMemo(() => ({
+        pageKey: 'lesson_plan_detail',
+        pageTitle: isInstructor ? 'Lesson Preparation' : 'Lesson Plan',
+        state: {
+            is_loading: loading,
+            status: lessonPlan?.status ?? null,
+            has_session: Boolean(lessonPlan?.session),
+            can_schedule: lessonPlan ? canScheduleLesson(lessonPlan.status) : false,
+        },
+        visibleActions: [
+            ...(lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
+                ? [{
+                    label: 'Schedule this lesson',
+                    type: 'page_action' as const,
+                    target: 'open_schedule_modal',
+                    handler: handleOpenSchedule,
+                }]
+                : []),
+            ...(lessonPlan?.session
+                ? [{
+                    label: 'Open linked lesson',
+                    type: 'navigate' as const,
+                    href: `/sessions/${lessonPlan.session}`,
+                }]
+                : []),
+        ],
+    }), [handleOpenSchedule, isInstructor, lessonPlan, loading]);
+
+    useAssistantPageContext(assistantContext);
 
     if (loading && !lessonPlan) {
         return <LoadingSpinner message="Loading lesson plan..." fullScreen={false} />;

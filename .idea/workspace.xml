@@ -6,32 +6,19 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/[id]/progress/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/admin/instructors/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/components/InstructorMyCohortsPageContent.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/components/InstructorMyCohortsPageContent.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/components/InstructorDashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/components/InstructorDashboard.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(dashboard)/learners/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/learners/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/layout/GlobalPeopleSearch.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/GlobalPeopleSearch.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/ui/Table.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/ui/Table.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/context/AuthContext.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/auth.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/globalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/globalUsers.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/instructors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/instructors.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/learners.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/learners.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/instructors/InstructorModals.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUserComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUserComponents.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUsersPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUsersPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/OrgDetailComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/OrgDetailComponents.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/UserDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/UserDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useGlobalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useGlobalUsers.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useInstructors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useInstructors.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useOrganizationDetailPage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useOrganizationDetailPage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/usePersistedFilters.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/usePersistedFilters.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useRegister.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useRegister.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/auth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/auth.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/globalUsers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/globalUsers.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/organization.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/organization.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/layout/navConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/navConfig.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/SessionReminderPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/SessionReminderPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlansPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlansPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/InstructorReportsOverviewPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/InstructorReportsOverviewPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionsOverview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionsOverview.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,23 +50,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.4945281129980046" />
-      <entry key="MS500" value="4.480866953455784" />
-      <entry key="S2" value="14.837224137271408" />
-      <entry key="S5" value="29.519551024933822" />
-      <entry key="S10" value="40.60644673516238" />
-      <entry key="S30" value="51.763733976013015" />
-      <entry key="S60" value="55.219490804012736" />
-      <entry key="M2" value="57.06704917621577" />
-      <entry key="M5" value="58.21630275837257" />
-      <entry key="M10" value="58.619754552682494" />
-      <entry key="M15" value="58.87328700454625" />
-      <entry key="M30" value="60.32978046017973" />
-      <entry key="H1" value="64.92378423321816" />
-      <entry key="H2" value="73.84605643071201" />
-      <entry key="H4" value="84.74543149577723" />
-      <entry key="D1" value="234.27024480017997" />
-      <entry key="W1" value="600.3994802112063" />
+      <entry key="MS100" value="1.4913133543684534" />
+      <entry key="MS500" value="4.889965631694359" />
+      <entry key="S2" value="11.77500821261547" />
+      <entry key="S5" value="15.474730912205981" />
+      <entry key="S10" value="17.106475069841576" />
+      <entry key="S30" value="18.33689713828044" />
+      <entry key="S60" value="18.664268268307627" />
+      <entry key="M2" value="18.843803206164765" />
+      <entry key="M5" value="20.62266804655124" />
+      <entry key="M10" value="27.693022612824176" />
+      <entry key="M15" value="34.812998671815606" />
+      <entry key="M30" value="54.17901820251298" />
+      <entry key="H1" value="83.83032782767677" />
+      <entry key="H2" value="117.55514130950067" />
+      <entry key="H4" value="148.11049106449497" />
+      <entry key="D1" value="316.51212948104205" />
+      <entry key="W1" value="691.0816318084651" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -89,35 +76,35 @@
       <entry key="S10" value="0.0" />
       <entry key="S30" value="0.0" />
       <entry key="S60" value="0.0" />
-      <entry key="M2" value="5.9592602247200046E-245" />
-      <entry key="M5" value="2.0420996934027017E-98" />
-      <entry key="M10" value="1.4290205363824235E-49" />
-      <entry key="M15" value="2.733331544084358E-33" />
-      <entry key="M30" value="5.228128373514547E-17" />
-      <entry key="H1" value="7.233987471078513E-9" />
-      <entry key="H2" value="8.726535958415062E-5" />
-      <entry key="H4" value="0.01122376768825263" />
-      <entry key="D1" value="1.1737842465105168" />
-      <entry key="W1" value="3.2960805722374524" />
+      <entry key="M2" value="1.054238713042916E-259" />
+      <entry key="M5" value="2.5655210596939916E-104" />
+      <entry key="M10" value="1.6017244019162602E-52" />
+      <entry key="M15" value="2.9493424023817326E-35" />
+      <entry key="M30" value="5.4307859219738344E-18" />
+      <entry key="H1" value="2.331502967605256E-9" />
+      <entry key="H2" value="4.954170999503509E-5" />
+      <entry key="H4" value="0.008456744781293383" />
+      <entry key="D1" value="1.119693187047079" />
+      <entry key="W1" value="3.273940520070832" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.4215955532554165" />
-      <entry key="MS500" value="4.4411025064089875" />
-      <entry key="S2" value="14.801494345403" />
-      <entry key="S5" value="29.485530833848834" />
-      <entry key="S10" value="40.580514853037144" />
-      <entry key="S30" value="51.751793099376" />
-      <entry key="S60" value="55.21298444434107" />
-      <entry key="M2" value="57.063650540422856" />
-      <entry key="M5" value="58.214906816177255" />
-      <entry key="M10" value="58.61905027037987" />
-      <entry key="M15" value="58.8728155170512" />
-      <entry key="M30" value="60.329540702282436" />
-      <entry key="H1" value="64.92365686076943" />
-      <entry key="H2" value="73.84607106555798" />
-      <entry key="H4" value="84.75661045982783" />
-      <entry key="D1" value="235.4439688878369" />
-      <entry key="W1" value="603.6955380177924" />
+      <entry key="MS100" value="1.4151709411986406" />
+      <entry key="MS500" value="4.8319877380786" />
+      <entry key="S2" value="11.743693888637955" />
+      <entry key="S5" value="15.458627879260296" />
+      <entry key="S10" value="17.09762881451477" />
+      <entry key="S30" value="18.333747769785976" />
+      <entry key="S60" value="18.662666830891386" />
+      <entry key="M2" value="18.84299089436636" />
+      <entry key="M5" value="20.62209001432914" />
+      <entry key="M10" value="27.69221183438543" />
+      <entry key="M15" value="34.81213578893987" />
+      <entry key="M30" value="54.17826359711436" />
+      <entry key="H1" value="83.82978351485797" />
+      <entry key="H2" value="117.55484579774938" />
+      <entry key="H4" value="148.11874550434078" />
+      <entry key="D1" value="317.63173446986036" />
+      <entry key="W1" value="694.3555452412547" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -138,7 +125,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "feature/user-membership-lifecycle",
+    "git-widget-placeholder": "ux/instructor-teaching-flow",
     "javascript.preferred.runtime.type.id": "node",
     "js.debugger.nextJs.config.created.client": "true",
     "js.debugger.nextJs.config.created.server": "true",
@@ -227,6 +214,7 @@
       <workItem from="1779377744303" duration="10917000" />
       <workItem from="1779398303191" duration="7025000" />
       <workItem from="1779525345858" duration="8619000" />
+      <workItem from="1779615629821" duration="4729000" />
     </task>
     <servers />
   </component>

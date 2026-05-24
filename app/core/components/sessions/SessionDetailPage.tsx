@@ -39,6 +39,7 @@ import type { Assignment } from '@/app/core/types/assignments';
 import type { RescheduleSessionPayload } from '@/app/core/types/session';
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 
@@ -445,6 +446,61 @@ export function SessionDetailPage() {
     const scrollToAttendance = () => {
         scrollToSection('attendance-section');
     };
+    const assistantContext = useMemo(() => ({
+        pageKey: 'session_detail',
+        pageTitle: 'Lesson Workspace',
+        state: {
+            is_loading: loading,
+            status: sessionStatus,
+            is_in_progress: isInProgress,
+            is_completed: isCompleted,
+            has_lesson_plan: hasLessonPlan,
+            has_marked_attendance: hasMarkedAttendance,
+            has_confirmed_taught_outcomes: hasConfirmedTaughtOutcomes,
+            needs_completion: needsCompletion,
+            workflow_step: currentWorkflowStep,
+        },
+        visibleActions: [
+            {
+                label: 'Review attendance section',
+                type: 'page_action' as const,
+                target: 'review_attendance_section',
+                handler: () => scrollToSection('attendance-section'),
+            },
+            {
+                label: 'Review what was taught',
+                type: 'page_action' as const,
+                target: 'review_taught_outcomes_section',
+                handler: () => scrollToSection('taught-outcomes-section'),
+            },
+            {
+                label: 'Review lesson completion',
+                type: 'page_action' as const,
+                target: 'review_completion_section',
+                handler: () => scrollToSection('lesson-complete-section'),
+            },
+            ...(hasLessonPlan && session?.lesson_plan_id
+                ? [{
+                    label: 'View lesson preparation',
+                    type: 'navigate' as const,
+                    href: `/lesson-plans/${session.lesson_plan_id}`,
+                }]
+                : []),
+        ],
+    }), [
+        currentWorkflowStep,
+        hasConfirmedTaughtOutcomes,
+        hasLessonPlan,
+        hasMarkedAttendance,
+        isCompleted,
+        isInProgress,
+        loading,
+        needsCompletion,
+        session?.lesson_plan_id,
+        sessionStatus,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     const handleStartLesson = async () => {
         try {

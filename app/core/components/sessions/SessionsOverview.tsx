@@ -30,6 +30,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { useAuth } from '@/app/context/AuthContext';
 import type { Session } from '@/app/core/types/session';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 const SESSION_TYPES = [
     { value: '', label: 'All Types' },
@@ -386,6 +387,34 @@ function SessionWorkspaceView() {
             return sum + (total > 0 ? (present / total) * 100 : 0);
         }, 0) / sessions.length
         : 0;
+    const assistantContext = useMemo(() => ({
+        pageKey: 'sessions_overview',
+        pageTitle: isInstructor ? 'My Lessons' : 'Scheduled Lessons',
+        state: {
+            is_loading: loading,
+            is_empty: !loading && !error && sessions.length === 0,
+            no_results: !loading && Boolean(selectedTerm || selectedType) && sessions.length === 0,
+            today_lessons: todayCount,
+            has_priority_lesson: Boolean(priorityTodayAction),
+        },
+        visibleActions: [
+            { label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' },
+            ...(isInstructor
+                ? [{ label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' }]
+                : []),
+        ],
+    }), [
+        error,
+        isInstructor,
+        loading,
+        priorityTodayAction,
+        selectedTerm,
+        selectedType,
+        sessions.length,
+        todayCount,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     const grouped = useMemo(() => (
         groupBy(sessions, {
@@ -854,6 +883,20 @@ function CohortSessionsView({
 
         return sortSessionsByDate(scopedSessions);
     }, [selectedTerm, selectedType, sessions]);
+    const assistantContext = useMemo(() => ({
+        pageKey: 'sessions_overview',
+        pageTitle: 'Cohort Sessions',
+        state: {
+            is_loading: loading,
+            is_empty: !loading && !error && filteredSessions.length === 0,
+            no_results: !loading && Boolean(selectedTerm || selectedType) && filteredSessions.length === 0,
+        },
+        visibleActions: [
+            { label: 'Back to Lessons', type: 'navigate' as const, href: '/sessions' },
+        ],
+    }), [error, filteredSessions.length, loading, selectedTerm, selectedType]);
+
+    useAssistantPageContext(assistantContext);
 
     const heading = cohort
         ? `${cohort.name} Sessions`

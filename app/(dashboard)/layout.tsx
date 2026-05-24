@@ -13,6 +13,8 @@ import { SidebarProvider } from '@/app/context/SidebarContext';
 import Header from '@/app/components/layout/Header';
 import { RegistrySlotProvider } from '@/app/core/registry/slots';
 import { NavBadgeProvider } from '@/app/core/registry/navBadges';
+import { AssistantProvider } from '@/app/core/components/assistant/AssistantProvider';
+import { AssistantWidget } from '@/app/core/components/assistant/AssistantWidget';
 import '@/app/plugins/registerAll';
 import { AlertTriangle } from 'lucide-react';
 import { AccessNotice } from '../core/types/auth';
@@ -36,7 +38,10 @@ function DashboardContent({
           <SuspendedNoticeBanner notices={notices} onDismiss={onDismissNotice} />
         )}
         <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6">
-          {children}
+          <AssistantProvider>
+            {children}
+            <AssistantWidget />
+          </AssistantProvider>
         </main>
       </div>
     </div>

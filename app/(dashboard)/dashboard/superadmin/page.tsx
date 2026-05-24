@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Building2, Users, Activity, AlertCircle,
@@ -12,6 +13,7 @@ import { usePlatformHealth } from '@/app/core/hooks/usePlatformHealth';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Organization } from '@/app/core/types/organization';
 import { themeClasses } from '@/app/core/theme/themeClasses';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 const dashboardCardClass = `${themeClasses.dashboardCard} p-6`;
 const dashboardMetricCardClass = `${themeClasses.dashboardMetricCard} cursor-pointer p-5 transition-shadow hover:shadow-md`;
@@ -37,6 +39,22 @@ export default function SuperAdminDashboard() {
     const recentOrgs = [...organizations]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 4);
+    const assistantContext = useMemo(() => ({
+        pageKey: 'superadmin_dashboard',
+        pageTitle: 'System Command Center',
+        state: {
+            is_loading: loading,
+            organization_count: organizations.length,
+            suspended_organizations: suspendedOrgs,
+            pending_platform_requests: health?.signals.pending_tier2_requests.count ?? 0,
+        },
+        visibleActions: [
+            { label: 'Open Organizations', type: 'navigate' as const, href: '/superadmin/organizations' },
+            { label: 'Open System Health', type: 'navigate' as const, href: '/superadmin/health' },
+        ],
+    }), [health?.signals.pending_tier2_requests.count, loading, organizations.length, suspendedOrgs]);
+
+    useAssistantPageContext(assistantContext);
 
     if (loading) return <LoadingSpinner />;
 

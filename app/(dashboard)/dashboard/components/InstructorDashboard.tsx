@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Target } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
@@ -25,6 +25,7 @@ import {
     TeachingStats,
     TeachingHistoryCard,
 } from '@/app/core/components/dashboard/InstructorDashboardWidgets';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 
 export function InstructorDashboard() {
@@ -49,6 +50,29 @@ export function InstructorDashboard() {
         instructorAccess.hasCambridgeAccess &&
         teachingCohorts.some(cohort => cohort.curriculum_type === 'CAMBRIDGE');
     const dashboardLoading = isLoading || instructorAccess.isLoading || pluginsLoading;
+    const assistantContext = useMemo(() => ({
+        pageKey: 'instructor_dashboard',
+        pageTitle: 'Teaching Today',
+        state: {
+            is_loading: dashboardLoading,
+            has_teaching_assignments: hasTeachingAssignments,
+            today_lessons: sessions.length,
+            needs_grading: metrics.assessments.needsGrading,
+            needs_support: metrics.performance.needsSupport,
+        },
+        visibleActions: [
+            { label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' },
+            { label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' },
+        ],
+    }), [
+        dashboardLoading,
+        hasTeachingAssignments,
+        metrics.assessments.needsGrading,
+        metrics.performance.needsSupport,
+        sessions.length,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     useEffect(() => {
         if (activeRole && activeRole !== 'INSTRUCTOR') {
