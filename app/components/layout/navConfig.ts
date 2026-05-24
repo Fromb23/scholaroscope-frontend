@@ -174,28 +174,15 @@ export function getAdminNav(pluginContext: PluginNavigationContext): NavigationC
 export function getInstructorNav(pluginContext: PluginNavigationContext): NavigationConfig {
   return {
     primary: [
-      { name: 'Dashboard', href: '/dashboard/instructor', icon: LayoutDashboard },
+      { name: 'Teaching Today', href: '/dashboard/instructor', icon: LayoutDashboard },
       ...getPluginNavigationItems('instructor.primary.afterDashboard', pluginContext),
-      { name: 'My Classes', href: '/academic/cohorts', icon: Users },
-      { name: 'Scheduled Lessons', href: '/sessions', icon: Calendar },
-      { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+      { name: 'Lesson Preparation', href: '/lesson-plans', icon: FileText },
+      { name: 'My Lessons', href: '/sessions', icon: Calendar },
       ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
+      { name: 'My Teaching Load', href: '/academic/cohorts', icon: Users },
       { name: 'My Learners', href: '/learners', icon: Users },
       {
-        name: 'My Class Reports',
-        href: '/reports/instructor',
-        icon: FileBarChart,
-        children: [
-          { name: 'Overview', href: '/reports/instructor', icon: LayoutDashboard },
-          {
-            name: 'My Class Subjects',
-            href: '/reports/instructor/cohort-subjects',
-            icon: BookOpen,
-          },
-        ],
-      },
-      {
-        name: 'Assessments',
+        name: 'Assessments & Grading',
         href: '/assessments',
         icon: ClipboardCheck,
         children: [
@@ -204,6 +191,19 @@ export function getInstructorNav(pluginContext: PluginNavigationContext): Naviga
         ],
       },
       ...getPluginNavigationItems('instructor.primary.afterAssessments', pluginContext),
+      {
+        name: 'Class Progress',
+        href: '/reports/instructor',
+        icon: FileBarChart,
+        children: [
+          { name: 'Overview', href: '/reports/instructor', icon: LayoutDashboard },
+          {
+            name: 'Class Subjects',
+            href: '/reports/instructor/cohort-subjects',
+            icon: BookOpen,
+          },
+        ],
+      },
     ],
     secondary: [
       { name: 'Attendance Risk', href: '/reports/instructor/attendance-risk', icon: AlertCircle },

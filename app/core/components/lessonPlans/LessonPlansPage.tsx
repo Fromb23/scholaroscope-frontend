@@ -235,7 +235,7 @@ export function LessonPlansPage() {
 
     const subtitle =
         activeRole === 'INSTRUCTOR'
-            ? 'Prepare and review your upcoming lessons.'
+            ? 'Prepare lessons, review what is ready for class, and schedule the next one.'
             : 'Monitor lesson preparation across the organization.';
 
     const filteredLessonPlans = useMemo(() => {
@@ -357,14 +357,16 @@ export function LessonPlansPage() {
         <div className="space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Lesson Plans</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        {activeRole === 'INSTRUCTOR' ? 'Lesson Preparation' : 'Lesson Plans'}
+                    </h1>
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
 
                 <Link href="/lesson-plans/new">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" />
-                        Plan a lesson
+                        {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
                     </Button>
                 </Link>
             </div>
@@ -444,14 +446,18 @@ export function LessonPlansPage() {
                 <Card>
                     <div className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                        <h2 className="mt-3 text-base font-semibold text-gray-900">No lesson plans yet</h2>
+                        <h2 className="mt-3 text-base font-semibold text-gray-900">
+                            {activeRole === 'INSTRUCTOR' ? 'No lesson preparations yet' : 'No lesson plans yet'}
+                        </h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            No lesson plans yet. Start by planning what you are preparing to teach.
+                            {activeRole === 'INSTRUCTOR'
+                                ? 'Start by choosing one of your assigned class subjects and the outcomes you want to teach.'
+                                : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
                         <Link href="/lesson-plans/new">
                             <Button className="mt-4">
                                 <Plus className="mr-2 h-4 w-4" />
-                                Plan a lesson
+                                {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
                             </Button>
                         </Link>
                     </div>
@@ -460,7 +466,9 @@ export function LessonPlansPage() {
                 <Card>
                     <div className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                        <h2 className="mt-3 text-base font-semibold text-gray-900">No matching lesson plans</h2>
+                        <h2 className="mt-3 text-base font-semibold text-gray-900">
+                            {activeRole === 'INSTRUCTOR' ? 'No matching lesson preparations' : 'No matching lesson plans'}
+                        </h2>
                         <p className="mt-2 text-sm text-gray-500">
                             Adjust the search or filters to find a different lesson plan.
                         </p>

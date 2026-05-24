@@ -36,6 +36,7 @@ interface AssessmentGroup {
 export function AssessmentsOverview() {
     const router = useRouter();
     const { user, activeRole } = useAuth();
+    const isInstructor = activeRole === 'INSTRUCTOR';
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedCohortSubject, setSelectedCohortSubject] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
@@ -173,8 +174,12 @@ export function AssessmentsOverview() {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Assessments</h1>
-                    <p className="text-gray-600 mt-1">Manage assessments and grading</p>
+                    <h1 className="text-2xl font-semibold text-gray-900">
+                        {isInstructor ? 'Assessments & Grading' : 'Assessments'}
+                    </h1>
+                    <p className="text-gray-600 mt-1">
+                        {isInstructor ? 'Create, review, and grade class work.' : 'Manage assessments and grading'}
+                    </p>
                 </div>
                 {canCreateAssessment && (
                     <Link href="/assessments/new">
@@ -280,13 +285,17 @@ export function AssessmentsOverview() {
                 ) : assessments.length === 0 ? (
                     <div className="py-12 text-center">
                         <ClipboardList className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No assessments found</h3>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">
+                            {isInstructor ? 'No assessments yet' : 'No assessments found'}
+                        </h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            {activeRole === 'INSTRUCTOR' && !instructorAccess.hasAssignedCohortSubjects
-                                ? 'No assigned subjects available for assessment creation.'
+                            {isInstructor && !instructorAccess.hasAssignedCohortSubjects
+                                ? 'Your teaching load is not assigned yet. Assessments will appear once your classes and subjects are assigned.'
                                 : selectedTerm || selectedCohortSubject || selectedType || selectedEvalType
-                                ? 'Try adjusting your filters'
-                                : 'Get started by creating a new assessment'}
+                                    ? 'Try adjusting your filters.'
+                                    : isInstructor
+                                        ? 'Create or review assessments once learners have started class work.'
+                                        : 'Get started by creating a new assessment.'}
                         </p>
                         {canCreateAssessment && !selectedTerm && !selectedCohortSubject && !selectedType && !selectedEvalType && (
                             <Link href="/assessments/new">

@@ -152,7 +152,7 @@ function SessionReminderCard({
                         className="w-full"
                         onClick={() => onEndLesson(reminder)}
                     >
-                        End lesson
+                        Complete lesson
                     </Button>
                 </div>
             </div>
@@ -220,9 +220,9 @@ export function SessionReminderPanel() {
         try {
             await completeSession(selectedReminder.session.id);
             setSelectedReminder(null);
-            setFeedback({ tone: 'success', message: 'Lesson ended.' });
+            setFeedback({ tone: 'success', message: 'Lesson completed.' });
         } catch {
-            const message = 'Could not end lesson. Review attendance and try again.';
+            const message = 'Could not complete lesson. Review attendance and try again.';
             setModalError(message);
             setFeedback({ tone: 'error', message });
         } finally {
@@ -275,18 +275,18 @@ export function SessionReminderPanel() {
                                     <BookOpen className="h-5 w-5" />
                                 </div>
                                 <div className="min-w-0">
-                                    <h2 className="text-lg font-semibold theme-text">Lesson reminders</h2>
+                                    <h2 className="text-lg font-semibold theme-text">Lessons needing attention</h2>
                                     <p className="text-sm theme-muted">
-                                        Open lessons that still need your attention.
+                                        Open or unfinished lessons that still need your attention.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-3 lg:min-w-[300px]">
-                            <ReminderSummaryItem label="Needs closing" value={needsClosingCount} />
+                            <ReminderSummaryItem label="Needs completion" value={needsClosingCount} />
                             <ReminderSummaryItem label="Open lesson" value={openCount} />
-                            <ReminderSummaryItem label="Unfinished lesson" value={unfinishedCount} />
+                            <ReminderSummaryItem label="Unfinished" value={unfinishedCount} />
                         </div>
                     </div>
 

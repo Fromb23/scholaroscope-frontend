@@ -10,6 +10,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useMyRequests } from '@/app/plugins/requests/hooks/useRequests';
 import { SessionReminderPanel } from '@/app/core/components/dashboard/SessionReminderPanel';
+import { TeacherNextActionPanel } from '@/app/core/components/dashboard/TeacherNextActionPanel';
 import {
     InstructorHeader,
     InstructorAlertsBanner,
@@ -18,6 +19,7 @@ import {
     LearnersAtRisk,
     MyCohortsCard,
     InstructorQuickActions,
+    AssessmentsSummaryCard,
     MyRequestsCard,
     CurriculumToolCard,
     TeachingStats,
@@ -67,13 +69,37 @@ export function InstructorDashboard() {
                 lastRefresh={lastRefresh}
                 onRefresh={refresh}
             />
+            <TeacherNextActionPanel
+                sessions={sessions}
+                alerts={alerts}
+                metrics={metrics}
+                teachingCohorts={teachingCohorts}
+                currentTerm={currentTerm}
+                currentYear={currentYear}
+                teachingLoad={teachingLoad}
+            />
             <SessionReminderPanel />
             <InstructorAlertsBanner alerts={alerts} />
-            <InstructorKeyMetrics metrics={metrics} />
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div className="xl:col-span-2 space-y-6">
-                    <TeachingHistoryCard history={teachingHistory} />
+                <div className="xl:col-span-2">
                     <TodayScheduleCard sessions={sessions} />
+                </div>
+                <InstructorQuickActions
+                    needsGrading={metrics.assessments.needsGrading}
+                    todayLessons={metrics.sessions.today}
+                />
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2">
+                    <MyCohortsCard cohorts={teachingCohorts} />
+                </div>
+                <AssessmentsSummaryCard
+                    needsGrading={metrics.assessments.needsGrading}
+                    upcomingAssessments={metrics.assessments.upcoming}
+                />
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2">
                     <LearnersAtRisk
                         needsSupport={metrics.performance.needsSupport}
                         attendanceRiskCount={metrics.attendance.riskCount}
@@ -81,17 +107,19 @@ export function InstructorDashboard() {
                         attendanceRiskLoading={attendanceRiskLoading}
                         attendanceRiskError={attendanceRiskError}
                     />
-                    <MyCohortsCard cohorts={teachingCohorts} />
+                </div>
+                <MyRequestsCard
+                    requests={requests}
+                    loading={requestsLoading}
+                    error={requestsError}
+                />
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2 space-y-6">
+                    <TeachingHistoryCard history={teachingHistory} />
+                    <InstructorKeyMetrics metrics={metrics} />
                 </div>
                 <div className="space-y-6">
-                    {hasTeachingAssignments && (
-                        <InstructorQuickActions needsGrading={metrics.assessments.needsGrading} />
-                    )}
-                    <MyRequestsCard
-                        requests={requests}
-                        loading={requestsLoading}
-                        error={requestsError}
-                    />
                     {showCBCTools && (
                         <CurriculumToolCard
                             title="CBC Teaching"

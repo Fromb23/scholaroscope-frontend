@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -38,6 +38,7 @@ import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
 import type { Assignment } from '@/app/core/types/assignments';
 import type { RescheduleSessionPayload } from '@/app/core/types/session';
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
+import { useAuth } from '@/app/context/AuthContext';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 
@@ -147,9 +148,20 @@ function SessionMetaItem({
     );
 }
 
+function scrollToSection(sectionId: string) {
+    window.requestAnimationFrame(() => {
+        document.getElementById(sectionId)?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    });
+}
+
 export function SessionDetailPage() {
     const params = useParams();
     const sessionId = Number(params.id);
+    const { activeRole } = useAuth();
+    const isInstructor = activeRole === 'INSTRUCTOR';
 
     const [searchQuery, setSearchQuery] = useState('');
     const [workflowError, setWorkflowError] = useState<string | null>(null);
@@ -159,6 +171,7 @@ export function SessionDetailPage() {
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [taughtSelections, setTaughtSelections] = useState<Record<number, TaughtStatus | ''>>({});
+    const [guidedSection, setGuidedSection] = useState<'attendance' | 'taught-outcomes' | 'complete' | 'post-lesson' | null>(null);
     const {
         session,
         attendanceRecords,
@@ -212,10 +225,12 @@ export function SessionDetailPage() {
         () => attendanceRecords.some((record) => record.status !== null),
         [attendanceRecords]
     );
+    const previousHasMarkedAttendance = useRef(hasMarkedAttendance);
 
     const hasLessonPlan = Boolean(session?.lesson_plan_id);
     const confirmedTaughtOutcomes = session?.taught_outcomes ?? [];
     const hasConfirmedTaughtOutcomes = confirmedTaughtOutcomes.length > 0;
+    const previousHasConfirmedTaughtOutcomes = useRef(hasConfirmedTaughtOutcomes);
     const taughtOutcomeCount = confirmedTaughtOutcomes.filter(
         (outcome) => outcome.status === 'TAUGHT' || outcome.status === 'PARTIALLY_TAUGHT'
     ).length;
@@ -304,6 +319,28 @@ export function SessionDetailPage() {
     );
 
     useEffect(() => {
+        if (guidedSection === 'attendance' && showAttendanceSection) {
+            scrollToSection('attendance-section');
+            setGuidedSection(null);
+        }
+
+        if (guidedSection === 'taught-outcomes' && showTaughtOutcomesSection) {
+            scrollToSection('taught-outcomes-section');
+            setGuidedSection(null);
+        }
+
+        if (guidedSection === 'complete' && currentWorkflowStep === 'complete') {
+            scrollToSection('lesson-complete-section');
+            setGuidedSection(null);
+        }
+
+        if (guidedSection === 'post-lesson' && currentWorkflowStep === 'post_lesson') {
+            scrollToSection('post-lesson-section');
+            setGuidedSection(null);
+        }
+    }, [currentWorkflowStep, guidedSection, showAttendanceSection, showTaughtOutcomesSection]);
+
+    useEffect(() => {
         if (!session) {
             return;
         }
@@ -319,6 +356,22 @@ export function SessionDetailPage() {
 
         setTaughtSelections(nextSelections);
     }, [session]);
+
+    useEffect(() => {
+        if (!previousHasMarkedAttendance.current && hasMarkedAttendance && !hasConfirmedTaughtOutcomes) {
+            setGuidedSection('taught-outcomes');
+        }
+
+        previousHasMarkedAttendance.current = hasMarkedAttendance;
+    }, [hasConfirmedTaughtOutcomes, hasMarkedAttendance]);
+
+    useEffect(() => {
+        if (!previousHasConfirmedTaughtOutcomes.current && hasConfirmedTaughtOutcomes && isInProgress) {
+            setGuidedSection('complete');
+        }
+
+        previousHasConfirmedTaughtOutcomes.current = hasConfirmedTaughtOutcomes;
+    }, [hasConfirmedTaughtOutcomes, isInProgress]);
 
     const {
         draft,
@@ -390,10 +443,7 @@ export function SessionDetailPage() {
     ]);
 
     const scrollToAttendance = () => {
-        document.getElementById('attendance-section')?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-        });
+        scrollToSection('attendance-section');
     };
 
     const handleStartLesson = async () => {
@@ -401,7 +451,10 @@ export function SessionDetailPage() {
             setWorkflowError(null);
             setWorkflowSuccess(null);
             await startSession();
-            setWorkflowSuccess('Lesson started.');
+            setGuidedSection('attendance');
+            setWorkflowSuccess(
+                isInstructor ? 'Lesson started. Next step: take attendance.' : 'Lesson started.'
+            );
         } catch (error) {
             setWorkflowError(error instanceof Error ? error.message : 'We could not start this lesson.');
         }
@@ -412,7 +465,10 @@ export function SessionDetailPage() {
             setWorkflowError(null);
             setWorkflowSuccess(null);
             await completeSession();
-            setWorkflowSuccess('Lesson completed.');
+            setGuidedSection('post-lesson');
+            setWorkflowSuccess(
+                isInstructor ? 'Lesson completed. Post-lesson actions are ready below.' : 'Lesson completed.'
+            );
         } catch (error) {
             setWorkflowError(error instanceof Error ? error.message : 'We could not complete this lesson.');
         }
@@ -454,7 +510,12 @@ export function SessionDetailPage() {
                     status: taughtSelections[outcome.outcome_id] as TaughtStatus,
                 })),
             });
-            setWorkflowSuccess('What was taught has been confirmed.');
+            setGuidedSection('complete');
+            setWorkflowSuccess(
+                isInstructor
+                    ? 'What was taught is confirmed. Next step: complete lesson.'
+                    : 'What was taught has been confirmed.'
+            );
         } catch (error) {
             setWorkflowError(error instanceof Error ? error.message : 'We could not confirm what was taught.');
         } finally {
@@ -503,7 +564,7 @@ export function SessionDetailPage() {
                 <Link href="/sessions">
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back
+                        {isInstructor ? 'Back to My Lessons' : 'Back'}
                     </Button>
                 </Link>
 
@@ -547,6 +608,18 @@ export function SessionDetailPage() {
                             </Button>
                         ) : null}
 
+                        {currentWorkflowStep === 'attendance' ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={scrollToAttendance}
+                            >
+                                <ClipboardCheck className="mr-1.5 h-4 w-4" />
+                                Take attendance
+                            </Button>
+                        ) : null}
+
                         {canReschedule ? (
                             <Button
                                 variant="secondary"
@@ -571,10 +644,22 @@ export function SessionDetailPage() {
                             </Button>
                         ) : null}
 
+                        {!isCompleted && showTaughtOutcomesSection && currentWorkflowStep === 'confirm_taught' ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={() => scrollToSection('taught-outcomes-section')}
+                            >
+                                <Target className="mr-1.5 h-4 w-4" />
+                                Confirm what was taught
+                            </Button>
+                        ) : null}
+
                         {(currentWorkflowStep === 'complete' || needsCompletion) ? (
                             <Button variant="primary" size="sm" className="w-full sm:w-auto" onClick={handleCompleteLesson}>
                                 <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                                Complete session
+                                Complete lesson
                             </Button>
                         ) : null}
 
@@ -615,7 +700,7 @@ export function SessionDetailPage() {
                     <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                         <p>This lesson is still in progress past its scheduled end time.</p>
                         <p className="mt-1">
-                            Complete the session after reviewing attendance and taught outcomes. ScholaroScope does not auto-complete lessons because completion finalizes attendance and marks unmarked learners absent.
+                            Complete the lesson after reviewing attendance and taught outcomes. ScholaroScope does not auto-complete lessons because completion finalizes attendance and marks unmarked learners absent.
                         </p>
                     </div>
                 ) : null}
@@ -673,7 +758,7 @@ export function SessionDetailPage() {
                         />
                         <SessionMetaItem
                             icon={Calendar}
-                            label="Scheduled date"
+                            label={isInstructor ? 'Lesson date' : 'Scheduled date'}
                             value={lessonDateLabel || 'Not set'}
                         />
                         <SessionMetaItem
@@ -719,7 +804,9 @@ export function SessionDetailPage() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="text-lg font-semibold text-gray-900">Lesson plan</h2>
+                                    <h2 className="text-lg font-semibold text-gray-900">
+                                        {isInstructor ? 'Lesson preparation' : 'Lesson plan'}
+                                    </h2>
                                     {session.lesson_plan_status ? (
                                         <Badge variant="blue">{session.lesson_plan_status}</Badge>
                                     ) : null}
@@ -733,7 +820,7 @@ export function SessionDetailPage() {
                             <Link href={`/lesson-plans/${session.lesson_plan_id}`} className="w-full sm:w-auto shrink-0">
                                 <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                                     <BookOpen className="mr-1.5 h-4 w-4" />
-                                    View lesson plan
+                                    {isInstructor ? 'View lesson preparation' : 'View lesson plan'}
                                 </Button>
                             </Link>
                         </div>
@@ -767,9 +854,13 @@ export function SessionDetailPage() {
                     <div className="flex items-start gap-3">
                         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                         <div className="space-y-1">
-                            <h2 className="text-base font-semibold text-gray-900">Lesson plan not linked</h2>
+                            <h2 className="text-base font-semibold text-gray-900">
+                                {isInstructor ? 'No lesson preparation linked' : 'Lesson plan not linked'}
+                            </h2>
                             <p className="text-sm text-gray-600">
-                                This lesson was not scheduled from a lesson plan. It remains readable for compatibility, but the plan-first workflow is not available here.
+                                {isInstructor
+                                    ? 'This lesson was not scheduled from a lesson preparation. The teaching record is still available, but plan-linked workflow steps are not available here.'
+                                    : 'This lesson was not scheduled from a lesson plan. It remains readable for compatibility, but the plan-first workflow is not available here.'}
                             </p>
                         </div>
                     </div>
@@ -779,7 +870,9 @@ export function SessionDetailPage() {
             <Card>
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-lg font-semibold text-gray-900">Lesson workflow</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            {isInstructor ? 'Teaching checklist' : 'Lesson workflow'}
+                        </h2>
                         <Badge variant="blue">{curriculumLabel}</Badge>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -843,6 +936,7 @@ export function SessionDetailPage() {
             ) : null}
 
             {!isHistorical && currentWorkflowStep === 'complete' ? (
+                <div id="lesson-complete-section">
                 <Card>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-2">
@@ -860,19 +954,25 @@ export function SessionDetailPage() {
                             onClick={handleCompleteLesson}
                         >
                             <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                            Complete session
+                            Complete lesson
                         </Button>
                     </div>
                 </Card>
+                </div>
             ) : null}
 
             {currentWorkflowStep === 'post_lesson' ? (
+                <div id="post-lesson-section">
                 <Card>
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-gray-900">Record learner performance when ready</h2>
+                            <h2 className="text-lg font-semibold text-gray-900">
+                                {isInstructor ? 'Post-lesson actions' : 'Record learner performance when ready'}
+                            </h2>
                             <p className="text-sm text-gray-600">
-                                Post-lesson evidence and assignment work stay outside the live teaching window.
+                                {isInstructor
+                                    ? 'Record learner performance, create follow-up work, or reopen the lesson preparation after class.'
+                                    : 'Post-lesson evidence and assignment work stay outside the live teaching window.'}
                             </p>
                         </div>
 
@@ -906,21 +1006,20 @@ export function SessionDetailPage() {
                                     {creatingAssignment ? 'Preparing...' : 'Create assignment from this lesson'}
                                 </Button>
                             ) : null}
+
+                            {hasLessonPlan ? (
+                                <Link href={`/lesson-plans/${session.lesson_plan_id}`} className="w-full sm:w-auto">
+                                    <Button variant="secondary" size="sm" className="w-full sm:w-auto">
+                                        <BookOpen className="mr-1.5 h-4 w-4" />
+                                        {isInstructor ? 'View lesson preparation' : 'View lesson plan'}
+                                    </Button>
+                                </Link>
+                            ) : null}
                         </div>
                     </div>
                 </Card>
+                </div>
             ) : null}
-
-            <ParticipatingCohorts
-                sessionId={sessionId}
-                isHistorical={isHistorical}
-                canManageLinks={!isHistorical}
-                primaryCohort={{
-                    id: session.cohort_id,
-                    name: session.cohort_name,
-                    level: session.cohort_level,
-                }}
-            />
 
             {!isScheduled ? (
                 <AttendanceStatsStrip stats={attendanceStats} />
@@ -961,7 +1060,12 @@ export function SessionDetailPage() {
                                 onSave={async () => {
                                     await save();
                                     await refetch();
-                                    setWorkflowSuccess('Attendance updated.');
+                                    setGuidedSection('taught-outcomes');
+                                    setWorkflowSuccess(
+                                        isInstructor
+                                            ? 'Attendance saved. Next step: confirm what was taught.'
+                                            : 'Attendance updated.'
+                                    );
                                 }}
                                 onDismissError={dismissError}
                                 onSearch={setSearchQuery}
@@ -972,6 +1076,7 @@ export function SessionDetailPage() {
             ) : null}
 
             {showTaughtOutcomesSection ? (
+                <div id="taught-outcomes-section">
                 <Card>
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1073,7 +1178,19 @@ export function SessionDetailPage() {
                         </div>
                     </div>
                 </Card>
+                </div>
             ) : null}
+
+            <ParticipatingCohorts
+                sessionId={sessionId}
+                isHistorical={isHistorical}
+                canManageLinks={!isHistorical}
+                primaryCohort={{
+                    id: session.cohort_id,
+                    name: session.cohort_name,
+                    level: session.cohort_level,
+                }}
+            />
 
             <RescheduleLessonModal
                 isOpen={showRescheduleModal}

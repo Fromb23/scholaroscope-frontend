@@ -87,9 +87,9 @@ export function InstructorReportsOverviewPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">My Class Reports</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Class Progress</h1>
           <p className="mt-1 text-gray-500">
-            Operational reporting limited to your assigned cohort subjects.
+            Review attendance, teaching coverage, and learner progress across your assigned classes.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -121,9 +121,9 @@ export function InstructorReportsOverviewPage() {
         <Card>
           <div className="py-16 text-center">
             <BookOpen className="mx-auto h-12 w-12 text-gray-300" />
-            <p className="mt-3 text-sm font-medium text-gray-900">No assigned cohort subjects</p>
+            <p className="mt-3 text-sm font-medium text-gray-900">No class progress available yet</p>
             <p className="mt-1 text-xs text-gray-500">
-              Reports appear here when you have active cohort-subject assignments.
+              Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, progress tools will appear here.
             </p>
           </div>
         </Card>

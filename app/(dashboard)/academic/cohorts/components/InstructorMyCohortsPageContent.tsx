@@ -136,9 +136,9 @@ export function InstructorMyCohortsPageContent() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">My Classes</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">My Teaching Load</h1>
                     <p className="mt-1 text-gray-500">
-                        Assigned cohort subjects grouped by cohort for teaching, learner access, and follow-up actions.
+                        Your assigned classes and subjects for lesson preparation, teaching, learners, and follow-up work.
                     </p>
                 </div>
             </div>
@@ -190,7 +190,7 @@ export function InstructorMyCohortsPageContent() {
 
                     {missingCohortSubjectIdCount > 0 && (
                         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                            View Learners links are unavailable for {missingCohortSubjectIdCount} teaching assignment{missingCohortSubjectIdCount === 1 ? '' : 's'} because <code>/users/my_teaching_load/</code> does not expose a kernel <code>cohort_subject_id</code> for those rows.
+                            Learner links are unavailable for {missingCohortSubjectIdCount} teaching assignment{missingCohortSubjectIdCount === 1 ? '' : 's'} right now. If this stays missing, contact your administrator to confirm the class-subject assignment setup.
                         </div>
                     )}
                 </div>
@@ -204,13 +204,13 @@ export function InstructorMyCohortsPageContent() {
                 <Card>
                     <div className="py-12 text-center">
                         <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No cohort subjects found</h3>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No teaching load found</h3>
                         <p className="mt-1 text-sm text-gray-500">
                             {selectedYearId && canFilterByAcademicYear
-                                ? 'No assigned cohort subjects match the selected academic year.'
+                                ? 'No teaching assignments match the selected academic year.'
                                 : normalizedSearch
-                                    ? 'No assigned cohort subjects match your search.'
-                                    : 'No cohort subject teaching assignments are currently available.'}
+                                    ? 'No teaching assignments match your search.'
+                                    : 'Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, your lessons, learners, and progress tools will appear here.'}
                         </p>
                     </div>
                 </Card>
