@@ -16,6 +16,7 @@ import {
     renderAssessmentPolicyPreviewExtension,
     type AssessmentPolicyPreviewSubject,
 } from '@/app/core/registry/assessmentPolicyPreviews';
+import type { AssessmentPolicyContext } from '@/app/core/types/assessment';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useAuth } from '@/app/context/AuthContext';
@@ -35,6 +36,7 @@ interface AssessmentPolicyPreviewCardProps {
     cohortId?: number | null;
     cohortSubjectId?: number | null;
     termId?: number | null;
+    assessmentContext?: AssessmentPolicyContext | null;
 }
 
 function renderGenericPolicyDetails(policy: GradePolicy) {
@@ -92,31 +94,160 @@ function renderGenericPolicyDetails(policy: GradePolicy) {
     );
 }
 
+function resolveAssessmentCurriculumType(
+    assessmentContext?: AssessmentPolicyContext | null,
+): string | null {
+    return (
+        assessmentContext?.curriculum_type
+        ?? assessmentContext?.subject_curriculum_type
+        ?? assessmentContext?.cohort_curriculum_type
+        ?? null
+    );
+}
+
+function buildAssessmentSubject(
+    cohortId: number | null,
+    cohortSubjectId: number | null,
+    assessmentContext?: AssessmentPolicyContext | null,
+): AssessmentPolicyPreviewSubject | null {
+    if (!cohortId || !cohortSubjectId) {
+        return null;
+    }
+
+    return {
+        id: cohortSubjectId,
+        cohort: cohortId,
+        cohort_id: cohortId,
+        cohort_name: assessmentContext?.cohort_name ?? '',
+        cohort_level: '',
+        subject: assessmentContext?.subject_id ?? cohortSubjectId,
+        subject_id: assessmentContext?.subject_id ?? cohortSubjectId,
+        subject_name: assessmentContext?.subject_name ?? '',
+        subject_code: assessmentContext?.subject_code ?? '',
+        curriculum_name: assessmentContext?.curriculum_name ?? '',
+        curriculum_type: resolveAssessmentCurriculumType(assessmentContext) ?? '',
+        is_compulsory: false,
+        subject_source: assessmentContext?.subject_source ?? null,
+        teaching_link_id: assessmentContext?.teaching_link_id ?? null,
+        cbc_cohort_subject_id: assessmentContext?.cbc_cohort_subject_id ?? null,
+        subject_profile_id: assessmentContext?.subject_profile_id ?? null,
+    };
+}
+
+function nonNullIds(...values: Array<number | null | undefined>): number[] {
+    return values.filter((value): value is number => typeof value === 'number');
+}
+
+function subjectMatchesAssessmentContext(
+    subject: AssessmentPolicyPreviewSubject,
+    targetIds: number[],
+): boolean {
+    if (targetIds.length === 0) {
+        return false;
+    }
+
+    const candidateIds = nonNullIds(
+        subject.id,
+        subject.cbc_cohort_subject_id,
+        subject.teaching_link_id,
+    );
+
+    return candidateIds.some((candidateId) => targetIds.includes(candidateId));
+}
+
+function mergeAssessmentSubjects(
+    preferred: AssessmentPolicyPreviewSubject | null,
+    fallback: AssessmentPolicyPreviewSubject | null,
+): AssessmentPolicyPreviewSubject | null {
+    if (!preferred) {
+        return fallback;
+    }
+    if (!fallback) {
+        return preferred;
+    }
+
+    return {
+        ...fallback,
+        ...preferred,
+        subject: preferred.subject ?? fallback.subject,
+        subject_id: preferred.subject_id ?? fallback.subject_id,
+        subject_name: preferred.subject_name || fallback.subject_name,
+        subject_code: preferred.subject_code || fallback.subject_code,
+        curriculum_name: preferred.curriculum_name || fallback.curriculum_name,
+        curriculum_type: preferred.curriculum_type || fallback.curriculum_type,
+        subject_source: preferred.subject_source ?? fallback.subject_source ?? null,
+        teaching_link_id: preferred.teaching_link_id ?? fallback.teaching_link_id ?? null,
+        cbc_cohort_subject_id: preferred.cbc_cohort_subject_id ?? fallback.cbc_cohort_subject_id ?? null,
+        subject_profile_id: preferred.subject_profile_id ?? fallback.subject_profile_id ?? null,
+    };
+}
+
+function buildMissingMetadataMessage(
+    cohortSubjectId: number | null,
+    cohortId: number | null,
+    termId: number | null,
+): string {
+    return (
+        'Policy preview is unavailable because assessment policy metadata is incomplete '
+        + `(cohort_subject_id=${cohortSubjectId ?? 'null'}, `
+        + `cohort_id=${cohortId ?? 'null'}, `
+        + `term_id=${termId ?? 'null'}).`
+    );
+}
+
 export function AssessmentPolicyPreviewCard({
     cohortId = null,
     cohortSubjectId = null,
     termId = null,
+    assessmentContext = null,
 }: AssessmentPolicyPreviewCardProps) {
     const { user, activeRole, loading: authLoading } = useAuth();
     const { plugins, loading: pluginsLoading } = usePlugins();
     const canManagePolicyRoutes = !authLoading && isAdminOrAbove(user, activeRole);
     const { subjects, loading: subjectsLoading } = useCohortSubjects(cohortId ?? undefined);
-    const selectedSubject = useMemo(
-        () => (subjects as AssessmentPolicyPreviewSubject[]).find((subject) => subject.id === cohortSubjectId) ?? null,
-        [cohortSubjectId, subjects],
+    const assessmentSubject = useMemo(
+        () => buildAssessmentSubject(cohortId, cohortSubjectId, assessmentContext),
+        [assessmentContext, cohortId, cohortSubjectId],
     );
-    const subjectCurriculumType = selectedSubject?.curriculum_type ?? null;
+    const matchedSubject = useMemo(() => {
+        const targetIds = nonNullIds(
+            cohortSubjectId,
+            assessmentContext?.cbc_cohort_subject_id,
+            assessmentContext?.teaching_link_id,
+        );
+
+        return (
+            (subjects as AssessmentPolicyPreviewSubject[]).find((subject) => (
+                subjectMatchesAssessmentContext(subject, targetIds)
+            )) ?? null
+        );
+    }, [
+        assessmentContext?.cbc_cohort_subject_id,
+        assessmentContext?.teaching_link_id,
+        cohortSubjectId,
+        subjects,
+    ]);
+    const resolvedSubject = useMemo(
+        () => mergeAssessmentSubjects(assessmentSubject, matchedSubject),
+        [assessmentSubject, matchedSubject],
+    );
+    const resolvedCurriculumType = (
+        resolvedSubject?.curriculum_type
+        || resolveAssessmentCurriculumType(assessmentContext)
+        || null
+    );
     const surface = useMemo(
-        () => getPolicySurfaceForCurriculumType(subjectCurriculumType, plugins),
-        [plugins, subjectCurriculumType],
+        () => getPolicySurfaceForCurriculumType(resolvedCurriculumType, plugins),
+        [plugins, resolvedCurriculumType],
     );
+    const isResolvingPolicySurface = pluginsLoading || (!resolvedCurriculumType && subjectsLoading);
     const [preview, setPreview] = useState<GenericPreviewState>({
         status: cohortSubjectId ? 'loading' : 'idle',
         surface,
     });
 
     const pluginPreview = useMemo(() => {
-        if (!selectedSubject || !cohortId || !cohortSubjectId || surface?.key === 'generic') {
+        if (!resolvedSubject || !cohortId || !cohortSubjectId || surface?.key === 'generic') {
             return null;
         }
 
@@ -124,9 +255,9 @@ export function AssessmentPolicyPreviewCard({
             cohortId,
             cohortSubjectId,
             termId,
-            subject: selectedSubject,
+            subject: resolvedSubject,
         });
-    }, [cohortId, cohortSubjectId, selectedSubject, surface?.key, termId]);
+    }, [cohortId, cohortSubjectId, resolvedSubject, surface?.key, termId]);
 
     const renderPolicyAction = (href: string, label: string) => {
         if (authLoading) {
@@ -160,17 +291,8 @@ export function AssessmentPolicyPreviewCard({
                 return;
             }
 
-            if (subjectsLoading || pluginsLoading) {
+            if (pluginsLoading || (!resolvedCurriculumType && subjectsLoading)) {
                 setPreview({ status: 'loading', surface });
-                return;
-            }
-
-            if (!selectedSubject) {
-                setPreview({
-                    status: 'error',
-                    surface,
-                    message: 'Policy preview is unavailable until the cohort subject metadata loads.',
-                });
                 return;
             }
 
@@ -231,7 +353,15 @@ export function AssessmentPolicyPreviewCard({
         return () => {
             cancelled = true;
         };
-    }, [cohortId, cohortSubjectId, pluginsLoading, selectedSubject, subjectsLoading, surface, termId]);
+    }, [
+        cohortId,
+        cohortSubjectId,
+        pluginsLoading,
+        resolvedCurriculumType,
+        subjectsLoading,
+        surface,
+        termId,
+    ]);
 
     if (!cohortId || !cohortSubjectId) {
         return (
@@ -240,6 +370,19 @@ export function AssessmentPolicyPreviewCard({
                     <h2 className="text-base font-semibold text-gray-900">Report Policy Preview</h2>
                     <p className="text-sm text-gray-600">
                         Select a cohort subject to preview the report policy context that will interpret this assessment.
+                    </p>
+                </div>
+            </Card>
+        );
+    }
+
+    if (isResolvingPolicySurface && !surface) {
+        return (
+            <Card>
+                <div className="space-y-2">
+                    <h2 className="text-base font-semibold text-gray-900">Report Policy Preview</h2>
+                    <p className="text-sm text-gray-600">
+                        Loading policy preview context…
                     </p>
                 </div>
             </Card>
@@ -265,9 +408,9 @@ export function AssessmentPolicyPreviewCard({
                         {renderPolicyAction('/reports/policies', 'Open Policy Hub')}
                     </div>
                     <p className="text-sm text-gray-600">
-                        {subjectCurriculumType
+                        {resolvedCurriculumType
                             ? 'No policy module is available for this curriculum.'
-                            : 'Policy preview is unavailable until the cohort subject curriculum metadata loads.'}
+                            : buildMissingMetadataMessage(cohortSubjectId, cohortId, termId)}
                     </p>
                 </div>
             </Card>

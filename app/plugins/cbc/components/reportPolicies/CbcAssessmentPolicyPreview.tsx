@@ -14,43 +14,42 @@ import { isAdminOrAbove } from '@/app/utils/permissions';
 
 type CbcPreviewState =
     | { status: 'loading' }
-    | { status: 'ready'; source: 'resolved' | 'default' | 'module_only'; policy: CbcReportPolicy | null }
+    | {
+        status: 'ready';
+        source: 'resolved' | 'term_fallback' | 'default' | 'no_policy';
+        policy: CbcReportPolicy | null;
+    }
     | { status: 'error'; message: string };
 
-function chooseCbcPolicy(
+function firstMatchingPolicy(
     policies: CbcReportPolicy[],
-    termId: number | null,
-    cbcCohortSubjectId?: number | null,
-    subjectProfileId?: number | null,
+    predicate: (policy: CbcReportPolicy) => boolean,
 ): CbcReportPolicy | null {
-    if (!policies.length) return null;
-
-    const sorted = [...policies].sort((left, right) => {
-        const leftScore =
-            Number(left.term === termId)
-            + Number(left.cbc_cohort_subject === (cbcCohortSubjectId ?? null))
-            + Number(left.subject_profile === (subjectProfileId ?? null))
-            + Number(left.is_default);
-        const rightScore =
-            Number(right.term === termId)
-            + Number(right.cbc_cohort_subject === (cbcCohortSubjectId ?? null))
-            + Number(right.subject_profile === (subjectProfileId ?? null))
-            + Number(right.is_default);
-
-        return rightScore - leftScore;
-    });
-
-    return sorted[0] ?? null;
+    return policies.find(predicate) ?? null;
 }
 
-export function CbcAssessmentPolicyPreview({
-    termId,
-    subject,
-}: AssessmentPolicyPreviewContext) {
+function resolveCbcSubjectId(context: AssessmentPolicyPreviewContext): number | null {
+    if (typeof context.subject.cbc_cohort_subject_id === 'number') {
+        return context.subject.cbc_cohort_subject_id;
+    }
+
+    if (
+        context.subject.subject_source === 'cbc'
+        && typeof context.subject.teaching_link_id === 'number'
+    ) {
+        return context.subject.teaching_link_id;
+    }
+
+    return null;
+}
+
+export function CbcAssessmentPolicyPreview(context: AssessmentPolicyPreviewContext) {
+    const { termId, subject } = context;
     const { user, activeRole, loading: authLoading } = useAuth();
     const [preview, setPreview] = useState<CbcPreviewState>({ status: 'loading' });
     const canManagePolicyRoutes = !authLoading && isAdminOrAbove(user, activeRole);
-    const cbcSubjectId = subject.cbc_cohort_subject_id ?? subject.id;
+    const cbcSubjectId = resolveCbcSubjectId(context);
+    const subjectProfileId = subject.subject_profile_id ?? null;
 
     useEffect(() => {
         let cancelled = false;
@@ -59,50 +58,86 @@ export function CbcAssessmentPolicyPreview({
             try {
                 setPreview({ status: 'loading' });
 
-                const exactPolicies = await cbcReportPolicyAPI.getAll({
-                    cbc_cohort_subject: cbcSubjectId,
-                    term: termId ?? undefined,
-                    is_active: true,
-                });
-                const exactPolicy = chooseCbcPolicy(
-                    exactPolicies,
-                    termId,
-                    cbcSubjectId,
-                    subject.subject_profile_id ?? null,
-                );
-
-                if (cancelled) return;
-
-                if (exactPolicy) {
-                    setPreview({
-                        status: 'ready',
-                        source: exactPolicy.is_default ? 'default' : 'resolved',
-                        policy: exactPolicy,
-                    });
-                    return;
-                }
-
-                if (subject.subject_profile_id) {
-                    const profilePolicies = await cbcReportPolicyAPI.getAll({
-                        subject_profile: subject.subject_profile_id,
-                        term: termId ?? undefined,
+                if (cbcSubjectId && termId !== null) {
+                    const exactTermPolicies = await cbcReportPolicyAPI.getAll({
+                        cbc_cohort_subject: cbcSubjectId,
+                        term: termId,
                         is_active: true,
                     });
-                    const profilePolicy = chooseCbcPolicy(
-                        profilePolicies,
-                        termId,
-                        cbcSubjectId,
-                        subject.subject_profile_id,
+                    const exactTermPolicy = exactTermPolicies[0] ?? null;
+
+                    if (cancelled) return;
+                    if (exactTermPolicy) {
+                        setPreview({ status: 'ready', source: 'resolved', policy: exactTermPolicy });
+                        return;
+                    }
+                }
+
+                if (cbcSubjectId) {
+                    const cohortPolicies = await cbcReportPolicyAPI.getAll({
+                        cbc_cohort_subject: cbcSubjectId,
+                        is_active: true,
+                    });
+                    const exactCohortPolicy = firstMatchingPolicy(
+                        cohortPolicies,
+                        (policy) => policy.term === null,
                     );
 
                     if (cancelled) return;
+                    if (exactCohortPolicy) {
+                        setPreview({ status: 'ready', source: 'resolved', policy: exactCohortPolicy });
+                        return;
+                    }
+                }
 
+                if (subjectProfileId && termId !== null) {
+                    const profileTermPolicies = await cbcReportPolicyAPI.getAll({
+                        subject_profile: subjectProfileId,
+                        term: termId,
+                        is_active: true,
+                    });
+                    const profileTermPolicy = firstMatchingPolicy(
+                        profileTermPolicies,
+                        (policy) => policy.cbc_cohort_subject === null,
+                    );
+
+                    if (cancelled) return;
+                    if (profileTermPolicy) {
+                        setPreview({ status: 'ready', source: 'resolved', policy: profileTermPolicy });
+                        return;
+                    }
+                }
+
+                if (subjectProfileId) {
+                    const profilePolicies = await cbcReportPolicyAPI.getAll({
+                        subject_profile: subjectProfileId,
+                        is_active: true,
+                    });
+                    const profilePolicy = firstMatchingPolicy(
+                        profilePolicies,
+                        (policy) => policy.cbc_cohort_subject === null && policy.term === null,
+                    );
+
+                    if (cancelled) return;
                     if (profilePolicy) {
-                        setPreview({
-                            status: 'ready',
-                            source: profilePolicy.is_default ? 'default' : 'resolved',
-                            policy: profilePolicy,
-                        });
+                        setPreview({ status: 'ready', source: 'resolved', policy: profilePolicy });
+                        return;
+                    }
+                }
+
+                if (termId !== null) {
+                    const termPolicies = await cbcReportPolicyAPI.getAll({
+                        term: termId,
+                        is_active: true,
+                    });
+                    const termOnlyPolicy = firstMatchingPolicy(
+                        termPolicies,
+                        (policy) => policy.subject_profile === null && policy.cbc_cohort_subject === null,
+                    );
+
+                    if (cancelled) return;
+                    if (termOnlyPolicy) {
+                        setPreview({ status: 'ready', source: 'term_fallback', policy: termOnlyPolicy });
                         return;
                     }
                 }
@@ -111,18 +146,13 @@ export function CbcAssessmentPolicyPreview({
                     is_default: true,
                     is_active: true,
                 });
-                const defaultPolicy = chooseCbcPolicy(
-                    defaultPolicies,
-                    termId,
-                    cbcSubjectId,
-                    subject.subject_profile_id ?? null,
-                );
+                const defaultPolicy = defaultPolicies[0] ?? null;
 
                 if (cancelled) return;
 
                 setPreview({
                     status: 'ready',
-                    source: defaultPolicy ? 'default' : 'module_only',
+                    source: defaultPolicy ? 'default' : 'no_policy',
                     policy: defaultPolicy,
                 });
             } catch (error) {
@@ -139,7 +169,7 @@ export function CbcAssessmentPolicyPreview({
         return () => {
             cancelled = true;
         };
-    }, [cbcSubjectId, subject.subject_profile_id, termId]);
+    }, [cbcSubjectId, subjectProfileId, termId]);
 
     const detailHref = (
         preview.status === 'ready'
@@ -188,11 +218,14 @@ export function CbcAssessmentPolicyPreview({
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Badge variant="green">Plugin-owned</Badge>
-                            {preview.status === 'ready' && preview.source === 'default' && (
-                                <Badge variant="orange">Default / fallback preview</Badge>
+                            {preview.status === 'ready' && preview.source === 'term_fallback' && (
+                                <Badge variant="indigo">Term fallback policy</Badge>
                             )}
-                            {preview.status === 'ready' && preview.source === 'module_only' && (
-                                <Badge variant="default">Preview unavailable</Badge>
+                            {preview.status === 'ready' && preview.source === 'default' && (
+                                <Badge variant="orange">Default fallback policy</Badge>
+                            )}
+                            {preview.status === 'ready' && preview.source === 'no_policy' && (
+                                <Badge variant="default">No policy assigned</Badge>
                             )}
                         </div>
                     </div>
@@ -207,13 +240,13 @@ export function CbcAssessmentPolicyPreview({
                     <p className="text-sm text-red-600">{preview.message}</p>
                 )}
 
-                {preview.status === 'ready' && preview.source === 'module_only' && (
+                {preview.status === 'ready' && preview.source === 'no_policy' && (
                     <p className="text-sm text-gray-600">
-                        Policy authoring is managed in CBC Report Policies. No resolved preview is available from the current API surface.
+                        No CBC report policy assigned for this assessment context.
                     </p>
                 )}
 
-                {preview.status === 'ready' && preview.source !== 'module_only' && preview.policy && (
+                {preview.status === 'ready' && preview.source !== 'no_policy' && preview.policy && (
                     <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
                             {preview.policy.term_name && <Badge variant="indigo">{preview.policy.term_name}</Badge>}
