@@ -13,6 +13,11 @@ import {
 import { usePathname, useRouter } from 'next/navigation';
 
 import { assistantAPI } from '@/app/core/api/assistant';
+import {
+  buildAssistantPageContextSignature,
+  mergeAssistantVisibleActions,
+  normalizeAssistantAction,
+} from '@/app/core/components/assistant/assistantContextUtils';
 import { useAuth } from '@/app/context/AuthContext';
 import type { Role } from '@/app/core/types/auth';
 import type {
@@ -22,6 +27,7 @@ import type {
   AssistantPageActionRegistration,
   AssistantPageContext,
   AssistantPageContextRegistration,
+  AssistantSuggestRequest,
   AssistantSuggestion,
 } from '@/app/core/types/assistant';
 
@@ -81,36 +87,6 @@ function persistDismissedSuggestions(ids: Set<string>): void {
   );
 }
 
-function normalizeAction(action: AssistantAction | AssistantPageActionRegistration): AssistantAction {
-  return {
-    label: action.label,
-    type: action.type,
-    href: action.href,
-    target: action.target,
-    prompt: action.prompt,
-  };
-}
-
-function mergeVisibleActions(
-  visibleActions: AssistantPageActionRegistration[] | undefined,
-  nextSafeAction?: AssistantPageActionRegistration
-): AssistantAction[] {
-  const merged = [
-    ...(visibleActions ?? []),
-    ...(nextSafeAction ? [nextSafeAction] : []),
-  ].map(normalizeAction);
-  const seen = new Set<string>();
-
-  return merged.filter((action) => {
-    const key = `${action.type}:${action.label}:${action.href ?? ''}:${action.target ?? ''}:${action.prompt ?? ''}`;
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
-}
-
 function buildActionHandlerMap(
   visibleActions: AssistantPageActionRegistration[] | undefined,
   nextSafeAction?: AssistantPageActionRegistration
@@ -137,23 +113,67 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const { activeRole } = useAuth();
 
   const [pageContext, setPageContext] = useState<AssistantPageContext | null>(null);
-  const [actionHandlers, setActionHandlers] = useState<Record<string, () => void>>({});
   const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(
     () => readDismissedSuggestions()
   );
 
+  const actionHandlersRef = useRef<Record<string, () => void>>({});
+  const pageContextSignatureRef = useRef<string>('');
   const lastSuggestSignatureRef = useRef<string>('');
+  const registerDebugRef = useRef<{
+    count: number;
+    signature: string;
+    startedAt: number;
+  }>({
+    count: 0,
+    signature: '',
+    startedAt: 0,
+  });
 
   const registerPageContext = useCallback((context: AssistantPageContextRegistration | null) => {
     if (!context) {
+      actionHandlersRef.current = {};
+      pageContextSignatureRef.current = '';
       setPageContext(null);
-      setActionHandlers({});
       return;
     }
 
-    const normalizedVisibleActions = mergeVisibleActions(
+    const nextSignature = buildAssistantPageContextSignature(context);
+    const now = Date.now();
+
+    if (process.env.NODE_ENV !== 'production') {
+      if (
+        registerDebugRef.current.signature !== nextSignature
+        || now - registerDebugRef.current.startedAt > 1000
+      ) {
+        registerDebugRef.current = {
+          count: 1,
+          signature: nextSignature,
+          startedAt: now,
+        };
+      } else {
+        registerDebugRef.current.count += 1;
+        if (registerDebugRef.current.count === 6) {
+          console.warn(
+            'Assistant page context is being registered too frequently. Memoize assistantContext or stabilize page action handlers.'
+          );
+        }
+      }
+    }
+
+    actionHandlersRef.current = buildActionHandlerMap(
+      context.visibleActions,
+      context.nextSafeAction
+    );
+
+    if (nextSignature === pageContextSignatureRef.current) {
+      return;
+    }
+
+    pageContextSignatureRef.current = nextSignature;
+    const normalizedVisibleActions = mergeAssistantVisibleActions(
       context.visibleActions,
       context.nextSafeAction
     );
@@ -163,11 +183,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       pageTitle: context.pageTitle,
       state: context.state ?? {},
       visibleActions: normalizedVisibleActions,
-      nextSafeAction: context.nextSafeAction ? normalizeAction(context.nextSafeAction) : undefined,
+      nextSafeAction: context.nextSafeAction
+        ? normalizeAssistantAction(context.nextSafeAction)
+        : undefined,
       workflowStep: context.workflowStep,
       emptyStateReason: context.emptyStateReason,
     });
-    setActionHandlers(buildActionHandlerMap(context.visibleActions, context.nextSafeAction));
   }, []);
 
   const dismissSuggestion = useCallback((suggestionId: string) => {
@@ -191,7 +212,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     }
 
     if (action.type === 'page_action' && action.target) {
-      const handler = actionHandlers[action.target];
+      const handler = actionHandlersRef.current[action.target];
       if (!handler) {
         return false;
       }
@@ -200,7 +221,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     }
 
     return false;
-  }, [actionHandlers, router]);
+  }, [router]);
 
   const buildChatPayload = useCallback((message: string): AssistantChatRequest => ({
     message,
@@ -250,25 +271,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     [dismissedSuggestionIds, suggestions]
   );
 
-  useEffect(() => {
-    if (!activeRole) {
-      setSuggestions([]);
-      setSuggestionsLoading(false);
-      return;
+  const suggestionPayload = useMemo<AssistantSuggestRequest | null>(() => {
+    if (!activeRole || !pageContext || isPageLoading(pageContext.state)) {
+      return null;
     }
 
-    if (!pageContext) {
-      setSuggestions([]);
-      return;
-    }
-
-    if (isPageLoading(pageContext.state)) {
-      setSuggestions([]);
-      setSuggestionsLoading(false);
-      return;
-    }
-
-    const payload = {
+    return {
       path: pathname || '/dashboard',
       page_key: pageContext.pageKey,
       role: activeRole,
@@ -283,31 +291,68 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         visible_actions: pageContext.visibleActions ?? [],
       },
     };
-    const signature = JSON.stringify(payload);
+  }, [activeRole, pageContext, pathname]);
+  const suggestionSignature = useMemo(
+    () => (suggestionPayload ? JSON.stringify(suggestionPayload) : ''),
+    [suggestionPayload]
+  );
 
-    if (signature === lastSuggestSignatureRef.current) {
+  useEffect(() => {
+    if (!activeRole) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      lastSuggestSignatureRef.current = '';
       return;
     }
 
+    if (!pageContext) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      lastSuggestSignatureRef.current = '';
+      return;
+    }
+
+    if (!suggestionPayload) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    if (suggestionSignature === lastSuggestSignatureRef.current) {
+      return;
+    }
+
+    let cancelled = false;
     const timer = window.setTimeout(() => {
+      lastSuggestSignatureRef.current = suggestionSignature;
       setSuggestionsLoading(true);
       assistantAPI
-        .suggest(payload)
+        .suggest(suggestionPayload)
         .then((response) => {
-          lastSuggestSignatureRef.current = signature;
+          if (cancelled) {
+            return;
+          }
           setSuggestions(response.suggestions ?? []);
         })
         .catch(() => {
-          lastSuggestSignatureRef.current = signature;
+          if (cancelled) {
+            return;
+          }
           setSuggestions([]);
         })
         .finally(() => {
+          if (cancelled) {
+            return;
+          }
           setSuggestionsLoading(false);
         });
     }, 450);
 
-    return () => window.clearTimeout(timer);
-  }, [activeRole, pageContext, pathname]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [activeRole, pageContext, suggestionPayload, suggestionSignature]);
 
   const value = useMemo<AssistantContextValue>(() => ({
     pageContext,

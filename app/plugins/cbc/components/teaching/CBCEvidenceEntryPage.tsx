@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { AlertCircle, Layers, ShieldAlert, Target, Users } from 'lucide-react';
 import { useEvidenceEntry } from '@/app/plugins/cbc/hooks/useEvidenceEntry';
@@ -30,21 +31,36 @@ export function CBCEvidenceEntryPage() {
     const highlightStudentId = searchParams.get('student');
 
     const page = useEvidenceEntry(sessionId, learningOutcomeId);
-    const assistantContext = {
+    const isLoading = page.isPageLoading || page.isEvidencePanelLoading;
+    const learnerCount = page.learners.length;
+    const eligibleLearnerCount = page.eligibleLearners.length;
+    const eligibleWithEvidenceCount = page.eligibleWithEvidence.length;
+    const isEmpty = !page.isPageLoading && !page.isEvidencePanelLoading && learnerCount === 0;
+    const canRecordEvidence = !page.hasBlockingAttendance && eligibleLearnerCount > 0;
+    const hasSession = Boolean(page.session);
+    const hasOutcome = Boolean(page.outcome);
+    const sessionStatus = page.session?.status ?? null;
+    const coveragePercentage = eligibleLearnerCount > 0
+        ? Math.round((eligibleWithEvidenceCount / eligibleLearnerCount) * 100)
+        : 0;
+    const workflowStep = page.hasBlockingAttendance ? 'complete_attendance_first' : 'record_cbc_evidence';
+    const setShowBulk = page.setShowBulk;
+    const openBulkEvidenceModal = useCallback(() => {
+        setShowBulk(true);
+    }, [setShowBulk]);
+    const assistantContext = useMemo(() => ({
         pageKey: 'cbc_evidence_entry',
         pageTitle: 'CBC Evidence Entry',
         state: {
-            is_loading: page.isPageLoading || page.isEvidencePanelLoading,
-            is_empty: !page.isPageLoading && !page.isEvidencePanelLoading && page.learners.length === 0,
-            has_sessions: Boolean(page.session),
-            session_status: page.session?.status ?? null,
+            is_loading: isLoading,
+            is_empty: isEmpty,
+            has_sessions: hasSession,
+            session_status: sessionStatus,
             has_subject_filter: false,
             has_cohort_filter: false,
-            has_taught_outcomes: Boolean(page.outcome),
-            has_learner_evidence: page.eligibleWithEvidence.length > 0,
-            coverage_percentage: page.eligibleLearners.length > 0
-                ? Math.round((page.eligibleWithEvidence.length / page.eligibleLearners.length) * 100)
-                : 0,
+            has_taught_outcomes: hasOutcome,
+            has_learner_evidence: eligibleWithEvidenceCount > 0,
+            coverage_percentage: coveragePercentage,
         },
         visibleActions: [
             {
@@ -57,32 +73,44 @@ export function CBCEvidenceEntryPage() {
                 type: 'navigate' as const,
                 href: `/cbc/teaching/sessions/${sessionId}/outcomes`,
             },
-            ...(!page.hasBlockingAttendance && page.eligibleLearners.length > 0
+            ...(canRecordEvidence
                 ? [{
                     label: 'Record learner evidence',
                     type: 'page_action' as const,
                     target: 'open_bulk_evidence_modal',
-                    handler: () => page.setShowBulk(true),
+                    handler: openBulkEvidenceModal,
                 }]
                 : []),
         ],
-        nextSafeAction: !page.hasBlockingAttendance && page.eligibleLearners.length > 0
+        nextSafeAction: canRecordEvidence
             ? {
                 label: 'Record learner evidence',
                 type: 'page_action' as const,
                 target: 'open_bulk_evidence_modal',
-                handler: () => page.setShowBulk(true),
+                handler: openBulkEvidenceModal,
             }
             : {
                 label: 'Back to what was taught',
                 type: 'navigate' as const,
                 href: `/cbc/teaching/sessions/${sessionId}/outcomes`,
             },
-        workflowStep: page.hasBlockingAttendance ? 'complete_attendance_first' : 'record_cbc_evidence',
-        emptyStateReason: !page.isPageLoading && !page.isEvidencePanelLoading && page.learners.length === 0
+        workflowStep,
+        emptyStateReason: isEmpty
             ? 'No learners are available for evidence entry on this lesson outcome.'
             : undefined,
-    };
+    }), [
+        canRecordEvidence,
+        coveragePercentage,
+        eligibleWithEvidenceCount,
+        hasOutcome,
+        hasSession,
+        isEmpty,
+        isLoading,
+        openBulkEvidenceModal,
+        sessionStatus,
+        sessionId,
+        workflowStep,
+    ]);
 
     useAssistantPageContext(assistantContext);
 

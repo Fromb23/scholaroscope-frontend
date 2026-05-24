@@ -11,7 +11,7 @@ import {
     Award,
     CheckCircle,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
@@ -63,6 +63,18 @@ export function AssessmentDetailPage() {
         handleFinalize,
     } = useAssessmentDetailPage();
     const unscoredCount = Math.max(totalLearnerCount - stats.scored, 0);
+    const scrollToScoreEntry = useCallback(() => {
+        document.getElementById('assessment-score-entry')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    }, []);
+    const scrollToResultsSummary = useCallback(() => {
+        document.getElementById('assessment-results-summary')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    }, []);
     const assistantContext = useMemo(() => ({
         pageKey: 'assessment_detail',
         pageTitle: assessment?.name ?? 'Assessment Detail',
@@ -84,12 +96,7 @@ export function AssessmentDetailPage() {
                     label: 'Grade learners',
                     type: 'page_action' as const,
                     target: 'grade_assessment_learners',
-                    handler: () => {
-                        document.getElementById('assessment-score-entry')?.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start',
-                        });
-                    },
+                    handler: scrollToScoreEntry,
                 }]
                 : []),
             ...(totalLearnerCount > 0 && stats.scored > 0
@@ -97,12 +104,7 @@ export function AssessmentDetailPage() {
                     label: 'View results',
                     type: 'page_action' as const,
                     target: 'view_assessment_results',
-                    handler: () => {
-                        document.getElementById('assessment-results-summary')?.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start',
-                        });
-                    },
+                    handler: scrollToResultsSummary,
                 }]
                 : []),
             {
@@ -116,24 +118,14 @@ export function AssessmentDetailPage() {
                 label: 'Grade learners',
                 type: 'page_action' as const,
                 target: 'grade_assessment_learners',
-                handler: () => {
-                    document.getElementById('assessment-score-entry')?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start',
-                    });
-                },
+                handler: scrollToScoreEntry,
             }
             : (totalLearnerCount > 0 && stats.scored > 0
                 ? {
                     label: 'View results',
                     type: 'page_action' as const,
                     target: 'view_assessment_results',
-                    handler: () => {
-                        document.getElementById('assessment-results-summary')?.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start',
-                        });
-                    },
+                    handler: scrollToResultsSummary,
                 }
                 : {
                     label: 'Back to assessments',
@@ -144,7 +136,20 @@ export function AssessmentDetailPage() {
         emptyStateReason: !loading && !assessment
             ? 'This assessment could not be loaded.'
             : undefined,
-    }), [assessment, assessmentId, canFinalize, canScore, isFinalized, loading, scoresLoading, stats.scored, totalLearnerCount, unscoredCount]);
+    }), [
+        assessment,
+        assessmentId,
+        canFinalize,
+        canScore,
+        isFinalized,
+        loading,
+        scoresLoading,
+        scrollToResultsSummary,
+        scrollToScoreEntry,
+        stats.scored,
+        totalLearnerCount,
+        unscoredCount,
+    ]);
 
     useAssistantPageContext(assistantContext);
 

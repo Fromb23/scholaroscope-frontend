@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import {
     BookOpen,
     ChevronRight,
@@ -74,7 +75,7 @@ export function CBCProgressPage() {
                 )
         }`
         : null;
-    const assistantContext = {
+    const assistantContext = useMemo(() => ({
         pageKey: 'cbc_progress',
         pageTitle: 'Learning Progress',
         state: {
@@ -126,7 +127,20 @@ export function CBCProgressPage() {
         emptyStateReason: !page.isLoading && page.visibleStrands.length === 0
             ? 'No CBC progress strands match the current context.'
             : undefined,
-    };
+    }), [
+        cbcBrowserHref,
+        firstStrandProgressHref,
+        page.assignedCohorts.length,
+        page.cohorts.length,
+        page.effectiveCohort?.name,
+        page.isAdmin,
+        page.isLoading,
+        page.resolvedSubject?.name,
+        page.selectedCurriculumId,
+        page.stats,
+        page.subjectsForCurriculum.length,
+        page.visibleStrands.length,
+    ]);
 
     useAssistantPageContext(assistantContext);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft,
@@ -236,7 +236,7 @@ export default function CohortHubPage() {
         .filter((summary) => summary.instructorState === 'assigned')
         .length;
     const sessionsHref = isValidCohortId ? `/sessions?cohort=${cohortId}` : '/sessions';
-    const assistantContext = {
+    const assistantContext = useMemo(() => ({
         pageKey: 'cohort_detail',
         pageTitle: cohort?.name ?? 'Cohort',
         state: {
@@ -289,7 +289,18 @@ export default function CohortHubPage() {
         emptyStateReason: !cohort && !cohortLoading
             ? 'This cohort could not be loaded.'
             : undefined,
-    };
+    }), [
+        activeRole,
+        assignedInstructorCount,
+        cohort,
+        cohortLoading,
+        hasCBCPlugin,
+        isCBC,
+        learnerCount,
+        sessionsHref,
+        subjectCount,
+        visibleCohortSubjects.length,
+    ]);
 
     useAssistantPageContext(assistantContext);
 

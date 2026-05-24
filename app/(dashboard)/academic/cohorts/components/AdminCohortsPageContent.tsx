@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Edit,
@@ -94,16 +94,21 @@ export function AdminCohortsPageContent() {
         (subjectCount, cohort) => subjectCount + (cohort.subjects_count ?? 0),
         0
     );
+    const assistantAcademicYear = selectedYear?.name ?? (selectedYearId === null ? null : String(selectedYearId));
+    const cohortCount = cohorts.length;
+    const firstCohort = cohorts[0];
+    const firstCohortId = firstCohort?.id;
+    const firstCohortName = firstCohort?.name ?? '';
 
-    const openCreate = () => {
+    const openCreate = useCallback(() => {
         setEditingCohort(null);
         setShowFormModal(true);
-    };
+    }, []);
 
-    const openEdit = (cohort: Cohort) => {
+    const openEdit = useCallback((cohort: Cohort) => {
         setEditingCohort(cohort);
         setShowFormModal(true);
-    };
+    }, []);
 
     const clearCreateFlag = () => {
         const params = new URLSearchParams(searchParams.toString());
@@ -272,13 +277,13 @@ export function AdminCohortsPageContent() {
             },
         },
     ];
-    const assistantContext = {
+    const assistantContext = useMemo(() => ({
         pageKey: 'academic_cohorts_overview',
         pageTitle: 'Cohorts',
         state: {
-            academic_year: selectedYear?.name ?? selectedYearId ?? null,
-            is_empty: !loading && cohorts.length === 0,
-            selected_cohort: cohorts[0]?.name ?? '',
+            academic_year: assistantAcademicYear,
+            is_empty: !loading && cohortCount === 0,
+            selected_cohort: firstCohortName,
             subject_count: totalSubjects,
             learner_count: totalStudents,
             instructor_count: null,
@@ -293,11 +298,11 @@ export function AdminCohortsPageContent() {
                     handler: openCreate,
                 }]
                 : []),
-            ...(cohorts[0]
+            ...(firstCohortId
                 ? [{
                     label: 'Open Cohort',
                     type: 'navigate' as const,
-                    href: `/academic/cohorts/${cohorts[0].id}`,
+                    href: `/academic/cohorts/${firstCohortId}`,
                 }]
                 : []),
         ],
@@ -308,18 +313,28 @@ export function AdminCohortsPageContent() {
                 target: 'open_add_cohort',
                 handler: openCreate,
             }
-            : (cohorts[0]
+            : (firstCohortId
                 ? {
                     label: 'Open Cohort',
                     type: 'navigate' as const,
-                    href: `/academic/cohorts/${cohorts[0].id}`,
+                    href: `/academic/cohorts/${firstCohortId}`,
                 }
                 : undefined),
         workflowStep: isHistoricalView ? 'review_historical_cohorts' : 'manage_cohorts',
-        emptyStateReason: !loading && cohorts.length === 0
+        emptyStateReason: !loading && cohortCount === 0
             ? 'No cohorts match the current academic year or curriculum filters.'
             : undefined,
-    };
+    }), [
+        assistantAcademicYear,
+        cohortCount,
+        firstCohortId,
+        firstCohortName,
+        isHistoricalView,
+        loading,
+        openCreate,
+        totalStudents,
+        totalSubjects,
+    ]);
 
     useAssistantPageContext(assistantContext);
 

@@ -7,7 +7,7 @@
 // No inline component definitions. No alert(). No direct API calls.
 // ============================================================================
 
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Megaphone, Plus, AlertCircle, MessageSquare } from 'lucide-react';
 import { useAnnouncements } from '@/app/plugins/announcements/hooks/useAnnouncements';
 import { useAuth } from '@/app/context/AuthContext';
@@ -58,16 +58,31 @@ export function AnnouncementsPage() {
         }
     };
 
-    const openEdit = (a: Announcement) => { setEditing(a); setShowModal(true); };
-    const openCreate = () => { setEditing(null); setShowModal(true); };
-    const closeModal = () => { setShowModal(false); setEditing(null); };
+    const openEdit = useCallback((announcement: Announcement) => {
+        setEditing(announcement);
+        setShowModal(true);
+    }, []);
+    const openCreate = useCallback(() => {
+        setEditing(null);
+        setShowModal(true);
+    }, []);
+    const closeModal = useCallback(() => {
+        setShowModal(false);
+        setEditing(null);
+    }, []);
+    const scrollToAnnouncementsList = useCallback(() => {
+        document.getElementById('announcements-list')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    }, []);
 
     const tabs: { key: Filter; label: string }[] = [
         { key: 'all', label: 'All' },
         { key: 'unread', label: `Unread (${unreadCount})` },
         { key: 'needs_feedback', label: `Needs Response (${needsFeedbackCount})` },
     ];
-    const assistantContext = {
+    const assistantContext = useMemo(() => ({
         pageKey: 'announcements_overview',
         pageTitle: 'Announcements',
         state: {
@@ -97,12 +112,7 @@ export function AnnouncementsPage() {
                     label: 'View announcement',
                     type: 'page_action' as const,
                     target: 'view_announcement_list',
-                    handler: () => {
-                        document.getElementById('announcements-list')?.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start',
-                        });
-                    },
+                    handler: scrollToAnnouncementsList,
                 }]
                 : []),
         ],
@@ -111,12 +121,7 @@ export function AnnouncementsPage() {
                 label: 'View announcement',
                 type: 'page_action' as const,
                 target: 'view_announcement_list',
-                handler: () => {
-                    document.getElementById('announcements-list')?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start',
-                    });
-                },
+                handler: scrollToAnnouncementsList,
             }
             : {
                 label: 'Refresh announcements',
@@ -128,7 +133,16 @@ export function AnnouncementsPage() {
         emptyStateReason: !loading && filtered.length === 0
             ? 'No announcements match the current view.'
             : undefined,
-    };
+    }), [
+        activeRole,
+        filtered.length,
+        isAdmin,
+        loading,
+        openCreate,
+        refetch,
+        scrollToAnnouncementsList,
+        unreadCount,
+    ]);
 
     useAssistantPageContext(assistantContext);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft,
@@ -34,13 +35,16 @@ export function CBCTeachingSessionsPage() {
     const router = useRouter();
     const page = useCBCTeachingSessionsPage();
     const primarySession = page.filtered[0];
-    const assistantContext = {
+    const primarySessionId = primarySession?.id;
+    const filteredCount = page.filtered.length;
+    const isEmpty = !page.isLoading && filteredCount === 0;
+    const assistantContext = useMemo(() => ({
         pageKey: 'cbc_teaching_sessions',
         pageTitle: 'CBC Sessions',
         state: {
             is_loading: page.isLoading,
-            is_empty: !page.isLoading && page.filtered.length === 0,
-            has_sessions: page.filtered.length > 0,
+            is_empty: isEmpty,
+            has_sessions: filteredCount > 0,
             session_status: page.statusFilter || null,
             has_subject_filter: false,
             has_cohort_filter: false,
@@ -66,30 +70,30 @@ export function CBCTeachingSessionsPage() {
                 type: 'navigate' as const,
                 href: '/cbc/assessment-results',
             },
-            ...(primarySession
+            ...(primarySessionId
                 ? [{
                     label: 'Open CBC Session',
                     type: 'navigate' as const,
-                    href: `/cbc/teaching/sessions/${primarySession.id}/outcomes`,
+                    href: `/cbc/teaching/sessions/${primarySessionId}/outcomes`,
                 }]
                 : []),
         ],
-        nextSafeAction: primarySession
+        nextSafeAction: primarySessionId
             ? {
                 label: 'Open CBC Session',
                 type: 'navigate' as const,
-                href: `/cbc/teaching/sessions/${primarySession.id}/outcomes`,
+                href: `/cbc/teaching/sessions/${primarySessionId}/outcomes`,
             }
             : {
                 label: 'Open CBC Teaching',
                 type: 'navigate' as const,
                 href: '/cbc/teaching',
             },
-        workflowStep: primarySession ? 'open_cbc_session' : 'cbc_session_filters',
-        emptyStateReason: !page.isLoading && page.filtered.length === 0
+        workflowStep: primarySessionId ? 'open_cbc_session' : 'cbc_session_filters',
+        emptyStateReason: isEmpty
             ? 'No CBC sessions match the current filters.'
             : undefined,
-    };
+    }), [filteredCount, isEmpty, page.isLoading, page.statusFilter, primarySessionId]);
 
     useAssistantPageContext(assistantContext);
 

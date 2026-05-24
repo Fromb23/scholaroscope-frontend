@@ -6,7 +6,7 @@
 // Type options change based on role automatically
 // ============================================================================
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Send, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
@@ -32,6 +32,14 @@ const EMPTY: FormData = {
     title: '', description: '', request_type: '', priority: 'NORMAL',
 };
 
+function validateRequestForm(form: FormData): Partial<FormData> {
+    const errors: Partial<FormData> = {};
+    if (!form.title.trim()) errors.title = 'Title is required';
+    if (!form.description.trim()) errors.description = 'Description is required';
+    if (!form.request_type) errors.request_type = 'Request type is required';
+    return errors;
+}
+
 function getRequestSubmitError(err: unknown): string {
     const error = err as {
         response?: { data?: { request_type?: string[]; detail?: string } };
@@ -54,34 +62,42 @@ export function NewRequestPage() {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
+    const formRef = useRef<FormData>(EMPTY);
+    const submittedRef = useRef(submitted);
 
     const isAdmin = activeRole === 'ADMIN';
     const typeOptions = isAdmin ? ADMIN_REQUEST_OPTIONS : INSTRUCTOR_REQUEST_OPTIONS;
+
+    useEffect(() => {
+        formRef.current = form;
+    }, [form]);
+
+    useEffect(() => {
+        submittedRef.current = submitted;
+    }, [submitted]);
 
     const set = (field: keyof FormData, val: string) => {
         setForm(p => ({ ...p, [field]: val }));
         if (errors[field]) setErrors(p => ({ ...p, [field]: '' }));
     };
 
-    const validate = () => {
-        const e: Partial<FormData> = {};
-        if (!form.title.trim()) e.title = 'Title is required';
-        if (!form.description.trim()) e.description = 'Description is required';
-        if (!form.request_type) e.request_type = 'Request type is required';
-        setErrors(e);
-        return Object.keys(e).length === 0;
-    };
+    const validate = useCallback((nextForm: FormData) => {
+        const nextErrors = validateRequestForm(nextForm);
+        setErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    }, []);
 
-    const handleSubmit = async () => {
-        if (!validate()) return;
+    const handleSubmit = useCallback(async () => {
+        const nextForm = formRef.current;
+        if (submittedRef.current || !validate(nextForm)) return;
         setSubmitting(true);
         setSubmitError(null);
         try {
             await requestsAPI.create({
-                title: form.title,
-                description: form.description,
-                request_type: form.request_type as RequestType,
-                priority: form.priority as RequestPriority,
+                title: nextForm.title,
+                description: nextForm.description,
+                request_type: nextForm.request_type as RequestType,
+                priority: nextForm.priority as RequestPriority,
             });
             setSubmitted(true);
         } catch (err: unknown) {
@@ -89,8 +105,8 @@ export function NewRequestPage() {
         } finally {
             setSubmitting(false);
         }
-    };
-    const assistantContext = {
+    }, [validate]);
+    const assistantContext = useMemo(() => ({
         pageKey: 'request_new',
         pageTitle: 'Submit a Request',
         state: {
@@ -130,7 +146,7 @@ export function NewRequestPage() {
                 href: '/requests',
             },
         workflowStep: submitted ? 'request_submitted' : 'request_form',
-    };
+    }), [handleSubmit, submitted, submitting]);
 
     useAssistantPageContext(assistantContext);
 
