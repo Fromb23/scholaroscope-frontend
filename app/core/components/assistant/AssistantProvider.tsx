@@ -81,23 +81,43 @@ function persistDismissedSuggestions(ids: Set<string>): void {
   );
 }
 
-function normalizeVisibleActions(
-  visibleActions: AssistantPageActionRegistration[] | undefined
-): AssistantAction[] {
-  return (visibleActions ?? []).map((action) => ({
+function normalizeAction(action: AssistantAction | AssistantPageActionRegistration): AssistantAction {
+  return {
     label: action.label,
     type: action.type,
     href: action.href,
     target: action.target,
-  }));
+    prompt: action.prompt,
+  };
+}
+
+function mergeVisibleActions(
+  visibleActions: AssistantPageActionRegistration[] | undefined,
+  nextSafeAction?: AssistantPageActionRegistration
+): AssistantAction[] {
+  const merged = [
+    ...(visibleActions ?? []),
+    ...(nextSafeAction ? [nextSafeAction] : []),
+  ].map(normalizeAction);
+  const seen = new Set<string>();
+
+  return merged.filter((action) => {
+    const key = `${action.type}:${action.label}:${action.href ?? ''}:${action.target ?? ''}:${action.prompt ?? ''}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 function buildActionHandlerMap(
-  visibleActions: AssistantPageActionRegistration[] | undefined
+  visibleActions: AssistantPageActionRegistration[] | undefined,
+  nextSafeAction?: AssistantPageActionRegistration
 ): Record<string, () => void> {
   const handlers: Record<string, () => void> = {};
 
-  (visibleActions ?? []).forEach((action) => {
+  [...(visibleActions ?? []), ...(nextSafeAction ? [nextSafeAction] : [])].forEach((action) => {
     if (action.type !== 'page_action' || !action.target || !action.handler) {
       return;
     }
@@ -133,13 +153,21 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const normalizedVisibleActions = mergeVisibleActions(
+      context.visibleActions,
+      context.nextSafeAction
+    );
+
     setPageContext({
       pageKey: context.pageKey,
       pageTitle: context.pageTitle,
       state: context.state ?? {},
-      visibleActions: normalizeVisibleActions(context.visibleActions),
+      visibleActions: normalizedVisibleActions,
+      nextSafeAction: context.nextSafeAction ? normalizeAction(context.nextSafeAction) : undefined,
+      workflowStep: context.workflowStep,
+      emptyStateReason: context.emptyStateReason,
     });
-    setActionHandlers(buildActionHandlerMap(context.visibleActions));
+    setActionHandlers(buildActionHandlerMap(context.visibleActions, context.nextSafeAction));
   }, []);
 
   const dismissSuggestion = useCallback((suggestionId: string) => {
@@ -181,7 +209,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     role: activeRole,
     context: {
       page_title: pageContext?.pageTitle,
-      state: pageContext?.state ?? {},
+      state: {
+        ...(pageContext?.state ?? {}),
+        ...(pageContext?.nextSafeAction ? { next_safe_action: pageContext.nextSafeAction } : {}),
+        ...(pageContext?.workflowStep ? { workflow_step: pageContext.workflowStep } : {}),
+        ...(pageContext?.emptyStateReason ? { empty_state_reason: pageContext.emptyStateReason } : {}),
+      },
       visible_actions: pageContext?.visibleActions ?? [],
     },
   }), [activeRole, pageContext, pathname]);
@@ -241,7 +274,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       role: activeRole,
       context: {
         page_title: pageContext.pageTitle,
-        state: pageContext.state ?? {},
+        state: {
+          ...(pageContext.state ?? {}),
+          ...(pageContext.nextSafeAction ? { next_safe_action: pageContext.nextSafeAction } : {}),
+          ...(pageContext.workflowStep ? { workflow_step: pageContext.workflowStep } : {}),
+          ...(pageContext.emptyStateReason ? { empty_state_reason: pageContext.emptyStateReason } : {}),
+        },
         visible_actions: pageContext.visibleActions ?? [],
       },
     };

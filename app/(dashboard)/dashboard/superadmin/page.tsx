@@ -52,6 +52,11 @@ export default function SuperAdminDashboard() {
             { label: 'Open Organizations', type: 'navigate' as const, href: '/superadmin/organizations' },
             { label: 'Open System Health', type: 'navigate' as const, href: '/superadmin/health' },
         ],
+        nextSafeAction: { label: 'Open Organizations', type: 'navigate' as const, href: '/superadmin/organizations' },
+        workflowStep: 'platform_overview',
+        emptyStateReason: !loading && organizations.length === 0
+            ? 'No organizations are visible yet.'
+            : undefined,
     }), [health?.signals.pending_tier2_requests.count, loading, organizations.length, suspendedOrgs]);
 
     useAssistantPageContext(assistantContext);

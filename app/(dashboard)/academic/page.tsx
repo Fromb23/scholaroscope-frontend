@@ -41,6 +41,13 @@ export default function AcademicOverview() {
             { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' },
             { label: 'Open Academic Years', type: 'navigate' as const, href: '/academic/years' },
         ],
+        nextSafeAction: !terms.length
+            ? { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' }
+            : { label: 'Open Academic Years', type: 'navigate' as const, href: '/academic/years' },
+        workflowStep: 'academic_setup',
+        emptyStateReason: !loading && !currentYear
+            ? 'No current academic year is active yet.'
+            : undefined,
     }), [activeCurricula.length, cohorts.length, currentYear, loading, terms.length]);
 
     useAssistantPageContext(assistantContext);

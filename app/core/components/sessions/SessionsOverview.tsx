@@ -403,6 +403,17 @@ function SessionWorkspaceView() {
                 ? [{ label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' }]
                 : []),
         ],
+        nextSafeAction: {
+            label: 'Prepare lesson',
+            type: 'navigate' as const,
+            href: '/lesson-plans/new',
+        },
+        workflowStep: todayCount > 0 ? 'scheduled_lessons' : 'plan_then_schedule',
+        emptyStateReason: !loading && !error && sessions.length === 0
+            ? 'No lessons are scheduled yet.'
+            : (!loading && Boolean(selectedTerm || selectedType) && sessions.length === 0
+                ? 'No lessons match the current filters.'
+                : undefined),
     }), [
         error,
         isInstructor,
@@ -894,6 +905,11 @@ function CohortSessionsView({
         visibleActions: [
             { label: 'Back to Lessons', type: 'navigate' as const, href: '/sessions' },
         ],
+        nextSafeAction: { label: 'Back to Lessons', type: 'navigate' as const, href: '/sessions' },
+        workflowStep: 'cohort_session_history',
+        emptyStateReason: !loading && !error && filteredSessions.length === 0
+            ? 'No cohort sessions are visible with the current filters.'
+            : undefined,
     }), [error, filteredSessions.length, loading, selectedTerm, selectedType]);
 
     useAssistantPageContext(assistantContext);

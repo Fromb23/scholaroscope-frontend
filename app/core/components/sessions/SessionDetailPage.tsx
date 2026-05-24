@@ -446,6 +446,51 @@ export function SessionDetailPage() {
     const scrollToAttendance = () => {
         scrollToSection('attendance-section');
     };
+    const nextSafeAssistantAction = useMemo(() => {
+        if (isInProgress && !hasMarkedAttendance) {
+            return {
+                label: 'Review attendance section',
+                type: 'page_action' as const,
+                target: 'review_attendance_section',
+                handler: () => scrollToSection('attendance-section'),
+            };
+        }
+
+        if (hasMarkedAttendance && !hasConfirmedTaughtOutcomes) {
+            return {
+                label: 'Review what was taught',
+                type: 'page_action' as const,
+                target: 'review_taught_outcomes_section',
+                handler: () => scrollToSection('taught-outcomes-section'),
+            };
+        }
+
+        if (needsCompletion) {
+            return {
+                label: 'Review lesson completion',
+                type: 'page_action' as const,
+                target: 'review_completion_section',
+                handler: () => scrollToSection('lesson-complete-section'),
+            };
+        }
+
+        if (hasLessonPlan && session?.lesson_plan_id) {
+            return {
+                label: 'View lesson preparation',
+                type: 'navigate' as const,
+                href: `/lesson-plans/${session.lesson_plan_id}`,
+            };
+        }
+
+        return undefined;
+    }, [
+        hasConfirmedTaughtOutcomes,
+        hasLessonPlan,
+        hasMarkedAttendance,
+        isInProgress,
+        needsCompletion,
+        session?.lesson_plan_id,
+    ]);
     const assistantContext = useMemo(() => ({
         pageKey: 'session_detail',
         pageTitle: 'Lesson Workspace',
@@ -487,6 +532,11 @@ export function SessionDetailPage() {
                 }]
                 : []),
         ],
+        nextSafeAction: nextSafeAssistantAction,
+        workflowStep: currentWorkflowStep,
+        emptyStateReason: !loading && !session
+            ? 'The lesson workspace is not available yet.'
+            : undefined,
     }), [
         currentWorkflowStep,
         hasConfirmedTaughtOutcomes,
@@ -496,7 +546,8 @@ export function SessionDetailPage() {
         isInProgress,
         loading,
         needsCompletion,
-        session?.lesson_plan_id,
+        nextSafeAssistantAction,
+        session,
         sessionStatus,
     ]);
 

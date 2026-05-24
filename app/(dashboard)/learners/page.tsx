@@ -471,6 +471,21 @@ function LearnersPageInner() {
                 ? [{ label: 'Open Attendance Risk', type: 'navigate' as const, href: '/reports/instructor/attendance-risk' }]
                 : []),
         ],
+        nextSafeAction: canCreate
+            ? { label: 'Add Learner', type: 'navigate' as const, href: '/learners/new' }
+            : (isInstructor
+                ? {
+                    label: 'Open Attendance Risk',
+                    type: 'navigate' as const,
+                    href: '/reports/instructor/attendance-risk',
+                }
+                : undefined),
+        workflowStep: isInstructor ? 'learner_follow_up' : 'learner_directory',
+        emptyStateReason: !displayedLoading && currentVisibleCount === 0
+            ? (filters.q || filters.cohort || filters.cohort_subject || filters.status
+                ? 'No learners match the current filters.'
+                : 'No learners are visible in this scope yet.')
+            : undefined,
     }), [
         canCreate,
         currentVisibleCount,

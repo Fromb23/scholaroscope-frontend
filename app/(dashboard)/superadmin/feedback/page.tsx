@@ -59,6 +59,11 @@ export default function SuperAdminFeedbackPage() {
     visibleActions: [
       { label: 'Open Support Requests', type: 'navigate' as const, href: '/superadmin/support' },
     ],
+    nextSafeAction: { label: 'Open Support Requests', type: 'navigate' as const, href: '/superadmin/support' },
+    workflowStep: 'feedback_review',
+    emptyStateReason: !loading && feedbackRequests.length === 0
+      ? 'No assistant feedback is visible here yet.'
+      : undefined,
   }), [feedbackRequests.length, loading]);
 
   useAssistantPageContext(assistantContext);

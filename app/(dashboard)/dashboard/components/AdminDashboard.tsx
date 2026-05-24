@@ -45,6 +45,11 @@ export function AdminDashboard() {
             { label: 'Open Academic Setup', type: 'navigate' as const, href: '/academic' },
             { label: 'Review Requests', type: 'navigate' as const, href: '/requests' },
         ],
+        nextSafeAction: { label: 'Open Academic Setup', type: 'navigate' as const, href: '/academic' },
+        workflowStep: 'school_overview',
+        emptyStateReason: !isLoading && !currentTerm
+            ? 'No current term is active yet.'
+            : undefined,
     }), [currentTerm, isLoading, requestStats?.pending, sessions.length]);
 
     useAssistantPageContext(assistantContext);

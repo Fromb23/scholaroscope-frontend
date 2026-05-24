@@ -6,19 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/components/InstructorMyCohortsPageContent.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/components/InstructorMyCohortsPageContent.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/(dashboard)/dashboard/components/InstructorDashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/dashboard/components/InstructorDashboard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/learners/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/learners/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/layout/navConfig.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/layout/navConfig.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/SessionReminderPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/SessionReminderPanel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlansPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlansPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/InstructorReportsOverviewPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/InstructorReportsOverviewPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionsOverview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionsOverview.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assistant/AssistantProvider.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assistant/AssistantProvider.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assistant/AssistantWidget.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assistant/AssistantWidget.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/assistant.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/assistant.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,7 +17,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="590" />
+    <option name="cachedIndexableFilesCount" value="597" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -50,61 +41,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.4913133543684534" />
-      <entry key="MS500" value="4.889965631694359" />
-      <entry key="S2" value="11.77500821261547" />
-      <entry key="S5" value="15.474730912205981" />
-      <entry key="S10" value="17.106475069841576" />
-      <entry key="S30" value="18.33689713828044" />
-      <entry key="S60" value="18.664268268307627" />
-      <entry key="M2" value="18.843803206164765" />
-      <entry key="M5" value="20.62266804655124" />
-      <entry key="M10" value="27.693022612824176" />
-      <entry key="M15" value="34.812998671815606" />
-      <entry key="M30" value="54.17901820251298" />
-      <entry key="H1" value="83.83032782767677" />
-      <entry key="H2" value="117.55514130950067" />
-      <entry key="H4" value="148.11049106449497" />
-      <entry key="D1" value="316.51212948104205" />
-      <entry key="W1" value="691.0816318084651" />
+      <entry key="MS100" value="1.5834932882169406" />
+      <entry key="MS500" value="4.4705737661996165" />
+      <entry key="S2" value="7.292334523202224" />
+      <entry key="S5" value="8.247276959376196" />
+      <entry key="S10" value="8.610773597253743" />
+      <entry key="S30" value="8.867270934538215" />
+      <entry key="S60" value="8.933253781031652" />
+      <entry key="M2" value="8.966537419911834" />
+      <entry key="M5" value="9.049245281931247" />
+      <entry key="M10" value="10.409512553684909" />
+      <entry key="M15" value="13.478362652672613" />
+      <entry key="M30" value="27.844462106650344" />
+      <entry key="H1" value="60.5049148775551" />
+      <entry key="H2" value="108.42695004174563" />
+      <entry key="H4" value="157.36039237566604" />
+      <entry key="D1" value="350.463612015635" />
+      <entry key="W1" value="734.7991038593118" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
       <entry key="MS500" value="0.0" />
       <entry key="S2" value="0.0" />
-      <entry key="S5" value="0.0" />
-      <entry key="S10" value="0.0" />
-      <entry key="S30" value="0.0" />
-      <entry key="S60" value="0.0" />
-      <entry key="M2" value="1.054238713042916E-259" />
-      <entry key="M5" value="2.5655210596939916E-104" />
-      <entry key="M10" value="1.6017244019162602E-52" />
-      <entry key="M15" value="2.9493424023817326E-35" />
-      <entry key="M30" value="5.4307859219738344E-18" />
-      <entry key="H1" value="2.331502967605256E-9" />
-      <entry key="H2" value="4.954170999503509E-5" />
-      <entry key="H4" value="0.008456744781293383" />
-      <entry key="D1" value="1.119693187047079" />
-      <entry key="W1" value="3.273940520070832" />
+      <entry key="S5" value="6.977775042804535E-159" />
+      <entry key="S10" value="8.353307753701242E-80" />
+      <entry key="S30" value="4.371389391762749E-27" />
+      <entry key="S60" value="6.611648351027586E-14" />
+      <entry key="M2" value="2.5713137509499833E-7" />
+      <entry key="M5" value="0.0023191300539698095" />
+      <entry key="M10" value="0.05068263676705282" />
+      <entry key="M15" value="0.1511225192061987" />
+      <entry key="M30" value="0.5010679655567506" />
+      <entry key="H1" value="0.9737361611037924" />
+      <entry key="H2" value="1.3854365360842038" />
+      <entry key="H4" value="1.6680868249811323" />
+      <entry key="D1" value="3.0122938729260715" />
+      <entry key="W1" value="5.245465564657987" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.4151709411986406" />
-      <entry key="MS500" value="4.8319877380786" />
-      <entry key="S2" value="11.743693888637955" />
-      <entry key="S5" value="15.458627879260296" />
-      <entry key="S10" value="17.09762881451477" />
-      <entry key="S30" value="18.333747769785976" />
-      <entry key="S60" value="18.662666830891386" />
-      <entry key="M2" value="18.84299089436636" />
-      <entry key="M5" value="20.62209001432914" />
-      <entry key="M10" value="27.69221183438543" />
-      <entry key="M15" value="34.81213578893987" />
-      <entry key="M30" value="54.17826359711436" />
-      <entry key="H1" value="83.82978351485797" />
-      <entry key="H2" value="117.55484579774938" />
-      <entry key="H4" value="148.11874550434078" />
-      <entry key="D1" value="317.63173446986036" />
-      <entry key="W1" value="694.3555452412547" />
+      <entry key="MS100" value="1.5462450650017252" />
+      <entry key="MS500" value="4.437167866718563" />
+      <entry key="S2" value="7.2764744540941635" />
+      <entry key="S5" value="8.239906621569062" />
+      <entry key="S10" value="8.606893107559824" />
+      <entry key="S30" value="8.865931507614032" />
+      <entry key="S60" value="8.93257816087418" />
+      <entry key="M2" value="8.96619837325405" />
+      <entry key="M5" value="9.051412479906768" />
+      <entry key="M10" value="10.459954150585219" />
+      <entry key="M15" value="13.629093031832292" />
+      <entry key="M30" value="28.344887124131873" />
+      <entry key="H1" value="61.47795686957" />
+      <entry key="H2" value="109.81183624558682" />
+      <entry key="H4" value="159.0281200538939" />
+      <entry key="D1" value="353.4757825475403" />
+      <entry key="W1" value="740.0445368225555" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -116,29 +107,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "ux/instructor-teaching-flow",
-    "javascript.preferred.runtime.type.id": "node",
-    "js.debugger.nextJs.config.created.client": "true",
-    "js.debugger.nextJs.config.created.server": "true",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
-    "ts.external.directory.path": "/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/ai-help-secretary&quot;,
+    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
+    &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
+    &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="npm.Next.js: server-side">
     <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
       <method v="2" />
@@ -214,7 +205,7 @@
       <workItem from="1779377744303" duration="10917000" />
       <workItem from="1779398303191" duration="7025000" />
       <workItem from="1779525345858" duration="8619000" />
-      <workItem from="1779615629821" duration="4729000" />
+      <workItem from="1779615629821" duration="8163000" />
     </task>
     <servers />
   </component>

@@ -1,12 +1,24 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
 import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react';
+import {
+  ArrowUpRight,
   Compass,
   Lightbulb,
   Mail,
   MessageCircle,
+  Minus,
+  MousePointerClick,
+  RotateCcw,
   Send,
+  Sparkles,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -16,17 +28,97 @@ import { useAssistant } from '@/app/core/components/assistant/AssistantProvider'
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { useAuth } from '@/app/context/AuthContext';
+import type { Role } from '@/app/core/types/auth';
 import type {
   AssistantAction,
   AssistantChatResponse,
   AssistantFeedbackCategory,
+  AssistantResponseKind,
   AssistantSuggestion,
 } from '@/app/core/types/assistant';
+
+type AssistantWidgetMode = 'closed' | 'minimized' | 'open';
 
 interface AssistantThreadItem {
   id: string;
   userMessage: string;
   response: AssistantChatResponse;
+}
+
+const QUICK_PROMPTS_BY_ROLE: Record<Role, string[]> = {
+  INSTRUCTOR: [
+    'What can I do here?',
+    'Who are you?',
+    'Help me schedule a lesson',
+    'Help me take attendance',
+  ],
+  ADMIN: [
+    'Help me set up school',
+    'Help me add a class',
+    'Help me assign a teacher',
+    'Show school setup workflow',
+  ],
+  SUPERADMIN: [
+    'Help me review organizations',
+    'Help me review feedback',
+    'Show platform workflow',
+    'Who are you?',
+  ],
+};
+
+const RESPONSE_KIND_META: Partial<
+  Record<
+    AssistantResponseKind,
+    {
+      label: string;
+      variant: 'default' | 'blue' | 'green' | 'orange' | 'purple' | 'yellow';
+    }
+  >
+> = {
+  capability: { label: 'Capabilities', variant: 'green' },
+  clarification: { label: 'Clarifying', variant: 'blue' },
+  identity: { label: 'Guide', variant: 'purple' },
+  page_help: { label: 'Page Help', variant: 'blue' },
+  unsupported_feature: { label: 'Not Available Yet', variant: 'orange' },
+  workflow: { label: 'Workflow', variant: 'purple' },
+};
+
+function actionKey(action: AssistantAction): string {
+  return `${action.type}:${action.label}:${action.href ?? ''}:${action.target ?? ''}:${action.prompt ?? ''}`;
+}
+
+function dedupeActions(actions: AssistantAction[]): AssistantAction[] {
+  const seen = new Set<string>();
+
+  return actions.filter((action) => {
+    const key = actionKey(action);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function dedupePrompts(prompts: string[]): string[] {
+  const seen = new Set<string>();
+
+  return prompts.filter((prompt) => {
+    if (!prompt || seen.has(prompt)) {
+      return false;
+    }
+    seen.add(prompt);
+    return true;
+  });
+}
+
+function roleQuickPrompts(role: Role | null): string[] {
+  if (!role) {
+    return QUICK_PROMPTS_BY_ROLE.INSTRUCTOR;
+  }
+
+  return QUICK_PROMPTS_BY_ROLE[role];
 }
 
 function ActionButton({
@@ -36,16 +128,38 @@ function ActionButton({
   action: AssistantAction;
   onClick: (action: AssistantAction) => void;
 }) {
+  const iconMap: Record<AssistantAction['type'], LucideIcon> = {
+    chat_prompt: Sparkles,
+    external: ArrowUpRight,
+    feedback: Mail,
+    navigate: Compass,
+    page_action: MousePointerClick,
+  };
+
+  const Icon = iconMap[action.type];
+
+  const className = {
+    chat_prompt:
+      'rounded-full border theme-border theme-surface-muted px-3 py-1.5 text-xs font-medium theme-text theme-hover-surface',
+    external:
+      'rounded-lg px-1 py-1 text-sm font-medium text-[color:var(--color-primary)] transition-colors hover:underline',
+    feedback:
+      'rounded-lg border theme-border theme-surface-muted px-3 py-2 text-sm font-medium theme-text theme-hover-surface',
+    navigate:
+      'rounded-lg border theme-border theme-surface-muted px-3 py-2 text-sm font-medium theme-text theme-hover-surface',
+    page_action:
+      'rounded-lg bg-[color:var(--color-primary)] px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-95',
+  }[action.type];
+
   return (
-    <Button
+    <button
       type="button"
-      size="sm"
-      variant={action.type === 'feedback' ? 'secondary' : 'ghost'}
       onClick={() => onClick(action)}
-      className="justify-start"
+      className={`theme-focus-ring inline-flex items-center gap-2 ${className}`}
     >
-      {action.label}
-    </Button>
+      <Icon className="h-4 w-4 shrink-0" />
+      <span>{action.label}</span>
+    </button>
   );
 }
 
@@ -58,8 +172,10 @@ function SuggestionCard({
   onDismiss?: () => void;
   onAction: (action: AssistantAction) => void;
 }) {
+  const actions = dedupeActions(suggestion.actions);
+
   return (
-    <div className="rounded-lg border theme-border theme-surface-muted p-3">
+    <div className="rounded-xl border theme-border theme-surface-elevated p-3 shadow-lg">
       <div className="flex items-start gap-3">
         <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warning)]" />
         <div className="min-w-0 flex-1 space-y-3">
@@ -79,11 +195,11 @@ function SuggestionCard({
             ) : null}
           </div>
           <p className="text-sm theme-text">{suggestion.message}</p>
-          {suggestion.actions.length > 0 ? (
+          {actions.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {suggestion.actions.map((action) => (
+              {actions.map((action) => (
                 <ActionButton
-                  key={`${suggestion.id}:${action.label}:${action.type}:${action.target ?? action.href ?? ''}`}
+                  key={`${suggestion.id}:${actionKey(action)}`}
                   action={action}
                   onClick={onAction}
                 />
@@ -103,18 +219,34 @@ function ConversationCard({
   item: AssistantThreadItem;
   onAction: (action: AssistantAction) => void;
 }) {
+  const actions = dedupeActions(item.response.actions ?? []);
+  const responseKind = item.response.response_kind
+    ? RESPONSE_KIND_META[item.response.response_kind]
+    : null;
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-lg bg-[color:var(--color-primary)] px-3 py-2 text-sm text-white">
+        <div className="max-w-[85%] rounded-2xl bg-[color:var(--color-primary)] px-3 py-2 text-sm text-white">
           {item.userMessage}
         </div>
       </div>
 
-      <div className="rounded-lg border theme-border theme-surface-elevated p-3">
-        <div className="flex items-center gap-2">
+      <div
+        className={`rounded-2xl border p-3 ${
+          item.response.response_kind === 'unsupported_feature'
+            ? 'border-orange-200 bg-orange-50'
+            : 'theme-border theme-surface-elevated'
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-2">
           <Compass className="h-4 w-4 text-[color:var(--color-primary)]" />
           <span className="text-sm font-medium theme-text">Guide</span>
+          {responseKind ? (
+            <Badge variant={responseKind.variant} size="sm">
+              {responseKind.label}
+            </Badge>
+          ) : null}
           <Badge
             variant={
               item.response.confidence === 'high'
@@ -129,11 +261,11 @@ function ConversationCard({
           </Badge>
         </div>
         <p className="mt-3 text-sm theme-text">{item.response.message}</p>
-        {item.response.actions.length > 0 ? (
+        {actions.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {item.response.actions.map((action) => (
+            {actions.map((action) => (
               <ActionButton
-                key={`${item.id}:${action.label}:${action.type}:${action.target ?? action.href ?? ''}`}
+                key={`${item.id}:${actionKey(action)}`}
                 action={action}
                 onClick={onAction}
               />
@@ -145,14 +277,38 @@ function ConversationCard({
   );
 }
 
+function PendingConversation({ userMessage }: { userMessage: string }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <div className="max-w-[85%] rounded-2xl bg-[color:var(--color-primary)] px-3 py-2 text-sm text-white">
+          {userMessage}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border theme-border theme-surface-elevated p-3">
+        <div className="flex items-center gap-2">
+          <Compass className="h-4 w-4 text-[color:var(--color-primary)]" />
+          <span className="text-sm font-medium theme-text">Guide</span>
+        </div>
+        <p className="mt-3 text-sm theme-muted">Guide is thinking...</p>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState({
   pageTitle,
+  quickPrompts,
+  nextSafeAction,
   suggestion,
   onQuickAsk,
   onAction,
   onDismissSuggestion,
 }: {
   pageTitle?: string;
+  quickPrompts: string[];
+  nextSafeAction?: AssistantAction;
   suggestion: AssistantSuggestion | null;
   onQuickAsk: (message: string) => void;
   onAction: (action: AssistantAction) => void;
@@ -160,24 +316,38 @@ function EmptyState({
 }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border theme-border theme-surface-muted p-4">
+      <div className="rounded-2xl border theme-border theme-surface-muted p-4">
         <div className="flex items-center gap-2">
           <Compass className="h-4 w-4 text-[color:var(--color-primary)]" />
           <span className="text-sm font-medium theme-text">
-            {pageTitle ? `Help for ${pageTitle}` : 'Current page help'}
+            {pageTitle ? `Help for ${pageTitle}` : 'ScholaroScope Guide'}
           </span>
         </div>
-        <p className="mt-2 text-sm theme-muted">
-          Ask about the current workflow, the next safe step, or something ScholaroScope does not support yet.
+        <p className="mt-2 text-sm theme-text">
+          Hi, I&apos;m your ScholaroScope Guide. Ask me what this page does, what to do next, or
+          how to complete a workflow.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="secondary" onClick={() => onQuickAsk('What does this page do?')}>
-            Explain this page
-          </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={() => onQuickAsk('What should I do next?')}>
-            Next step
-          </Button>
+          {quickPrompts.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => onQuickAsk(prompt)}
+              className="theme-focus-ring rounded-full border theme-border theme-surface-elevated px-3 py-1.5 text-xs font-medium theme-text theme-hover-surface"
+            >
+              {prompt}
+            </button>
+          ))}
         </div>
+
+        {nextSafeAction ? (
+          <div className="mt-4 rounded-xl border theme-border bg-white/50 p-3">
+            <p className="text-xs font-medium uppercase tracking-wide theme-muted">Next safe action</p>
+            <div className="mt-2">
+              <ActionButton action={nextSafeAction} onClick={onAction} />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {suggestion ? (
@@ -208,7 +378,7 @@ function FeedbackCategoryOption({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-lg border p-3 text-left transition-colors ${
+      className={`w-full rounded-xl border p-3 text-left transition-colors ${
         selected
           ? 'border-[color:var(--color-primary)] bg-[color:var(--color-primary)]/8'
           : 'theme-border theme-surface-muted theme-hover-surface'
@@ -226,6 +396,7 @@ function FeedbackCategoryOption({
 }
 
 export function AssistantWidget() {
+  const { activeRole } = useAuth();
   const {
     activeSuggestion,
     buildChatPayload,
@@ -237,10 +408,15 @@ export function AssistantWidget() {
     suggestionsLoading,
   } = useAssistant();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const [mode, setMode] = useState<AssistantWidgetMode>('closed');
   const [message, setMessage] = useState('');
   const [thread, setThread] = useState<AssistantThreadItem[]>([]);
   const [pending, setPending] = useState(false);
+  const [pendingUserMessage, setPendingUserMessage] = useState<string | null>(null);
+  const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackCategory, setFeedbackCategory] = useState<AssistantFeedbackCategory>('FEATURE_REQUEST');
@@ -250,21 +426,54 @@ export function AssistantWidget() {
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState('');
 
-  const canShowHint = !isOpen && !suggestionsLoading && Boolean(activeSuggestion);
+  const quickPrompts = useMemo(() => roleQuickPrompts(activeRole), [activeRole]);
+  const canShowHint = mode === 'closed' && !suggestionsLoading && Boolean(activeSuggestion);
   const suggestionForPanel = useMemo(
     () => activeSuggestion ?? suggestions[0] ?? null,
     [activeSuggestion, suggestions]
   );
 
-  const openFeedbackForm = (seed?: { title?: string; description?: string; category?: AssistantFeedbackCategory }) => {
+  useEffect(() => {
+    if (mode !== 'open') {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  }, [mode, pending]);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      node.scrollTop = node.scrollHeight;
+    });
+  }, [chatError, feedbackMessage, feedbackOpen, pendingUserMessage, thread]);
+
+  const openFeedbackForm = (seed?: {
+    title?: string;
+    description?: string;
+    category?: AssistantFeedbackCategory;
+  }) => {
+    setMode('open');
     setFeedbackOpen(true);
     setFeedbackMessage(null);
     setFeedbackCategory(seed?.category ?? 'FEATURE_REQUEST');
     setFeedbackTitle(seed?.title ?? 'Feature request from assistant');
-    setFeedbackDescription(seed?.description ?? '');
+    setFeedbackDescription(seed?.description ?? lastUserMessage);
   };
 
   const handleAssistantAction = (action: AssistantAction) => {
+    if (action.type === 'chat_prompt') {
+      setMode('open');
+      void sendMessage(action.prompt || action.label);
+      return;
+    }
+
     if (action.type === 'feedback') {
       openFeedbackForm({
         title: 'Feature request from assistant',
@@ -279,12 +488,15 @@ export function AssistantWidget() {
 
   const sendMessage = async (nextMessage: string) => {
     const trimmed = nextMessage.trim();
-    if (!trimmed) {
+    if (!trimmed || pending) {
       return;
     }
 
+    setMode('open');
     setPending(true);
+    setPendingUserMessage(trimmed);
     setChatError(null);
+    setFailedMessage(null);
     setLastUserMessage(trimmed);
 
     try {
@@ -294,23 +506,45 @@ export function AssistantWidget() {
         {
           id: `${Date.now()}-${current.length}`,
           userMessage: trimmed,
-          response,
+          response: {
+            ...response,
+            actions: dedupeActions(response.actions ?? []),
+            follow_up_prompts: dedupePrompts(response.follow_up_prompts ?? []),
+          },
         },
       ]);
       if (response.unsupported) {
-        setFeedbackDescription(trimmed);
+        setFeedbackDescription((current) => current || trimmed);
       }
-      setMessage('');
+      setMessage((current) => (current.trim() === trimmed ? '' : current));
     } catch (error) {
+      setFailedMessage(trimmed);
       setChatError(error instanceof Error ? error.message : 'Could not reach the help assistant.');
     } finally {
       setPending(false);
+      setPendingUserMessage(null);
+      window.requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     await sendMessage(message);
+  };
+
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+    if (pending) {
+      return;
+    }
+
+    void sendMessage(message);
   };
 
   const handleFeedbackSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -341,7 +575,7 @@ export function AssistantWidget() {
   return (
     <>
       {canShowHint && activeSuggestion ? (
-        <div className="fixed bottom-20 right-4 z-40 w-[min(20rem,calc(100vw-2rem))] md:bottom-24 md:right-6">
+        <div className="fixed bottom-20 right-4 z-40 w-[min(21rem,calc(100vw-2rem))] md:bottom-24 md:right-6">
           <SuggestionCard
             suggestion={activeSuggestion}
             onDismiss={() => dismissSuggestion(activeSuggestion.id)}
@@ -351,19 +585,45 @@ export function AssistantWidget() {
       ) : null}
 
       <div className="fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6">
-        <Button
-          type="button"
-          onClick={() => setIsOpen((current) => !current)}
-          className="rounded-full px-4 py-3 shadow-lg"
-        >
-          <MessageCircle className="h-4 w-4" />
-          Guide
-        </Button>
+        {mode === 'minimized' ? (
+          <div className="flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border theme-border theme-surface-elevated px-3 py-2 shadow-lg">
+            <button
+              type="button"
+              onClick={() => setMode('open')}
+              className="theme-focus-ring inline-flex min-w-0 items-center gap-2 rounded-full text-sm font-medium theme-text"
+              aria-label="Open ScholaroScope Guide"
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" />
+              <span>Guide</span>
+              {pageContext?.pageTitle ? (
+                <span className="max-w-32 truncate text-xs theme-muted">{pageContext.pageTitle}</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('closed')}
+              className="theme-focus-ring rounded-full p-1 theme-muted transition-colors hover:text-[color:var(--color-text)]"
+              aria-label="Close guide"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => setMode('open')}
+            className="rounded-full px-4 py-3 shadow-lg"
+            aria-label="Open ScholaroScope Guide"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Guide
+          </Button>
+        )}
       </div>
 
-      {isOpen ? (
-        <div className="fixed inset-x-0 bottom-0 z-50 md:inset-auto md:bottom-6 md:right-6 md:w-[min(26rem,calc(100vw-2rem))]">
-          <Card className="theme-surface-elevated h-[78vh] rounded-b-none border shadow-2xl md:h-[42rem] md:rounded-2xl">
+      {mode === 'open' ? (
+        <div className="fixed inset-x-2 bottom-2 z-50 max-w-[calc(100vw-1rem)] md:inset-auto md:bottom-6 md:right-6 md:w-[380px] md:max-w-[calc(100vw-2rem)]">
+          <Card className="theme-surface-elevated h-[75vh] max-h-[75vh] w-full overflow-hidden rounded-2xl border p-0 shadow-2xl md:h-[42rem] md:max-h-[42rem] md:w-[380px]">
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between gap-3 border-b theme-border px-4 py-3">
                 <div className="min-w-0">
@@ -372,35 +632,58 @@ export function AssistantWidget() {
                     <h2 className="truncate text-sm font-semibold theme-text">ScholaroScope Guide</h2>
                   </div>
                   <p className="mt-1 truncate text-xs theme-muted">
-                    {pageContext?.pageTitle ?? 'Authenticated dashboard help'}
+                    {pageContext?.pageTitle ?? 'Contextual help for this workspace'}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="theme-focus-ring rounded-lg p-2 theme-hover-surface"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setMode('minimized')}
+                    className="theme-focus-ring rounded-lg p-2 theme-hover-surface"
+                    aria-label="Minimize guide"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('closed')}
+                    className="theme-focus-ring rounded-lg p-2 theme-hover-surface"
+                    aria-label="Close guide"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
                 <div className="space-y-4">
                   {feedbackMessage ? (
-                    <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                    <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
                       {feedbackMessage}
                     </div>
                   ) : null}
 
                   {chatError ? (
-                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                      {chatError}
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      <div>{chatError}</div>
+                      {failedMessage ? (
+                        <button
+                          type="button"
+                          onClick={() => void sendMessage(failedMessage)}
+                          className="theme-focus-ring mt-2 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Retry
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
 
-                  {thread.length === 0 ? (
+                  {thread.length === 0 && !pendingUserMessage ? (
                     <EmptyState
                       pageTitle={pageContext?.pageTitle}
+                      quickPrompts={quickPrompts}
+                      nextSafeAction={pageContext?.nextSafeAction}
                       suggestion={suggestionForPanel}
                       onQuickAsk={(nextMessage) => {
                         void sendMessage(nextMessage);
@@ -422,14 +705,17 @@ export function AssistantWidget() {
                     ))
                   )}
 
+                  {pendingUserMessage ? <PendingConversation userMessage={pendingUserMessage} /> : null}
+
                   {feedbackOpen ? (
-                    <div className="rounded-lg border theme-border theme-surface-muted p-4">
+                    <div className="rounded-2xl border theme-border theme-surface-muted p-4">
                       <div className="flex items-center justify-between gap-3">
                         <h3 className="text-sm font-semibold theme-text">Submit feedback</h3>
                         <button
                           type="button"
                           onClick={() => setFeedbackOpen(false)}
                           className="theme-focus-ring rounded p-1 theme-muted transition-colors hover:text-[color:var(--color-text)]"
+                          aria-label="Close feedback form"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -489,40 +775,30 @@ export function AssistantWidget() {
                         </div>
                       </form>
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => openFeedbackForm()}
-                      className="theme-focus-ring flex w-full items-center justify-center gap-2 rounded-lg border theme-border px-3 py-2 text-sm theme-text theme-hover-surface"
-                    >
-                      <Mail className="h-4 w-4" />
-                      Submit feedback
-                    </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
-              <div className="border-t theme-border px-4 py-3">
+              <div
+                className="border-t theme-border px-4 pt-3"
+                style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}
+              >
                 <form onSubmit={handleSubmit} className="space-y-3">
                   <textarea
+                    ref={textareaRef}
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
+                    onKeyDown={handleInputKeyDown}
                     rows={3}
                     placeholder="Ask about this page or workflow"
                     className="theme-input w-full resize-none rounded-lg px-3 py-2 text-sm"
+                    disabled={pending}
+                    aria-label="Ask the ScholaroScope Guide a question"
                   />
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openFeedbackForm()}
-                      className="theme-focus-ring inline-flex items-center gap-2 text-sm theme-muted transition-colors hover:text-[color:var(--color-text)]"
-                    >
-                      <Mail className="h-4 w-4" />
-                      Feedback
-                    </button>
+                  <div className="flex items-center justify-end gap-3">
                     <Button type="submit" size="sm" disabled={pending || !message.trim()}>
                       <Send className="h-4 w-4" />
-                      Send
+                      {pending ? 'Sending...' : 'Send'}
                     </Button>
                   </div>
                 </form>
