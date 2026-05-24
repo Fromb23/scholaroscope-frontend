@@ -5,7 +5,7 @@
 // Role determines what actions are available
 // ============================================================================
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
@@ -37,6 +37,12 @@ export function RequestDetailPage() {
     const handleAddComment = async (content: string, is_internal: boolean) => {
         await addComment(content, is_internal);
     };
+    const scrollToReviewSection = useCallback(() => {
+        document.getElementById('request-review-section')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    }, []);
     const assistantContext = useMemo(() => {
         const isPending = request ? ['PENDING', 'IN_REVIEW'].includes(request.status) : false;
         return {
@@ -55,12 +61,7 @@ export function RequestDetailPage() {
                         label: 'Review Request',
                         type: 'page_action' as const,
                         target: 'review_request_section',
-                        handler: () => {
-                            document.getElementById('request-review-section')?.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start',
-                            });
-                        },
+                        handler: scrollToReviewSection,
                     }]
                     : []),
                 {
@@ -74,12 +75,7 @@ export function RequestDetailPage() {
                     label: 'Review Request',
                     type: 'page_action' as const,
                     target: 'review_request_section',
-                    handler: () => {
-                        document.getElementById('request-review-section')?.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start',
-                        });
-                    },
+                    handler: scrollToReviewSection,
                 }
                 : {
                     label: 'Back to Requests',
@@ -91,7 +87,7 @@ export function RequestDetailPage() {
                 ? 'This request could not be loaded.'
                 : undefined,
         };
-    }, [activeRole, canReview, loading, request]);
+    }, [activeRole, canReview, loading, request, scrollToReviewSection]);
 
     useAssistantPageContext(assistantContext);
 

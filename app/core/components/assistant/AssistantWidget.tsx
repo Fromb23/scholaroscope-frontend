@@ -427,7 +427,7 @@ export function AssistantWidget() {
   const [lastUserMessage, setLastUserMessage] = useState('');
 
   const quickPrompts = useMemo(() => roleQuickPrompts(activeRole), [activeRole]);
-  const canShowHint = mode === 'closed' && !suggestionsLoading && Boolean(activeSuggestion);
+  const hasPendingSuggestion = !suggestionsLoading && Boolean(activeSuggestion);
   const suggestionForPanel = useMemo(
     () => activeSuggestion ?? suggestions[0] ?? null,
     [activeSuggestion, suggestions]
@@ -574,56 +574,53 @@ export function AssistantWidget() {
 
   return (
     <>
-      {canShowHint && activeSuggestion ? (
-        <div className="fixed bottom-20 right-4 z-40 w-[min(21rem,calc(100vw-2rem))] md:bottom-24 md:right-6">
-          <SuggestionCard
-            suggestion={activeSuggestion}
-            onDismiss={() => dismissSuggestion(activeSuggestion.id)}
-            onAction={handleAssistantAction}
-          />
+      {mode !== 'open' ? (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6">
+          {mode === 'minimized' ? (
+            <div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border theme-border theme-surface-elevated px-3 py-2 shadow-lg">
+              <button
+                type="button"
+                onClick={() => setMode('open')}
+                className="theme-focus-ring inline-flex min-w-0 items-center gap-2 rounded-full text-sm font-medium theme-text"
+                aria-label="Open ScholaroScope Guide"
+              >
+                <MessageCircle className="h-4 w-4 shrink-0" />
+                <span>Guide</span>
+                {pageContext?.pageTitle ? (
+                  <span className="max-w-32 truncate text-xs theme-muted">{pageContext.pageTitle}</span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('closed')}
+                className="theme-focus-ring rounded-full p-1 theme-muted transition-colors hover:text-[color:var(--color-text)]"
+                aria-label="Close guide"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => setMode('open')}
+              className="pointer-events-auto rounded-full px-4 py-3 shadow-lg"
+              aria-label="Open ScholaroScope Guide"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Guide
+              {hasPendingSuggestion ? (
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold">
+                  New
+                </span>
+              ) : null}
+            </Button>
+          )}
         </div>
       ) : null}
 
-      <div className="fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6">
-        {mode === 'minimized' ? (
-          <div className="flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border theme-border theme-surface-elevated px-3 py-2 shadow-lg">
-            <button
-              type="button"
-              onClick={() => setMode('open')}
-              className="theme-focus-ring inline-flex min-w-0 items-center gap-2 rounded-full text-sm font-medium theme-text"
-              aria-label="Open ScholaroScope Guide"
-            >
-              <MessageCircle className="h-4 w-4 shrink-0" />
-              <span>Guide</span>
-              {pageContext?.pageTitle ? (
-                <span className="max-w-32 truncate text-xs theme-muted">{pageContext.pageTitle}</span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('closed')}
-              className="theme-focus-ring rounded-full p-1 theme-muted transition-colors hover:text-[color:var(--color-text)]"
-              aria-label="Close guide"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <Button
-            type="button"
-            onClick={() => setMode('open')}
-            className="rounded-full px-4 py-3 shadow-lg"
-            aria-label="Open ScholaroScope Guide"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Guide
-          </Button>
-        )}
-      </div>
-
       {mode === 'open' ? (
-        <div className="fixed inset-x-2 bottom-2 z-50 max-w-[calc(100vw-1rem)] md:inset-auto md:bottom-6 md:right-6 md:w-[380px] md:max-w-[calc(100vw-2rem)]">
-          <Card className="theme-surface-elevated h-[75vh] max-h-[75vh] w-full overflow-hidden rounded-2xl border p-0 shadow-2xl md:h-[42rem] md:max-h-[42rem] md:w-[380px]">
+        <div className="pointer-events-none fixed inset-x-2 bottom-2 z-50 max-w-[calc(100vw-1rem)] md:inset-auto md:bottom-6 md:right-6 md:w-[380px] md:max-w-[calc(100vw-2rem)]">
+          <Card className="pointer-events-auto theme-surface-elevated h-[75vh] max-h-[75vh] w-full overflow-hidden rounded-2xl border p-0 shadow-2xl md:h-[42rem] md:max-h-[42rem] md:w-[380px]">
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between gap-3 border-b theme-border px-4 py-3">
                 <div className="min-w-0">

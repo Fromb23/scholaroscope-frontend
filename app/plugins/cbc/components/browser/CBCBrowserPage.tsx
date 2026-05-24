@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { BookOpen, ChevronRight, Layers, Search } from 'lucide-react';
 import { useCBCBrowserPage } from '@/app/plugins/cbc/hooks/useCBCBrowserPage';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -27,6 +28,7 @@ function formatLevelLabel(level: string | null | undefined) {
 export function CBCBrowserPage() {
     const page = useCBCBrowserPage();
     const firstVisibleStrand = page.visible[0];
+    const firstVisibleStrandId = firstVisibleStrand?.id;
     const contextParams = new URLSearchParams();
     if (page.effectiveCohortId) {
         contextParams.set('cohort', String(page.effectiveCohortId));
@@ -36,15 +38,19 @@ export function CBCBrowserPage() {
     }
     const contextQuery = contextParams.toString();
     const cbcProgressHref = contextQuery ? `/cbc/progress?${contextQuery}` : '/cbc/progress';
-    const assistantContext = {
+    const selectedSubjectName = page.resolvedSubject?.name ?? '';
+    const selectedCohortName = page.effectiveCohort?.name ?? '';
+    const hasSubjectFilter = page.subjectsForCurriculum.length > 0;
+    const isEmpty = !page.isLoading && page.visible.length === 0;
+    const assistantContext = useMemo(() => ({
         pageKey: 'cbc_browser',
         pageTitle: 'Curriculum Browser',
         state: {
-            selected_subject: page.resolvedSubject?.name ?? '',
-            selected_cohort: page.effectiveCohort?.name ?? '',
-            has_subject_filter: page.subjectsForCurriculum.length > 0,
+            selected_subject: selectedSubjectName,
+            selected_cohort: selectedCohortName,
+            has_subject_filter: hasSubjectFilter,
             has_cohort_filter: false,
-            is_empty: !page.isLoading && page.visible.length === 0,
+            is_empty: isEmpty,
             is_loading: page.isLoading,
         },
         visibleActions: [
@@ -68,26 +74,34 @@ export function CBCBrowserPage() {
                 type: 'navigate' as const,
                 href: '/cbc/assessment-results',
             },
-            ...(firstVisibleStrand
+            ...(firstVisibleStrandId
                 ? [{
                     label: 'Open strand',
                     type: 'navigate' as const,
-                    href: `/cbc/browser/strands/${firstVisibleStrand.id}`,
+                    href: `/cbc/browser/strands/${firstVisibleStrandId}`,
                 }]
                 : []),
         ],
-        nextSafeAction: firstVisibleStrand
+        nextSafeAction: firstVisibleStrandId
             ? {
                 label: 'Open strand',
                 type: 'navigate' as const,
-                href: `/cbc/browser/strands/${firstVisibleStrand.id}`,
+                href: `/cbc/browser/strands/${firstVisibleStrandId}`,
             }
             : undefined,
-        workflowStep: firstVisibleStrand ? 'browse_strands' : 'resolve_cbc_context',
-        emptyStateReason: !page.isLoading && page.visible.length === 0
+        workflowStep: firstVisibleStrandId ? 'browse_strands' : 'resolve_cbc_context',
+        emptyStateReason: isEmpty
             ? 'No CBC strands match the current context.'
             : undefined,
-    };
+    }), [
+        cbcProgressHref,
+        firstVisibleStrandId,
+        hasSubjectFilter,
+        isEmpty,
+        page.isLoading,
+        selectedCohortName,
+        selectedSubjectName,
+    ]);
 
     useAssistantPageContext(assistantContext);
 
