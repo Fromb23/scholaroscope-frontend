@@ -79,6 +79,15 @@ export interface Assessment {
   subject_id: number;
   subject_name: string;
   subject_code: string;
+  curriculum_id: number | null;
+  curriculum_name: string | null;
+  curriculum_type: string | null;
+  cohort_curriculum_type: string | null;
+  subject_curriculum_type: string | null;
+  subject_source: string | null;
+  teaching_link_id: number | null;
+  cbc_cohort_subject_id: number | null;
+  subject_profile_id: number | null;
   name: string;
   assessment_type: string;
   assessment_type_display: string;
@@ -99,6 +108,22 @@ export interface Assessment {
   can_score?: boolean;
   created_at: string;
   created_by: number | null;
+}
+
+export interface AssessmentPolicyContext {
+  cohort_name?: string | null;
+  subject_id?: number | null;
+  subject_name?: string | null;
+  subject_code?: string | null;
+  curriculum_id?: number | null;
+  curriculum_name?: string | null;
+  curriculum_type?: string | null;
+  cohort_curriculum_type?: string | null;
+  subject_curriculum_type?: string | null;
+  subject_source?: string | null;
+  teaching_link_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
+  subject_profile_id?: number | null;
 }
 
 export interface AssessmentScore {

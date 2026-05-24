@@ -38,6 +38,21 @@ export function AssessmentInfoCard({ assessment }: { assessment: AssessmentDetai
                 cohortId={assessment.cohort_id}
                 cohortSubjectId={assessment.cohort_subject}
                 termId={assessment.term}
+                assessmentContext={{
+                    cohort_name: assessment.cohort_name,
+                    subject_id: assessment.subject_id,
+                    subject_name: assessment.subject_name,
+                    subject_code: assessment.subject_code,
+                    curriculum_id: assessment.curriculum_id,
+                    curriculum_name: assessment.curriculum_name,
+                    curriculum_type: assessment.curriculum_type,
+                    cohort_curriculum_type: assessment.cohort_curriculum_type,
+                    subject_curriculum_type: assessment.subject_curriculum_type,
+                    subject_source: assessment.subject_source,
+                    teaching_link_id: assessment.teaching_link_id,
+                    cbc_cohort_subject_id: assessment.cbc_cohort_subject_id,
+                    subject_profile_id: assessment.subject_profile_id,
+                }}
             />
         </div>
     );
