@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -9,6 +9,8 @@ import {
     BookOpen,
     Calendar,
     CheckCircle2,
+    ChevronDown,
+    ChevronRight,
     ClipboardCheck,
     Clock,
     Edit,
@@ -149,6 +151,56 @@ function SessionMetaItem({
     );
 }
 
+function CollapsibleSection({
+    sectionId,
+    title,
+    summary,
+    badge,
+    open,
+    onToggle,
+    children,
+}: {
+    sectionId: string;
+    title: string;
+    summary: string;
+    badge?: ReactNode;
+    open: boolean;
+    onToggle: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <div id={sectionId}>
+            <Card className="overflow-hidden p-0">
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    className="theme-focus-ring flex w-full items-start gap-3 px-6 py-4 text-left transition-colors theme-hover-surface"
+                >
+                    <div className="theme-surface-elevated mt-0.5 shrink-0 rounded-lg border p-1.5 theme-border">
+                        {open ? (
+                            <ChevronDown className="h-4 w-4 text-blue-600" />
+                        ) : (
+                            <ChevronRight className="h-4 w-4 theme-subtle" />
+                        )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h2 className="text-lg font-semibold theme-text">{title}</h2>
+                            {badge}
+                        </div>
+                        <p className="mt-1 text-sm theme-muted">{summary}</p>
+                    </div>
+                </button>
+                {open ? (
+                    <div className="border-t px-6 py-6 theme-border">
+                        {children}
+                    </div>
+                ) : null}
+            </Card>
+        </div>
+    );
+}
+
 function scrollToSection(sectionId: string) {
     window.requestAnimationFrame(() => {
         document.getElementById(sectionId)?.scrollIntoView({
@@ -173,6 +225,9 @@ export function SessionDetailPage() {
     const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [taughtSelections, setTaughtSelections] = useState<Record<number, TaughtStatus | ''>>({});
     const [guidedSection, setGuidedSection] = useState<'attendance' | 'taught-outcomes' | 'complete' | 'post-lesson' | null>(null);
+    const [attendanceOpen, setAttendanceOpen] = useState(false);
+    const [taughtOutcomesOpen, setTaughtOutcomesOpen] = useState(false);
+    const [checklistOpen, setChecklistOpen] = useState(false);
     const {
         session,
         attendanceRecords,
@@ -319,13 +374,37 @@ export function SessionDetailPage() {
         || needsCompletion
     );
 
+    const revealAttendanceSection = useCallback(() => {
+        if (!showAttendanceSection) {
+            return;
+        }
+        setAttendanceOpen(true);
+        setGuidedSection('attendance');
+    }, [showAttendanceSection]);
+
+    const revealTaughtOutcomesSection = useCallback(() => {
+        if (!showTaughtOutcomesSection) {
+            return;
+        }
+        setTaughtOutcomesOpen(true);
+        setGuidedSection('taught-outcomes');
+    }, [showTaughtOutcomesSection]);
+
     useEffect(() => {
         if (guidedSection === 'attendance' && showAttendanceSection) {
+            if (!attendanceOpen) {
+                setAttendanceOpen(true);
+                return;
+            }
             scrollToSection('attendance-section');
             setGuidedSection(null);
         }
 
         if (guidedSection === 'taught-outcomes' && showTaughtOutcomesSection) {
+            if (!taughtOutcomesOpen) {
+                setTaughtOutcomesOpen(true);
+                return;
+            }
             scrollToSection('taught-outcomes-section');
             setGuidedSection(null);
         }
@@ -339,7 +418,14 @@ export function SessionDetailPage() {
             scrollToSection('post-lesson-section');
             setGuidedSection(null);
         }
-    }, [currentWorkflowStep, guidedSection, showAttendanceSection, showTaughtOutcomesSection]);
+    }, [
+        attendanceOpen,
+        currentWorkflowStep,
+        guidedSection,
+        showAttendanceSection,
+        showTaughtOutcomesSection,
+        taughtOutcomesOpen,
+    ]);
 
     useEffect(() => {
         if (!session) {
@@ -443,16 +529,29 @@ export function SessionDetailPage() {
         attendanceStats.unmarked,
     ]);
 
-    const scrollToAttendance = () => {
-        scrollToSection('attendance-section');
-    };
+    const completedWorkflowSteps = workflowSteps.filter((step) => step.complete).length;
+    const attendanceMarkedCount = Math.max(0, attendanceStats.total - attendanceStats.unmarked);
+    const attendanceSectionTitle = isCompleted
+        ? 'Attendance records'
+        : needsCompletion
+            ? 'Review attendance'
+            : 'Take attendance';
+    const attendanceSectionSummary = attendanceStats.total > 0
+        ? `${attendanceMarkedCount}/${attendanceStats.total} learners marked`
+        : 'No attendance records are available yet.';
+    const plannedOutcomeCount = session?.planned_outcomes.length ?? 0;
+    const taughtOutcomesSectionSummary = plannedOutcomeCount > 0
+        ? `${plannedOutcomeCount} planned outcome${plannedOutcomeCount === 1 ? '' : 's'} · ${hasConfirmedTaughtOutcomes ? 'confirmed' : 'not yet confirmed'}`
+        : 'No planned outcomes are linked to this lesson.';
+    const checklistSummary = `${completedWorkflowSteps}/${workflowSteps.length} steps complete`;
+
     const nextSafeAssistantAction = useMemo(() => {
         if (isInProgress && !hasMarkedAttendance) {
             return {
                 label: 'Review attendance section',
                 type: 'page_action' as const,
                 target: 'review_attendance_section',
-                handler: () => scrollToSection('attendance-section'),
+                handler: revealAttendanceSection,
             };
         }
 
@@ -461,7 +560,7 @@ export function SessionDetailPage() {
                 label: 'Review what was taught',
                 type: 'page_action' as const,
                 target: 'review_taught_outcomes_section',
-                handler: () => scrollToSection('taught-outcomes-section'),
+                handler: revealTaughtOutcomesSection,
             };
         }
 
@@ -489,6 +588,8 @@ export function SessionDetailPage() {
         hasMarkedAttendance,
         isInProgress,
         needsCompletion,
+        revealAttendanceSection,
+        revealTaughtOutcomesSection,
         session?.lesson_plan_id,
     ]);
     const assistantContext = useMemo(() => ({
@@ -510,13 +611,13 @@ export function SessionDetailPage() {
                 label: 'Review attendance section',
                 type: 'page_action' as const,
                 target: 'review_attendance_section',
-                handler: () => scrollToSection('attendance-section'),
+                handler: revealAttendanceSection,
             },
             {
                 label: 'Review what was taught',
                 type: 'page_action' as const,
                 target: 'review_taught_outcomes_section',
-                handler: () => scrollToSection('taught-outcomes-section'),
+                handler: revealTaughtOutcomesSection,
             },
             {
                 label: 'Review lesson completion',
@@ -547,6 +648,8 @@ export function SessionDetailPage() {
         loading,
         needsCompletion,
         nextSafeAssistantAction,
+        revealAttendanceSection,
+        revealTaughtOutcomesSection,
         session,
         sessionStatus,
     ]);
@@ -720,7 +823,7 @@ export function SessionDetailPage() {
                                 variant="secondary"
                                 size="sm"
                                 className="w-full sm:w-auto"
-                                onClick={scrollToAttendance}
+                                onClick={revealAttendanceSection}
                             >
                                 <ClipboardCheck className="mr-1.5 h-4 w-4" />
                                 Take attendance
@@ -744,7 +847,7 @@ export function SessionDetailPage() {
                                 variant="secondary"
                                 size="sm"
                                 className="w-full sm:w-auto"
-                                onClick={scrollToAttendance}
+                                onClick={revealAttendanceSection}
                             >
                                 <ClipboardCheck className="mr-1.5 h-4 w-4" />
                                 Review attendance
@@ -756,7 +859,7 @@ export function SessionDetailPage() {
                                 variant="secondary"
                                 size="sm"
                                 className="w-full sm:w-auto"
-                                onClick={() => scrollToSection('taught-outcomes-section')}
+                                onClick={revealTaughtOutcomesSection}
                             >
                                 <Target className="mr-1.5 h-4 w-4" />
                                 Confirm what was taught
@@ -974,14 +1077,15 @@ export function SessionDetailPage() {
                 </Card>
             )}
 
-            <Card>
+            <CollapsibleSection
+                sectionId="workflow-section"
+                title={isInstructor ? 'Teaching checklist' : 'Lesson workflow'}
+                summary={checklistSummary}
+                badge={<Badge variant="blue">{curriculumLabel}</Badge>}
+                open={checklistOpen}
+                onToggle={() => setChecklistOpen((current) => !current)}
+            >
                 <div className="space-y-4">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-lg font-semibold text-gray-900">
-                            {isInstructor ? 'Teaching checklist' : 'Lesson workflow'}
-                        </h2>
-                        <Badge variant="blue">{curriculumLabel}</Badge>
-                    </div>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         {workflowSteps.map((step) => {
                             const Icon = step.icon;
@@ -1002,7 +1106,7 @@ export function SessionDetailPage() {
                         })}
                     </div>
                 </div>
-            </Card>
+            </CollapsibleSection>
 
             {!isHistorical && currentWorkflowStep === 'attendance' ? (
                 <Card>
@@ -1133,69 +1237,56 @@ export function SessionDetailPage() {
             ) : null}
 
             {showAttendanceSection ? (
-                <div id="attendance-section">
-                    <Card>
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <h2 className="text-lg font-semibold text-gray-900">
-                                        {isCompleted
-                                            ? 'Attendance records'
-                                            : needsCompletion
-                                                ? 'Review attendance'
-                                                : 'Take attendance'}
-                                    </h2>
-                                    <p className="mt-1 text-sm text-gray-600">
-                                        {needsCompletion
-                                            ? 'Review the attendance record before you complete this lesson.'
-                                            : 'Attendance must be recorded before you confirm what was taught.'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <AttendanceTable
-                                records={attendanceRecords}
-                                draft={draft}
-                                loading={loading}
-                                saving={saving}
-                                saveError={saveError}
-                                pagination={pagination}
-                                onUpdateStatus={updateStatus}
-                                onUpdateNotes={updateNotes}
-                                onMarkAll={markAll}
-                                readOnly={!canEditAttendance}
-                                onSave={async () => {
-                                    await save();
-                                    await refetch();
-                                    setGuidedSection('taught-outcomes');
-                                    setWorkflowSuccess(
-                                        isInstructor
-                                            ? 'Attendance saved. Next step: confirm what was taught.'
-                                            : 'Attendance updated.'
-                                    );
-                                }}
-                                onDismissError={dismissError}
-                                onSearch={setSearchQuery}
-                            />
-                        </div>
-                    </Card>
-                </div>
+                <CollapsibleSection
+                    sectionId="attendance-section"
+                    title={attendanceSectionTitle}
+                    summary={attendanceSectionSummary}
+                    open={attendanceOpen}
+                    onToggle={() => setAttendanceOpen((current) => !current)}
+                >
+                    <AttendanceTable
+                        records={attendanceRecords}
+                        draft={draft}
+                        loading={loading}
+                        saving={saving}
+                        saveError={saveError}
+                        pagination={pagination}
+                        onUpdateStatus={updateStatus}
+                        onUpdateNotes={updateNotes}
+                        onMarkAll={markAll}
+                        readOnly={!canEditAttendance}
+                        onSave={async () => {
+                            await save();
+                            await refetch();
+                            setGuidedSection('taught-outcomes');
+                            setWorkflowSuccess(
+                                isInstructor
+                                    ? 'Attendance saved. Next step: confirm what was taught.'
+                                    : 'Attendance updated.'
+                            );
+                        }}
+                        onDismissError={dismissError}
+                        onSearch={setSearchQuery}
+                    />
+                </CollapsibleSection>
             ) : null}
 
             {showTaughtOutcomesSection ? (
-                <div id="taught-outcomes-section">
-                <Card>
+                <CollapsibleSection
+                    sectionId="taught-outcomes-section"
+                    title="Confirm what was taught"
+                    summary={taughtOutcomesSectionSummary}
+                    open={taughtOutcomesOpen}
+                    onToggle={() => setTaughtOutcomesOpen((current) => !current)}
+                >
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900">Confirm what was taught</h2>
-                                <p className="mt-1 text-sm text-gray-600">
-                                    Use the planned outcomes from the lesson plan. Do not add new outcomes here.
-                                </p>
-                            </div>
+                            <p className="text-sm text-gray-600">
+                                Use the planned outcomes from the lesson plan. Do not add new outcomes here.
+                            </p>
                             <div className="flex flex-wrap gap-2">
                                 {!isCompleted ? (
-                                    <Button variant="secondary" size="sm" onClick={scrollToAttendance}>
+                                    <Button variant="secondary" size="sm" onClick={revealAttendanceSection}>
                                         <ClipboardCheck className="mr-1.5 h-4 w-4" />
                                         Review attendance
                                     </Button>
@@ -1284,8 +1375,7 @@ export function SessionDetailPage() {
                             ))}
                         </div>
                     </div>
-                </Card>
-                </div>
+                </CollapsibleSection>
             ) : null}
 
             <ParticipatingCohorts

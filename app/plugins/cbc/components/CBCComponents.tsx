@@ -406,6 +406,8 @@ export function StrandProgressRow({
 interface ServerError {
     detail?: string;
     message?: string;
+    error?: string;
+    non_field_errors?: string[];
     type?: string;
 }
 
@@ -443,6 +445,22 @@ function formatDiagnosticValue(value: unknown) {
     } catch {
         return String(value);
     }
+}
+
+function flattenErrorMessages(value: unknown): string[] {
+    if (typeof value === 'string') {
+        return [value];
+    }
+
+    if (Array.isArray(value)) {
+        return value.flatMap(item => flattenErrorMessages(item));
+    }
+
+    if (!value || typeof value !== 'object') {
+        return [];
+    }
+
+    return Object.values(value).flatMap(item => flattenErrorMessages(item));
 }
 
 export function CBCError({
@@ -562,7 +580,12 @@ export function extractErrorMessage(error: unknown): string {
     if (e.response?.data) {
         const d = e.response.data;
         if (typeof d === 'string') return d;
-        return d.detail ?? d.message ?? 'Server error';
+        const structuredMessage = d.detail ?? d.message ?? d.error ?? d.non_field_errors ?? d;
+        const flattenedMessages = flattenErrorMessages(structuredMessage);
+        if (flattenedMessages.length > 0) {
+            return flattenedMessages.join('\n');
+        }
+        return 'Server error';
     }
     return e.message ?? 'An unexpected error occurred';
 }

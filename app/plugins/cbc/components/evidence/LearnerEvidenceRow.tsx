@@ -47,18 +47,18 @@ export function LearnerEvidenceRow({
 
     return (
         <div className={`border rounded-xl overflow-hidden transition-all ${isHighlighted ? 'border-blue-500 shadow-md' :
-            hasEvidence ? 'border-emerald-200 bg-emerald-50/30' :
-                'border-slate-200 bg-slate-50/40'
+            hasEvidence ? 'border-emerald-300/70 bg-emerald-500/5' :
+                'theme-border theme-surface-muted'
             }`}>
-            <div className="flex flex-col gap-3 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="theme-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${hasEvidence ? 'bg-emerald-500' : 'bg-slate-400'
                         }`} />
                     <div className="min-w-0">
-                        <h3 className="font-semibold text-gray-900 truncate">
+                        <h3 className="truncate font-semibold theme-text">
                             {learner.first_name} {learner.last_name}
                         </h3>
-                        <p className="text-sm text-gray-500">{learner.admission_number}</p>
+                        <p className="text-sm theme-muted">{learner.admission_number}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -81,19 +81,19 @@ export function LearnerEvidenceRow({
             </div>
 
             {hasEvidence && !isAdding && (
-                <div className="px-4 pb-3 bg-white border-t border-gray-100">
+                <div className="theme-surface border-t px-4 pb-3 theme-border">
                     <div className="space-y-2 pt-2">
                         {evidence.map(ev => (
-                            <div key={ev.id} className="p-3 bg-gray-50 rounded-lg text-sm">
-                                <div className="flex items-center gap-2 mb-1">
+                            <div key={ev.id} className="theme-card-muted rounded-lg p-3 text-sm">
+                                <div className="mb-1 flex items-center gap-2">
                                     <Badge variant="blue" size="sm">{EVALUATION_LABELS[ev.evaluation_type]}</Badge>
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs theme-muted">
                                         {new Date(ev.observed_at).toLocaleDateString('en-GB')}
                                     </span>
                                 </div>
-                                {ev.narrative && <p className="text-gray-700">{ev.narrative}</p>}
+                                {ev.narrative && <p className="theme-text">{ev.narrative}</p>}
                                 {ev.numeric_score !== null && (
-                                    <p className="text-gray-700">Score: {ev.numeric_score}</p>
+                                    <p className="theme-text">Score: {ev.numeric_score}</p>
                                 )}
                             </div>
                         ))}
@@ -102,8 +102,8 @@ export function LearnerEvidenceRow({
             )}
 
             {isAdding && (
-                <div className="p-4 bg-blue-50 border-t border-blue-200">
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <div className="border-t border-blue-500/20 bg-blue-500/10 p-4">
+                    <h4 className="mb-3 flex items-center gap-2 font-semibold theme-text">
                         <FileText className="h-4 w-4 text-blue-600" />
                         Learner observation
                     </h4>
@@ -124,7 +124,7 @@ export function LearnerEvidenceRow({
                             />
                         )}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="mb-1 block text-sm font-medium theme-text">
                                 Observation notes
                                 {evalType === 'DESCRIPTIVE' && <span className="text-red-500 ml-1">*</span>}
                             </label>
@@ -132,8 +132,7 @@ export function LearnerEvidenceRow({
                                 value={narrative}
                                 onChange={e => onNarrativeChange(e.target.value)}
                                 rows={3}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
-                                    focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                className="theme-focus-ring theme-input w-full resize-none rounded-lg px-3 py-2 text-sm"
                                 placeholder="Describe what this learner demonstrated…"
                             />
                         </div>

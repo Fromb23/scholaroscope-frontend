@@ -24,7 +24,7 @@ export function OutcomeFilterToggle({ filter, onChange, total, needsEvidence, co
                     onClick={() => onChange(tab.key)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === tab.key
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'theme-surface-muted theme-muted theme-hover-surface'
                         }`}
                 >
                     {tab.label} ({tab.count})

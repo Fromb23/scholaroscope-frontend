@@ -465,7 +465,9 @@ export const teachingAPI = {
   },
 
   getSessionLearners: async (sessionId: number) => {
-    const response = await apiClient.get<SessionLearner[]>(`/sessions/${sessionId}/learners/`);
+    const response = await apiClient.get<SessionLearner[]>(
+      `/cbc/teaching-sessions/${sessionId}/learners/`,
+    );
     return response.data;
   },
 
