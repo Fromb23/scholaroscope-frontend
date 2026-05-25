@@ -126,12 +126,12 @@ export function CBCSessionOutcomesPage() {
             <Card>
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                        <h2 className="flex items-center gap-2 text-xl font-semibold theme-text">
                             <Target className="h-5 w-5 text-blue-600" />
                             What was taught
                             {page.links.length > 0 && <Badge variant="blue" size="sm">{page.links.length}</Badge>}
                         </h2>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm theme-muted">
                             Review the outcomes confirmed from the lesson plan for this lesson.
                         </p>
                     </div>
@@ -156,9 +156,9 @@ export function CBCSessionOutcomesPage() {
                     <CBCLoading message="Loading learning goals…" />
                 ) : page.links.length === 0 ? (
                     <div className="py-16 text-center">
-                        <Target className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500 mb-1">No taught outcomes have been confirmed yet</p>
-                        <p className="text-sm text-gray-400 mb-4">
+                        <Target className="mx-auto mb-3 h-12 w-12 theme-subtle" />
+                        <p className="mb-1 theme-muted">No taught outcomes have been confirmed yet</p>
+                        <p className="mb-4 text-sm theme-subtle">
                             Open the lesson to confirm what was taught from the lesson plan first.
                         </p>
                         <Link href={`/sessions/${sessionId}`}>
@@ -168,7 +168,7 @@ export function CBCSessionOutcomesPage() {
                         </Link>
                     </div>
                 ) : page.filteredLinks.length === 0 ? (
-                    <div className="py-8 text-center text-gray-500 text-sm">
+                    <div className="py-8 text-center text-sm theme-muted">
                         No learning goals match this view
                     </div>
                 ) : (

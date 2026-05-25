@@ -15,7 +15,6 @@ import {
     CBCError,
     CBCLoading,
     CBCTeachingSessionNav,
-    extractErrorMessage,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -168,13 +167,13 @@ export function CBCEvidenceEntryPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Class performance</h1>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <h1 className="text-2xl font-bold theme-text">Class performance</h1>
+                    <p className="mt-1 text-sm theme-muted">
                         Record learning observations for this lesson.
                     </p>
                 </div>
-                <div className="text-sm text-gray-500">
-                    <p className="font-medium text-gray-700">
+                <div className="text-sm theme-muted">
+                    <p className="font-medium theme-text">
                         {page.session.cohort_name} · {page.session.subject_name}
                     </p>
                     <p>
@@ -188,21 +187,21 @@ export function CBCEvidenceEntryPage() {
                 </div>
             </div>
 
-            <Card className="bg-purple-50 border-purple-200">
+            <Card className="border-purple-500/20 bg-purple-500/10">
                 <div className="flex items-start gap-4">
-                    <div className="p-3 bg-purple-600 rounded-lg shrink-0">
+                    <div className="shrink-0 rounded-lg bg-purple-600 p-3">
                         <Target className="h-6 w-6 text-white" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <div className="min-w-0 flex-1">
+                        <div className="mb-2 flex items-center gap-2 flex-wrap">
                             <Badge variant="purple" size="lg" className="font-mono font-semibold">
                                 {page.outcome.code}
                             </Badge>
-                            <span className="text-xs text-gray-600">
+                            <span className="text-xs theme-muted">
                                 {page.outcome.strand_name} → {page.outcome.sub_strand_name}
                             </span>
                         </div>
-                        <p className="text-gray-700 font-medium">{page.outcome.description}</p>
+                        <p className="font-medium theme-text">{page.outcome.description}</p>
                     </div>
                 </div>
             </Card>
@@ -213,13 +212,13 @@ export function CBCEvidenceEntryPage() {
                     { label: 'In Lesson', value: page.eligibleLearners.length, color: 'text-indigo-600' },
                     { label: 'Observed', value: page.eligibleWithEvidence.length, color: 'text-emerald-600' },
                     { label: 'Not yet observed', value: page.eligibleWithoutEvidence.length, color: 'text-slate-600' },
-                    { label: 'Not part of this lesson', value: page.ineligibleLearners.length, color: 'text-gray-500' },
+                    { label: 'Not part of this lesson', value: page.ineligibleLearners.length, color: 'theme-subtle' },
                 ].map(stat => (
                     <Card key={stat.label} className="text-center">
                         <div className={`text-3xl font-bold ${stat.color}`}>
                             {page.isEvidencePanelLoading ? '—' : stat.value}
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
+                        <div className="mt-1 text-sm theme-muted">{stat.label}</div>
                     </Card>
                 ))}
             </div>
@@ -227,11 +226,11 @@ export function CBCEvidenceEntryPage() {
             <Card>
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                        <h2 className="flex items-center gap-2 text-xl font-semibold theme-text">
                             <Users className="h-5 w-5 text-purple-600" />
                             Learning observations
                         </h2>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="mt-1 text-sm theme-muted">
                             Record class performance or individual observations
                         </p>
                     </div>
@@ -271,13 +270,13 @@ export function CBCEvidenceEntryPage() {
                 )}
 
                 {page.learnersError || page.evidenceError ? (
-                    <CBCError error={extractErrorMessage(page.learnersError ?? page.evidenceError)} />
+                    <CBCError error={page.learnersError ?? page.evidenceError} />
                 ) : page.isEvidencePanelLoading ? (
                     <CBCLoading message="Loading learners and observations…" />
                 ) : page.learners.length === 0 ? (
                     <div className="py-12 text-center">
-                        <AlertCircle className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                        <p className="text-gray-500">No learners in this class</p>
+                        <AlertCircle className="mx-auto mb-3 h-12 w-12 theme-subtle" />
+                        <p className="theme-muted">No learners in this class</p>
                     </div>
                 ) : (
                     <div className="space-y-6">
@@ -289,8 +288,8 @@ export function CBCEvidenceEntryPage() {
                             )}
                             {page.sortedEligibleLearners.length === 0 ? (
                                 <div className="py-10 text-center">
-                                    <AlertCircle className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                                    <p className="text-gray-600">No learners can be recorded for this lesson yet.</p>
+                                    <AlertCircle className="mx-auto mb-3 h-10 w-10 theme-subtle" />
+                                    <p className="theme-muted">No learners can be recorded for this lesson yet.</p>
                                 </div>
                             ) : page.sortedEligibleLearners.map(learner => (
                                 <LearnerEvidenceRow
@@ -315,12 +314,12 @@ export function CBCEvidenceEntryPage() {
                         </div>
 
                         {page.ineligibleLearners.length > 0 && (
-                            <div className="space-y-3 border-t border-gray-200 pt-6">
+                            <div className="space-y-3 border-t pt-6 theme-border">
                                 <div>
-                                    <h3 className="text-base font-semibold text-gray-900">
+                                    <h3 className="text-base font-semibold theme-text">
                                         Not part of this lesson
                                     </h3>
-                                    <p className="mt-1 text-sm text-gray-500">
+                                    <p className="mt-1 text-sm theme-muted">
                                         These learners were absent, excused, or sick for this lesson and are not counted as not yet observed.
                                     </p>
                                 </div>
@@ -328,13 +327,13 @@ export function CBCEvidenceEntryPage() {
                                     {page.ineligibleLearners.map(learner => (
                                         <div
                                             key={learner.id}
-                                            className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                                            className="theme-surface-muted flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between theme-border"
                                         >
                                             <div className="min-w-0">
-                                                <p className="font-semibold text-gray-900">
+                                                <p className="font-semibold theme-text">
                                                     {learner.first_name} {learner.last_name}
                                                 </p>
-                                                <p className="text-sm text-gray-500">
+                                                <p className="text-sm theme-muted">
                                                     {learner.admission_number}
                                                 </p>
                                             </div>

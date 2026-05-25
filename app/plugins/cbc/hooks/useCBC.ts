@@ -159,6 +159,18 @@ function decorateCBCQueryError(
   return decorated;
 }
 
+async function runCBCQuery<T>(
+  request: () => Promise<T>,
+  endpoint: string,
+  params?: Record<string, number | string | null | undefined>
+): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    throw decorateCBCQueryError(error, endpoint, params);
+  }
+}
+
 function getEligibleSessionLearnerIds(
   queryClient: QueryClient,
   sessionId: number,
@@ -391,7 +403,10 @@ export const useLearningOutcomes = (params?: { sub_strand?: number; level?: stri
 export const useLearningOutcomeDetail = (id: number | null) =>
   useQuery<LearningOutcome>({
     queryKey: cbcKeys.outcomes.detail(id!),
-    queryFn: () => learningOutcomeAPI.getById(id!),
+    queryFn: () => runCBCQuery(
+      () => learningOutcomeAPI.getById(id!),
+      `/cbc/learning-outcomes/${id!}/`,
+    ),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
   });
@@ -464,11 +479,17 @@ export const useEvidenceBySessionOutcome = (
 ) =>
   useQuery<EvidenceRecord[]>({
     queryKey: cbcKeys.evidence.bySessionOutcome(sessionId!, learningOutcomeId!),
-    queryFn: () =>
-      evidenceAPI.getBySessionOutcome({
+    queryFn: () => runCBCQuery(
+      () => evidenceAPI.getBySessionOutcome({
         sessionId: sessionId!,
         learningOutcomeId: learningOutcomeId!,
       }),
+      '/cbc/evidence/by_session_outcome/',
+      {
+        session_id: sessionId!,
+        learning_outcome_id: learningOutcomeId!,
+      },
+    ),
     enabled: sessionId !== null && learningOutcomeId !== null,
     staleTime: 2 * 60 * 1000,
   });
@@ -707,7 +728,10 @@ export const useRecentSessions = (days = 7) =>
 export const useTeachingSession = (id: number | null) =>
   useQuery({
     queryKey: cbcKeys.teachingSessions.detail(id!),
-    queryFn: () => teachingAPI.getSession(id!),
+    queryFn: () => runCBCQuery(
+      () => teachingAPI.getSession(id!),
+      `/cbc/teaching-sessions/${id!}/`,
+    ),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
   });
@@ -715,7 +739,10 @@ export const useTeachingSession = (id: number | null) =>
 export const useSessionSummary = (id: number | null) =>
   useQuery({
     queryKey: cbcKeys.teachingSessions.summary(id!),
-    queryFn: () => teachingAPI.getSessionSummary(id!),
+    queryFn: () => runCBCQuery(
+      () => teachingAPI.getSessionSummary(id!),
+      `/cbc/teaching-sessions/${id!}/summary/`,
+    ),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
   });
@@ -723,7 +750,10 @@ export const useSessionSummary = (id: number | null) =>
 export const useSessionLearners = (id: number | null) =>
   useQuery<SessionLearner[]>({
     queryKey: cbcKeys.teachingSessions.learners(id!),
-    queryFn: () => teachingAPI.getSessionLearners(id!),
+    queryFn: () => runCBCQuery(
+      () => teachingAPI.getSessionLearners(id!),
+      `/cbc/teaching-sessions/${id!}/learners/`,
+    ),
     enabled: !!id,
     staleTime: 2 * 60 * 1000,
   });

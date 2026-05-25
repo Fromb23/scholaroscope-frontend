@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+    ArrowLeft,
     ClipboardCheck,
     Calendar,
     CheckCircle2,
@@ -370,6 +371,7 @@ function SessionWorkspaceView() {
     const { sessions: todaySessions } = useTodaySessions();
     const { terms } = useTerms();
     const { cohorts } = useCohorts();
+    const workspaceBackHref = isInstructor ? '/dashboard/instructor' : '/dashboard/admin';
 
     const totalSessions = sessions.length;
     const todayCount = todaySessions.length;
@@ -454,6 +456,15 @@ function SessionWorkspaceView() {
 
     return (
         <div className="space-y-6">
+            <div className="lg:hidden">
+                <Link href={workspaceBackHref}>
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Dashboard
+                    </Button>
+                </Link>
+            </div>
+
             <div className="flex justify-between items-start gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold theme-text">
