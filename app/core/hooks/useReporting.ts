@@ -9,10 +9,12 @@ import {
   assessmentTypeSummaryAPI,
   adminReportsAPI,
   instructorReportsAPI,
+  learnerReportingAPI,
   reportsAPI,
 } from '@/app/core/api/reporting';
 import {
   AttendanceSummary,
+  ClassSubjectReportPayload,
   GradeSummary,
   CohortSummary,
   SubjectSummary,
@@ -21,6 +23,8 @@ import {
   StudentReportCard,
   ClassSummary,
   SubjectAnalysis,
+  LearnerOverviewReportPayload,
+  LearnerSubjectReportPayload,
   LongitudinalStudentData,
   InstructorOverview,
   InstructorCohortSubjectOverview,
@@ -561,4 +565,131 @@ export const useLongitudinalStudent = (studentId: number | null) => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   return { data, loading, error, refetch: fetchData };
+};
+
+// ── Learner reporting payloads ────────────────────────────────────────────
+
+export const useLearnerSubjectReport = (
+  learnerId: number | null,
+  cohortSubjectId: number | null,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<LearnerSubjectReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    if (!learnerId || !cohortSubjectId) {
+      setReport(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getLearnerSubjectReport(learnerId, { cohortSubjectId }));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(extractErrorMessage(apiError, 'Failed to fetch learner subject report'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [cohortSubjectId, enabled, learnerId]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useLearnerOverviewReport = (
+  learnerId: number | null,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<LearnerOverviewReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    if (!learnerId) {
+      setReport(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getLearnerOverviewReport(learnerId));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(extractErrorMessage(apiError, 'Failed to fetch learner overview report'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, learnerId]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useClassSubjectReport = (
+  cohortId: number | null,
+  cohortSubjectId: number | null,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<ClassSubjectReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    if (!cohortId || !cohortSubjectId) {
+      setReport(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getClassSubjectReport(cohortId, { cohortSubjectId }));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(extractErrorMessage(apiError, 'Failed to fetch class subject report'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [cohortId, cohortSubjectId, enabled]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
 };

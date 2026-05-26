@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, Edit, Mail, Phone, User,
-    GraduationCap, FileText, Trash2, UserPlus, UserMinus, BookOpen,
+    GraduationCap, FileText, Trash2, UserPlus, UserMinus, BookOpen, FileBarChart,
 } from 'lucide-react';
 import { useStudent } from '@/app/core/hooks/useStudents';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
@@ -13,6 +13,10 @@ import { useCohortSubjectsByCohort } from '@/app/core/hooks/useCohortSubjects';
 import { useStudentAttendanceHistory } from '@/app/core/hooks/useSessions';
 import { useAuth } from '@/app/context/AuthContext';
 import { hasCapability, isAdminOrAbove } from '@/app/utils/permissions';
+import {
+    buildLearnerOverviewReportHref,
+    buildLearnerSubjectReportHref,
+} from '@/app/core/lib/learnerReportingRoutes';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -99,6 +103,8 @@ export default function LearnerDetailPage() {
     const canEdit = !!user && hasCapability(activeRole, 'EDIT_LEARNER');
     const canManage = !!user && hasCapability(activeRole, 'MANAGE_ENROLLMENT');
     const canManageSubjectParticipation = isAdminOrAbove(user, activeRole);
+    const canGenerateOverviewReport = !!user && (user.is_superadmin || activeRole === 'ADMIN');
+    const canGenerateSubjectReport = !!user && (user.is_superadmin || activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
 
     const availableCohorts = useMemo(() => {
         if (!cohorts || !student) return [];
@@ -128,6 +134,17 @@ export default function LearnerDetailPage() {
     const currentSubjectIds = useMemo(
         () => new Set((student?.current_subjects ?? []).map(subject => subject.id)),
         [student]
+    );
+    const onlyReportSubject = student?.current_subjects?.length === 1
+        ? student.current_subjects[0]
+        : null;
+    const defaultSubjectReportHref = buildLearnerSubjectReportHref(
+        studentId,
+        onlyReportSubject?.id ?? null,
+    );
+    const overviewReportHref = useMemo(
+        () => buildLearnerOverviewReportHref(studentId),
+        [studentId],
     );
 
 
@@ -368,6 +385,39 @@ export default function LearnerDetailPage() {
                 </Card>
             </div>
 
+            {canGenerateSubjectReport && (
+                <Card>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <FileBarChart className="h-5 w-5 text-blue-600" />
+                                <h2 className="text-lg font-semibold text-gray-900">Reporting</h2>
+                            </div>
+                            <p className="text-sm text-gray-500">
+                                Open backend-owned learner reporting previews for subject and school-level performance.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            <Link href={defaultSubjectReportHref}>
+                                <Button variant="secondary">
+                                    <FileBarChart className="mr-2 h-4 w-4" />
+                                    Generate Subject Report
+                                </Button>
+                            </Link>
+                            {canGenerateOverviewReport && (
+                                <Link href={overviewReportHref}>
+                                    <Button>
+                                        <FileText className="mr-2 h-4 w-4" />
+                                        Generate Overall Report
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
+                    </div>
+                </Card>
+            )}
+
             <Card>
                 <div className="space-y-4">
                     <div className="space-y-1">
@@ -449,12 +499,22 @@ export default function LearnerDetailPage() {
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                         {student.current_subjects.map(subject => (
                             <div key={`${subject.cohort}-${subject.id}`} className="p-3 border rounded-lg">
-                                <div className="flex items-start justify-between">
+                                <div className="flex items-start justify-between gap-3">
                                     <div>
                                         <p className="font-medium text-gray-900">{subject.code} — {subject.name}</p>
                                         <p className="text-xs text-gray-500 mt-1">{subject.cohort}</p>
                                     </div>
-                                    {subject.is_compulsory && <Badge variant="default" size="sm">Core</Badge>}
+                                    <div className="flex flex-col items-end gap-2">
+                                        {subject.is_compulsory && <Badge variant="default" size="sm">Core</Badge>}
+                                        {canGenerateSubjectReport ? (
+                                            <Link href={buildLearnerSubjectReportHref(studentId, subject.id)}>
+                                                <Button variant="ghost" size="sm">
+                                                    <FileBarChart className="h-4 w-4" />
+                                                    Subject Report
+                                                </Button>
+                                            </Link>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
                         ))}
