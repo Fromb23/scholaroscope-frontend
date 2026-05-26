@@ -34,6 +34,7 @@ export function CBCEvidenceEntryPage() {
     const learnerCount = page.learners.length;
     const eligibleLearnerCount = page.eligibleLearners.length;
     const eligibleWithEvidenceCount = page.eligibleWithEvidence.length;
+    const eligibleWithoutEvidenceCount = page.eligibleWithoutEvidence.length;
     const isEmpty = !page.isPageLoading && !page.isEvidencePanelLoading && learnerCount === 0;
     const canRecordEvidence = !page.hasBlockingAttendance && eligibleLearnerCount > 0;
     const hasSession = Boolean(page.session);
@@ -44,9 +45,20 @@ export function CBCEvidenceEntryPage() {
         : 0;
     const workflowStep = page.hasBlockingAttendance ? 'complete_attendance_first' : 'record_cbc_evidence';
     const setShowBulk = page.setShowBulk;
+    const setBulkSuccess = page.setBulkSuccess;
     const openBulkEvidenceModal = useCallback(() => {
         setShowBulk(true);
     }, [setShowBulk]);
+    const continueRecordingEvidence = useCallback(() => {
+        setBulkSuccess(null);
+        document.getElementById('learning-observations-section')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    }, [setBulkSuccess]);
+    const bulkActionLabel = eligibleLearnerCount > 0 && eligibleWithoutEvidenceCount === 0
+        ? 'Add another observation'
+        : 'Record class performance';
     const assistantContext = useMemo(() => ({
         pageKey: 'cbc_evidence_entry',
         pageTitle: 'CBC Evidence Entry',
@@ -160,8 +172,10 @@ export function CBCEvidenceEntryPage() {
 
             {page.bulkSuccess !== null && (
                 <EvidenceSuccessBanner
+                    sessionId={sessionId}
                     result={page.bulkSuccess}
-                    onDismiss={() => page.setBulkSuccess(null)}
+                    onContinueRecording={continueRecordingEvidence}
+                    onDismiss={() => setBulkSuccess(null)}
                 />
             )}
 
@@ -223,134 +237,136 @@ export function CBCEvidenceEntryPage() {
                 ))}
             </div>
 
-            <Card>
-                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h2 className="flex items-center gap-2 text-xl font-semibold theme-text">
-                            <Users className="h-5 w-5 text-purple-600" />
-                            Learning observations
-                        </h2>
-                        <p className="mt-1 text-sm theme-muted">
-                            Record class performance or individual observations
-                        </p>
-                    </div>
-                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                        <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`} className="w-full sm:w-auto">
-                            <Button variant="ghost" size="md" className="w-full sm:w-auto">
-                                Back to what was taught
+            <div id="learning-observations-section">
+                <Card>
+                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="flex items-center gap-2 text-xl font-semibold theme-text">
+                                <Users className="h-5 w-5 text-purple-600" />
+                                Learning observations
+                            </h2>
+                            <p className="mt-1 text-sm theme-muted">
+                                Record class performance or individual learner observations. Existing evidence stays visible and you can keep adding more.
+                            </p>
+                        </div>
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                            <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`} className="w-full sm:w-auto">
+                                <Button variant="ghost" size="md" className="w-full sm:w-auto">
+                                    Back to what was taught
+                                </Button>
+                            </Link>
+                            <Button
+                                variant="primary"
+                                size="md"
+                                className="w-full sm:w-auto"
+                                onClick={() => page.setShowBulk(true)}
+                                disabled={page.hasBlockingAttendance || page.eligibleLearners.length === 0}
+                            >
+                                <Layers className="h-4 w-4 mr-2" />
+                                {bulkActionLabel}
                             </Button>
-                        </Link>
-                        <Button
-                            variant="primary"
-                            size="md"
-                            className="w-full sm:w-auto"
-                            onClick={() => page.setShowBulk(true)}
-                            disabled={page.hasBlockingAttendance || page.eligibleLearners.length === 0}
-                        >
-                            <Layers className="h-4 w-4 mr-2" />
-                            Record class performance
-                        </Button>
-                    </div>
-                </div>
-
-                {page.hasBlockingAttendance && (
-                    <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                        <div className="flex items-start gap-3">
-                            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                            <div className="space-y-1">
-                                <p className="text-sm font-medium text-amber-900">
-                                    Attendance must be completed before class performance can be recorded.
-                                </p>
-                                <p className="text-sm text-amber-800">
-                                    {page.unmarkedLearners.length} learner{page.unmarkedLearners.length !== 1 ? 's are' : ' is'} still unmarked for this session.
-                                </p>
-                            </div>
                         </div>
                     </div>
-                )}
 
-                {page.learnersError || page.evidenceError ? (
-                    <CBCError error={page.learnersError ?? page.evidenceError} />
-                ) : page.isEvidencePanelLoading ? (
-                    <CBCLoading message="Loading learners and observations…" />
-                ) : page.learners.length === 0 ? (
-                    <div className="py-12 text-center">
-                        <AlertCircle className="mx-auto mb-3 h-12 w-12 theme-subtle" />
-                        <p className="theme-muted">No learners in this class</p>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <div className="space-y-3">
-                            {page.eligibleWithoutEvidence.length > 0 && (
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    Not yet observed ({page.eligibleWithoutEvidence.length})
-                                </p>
-                            )}
-                            {page.sortedEligibleLearners.length === 0 ? (
-                                <div className="py-10 text-center">
-                                    <AlertCircle className="mx-auto mb-3 h-10 w-10 theme-subtle" />
-                                    <p className="theme-muted">No learners can be recorded for this lesson yet.</p>
-                                </div>
-                            ) : page.sortedEligibleLearners.map(learner => (
-                                <LearnerEvidenceRow
-                                    key={learner.id}
-                                    learner={learner}
-                                    evidence={page.evidenceByStudent.get(learner.id) ?? []}
-                                    isAdding={page.addingFor === learner.id}
-                                    isHighlighted={highlightStudentId === String(learner.id)}
-                                    evalType={page.evalType}
-                                    numericScore={page.numericScore}
-                                    narrative={page.narrative}
-                                    formError={page.formError}
-                                    createPending={page.createEvidencePending}
-                                    onStartAdding={() => page.setAddingFor(learner.id)}
-                                    onEvalTypeChange={page.setEvalType}
-                                    onNumericScoreChange={page.setNumericScore}
-                                    onNarrativeChange={page.setNarrative}
-                                    onSubmit={() => page.handleSubmit(learner.id)}
-                                    onCancel={page.resetForm}
-                                />
-                            ))}
-                        </div>
-
-                        {page.ineligibleLearners.length > 0 && (
-                            <div className="space-y-3 border-t pt-6 theme-border">
-                                <div>
-                                    <h3 className="text-base font-semibold theme-text">
-                                        Not part of this lesson
-                                    </h3>
-                                    <p className="mt-1 text-sm theme-muted">
-                                        These learners were absent, excused, or sick for this lesson and are not counted as not yet observed.
+                    {page.hasBlockingAttendance && (
+                        <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                            <div className="flex items-start gap-3">
+                                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium text-amber-900">
+                                        Attendance must be completed before class performance can be recorded.
+                                    </p>
+                                    <p className="text-sm text-amber-800">
+                                        {page.unmarkedLearners.length} learner{page.unmarkedLearners.length !== 1 ? 's are' : ' is'} still unmarked for this session.
                                     </p>
                                 </div>
-                                <div className="space-y-2">
-                                    {page.ineligibleLearners.map(learner => (
-                                        <div
-                                            key={learner.id}
-                                            className="theme-surface-muted flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between theme-border"
-                                        >
-                                            <div className="min-w-0">
-                                                <p className="font-semibold theme-text">
-                                                    {learner.first_name} {learner.last_name}
-                                                </p>
-                                                <p className="text-sm theme-muted">
-                                                    {learner.admission_number}
-                                                </p>
-                                            </div>
-                                            <Badge variant="default" size="sm">
-                                                {attendanceStatusLabel(
-                                                    learner.attendance_status,
-                                                    learner.attendance_status_display,
-                                                )}
-                                            </Badge>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
-                        )}
-                    </div>
-                )}
-            </Card>
+                        </div>
+                    )}
+
+                    {page.learnersError || page.evidenceError ? (
+                        <CBCError error={page.learnersError ?? page.evidenceError} />
+                    ) : page.isEvidencePanelLoading ? (
+                        <CBCLoading message="Loading learners and observations…" />
+                    ) : page.learners.length === 0 ? (
+                        <div className="py-12 text-center">
+                            <AlertCircle className="mx-auto mb-3 h-12 w-12 theme-subtle" />
+                            <p className="theme-muted">No learners in this class</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="space-y-3">
+                                {page.eligibleWithoutEvidence.length > 0 && (
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        Not yet observed ({page.eligibleWithoutEvidence.length})
+                                    </p>
+                                )}
+                                {page.sortedEligibleLearners.length === 0 ? (
+                                    <div className="py-10 text-center">
+                                        <AlertCircle className="mx-auto mb-3 h-10 w-10 theme-subtle" />
+                                        <p className="theme-muted">No learners can be recorded for this lesson yet.</p>
+                                    </div>
+                                ) : page.sortedEligibleLearners.map(learner => (
+                                    <LearnerEvidenceRow
+                                        key={learner.id}
+                                        learner={learner}
+                                        evidence={page.evidenceByStudent.get(learner.id) ?? []}
+                                        isAdding={page.addingFor === learner.id}
+                                        isHighlighted={highlightStudentId === String(learner.id)}
+                                        evalType={page.evalType}
+                                        numericScore={page.numericScore}
+                                        narrative={page.narrative}
+                                        formError={page.formError}
+                                        createPending={page.createEvidencePending}
+                                        onStartAdding={() => page.setAddingFor(learner.id)}
+                                        onEvalTypeChange={page.setEvalType}
+                                        onNumericScoreChange={page.setNumericScore}
+                                        onNarrativeChange={page.setNarrative}
+                                        onSubmit={() => page.handleSubmit(learner.id)}
+                                        onCancel={page.resetForm}
+                                    />
+                                ))}
+                            </div>
+
+                            {page.ineligibleLearners.length > 0 && (
+                                <div className="space-y-3 border-t pt-6 theme-border">
+                                    <div>
+                                        <h3 className="text-base font-semibold theme-text">
+                                            Not part of this lesson
+                                        </h3>
+                                        <p className="mt-1 text-sm theme-muted">
+                                            These learners were absent, excused, or sick for this lesson and are not counted as not yet observed.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {page.ineligibleLearners.map(learner => (
+                                            <div
+                                                key={learner.id}
+                                                className="theme-surface-muted flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between theme-border"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold theme-text">
+                                                        {learner.first_name} {learner.last_name}
+                                                    </p>
+                                                    <p className="text-sm theme-muted">
+                                                        {learner.admission_number}
+                                                    </p>
+                                                </div>
+                                                <Badge variant="default" size="sm">
+                                                    {attendanceStatusLabel(
+                                                        learner.attendance_status,
+                                                        learner.attendance_status_display,
+                                                    )}
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </Card>
+            </div>
 
             {page.showBulk && page.session && (
                 <BulkClassModal

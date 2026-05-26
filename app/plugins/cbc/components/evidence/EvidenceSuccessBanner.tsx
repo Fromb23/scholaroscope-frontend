@@ -1,4 +1,5 @@
 // app/plugins/cbc/components/evidence/EvidenceSuccessBanner.tsx
+import Link from 'next/link';
 import { CheckCircle, X } from 'lucide-react';
 import type { BulkClassEvidenceResult } from '@/app/plugins/cbc/types/cbc';
 
@@ -17,11 +18,18 @@ function getAttendanceCounts(result: BulkClassEvidenceResult) {
 }
 
 interface Props {
+    sessionId: number;
     result: BulkClassEvidenceResult;
+    onContinueRecording: () => void;
     onDismiss: () => void;
 }
 
-export function EvidenceSuccessBanner({ result, onDismiss }: Props) {
+export function EvidenceSuccessBanner({
+    sessionId,
+    result,
+    onContinueRecording,
+    onDismiss,
+}: Props) {
     const attendance = getAttendanceCounts(result);
     const attendanceParts = [
         typeof attendance.present === 'number' ? `${attendance.present} present` : null,
@@ -37,13 +45,31 @@ export function EvidenceSuccessBanner({ result, onDismiss }: Props) {
             <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
             <div className="flex-1 space-y-1">
                 <p className="text-sm text-green-700 font-medium">
-                    Class performance recorded for {result.created_count} of {result.eligible_count} learner{result.eligible_count !== 1 ? 's' : ''} in this lesson
+                    Class performance recorded. You can add more evidence or return to the completed lesson summary.
+                </p>
+                <p className="text-xs text-green-700/80">
+                    New records created for {result.created_count} of {result.eligible_count} eligible learner{result.eligible_count !== 1 ? 's' : ''}.
                 </p>
                 {attendanceParts.length > 0 && (
                     <p className="text-xs text-green-700/80">
                         Attendance: {attendanceParts.join(' · ')}
                     </p>
                 )}
+                <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
+                    <button
+                        type="button"
+                        onClick={onContinueRecording}
+                        className="theme-focus-ring inline-flex items-center justify-center rounded-lg border border-green-300 bg-white px-3 py-1.5 text-sm font-medium text-green-800 transition-colors hover:bg-green-100"
+                    >
+                        Continue recording evidence
+                    </button>
+                    <Link
+                        href={`/sessions/${sessionId}`}
+                        className="theme-focus-ring inline-flex items-center justify-center rounded-lg border border-green-300 px-3 py-1.5 text-sm font-medium text-green-800 transition-colors hover:bg-green-100"
+                    >
+                        Back to completed lesson
+                    </Link>
+                </div>
             </div>
             <button
                 onClick={onDismiss}
