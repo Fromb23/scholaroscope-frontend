@@ -29,7 +29,10 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AttendanceStatsStrip } from '@/app/core/components/sessions/AttendanceStats';
 import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable';
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
-import { clampDashboardScrollToContent } from '@/app/core/lib/dashboardScroll';
+import {
+    clampDashboardScrollToContent,
+    scrollDashboardSectionIntoView,
+} from '@/app/core/lib/dashboardScroll';
 import { RescheduleLessonModal } from '@/app/core/components/sessions/RescheduleLessonModal';
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
@@ -203,12 +206,7 @@ function CollapsibleSection({
 }
 
 function scrollToSection(sectionId: string) {
-    window.requestAnimationFrame(() => {
-        document.getElementById(sectionId)?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-        });
-    });
+    scrollDashboardSectionIntoView(sectionId);
 }
 
 export function SessionDetailPage() {
@@ -800,7 +798,7 @@ export function SessionDetailPage() {
     }
 
     return (
-        <div className="mx-auto w-full max-w-6xl space-y-6 pb-8">
+        <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 pb-8">
             <div className="space-y-3">
                 <Link href="/sessions">
                     <Button variant="ghost" size="sm">
