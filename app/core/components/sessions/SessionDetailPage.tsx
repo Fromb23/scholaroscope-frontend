@@ -798,7 +798,7 @@ export function SessionDetailPage() {
     }
 
     return (
-        <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 pb-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
             <div className="space-y-3">
                 <Link href="/sessions">
                     <Button variant="ghost" size="sm">
