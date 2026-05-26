@@ -30,7 +30,7 @@ function DashboardContent({
   onDismissNotice: () => void;
 }) {
   return (
-    <div className="theme-app-bg flex h-screen overflow-hidden">
+    <div className="theme-app-bg flex h-dvh overflow-hidden">
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Header />
@@ -55,6 +55,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, activeOrg, activeRole, loading, accessNotices, clearAccessNotices } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    document.documentElement.classList.add('dashboard-shell-lock');
+    document.body.classList.add('dashboard-shell-lock');
+
+    return () => {
+      document.documentElement.classList.remove('dashboard-shell-lock');
+      document.body.classList.remove('dashboard-shell-lock');
+    };
+  }, []);
 
   useEffect(() => {
     const currentPath = getCurrentPath();
@@ -88,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading || !user) {
     return (
-      <div className="theme-app-bg flex h-screen items-center justify-center">
+      <div className="theme-app-bg flex h-dvh items-center justify-center">
         <div className="text-center">
           <div
             className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
