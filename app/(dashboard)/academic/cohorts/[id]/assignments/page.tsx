@@ -96,11 +96,11 @@ function CohortSubjectWorkspaceCard({
     highlighted?: boolean;
 }) {
     return (
-        <Card className={highlighted ? 'border-blue-200 bg-blue-50/40 p-5' : 'p-5'}>
+        <Card className={highlighted ? 'theme-info-surface p-5' : 'p-5'}>
             <div className="space-y-4">
                 <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-lg font-semibold text-gray-900">{subjectName}</h2>
+                        <h2 className="text-lg font-semibold theme-text">{subjectName}</h2>
                         {highlighted ? (
                             <Badge variant="blue" size="sm">
                                 Your class subject
@@ -108,28 +108,28 @@ function CohortSubjectWorkspaceCard({
                         ) : null}
                     </div>
 
-                    <div className="space-y-1 text-sm text-gray-600">
+                    <div className="space-y-1 text-sm theme-muted">
                         <p>{cohortName}</p>
                         {curriculumName || curriculumType ? (
                             <p>
                                 {[curriculumName, curriculumType].filter(Boolean).join(' · ')}
                             </p>
                         ) : null}
-                        <p className="text-xs text-gray-500">Cohort subject {cohortSubjectId}</p>
+                        <p className="text-xs theme-subtle">Cohort subject {cohortSubjectId}</p>
                     </div>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                     {[
-                        { label: 'Total', value: totalCount, tone: 'text-gray-900' },
-                        { label: 'Draft', value: draftCount, tone: 'text-gray-900' },
-                        { label: 'Published', value: publishedCount, tone: 'text-gray-900' },
-                        { label: 'Due soon', value: dueSoonCount, tone: dueSoonCount > 0 ? 'text-amber-700' : 'text-gray-900' },
-                        { label: 'Overdue', value: overdueCount, tone: overdueCount > 0 ? 'text-red-700' : 'text-gray-900' },
+                        { label: 'Total', value: totalCount, tone: 'theme-text' },
+                        { label: 'Draft', value: draftCount, tone: 'theme-text' },
+                        { label: 'Published', value: publishedCount, tone: 'theme-text' },
+                        { label: 'Due soon', value: dueSoonCount, tone: dueSoonCount > 0 ? 'text-[color:var(--color-warning)]' : 'theme-text' },
+                        { label: 'Overdue', value: overdueCount, tone: overdueCount > 0 ? 'text-[color:var(--color-danger)]' : 'theme-text' },
                     ].map((metric) => (
-                        <div key={metric.label} className="rounded-lg border border-gray-200 bg-white px-3 py-3">
+                        <div key={metric.label} className="rounded-lg border theme-border theme-surface-elevated px-3 py-3">
                             <div className={`text-base font-semibold ${metric.tone}`}>{metric.value}</div>
-                            <div className="text-xs text-gray-500">{metric.label}</div>
+                            <div className="text-xs theme-subtle">{metric.label}</div>
                         </div>
                     ))}
                 </div>
@@ -360,22 +360,22 @@ export default function CohortAssignmentsPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <nav className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                        <Link href="/academic/cohorts" className="hover:text-blue-600">
+                    <nav className="flex flex-wrap items-center gap-2 text-sm theme-muted">
+                        <Link href="/academic/cohorts" className="theme-link">
                             Cohorts
                         </Link>
                         <span>/</span>
-                        <Link href={`/academic/cohorts/${cohortId}`} className="hover:text-blue-600">
+                        <Link href={`/academic/cohorts/${cohortId}`} className="theme-link">
                             {cohort?.name ?? `Cohort ${cohortId}`}
                         </Link>
                         <span>/</span>
-                        <span className="text-gray-900">Assignments</span>
+                        <span className="theme-text">Assignments</span>
                     </nav>
 
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Assignments</h1>
-                            <p className="mt-1 text-sm text-gray-500">
+                            <h1 className="text-3xl font-bold theme-text">Assignments</h1>
+                            <p className="mt-1 text-sm theme-muted">
                                 Cohort is the navigation context, and assignment work stays scoped to subject groups taught in this cohort.
                             </p>
                         </div>
@@ -402,14 +402,14 @@ export default function CohortAssignmentsPage() {
             ) : null}
 
             {resultMessage ? (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                <div className="theme-success-surface rounded-lg px-4 py-3 text-sm">
                     {resultMessage}
                 </div>
             ) : null}
 
             {isInstructor && visibleCohortSubjects.length === 0 ? (
                 <Card>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm theme-muted">
                         You do not have an assigned subject in this cohort.
                     </p>
                 </Card>
@@ -417,16 +417,16 @@ export default function CohortAssignmentsPage() {
 
             {showingWorkspaceSelection ? (
                 <div className="space-y-6">
-                    <Card className="border-gray-200 bg-gray-50/70">
+                    <Card className="theme-surface-muted">
                         <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                <BookOpen className="h-4 w-4 text-gray-500" />
+                            <div className="flex items-center gap-2 text-sm font-medium theme-text">
+                                <BookOpen className="h-4 w-4 theme-subtle" />
                                 Choose a class subject
                             </div>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm theme-muted">
                                 Open the assignment workspace for a specific class subject before working through drafts, publishing, or review.
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm theme-subtle">
                                 Assignment counts reflect the current filters and search.
                             </p>
                         </div>
@@ -458,21 +458,21 @@ export default function CohortAssignmentsPage() {
 
                     <Card>
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <div className="flex items-center gap-2 text-sm font-medium theme-muted">
                                 <Filter className="h-4 w-4" />
                                 Assignment filters
                             </div>
 
                             <div className="grid gap-4 lg:grid-cols-4">
                                 <div className="lg:col-span-2">
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">Search</label>
+                                    <label className="mb-1 block text-sm font-medium theme-text">Search</label>
                                     <div className="relative">
-                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 theme-subtle" />
                                         <input
                                             value={search}
                                             onChange={(event) => setSearch(event.target.value)}
                                             placeholder="Search assignments across visible class subjects"
-                                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="theme-focus-ring theme-input w-full rounded-lg py-2 pl-10 pr-4"
                                         />
                                     </div>
                                 </div>
@@ -503,21 +503,21 @@ export default function CohortAssignmentsPage() {
                 </div>
             ) : selectedCohortSubject ? (
                 <div className="space-y-6">
-                    <Card className="border-gray-200 bg-gray-50/70">
+                    <Card className="theme-border theme-surface-muted">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                             <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <h2 className="text-xl font-semibold text-gray-900">
+                                    <h2 className="text-xl font-semibold theme-text">
                                         {selectedCohortSubject.subject_name}
                                     </h2>
                                     <Badge variant="info" size="sm">
                                         {selectedCohortSubject.cohort_name}
                                     </Badge>
                                 </div>
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm theme-muted">
                                     This workspace stays scoped to one class subject. Search and filters apply inside this class only.
                                 </p>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm theme-muted">
                                     {[selectedCohortSubject.curriculum_name, selectedCohortSubject.curriculum_type]
                                         .filter(Boolean)
                                         .join(' · ')}
@@ -563,21 +563,21 @@ export default function CohortAssignmentsPage() {
 
                     <Card>
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <div className="flex items-center gap-2 text-sm font-medium theme-muted">
                                 <Filter className="h-4 w-4" />
                                 Filters
                             </div>
 
                             <div className="grid gap-4 lg:grid-cols-4">
                                 <div className="lg:col-span-2">
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">Search</label>
+                                    <label className="mb-1 block text-sm font-medium theme-muted">Search</label>
                                     <div className="relative">
-                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 theme-subtle" />
                                         <input
                                             value={search}
                                             onChange={(event) => setSearch(event.target.value)}
                                             placeholder="Search assignment title or instructions"
-                                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="theme-focus-ring theme-input w-full rounded-lg py-2 pl-10 pr-4"
                                         />
                                     </div>
                                 </div>
@@ -612,8 +612,8 @@ export default function CohortAssignmentsPage() {
                         <Card>
                             <div className="py-12 text-center">
                                 <ClipboardList className="mx-auto h-12 w-12 text-gray-300" />
-                                <h2 className="mt-3 text-lg font-semibold text-gray-900">No assignments found</h2>
-                                <p className="mt-2 text-sm text-gray-500">
+                                <h2 className="mt-3 text-lg font-semibold theme-text">No assignments found</h2>
+                                <p className="mt-2 text-sm theme-muted">
                                     {assignmentFiltersActive
                                         ? 'Adjust the current filters to widen the results.'
                                         : 'Create the first assignment for this class subject.'}
@@ -639,8 +639,8 @@ export default function CohortAssignmentsPage() {
             ) : (
                 <Card>
                     <div className="space-y-3">
-                        <h2 className="text-lg font-semibold text-gray-900">Class subject not available</h2>
-                        <p className="text-sm text-gray-600">
+                        <h2 className="text-lg font-semibold theme-text">Class subject not available</h2>
+                        <p className="text-sm theme-muted">
                             This class subject is not visible in the current cohort workspace.
                         </p>
                         <div>

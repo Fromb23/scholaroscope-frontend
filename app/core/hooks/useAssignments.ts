@@ -25,6 +25,8 @@ import type {
     AssignmentEvaluationUpdatePayload,
     AssignmentFilters,
     AssignmentGroup,
+    AssignmentGroupCopyFromPayload,
+    AssignmentGroupCopyFromResponse,
     AssignmentGroupCreatePayload,
     AssignmentGroupCreateResponse,
     AssignmentGroupBulkMemberCreatePayload,
@@ -34,6 +36,7 @@ import type {
     AssignmentGroupEvaluationCreatePayload,
     AssignmentGroupEvaluationFilters,
     AssignmentGroupEvaluationUpdatePayload,
+    AssignmentGroupReuseSource,
     AssignmentGroupMemberCreatePayload,
     AssignmentGroupSubmission,
     AssignmentGroupSubmissionCreatePayload,
@@ -341,6 +344,38 @@ export function useAssignmentGroupDetail(groupId: number | null, options?: UseAs
 
     return {
         group: query.data ?? null,
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
+export function useAssignmentGroupReuseSources(
+    assignmentId: number | null,
+    options?: UseAssignmentsOptions
+) {
+    const enabled = (options?.enabled ?? true) && typeof assignmentId === 'number' && assignmentId > 0;
+
+    const query = useQuery<AssignmentGroupReuseSource[], Error>({
+        queryKey: assignmentKeys.groupReuseSources(assignmentId),
+        queryFn: async () => {
+            if (!assignmentId) {
+                throw new Error('Assignment id is required.');
+            }
+
+            try {
+                const response = await assignmentsAPI.listGroupReuseSources(assignmentId);
+                return unwrapList(response);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load reusable group sets.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        sources: query.data ?? [],
         loading: query.isLoading,
         error: query.error?.message ?? null,
         refetch: query.refetch,
@@ -915,6 +950,35 @@ export function useAutoGenerateAssignmentGroups(assignmentId: number | null) {
                 assignmentId ?? firstGroup?.assignment ?? null,
                 firstGroup?.id ?? null
             );
+        },
+    });
+}
+
+export function useCopyAssignmentGroupsFromSource(assignmentId: number | null) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: AssignmentGroupCopyFromPayload) => {
+            if (!assignmentId) {
+                throw new Error('Assignment id is required.');
+            }
+
+            try {
+                return await assignmentsAPI.copyGroupsFromSource(assignmentId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to reuse assignment groups.'));
+            }
+        },
+        onSuccess: async (result: AssignmentGroupCopyFromResponse) => {
+            const firstGroup = result.groups[0] ?? null;
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                assignmentId ?? firstGroup?.assignment ?? null,
+                firstGroup?.id ?? null
+            );
+            await queryClient.invalidateQueries({
+                queryKey: assignmentKeys.groupReuseSources(assignmentId),
+            });
         },
     });
 }

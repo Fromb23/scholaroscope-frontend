@@ -314,6 +314,9 @@ export interface AssignmentGroup {
     member_count?: number;
     submission_count?: number;
     evaluation_count?: number;
+    latest_submission_at?: string | null;
+    latest_submission_status?: AssignmentGroupSubmissionStatus | null;
+    latest_evaluated_at?: string | null;
     members?: AssignmentGroupMember[];
     created_at: string;
     updated_at: string;
@@ -378,6 +381,32 @@ export interface AssignmentAutoGenerateGroupsPayload {
 export interface AssignmentAutoGenerateGroupsResponse {
     created_count: number;
     member_created_count: number;
+    groups: AssignmentGroup[];
+}
+
+export interface AssignmentGroupReuseSource {
+    id: number;
+    title: string;
+    starts_at: string | null;
+    due_at: string | null;
+    created_at: string;
+    group_count: number;
+    group_submission_count: number;
+    group_evaluation_count: number;
+    created_from_session: number | null;
+    created_from_session_title: string | null;
+    created_from_session_date: string | null;
+}
+
+export interface AssignmentGroupCopyFromPayload {
+    source_assignment_id: number;
+    replace_existing?: boolean;
+}
+
+export interface AssignmentGroupCopyFromResponse {
+    created_count: number;
+    member_created_count: number;
+    skipped_count: number;
     groups: AssignmentGroup[];
 }
 
@@ -512,6 +541,9 @@ export type AssignmentEvaluationListResponse =
 export type AssignmentGroupListResponse =
     | AssignmentGroup[]
     | PaginatedResponse<AssignmentGroup>;
+export type AssignmentGroupReuseSourceListResponse =
+    | AssignmentGroupReuseSource[]
+    | PaginatedResponse<AssignmentGroupReuseSource>;
 export type AssignmentGroupSubmissionListResponse =
     | AssignmentGroupSubmission[]
     | PaginatedResponse<AssignmentGroupSubmission>;

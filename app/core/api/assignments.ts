@@ -19,6 +19,8 @@ import type {
     AssignmentPublishPayload,
     AssignmentPublishResponse,
     AssignmentGroup,
+    AssignmentGroupCopyFromPayload,
+    AssignmentGroupCopyFromResponse,
     AssignmentGroupCreatePayload,
     AssignmentGroupCreateResponse,
     AssignmentGroupBulkMemberCreatePayload,
@@ -30,6 +32,7 @@ import type {
     AssignmentGroupEvaluationListResponse,
     AssignmentGroupEvaluationUpdatePayload,
     AssignmentGroupListResponse,
+    AssignmentGroupReuseSourceListResponse,
     AssignmentGroupMemberCreatePayload,
     AssignmentGroupSubmission,
     AssignmentGroupSubmissionCreatePayload,
@@ -168,6 +171,24 @@ export const assignmentsAPI = {
     ): Promise<AssignmentAutoGenerateGroupsResponse> => {
         const response = await apiClient.post<AssignmentAutoGenerateGroupsResponse>(
             `${ASSIGNMENTS_BASE}/${assignmentId}/groups/auto-generate/`,
+            data
+        );
+        return response.data;
+    },
+
+    listGroupReuseSources: async (assignmentId: number): Promise<AssignmentGroupReuseSourceListResponse> => {
+        const response = await apiClient.get<AssignmentGroupReuseSourceListResponse>(
+            `${ASSIGNMENTS_BASE}/${assignmentId}/groups/reuse-sources/`
+        );
+        return response.data;
+    },
+
+    copyGroupsFromSource: async (
+        assignmentId: number,
+        data: AssignmentGroupCopyFromPayload
+    ): Promise<AssignmentGroupCopyFromResponse> => {
+        const response = await apiClient.post<AssignmentGroupCopyFromResponse>(
+            `${ASSIGNMENTS_BASE}/${assignmentId}/groups/copy-from/`,
             data
         );
         return response.data;

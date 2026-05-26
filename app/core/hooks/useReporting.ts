@@ -24,6 +24,7 @@ import {
   ClassSummary,
   SubjectAnalysis,
   LearnerOverviewReportPayload,
+  LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
   LongitudinalStudentData,
   InstructorOverview,
@@ -609,6 +610,47 @@ export const useLearnerSubjectReport = (
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useLearnerAvailableReportScopes = (
+  learnerId: number | null,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [scopes, setScopes] = useState<LearnerAvailableReportScopesPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchScopes = useCallback(async () => {
+    if (!learnerId) {
+      setScopes(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setScopes(await learnerReportingAPI.getLearnerAvailableScopes(learnerId));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setScopes(null);
+      setError(extractErrorMessage(apiError, 'Failed to load available report scopes'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, learnerId]);
+
+  useEffect(() => { fetchScopes(); }, [fetchScopes]);
+  return { scopes, loading, error, errorStatus, refetch: fetchScopes };
 };
 
 export const useLearnerOverviewReport = (

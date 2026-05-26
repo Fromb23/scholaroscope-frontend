@@ -11,6 +11,7 @@ import { useStudent } from '@/app/core/hooks/useStudents';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohort } from '@/app/core/hooks/useCohortSubjects';
 import { useStudentAttendanceHistory } from '@/app/core/hooks/useSessions';
+import { useLearnerAvailableReportScopes } from '@/app/core/hooks/useReporting';
 import { useAuth } from '@/app/context/AuthContext';
 import { hasCapability, isAdminOrAbove } from '@/app/utils/permissions';
 import {
@@ -105,6 +106,11 @@ export default function LearnerDetailPage() {
     const canManageSubjectParticipation = isAdminOrAbove(user, activeRole);
     const canGenerateOverviewReport = !!user && (user.is_superadmin || activeRole === 'ADMIN');
     const canGenerateSubjectReport = !!user && (user.is_superadmin || activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
+    const {
+        scopes: reportScopes,
+        loading: reportScopesLoading,
+        error: reportScopesError,
+    } = useLearnerAvailableReportScopes(studentId, { enabled: canGenerateSubjectReport });
 
     const availableCohorts = useMemo(() => {
         if (!cohorts || !student) return [];
@@ -135,12 +141,20 @@ export default function LearnerDetailPage() {
         () => new Set((student?.current_subjects ?? []).map(subject => subject.id)),
         [student]
     );
-    const onlyReportSubject = student?.current_subjects?.length === 1
-        ? student.current_subjects[0]
+    const reportableSubjectScopes = useMemo(
+        () => reportScopes?.subject_scopes ?? [],
+        [reportScopes?.subject_scopes]
+    );
+    const reportableSubjectScopeIds = useMemo(
+        () => new Set(reportableSubjectScopes.map((scope) => scope.cohort_subject_id)),
+        [reportableSubjectScopes]
+    );
+    const onlyReportSubject = reportableSubjectScopes.length === 1
+        ? reportableSubjectScopes[0]
         : null;
     const defaultSubjectReportHref = buildLearnerSubjectReportHref(
         studentId,
-        onlyReportSubject?.id ?? null,
+        onlyReportSubject?.cohort_subject_id ?? null,
     );
     const overviewReportHref = useMemo(
         () => buildLearnerOverviewReportHref(studentId),
@@ -398,22 +412,36 @@ export default function LearnerDetailPage() {
                             </p>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                            <Link href={defaultSubjectReportHref}>
-                                <Button variant="secondary">
-                                    <FileBarChart className="mr-2 h-4 w-4" />
-                                    Generate Subject Report
-                                </Button>
-                            </Link>
-                            {canGenerateOverviewReport && (
+                        {reportScopesLoading ? (
+                            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
+                                Loading report scopes...
+                            </div>
+                        ) : reportScopesError ? (
+                            <div className="max-w-xl">
+                                <ErrorBanner message={reportScopesError} onDismiss={() => undefined} />
+                            </div>
+                        ) : reportableSubjectScopes.length === 0 ? (
+                            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
+                                No learner report scopes are available for your current reporting permissions.
+                            </div>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                <Link href={defaultSubjectReportHref}>
+                                    <Button variant="secondary">
+                                        <FileBarChart className="mr-2 h-4 w-4" />
+                                        Open Subject Report
+                                    </Button>
+                                </Link>
+                                {canGenerateOverviewReport && reportScopes?.can_view_overview ? (
                                 <Link href={overviewReportHref}>
                                     <Button>
                                         <FileText className="mr-2 h-4 w-4" />
-                                        Generate Overall Report
+                                        Open Overall Report
                                     </Button>
                                 </Link>
-                            )}
-                        </div>
+                                ) : null}
+                            </div>
+                        )}
                     </div>
                 </Card>
             )}
@@ -506,7 +534,7 @@ export default function LearnerDetailPage() {
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
                                         {subject.is_compulsory && <Badge variant="default" size="sm">Core</Badge>}
-                                        {canGenerateSubjectReport ? (
+                                        {canGenerateSubjectReport && reportableSubjectScopeIds.has(subject.id) ? (
                                             <Link href={buildLearnerSubjectReportHref(studentId, subject.id)}>
                                                 <Button variant="ghost" size="sm">
                                                     <FileBarChart className="h-4 w-4" />
