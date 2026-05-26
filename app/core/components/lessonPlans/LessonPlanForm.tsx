@@ -11,7 +11,6 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LessonPlanReferenceEditorSlot } from '@/app/core/components/lessonPlans/LessonPlanReferenceEditorSlot';
 import {
-    emptyReferencePage,
     referenceRecordToInput,
     validateReferencePages,
 } from '@/app/core/lib/lessonPlanReferences';
@@ -68,7 +67,7 @@ function cleanStringList(values: string[]): string[] {
 
 function buildInitialReferencePages(lessonPlan: LessonPlan): ReferencePageInput[] {
     const references = lessonPlan.selected_references.map(referenceRecordToInput);
-    return references.length > 0 ? references : [emptyReferencePage()];
+    return references.length > 0 ? references : [];
 }
 
 function RepeatableListField({

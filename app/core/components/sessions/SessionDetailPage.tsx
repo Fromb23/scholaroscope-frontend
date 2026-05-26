@@ -29,6 +29,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AttendanceStatsStrip } from '@/app/core/components/sessions/AttendanceStats';
 import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable';
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
+import { clampDashboardScrollToContent } from '@/app/core/lib/dashboardScroll';
 import { RescheduleLessonModal } from '@/app/core/components/sessions/RescheduleLessonModal';
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
@@ -389,6 +390,36 @@ export function SessionDetailPage() {
         setTaughtOutcomesOpen(true);
         setGuidedSection('taught-outcomes');
     }, [showTaughtOutcomesSection]);
+
+    const toggleChecklistOpen = useCallback(() => {
+        setChecklistOpen((current) => {
+            const next = !current;
+            if (!next) {
+                clampDashboardScrollToContent();
+            }
+            return next;
+        });
+    }, []);
+
+    const toggleAttendanceOpen = useCallback(() => {
+        setAttendanceOpen((current) => {
+            const next = !current;
+            if (!next) {
+                clampDashboardScrollToContent();
+            }
+            return next;
+        });
+    }, []);
+
+    const toggleTaughtOutcomesOpen = useCallback(() => {
+        setTaughtOutcomesOpen((current) => {
+            const next = !current;
+            if (!next) {
+                clampDashboardScrollToContent();
+            }
+            return next;
+        });
+    }, []);
 
     useEffect(() => {
         if (guidedSection === 'attendance' && showAttendanceSection) {
@@ -1083,7 +1114,7 @@ export function SessionDetailPage() {
                 summary={checklistSummary}
                 badge={<Badge variant="blue">{curriculumLabel}</Badge>}
                 open={checklistOpen}
-                onToggle={() => setChecklistOpen((current) => !current)}
+                onToggle={toggleChecklistOpen}
             >
                 <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1242,7 +1273,7 @@ export function SessionDetailPage() {
                     title={attendanceSectionTitle}
                     summary={attendanceSectionSummary}
                     open={attendanceOpen}
-                    onToggle={() => setAttendanceOpen((current) => !current)}
+                    onToggle={toggleAttendanceOpen}
                 >
                     <AttendanceTable
                         records={attendanceRecords}
@@ -1277,7 +1308,7 @@ export function SessionDetailPage() {
                     title="Confirm what was taught"
                     summary={taughtOutcomesSectionSummary}
                     open={taughtOutcomesOpen}
-                    onToggle={() => setTaughtOutcomesOpen((current) => !current)}
+                    onToggle={toggleTaughtOutcomesOpen}
                 >
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

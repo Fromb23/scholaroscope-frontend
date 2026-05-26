@@ -495,15 +495,16 @@ function GroupSummaryRow({
                             )}
                         </div>
 
-                        <div className="flex justify-end">
+                        <div className="flex flex-col sm:flex-row sm:justify-end">
                             <Button
                                 type="button"
                                 variant="secondary"
                                 onClick={onSave}
                                 disabled={saving}
+                                className="w-full sm:w-auto"
                             >
                                 <Save className="h-4 w-4" />
-                                {saving ? 'Saving...' : 'Save'}
+                                {saving ? 'Saving group...' : 'Save group'}
                             </Button>
                         </div>
                     </div>

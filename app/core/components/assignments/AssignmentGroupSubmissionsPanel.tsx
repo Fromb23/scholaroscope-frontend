@@ -231,13 +231,14 @@ function GroupSubmissionCard({
                                 />
                             </div>
 
-                            <div className="mt-4 flex justify-end">
+                            <div className="mt-4 flex flex-col sm:flex-row sm:justify-end">
                                 <Button
                                     type="button"
                                     onClick={handleRecordSubmission}
                                     disabled={createMutation.isPending}
+                                    className="w-full sm:w-auto"
                                 >
-                                    {createMutation.isPending ? 'Saving...' : 'Save Submission'}
+                                    {createMutation.isPending ? 'Saving submission...' : 'Save submission'}
                                 </Button>
                             </div>
                         </div>

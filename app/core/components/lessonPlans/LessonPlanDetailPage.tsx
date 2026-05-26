@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
+    AlertTriangle,
     ArrowLeft,
     CalendarDays,
     CheckCircle2,
@@ -14,7 +15,9 @@ import {
     FilePlus2,
     Link2,
     RotateCcw,
+    Users,
 } from 'lucide-react';
+import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -26,7 +29,10 @@ import { Select } from '@/app/components/ui/Select';
 import { LessonPlanReferences } from '@/app/core/components/lessonPlans/LessonPlanReferences';
 import { LessonPlanSections } from '@/app/core/components/lessonPlans/LessonPlanSections';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
-import { useLessonPlanDetail } from '@/app/core/hooks/useLessonPlans';
+import {
+    useAvailableLessonPlanParticipatingCohortSubjects,
+    useLessonPlanDetail,
+} from '@/app/core/hooks/useLessonPlans';
 import {
     canArchiveLessonPlan,
     canMarkLessonPlanReviewed,
@@ -35,6 +41,7 @@ import {
     canScheduleLesson,
     canRestoreLessonPlan,
     SCHEDULE_LESSON_SESSION_TYPE_OPTIONS,
+    type AvailableLessonPlanParticipatingCohortSubject,
     type LessonPlan,
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
@@ -112,6 +119,10 @@ function getLinkedLessonLabel(lessonPlan: LessonPlan): string {
     return 'Not scheduled yet';
 }
 
+function formatLearnerCount(count: number): string {
+    return `${count} learner${count === 1 ? '' : 's'}`;
+}
+
 export function LessonPlanDetailPage() {
     const params = useParams();
     const pathname = usePathname();
@@ -148,6 +159,7 @@ export function LessonPlanDetailPage() {
         session_type: ScheduleLessonSessionType;
         venue: string;
         description: string;
+        participating_cohort_subject_ids: number[];
     }>({
         session_date: '',
         start_time: '',
@@ -155,7 +167,45 @@ export function LessonPlanDetailPage() {
         session_type: 'LESSON',
         venue: '',
         description: '',
+        participating_cohort_subject_ids: [],
     });
+    const {
+        data: availableParticipatingCohortData,
+        cohortSubjects: availableParticipatingCohortSubjects,
+        loading: participatingCohortsLoading,
+        error: participatingCohortsError,
+        refetch: refetchParticipatingCohorts,
+    } = useAvailableLessonPlanParticipatingCohortSubjects(
+        lessonPlanId,
+        scheduleOpen && Boolean(lessonPlan) && !lessonPlan?.session,
+    );
+    const availableParticipatingCohortIds = useMemo(
+        () => new Set(availableParticipatingCohortSubjects.map((item) => item.cohort_subject_id)),
+        [availableParticipatingCohortSubjects]
+    );
+    const selectedParticipatingCohortSubjects = useMemo(
+        () => availableParticipatingCohortSubjects.filter((item) => (
+            scheduleForm.participating_cohort_subject_ids.includes(item.cohort_subject_id)
+        )),
+        [availableParticipatingCohortSubjects, scheduleForm.participating_cohort_subject_ids]
+    );
+
+    useEffect(() => {
+        setScheduleForm((current) => {
+            const nextSelectedIds = current.participating_cohort_subject_ids.filter((id) => (
+                availableParticipatingCohortIds.has(id)
+            ));
+
+            if (nextSelectedIds.length === current.participating_cohort_subject_ids.length) {
+                return current;
+            }
+
+            return {
+                ...current,
+                participating_cohort_subject_ids: nextSelectedIds,
+            };
+        });
+    }, [availableParticipatingCohortIds]);
 
     const noticeMessage = useMemo(() => {
         const notice = searchParams.get('notice');
@@ -270,6 +320,7 @@ export function LessonPlanDetailPage() {
             session_type: 'LESSON',
             venue: '',
             description: '',
+            participating_cohort_subject_ids: [],
         });
         setActionError(null);
         setActionSuccess(null);
@@ -353,21 +404,46 @@ export function LessonPlanDetailPage() {
         setActionSuccess(null);
 
         try {
-            await scheduleLesson({
+            const response = await scheduleLesson({
                 session_date: scheduleForm.session_date,
                 start_time: scheduleForm.start_time,
                 end_time: scheduleForm.end_time,
                 session_type: scheduleForm.session_type,
                 venue: scheduleForm.venue.trim() || undefined,
                 description: scheduleForm.description.trim() || undefined,
+                participating_cohort_subject_ids: scheduleForm.participating_cohort_subject_ids,
             });
+            await refetch();
             setScheduleOpen(false);
-            setActionSuccess('Lesson scheduled.');
+            setActionSuccess(
+                response.session.id
+                    ? 'Lesson scheduled. The lesson link and participating classes have been refreshed.'
+                    : 'Lesson scheduled.'
+            );
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Action failed.');
         } finally {
             setPendingActionKey(null);
         }
+    };
+
+    const toggleParticipatingCohortSelection = (
+        cohortSubject: AvailableLessonPlanParticipatingCohortSubject
+    ) => {
+        setScheduleForm((current) => {
+            const alreadySelected = current.participating_cohort_subject_ids.includes(
+                cohortSubject.cohort_subject_id
+            );
+
+            return {
+                ...current,
+                participating_cohort_subject_ids: alreadySelected
+                    ? current.participating_cohort_subject_ids.filter(
+                        (id) => id !== cohortSubject.cohort_subject_id
+                    )
+                    : [...current.participating_cohort_subject_ids, cohortSubject.cohort_subject_id],
+            };
+        });
     };
     const assistantContext = useMemo(() => ({
         pageKey: 'lesson_plan_detail',
@@ -867,7 +943,7 @@ export function LessonPlanDetailPage() {
                 isOpen={scheduleOpen}
                 onClose={() => setScheduleOpen(false)}
                 title={isInstructor ? 'Schedule This Lesson' : 'Schedule Lesson'}
-                size="md"
+                size="lg"
             >
                 <form onSubmit={handleSubmitSchedule} className="space-y-4">
                     <p className="text-sm text-gray-600">
@@ -939,6 +1015,143 @@ export function LessonPlanDetailPage() {
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Optional lesson notes"
                         />
+                    </div>
+
+                    <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-blue-600" />
+                                    <h3 className="text-sm font-semibold text-gray-900">
+                                        Participating classes
+                                    </h3>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                    Use this when another class is joining this lesson. You can
+                                    still adjust it later from the lesson page.
+                                </p>
+                            </div>
+
+                            <Badge variant="blue" size="sm">
+                                {selectedParticipatingCohortSubjects.length} selected
+                            </Badge>
+                        </div>
+
+                        <div className="rounded-lg border border-blue-200 bg-white p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-900">
+                                    Primary class
+                                </span>
+                                <Badge variant="default" size="sm">Included</Badge>
+                            </div>
+                            <div className="mt-2 text-sm text-gray-700">
+                                {lessonPlan.cohort_subject_name || lessonPlan.cohort_name || 'Current class'}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">
+                                {lessonPlan.subject_name || 'Subject'} ·{' '}
+                                {lessonPlan.cohort_name || 'Cohort'}
+                                {lessonPlan.academic_year_name
+                                    ? ` · ${lessonPlan.academic_year_name}`
+                                    : ''}
+                                {availableParticipatingCohortData
+                                    ? ` · ${formatLearnerCount(
+                                        availableParticipatingCohortData.source_learner_count
+                                    )}`
+                                    : ''}
+                            </div>
+                        </div>
+
+                        {participatingCohortsError ? (
+                            <ErrorBanner
+                                message={participatingCohortsError}
+                                onDismiss={() => {
+                                    void refetchParticipatingCohorts();
+                                }}
+                            />
+                        ) : null}
+
+                        {participatingCohortsLoading ? (
+                            <div className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-6">
+                                <LoadingSpinner
+                                    fullScreen={false}
+                                    message="Loading compatible participating classes..."
+                                />
+                            </div>
+                        ) : null}
+
+                        {!participatingCohortsLoading && !participatingCohortsError ? (
+                            availableParticipatingCohortSubjects.length > 0 ? (
+                                <div className="space-y-3">
+                                    {availableParticipatingCohortSubjects.map((cohortSubject) => {
+                                        const selected = scheduleForm.participating_cohort_subject_ids.includes(
+                                            cohortSubject.cohort_subject_id
+                                        );
+
+                                        return (
+                                            <label
+                                                key={cohortSubject.cohort_subject_id}
+                                                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
+                                                    selected
+                                                        ? 'border-blue-300 bg-blue-50'
+                                                        : 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/40'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selected}
+                                                    onChange={() => toggleParticipatingCohortSelection(cohortSubject)}
+                                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <div className="min-w-0 flex-1 space-y-2">
+                                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                        <div className="min-w-0">
+                                                            <div className="text-sm font-semibold text-gray-900">
+                                                                {cohortSubject.cohort_name}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500">
+                                                                {cohortSubject.subject_name}
+                                                                {cohortSubject.academic_year
+                                                                    ? ` · ${cohortSubject.academic_year}`
+                                                                    : ''}
+                                                            </div>
+                                                        </div>
+                                                        <Badge
+                                                            variant={selected ? 'blue' : 'default'}
+                                                            size="sm"
+                                                            className="self-start"
+                                                        >
+                                                            {formatLearnerCount(cohortSubject.learner_count)}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {cohortSubject.cohort_level || 'Class level'}
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-4 text-sm text-gray-600">
+                                    No additional compatible classes are available for this lesson
+                                    yet. You can still schedule the lesson and adjust participating
+                                    classes later from the lesson page.
+                                </div>
+                            )
+                        ) : null}
+
+                        {selectedParticipatingCohortSubjects.length > 0 ? (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <div>
+                                        Attendance will be seeded for the primary class and the
+                                        selected participating classes as soon as this lesson is
+                                        scheduled.
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
 
                     <div className="flex flex-wrap justify-end gap-3">

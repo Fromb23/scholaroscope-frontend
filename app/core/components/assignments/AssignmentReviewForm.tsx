@@ -215,9 +215,14 @@ export function AssignmentReviewForm({
                 </div>
             ) : null}
 
-            <div className="flex justify-end">
-                <Button type="button" onClick={handleSave} disabled={saving}>
-                    {saving ? 'Saving...' : evaluation ? 'Update Review' : 'Save Review'}
+            <div className="flex flex-col sm:flex-row sm:justify-end">
+                <Button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="w-full sm:w-auto"
+                >
+                    {saving ? 'Saving evaluation...' : 'Save evaluation'}
                 </Button>
             </div>
         </div>

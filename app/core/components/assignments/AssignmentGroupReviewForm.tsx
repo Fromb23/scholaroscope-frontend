@@ -537,12 +537,15 @@ export function AssignmentGroupReviewForm({
                     </Button>
                 ) : null}
 
-                <Button type="button" onClick={handleSave} disabled={saving}>
+                <Button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="w-full sm:w-auto"
+                >
                     {saving
-                        ? 'Saving...'
-                        : activeEvaluation
-                            ? 'Update Review'
-                            : 'Save Review'}
+                        ? 'Saving evaluation...'
+                        : 'Save evaluation'}
                 </Button>
             </div>
         </div>
