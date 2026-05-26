@@ -224,6 +224,12 @@ export const useSessions = (params?: SessionQueryParams) => {
     fetchSessions();
   }, [fetchSessions]);
 
+  useEffect(() => {
+    return subscribeToSessionDataChanged(() => {
+      void fetchSessions();
+    });
+  }, [fetchSessions]);
+
   const createSession = async (data: SessionFormData & { created_by: number }): Promise<Session> => {
     const newSession = await sessionAPI.create(data);
     setSessions(prev => [newSession, ...prev]);

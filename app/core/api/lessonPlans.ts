@@ -7,6 +7,7 @@ import {
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
 import type {
+    AvailableLessonPlanParticipatingCohortsResponse,
     GenerateLessonPlanFromSessionPayload,
     GenerateLessonPlanPayload,
     GenerateLessonPlanResponse,
@@ -106,6 +107,15 @@ export const lessonPlanAPI = {
         const response = await apiClient.post<ScheduleLessonResponse>(
             `${LESSON_PLANS_BASE_PATH}/${id}/schedule/`,
             payload
+        );
+        return response.data;
+    },
+
+    getAvailableParticipatingCohortSubjects: async (
+        id: number,
+    ): Promise<AvailableLessonPlanParticipatingCohortsResponse> => {
+        const response = await apiClient.get<AvailableLessonPlanParticipatingCohortsResponse>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/available-participating-cohort-subjects/`
         );
         return response.data;
     },

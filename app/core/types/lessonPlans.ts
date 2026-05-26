@@ -216,12 +216,35 @@ export interface ScheduleLessonPayload {
     session_type?: ScheduleLessonSessionType;
     venue?: string;
     description?: string;
+    participating_cohort_subject_ids?: number[];
 }
 
 export interface ScheduleLessonResponse {
     detail: string;
     lesson_plan: LessonPlan;
     session: Session;
+}
+
+export interface AvailableLessonPlanParticipatingCohortSubject {
+    cohort_subject_id: number;
+    cohort_id: number;
+    cohort_name: string;
+    cohort_level: string;
+    academic_year: string | null;
+    subject_id: number;
+    subject_name: string;
+    learner_count: number;
+}
+
+export interface AvailableLessonPlanParticipatingCohortsResponse {
+    lesson_plan_id: number;
+    source_cohort_subject: number | null;
+    source_cohort_name: string | null;
+    source_cohort_level: string | null;
+    source_learner_count: number;
+    subject: number | null;
+    subject_name: string | null;
+    results: AvailableLessonPlanParticipatingCohortSubject[];
 }
 
 export interface LessonPlanAssignmentDraftResponse {

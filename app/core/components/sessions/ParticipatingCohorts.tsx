@@ -5,6 +5,7 @@ import { Users, Plus, X, AlertTriangle, ChevronDown, ChevronRight, Info } from '
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { useSessionCohorts } from '@/app/core/hooks/useSessions';
+import { clampDashboardScrollToContent } from '@/app/core/lib/dashboardScroll';
 import type { SessionCohort } from '@/app/core/types/session';
 import { AddCohortModal } from './AddCohortModal';
 
@@ -127,12 +128,22 @@ export function ParticipatingCohorts({
         }
     };
 
+    const toggleOpen = () => {
+        setOpen((current) => {
+            const next = !current;
+            if (!next) {
+                clampDashboardScrollToContent();
+            }
+            return next;
+        });
+    };
+
     return (
         <>
             <div className="theme-card overflow-hidden rounded-xl">
                 <button
                     type="button"
-                    onClick={() => setOpen(v => !v)}
+                    onClick={toggleOpen}
                     className="theme-hover-surface flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
                 >
                     <Users className="h-4 w-4 theme-subtle shrink-0" />

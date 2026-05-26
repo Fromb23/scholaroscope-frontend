@@ -68,6 +68,15 @@ export function isReferencePageStarted(reference: ReferencePageInput): boolean {
     );
 }
 
+export function isReferencePageComplete(reference: ReferencePageInput): boolean {
+    return (
+        reference.resource_title.trim().length > 0
+        && hasPositiveInteger(reference.page_start)
+        && hasPositiveInteger(reference.page_end)
+        && Boolean(reference.outcome_id)
+    );
+}
+
 export function normalizeReferencePage(
     reference: ReferencePageInput,
     plannedOutcomes: Map<number, PlannedOutcome>,
@@ -188,5 +197,34 @@ export function validateReferencePages(
     return {
         error: null,
         payload,
+    };
+}
+
+export function getReferenceOutcomeCoverage(
+    references: ReferencePageInput[],
+    plannedOutcomes: PlannedOutcome[],
+): {
+    completeReferenceCount: number;
+    coveredOutcomeIds: Set<number>;
+    missingOutcomes: PlannedOutcome[];
+} {
+    const coveredOutcomeIds = new Set<number>();
+    let completeReferenceCount = 0;
+
+    references.forEach((reference) => {
+        if (!isReferencePageComplete(reference) || !reference.outcome_id) {
+            return;
+        }
+
+        completeReferenceCount += 1;
+        coveredOutcomeIds.add(reference.outcome_id);
+    });
+
+    return {
+        completeReferenceCount,
+        coveredOutcomeIds,
+        missingOutcomes: plannedOutcomes.filter(
+            (outcome) => !coveredOutcomeIds.has(outcome.outcome_id),
+        ),
     };
 }

@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
+import { emitLessonPlanDataChanged, subscribeToLessonPlanDataChanged } from '@/app/core/lib/lessonPlanEvents';
+import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type {
+    AvailableLessonPlanParticipatingCohortsResponse,
     GenerateLessonPlanPayload,
     GenerateLessonPlanResponse,
     LessonPlanAssignmentDraftResponse,
@@ -140,6 +143,12 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
 
     useEffect(() => {
         void fetchLessonPlans();
+    }, [fetchLessonPlans]);
+
+    useEffect(() => {
+        return subscribeToLessonPlanDataChanged(() => {
+            void fetchLessonPlans();
+        });
     }, [fetchLessonPlans]);
 
     const createLessonPlan = async (payload: LessonPlanCreatePayload): Promise<LessonPlan> => {
@@ -355,6 +364,8 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         try {
             const response = await lessonPlanAPI.schedule(lessonPlanId, payload);
             setLessonPlan(response.lesson_plan);
+            emitLessonPlanDataChanged();
+            emitSessionDataChanged();
             return response;
         } catch (err) {
             throw new Error(getLessonPlanDetailMessage(err as ApiError));
@@ -547,5 +558,54 @@ export const useLessonPlanCurriculumContext = (cohortSubjectId: number | null) =
         error,
         errorStatus,
         refetch: fetchCurriculumContext,
+    };
+};
+
+export const useAvailableLessonPlanParticipatingCohortSubjects = (
+    lessonPlanId: number | null,
+    enabled = true,
+) => {
+    const [data, setData] = useState<AvailableLessonPlanParticipatingCohortsResponse | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchAvailableParticipatingCohortSubjects = useCallback(async () => {
+        if (!lessonPlanId || !enabled) {
+            setData(null);
+            setLoading(false);
+            setError(null);
+            return null;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await lessonPlanAPI.getAvailableParticipatingCohortSubjects(lessonPlanId);
+            setData(response);
+            return response;
+        } catch (err) {
+            setData(null);
+            setError(
+                extractErrorMessage(
+                    err as ApiError,
+                    'We could not load compatible participating classes.'
+                )
+            );
+            return null;
+        } finally {
+            setLoading(false);
+        }
+    }, [enabled, lessonPlanId]);
+
+    useEffect(() => {
+        void fetchAvailableParticipatingCohortSubjects();
+    }, [fetchAvailableParticipatingCohortSubjects]);
+
+    return {
+        data,
+        cohortSubjects: data?.results ?? [],
+        loading,
+        error,
+        refetch: fetchAvailableParticipatingCohortSubjects,
     };
 };

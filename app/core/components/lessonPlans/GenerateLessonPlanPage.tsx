@@ -24,8 +24,8 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import {
-    emptyReferencePage,
-    hasPositiveInteger,
+    getReferenceOutcomeCoverage,
+    isReferencePageStarted,
     validateReferencePages,
 } from '@/app/core/lib/lessonPlanReferences';
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
@@ -68,7 +68,7 @@ export function GenerateLessonPlanPage() {
     const [termId, setTermId] = useState('');
     const [title, setTitle] = useState('');
     const [plannedOutcomes, setPlannedOutcomes] = useState<PlannedOutcome[]>([]);
-    const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([emptyReferencePage()]);
+    const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([]);
     const [useAi, setUseAi] = useState(true);
     const [submittingError, setSubmittingError] = useState<string | null>(null);
     const [showRetryWithoutAi, setShowRetryWithoutAi] = useState(false);
@@ -102,20 +102,21 @@ export function GenerateLessonPlanPage() {
         () => new Map(plannedOutcomes.map((outcome) => [outcome.outcome_id, outcome])),
         [plannedOutcomes]
     );
-    const completedReferenceCount = useMemo(
-        () => referencePages.filter((reference) => (
-            reference.resource_title.trim().length > 0
-            && hasPositiveInteger(reference.page_start)
-            && hasPositiveInteger(reference.page_end)
-            && Boolean(reference.outcome_id)
-        )).length,
-        [referencePages]
+    const referenceCoverage = useMemo(
+        () => getReferenceOutcomeCoverage(referencePages, plannedOutcomes),
+        [plannedOutcomes, referencePages]
     );
+    const completedReferenceCount = referenceCoverage.completeReferenceCount;
     const aiGenerationAvailability = selectedCohortSubjectId && curriculumLoading
         ? null
         : curriculumContext?.ai_generation_available ?? null;
     const aiGenerationAvailable = aiGenerationAvailability === true;
     const activeErrorMessage = submittingError || createError || generateError || null;
+    const showMissingReferenceWarning = (
+        plannedOutcomes.length > 0
+        && referenceCoverage.missingOutcomes.length > 0
+        && referencePages.some((reference) => isReferencePageStarted(reference))
+    );
     const guidanceSteps = [
         {
             step: 'Step 1',
@@ -137,7 +138,7 @@ export function GenerateLessonPlanPage() {
             step: 'Step 3',
             title: 'Attach references and pages',
             detail: completedReferenceCount > 0
-                ? `${completedReferenceCount} attached`
+                ? `${referenceCoverage.coveredOutcomeIds.size} of ${plannedOutcomes.length} outcomes referenced`
                 : 'Attach the pages the draft may use.',
             complete: completedReferenceCount > 0,
         },
@@ -157,7 +158,7 @@ export function GenerateLessonPlanPage() {
 
     useEffect(() => {
         setPlannedOutcomes([]);
-        setReferencePages([emptyReferencePage()]);
+        setReferencePages([]);
     }, [cohortSubjectId]);
 
     useEffect(() => {
@@ -420,6 +421,14 @@ export function GenerateLessonPlanPage() {
                                 Generate without AI
                             </Button>
                         </div>
+                    </div>
+                ) : null}
+
+                {showMissingReferenceWarning ? (
+                    <div className="theme-warning-surface rounded-xl p-4 text-sm">
+                        You selected {plannedOutcomes.length} outcome{plannedOutcomes.length === 1 ? '' : 's'}, but{' '}
+                        {referenceCoverage.missingOutcomes.length} {referenceCoverage.missingOutcomes.length === 1 ? 'still needs' : 'still need'} a reference.
+                        Add one for each outcome, or continue if that is intentional.
                     </div>
                 ) : null}
             </div>
