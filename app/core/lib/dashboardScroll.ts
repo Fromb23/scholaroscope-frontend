@@ -1,9 +1,30 @@
+const DASHBOARD_SCROLL_ROOT_ID = 'dashboard-scroll-root';
+
 export function getDashboardScrollContainer(): HTMLElement | null {
     if (typeof document === 'undefined') {
         return null;
     }
 
-    return document.querySelector('main');
+    return document.getElementById(DASHBOARD_SCROLL_ROOT_ID);
+}
+
+export function scrollDashboardSectionIntoView(sectionId: string): void {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.requestAnimationFrame(() => {
+        const target = document.getElementById(sectionId);
+        if (!target) {
+            return;
+        }
+
+        target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest',
+        });
+    });
 }
 
 export function clampDashboardScrollToContent(): void {

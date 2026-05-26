@@ -37,7 +37,10 @@ function DashboardContent({
         {notices.length > 0 && (
           <SuspendedNoticeBanner notices={notices} onDismiss={onDismissNotice} />
         )}
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6">
+        <main
+          id="dashboard-scroll-root"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6"
+        >
           <AssistantProvider>
             {children}
             <AssistantWidget />
