@@ -10,6 +10,7 @@ import {
     AlertCircle,
     BookOpen,
     CheckCircle,
+    FileBarChart,
     Target,
     User,
 } from 'lucide-react';
@@ -25,6 +26,11 @@ import {
     MasteryDistributionLegend,
     StrandProgressRow,
 } from '@/app/plugins/cbc/components/CBCComponents';
+import { useAuth } from '@/app/context/AuthContext';
+import {
+    buildLearnerOverviewReportHref,
+    buildLearnerSubjectReportHref,
+} from '@/app/core/lib/learnerReportingRoutes';
 import { useOutcomeProgress, useOutcomeProgressSummary } from '@/app/plugins/cbc/hooks/useCBC';
 import type {
     OutcomeProgress,
@@ -118,9 +124,22 @@ function focusCardTone(type: 'teaching' | 'remediation' | 'track') {
     }
 }
 
+function resolveSubjectReportHref(
+    learnerId: number,
+    subject: StudentProgressSubjectSummary,
+): string {
+    const cohortSubjectId = subject.cohort_subject_id
+        ?? subject.cohort_subject_ids?.[0]
+        ?? subject.cbc_cohort_subject_id
+        ?? subject.cbc_cohort_subject_ids?.[0]
+        ?? null;
+    return buildLearnerSubjectReportHref(learnerId, cohortSubjectId);
+}
+
 export default function StudentProgressPage() {
     const { studentId: raw } = useParams<{ studentId: string }>();
     const studentId = Number(raw);
+    const { user, activeRole } = useAuth();
     const { data: summary, isLoading: summaryLoading, error: summaryError, refetch } =
         useOutcomeProgressSummary(studentId);
     const { data: recordsRaw, isLoading: recordsLoading } = useOutcomeProgress(studentId);
@@ -156,6 +175,8 @@ export default function StudentProgressPage() {
         () => allStrands.filter(({ strand }) => strand.status === 'ON_TRACK'),
         [allStrands],
     );
+    const canGenerateOverviewReport = !!user && (user.is_superadmin || activeRole === 'ADMIN');
+    const canGenerateSubjectReport = !!user && (user.is_superadmin || activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
 
     const toggleStrand = useCallback((key: string) => {
         setExpandedStrands((prev) => {
@@ -230,6 +251,27 @@ export default function StudentProgressPage() {
                         </div>
                     </div>
                 </div>
+
+                {canGenerateSubjectReport ? (
+                    <div className="mt-4 flex flex-wrap gap-2 border-t pt-4 theme-border">
+                        {subjectGroups.length > 0 ? (
+                            <Link href={resolveSubjectReportHref(studentId, subjectGroups[0])}>
+                                <Button variant="secondary" size="md">
+                                    <FileBarChart className="h-4 w-4" />
+                                    Generate Subject Report
+                                </Button>
+                            </Link>
+                        ) : null}
+                        {canGenerateOverviewReport ? (
+                            <Link href={buildLearnerOverviewReportHref(studentId)}>
+                                <Button size="md">
+                                    <FileBarChart className="h-4 w-4" />
+                                    Generate Overall Report
+                                </Button>
+                            </Link>
+                        ) : null}
+                    </div>
+                ) : null}
             </Card>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -340,13 +382,26 @@ export default function StudentProgressPage() {
                     {subjectGroups.map((subject) => (
                         <div key={`${subject.subject_id}:${subject.subject_code}`} className="rounded-xl border theme-border">
                             <div className="theme-card-muted border-b px-4 py-3 theme-border">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Badge variant="indigo">{subject.subject_code}</Badge>
-                                    <h3 className="text-base font-semibold theme-text">{subject.subject_name}</h3>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Badge variant="indigo">{subject.subject_code}</Badge>
+                                            <h3 className="text-base font-semibold theme-text">{subject.subject_name}</h3>
+                                        </div>
+                                        <p className="mt-2 text-sm theme-muted">
+                                            {subject.total_selected_outcomes ?? subject.total_outcomes} selected · {subject.total_taught_outcomes ?? subject.taught_outcomes ?? 0} covered · {subject.total_mastered ?? subject.mastered_count ?? 0} mastered
+                                        </p>
+                                    </div>
+
+                                    {canGenerateSubjectReport ? (
+                                        <Link href={resolveSubjectReportHref(studentId, subject)}>
+                                            <Button variant="ghost" size="sm">
+                                                <FileBarChart className="h-4 w-4" />
+                                                Subject Report
+                                            </Button>
+                                        </Link>
+                                    ) : null}
                                 </div>
-                                <p className="mt-2 text-sm theme-muted">
-                                    {subject.total_selected_outcomes ?? subject.total_outcomes} selected · {subject.total_taught_outcomes ?? subject.taught_outcomes ?? 0} covered · {subject.total_mastered ?? subject.mastered_count ?? 0} mastered
-                                </p>
                             </div>
 
                             <div className="space-y-2 p-3">

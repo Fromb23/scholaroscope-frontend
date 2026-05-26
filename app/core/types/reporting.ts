@@ -694,3 +694,264 @@ export interface InstructorAttendanceRiskResponse {
   unique_learner_count: number;
   items: InstructorAttendanceRiskItem[];
 }
+
+export type ReportRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+export type ReportExportFormat = 'pdf' | 'xlsx' | 'csv';
+
+export interface LearnerReportLearnerRef {
+  id: number;
+  name: string;
+  admission_number: string;
+  primary_cohort_id: number | null;
+  primary_cohort_name: string | null;
+  status: string;
+}
+
+export interface LearnerReportCohortRef {
+  id: number;
+  name: string;
+  level: string | null;
+  academic_year: string | null;
+  curriculum: string | null;
+}
+
+export interface LearnerReportSubjectRef {
+  id: number;
+  name: string;
+  code: string;
+  level: string | null;
+}
+
+export interface LearnerReportInstructorContext {
+  source: string;
+  subject_source: string;
+  teaching_link_id: number | null;
+  cohort_subject_id: number;
+  cohort_name: string;
+  subject_name: string;
+  subject_code: string;
+  instructor_id?: number | null;
+  instructor_name?: string | null;
+  instructor_email?: string | null;
+}
+
+export interface LearnerReportAttendanceSection {
+  attendance_rate: number | null;
+  sessions_total: number;
+  sessions_attended: number;
+  sessions_missed: number;
+  late_count: number;
+  excused_count: number;
+  sick_count: number;
+  latest_session_date: string | null;
+}
+
+export interface LearnerReportAssignmentsSection {
+  assignments_total: number;
+  assignments_submitted: number;
+  assignments_reviewed: number;
+  assignments_missing: number;
+  assignment_completion_rate: number | null;
+  latest_due_at: string | null;
+}
+
+export interface LearnerReportLessonParticipationSection {
+  lessons_total: number;
+  lessons_attended: number;
+  lessons_missed: number;
+  lessons_with_evidence: number;
+  participation_rate: number | null;
+}
+
+export interface LearnerReportComputedGrade {
+  id: number;
+  term_id: number;
+  term_name: string | null;
+  final_score: number | null;
+  letter_grade: string | null;
+  letter_label: string | null;
+  grade_status: string | null;
+  policy_name: string | null;
+  computed_at: string | null;
+}
+
+export interface LearnerReportCbcResult {
+  weighted_score: number | null;
+  cbc_level: string | null;
+  cbc_code: string | null;
+  cbc_label: string | null;
+  cbc_points: number | null;
+  result_status: string | null;
+  missing_components: string[];
+  component_scores: Record<string, number | string | null>;
+  diagnostic_scores: Record<string, number | string | null>;
+  is_stale: boolean;
+  computed_at: string | null;
+  term_id: number | null;
+  term_name: string | null;
+}
+
+export interface LearnerReportAssessmentsSection {
+  assessment_count: number;
+  finalized_assessment_count: number;
+  latest_assessment_date: string | null;
+  numeric_average: number | null;
+  computed_grade: LearnerReportComputedGrade | null;
+  cbc_result: LearnerReportCbcResult | null;
+}
+
+export interface LearnerReportLatestEvidence {
+  observed_at: string;
+  learning_outcome_code: string;
+  learning_outcome_description: string;
+  evaluation_type: string;
+  source_type: string;
+}
+
+export interface LearnerReportStrandSummary {
+  strand_code: string;
+  strand_name: string;
+  selected_outcomes: number;
+  taught_outcomes: number;
+  mastered_outcomes: number;
+  coverage_percentage: number | null;
+  mastery_percentage: number | null;
+}
+
+export interface LearnerReportProgressSection {
+  outcomes_selected: number;
+  outcomes_taught: number;
+  outcomes_mastered: number;
+  outcome_coverage_percentage: number | null;
+  mastery_percentage: number | null;
+  evidence_count: number;
+  latest_observation_date: string | null;
+  mastery_distribution: Record<string, number>;
+  latest_evidence: LearnerReportLatestEvidence[];
+  strand_summaries: LearnerReportStrandSummary[];
+  session_evidence_count: number;
+  cbc_result: LearnerReportCbcResult | null;
+}
+
+export interface LearnerReportLearningGraphPoint {
+  period: string;
+  sessions_total: number;
+  sessions_attended: number;
+  assignments_total: number;
+  assignments_submitted: number;
+  evidence_count: number;
+  attendance_rate: number | null;
+  assignment_completion_rate: number | null;
+}
+
+export interface LearnerReportMetricItem {
+  type: string;
+  label: string;
+  metric: string;
+}
+
+export interface LearnerSubjectReportPayload {
+  report_type: 'learner_subject';
+  generated_at: string;
+  learner: LearnerReportLearnerRef;
+  cohort: LearnerReportCohortRef;
+  subject: LearnerReportSubjectRef;
+  cohort_subject: ReportCohortSubjectRef;
+  curriculum_type: string | null;
+  reporting_source: ReportingSource;
+  performance_source: PerformanceSource;
+  status: string | null;
+  note: string | null;
+  instructor_context: LearnerReportInstructorContext | null;
+  attendance: LearnerReportAttendanceSection;
+  assignments: LearnerReportAssignmentsSection;
+  lesson_participation: LearnerReportLessonParticipationSection;
+  assessments: LearnerReportAssessmentsSection;
+  progress: LearnerReportProgressSection;
+  learning_graph: {
+    points: LearnerReportLearningGraphPoint[];
+  };
+  strengths: LearnerReportMetricItem[];
+  weak_areas: LearnerReportMetricItem[];
+  risk_level: ReportRiskLevel;
+  recommended_actions: string[];
+}
+
+export interface LearnerOverviewSubjectSummary {
+  cohort_subject_id: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  curriculum_type: string | null;
+  reporting_source: ReportingSource;
+  attendance_rate: number | null;
+  assignment_completion_rate: number | null;
+  evidence_count: number;
+  mastery_percentage: number | null;
+  outcome_coverage_percentage: number | null;
+  numeric_average: number | null;
+  computed_grade: LearnerReportComputedGrade | null;
+  cbc_result: LearnerReportCbcResult | null;
+  risk_level: ReportRiskLevel;
+  strengths: LearnerReportMetricItem[];
+  weak_areas: LearnerReportMetricItem[];
+  note: string | null;
+}
+
+export interface LearnerOverviewReportPayload {
+  report_type: 'learner_overview';
+  generated_at: string;
+  learner: LearnerReportLearnerRef;
+  organization: ReportOrganization;
+  overall_attendance_rate: number | null;
+  overall_assignment_completion_rate: number | null;
+  subject_count: number;
+  evidence_count: number;
+  subject_summaries: LearnerOverviewSubjectSummary[];
+  strongest_subjects: LearnerOverviewSubjectSummary[];
+  subjects_needing_support: LearnerOverviewSubjectSummary[];
+  subjects_on_track: LearnerOverviewSubjectSummary[];
+  participation_risk_level: ReportRiskLevel;
+  learning_risk_level: ReportRiskLevel;
+  overall_recommendations: string[];
+}
+
+export interface ClassSubjectLearnerRow extends LearnerOverviewSubjectSummary {
+  learner: LearnerReportLearnerRef;
+}
+
+export interface ClassSubjectReportPayload {
+  report_type: 'class_subject';
+  generated_at: string;
+  cohort: LearnerReportCohortRef;
+  subject: LearnerReportSubjectRef;
+  cohort_subject: {
+    id: number;
+    cohort_id: number;
+    subject_id: number;
+  };
+  learner_count: number;
+  attendance_trend: {
+    attendance_rate: number | null;
+    sessions_total: number;
+    sessions_attended: number;
+  };
+  assignment_summary: {
+    assignments_total: number;
+    assignments_submitted: number;
+    assignment_completion_rate: number | null;
+  };
+  progress: {
+    outcomes_selected: number;
+    outcomes_mastered: number;
+    mastery_percentage: number | null;
+    evidence_count: number;
+  };
+  learner_rows: ClassSubjectLearnerRow[];
+  learners_needing_support: ClassSubjectLearnerRow[];
+  learners_on_track: ClassSubjectLearnerRow[];
+  learners_exceeding_expectation: ClassSubjectLearnerRow[];
+  recommended_teaching_interventions: string[];
+}

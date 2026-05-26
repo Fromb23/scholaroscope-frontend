@@ -1,8 +1,13 @@
 import { GradePolicy, ComputedGradeDTO } from '../types/gradePolicy';
 import { apiClient } from './client';
 import {
+  getDownloadFileName,
+  normalizeBlobError,
+} from './downloads';
+import {
   AttendanceSummary,
   AttendanceRiskLevel,
+  ClassSubjectReportPayload,
   GradeSummary,
   CohortSummary,
   SubjectSummary,
@@ -19,7 +24,10 @@ import {
   InstructorCohortSubjectTeachingActivityReport,
   InstructorAttendanceRiskItem,
   InstructorAttendanceRiskResponse,
+  LearnerOverviewReportPayload,
+  LearnerSubjectReportPayload,
   ComputeResponse,
+  ReportExportFormat,
   ReportFilters,
 } from '@/app/core/types/reporting';
 
@@ -141,6 +149,33 @@ function normalizeInstructorAttendanceRiskResponse(value: unknown): InstructorAt
     unique_learner_count: toNumber(rawUniqueLearnerCount, uniqueLearnerCount),
     items,
   };
+}
+
+interface ReportDownloadResponse {
+  blob: Blob;
+  fileName: string;
+}
+
+async function fetchReportDownload(
+  url: string,
+  params: Record<string, string | number | undefined>,
+  fallbackFileName: string,
+): Promise<ReportDownloadResponse> {
+  try {
+    const response = await apiClient.get<Blob>(url, {
+      params,
+      responseType: 'blob',
+    });
+    return {
+      blob: response.data,
+      fileName: getDownloadFileName(
+        response.headers['content-disposition'],
+        fallbackFileName,
+      ),
+    };
+  } catch (error) {
+    return normalizeBlobError(error);
+  }
 }
 
 // ============================================================================
@@ -424,6 +459,100 @@ export const instructorReportsAPI = {
   },
 };
 
+export const learnerReportingAPI = {
+  getLearnerSubjectReport: async (
+    learnerId: number,
+    params: {
+      cohortSubjectId?: number | null;
+      subjectId?: number | null;
+      cohortId?: number | null;
+    },
+  ) => {
+    const response = await apiClient.get<LearnerSubjectReportPayload>(
+      `/reporting/learners/${learnerId}/subject-report/`,
+      {
+        params: {
+          cohort_subject_id: params.cohortSubjectId ?? undefined,
+          subject_id: params.subjectId ?? undefined,
+          cohort_id: params.cohortId ?? undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  exportLearnerSubjectReport: async (
+    learnerId: number,
+    params: {
+      format: ReportExportFormat;
+      cohortSubjectId?: number | null;
+      subjectId?: number | null;
+      cohortId?: number | null;
+    },
+  ) => fetchReportDownload(
+    `/reporting/learners/${learnerId}/subject-report/export/`,
+    {
+      format: params.format,
+      cohort_subject_id: params.cohortSubjectId ?? undefined,
+      subject_id: params.subjectId ?? undefined,
+      cohort_id: params.cohortId ?? undefined,
+    },
+    `learner-subject-report-${learnerId}.${params.format}`,
+  ),
+
+  getLearnerOverviewReport: async (learnerId: number) => {
+    const response = await apiClient.get<LearnerOverviewReportPayload>(
+      `/reporting/learners/${learnerId}/overview-report/`
+    );
+    return response.data;
+  },
+
+  exportLearnerOverviewReport: async (
+    learnerId: number,
+    format: ReportExportFormat,
+  ) => fetchReportDownload(
+    `/reporting/learners/${learnerId}/overview-report/export/`,
+    { format },
+    `learner-overview-report-${learnerId}.${format}`,
+  ),
+
+  getClassSubjectReport: async (
+    cohortId: number,
+    params: {
+      cohortSubjectId?: number | null;
+      subjectId?: number | null;
+    },
+  ) => {
+    const response = await apiClient.get<ClassSubjectReportPayload>(
+      `/reporting/classes/${cohortId}/subject-report/`,
+      {
+        params: {
+          cohort_subject_id: params.cohortSubjectId ?? undefined,
+          subject_id: params.subjectId ?? undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  exportClassSubjectReport: async (
+    cohortId: number,
+    params: {
+      format: ReportExportFormat;
+      cohortSubjectId?: number | null;
+      subjectId?: number | null;
+    },
+  ) => fetchReportDownload(
+    `/reporting/classes/${cohortId}/subject-report/export/`,
+    {
+      format: params.format,
+      cohort_subject_id: params.cohortSubjectId ?? undefined,
+      subject_id: params.subjectId ?? undefined,
+    },
+    `class-subject-report-${cohortId}.${params.format}`,
+  ),
+};
+
 export const reportsAPI = {
   getAdminOverview: adminReportsAPI.getOverview,
   getAdminCohortSummary: adminReportsAPI.getCohortSummary,
@@ -434,6 +563,12 @@ export const reportsAPI = {
   getInstructorCohortSubjectLearners: instructorReportsAPI.getCohortSubjectLearners,
   getInstructorCohortSubjectPerformance: instructorReportsAPI.getCohortSubjectPerformance,
   getInstructorCohortSubjectTeachingActivity: instructorReportsAPI.getCohortSubjectTeachingActivity,
+  getLearnerSubjectReport: learnerReportingAPI.getLearnerSubjectReport,
+  exportLearnerSubjectReport: learnerReportingAPI.exportLearnerSubjectReport,
+  getLearnerOverviewReport: learnerReportingAPI.getLearnerOverviewReport,
+  exportLearnerOverviewReport: learnerReportingAPI.exportLearnerOverviewReport,
+  getClassSubjectReport: learnerReportingAPI.getClassSubjectReport,
+  exportClassSubjectReport: learnerReportingAPI.exportClassSubjectReport,
   getDashboardOverview: async () => {
     return adminReportsAPI.getOverview();
   },
