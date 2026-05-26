@@ -235,7 +235,7 @@ export default function CohortAssignmentDetailPage() {
 
     if (!assignment) {
         return (
-            <div className="rounded-lg border border-gray-200 bg-white px-4 py-6 text-sm text-gray-600">
+            <div className="rounded-lg border theme-border theme-surface-elevated px-4 py-6 text-sm theme-muted">
                 Assignment not found.
             </div>
         );
@@ -316,20 +316,20 @@ export default function CohortAssignmentDetailPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <nav className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                        <Link href="/academic/cohorts" className="hover:text-blue-600">
+                    <nav className="flex flex-wrap items-center gap-2 text-sm theme-muted">
+                        <Link href="/academic/cohorts" className="theme-link">
                             Cohorts
                         </Link>
                         <span>/</span>
-                        <Link href={`/academic/cohorts/${cohortId}`} className="hover:text-blue-600">
+                        <Link href={`/academic/cohorts/${cohortId}`} className="theme-link">
                             {cohort?.name ?? assignment.cohort_name}
                         </Link>
                         <span>/</span>
-                        <Link href={assignmentsHref} className="hover:text-blue-600">
+                        <Link href={assignmentsHref} className="theme-link">
                             Assignments
                         </Link>
                         <span>/</span>
-                        <span className="text-gray-900">{assignment.title}</span>
+                        <span className="theme-text">{assignment.title}</span>
                     </nav>
 
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -349,8 +349,8 @@ export default function CohortAssignmentDetailPage() {
                                 ) : null}
                             </div>
                             <div>
-                                <h1 className="text-3xl font-bold text-gray-900">{assignment.title}</h1>
-                                <p className="mt-1 text-sm text-gray-500">
+                                <h1 className="text-3xl font-bold theme-text">{assignment.title}</h1>
+                                <p className="mt-1 text-sm theme-muted">
                                     {assignment.subject_name} · {assignment.cohort_name}
                                 </p>
                             </div>
@@ -398,7 +398,7 @@ export default function CohortAssignmentDetailPage() {
             ) : null}
 
             {successMessage ? (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                <div className="theme-success-surface rounded-lg px-4 py-3 text-sm">
                     {successMessage}
                 </div>
             ) : null}
@@ -462,10 +462,10 @@ export default function CohortAssignmentDetailPage() {
             </div>
 
             {showSessionScopeNote ? (
-                <Card className="border-blue-200 bg-blue-50/70">
+                <Card className="theme-info-surface">
                     <div className="space-y-1">
-                        <h2 className="text-base font-semibold text-blue-900">Session-based learner scope</h2>
-                        <p className="text-sm text-blue-800">
+                        <h2 className="text-base font-semibold theme-text">Session-based learner scope</h2>
+                        <p className="text-sm theme-muted">
                             This assignment can include learners from all active classes linked to the source session.
                             {participatingCohortCount > 1 ? ` (${participatingCohortCount} active classes)` : ''}
                         </p>
@@ -482,8 +482,8 @@ export default function CohortAssignmentDetailPage() {
                             onClick={() => setActiveTab(tab.value)}
                             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                                 activeTab === tab.value
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'theme-info-surface'
+                                    : 'theme-surface-muted theme-muted'
                             }`}
                         >
                             {tab.label}
@@ -497,81 +497,81 @@ export default function CohortAssignmentDetailPage() {
                     <Card>
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Cohort</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.cohort_name}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-subtle">Cohort</div>
+                                <div className="text-sm font-medium theme-text">{assignment.cohort_name}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Subject</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.subject_name}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-subtle">Subject</div>
+                                <div className="text-sm font-medium theme-text">{assignment.subject_name}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Instructor</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.instructor_name}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-subtle">Instructor</div>
+                                <div className="text-sm font-medium theme-text">{assignment.instructor_name}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Delivery Mode</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.delivery_mode}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Delivery Mode</div>
+                                <div className="text-sm font-medium theme-text">{assignment.delivery_mode}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Starts At</div>
-                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.starts_at)}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Starts At</div>
+                                <div className="text-sm font-medium theme-text">{formatDateTime(assignment.starts_at)}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Due At</div>
-                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.due_at)}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Due At</div>
+                                <div className="text-sm font-medium theme-text">{formatDateTime(assignment.due_at)}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Curriculum</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.curriculum_name}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Curriculum</div>
+                                <div className="text-sm font-medium theme-text">{assignment.curriculum_name}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Curriculum Type</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.curriculum_type}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Curriculum Type</div>
+                                <div className="text-sm font-medium theme-text">{assignment.curriculum_type}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Subject Group</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.subject_name}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Subject Group</div>
+                                <div className="text-sm font-medium theme-text">{assignment.subject_name}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Evaluation</div>
-                                <div className="text-sm font-medium text-gray-900">{assignment.evaluation_type}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Evaluation</div>
+                                <div className="text-sm font-medium theme-text">{assignment.evaluation_type}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Total Marks</div>
-                                <div className="text-sm font-medium text-gray-900">
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Total Marks</div>
+                                <div className="text-sm font-medium theme-text">
                                     {assignment.total_marks != null ? assignment.total_marks : 'Not used'}
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Rubric Scale</div>
-                                <div className="text-sm font-medium text-gray-900">
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Rubric Scale</div>
+                                <div className="text-sm font-medium theme-text">
                                     {assignment.rubric_scale_name ?? 'Not used'}
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Created</div>
-                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.created_at)}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Created</div>
+                                <div className="text-sm font-medium theme-text">{formatDateTime(assignment.created_at)}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Published</div>
-                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.published_at)}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Published</div>
+                                <div className="text-sm font-medium theme-text">{formatDateTime(assignment.published_at)}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Closed</div>
-                                <div className="text-sm font-medium text-gray-900">{formatDateTime(assignment.closed_at)}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Closed</div>
+                                <div className="text-sm font-medium theme-text">{formatDateTime(assignment.closed_at)}</div>
                             </div>
                             {assignment.created_from_session_title ? (
                                 <div className="space-y-1">
-                                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Linked Lesson</div>
-                                    <div className="text-sm font-medium text-gray-900">
+                                    <div className="text-xs font-medium uppercase tracking-wide theme-muted">Linked Lesson</div>
+                                    <div className="text-sm font-medium theme-text">
                                         {assignment.created_from_session_title}
                                     </div>
                                 </div>
                             ) : null}
                             {showSessionScopeNote ? (
                                 <div className="space-y-1">
-                                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Participation Scope</div>
-                                    <div className="text-sm font-medium text-gray-900">
+                                    <div className="text-xs font-medium uppercase tracking-wide theme-muted">Participation Scope</div>
+                                    <div className="text-sm font-medium theme-text">
                                         {participatingCohortCount > 0
                                             ? `${participatingCohortCount} active class${participatingCohortCount === 1 ? '' : 'es'}`
                                             : 'Source session scope'}
@@ -583,8 +583,8 @@ export default function CohortAssignmentDetailPage() {
 
                     <Card>
                         <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-gray-900">Delivery Workflow</h2>
-                            <p className="text-sm leading-6 text-gray-600">
+                            <h2 className="text-lg font-semibold theme-text">Delivery Workflow</h2>
+                            <p className="text-sm leading-6 theme-muted">
                                 {assignment.delivery_mode === 'GROUP'
                                     ? 'Group assignments record submissions and evaluations at group level. CBC evidence can be projected to group members when the evaluation projection mode allows it.'
                                     : 'Individual assignments track learner recipients, learner submissions, and learner-level evaluations inside the selected subject group.'}
@@ -594,8 +594,8 @@ export default function CohortAssignmentDetailPage() {
 
                     <Card>
                         <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-gray-900">Instructions</h2>
-                            <p className="whitespace-pre-wrap text-sm leading-6 text-gray-600">
+                            <h2 className="text-lg font-semibold theme-text">Instructions</h2>
+                            <p className="whitespace-pre-wrap text-sm leading-6 theme-muted">
                                 {assignment.instructions || 'No instructions provided.'}
                             </p>
                         </div>
@@ -604,25 +604,25 @@ export default function CohortAssignmentDetailPage() {
                     <Card>
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-gray-500" />
-                                <h2 className="text-lg font-semibold text-gray-900">Outcomes</h2>
+                                <BookOpen className="h-4 w-4 theme-subtle" />
+                                <h2 className="text-lg font-semibold theme-text">Outcomes</h2>
                             </div>
 
                             {assignment.outcomes.length === 0 ? (
-                                <p className="text-sm text-gray-500">No outcome metadata is attached to this assignment.</p>
+                                <p className="text-sm theme-muted">No outcome metadata is attached to this assignment.</p>
                             ) : (
                                 <div className="grid gap-3 md:grid-cols-2">
                                     {assignment.outcomes.map((outcome) => (
-                                        <div key={outcome.id} className="rounded-lg border border-gray-200 p-4">
+                                        <div key={outcome.id} className="rounded-lg border theme-border p-4">
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <div className="text-sm font-semibold text-gray-900">{outcome.outcome_label}</div>
+                                                <div className="text-sm font-semibold theme-text">{outcome.outcome_label}</div>
                                                 {outcome.plugin ? (
                                                     <Badge variant={outcome.plugin === 'cbc' ? 'green' : 'default'} size="sm">
                                                         {outcome.plugin}
                                                     </Badge>
                                                 ) : null}
                                             </div>
-                                            <div className="mt-1 text-xs text-gray-500">
+                                            <div className="mt-1 text-xs theme-subtle">
                                                 {outcome.outcome_key} · Weight {outcome.weight}
                                             </div>
                                         </div>
@@ -636,8 +636,8 @@ export default function CohortAssignmentDetailPage() {
                         <Card>
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div className="space-y-1">
-                                    <h2 className="text-lg font-semibold text-gray-900">Publish Draft</h2>
-                                    <p className="text-sm text-gray-500">
+                                    <h2 className="text-lg font-semibold theme-text">Publish Draft</h2>
+                                    <p className="text-sm theme-muted">
                                         {assignment.delivery_mode === 'GROUP'
                                             ? 'Publish this assignment workspace now, then create groups and add members from the Groups tab.'
                                             : assignment.created_from_session != null
@@ -660,22 +660,22 @@ export default function CohortAssignmentDetailPage() {
                     {recipientsQuery.loading ? (
                         <LoadingSpinner fullScreen={false} message="Loading recipients..." />
                     ) : recipientsQuery.recipients.length === 0 ? (
-                        <div className="py-10 text-center text-sm text-gray-500">
+                        <div className="py-10 text-center text-sm theme-muted">
                             No recipients have been assigned yet.
                         </div>
                     ) : (
                         <>
                             <div className="space-y-3 md:hidden">
                                 {recipientsQuery.recipients.map((recipient) => (
-                                    <div key={recipient.id} className="rounded-lg border border-gray-200 p-4">
+                                    <div key={recipient.id} className="rounded-lg border theme-border p-4">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <h2 className="text-sm font-semibold text-gray-900">{recipient.student_name}</h2>
+                                            <h2 className="text-sm font-semibold theme-text">{recipient.student_name}</h2>
                                             <Badge variant={getRecipientStatusBadgeVariant(recipient.status)} size="sm">
                                                 {recipient.status}
                                             </Badge>
                                         </div>
-                                        <p className="mt-1 text-xs text-gray-500">{recipient.admission_number}</p>
-                                        <div className="mt-3 space-y-1 text-sm text-gray-600">
+                                        <p className="mt-1 text-xs theme-muted">{recipient.admission_number}</p>
+                                        <div className="mt-3 space-y-1 text-sm theme-muted">
                                             <div>Assigned: {formatDateTime(recipient.assigned_at)}</div>
                                             <div>Submitted: {formatDateTime(recipient.submitted_at)}</div>
                                             <div>Reviewed: {formatDateTime(recipient.reviewed_at)}</div>
@@ -727,7 +727,7 @@ export default function CohortAssignmentDetailPage() {
                         </Card>
                     ) : submissionsQuery.submissions.length === 0 ? (
                         <Card>
-                            <div className="py-10 text-center text-sm text-gray-500">
+                            <div className="py-10 text-center text-sm theme-muted">
                                 No learner submissions have been recorded yet.
                             </div>
                         </Card>
@@ -742,7 +742,7 @@ export default function CohortAssignmentDetailPage() {
                                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="space-y-1">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <h2 className="text-lg font-semibold text-gray-900">
+                                                    <h2 className="text-lg font-semibold theme-text">
                                                         {submission.student_name}
                                                     </h2>
                                                     {recipient ? (
@@ -760,24 +760,24 @@ export default function CohortAssignmentDetailPage() {
                                                         <Badge variant="green" size="sm">Reviewed</Badge>
                                                     ) : null}
                                                 </div>
-                                                <p className="text-sm text-gray-500">
+                                                <p className="text-sm theme-muted">
                                                     Submitted {formatDateTime(submission.submitted_at)}
                                                 </p>
                                             </div>
 
                                             {evaluation ? (
-                                                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                                                <div className="theme-success-surface rounded-lg px-3 py-2 text-sm">
                                                     {summarizeEvaluation(evaluation, assignment.total_marks)}
                                                 </div>
                                             ) : null}
                                         </div>
 
-                                        <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                            <div className="text-sm font-medium text-gray-900">Response</div>
-                                            <p className="whitespace-pre-wrap text-sm leading-6 text-gray-600">
+                                        <div className="space-y-2 rounded-lg border theme-border theme-surface-muted p-4">
+                                            <div className="text-sm font-medium theme-text">Response</div>
+                                            <p className="whitespace-pre-wrap text-sm leading-6 theme-muted">
                                                 {submission.text_response || 'No text response submitted.'}
                                             </p>
-                                            <p className="text-xs text-gray-500">
+                                            <p className="text-xs theme-muted">
                                                 Attachments: {submission.attachment_metadata.length}
                                             </p>
                                         </div>
@@ -806,7 +806,7 @@ export default function CohortAssignmentDetailPage() {
                         </Card>
                     ) : evaluationsQuery.evaluations.length === 0 ? (
                         <Card>
-                            <div className="py-10 text-center text-sm text-gray-500">
+                            <div className="py-10 text-center text-sm theme-muted">
                                 No evaluations have been recorded yet.
                             </div>
                         </Card>
@@ -821,7 +821,7 @@ export default function CohortAssignmentDetailPage() {
                                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="space-y-1">
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <h2 className="text-lg font-semibold text-gray-900">
+                                                    <h2 className="text-lg font-semibold theme-text">
                                                         {submission?.student_name ?? recipient?.student_name ?? `Learner ${evaluation.student}`}
                                                     </h2>
                                                     {recipient ? (
@@ -838,18 +838,18 @@ export default function CohortAssignmentDetailPage() {
                                                         <Badge variant="yellow" size="sm">Evidence pending</Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-sm text-gray-500">
+                                                <p className="text-sm theme-muted">
                                                     Reviewed {formatDateTime(evaluation.evaluated_at)}
                                                 </p>
                                             </div>
 
-                                            <div className="text-sm font-medium text-gray-900">
+                                            <div className="text-sm font-medium theme-text">
                                                 {summarizeEvaluation(evaluation, assignment.total_marks)}
                                             </div>
                                         </div>
 
                                         {evaluation.narrative ? (
-                                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                                            <div className="rounded-lg border theme-border theme-surface-muted p-4 text-sm theme-muted">
                                                 {evaluation.narrative}
                                             </div>
                                         ) : null}

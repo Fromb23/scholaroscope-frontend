@@ -47,6 +47,11 @@ const PROJECTION_MODE_OPTIONS: Array<{ value: AssignmentEvidenceProjectionMode; 
     { value: 'RECORD_ONLY', label: 'Record only, no competency evidence' },
 ];
 
+const textareaClassName = [
+    'theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-4 py-3',
+    'placeholder:text-[color:var(--color-text-subtle)]',
+].join(' ');
+
 function buildRubricOptions(rubricLevels: RubricLevel[]) {
     return [
         { value: '', label: 'Select rubric level' },
@@ -331,16 +336,16 @@ export function AssignmentGroupReviewForm({
     };
 
     return (
-        <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+        <div className="space-y-4 rounded-lg border theme-border p-4">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Group Review</h3>
-                    <p className="text-sm text-gray-500">
+                    <h3 className="text-sm font-semibold theme-text">Group Review</h3>
+                    <p className="text-sm theme-muted">
                         Record teacher review for {submission.group_name} using the assignment&apos;s evaluation mode.
                     </p>
                 </div>
                 {activeEvaluation?.evaluated_at ? (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs theme-subtle">
                         Reviewed {new Date(activeEvaluation.evaluated_at).toLocaleString()}
                     </span>
                 ) : null}
@@ -351,7 +356,7 @@ export function AssignmentGroupReviewForm({
             ) : null}
 
             {successMessage ? (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                <div className="theme-success-surface rounded-lg px-4 py-3 text-sm">
                     {successMessage}
                 </div>
             ) : null}
@@ -386,7 +391,7 @@ export function AssignmentGroupReviewForm({
             ) : null}
 
             <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium theme-text">
                     {evaluationType === 'DESCRIPTIVE' ? 'Narrative Feedback' : 'Review Notes'}
                 </label>
                 <textarea
@@ -394,7 +399,7 @@ export function AssignmentGroupReviewForm({
                     onChange={(event) => setNarrative(event.target.value)}
                     rows={4}
                     placeholder="Add feedback for the group."
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={textareaClassName}
                 />
             </div>
 
@@ -406,20 +411,20 @@ export function AssignmentGroupReviewForm({
             />
 
             {projectionMode === 'APPLY_WITH_OVERRIDES' ? (
-                <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="space-y-3 rounded-lg border theme-border theme-surface-muted p-4">
                     <div className="space-y-1">
-                        <div className="text-sm font-medium text-gray-900">Individual member overrides</div>
-                        <p className="text-sm text-gray-500">
+                        <div className="text-sm font-medium theme-text">Individual member overrides</div>
+                        <p className="text-sm theme-muted">
                             Adjust scores or notes only for members who need a different record from the group result.
                         </p>
                     </div>
 
-                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+                    <div className="theme-warning-surface rounded-lg px-4 py-3 text-sm">
                         Per-learner evidence exclusion is not available from the current backend response, so overrides can only adjust score and feedback fields.
                     </div>
 
                     {groupMembers.length === 0 ? (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm theme-muted">
                             Add group members before using individual overrides.
                         </p>
                     ) : (
@@ -434,19 +439,19 @@ export function AssignmentGroupReviewForm({
                                 };
 
                                 return (
-                                    <div key={member.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                                    <div key={member.id} className="rounded-lg border theme-border theme-surface-elevated p-4">
                                         <label className="flex items-start gap-3">
                                             <input
                                                 type="checkbox"
                                                 checked={draft.enabled}
                                                 onChange={(event) => updateOverrideDraft(member.student, 'enabled', event.target.checked)}
-                                                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                className="theme-checkbox mt-1 h-4 w-4 rounded theme-border"
                                             />
                                             <div className="flex-1">
-                                                <div className="text-sm font-medium text-gray-900">
+                                                <div className="text-sm font-medium theme-text">
                                                     {member.student_name}
                                                 </div>
-                                                <div className="text-xs text-gray-500">
+                                                <div className="text-xs theme-subtle">
                                                     {member.admission_number}
                                                 </div>
                                             </div>
@@ -483,8 +488,8 @@ export function AssignmentGroupReviewForm({
                                                     />
                                                 ) : null}
 
-                                                <div className="md:col-span-2 space-y-2">
-                                                    <label className="block text-sm font-medium text-gray-700">
+                                                <div className="space-y-2 md:col-span-2">
+                                                    <label className="block text-sm font-medium theme-text">
                                                         Override Notes
                                                     </label>
                                                     <textarea
@@ -492,15 +497,15 @@ export function AssignmentGroupReviewForm({
                                                         onChange={(event) => updateOverrideDraft(member.student, 'narrative', event.target.value)}
                                                         rows={3}
                                                         placeholder="Add learner-specific notes."
-                                                        className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        className={textareaClassName}
                                                     />
                                                 </div>
 
-                                                <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-500 md:col-span-2">
+                                                <label className="flex items-start gap-3 rounded-lg border theme-border px-4 py-3 text-sm theme-muted md:col-span-2">
                                                     <input
                                                         type="checkbox"
                                                         disabled
-                                                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                                                        className="theme-checkbox mt-1 h-4 w-4 rounded theme-border"
                                                     />
                                                     <span>Exclude from evidence is awaiting backend support.</span>
                                                 </label>
@@ -516,7 +521,7 @@ export function AssignmentGroupReviewForm({
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 {cbcEnabled && activeEvaluation?.projection_mode === 'RECORD_ONLY' ? (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 sm:mr-auto">
+                    <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted sm:mr-auto">
                         Evidence bridge disabled because this evaluation is record-only.
                     </div>
                 ) : null}

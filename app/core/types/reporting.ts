@@ -697,6 +697,7 @@ export interface InstructorAttendanceRiskResponse {
 
 export type ReportRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export type ReportExportFormat = 'pdf' | 'xlsx' | 'csv';
+export type LearnerReportIndicatorTone = 'success' | 'warning' | 'danger';
 
 export interface LearnerReportLearnerRef {
   id: number;
@@ -850,6 +851,65 @@ export interface LearnerReportMetricItem {
   metric: string;
 }
 
+export interface LearnerAvailableReportScope {
+  cohort_subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  cohort_name: string;
+  can_report: boolean;
+}
+
+export interface LearnerAvailableReportScopesPayload {
+  learner: {
+    id: number;
+    name: string;
+    admission_number: string;
+  };
+  can_view_overview: boolean;
+  subject_scopes: LearnerAvailableReportScope[];
+}
+
+export interface LearnerSubjectReportKeyIndicator {
+  key: string;
+  label: string;
+  value: string;
+  note: string;
+  tone: LearnerReportIndicatorTone;
+}
+
+export interface LearnerSubjectReportAttendanceTrendPoint {
+  period: string;
+  attendance_rate: number | null;
+  sessions_total: number;
+  sessions_attended: number;
+}
+
+export interface LearnerSubjectReportAssignmentCompletionPoint {
+  label: string;
+  count: number;
+  total: number;
+}
+
+export interface LearnerSubjectReportMasteryDistributionPoint {
+  level: string;
+  count: number;
+}
+
+export interface LearnerSubjectReportLearningTimelinePoint {
+  period: string;
+  evidence_count: number;
+  assignments_submitted: number;
+  assignments_total: number;
+}
+
+export interface LearnerSubjectReportCharts {
+  attendance_trend: LearnerSubjectReportAttendanceTrendPoint[];
+  assignment_completion: LearnerSubjectReportAssignmentCompletionPoint[];
+  mastery_distribution: LearnerSubjectReportMasteryDistributionPoint[];
+  learning_timeline: LearnerSubjectReportLearningTimelinePoint[];
+  strand_progress: LearnerReportStrandSummary[];
+}
+
 export interface LearnerSubjectReportPayload {
   report_type: 'learner_subject';
   generated_at: string;
@@ -871,8 +931,12 @@ export interface LearnerSubjectReportPayload {
   learning_graph: {
     points: LearnerReportLearningGraphPoint[];
   };
+  teacher_summary: string;
+  key_indicators: LearnerSubjectReportKeyIndicator[];
+  charts: LearnerSubjectReportCharts;
   strengths: LearnerReportMetricItem[];
   weak_areas: LearnerReportMetricItem[];
+  areas_needing_support: LearnerReportMetricItem[];
   risk_level: ReportRiskLevel;
   recommended_actions: string[];
 }

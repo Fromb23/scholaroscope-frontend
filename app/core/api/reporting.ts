@@ -25,6 +25,7 @@ import {
   InstructorAttendanceRiskItem,
   InstructorAttendanceRiskResponse,
   LearnerOverviewReportPayload,
+  LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
   ComputeResponse,
   ReportExportFormat,
@@ -460,6 +461,13 @@ export const instructorReportsAPI = {
 };
 
 export const learnerReportingAPI = {
+  getLearnerAvailableScopes: async (learnerId: number) => {
+    const response = await apiClient.get<LearnerAvailableReportScopesPayload>(
+      `/reporting/learners/${learnerId}/available-scopes/`,
+    );
+    return response.data;
+  },
+
   getLearnerSubjectReport: async (
     learnerId: number,
     params: {
@@ -564,6 +572,7 @@ export const reportsAPI = {
   getInstructorCohortSubjectPerformance: instructorReportsAPI.getCohortSubjectPerformance,
   getInstructorCohortSubjectTeachingActivity: instructorReportsAPI.getCohortSubjectTeachingActivity,
   getLearnerSubjectReport: learnerReportingAPI.getLearnerSubjectReport,
+  getLearnerAvailableScopes: learnerReportingAPI.getLearnerAvailableScopes,
   exportLearnerSubjectReport: learnerReportingAPI.exportLearnerSubjectReport,
   getLearnerOverviewReport: learnerReportingAPI.getLearnerOverviewReport,
   exportLearnerOverviewReport: learnerReportingAPI.exportLearnerOverviewReport,

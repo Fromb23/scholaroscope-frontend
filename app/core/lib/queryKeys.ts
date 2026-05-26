@@ -60,6 +60,8 @@ export const assignmentKeys = {
         ['assignments', 'evaluation-detail', evaluationId] as const,
     groups: (assignmentId: number | null) =>
         ['assignments', 'groups', assignmentId] as const,
+    groupReuseSources: (assignmentId: number | null) =>
+        ['assignments', 'group-reuse-sources', assignmentId] as const,
     groupDetail: (groupId: number | null) =>
         ['assignments', 'group-detail', groupId] as const,
     groupSubmissions: (groupId: number | null) =>
