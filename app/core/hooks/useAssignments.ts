@@ -8,8 +8,12 @@ import {
     assignmentsAPI,
     assignmentSubmissionAPI,
 } from '@/app/core/api/assignments';
+import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
+import { sessionAPI } from '@/app/core/api/sessions';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { assignmentKeys } from '@/app/core/lib/queryKeys';
+import { emitLessonPlanDataChanged } from '@/app/core/lib/lessonPlanEvents';
+import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
     Assignment,
@@ -43,6 +47,11 @@ import type {
     AssignmentGroupUpdatePayload,
     AssignmentPublishPayload,
     AssignmentPublishResponse,
+    IssuePreparedAssignmentPayload,
+    IssuePreparedAssignmentResponse,
+    PrepareAssignmentFromLessonPlanPayload,
+    PrepareAssignmentFromLessonPlanResponse,
+    PreparedAssignmentsForLessonPlanResponse,
     AssignmentRecipient,
     AssignmentRecipientCreatePayload,
     AssignmentRecipientSelectionPayload,
@@ -254,6 +263,41 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
     return {
         assignment: query.data ?? null,
         loading: query.isLoading || (enabled && instructorAccess.isInstructor && instructorAccess.isLoading),
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
+export function usePreparedAssignmentsForLessonPlan(
+    lessonPlanId: number | null,
+    options?: UseAssignmentsOptions,
+) {
+    const enabled = (options?.enabled ?? true) && typeof lessonPlanId === 'number' && lessonPlanId > 0;
+
+    const query = useQuery<PreparedAssignmentsForLessonPlanResponse, Error>({
+        queryKey: assignmentKeys.preparedForLessonPlan(lessonPlanId),
+        queryFn: async () => {
+            if (!lessonPlanId) {
+                throw new Error('Lesson plan id is required.');
+            }
+
+            try {
+                return await lessonPlanAPI.getPreparedAssignments(lessonPlanId);
+            } catch (err) {
+                throw new Error(
+                    extractErrorMessage(err as ApiError, 'Failed to load learner task status.')
+                );
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        assignments: query.data?.assignments ?? [],
+        draft: query.data?.draft ?? null,
+        issued: query.data?.issued ?? [],
+        loading: query.isLoading,
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };
@@ -659,6 +703,41 @@ export function useCreateAssignment() {
     });
 }
 
+export function usePrepareAssignmentFromLessonPlan() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            lessonPlanId,
+            data,
+        }: {
+            lessonPlanId: number;
+            data: PrepareAssignmentFromLessonPlanPayload;
+        }): Promise<PrepareAssignmentFromLessonPlanResponse> => {
+            try {
+                return await lessonPlanAPI.prepareAssignment(lessonPlanId, data);
+            } catch (err) {
+                throw new Error(
+                    extractErrorMessage(
+                        err as ApiError,
+                        'Failed to prepare a learner task for this lesson.'
+                    )
+                );
+            }
+        },
+        onSuccess: async (result) => {
+            await Promise.all([
+                invalidateAssignmentDependencies(queryClient, result.assignment.id),
+                queryClient.invalidateQueries({
+                    queryKey: assignmentKeys.preparedForLessonPlan(result.assignment.lesson_plan),
+                }),
+            ]);
+            emitLessonPlanDataChanged();
+            emitSessionDataChanged();
+        },
+    });
+}
+
 export function useUpdateAssignment(currentCohortSubjectId?: number | null) {
     const queryClient = useQueryClient();
     const instructorAccess = useInstructorCohortAccess();
@@ -724,6 +803,41 @@ export function usePublishAssignment() {
         },
         onSuccess: async (result) => {
             await invalidateAssignmentDependencies(queryClient, result.assignment.id);
+        },
+    });
+}
+
+export function useIssuePreparedAssignment() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            sessionId,
+            data,
+        }: {
+            sessionId: number;
+            data: IssuePreparedAssignmentPayload;
+        }): Promise<IssuePreparedAssignmentResponse> => {
+            try {
+                return await sessionAPI.issuePreparedAssignment(sessionId, data);
+            } catch (err) {
+                throw new Error(
+                    extractErrorMessage(
+                        err as ApiError,
+                        'Failed to issue the learner task.'
+                    )
+                );
+            }
+        },
+        onSuccess: async (result) => {
+            await Promise.all([
+                invalidateAssignmentDependencies(queryClient, result.assignment.id),
+                queryClient.invalidateQueries({
+                    queryKey: assignmentKeys.preparedForLessonPlan(result.assignment.lesson_plan),
+                }),
+            ]);
+            emitLessonPlanDataChanged();
+            emitSessionDataChanged();
         },
     });
 }

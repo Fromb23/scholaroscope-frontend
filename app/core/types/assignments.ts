@@ -125,6 +125,28 @@ export interface AssignmentCreatePayload {
     publish_now?: boolean;
 }
 
+export interface PrepareAssignmentFromLessonPlanPayload {
+    title?: string;
+    instructions?: string;
+    delivery_mode?: AssignmentDeliveryMode;
+    due_at?: string | null;
+    evaluation_type?: AssignmentEvaluationType;
+    total_marks?: number | null;
+    rubric_scale?: number | null;
+}
+
+export interface PrepareAssignmentFromLessonPlanResponse {
+    detail: string;
+    created: boolean;
+    assignment: Assignment;
+}
+
+export interface PreparedAssignmentsForLessonPlanResponse {
+    assignments: Assignment[];
+    draft: Assignment | null;
+    issued: Assignment[];
+}
+
 export interface AssignmentUpdatePayload {
     cohort_subject?: number;
     instructor?: number;
@@ -194,6 +216,18 @@ export interface AssignmentPublishPayload {
 }
 
 export interface AssignmentPublishResponse {
+    assignment: Assignment;
+    recipients: AssignmentRecipientCreationResult;
+}
+
+export interface IssuePreparedAssignmentPayload {
+    assignment_id: number;
+    recipient_mode?: Exclude<AssignmentRecipientMode, 'none'>;
+    student_ids?: number[];
+}
+
+export interface IssuePreparedAssignmentResponse {
+    detail: string;
     assignment: Assignment;
     recipients: AssignmentRecipientCreationResult;
 }

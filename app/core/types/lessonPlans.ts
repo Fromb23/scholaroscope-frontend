@@ -1,5 +1,8 @@
 import type { Session } from '@/app/core/types/session';
-import type { Assignment } from '@/app/core/types/assignments';
+import type {
+    PrepareAssignmentFromLessonPlanResponse,
+    PreparedAssignmentsForLessonPlanResponse,
+} from '@/app/core/types/assignments';
 
 export type LessonPlanStatus =
     | 'DRAFT'
@@ -247,11 +250,8 @@ export interface AvailableLessonPlanParticipatingCohortsResponse {
     results: AvailableLessonPlanParticipatingCohortSubject[];
 }
 
-export interface LessonPlanAssignmentDraftResponse {
-    detail: string;
-    created: boolean;
-    assignment: Assignment;
-}
+export type LessonPlanAssignmentDraftResponse = PrepareAssignmentFromLessonPlanResponse;
+export type LessonPlanPreparedAssignmentsResponse = PreparedAssignmentsForLessonPlanResponse;
 
 export interface MarkUsedPayload {
     reflection: string;

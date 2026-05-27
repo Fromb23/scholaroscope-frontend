@@ -41,6 +41,7 @@ interface AssignmentCreateModalProps {
     assignment?: Assignment | null;
     linkedSessionId?: number | null;
     linkedSessionTitle?: string | null;
+    mode?: 'full' | 'lesson_preparation' | 'quick_follow_up';
     onSaved?: (assignment: Assignment) => void;
 }
 
@@ -101,6 +102,7 @@ export function AssignmentCreateModal({
     assignment = null,
     linkedSessionId = null,
     linkedSessionTitle = null,
+    mode = 'full',
     onSaved,
 }: AssignmentCreateModalProps) {
     const createMutation = useCreateAssignment();
@@ -128,6 +130,9 @@ export function AssignmentCreateModal({
     const showSessionScopeNote = Boolean(
         assignment && usesExpandedSessionScope(assignment)
     );
+    const isLessonPreparationMode = mode === 'lesson_preparation';
+    const isQuickFollowUpMode = mode === 'quick_follow_up';
+    const isFullMode = mode === 'full';
 
     const sortedSubjects = useMemo(() => (
         [...cohortSubjects].sort((left, right) => left.subject_name.localeCompare(right.subject_name))
@@ -351,7 +356,13 @@ export function AssignmentCreateModal({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={isEditMode ? 'Edit Assignment' : 'Create Assignment'}
+            title={isEditMode
+                ? (isLessonPreparationMode ? 'Edit Learner Task' : 'Edit Assignment')
+                : isLessonPreparationMode
+                    ? 'Prepare Learner Task'
+                    : isQuickFollowUpMode
+                        ? 'Prepare Quick Follow-up Task'
+                        : 'Create Assignment'}
             size="xl"
         >
             <div className="space-y-6">
@@ -366,94 +377,107 @@ export function AssignmentCreateModal({
                 ) : null}
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <Select
-                        label="Subject Group"
-                        value={cohortSubjectId}
-                        onChange={(event) => setCohortSubjectId(event.target.value)}
-                        options={[
-                            { value: '', label: 'Select subject group' },
-                            ...sortedSubjects.map((subject) => ({
-                                value: String(subject.id),
-                                label: subject.current_instructor_name
-                                    ? `${subject.subject_name} (${subject.current_instructor_name})`
-                                    : subject.subject_name,
-                            })),
-                        ]}
-                    />
+                    {!(isLessonPreparationMode && (defaultCohortSubjectId || sortedSubjects.length === 1)) ? (
+                        <Select
+                            label={isLessonPreparationMode ? 'Class subject' : 'Subject Group'}
+                            value={cohortSubjectId}
+                            onChange={(event) => setCohortSubjectId(event.target.value)}
+                            options={[
+                                { value: '', label: 'Select subject group' },
+                                ...sortedSubjects.map((subject) => ({
+                                    value: String(subject.id),
+                                    label: subject.current_instructor_name
+                                        ? `${subject.subject_name} (${subject.current_instructor_name})`
+                                        : subject.subject_name,
+                                })),
+                            ]}
+                        />
+                    ) : null}
                     <Input
-                        label="Title"
+                        label={isLessonPreparationMode ? 'Learner task title' : 'Title'}
                         value={title}
                         onChange={(event) => setTitle(event.target.value)}
-                        placeholder="Assignment title"
+                        placeholder={isLessonPreparationMode ? 'Learner task title' : 'Assignment title'}
                     />
                 </div>
 
                 <Select
-                    label="Delivery Mode"
+                    label={isLessonPreparationMode ? 'Task type' : 'Delivery Mode'}
                     value={deliveryMode}
                     onChange={(event) => setDeliveryMode(event.target.value as AssignmentDeliveryMode)}
-                    options={DELIVERY_MODE_OPTIONS}
+                    options={isLessonPreparationMode
+                        ? [
+                            { value: 'INDIVIDUAL', label: 'Individual learner task' },
+                            { value: 'GROUP', label: 'Group activity' },
+                        ]
+                        : DELIVERY_MODE_OPTIONS}
                 />
 
                 <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">Instructions</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                        {isLessonPreparationMode ? 'What should learners do?' : 'Instructions'}
+                    </label>
                     <textarea
                         value={instructions}
                         onChange={(event) => setInstructions(event.target.value)}
-                        placeholder="Explain what learners should complete."
+                        placeholder={isLessonPreparationMode ? 'Describe the learner task.' : 'Explain what learners should complete.'}
                         rows={5}
                         className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
+                    {!isLessonPreparationMode ? (
+                        <Input
+                            label="Starts At"
+                            type="datetime-local"
+                            value={startsAt}
+                            onChange={(event) => setStartsAt(event.target.value)}
+                        />
+                    ) : null}
                     <Input
-                        label="Starts At"
-                        type="datetime-local"
-                        value={startsAt}
-                        onChange={(event) => setStartsAt(event.target.value)}
-                    />
-                    <Input
-                        label="Due At"
+                        label={isLessonPreparationMode ? 'Due date' : 'Due At'}
                         type="datetime-local"
                         value={dueAt}
                         onChange={(event) => setDueAt(event.target.value)}
                     />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Select
-                        label="Evaluation Type"
-                        value={evaluationType}
-                        onChange={(event) => setEvaluationType(event.target.value as AssignmentEvaluationType)}
-                        options={EVALUATION_OPTIONS}
-                    />
-
-                    {evaluationType === 'NUMERIC' ? (
-                        <Input
-                            label="Total Marks"
-                            type="number"
-                            min="1"
-                            value={totalMarks}
-                            onChange={(event) => setTotalMarks(event.target.value)}
-                        />
-                    ) : null}
-
-                    {evaluationType === 'RUBRIC' ? (
+                {isFullMode ? (
+                    <div className="grid gap-4 md:grid-cols-3">
                         <Select
-                            label="Rubric Scale"
-                            value={rubricScaleId}
-                            onChange={(event) => setRubricScaleId(event.target.value)}
-                            options={[
-                                { value: '', label: rubricScalesLoading ? 'Loading rubric scales...' : 'Select rubric scale' },
-                                ...rubricScales.map((scale) => ({
-                                    value: String(scale.id),
-                                    label: scale.name,
-                                })),
-                            ]}
+                            label="Evaluation Type"
+                            value={evaluationType}
+                            onChange={(event) => setEvaluationType(event.target.value as AssignmentEvaluationType)}
+                            options={EVALUATION_OPTIONS}
                         />
-                    ) : null}
-                </div>
+
+                        {evaluationType === 'NUMERIC' ? (
+                            <Input
+                                label="Total Marks"
+                                type="number"
+                                min="1"
+                                value={totalMarks}
+                                onChange={(event) => setTotalMarks(event.target.value)}
+                            />
+                        ) : null}
+
+                        {evaluationType === 'RUBRIC' ? (
+                            <Select
+                                label="Rubric Scale"
+                                value={rubricScaleId}
+                                onChange={(event) => setRubricScaleId(event.target.value)}
+                                options={[
+                                    { value: '', label: rubricScalesLoading ? 'Loading rubric scales...' : 'Select rubric scale' },
+                                    ...rubricScales.map((scale) => ({
+                                        value: String(scale.id),
+                                        label: scale.name,
+                                    })),
+                                ]}
+                            />
+                        ) : null}
+                    </div>
+                ) : null}
 
                 {selectedSubject ? (
                     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
@@ -480,7 +504,7 @@ export function AssignmentCreateModal({
                     </div>
                 ) : null}
 
-                {!isEditMode ? (
+                {!isEditMode && isFullMode ? (
                     <div className="space-y-4 rounded-lg border border-gray-200 p-4">
                         <div className="space-y-1">
                             <h3 className="text-sm font-semibold text-gray-900">
@@ -582,6 +606,7 @@ export function AssignmentCreateModal({
                     </div>
                 ) : null}
 
+                {isFullMode ? (
                 <div className="space-y-4 rounded-lg border border-gray-200 p-4">
                     <div className="flex items-center justify-between gap-3">
                         <div>
@@ -644,10 +669,11 @@ export function AssignmentCreateModal({
                         </div>
                     )}
                 </div>
+                ) : null}
 
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <Button type="button" variant="ghost" onClick={onClose}>
-                        Cancel
+                        {isLessonPreparationMode ? 'Not for this lesson' : 'Cancel'}
                     </Button>
                     <Button
                         type="button"
@@ -656,7 +682,11 @@ export function AssignmentCreateModal({
                     >
                         {saving
                             ? (isEditMode ? 'Saving...' : 'Creating...')
-                            : (isEditMode ? 'Save Changes' : 'Create Assignment')}
+                            : isLessonPreparationMode
+                                ? 'Save learner task'
+                                : isQuickFollowUpMode
+                                    ? 'Save quick follow-up task'
+                                    : (isEditMode ? 'Save Changes' : 'Create Assignment')}
                     </Button>
                 </div>
             </div>
