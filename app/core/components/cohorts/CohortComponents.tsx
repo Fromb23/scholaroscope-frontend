@@ -15,6 +15,8 @@ import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
+import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { cohortAPI } from '@/app/core/api/academic';
 import { useSubjects } from '@/app/core/hooks/useAcademic';
@@ -51,21 +53,52 @@ export function SubjectPanel({
                                isHistorical,
                                onSubjectsChanged,
                              }: SubjectPanelProps) {
+  const lifecycle = useCurriculumLifecycleGuard({
+    curriculumId,
+    curriculumType,
+    routeIntent: 'edit',
+    allowWhenNoCurriculum: false,
+  });
+  const readOnlyMode = isHistorical || !lifecycle.allowed;
   const pluginPanelContext = {
     cohortId,
     curriculumId,
     cohortLevel,
     curriculumType,
-    isHistorical,
+    isHistorical: readOnlyMode,
     onSubjectsChanged,
   };
   const pluginSubjectPanel = renderCohortSubjectPanelExtension(pluginPanelContext);
 
   if (pluginSubjectPanel) {
-    return <>{pluginSubjectPanel}</>;
+    return (
+      <div className="space-y-4">
+        {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
+          <CurriculumLifecycleNotice
+            status={lifecycle.curriculum.offering_status}
+            role={lifecycle.role}
+            title="Curriculum subject links"
+            message={lifecycle.message}
+          />
+        ) : null}
+        {pluginSubjectPanel}
+      </div>
+    );
   }
 
-  return <KernelSubjectPanel {...pluginPanelContext} />;
+  return (
+    <div className="space-y-4">
+      {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
+        <CurriculumLifecycleNotice
+          status={lifecycle.curriculum.offering_status}
+          role={lifecycle.role}
+          title="Curriculum subject links"
+          message={lifecycle.message}
+        />
+      ) : null}
+      <KernelSubjectPanel {...pluginPanelContext} />
+    </div>
+  );
 }
 
 function KernelSubjectPanel({
@@ -291,6 +324,12 @@ interface RolloverModalProps {
 }
 
 export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps) {
+    const lifecycle = useCurriculumLifecycleGuard({
+        curriculumId: cohort.curriculum,
+        curriculumType: cohort.curriculum_type,
+        routeIntent: 'create',
+        allowWhenNoCurriculum: false,
+    });
     const [newLevel, setNewLevel] = useState('');
     const [newStream, setNewStream] = useState('');
     const [copySubjects, setCopySubjects] = useState(true);
@@ -316,6 +355,15 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
     return (
         <Modal isOpen onClose={onClose} title={`Roll Over — ${cohort.name}`} size="md">
             <div className="space-y-4">
+                {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
+                    <CurriculumLifecycleNotice
+                        status={lifecycle.curriculum.offering_status}
+                        role={lifecycle.role}
+                        title="Curriculum rollover blocked"
+                        message={lifecycle.message}
+                    />
+                ) : null}
+
                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-700">
                     Creates a new cohort in the current academic year based on this one.
                     Students are <strong>not moved automatically</strong> — you enroll them into the new cohort separately.
@@ -357,7 +405,7 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
 
                 <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                     <Button variant="secondary" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleRollover} disabled={saving || !newLevel.trim()}>
+                    <Button onClick={handleRollover} disabled={saving || !newLevel.trim() || !lifecycle.allowed}>
                         {saving ? 'Rolling over...' : 'Create New Cohort'}
                     </Button>
                 </div>
@@ -415,9 +463,21 @@ export function CohortFormModal({
         }
     }, [editingCohort, formData.curriculum, isOpen, lockedCurriculum]);
 
+    const selectedCurriculum = curricula.find((curriculum) => curriculum.id === Number(formData.curriculum)) ?? lockedCurriculum ?? null;
+    const lifecycle = useCurriculumLifecycleGuard({
+        curriculumId: selectedCurriculum?.id ?? editingCohort?.curriculum ?? null,
+        curriculumType: selectedCurriculum?.curriculum_type ?? editingCohort?.curriculum_type ?? null,
+        routeIntent: editingCohort ? 'edit' : 'create',
+        allowWhenNoCurriculum: true,
+    });
+
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {
             setFormError('Academic year, curriculum, and grade level are required.');
+            return;
+        }
+        if (!lifecycle.allowed) {
+            setFormError(lifecycle.message);
             return;
         }
         setSaving(true); setFormError(null);
@@ -438,12 +498,21 @@ export function CohortFormModal({
         >
             <div className="space-y-5">
                 {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
+                {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
+                    <CurriculumLifecycleNotice
+                        status={selectedCurriculum.offering_status}
+                        role={lifecycle.role}
+                        title={editingCohort ? 'Cohort updates are restricted' : 'Cohort creation is restricted'}
+                        message={lifecycle.message}
+                    />
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-4">
                     <Select
                         label="Academic Year"
                         value={formData.academic_year}
                         onChange={e => setFormData(prev => ({ ...prev, academic_year: e.target.value }))}
+                        disabled={!lifecycle.allowed}
                         required
                         options={[
                             { value: '', label: 'Select Year' },
@@ -467,10 +536,11 @@ export function CohortFormModal({
                             label="Curriculum"
                             value={formData.curriculum}
                             onChange={e => setFormData(prev => ({ ...prev, curriculum: e.target.value }))}
+                            disabled={!lifecycle.allowed}
                             required
                             options={[
                                 { value: '', label: 'Select Curriculum' },
-                                ...curricula.filter(c => c.is_active).map(c => ({
+                                ...curricula.filter(c => c.is_active || c.id === selectedCurriculum?.id).map(c => ({
                                     value: String(c.id), label: getCurriculumBridgeName(c),
                                 })),
                             ]}
@@ -483,6 +553,7 @@ export function CohortFormModal({
                         label="Grade Level"
                         value={formData.level}
                         onChange={e => setFormData(prev => ({ ...prev, level: e.target.value }))}
+                        disabled={!lifecycle.allowed}
                         placeholder="e.g. Form 3, Grade 10"
                         required
                     />
@@ -490,6 +561,7 @@ export function CohortFormModal({
                         label="Stream (optional)"
                         value={formData.stream}
                         onChange={e => setFormData(prev => ({ ...prev, stream: e.target.value }))}
+                        disabled={!lifecycle.allowed}
                         placeholder="e.g. Blue, East, A"
                     />
                 </div>
@@ -500,7 +572,7 @@ export function CohortFormModal({
 
                 <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                     <Button variant="secondary" onClick={onClose}>Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={saving}>
+                    <Button onClick={handleSubmit} disabled={saving || !lifecycle.allowed}>
                         {saving ? 'Saving...' : editingCohort ? 'Update Cohort' : 'Create Cohort'}
                     </Button>
                 </div>

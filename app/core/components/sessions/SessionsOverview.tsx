@@ -24,7 +24,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useCohortSessions, useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
-import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
+import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { groupBy } from '@/app/utils/groupBy';
 import { ErrorState } from '@/app/components/ui/ErrorState';
@@ -361,6 +362,7 @@ function CohortSessionsCards({
 function SessionWorkspaceView() {
     const router = useRouter();
     const { activeRole } = useAuth();
+    const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
@@ -371,6 +373,10 @@ function SessionWorkspaceView() {
     const { sessions: todaySessions } = useTodaySessions();
     const { terms } = useTerms();
     const { cohorts } = useCohorts();
+    const canPlanLesson = useMemo(
+        () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
+        [curricula]
+    );
     const workspaceBackHref = isInstructor ? '/dashboard/instructor' : '/dashboard/admin';
 
     const totalSessions = sessions.length;
@@ -400,16 +406,20 @@ function SessionWorkspaceView() {
             has_priority_lesson: Boolean(priorityTodayAction),
         },
         visibleActions: [
-            { label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' },
+            ...(canPlanLesson
+                ? [{ label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' }]
+                : []),
             ...(isInstructor
                 ? [{ label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' }]
                 : []),
         ],
-        nextSafeAction: {
-            label: 'Prepare lesson',
-            type: 'navigate' as const,
-            href: '/lesson-plans/new',
-        },
+        nextSafeAction: canPlanLesson
+            ? {
+                label: 'Prepare lesson',
+                type: 'navigate' as const,
+                href: '/lesson-plans/new',
+            }
+            : undefined,
         workflowStep: todayCount > 0 ? 'scheduled_lessons' : 'plan_then_schedule',
         emptyStateReason: !loading && !error && sessions.length === 0
             ? 'No lessons are scheduled yet.'
@@ -420,6 +430,7 @@ function SessionWorkspaceView() {
         error,
         isInstructor,
         loading,
+        canPlanLesson,
         priorityTodayAction,
         selectedTerm,
         selectedType,
@@ -485,12 +496,19 @@ function SessionWorkspaceView() {
                             </Button>
                         </Link>
                     ) : null}
-                    <Link href="/lesson-plans/new">
-                        <Button size="sm">
+                    {canPlanLesson ? (
+                        <Link href="/lesson-plans/new">
+                            <Button size="sm">
+                                <Plus className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Prepare a lesson</span>
+                            </Button>
+                        </Link>
+                    ) : (
+                        <Button size="sm" disabled>
                             <Plus className="w-4 h-4 sm:mr-1" />
                             <span className="hidden sm:inline">Prepare a lesson</span>
                         </Button>
-                    </Link>
+                    )}
                 </div>
             </div>
 
@@ -605,11 +623,17 @@ function SessionWorkspaceView() {
                             Prepare a lesson or review your assigned classes before your next teaching slot.
                         </p>
                         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                            <Link href="/lesson-plans/new" className="w-full sm:w-auto">
-                                <Button className="w-full sm:w-auto">
+                            {canPlanLesson ? (
+                                <Link href="/lesson-plans/new" className="w-full sm:w-auto">
+                                    <Button className="w-full sm:w-auto">
+                                        Prepare a lesson
+                                    </Button>
+                                </Link>
+                            ) : (
+                                <Button className="w-full sm:w-auto" disabled>
                                     Prepare a lesson
                                 </Button>
-                            </Link>
+                            )}
                             <Link href="/academic/cohorts" className="w-full sm:w-auto">
                                 <Button variant="secondary" className="w-full sm:w-auto">
                                     View my classes
@@ -680,12 +704,19 @@ function SessionWorkspaceView() {
                         </p>
                         {!selectedTerm && !selectedType ? (
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                                <Link href="/lesson-plans/new" className="w-full sm:w-auto">
-                                    <Button className="w-full sm:w-auto">
+                                {canPlanLesson ? (
+                                    <Link href="/lesson-plans/new" className="w-full sm:w-auto">
+                                        <Button className="w-full sm:w-auto">
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            {isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}
+                                        </Button>
+                                    </Link>
+                                ) : (
+                                    <Button className="w-full sm:w-auto" disabled>
                                         <Plus className="mr-2 h-4 w-4" />
                                         {isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}
                                     </Button>
-                                </Link>
+                                )}
                                 {isInstructor ? (
                                     <Link href="/academic/cohorts" className="w-full sm:w-auto">
                                         <Button variant="secondary" className="w-full sm:w-auto">
@@ -874,12 +905,17 @@ function CohortSessionsView({
     const router = useRouter();
     const searchParams = useSearchParams();
     const { activeRole } = useAuth();
+    const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const { sessions, loading, error, refetch } = useCohortSessions(cohortId);
     const { terms } = useTerms();
     const { cohorts } = useCohorts();
+    const canPlanLesson = useMemo(
+        () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
+        [curricula]
+    );
     const cohortFromQuery = parseCohortId(searchParams.get('cohort'));
     const cohortBackHref = cohortFromQuery
         ? `/academic/cohorts/${cohortFromQuery}`
@@ -952,12 +988,19 @@ function CohortSessionsView({
                 {isInstructor ? 'Back to My Lessons' : 'Back to Workspace'}
               </Button>
             </Link>
-            <Link href="/lesson-plans/new">
-              <Button size="sm">
+            {canPlanLesson ? (
+              <Link href="/lesson-plans/new">
+                <Button size="sm">
+                  <Plus className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">{isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}</span>
+                </Button>
+              </Link>
+            ) : (
+              <Button size="sm" disabled>
                 <Plus className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">{isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}</span>
               </Button>
-            </Link>
+            )}
           </div>
         </div>
 

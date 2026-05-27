@@ -6,10 +6,13 @@ import Link from 'next/link';
 import { ArrowLeft, ClipboardList, Save } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
+import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import { useAssessmentDetail, useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
@@ -53,6 +56,12 @@ export function EditAssessmentPage() {
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const { assessment, loading, error } = useAssessmentDetail(assessmentId);
+    const lifecycle = useCurriculumLifecycleGuard({
+        curriculumId: assessment?.curriculum_id ?? null,
+        curriculumType: assessment?.curriculum_type ?? assessment?.cohort_curriculum_type ?? null,
+        routeIntent: 'edit',
+        allowWhenNoCurriculum: true,
+    });
     const { terms } = useTerms();
     const { cohorts } = useCohorts();
     const { subjects } = useCohortSubjects(selectedCohortId || undefined);
@@ -251,6 +260,18 @@ export function EditAssessmentPage() {
         return <div className="p-10 text-gray-500">Assessment not found.</div>;
     }
 
+    if (!lifecycle.allowed) {
+        return (
+            <CurriculumLifecycleAccessState
+                title="Assessment editing is unavailable"
+                status={lifecycle.curriculum?.offering_status ?? null}
+                message={lifecycle.message}
+                backHref={`/assessments/${assessmentId}`}
+                backLabel="View Assessment"
+            />
+        );
+    }
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
@@ -265,6 +286,15 @@ export function EditAssessmentPage() {
                     <p className="text-gray-600 mt-1">Update assessment facts for this cohort subject</p>
                 </div>
             </div>
+
+            {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
+                <CurriculumLifecycleNotice
+                    status={lifecycle.curriculum.offering_status}
+                    role={lifecycle.role}
+                    title="Assessment edit status"
+                    message={lifecycle.message}
+                />
+            ) : null}
 
             {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
 

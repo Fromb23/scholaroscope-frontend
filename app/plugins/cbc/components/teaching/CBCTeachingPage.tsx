@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useTodaySessions, useRecentSessions } from '@/app/plugins/cbc/hooks/useCBC';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import {
     CBCNav,
     CBCError,
@@ -34,8 +36,11 @@ function formatDate(value: string) {
 
 export function CBCTeachingPage() {
     const router = useRouter();
+    const { curricula } = useCurricula();
     const { data: todaySessions = [], isLoading: loadingToday, error: todayError } = useTodaySessions();
     const { data: recentSessions = [], isLoading: loadingRecent } = useRecentSessions(7);
+    const cbcCurriculum = resolveCurriculumForType(curricula, 'CBE');
+    const canPlanLesson = canCreateCurriculumWork(cbcCurriculum);
     const primarySession = todaySessions[0] ?? recentSessions[0];
     const assistantContext = useMemo(() => ({
         pageKey: 'cbc_teaching',
@@ -144,11 +149,17 @@ export function CBCTeachingPage() {
                     <div className="py-12 text-center">
                         <Calendar className="mx-auto mb-3 h-12 w-12 theme-subtle" />
                         <p className="mb-4 theme-muted">No lessons scheduled for today</p>
-                        <Link href="/lesson-plans/new">
-                            <Button variant="primary" size="sm">
+                        {canPlanLesson ? (
+                            <Link href="/lesson-plans/new">
+                                <Button variant="primary" size="sm">
+                                    <Plus className="mr-2 h-4 w-4" />Plan a lesson
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Button variant="primary" size="sm" disabled>
                                 <Plus className="mr-2 h-4 w-4" />Plan a lesson
                             </Button>
-                        </Link>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-3">

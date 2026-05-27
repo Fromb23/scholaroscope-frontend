@@ -16,6 +16,7 @@ import { useSidebar } from '@/app/context/SidebarContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
 import { useNavBadges } from '@/app/core/registry/navBadges';
 import { NavItem } from './NavItem';
@@ -48,7 +49,9 @@ export default function Sidebar() {
     () => ({
       role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
       hasPlugin,
+      hasCurriculumType: (curriculumType: string) => Boolean(resolveCurriculumForType(curricula, curriculumType)),
       badges,
+      curricula,
       hasAnyReportPolicySurface:
         getAvailablePolicySurfaces({
           curricula,

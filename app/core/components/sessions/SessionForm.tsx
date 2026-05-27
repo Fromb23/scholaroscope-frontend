@@ -13,11 +13,14 @@ import { Save, Calendar, Clock, BookOpen, Users, AlertCircle, X } from 'lucide-r
 import Link from 'next/link';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
-import { useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import { useAuth } from '@/app/context/AuthContext';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
@@ -83,6 +86,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const { user, activeRole } = useAuth();
     const { createSession } = useSessions();
     const { cohortSubjectIds } = useInstructorCohortAccess();
+    const { curricula } = useCurricula();
 
     const cohortFilters = useMemo(
         () => (currentYear ? { academic_year: currentYear.id } : undefined),
@@ -90,6 +94,13 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     );
     const { cohorts } = useCohorts(cohortFilters);
     const { terms } = useTerms(currentYear?.id);
+    const availableCohorts = useMemo(
+        () => cohorts.filter((cohort) => {
+            const curriculum = curricula.find((entry) => entry.id === cohort.curriculum) ?? null;
+            return canCreateCurriculumWork(curriculum);
+        }),
+        [cohorts, curricula]
+    );
 
     const activeTerm = useMemo(() => {
         const today = new Date();
@@ -116,6 +127,15 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             return true;
         });
     }, [activeRole, allowedCohortSubjectIds, subjectOptions]);
+    const selectedCurriculum = useMemo(() => {
+        const cohort = availableCohorts.find((entry) => entry.id === selectedCohort);
+        if (!cohort) {
+            return null;
+        }
+
+        return curricula.find((entry) => entry.id === cohort.curriculum) ?? null;
+    }, [availableCohorts, curricula, selectedCohort]);
+    const isSelectedCurriculumWritable = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : true;
 
     const selectedSubjectOption = filteredSubjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
@@ -195,6 +215,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isSelectedCurriculumWritable) return;
         if (!validate()) return;
 
         setSaving(true);
@@ -211,11 +232,30 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         }
     };
 
+    if (cohorts.length > 0 && availableCohorts.length === 0) {
+        return (
+            <CurriculumLifecycleAccessState
+                title="Session creation is unavailable"
+                message="All available curricula are currently blocked for new work. Historical session records remain readable."
+                backHref="/sessions"
+                backLabel="Back to Sessions"
+            />
+        );
+    }
+
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             {submitError && (
                 <ErrorBanner message={submitError} onDismiss={() => setSubmitError(null)} />
             )}
+
+            {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
+                <CurriculumLifecycleNotice
+                    status={selectedCurriculum.offering_status}
+                    role={activeRole === 'INSTRUCTOR' ? 'INSTRUCTOR' : 'ADMIN'}
+                    title="Session scheduling status"
+                />
+            ) : null}
 
             {/* Basic Information */}
             <Card>
@@ -233,7 +273,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 required
                                 options={[
                                     { value: '', label: 'Select Cohort' },
-                                    ...cohorts.map(c => ({ value: String(c.id), label: c.name })),
+                                    ...availableCohorts.map(c => ({ value: String(c.id), label: c.name })),
                                 ]}
                             />
                             {errors.cohort && <p className="mt-1 text-sm text-red-600">{errors.cohort}</p>}
@@ -245,7 +285,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                 value={selectedSubjectOptionId}
                                 onChange={e => handleCohortSubjectChange(e.target.value)}
                                 required
-                                disabled={!selectedCohort}
+                                disabled={!selectedCohort || !isSelectedCurriculumWritable}
                                 options={[
                                     { value: '', label: selectedCohort ? 'Select Subject' : 'Select a cohort first' },
                                     ...filteredSubjectOptions.map(option => ({
@@ -404,7 +444,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 <Link href="/sessions">
                     <Button type="button" variant="secondary">Cancel</Button>
                 </Link>
-                <Button type="submit" disabled={saving}>
+                <Button type="submit" disabled={saving || !isSelectedCurriculumWritable}>
                     <Save className="w-4 h-4 mr-2" />
                     {saving ? 'Creating...' : 'Create Session'}
                 </Button>

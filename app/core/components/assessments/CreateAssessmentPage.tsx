@@ -6,14 +6,17 @@ import Link from 'next/link';
 import { ArrowLeft, ClipboardList, Save } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
 import { useCreateAssessmentForm, useRubricScales } from '@/app/core/hooks/useAssessments';
-import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -30,12 +33,15 @@ type InstructorSubjectOption = {
     cohort_name: string;
     cohort_label: string;
     subject_label: string;
+    curriculum_id: number | null;
+    curriculum_type: string | null;
 };
 
 export function CreateAssessmentPage() {
     const router = useRouter();
     const { user, activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
+    const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
 
@@ -48,6 +54,8 @@ export function CreateAssessmentPage() {
                 cohort_name: assignment.cohort_name,
                 cohort_label: `${assignment.cohort_name} — ${assignment.level ?? assignment.academic_year ?? ''}`.trim(),
                 subject_label: `${assignment.subject_code ?? assignment.subject_name} — ${assignment.subject_name}`,
+                curriculum_id: assignment.curriculum_id ?? null,
+                curriculum_type: assignment.curriculum_type ?? null,
             }));
 
         return Array.from(new Map(options.map((option) => [option.id, option])).values()).sort(
@@ -55,9 +63,18 @@ export function CreateAssessmentPage() {
         );
     }, [instructorAccess.assignments]);
 
+    const writableAssignedSubjectOptions = useMemo(
+        () => assignedSubjectOptions.filter((option) => {
+            const curriculum = typeof option.curriculum_id === 'number'
+                ? (curricula.find((entry) => entry.id === option.curriculum_id) ?? null)
+                : resolveCurriculumForType(curricula, option.curriculum_type);
+            return canCreateCurriculumWork(curriculum);
+        }),
+        [assignedSubjectOptions, curricula]
+    );
     const allowedCohortSubjectIds = useMemo(
-        () => assignedSubjectOptions.map((option) => option.id),
-        [assignedSubjectOptions]
+        () => writableAssignedSubjectOptions.map((option) => option.id),
+        [writableAssignedSubjectOptions]
     );
 
     const {
@@ -83,29 +100,46 @@ export function CreateAssessmentPage() {
     const assignedCohorts = useMemo(() => (
         Array.from(
             new Map(
-                assignedSubjectOptions.map((option) => [
+                writableAssignedSubjectOptions.map((option) => [
                     option.cohort_id,
                     {
                         id: option.cohort_id,
                         label: option.cohort_label,
                         name: option.cohort_name,
+                        curriculum_id: option.curriculum_id,
+                        curriculum_type: option.curriculum_type,
                     },
                 ])
             ).values()
         ).sort((left, right) => left.label.localeCompare(right.label))
-    ), [assignedSubjectOptions]);
+    ), [writableAssignedSubjectOptions]);
 
-    const availableCohorts = isInstructor
-        ? assignedCohorts.map((cohort) => ({
-            id: cohort.id,
-            name: cohort.label,
-            level: '',
-        }))
-        : cohorts;
+    const availableCohorts = useMemo(() => {
+        if (isInstructor) {
+            return assignedCohorts.map((cohort) => ({
+                id: cohort.id,
+                name: cohort.label,
+                level: '',
+                curriculum: cohort.curriculum_id ?? null,
+                curriculum_type: cohort.curriculum_type ?? null,
+            }));
+        }
+
+        return cohorts
+            .filter((cohort) => {
+                const curriculum = curricula.find((entry) => entry.id === cohort.curriculum) ?? null;
+                return canCreateCurriculumWork(curriculum);
+            })
+            .map((cohort) => ({
+                ...cohort,
+                curriculum: cohort.curriculum,
+                curriculum_type: cohort.curriculum_type,
+            }));
+    }, [assignedCohorts, cohorts, curricula, isInstructor]);
 
     const availableSubjects = useMemo(() => {
         if (isInstructor) {
-            return assignedSubjectOptions
+            return writableAssignedSubjectOptions
                 .filter((option) => option.cohort_id === selectedCohortId)
                 .map((option) => ({
                     id: option.id,
@@ -117,7 +151,21 @@ export function CreateAssessmentPage() {
             id: subject.id,
             label: `${subject.subject_code} — ${subject.subject_name}${subject.is_compulsory ? ' (Core)' : ''}`,
         }));
-    }, [isInstructor, assignedSubjectOptions, selectedCohortId, subjects]);
+    }, [isInstructor, selectedCohortId, subjects, writableAssignedSubjectOptions]);
+
+    const selectedCurriculum = useMemo(() => {
+        const selectedCohort = availableCohorts.find((cohort) => cohort.id === selectedCohortId);
+        if (!selectedCohort) {
+            return null;
+        }
+
+        if (typeof selectedCohort.curriculum === 'number') {
+            return curricula.find((entry) => entry.id === selectedCohort.curriculum) ?? null;
+        }
+
+        return resolveCurriculumForType(curricula, selectedCohort.curriculum_type);
+    }, [availableCohorts, curricula, selectedCohortId]);
+    const isSelectedCurriculumWritable = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : true;
 
     useEffect(() => {
         if (!isInstructor) return;
@@ -139,6 +187,9 @@ export function CreateAssessmentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isSelectedCurriculumWritable) {
+            return;
+        }
         const result = await submit();
         if (result) router.push(`/assessments/${result.id}`);
     };
@@ -170,6 +221,17 @@ export function CreateAssessmentPage() {
         );
     }
 
+    if ((isInstructor ? assignedSubjectOptions.length > 0 : cohorts.length > 0) && availableCohorts.length === 0) {
+        return (
+            <CurriculumLifecycleAccessState
+                title="Assessment creation is unavailable"
+                message="All available curricula are currently blocked for new work. Historical assessment records remain readable."
+                backHref="/assessments"
+                backLabel="Back to Assessments"
+            />
+        );
+    }
+
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4">
@@ -184,6 +246,14 @@ export function CreateAssessmentPage() {
                     <p className="text-gray-500 mt-1">Record assessment facts for the selected cohort subject</p>
                 </div>
             </div>
+
+            {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
+                <CurriculumLifecycleNotice
+                    status={selectedCurriculum.offering_status}
+                    role={isInstructor ? 'INSTRUCTOR' : 'ADMIN'}
+                    title="Assessment creation status"
+                />
+            ) : null}
 
             {saveError && <ErrorBanner message={saveError} onDismiss={dismissError} />}
 
@@ -220,7 +290,7 @@ export function CreateAssessmentPage() {
                                     value={form.cohort_subject.toString()}
                                     onChange={(e) => setField('cohort_subject', Number(e.target.value))}
                                     required
-                                    disabled={!selectedCohortId || (isInstructor && assignedSubjectOptions.length === 1)}
+                                    disabled={!selectedCohortId || !isSelectedCurriculumWritable || (isInstructor && writableAssignedSubjectOptions.length === 1)}
                                     error={errors.cohort_subject}
                                     options={[
                                         {
@@ -359,7 +429,7 @@ export function CreateAssessmentPage() {
                     <Link href="/assessments">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>
-                    <Button type="submit" disabled={saving || (!isAdminLike && !isInstructor)}>
+                    <Button type="submit" disabled={saving || (!isAdminLike && !isInstructor) || !isSelectedCurriculumWritable}>
                         <Save className="w-4 h-4 mr-2" />
                         {saving ? 'Creating…' : 'Create Assessment'}
                     </Button>

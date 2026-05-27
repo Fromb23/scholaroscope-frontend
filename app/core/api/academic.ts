@@ -8,12 +8,17 @@ import {
   AcademicYear,
   Term,
   Curriculum,
+  CurriculumDisableImpactResponse,
+  CurriculumDisableRequest,
+  CurriculumDisableRequestTransitionPayload,
   Subject,
   Cohort,
   CohortSubject,
   CohortSubjectLearnerListResponse,
   BulkSubjectEnrollResponse,
   BulkSubjectUnenrollResponse,
+  RequestCurriculumDisablePayload,
+  RequestCurriculumDisableResponse,
   SubjectDetail,
   ListQueryParams,
   CohortDetail,
@@ -178,6 +183,24 @@ export const curriculumAPI = {
     return response.data;
   },
 
+  getDisableImpact: async (id: number) => {
+    const response = await apiClient.get<CurriculumDisableImpactResponse>(`/curricula/${id}/disable-impact/`);
+    return response.data;
+  },
+
+  requestDisable: async (id: number, payload: RequestCurriculumDisablePayload) => {
+    const response = await apiClient.post<RequestCurriculumDisableResponse>(
+      `/curricula/${id}/request-disable/`,
+      payload
+    );
+    return response.data;
+  },
+
+  reactivate: async (id: number) => {
+    const response = await apiClient.post<Curriculum>(`/curricula/${id}/reactivate/`);
+    return response.data;
+  },
+
   create: async (data: Partial<Curriculum>) => {
     const response = await apiClient.post<Curriculum>('/curricula/', data);
     return response.data;
@@ -191,6 +214,44 @@ export const curriculumAPI = {
   delete: async (id: number) => {
     await apiClient.delete(`/curricula/${id}/`);
   }
+};
+
+export const curriculumDisableRequestAPI = {
+  getAll: async (params?: {
+    organization?: number;
+    curriculum?: number;
+    mode?: string;
+    status?: string;
+    ordering?: string;
+  }) => {
+    const response = await apiClient.get<CurriculumDisableRequest[]>('/curriculum-disable-requests/', { params });
+    return Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: CurriculumDisableRequest[] })?.results ?? [];
+  },
+
+  getById: async (id: number) => {
+    const response = await apiClient.get<CurriculumDisableRequest>(`/curriculum-disable-requests/${id}/`);
+    return response.data;
+  },
+
+  confirm: async (id: number, payload?: CurriculumDisableRequestTransitionPayload) => {
+    const response = await apiClient.post<CurriculumDisableRequest>(
+      `/curriculum-disable-requests/${id}/confirm/`,
+      payload ?? {}
+    );
+    return response.data;
+  },
+
+  cancel: async (id: number) => {
+    const response = await apiClient.post<CurriculumDisableRequest>(`/curriculum-disable-requests/${id}/cancel/`);
+    return response.data;
+  },
+
+  retry: async (id: number) => {
+    const response = await apiClient.post<CurriculumDisableRequest>(`/curriculum-disable-requests/${id}/retry/`);
+    return response.data;
+  },
 };
 
 // Subjects

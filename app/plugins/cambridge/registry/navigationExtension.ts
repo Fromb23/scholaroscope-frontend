@@ -18,13 +18,16 @@ registerPluginNavigationEntry({
     key: 'cambridge-admin-nav',
     slot: 'admin.primary.afterAssessments',
     priority: 20,
-    resolve: ({ hasPlugin }) => hasPlugin('cambridge') ? cambridgeNavItem : null,
+    resolve: ({ hasPlugin, hasCurriculumType }) =>
+        hasPlugin('cambridge') || hasCurriculumType('CAMBRIDGE') ? cambridgeNavItem : null,
 });
 
 registerPluginNavigationEntry({
     key: 'cambridge-instructor-nav',
     slot: 'instructor.primary.afterAssessments',
     priority: 20,
-    resolve: ({ hasPlugin, instructorAccess }) =>
-        hasPlugin('cambridge') && instructorAccess?.hasCurriculumAccess('CAMBRIDGE') ? cambridgeNavItem : null,
+    resolve: ({ hasPlugin, hasCurriculumType, instructorAccess }) =>
+        (hasPlugin('cambridge') || hasCurriculumType('CAMBRIDGE')) && instructorAccess?.hasCurriculumAccess('CAMBRIDGE')
+            ? cambridgeNavItem
+            : null,
 });

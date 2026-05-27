@@ -12,8 +12,11 @@ import Link from 'next/link';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { EditSessionForm } from '@/app/core/components/sessions/EditSessionForm';
+import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
 import { useSessionDetail } from '@/app/core/hooks/useSessions';
 
 export function EditSessionPage() {
@@ -21,6 +24,11 @@ export function EditSessionPage() {
     const sessionId = Number(params.id);
 
     const { session, loading } = useSessionDetail(sessionId, '');
+    const lifecycle = useCurriculumLifecycleGuard({
+        curriculumType: session?.curriculum_type ?? null,
+        routeIntent: 'edit',
+        allowWhenNoCurriculum: true,
+    });
 
     // ── Guards ────────────────────────────────────────────────────────────
 
@@ -61,6 +69,18 @@ export function EditSessionPage() {
         );
     }
 
+    if (session && !lifecycle.allowed) {
+        return (
+            <CurriculumLifecycleAccessState
+                title="Session editing is unavailable"
+                status={lifecycle.curriculum?.offering_status ?? null}
+                message={lifecycle.message}
+                backHref={`/sessions/${sessionId}`}
+                backLabel="View Session"
+            />
+        );
+    }
+
     // ── Render ────────────────────────────────────────────────────────────
 
     return (
@@ -78,6 +98,15 @@ export function EditSessionPage() {
                     </p>
                 </div>
             </div>
+
+            {lifecycle.curriculum && lifecycle.curriculum.offering_status !== 'ACTIVE' ? (
+                <CurriculumLifecycleNotice
+                    status={lifecycle.curriculum.offering_status}
+                    role={lifecycle.role}
+                    title="Session edit status"
+                    message={lifecycle.message}
+                />
+            ) : null}
 
             <EditSessionForm session={session} />
         </div>

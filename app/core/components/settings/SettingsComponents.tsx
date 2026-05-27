@@ -19,8 +19,15 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import Modal from '@/app/components/ui/Modal';
+import { CurriculumDisableWorkflowModal } from '@/app/core/components/curriculum/CurriculumDisableWorkflowModal';
+import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
 import { pluginAPI } from '@/app/core/api/plugins';
+import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { useCurriculumDisableRequests } from '@/app/core/hooks/useCurriculumDisableWorkflow';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
+import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
+import type { Curriculum, CurriculumDisableRequest } from '@/app/core/types/academic';
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useAuth } from '@/app/context/AuthContext';
@@ -64,6 +71,23 @@ const ROLE_LABEL: Record<string, string> = {
     ADMIN: 'Administrator',
     INSTRUCTOR: 'Instructor',
 };
+
+function isCurriculumPlugin(plugin: InstalledPlugin): boolean {
+    return plugin.key === 'cbc' || plugin.key === 'cambridge';
+}
+
+function resolvePluginCurriculum(plugin: InstalledPlugin, curricula: Curriculum[]): Curriculum | null {
+    if (plugin.key === 'cbc') {
+        return resolveCurriculumForType(curricula, 'CBE');
+    }
+
+    if (plugin.key === 'cambridge') {
+        return resolveCurriculumForType(curricula, 'CAMBRIDGE');
+    }
+
+    const exactNameMatch = curricula.find((curriculum) => curriculum.name.trim().toLowerCase() === plugin.name.trim().toLowerCase());
+    return exactNameMatch ?? null;
+}
 
 // ── FeedbackBanner ────────────────────────────────────────────────────────
 
@@ -398,15 +422,28 @@ export function MembersTab() {
 
 interface InstalledPluginCardProps {
     plugin: InstalledPlugin;
+    curriculum: Curriculum | null;
+    latestDisableRequest: CurriculumDisableRequest | null;
     onToggle: (id: number) => void;
+    onWorkflowChanged: () => void;
     toggling: boolean;
 }
 
-export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPluginCardProps) {
+export function InstalledPluginCard({
+    plugin,
+    curriculum,
+    latestDisableRequest,
+    onToggle,
+    onWorkflowChanged,
+    toggling,
+}: InstalledPluginCardProps) {
     const [curriculumOpen, setCurriculumOpen] = useState(false);
+    const [disableWorkflowOpen, setDisableWorkflowOpen] = useState(false);
     const [modalKey, setModalKey] = useState(0);
+    const isCurriculumManagedPlugin = isCurriculumPlugin(plugin) && Boolean(curriculum);
     const isActive = plugin.state === 'active' || plugin.is_active;
     const PluginModal = pluginModalSlots[plugin.key] ?? null;
+    const showLifecycleStatus = Boolean(curriculum && isCurriculumManagedPlugin);
 
     const openCurriculum = () => {
         setModalKey(k => k + 1);
@@ -426,13 +463,34 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                             <h3 className="text-sm font-semibold text-gray-900">{plugin.name}</h3>
                             <Badge variant="default" size="sm" className="font-mono">{plugin.version}</Badge>
                             {plugin.is_core && <Badge variant="info" size="sm">Core</Badge>}
-                            {isActive
-                                ? <Badge variant="green" size="sm">Active</Badge>
-                                : <Badge variant="default" size="sm">Inactive</Badge>
-                            }
+                            {showLifecycleStatus ? (
+                                <CurriculumLifecycleBadge status={curriculum?.offering_status} />
+                            ) : (
+                                isActive
+                                    ? <Badge variant="green" size="sm">Active</Badge>
+                                    : <Badge variant="default" size="sm">Inactive</Badge>
+                            )}
                         </div>
                         <p className="text-xs text-gray-500 max-w-md">{plugin.description}</p>
                         <p className="text-xs text-gray-400 mt-1 font-mono">key: {plugin.key}</p>
+                        {curriculum ? (
+                            <div className="mt-2 space-y-1">
+                                <p className="text-xs text-gray-600">
+                                    Curriculum: <span className="font-medium text-gray-900">{getCurriculumBridgeName(curriculum)}</span>
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                    {curriculum.offering_status === 'DISABLED'
+                                        ? 'Historical records remain readable. New work is blocked.'
+                                        : curriculum.offering_status === 'DRAINING'
+                                            ? 'New work is blocked while existing work drains.'
+                                            : curriculum.offering_status === 'FINALIZING'
+                                                ? 'Writes are blocked while finalization runs.'
+                                                : latestDisableRequest
+                                                    ? `Workflow status: ${latestDisableRequest.status}`
+                                                    : 'Managed through the curriculum lifecycle workflow.'}
+                                </p>
+                            </div>
+                        ) : null}
 
                         {PluginModal && isActive && (
                             <button
@@ -446,18 +504,32 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                         )}
                     </div>
                 </div>
-                {!plugin.is_core && (
-                    <button
-                        onClick={() => onToggle(plugin.id)}
-                        disabled={toggling}
-                        className={`p-2 rounded-lg transition-colors shrink-0 ml-4 ${isActive
-                            ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
-                            : 'text-gray-400 hover:bg-green-50 hover:text-green-600'
-                            }`}
-                    >
-                        {isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                    </button>
-                )}
+                {!plugin.is_core ? (
+                    isCurriculumManagedPlugin ? (
+                        <div className="ml-4 flex shrink-0 items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant={curriculum?.offering_status === 'DISABLED' ? 'secondary' : 'primary'}
+                                onClick={() => setDisableWorkflowOpen(true)}
+                            >
+                                {latestDisableRequest
+                                    ? (curriculum?.offering_status === 'DISABLED' ? 'View status' : 'View progress')
+                                    : (curriculum?.offering_status === 'DISABLED' ? 'Reactivate' : 'Start disable workflow')}
+                            </Button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => onToggle(plugin.id)}
+                            disabled={toggling}
+                            className={`p-2 rounded-lg transition-colors shrink-0 ml-4 ${isActive
+                                ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+                                : 'text-gray-400 hover:bg-green-50 hover:text-green-600'
+                                }`}
+                        >
+                            {isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                        </button>
+                    )
+                ) : null}
             </div>
 
             {PluginModal && (
@@ -467,6 +539,18 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
                     onClose={() => setCurriculumOpen(false)}
                 />
             )}
+
+            {curriculum ? (
+                <CurriculumDisableWorkflowModal
+                    isOpen={disableWorkflowOpen}
+                    onClose={() => setDisableWorkflowOpen(false)}
+                    curriculum={curriculum}
+                    activeRequestId={latestDisableRequest?.id ?? null}
+                    onCompleted={() => {
+                        void onWorkflowChanged();
+                    }}
+                />
+            ) : null}
         </>
     );
 }
@@ -475,6 +559,12 @@ export function InstalledPluginCard({ plugin, onToggle, toggling }: InstalledPlu
 
 export function PluginsTab() {
     const { plugins, loading, error, refetch } = usePlugins();
+    const { curricula } = useCurricula();
+    const {
+        data: disableRequests = [],
+        isLoading: disableRequestsLoading,
+        refetch: refetchDisableRequests,
+    } = useCurriculumDisableRequests();
     const { activeOrg } = useAuth();
     const { organizationId } = useOrganizationContext();
     const [toggling, setToggling] = useState(false);
@@ -486,6 +576,25 @@ export function PluginsTab() {
         setLocalPlugins(plugins);
     }, [plugins]);
 
+    const curriculumByPluginId = useMemo(() => (
+        new Map<number, Curriculum | null>(
+            localPlugins.map((plugin) => [plugin.id, resolvePluginCurriculum(plugin, curricula)])
+        )
+    ), [curricula, localPlugins]);
+
+    const latestDisableRequestByCurriculumId = useMemo(() => {
+        const byCurriculumId = new Map<number, CurriculumDisableRequest>();
+
+        disableRequests.forEach((request) => {
+            const existing = byCurriculumId.get(request.curriculum);
+            if (!existing || new Date(request.requested_at).getTime() > new Date(existing.requested_at).getTime()) {
+                byCurriculumId.set(request.curriculum, request);
+            }
+        });
+
+        return byCurriculumId;
+    }, [disableRequests]);
+
     const flash = (type: 'success' | 'error', message: string) => {
         setFeedback({ type, message });
         setTimeout(() => setFeedback(null), 3000);
@@ -494,7 +603,8 @@ export function PluginsTab() {
     const handleToggle = async (id: number) => {
         setToggling(true);
         try {
-            const updatedPlugin = await pluginAPI.toggle(id);
+            const response = await pluginAPI.toggle(id);
+            const updatedPlugin = 'installed_plugin' in response ? response.installed_plugin : response;
             console.debug('[PluginsTab.toggle] toggled', {
                 id,
                 organizationId: scopedOrganizationId,
@@ -509,16 +619,21 @@ export function PluginsTab() {
                 plugin.id === id ? updatedPlugin : plugin
             )));
             await refetch();
-            flash('success', 'Plugin updated.');
+            await refetchDisableRequests();
+            flash('success', 'installed_plugin' in response ? response.detail : 'Plugin updated.');
         } catch (err) {
             flash('error', extractErrorMessage(err as ApiError, 'Failed to update plugin.'));
         } finally { setToggling(false); }
     };
 
+    const handleWorkflowChanged = async () => {
+        await Promise.all([refetch(), refetchDisableRequests()]);
+    };
+
     const corePlugins = localPlugins.filter(p => p.is_core);
     const optionalPlugins = localPlugins.filter(p => !p.is_core);
 
-    if (loading) return <LoadingSpinner fullScreen={false} message="Loading plugins..." />;
+    if (loading || disableRequestsLoading) return <LoadingSpinner fullScreen={false} message="Loading plugins..." />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
 
     return (
@@ -534,7 +649,18 @@ export function PluginsTab() {
                     {corePlugins.length === 0
                         ? <p className="text-sm text-gray-400 py-4 text-center">No core plugins</p>
                         : corePlugins.map(p => (
-                            <InstalledPluginCard key={p.id} plugin={p} onToggle={handleToggle} toggling={toggling} />
+                            <InstalledPluginCard
+                                key={p.id}
+                                plugin={p}
+                                curriculum={curriculumByPluginId.get(p.id) ?? null}
+                                latestDisableRequest={(() => {
+                                    const curriculum = curriculumByPluginId.get(p.id);
+                                    return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
+                                })()}
+                                onToggle={handleToggle}
+                                onWorkflowChanged={handleWorkflowChanged}
+                                toggling={toggling}
+                            />
                         ))
                     }
                 </div>
@@ -552,7 +678,18 @@ export function PluginsTab() {
                             <p className="text-sm text-gray-500">No optional plugins installed.</p>
                         </div>
                     ) : optionalPlugins.map(p => (
-                        <InstalledPluginCard key={p.id} plugin={p} onToggle={handleToggle} toggling={toggling} />
+                        <InstalledPluginCard
+                            key={p.id}
+                            plugin={p}
+                            curriculum={curriculumByPluginId.get(p.id) ?? null}
+                            latestDisableRequest={(() => {
+                                const curriculum = curriculumByPluginId.get(p.id);
+                                return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
+                            })()}
+                            onToggle={handleToggle}
+                            onWorkflowChanged={handleWorkflowChanged}
+                            toggling={toggling}
+                        />
                     ))}
                 </div>
             </div>
