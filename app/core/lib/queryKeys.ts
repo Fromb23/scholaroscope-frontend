@@ -3,6 +3,17 @@ export const academicKeys = {
         all: ['academic', 'curricula'] as const,
         list: (organizationId: number | null) =>
             ['academic', 'curricula', 'list', organizationId] as const,
+        detail: (curriculumId: number | null) =>
+            ['academic', 'curricula', 'detail', curriculumId] as const,
+        disableImpact: (curriculumId: number | null) =>
+            ['academic', 'curricula', 'disable-impact', curriculumId] as const,
+    },
+    curriculumDisableRequests: {
+        all: ['academic', 'curriculum-disable-requests'] as const,
+        list: (filters: Record<string, unknown>) =>
+            ['academic', 'curriculum-disable-requests', 'list', filters] as const,
+        detail: (requestId: number | null) =>
+            ['academic', 'curriculum-disable-requests', 'detail', requestId] as const,
     },
     cohorts: {
         all: ['academic', 'cohorts'] as const,

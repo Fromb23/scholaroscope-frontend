@@ -20,6 +20,9 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { CurriculumFormModal } from '@/app/core/components/curricula/CurriculumFormModal';
+import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
+import { canCreateCurriculumWork, canEditCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
@@ -44,6 +47,7 @@ export function CurriculaPage() {
 
     const activeCurricula = curricula.filter(c => c.is_active);
     const inactiveCurricula = curricula.filter(c => !c.is_active);
+    const lifecycleCurricula = curricula.filter((curriculum) => curriculum.offering_status !== 'ACTIVE');
     const shouldOpenCreate = searchParams.get('create') === '1';
     const returnTo = searchParams.get('returnTo');
     const createInitialData = useMemo<CurriculumFormData>(() => ({
@@ -53,8 +57,24 @@ export function CurriculaPage() {
         is_active: true,
     }), [searchParams]);
 
-    const openCreate = () => { setEditing(null); setShowModal(true); };
-    const openEdit = (c: Curriculum) => { setEditing(c); setShowModal(true); };
+    const openCreate = () => {
+        if (!curricula.some((curriculum) => canCreateCurriculumWork(curriculum))) {
+            setPageError('All curricula are currently blocked for new work. Wait until a curriculum returns to Active before creating another one.');
+            return;
+        }
+
+        setEditing(null);
+        setShowModal(true);
+    };
+    const openEdit = (c: Curriculum) => {
+        if (!canEditCurriculumWork(c)) {
+            setPageError('This curriculum is not accepting changes right now. Historical records remain readable, but curriculum setup is read-only.');
+            return;
+        }
+
+        setEditing(c);
+        setShowModal(true);
+    };
     const clearCreateFlag = () => {
         const params = new URLSearchParams(searchParams.toString());
         params.delete('create');
@@ -97,10 +117,22 @@ export function CurriculaPage() {
 
     const RowActions = ({ curriculum }: { curriculum: Curriculum }) => (
         <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={() => openEdit(curriculum)}>
+            <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => openEdit(curriculum)}
+                disabled={!canEditCurriculumWork(curriculum)}
+                title={!canEditCurriculumWork(curriculum) ? 'This curriculum is read-only while the disable lifecycle is in progress.' : undefined}
+            >
                 <Edit className="h-4 w-4" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => handleDelete(curriculum)}>
+            <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleDelete(curriculum)}
+                disabled={!canEditCurriculumWork(curriculum)}
+                title={!canEditCurriculumWork(curriculum) ? 'This curriculum cannot be deleted while it is read-only.' : undefined}
+            >
                 <Trash2 className="h-4 w-4 text-red-600" />
             </Button>
         </div>
@@ -115,12 +147,23 @@ export function CurriculaPage() {
                     <h1 className="text-3xl font-bold text-gray-900">Curricula</h1>
                     <p className="mt-2 text-gray-600">Manage educational curricula and programs</p>
                 </div>
-                <Button onClick={openCreate}>
+                <Button
+                    onClick={openCreate}
+                    disabled={!curricula.some((curriculum) => canCreateCurriculumWork(curriculum))}
+                >
                     <Plus className="mr-2 h-4 w-4" />Add Curriculum
                 </Button>
             </div>
 
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
+
+            {lifecycleCurricula.length > 0 ? (
+                <CurriculumLifecycleNotice
+                    status={lifecycleCurricula[0].offering_status}
+                    title="Curriculum lifecycle in progress"
+                    message="Some curricula are being disabled, finalized, reactivated, or kept read-only. Historical records remain visible, but new curriculum work is blocked where the lifecycle requires it."
+                />
+            ) : null}
 
             {returnTo ? (
                 <Card>
@@ -170,6 +213,7 @@ export function CurriculaPage() {
                                 <TableHead>Code</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Description</TableHead>
+                                <TableHead>Status</TableHead>
                                 <TableHead>Subjects</TableHead>
                                 <TableHead>Cohorts</TableHead>
                             </TableRow>
@@ -180,6 +224,7 @@ export function CurriculaPage() {
                                     <TableCell><span className="font-mono font-medium">{getCurriculumBridgeCode(c.curriculum_type)}</span></TableCell>
                                     <TableCell><span className="font-medium">{getCurriculumBridgeName(c)}</span></TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
+                                    <TableCell><CurriculumLifecycleBadge status={c.offering_status} /></TableCell>
                                     <TableCell><Badge variant="info">{c.subjects_count ?? 0}</Badge></TableCell>
                                     <TableCell><Badge variant="info">{c.cohorts_count ?? 0}</Badge></TableCell>
                                     <TableCell><RowActions curriculum={c} /></TableCell>
@@ -202,6 +247,7 @@ export function CurriculaPage() {
                                 <TableHead>Code</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Description</TableHead>
+                                <TableHead>Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -210,6 +256,7 @@ export function CurriculaPage() {
                                     <TableCell><span className="font-mono font-medium">{getCurriculumBridgeCode(c.curriculum_type)}</span></TableCell>
                                     <TableCell><span className="font-medium">{getCurriculumBridgeName(c)}</span></TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
+                                    <TableCell><CurriculumLifecycleBadge status={c.offering_status} /></TableCell>
                                     <TableCell><RowActions curriculum={c} /></TableCell>
                                 </TableRow>
                             ))}

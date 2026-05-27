@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Edit,
@@ -21,11 +21,13 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { useAcademicYears, useCohorts, useCurricula } from '@/app/core/hooks/useAcademic';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
+import { canCreateCurriculumWork, canEditCurriculumWork, getCurriculumActionBlockReason } from '@/app/core/lib/curriculumLifecycle';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort } from '@/app/core/types/academic';
@@ -86,6 +88,13 @@ export function AdminCohortsPageContent() {
     const selectedYear = academicYears.find((academicYear) => academicYear.id === selectedYearId);
     const selectedCurriculum = curricula.find((curriculum) => curriculum.id === selectedCurriculumId);
     const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
+    const canCreateSelectedCurriculumWork = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : curricula.some((curriculum) => canCreateCurriculumWork(curriculum));
+    const selectedCurriculumBlockReason = selectedCurriculum
+        ? getCurriculumActionBlockReason(selectedCurriculum, 'create')
+        : (!canCreateSelectedCurriculumWork
+            ? 'All curricula are currently blocked for new work.'
+            : null);
+    const assistantCreateHref = '/academic/cohorts?create=1';
     const totalStudents = cohorts.reduce(
         (studentCount, cohort) => studentCount + (cohort.students_count ?? 0),
         0
@@ -100,15 +109,24 @@ export function AdminCohortsPageContent() {
     const firstCohortId = firstCohort?.id;
     const firstCohortName = firstCohort?.name ?? '';
 
-    const openCreate = useCallback(() => {
+    const openCreate = () => {
+        if (selectedCurriculumBlockReason) {
+            setPageError(selectedCurriculumBlockReason);
+            return;
+        }
         setEditingCohort(null);
         setShowFormModal(true);
-    }, []);
+    };
 
-    const openEdit = useCallback((cohort: Cohort) => {
+    const openEdit = (cohort: Cohort) => {
+        const cohortCurriculum = curricula.find((curriculum) => curriculum.id === cohort.curriculum);
+        if (cohortCurriculum && !canEditCurriculumWork(cohortCurriculum)) {
+            setPageError(getCurriculumActionBlockReason(cohortCurriculum, 'edit') ?? 'This cohort is read-only.');
+            return;
+        }
         setEditingCohort(cohort);
         setShowFormModal(true);
-    }, []);
+    };
 
     const clearCreateFlag = () => {
         const params = new URLSearchParams(searchParams.toString());
@@ -293,9 +311,8 @@ export function AdminCohortsPageContent() {
             ...(!isHistoricalView
                 ? [{
                     label: 'Add Cohort',
-                    type: 'page_action' as const,
-                    target: 'open_add_cohort',
-                    handler: openCreate,
+                    type: 'navigate' as const,
+                    href: assistantCreateHref,
                 }]
                 : []),
             ...(firstCohortId
@@ -309,9 +326,8 @@ export function AdminCohortsPageContent() {
         nextSafeAction: !isHistoricalView
             ? {
                 label: 'Add Cohort',
-                type: 'page_action' as const,
-                target: 'open_add_cohort',
-                handler: openCreate,
+                type: 'navigate' as const,
+                href: assistantCreateHref,
             }
             : (firstCohortId
                 ? {
@@ -331,9 +347,9 @@ export function AdminCohortsPageContent() {
         firstCohortName,
         isHistoricalView,
         loading,
-        openCreate,
         totalStudents,
         totalSubjects,
+        assistantCreateHref,
     ]);
 
     useAssistantPageContext(assistantContext);
@@ -350,7 +366,7 @@ export function AdminCohortsPageContent() {
                     </p>
                 </div>
                 {!isHistoricalView && (
-                    <Button onClick={openCreate}>
+                    <Button onClick={openCreate} disabled={!canCreateSelectedCurriculumWork}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add Cohort
                     </Button>
@@ -388,6 +404,14 @@ export function AdminCohortsPageContent() {
                 </Card>
             ) : null}
 
+            {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
+                <CurriculumLifecycleNotice
+                    status={selectedCurriculum.offering_status}
+                    title="Curriculum lifecycle in progress"
+                    message={selectedCurriculumBlockReason ?? 'This curriculum is available in read-only mode right now.'}
+                />
+            ) : null}
+
             <DesktopOnly>
                 <div className="grid gap-4 md:grid-cols-3">
                     <StatsCard title="Total Cohorts" value={cohorts.length} icon={GraduationCap} color="blue" />
@@ -414,7 +438,6 @@ export function AdminCohortsPageContent() {
                         options={[
                             { value: '', label: 'All Curricula' },
                             ...curricula
-                                .filter((curriculum) => curriculum.is_active)
                                 .map((curriculum) => ({
                                     value: String(curriculum.id),
                                     label: getCurriculumOptionLabel(curriculum),
@@ -445,7 +468,7 @@ export function AdminCohortsPageContent() {
                                     : 'Get started by creating a new cohort.'}
                         </p>
                         {!isHistoricalView && (
-                            <Button className="mt-4" onClick={openCreate}>
+                            <Button className="mt-4" onClick={openCreate} disabled={!canCreateSelectedCurriculumWork}>
                                 <Plus className="mr-2 h-4 w-4" />
                                 Add Cohort
                             </Button>

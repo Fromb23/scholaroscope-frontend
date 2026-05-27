@@ -47,6 +47,26 @@ export const CURRICULUM_TYPE_OPTIONS: { value: string; label: string }[] = [
 
 export type CurriculumType = typeof CURRICULUM_TYPE_OPTIONS[number]['value'];
 
+export type CurriculumOfferingStatus =
+  | 'ACTIVE'
+  | 'DISABLE_REQUESTED'
+  | 'DRAINING'
+  | 'FINALIZING'
+  | 'DISABLED'
+  | 'REACTIVATING'
+  | 'FAILED';
+
+export type CurriculumDisableRequestStatus =
+  | 'PENDING'
+  | 'DRAINING'
+  | 'WAITING_DUE_DATES'
+  | 'FINALIZING'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'FAILED';
+
+export type CurriculumDisableMode = 'GRACEFUL' | 'FORCE';
+
 export interface Curriculum {
   id: number;
   name: string;
@@ -54,9 +74,247 @@ export interface Curriculum {
   curriculum_type_display: string;
   description: string;
   is_active: boolean;
+  offering_status: CurriculumOfferingStatus;
+  offering_status_display: string;
   subjects_count: number;
   cohorts_count: number;
   created_at: string;
+}
+
+export interface CurriculumDisableAcademicSetupImpact {
+  cohort_count?: number;
+  cohort_ids?: number[];
+  subject_count?: number;
+  subject_ids?: number[];
+  cohort_subject_count?: number;
+  cohort_subject_ids?: number[];
+  active_cohort_instructor_count?: number;
+  active_cohort_subject_instructor_count?: number;
+}
+
+export interface CurriculumDisableSessionImpact {
+  in_progress_count?: number;
+  in_progress_ids?: number[];
+  scheduled_future_count?: number;
+  scheduled_future_ids?: number[];
+  scheduled_total_count?: number;
+  scheduled_total_ids?: number[];
+  requiring_completion_count?: number;
+  requiring_completion_ids?: number[];
+  incomplete_attendance_count?: number;
+  incomplete_attendance_ids?: number[];
+  taught_outcomes_pending_count?: number;
+  taught_outcomes_pending_ids?: number[];
+  completed_count?: number;
+  completed_ids?: number[];
+}
+
+export interface CurriculumDisableLessonPlanImpact {
+  draft_count?: number;
+  draft_ids?: number[];
+  reviewed_ready_count?: number;
+  reviewed_ready_ids?: number[];
+  scheduled_unused_count?: number;
+  scheduled_unused_ids?: number[];
+  used_count?: number;
+  used_ids?: number[];
+}
+
+export interface CurriculumDisableAssessmentImpact {
+  draft_count?: number;
+  draft_ids?: number[];
+  active_open_count?: number;
+  active_open_ids?: number[];
+  future_due_count?: number;
+  future_due_ids?: number[];
+  past_due_not_finalized_count?: number;
+  past_due_not_finalized_ids?: number[];
+  partial_scores_count?: number;
+  partial_score_assessment_ids?: number[];
+  finalized_count?: number;
+  finalized_ids?: number[];
+}
+
+export interface CurriculumDisableReportingImpact {
+  active_policy_count?: number;
+  active_policy_ids?: number[];
+  grade_summaries_stale_count?: number;
+  attendance_summaries_stale_count?: number;
+  computed_grade_count?: number;
+}
+
+export interface CurriculumDisableAffectedUser {
+  user_id: number;
+  email: string;
+  full_name: string;
+}
+
+export interface CurriculumDisableAffectedInstructor extends CurriculumDisableAffectedUser {
+  cohort_ids?: number[];
+  cohort_names?: string[];
+  cohort_subject_ids?: number[];
+  subject_ids?: number[];
+  subject_codes?: string[];
+  subject_names?: string[];
+  session_count?: number;
+  assessment_count?: number;
+}
+
+export interface CurriculumDisableUserImpact {
+  affected_admins?: CurriculumDisableAffectedUser[];
+  affected_instructors?: CurriculumDisableAffectedInstructor[];
+}
+
+export interface CurriculumDisableBlockingImpact {
+  session_ids?: number[];
+  assessment_ids?: number[];
+  safe_to_finalize_gracefully?: boolean;
+}
+
+export interface CurriculumDisableImpactSnapshot {
+  curriculum_id: number;
+  curriculum_name: string;
+  curriculum_type: string;
+  offering_status: CurriculumOfferingStatus;
+  is_active: boolean;
+  snapshot_taken_at: string;
+  recommended_finalize_after?: string | null;
+  academic_setup?: CurriculumDisableAcademicSetupImpact;
+  sessions?: CurriculumDisableSessionImpact;
+  lesson_plans?: CurriculumDisableLessonPlanImpact;
+  assessments?: CurriculumDisableAssessmentImpact;
+  reporting?: CurriculumDisableReportingImpact;
+  users?: CurriculumDisableUserImpact;
+  blocking?: CurriculumDisableBlockingImpact;
+}
+
+export interface CurriculumDisableFinalizationClosureSummary {
+  curriculum_id?: number;
+  curriculum_name?: string;
+  mode?: CurriculumDisableMode;
+  finalized_at?: string;
+  historical_read_only?: boolean;
+}
+
+export interface CurriculumDisableFinalizationCohortSnapshot {
+  id: number;
+  name: string;
+  subject_count: number;
+  learner_count: number;
+}
+
+export interface CurriculumDisableFinalizationSubjectSnapshot {
+  id: number;
+  code: string;
+  name: string;
+  cohort_count: number;
+}
+
+export interface CurriculumDisableFinalizationSessionsSnapshot {
+  completed_in_progress_count?: number;
+  completed_in_progress_ids?: number[];
+  cancelled_scheduled_count?: number;
+  cancelled_scheduled_ids?: number[];
+}
+
+export interface CurriculumDisableFinalizationLessonPlansSnapshot {
+  archived_lesson_plan_count?: number;
+  archived_lesson_plan_ids?: number[];
+}
+
+export interface CurriculumDisableFinalizationAssessmentsSnapshot {
+  finalized_open_assessment_count?: number;
+  finalized_open_assessment_ids?: number[];
+  partial_score_assessment_ids?: number[];
+  partial_score_assessment_count?: number;
+}
+
+export interface CurriculumDisableFinalizationReportingSnapshot {
+  attendance_summary_count?: number;
+  grade_summary_count?: number;
+  cohort_summary_count?: number;
+  subject_summary_count?: number;
+  assessment_type_summary_count?: number;
+  computed_grade_count?: number;
+  stale_grade_summary_count?: number;
+  stale_attendance_summary_count?: number;
+  policy_count?: number;
+}
+
+export interface CurriculumDisableFinalizationLearnerSnapshot {
+  active_cohort_enrollment_count?: number;
+  active_subject_enrollment_count?: number;
+}
+
+export interface CurriculumDisableFinalizationNotificationSnapshot {
+  admins_sent?: string[];
+  instructors_sent?: string[];
+}
+
+export interface CurriculumDisableFinalizationSnapshot {
+  impact_snapshot?: CurriculumDisableImpactSnapshot;
+  closure_summary?: CurriculumDisableFinalizationClosureSummary;
+  cohorts?: CurriculumDisableFinalizationCohortSnapshot[];
+  subjects?: CurriculumDisableFinalizationSubjectSnapshot[];
+  sessions?: CurriculumDisableFinalizationSessionsSnapshot;
+  lesson_plans?: CurriculumDisableFinalizationLessonPlansSnapshot;
+  assessments?: CurriculumDisableFinalizationAssessmentsSnapshot;
+  reporting?: CurriculumDisableFinalizationReportingSnapshot;
+  learners?: CurriculumDisableFinalizationLearnerSnapshot;
+  instructors?: CurriculumDisableAffectedInstructor[];
+  notifications?: CurriculumDisableFinalizationNotificationSnapshot;
+}
+
+export interface CurriculumDisableRequest {
+  id: number;
+  organization: number;
+  curriculum: number;
+  curriculum_name: string;
+  curriculum_type: string;
+  curriculum_offering_status: CurriculumOfferingStatus;
+  installed_plugin_id: number | null;
+  requested_by: number | null;
+  requested_by_email: string | null;
+  mode: CurriculumDisableMode;
+  status: CurriculumDisableRequestStatus;
+  requested_at: string;
+  confirmed_at: string | null;
+  drain_started_at: string | null;
+  finalize_after: string | null;
+  finalized_at: string | null;
+  cancelled_at: string | null;
+  failed_at: string | null;
+  failure_reason: string;
+  impact_snapshot: CurriculumDisableImpactSnapshot;
+  finalization_snapshot: CurriculumDisableFinalizationSnapshot;
+  admin_notification_sent_at: string | null;
+  instructor_notifications_sent_at: string | null;
+  idempotency_key: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CurriculumDisableImpactResponse {
+  curriculum_id: number;
+  offering_status: CurriculumOfferingStatus;
+  active_disable_request_id: number | null;
+  impact_snapshot: CurriculumDisableImpactSnapshot;
+}
+
+export interface RequestCurriculumDisablePayload {
+  mode: CurriculumDisableMode;
+  confirm?: boolean;
+  finalize_after?: string | null;
+}
+
+export interface RequestCurriculumDisableResponse {
+  created: boolean;
+  request: CurriculumDisableRequest;
+  impact_snapshot: CurriculumDisableImpactSnapshot;
+}
+
+export interface CurriculumDisableRequestTransitionPayload {
+  finalize_after?: string | null;
 }
 
 // Subject

@@ -11,10 +11,11 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
-import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { ASSESSMENT_TYPE_OPTIONS, type Assessment } from '@/app/core/types/assessment';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -44,12 +45,25 @@ export function AssessmentsOverview() {
     const [selectedEvalType, setSelectedEvalType] = useState<string | undefined>();
     const [groupView, setGroupView] = useState<GroupView>('cohort');
     const instructorAccess = useInstructorCohortAccess();
+    const { curricula } = useCurricula();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
-    const canCreateAssessment = isAdminLike || (
-        activeRole === 'INSTRUCTOR' && instructorAccess.hasAssignedCohortSubjects
+    const hasWritableAssessmentCurriculum = useMemo(() => {
+        if (isAdminLike) {
+            return curricula.some((curriculum) => canCreateCurriculumWork(curriculum));
+        }
+
+        return instructorAccess.assignments.some((assignment) => {
+            const curriculum = typeof assignment.curriculum_id === 'number'
+                ? (curricula.find((entry) => entry.id === assignment.curriculum_id) ?? null)
+                : resolveCurriculumForType(curricula, assignment.curriculum_type ?? null);
+            return canCreateCurriculumWork(curriculum);
+        });
+    }, [curricula, instructorAccess.assignments, isAdminLike]);
+    const canCreateAssessment = hasWritableAssessmentCurriculum && (
+        isAdminLike || (activeRole === 'INSTRUCTOR' && instructorAccess.hasAssignedCohortSubjects)
     );
 
     const { assessments, loading } = useAssessments({

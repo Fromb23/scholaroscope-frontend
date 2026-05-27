@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { Role } from '@/app/core/types/auth';
+import type { Curriculum } from '@/app/core/types/academic';
 
 export interface NavItem {
     name: string;
@@ -23,7 +24,9 @@ export type PluginNavigationSlot =
 export interface PluginNavigationContext {
     role: Role;
     hasPlugin: (pluginKey: string) => boolean;
+    hasCurriculumType: (curriculumType: string) => boolean;
     badges: Record<string, number>;
+    curricula: Curriculum[];
     hasAnyReportPolicySurface?: boolean;
     instructorAccess?: {
         hasCurriculumAccess: (curriculum: 'CBC' | 'CAMBRIDGE') => boolean;

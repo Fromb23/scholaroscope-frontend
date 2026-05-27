@@ -2,6 +2,12 @@
 // app/core/types/plugins.ts
 // ============================================================================
 
+import type {
+    Curriculum,
+    CurriculumDisableImpactSnapshot,
+    CurriculumDisableRequest,
+} from '@/app/core/types/academic';
+
 export type PluginSource = 'core' | 'third_party';
 export type PluginState = 'active' | 'disabled' | 'grace_period' | 'uninstalled';
 
@@ -54,6 +60,19 @@ export interface InstalledPlugin {
     data_retention_until: string | null;
     capabilities?: string[];
 }
+
+export interface InstalledPluginToggleWorkflowResponse {
+    detail: string;
+    installed_plugin: InstalledPlugin;
+    curriculum?: Curriculum;
+    disable_request?: CurriculumDisableRequest;
+    disable_request_id?: number;
+    impact_snapshot?: CurriculumDisableImpactSnapshot;
+}
+
+export type InstalledPluginToggleResponse =
+    | InstalledPlugin
+    | InstalledPluginToggleWorkflowResponse;
 
 export const SOURCE_LABELS: Record<PluginSource, string> = {
     core: 'Core',

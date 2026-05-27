@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { Input } from '@/app/components/ui/Input';
@@ -29,8 +31,9 @@ import {
     validateReferencePages,
 } from '@/app/core/lib/lessonPlanReferences';
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
-import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import {
     useCreateLessonPlan,
     useGenerateLessonPlan,
@@ -49,6 +52,7 @@ import type {
 export function GenerateLessonPlanPage() {
     const router = useRouter();
     const errorContainerRef = useRef<HTMLDivElement | null>(null);
+    const { curricula } = useCurricula();
     const { terms } = useTerms();
     const { assignments, isLoading: assignmentsLoading, error: assignmentsError } = useInstructorCohortAccess();
     const {
@@ -93,9 +97,35 @@ export function GenerateLessonPlanPage() {
                 .map((assignment) => ({
                     value: String(assignment.cohort_subject_id),
                     label: `${assignment.cohort_name} • ${assignment.subject_name}`,
+                    curriculumId: assignment.curriculum_id ?? null,
+                    curriculumType: assignment.curriculum_type ?? null,
                 })),
         [assignments]
     );
+    const availableAssignmentOptions = useMemo(
+        () => assignmentOptions.filter((assignment) => {
+            const curriculum = typeof assignment.curriculumId === 'number'
+                ? (curricula.find((entry) => entry.id === assignment.curriculumId) ?? null)
+                : resolveCurriculumForType(curricula, assignment.curriculumType);
+            return canCreateCurriculumWork(curriculum);
+        }),
+        [assignmentOptions, curricula]
+    );
+    const selectedAssignment = useMemo(
+        () => assignmentOptions.find((assignment) => assignment.value === cohortSubjectId) ?? null,
+        [assignmentOptions, cohortSubjectId]
+    );
+    const selectedCurriculum = useMemo(() => {
+        if (!selectedAssignment) {
+            return null;
+        }
+
+        if (typeof selectedAssignment.curriculumId === 'number') {
+            return curricula.find((entry) => entry.id === selectedAssignment.curriculumId) ?? null;
+        }
+
+        return resolveCurriculumForType(curricula, selectedAssignment.curriculumType);
+    }, [curricula, selectedAssignment]);
 
     const submitting = creatingLessonPlan || generatingLessonPlan;
     const plannedOutcomeMap = useMemo(
@@ -162,6 +192,12 @@ export function GenerateLessonPlanPage() {
     }, [cohortSubjectId]);
 
     useEffect(() => {
+        if (cohortSubjectId && !availableAssignmentOptions.some((assignment) => assignment.value === cohortSubjectId)) {
+            setCohortSubjectId('');
+        }
+    }, [availableAssignmentOptions, cohortSubjectId]);
+
+    useEffect(() => {
         setSubmittingError(null);
         setShowRetryWithoutAi(false);
         clearCreateError();
@@ -192,7 +228,9 @@ export function GenerateLessonPlanPage() {
         });
     }, [activeErrorMessage, showRetryWithoutAi]);
 
-    const submitButtonDisabled = submitting || curriculumLoading;
+    const submitButtonDisabled = submitting
+        || curriculumLoading
+        || (selectedCurriculum ? !canCreateCurriculumWork(selectedCurriculum) : false);
 
     const clearVisibleErrors = () => {
         setSubmittingError(null);
@@ -312,6 +350,17 @@ export function GenerateLessonPlanPage() {
         );
     }
 
+    if (assignments.length > 0 && availableAssignmentOptions.length === 0) {
+        return (
+            <CurriculumLifecycleAccessState
+                title="Lesson planning is unavailable"
+                message="All assigned curricula are currently blocked for new work. Historical lesson plans remain readable."
+                backHref="/lesson-plans"
+                backLabel="Back to Lesson Plans"
+            />
+        );
+    }
+
     return (
         <div className="space-y-6 pb-32 md:pb-0">
             <div className="space-y-3">
@@ -328,6 +377,14 @@ export function GenerateLessonPlanPage() {
                         Prepare an editable draft using teacher-selected outcomes and reference pages.
                     </p>
                 </div>
+
+                {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
+                    <CurriculumLifecycleNotice
+                        status={selectedCurriculum.offering_status}
+                        role="INSTRUCTOR"
+                        title="Lesson planning status"
+                    />
+                ) : null}
 
                 <div className="theme-warning-surface overflow-hidden rounded-xl">
                     <button
@@ -453,7 +510,7 @@ export function GenerateLessonPlanPage() {
                                 onChange={(event) => setCohortSubjectId(event.target.value)}
                                 options={[
                                     { value: '', label: 'Choose class subject' },
-                                    ...assignmentOptions,
+                                    ...availableAssignmentOptions,
                                 ]}
                             />
 

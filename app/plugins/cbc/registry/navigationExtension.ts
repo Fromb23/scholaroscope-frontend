@@ -20,7 +20,7 @@ registerPluginNavigationEntry({
     key: 'cbc-admin-nav',
     slot: 'admin.primary.afterAssessments',
     priority: 10,
-    resolve: ({ hasPlugin }) => hasPlugin('cbc')
+    resolve: ({ hasPlugin, hasCurriculumType }) => (hasPlugin('cbc') || hasCurriculumType('CBE'))
         ? ({
             name: 'CBC Management',
             href: '/cbc/progress',
@@ -40,7 +40,8 @@ registerPluginNavigationEntry({
     key: 'cbc-instructor-nav',
     slot: 'instructor.primary.afterAssessments',
     priority: 10,
-    resolve: ({ hasPlugin, instructorAccess }) => hasPlugin('cbc') && instructorAccess?.hasCurriculumAccess('CBC')
+    resolve: ({ hasPlugin, hasCurriculumType, instructorAccess }) =>
+        (hasPlugin('cbc') || hasCurriculumType('CBE')) && instructorAccess?.hasCurriculumAccess('CBC')
         ? ({
             name: 'CBC Teaching',
             href: '/cbc/teaching',

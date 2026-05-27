@@ -4,7 +4,7 @@
 
 import { apiClient } from './client';
 import type {
-    Plugin, InstalledPlugin, CurriculumCatalog, SeedCurriculumPayload,
+    Plugin, InstalledPlugin, InstalledPluginToggleResponse, CurriculumCatalog, SeedCurriculumPayload,
     SeedCurriculumResult, RegisterSubjectPayload,
     RegisteredSubject, CurriculumCatalogDetail
 } from '@/app/core/types/plugins';
@@ -77,8 +77,8 @@ export const pluginAPI = {
         return response.data;
     },
 
-    toggle: async (installedPluginId: number): Promise<InstalledPlugin> => {
-        const response = await apiClient.post<InstalledPlugin>(
+    toggle: async (installedPluginId: number): Promise<InstalledPluginToggleResponse> => {
+        const response = await apiClient.post<InstalledPluginToggleResponse>(
             `/installed-plugins/${installedPluginId}/toggle/`
         );
         return response.data;

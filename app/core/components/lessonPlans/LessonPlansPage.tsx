@@ -8,6 +8,7 @@ import { CheckCircle2, Eye, FileText, Plus, RotateCcw } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { Input } from '@/app/components/ui/Input';
@@ -16,7 +17,8 @@ import Modal from '@/app/components/ui/Modal';
 import { Select } from '@/app/components/ui/Select';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
-import { useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
+import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useModalState } from '@/app/core/hooks/useModalState';
 import type { LessonPlan, LessonPlanStatus } from '@/app/core/types/lessonPlans';
@@ -213,10 +215,15 @@ function LessonPlanActions({
 export function LessonPlansPage() {
     const router = useRouter();
     const { activeRole } = useAuth();
+    const { curricula } = useCurricula();
     const { lessonPlans, loading, error, refetch, markReviewed, markUsed, archive, restore } = useLessonPlans();
     const { terms } = useTerms();
     const { subjects } = useSubjects();
     const { cohorts } = useCohorts();
+    const canCreateLessonPlan = useMemo(
+        () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
+        [curricula]
+    );
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<LessonPlanStatus | ''>('');
     const [termFilter, setTermFilter] = useState('');
@@ -363,13 +370,29 @@ export function LessonPlansPage() {
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
 
-                <Link href="/lesson-plans/new">
-                    <Button>
+                {canCreateLessonPlan ? (
+                    <Link href="/lesson-plans/new">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
+                        </Button>
+                    </Link>
+                ) : (
+                    <Button disabled>
                         <Plus className="mr-2 h-4 w-4" />
                         {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
                     </Button>
-                </Link>
+                )}
             </div>
+
+            {!canCreateLessonPlan ? (
+                <CurriculumLifecycleNotice
+                    status="DISABLED"
+                    role={activeRole === 'INSTRUCTOR' ? 'INSTRUCTOR' : 'ADMIN'}
+                    title="New lesson plans are blocked"
+                    message="All curricula are currently blocked for new work. Historical lesson plans remain available for viewing."
+                />
+            ) : null}
 
             {actionError ? (
                 <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
@@ -454,12 +477,19 @@ export function LessonPlansPage() {
                                 ? 'Start by choosing one of your assigned class subjects and the outcomes you want to teach.'
                                 : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
-                        <Link href="/lesson-plans/new">
-                            <Button className="mt-4">
+                        {canCreateLessonPlan ? (
+                            <Link href="/lesson-plans/new">
+                                <Button className="mt-4">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Button className="mt-4" disabled>
                                 <Plus className="mr-2 h-4 w-4" />
                                 {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
                             </Button>
-                        </Link>
+                        )}
                     </div>
                 </Card>
             ) : filteredLessonPlans.length === 0 ? (
