@@ -4,7 +4,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Eye, FileText, Plus, RotateCcw } from 'lucide-react';
+import { Eye, FileText, Plus, RotateCcw } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -132,6 +132,12 @@ interface LessonPlanActionsProps {
     buttonClassName?: string;
 }
 
+interface RowActionFeedback {
+    action: 'reviewed' | 'used' | 'archived' | 'restored';
+    message: string;
+    variant: 'error' | 'success';
+}
+
 function LessonPlanActions({
     lessonPlan,
     pendingActionKey,
@@ -230,9 +236,9 @@ export function LessonPlansPage() {
     const [subjectFilter, setSubjectFilter] = useState('');
     const [cohortFilter, setCohortFilter] = useState('');
     const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
-    const [actionError, setActionError] = useState<string | null>(null);
-    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+    const [rowActionFeedback, setRowActionFeedback] = useState<Record<number, RowActionFeedback>>({});
     const [reflection, setReflection] = useState('');
+    const [markUsedError, setMarkUsedError] = useState<string | null>(null);
     const {
         target: markUsedTarget,
         isOpen: isMarkUsedOpen,
@@ -288,27 +294,61 @@ export function LessonPlansPage() {
         );
     }, [cohortFilter, lessonPlans, search, statusFilter, subjectFilter, termFilter]);
 
+    const setLessonPlanFeedback = (lessonPlanId: number, feedback: RowActionFeedback | null) => {
+        setRowActionFeedback((current) => {
+            if (!feedback) {
+                if (!(lessonPlanId in current)) {
+                    return current;
+                }
+
+                const next = { ...current };
+                delete next[lessonPlanId];
+                return next;
+            }
+
+            return {
+                ...current,
+                [lessonPlanId]: feedback,
+            };
+        });
+    };
+
     const handleRowAction = async (
         lessonPlan: LessonPlan,
         action: 'reviewed' | 'archived' | 'restored'
     ) => {
         setPendingActionKey(actionKey(lessonPlan.id, action));
-        setActionError(null);
-        setActionSuccess(null);
+        setLessonPlanFeedback(lessonPlan.id, null);
 
         try {
             if (action === 'reviewed') {
                 await markReviewed(lessonPlan.id);
-                setActionSuccess('Lesson plan marked as reviewed.');
+                setLessonPlanFeedback(lessonPlan.id, {
+                    action,
+                    message: 'Lesson plan marked as reviewed.',
+                    variant: 'success',
+                });
             } else if (action === 'archived') {
                 await archive(lessonPlan.id);
-                setActionSuccess('Lesson plan archived.');
+                setLessonPlanFeedback(lessonPlan.id, {
+                    action,
+                    message: 'Lesson plan archived.',
+                    variant: 'success',
+                });
             } else {
                 await restore(lessonPlan.id);
-                setActionSuccess('Lesson plan restored.');
+                setLessonPlanFeedback(lessonPlan.id, {
+                    action,
+                    message: 'Lesson plan restored.',
+                    variant: 'success',
+                });
             }
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Action failed.');
+            setLessonPlanFeedback(lessonPlan.id, {
+                action,
+                message: err instanceof Error ? err.message : 'Action failed.',
+                variant: 'error',
+            });
         } finally {
             setPendingActionKey(null);
         }
@@ -316,8 +356,8 @@ export function LessonPlansPage() {
 
     const handleOpenMarkUsed = (lessonPlan: LessonPlan) => {
         setReflection(lessonPlan.reflection ?? '');
-        setActionError(null);
-        setActionSuccess(null);
+        setLessonPlanFeedback(lessonPlan.id, null);
+        setMarkUsedError(null);
         openMarkUsed(lessonPlan);
     };
 
@@ -329,16 +369,20 @@ export function LessonPlansPage() {
         }
 
         setPendingActionKey(actionKey(markUsedTarget.id, 'used'));
-        setActionError(null);
-        setActionSuccess(null);
+        setLessonPlanFeedback(markUsedTarget.id, null);
+        setMarkUsedError(null);
 
         try {
             await markUsed(markUsedTarget.id, { reflection: reflection.trim() });
             closeMarkUsed();
             setReflection('');
-            setActionSuccess('Lesson plan marked as used.');
+            setLessonPlanFeedback(markUsedTarget.id, {
+                action: 'used',
+                message: 'Lesson plan marked as used.',
+                variant: 'success',
+            });
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Action failed.');
+            setMarkUsedError(err instanceof Error ? err.message : 'Action failed.');
         } finally {
             setPendingActionKey(null);
         }
@@ -392,17 +436,6 @@ export function LessonPlansPage() {
                     title="New lesson plans are blocked"
                     message="All curricula are currently blocked for new work. Historical lesson plans remain available for viewing."
                 />
-            ) : null}
-
-            {actionError ? (
-                <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
-            ) : null}
-
-            {actionSuccess ? (
-                <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    {actionSuccess}
-                </div>
             ) : null}
 
             <Card>
@@ -508,6 +541,7 @@ export function LessonPlansPage() {
                 <div className="space-y-4 pb-24">
                     {filteredLessonPlans.map((lessonPlan) => {
                         const lessonSummary = getLessonSummary(lessonPlan);
+                        const feedback = rowActionFeedback[lessonPlan.id];
 
                         return (
                             <Card key={lessonPlan.id} className="p-4 sm:p-5">
@@ -566,7 +600,7 @@ export function LessonPlansPage() {
                                         />
                                     </dl>
 
-                                    <div className="xl:min-w-[12rem]">
+                                    <div className="space-y-3 xl:min-w-[12rem]">
                                         <LessonPlanActions
                                             lessonPlan={lessonPlan}
                                             pendingActionKey={pendingActionKey}
@@ -584,6 +618,15 @@ export function LessonPlansPage() {
                                             className="w-full xl:flex-col xl:items-stretch"
                                             buttonClassName="w-full sm:w-auto xl:w-full"
                                         />
+                                        {feedback ? (
+                                            <ErrorBanner
+                                                message={feedback.message}
+                                                variant={feedback.variant}
+                                                compact
+                                                autoDismissMs={feedback.variant === 'error' ? 5000 : 4000}
+                                                onDismiss={() => setLessonPlanFeedback(lessonPlan.id, null)}
+                                            />
+                                        ) : null}
                                     </div>
                                 </div>
                             </Card>
@@ -597,6 +640,7 @@ export function LessonPlansPage() {
                 onClose={() => {
                     closeMarkUsed();
                     setReflection('');
+                    setMarkUsedError(null);
                 }}
                 title="Mark Lesson Plan as Used"
                 size="md"
@@ -617,6 +661,15 @@ export function LessonPlansPage() {
                         />
                     </div>
 
+                    {markUsedError ? (
+                        <ErrorBanner
+                            message={markUsedError}
+                            onDismiss={() => setMarkUsedError(null)}
+                            autoDismissMs={5000}
+                            compact
+                        />
+                    ) : null}
+
                     <div className="flex flex-wrap justify-end gap-3">
                         <Button
                             type="button"
@@ -624,6 +677,7 @@ export function LessonPlansPage() {
                             onClick={() => {
                                 closeMarkUsed();
                                 setReflection('');
+                                setMarkUsedError(null);
                             }}
                         >
                             Cancel

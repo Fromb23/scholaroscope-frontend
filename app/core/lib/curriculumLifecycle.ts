@@ -1,5 +1,6 @@
 import type {
   Curriculum,
+  CurriculumDisableRequestStatus,
   CurriculumOfferingStatus,
 } from '@/app/core/types/academic';
 
@@ -246,4 +247,100 @@ export function getCurriculumActionBlockReason(
   }
 
   return getCurriculumStatusMessage(curriculum.offering_status, role);
+}
+
+const CURRICULUM_PLUGIN_KEY_BY_TYPE: Record<string, string> = {
+  CBE: 'cbc',
+  CAMBRIDGE: 'cambridge',
+};
+
+const CURRICULUM_MANAGEMENT_BLOCKING_REQUEST_STATUSES = new Set<CurriculumDisableRequestStatus>([
+  'PENDING',
+  'DRAINING',
+  'WAITING_DUE_DATES',
+  'FINALIZING',
+  'FAILED',
+]);
+
+export function resolveCurriculumPluginKey(
+  curriculum?: Pick<Curriculum, 'curriculum_type'> | null,
+): string | null {
+  if (!curriculum) {
+    return null;
+  }
+
+  const normalizedType = normalizeCurriculumType(curriculum.curriculum_type);
+  return CURRICULUM_PLUGIN_KEY_BY_TYPE[normalizedType] ?? null;
+}
+
+export function canManageCurriculumPlugin({
+  pluginActive,
+  pluginAvailable,
+  curriculum,
+  disableRequestStatus,
+}: {
+  pluginActive: boolean;
+  pluginAvailable: boolean;
+  curriculum?: Pick<Curriculum, 'offering_status'> | null;
+  disableRequestStatus?: CurriculumDisableRequestStatus | null;
+}): boolean {
+  if (!pluginActive || !pluginAvailable || !curriculum) {
+    return false;
+  }
+
+  if (curriculum.offering_status !== 'ACTIVE') {
+    return false;
+  }
+
+  if (disableRequestStatus && CURRICULUM_MANAGEMENT_BLOCKING_REQUEST_STATUSES.has(disableRequestStatus)) {
+    return false;
+  }
+
+  return true;
+}
+
+export function getCurriculumPluginManagementBlockMessage({
+  pluginActive,
+  pluginAvailable,
+  curriculum,
+  disableRequestStatus,
+}: {
+  pluginActive: boolean;
+  pluginAvailable: boolean;
+  curriculum?: Pick<Curriculum, 'offering_status'> | null;
+  disableRequestStatus?: CurriculumDisableRequestStatus | null;
+}): string | null {
+  if (!curriculum) {
+    return null;
+  }
+
+  if (!pluginAvailable) {
+    return 'This plugin is unavailable right now.';
+  }
+
+  if (!pluginActive) {
+    return 'Activate this plugin to resume curriculum management.';
+  }
+
+  if (disableRequestStatus === 'WAITING_DUE_DATES') {
+    return 'Curriculum management is paused while this curriculum is draining.';
+  }
+
+  switch (curriculum.offering_status) {
+    case 'DISABLE_REQUESTED':
+    case 'DRAINING':
+      return 'Curriculum management is paused while this curriculum is draining.';
+    case 'FINALIZING':
+      return 'The system is finalizing reports and locking this curriculum.';
+    case 'DISABLED':
+      return 'This curriculum is disabled. Historical records are read-only.';
+    case 'FAILED':
+      return 'Disable workflow needs review before curriculum management can continue.';
+    case 'REACTIVATING':
+      return 'Curriculum management will resume after reactivation completes.';
+    default:
+      return disableRequestStatus && CURRICULUM_MANAGEMENT_BLOCKING_REQUEST_STATUSES.has(disableRequestStatus)
+        ? 'Curriculum management is paused while the lifecycle workflow is in progress.'
+        : null;
+  }
 }

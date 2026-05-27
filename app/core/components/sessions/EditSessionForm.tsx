@@ -16,6 +16,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions } from '@/app/core/hooks/useSessions';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { extractErrorMessage } from '@/app/core/types/errors';
@@ -73,6 +74,7 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const submitErrorRef = useScrollIntoViewOnMessage(submitError);
 
     // Re-sync if session prop changes (e.g. refetch)
     useEffect(() => {
@@ -134,7 +136,6 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
             router.push(`/sessions/${session.id}`);
         } catch (err) {
             setSubmitError(extractErrorMessage(err as ApiError, 'Failed to save session.'));
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setSaving(false);
         }
@@ -142,10 +143,6 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
 
     return (
         <div className="space-y-6">
-            {submitError && (
-                <ErrorBanner message={submitError} onDismiss={() => setSubmitError(null)} />
-            )}
-
             {/* Immutable fields — shown read-only for context */}
             <Card>
                 <div className="p-5">
@@ -259,6 +256,15 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                     </div>
                 </div>
             </Card>
+
+            {submitError ? (
+                <ErrorBanner
+                    ref={submitErrorRef}
+                    message={submitError}
+                    onDismiss={() => setSubmitError(null)}
+                    autoDismissMs={5000}
+                />
+            ) : null}
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3">

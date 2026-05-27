@@ -13,9 +13,9 @@ function getBadgeVariant(status?: CurriculumOfferingStatus | null): 'default' | 
     case 'DRAINING':
       return 'warning';
     case 'FINALIZING':
-      return 'purple';
+      return 'info';
     case 'DISABLED':
-      return 'default';
+      return 'warning';
     case 'REACTIVATING':
       return 'info';
     case 'FAILED':

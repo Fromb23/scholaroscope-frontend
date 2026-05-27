@@ -22,6 +22,7 @@ import { Select } from '@/app/components/ui/Select';
 import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useAcademicYears, useCohorts, useCurricula } from '@/app/core/hooks/useAcademic';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -50,6 +51,7 @@ export function AdminCohortsPageContent() {
     const [editingCohort, setEditingCohort] = useState<Cohort | null>(null);
     const [rolloverCohort, setRolloverCohort] = useState<Cohort | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
+    const pageErrorRef = useScrollIntoViewOnMessage(pageError);
 
     const currentYear = useMemo(
         () => academicYears.find((academicYear) => academicYear.is_current),
@@ -375,11 +377,13 @@ export function AdminCohortsPageContent() {
 
             {(pageError || quickAction.error) && (
                 <ErrorBanner
+                    ref={pageError ? pageErrorRef : undefined}
                     message={pageError ?? quickAction.error ?? ''}
                     onDismiss={() => {
                         setPageError(null);
                         quickAction.clearError();
                     }}
+                    autoDismissMs={pageError ? 5000 : false}
                 />
             )}
 

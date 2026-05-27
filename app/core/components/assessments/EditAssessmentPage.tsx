@@ -13,6 +13,7 @@ import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
 import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import { useAssessmentDetail, useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
@@ -54,6 +55,7 @@ export function EditAssessmentPage() {
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const saveErrorRef = useScrollIntoViewOnMessage(saveError);
 
     const { assessment, loading, error } = useAssessmentDetail(assessmentId);
     const lifecycle = useCurriculumLifecycleGuard({
@@ -296,8 +298,6 @@ export function EditAssessmentPage() {
                 />
             ) : null}
 
-            {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
-
             {!canUpdateAssessment && (
                 <Card>
                     <div className="p-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl">
@@ -480,6 +480,15 @@ export function EditAssessmentPage() {
                         />
                     </div>
                 </Card>
+
+                {saveError ? (
+                    <ErrorBanner
+                        ref={saveErrorRef}
+                        message={saveError}
+                        onDismiss={() => setSaveError(null)}
+                        autoDismissMs={5000}
+                    />
+                ) : null}
 
                 <div className="flex items-center justify-end gap-4">
                     <Link href={`/assessments/${assessmentId}`}>
