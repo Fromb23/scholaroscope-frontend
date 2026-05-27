@@ -32,12 +32,16 @@ export function SubjectsPage() {
         assigningSubject,
         canManageSubjects,
         grouped,
+        isCurriculumExpanded,
+        isSubjectExpanded,
         setSearch,
         setPageError,
         setAssigningSubject,
         openCreate,
         openAddLevel,
         openEdit,
+        toggleCurriculum,
+        toggleSubject,
         closeModal,
         handleSave,
         handleDelete,
@@ -64,7 +68,7 @@ export function SubjectsPage() {
             {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {[
                     { label: 'Total Entries', value: subjects.length },
                     { label: 'Unique Subjects', value: new Set(subjects.map(s => s.name)).size },
@@ -123,6 +127,10 @@ export function SubjectsPage() {
                             onAddLevel={openAddLevel}
                             onAssignToCohort={setAssigningSubject}
                             canManage={canManageSubjects}
+                            open={isCurriculumExpanded(curriculumName)}
+                            onToggle={() => toggleCurriculum(curriculumName)}
+                            isSubjectOpen={(name) => isSubjectExpanded(curriculumName, name)}
+                            onSubjectToggle={(name) => toggleSubject(curriculumName, name)}
                         />
                     ))}
                 </div>

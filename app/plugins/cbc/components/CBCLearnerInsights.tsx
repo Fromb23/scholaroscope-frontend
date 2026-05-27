@@ -108,12 +108,12 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
     return (
         <Card className="theme-surface-elevated">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
                     <div className="theme-surface-elevated rounded-lg border p-2 shrink-0 theme-border">
                         <GraduationCap className="h-5 w-5 text-purple-600" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <h3 className="font-semibold theme-text">
                             CBC Competency Progress
                         </h3>
@@ -122,7 +122,7 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                         </p>
                     </div>
                 </div>
-                <Link href={`/cbc/progress/learner/${studentId}`}>
+                <Link href={`/cbc/progress/learner/${studentId}`} className="self-start">
                     <Button variant="ghost" size="sm">
                         Full Report
                         <ChevronRight className="ml-1 h-4 w-4" />
@@ -139,7 +139,7 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
             ) : (
                 <>
                     {/* Summary stats */}
-                    <div className="grid grid-cols-4 gap-2 mb-3">
+                    <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                         {[
                             { label: 'Outcomes', value: total, color: 'text-blue-600' },
                             { label: 'On Track', value: onTrack, color: 'text-emerald-600' },
@@ -154,23 +154,23 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                         ].map(s => (
                             <div
                                 key={s.label}
-                                className="theme-card-muted rounded-lg p-2 text-center"
+                                className="theme-card-muted rounded-lg px-3 py-2 text-left sm:text-center"
                             >
-                                <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+                                <div className={`text-lg font-bold sm:text-xl ${s.color}`}>{s.value}</div>
                                 <div className="text-xs theme-muted">{s.label}</div>
                             </div>
                         ))}
                     </div>
 
                     {/* Overall evidence quality */}
-                    <div className="theme-card-muted mb-3 flex items-center gap-3 rounded-lg px-3 py-2">
+                    <div className="theme-card-muted mb-3 flex flex-col gap-2 rounded-lg px-3 py-2 sm:flex-row sm:items-center sm:gap-3">
                         <span className="shrink-0 text-xs theme-subtle">
                             Overall confidence:
                         </span>
                         <span className={`text-xs font-semibold ${confidenceColor(overall)}`}>
                             {overall}
                         </span>
-                        <span className="theme-subtle">·</span>
+                        <span className="hidden theme-subtle sm:inline">·</span>
                         <span className="text-xs theme-muted">
                             {verified > 0
                                 ? `${verified} verified by assessment`
@@ -186,20 +186,24 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                         {records.slice(0, 5).map((r: OutcomeConfidence) => (
                             <div
                                 key={r.outcome_id}
-                                className="theme-card flex items-center justify-between rounded-lg px-3 py-2"
+                                className="theme-card rounded-lg px-3 py-3"
                             >
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="shrink-0 text-xs font-mono theme-muted">
-                                        {r.outcome_code}
-                                    </span>
-                                    <MasteryBadge level={r.mastery_level} size="sm" />
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0 ml-2">
-                                    <SourcePip level={r.confidence} />
-                                    <span className="text-xs theme-subtle">
-                                        {r.evidence_count}{' '}
-                                        {r.evidence_count === 1 ? 'record' : 'records'}
-                                    </span>
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                                    <div className="min-w-0 space-y-2">
+                                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                            <span className="shrink-0 text-xs font-mono theme-muted">
+                                                {r.outcome_code}
+                                            </span>
+                                            <MasteryBadge level={r.mastery_level} size="sm" />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                        <SourcePip level={r.confidence} />
+                                        <span className="text-xs theme-subtle">
+                                            {r.evidence_count}{' '}
+                                            {r.evidence_count === 1 ? 'record' : 'records'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ))}

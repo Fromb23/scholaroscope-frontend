@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Download,
@@ -100,7 +100,9 @@ function SubjectSummaryList({
 
 export function LearnerOverviewReportPage() {
   const params = useParams<{ learnerId: string }>();
+  const searchParams = useSearchParams();
   const learnerId = Number(params.learnerId);
+  const returnTo = searchParams.get('returnTo') || `/learners/${learnerId}`;
   const { student, loading: learnerLoading, error: learnerError } = useStudent(learnerId);
   const {
     report,
@@ -145,7 +147,7 @@ export function LearnerOverviewReportPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Link href={`/learners/${learnerId}`}>
+          <Link href={returnTo}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4" />
               Back to Learner Profile

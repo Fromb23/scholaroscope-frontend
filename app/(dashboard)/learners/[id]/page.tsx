@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useParams, useRouter, useSearchParams, type ReadonlyURLSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft, Edit, Mail, Phone, User,
-    GraduationCap, FileText, Trash2, UserPlus, UserMinus, BookOpen, FileBarChart,
+    ChevronDown, ChevronRight, FileBarChart, FileText, GraduationCap,
+    Trash2, UserPlus, UserMinus, Users, BookOpen,
 } from 'lucide-react';
 import { useStudent } from '@/app/core/hooks/useStudents';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
@@ -19,6 +20,7 @@ import {
     buildLearnerSubjectReportHref,
 } from '@/app/core/lib/learnerReportingRoutes';
 import { Card } from '@/app/components/ui/Card';
+import { ActionMenu } from '@/app/components/ui/ActionMenu';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { DataTable, Column } from '@/app/components/ui/Table';
@@ -76,6 +78,106 @@ function calculateAge(dob?: string): string {
     return `${age} years`;
 }
 
+type LearnerSectionKey =
+    | 'reports'
+    | 'enrollments'
+    | 'contact'
+    | 'subjectParticipation'
+    | 'attendance'
+    | 'assessment'
+    | 'cbc'
+    | 'history';
+
+const DEFAULT_SECTION_STATE: Record<LearnerSectionKey, boolean> = {
+    reports: false,
+    enrollments: false,
+    contact: false,
+    subjectParticipation: false,
+    attendance: false,
+    assessment: false,
+    cbc: false,
+    history: false,
+};
+
+function parseLearnerSection(value: string | null): LearnerSectionKey | null {
+    if (!value) {
+        return null;
+    }
+
+    const normalized = value as LearnerSectionKey;
+    return normalized in DEFAULT_SECTION_STATE ? normalized : null;
+}
+
+function buildLearnerDetailHref(
+    learnerId: number,
+    searchParams: ReadonlyURLSearchParams,
+    section?: LearnerSectionKey,
+): string {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+
+    if (section) {
+        nextSearchParams.set('section', section);
+    } else {
+        nextSearchParams.delete('section');
+    }
+
+    const nextQuery = nextSearchParams.toString();
+
+    return nextQuery
+        ? `/learners/${learnerId}?${nextQuery}`
+        : `/learners/${learnerId}`;
+}
+
+function LearnerSectionCard({
+    sectionId,
+    title,
+    summary,
+    open,
+    badge,
+    onToggle,
+    children,
+}: {
+    sectionId: string;
+    title: string;
+    summary: string;
+    open: boolean;
+    badge?: ReactNode;
+    onToggle: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <div id={sectionId} className="scroll-mt-24">
+            <Card className="overflow-hidden p-0">
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    className="theme-focus-ring flex w-full items-start gap-3 px-5 py-4 text-left transition-colors theme-hover-surface"
+                >
+                    <div className="theme-surface-elevated mt-0.5 shrink-0 rounded-lg border p-1.5 theme-border">
+                        {open ? (
+                            <ChevronDown className="h-4 w-4 text-blue-600" />
+                        ) : (
+                            <ChevronRight className="h-4 w-4 theme-subtle" />
+                        )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-base font-semibold theme-text sm:text-lg">{title}</h2>
+                            {badge}
+                        </div>
+                        <p className="mt-1 text-sm theme-muted">{summary}</p>
+                    </div>
+                </button>
+                {open ? (
+                    <div className="border-t px-5 py-5 theme-border">
+                        {children}
+                    </div>
+                ) : null}
+            </Card>
+        </div>
+    );
+}
+
 export default function LearnerDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -100,6 +202,16 @@ export default function LearnerDetailPage() {
     const [enrollOpen, setEnrollOpen] = useState(false);
     const [unenrollTarget, setUnenrollTarget] = useState<StudentCohortEnrollment | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [sectionState, setSectionState] = useState<Record<LearnerSectionKey, boolean>>(DEFAULT_SECTION_STATE);
+    const sectionStorageKey = useMemo(
+        () => `learner-profile-sections:${studentId}`,
+        [studentId],
+    );
+    const scrollStorageKey = useMemo(
+        () => `learner-profile-scroll:${studentId}`,
+        [studentId],
+    );
+    const scrollRestoredRef = useRef(false);
 
     const canEdit = !!user && hasCapability(activeRole, 'EDIT_LEARNER');
     const canManage = !!user && hasCapability(activeRole, 'MANAGE_ENROLLMENT');
@@ -155,11 +267,21 @@ export default function LearnerDetailPage() {
     const defaultSubjectReportHref = buildLearnerSubjectReportHref(
         studentId,
         onlyReportSubject?.cohort_subject_id ?? null,
+        {
+            returnTo: buildLearnerDetailHref(studentId, searchParams, 'reports'),
+        },
     );
     const overviewReportHref = useMemo(
-        () => buildLearnerOverviewReportHref(studentId),
-        [studentId],
+        () => buildLearnerOverviewReportHref(studentId, {
+            returnTo: buildLearnerDetailHref(studentId, searchParams, 'reports'),
+        }),
+        [searchParams, studentId],
     );
+    const reportReturnTo = useMemo(
+        () => buildLearnerDetailHref(studentId, searchParams, 'reports'),
+        [searchParams, studentId],
+    );
+    const requestedSection = parseLearnerSection(searchParams.get('section'));
 
 
     const curriculaTypes = activeEnrollments.map(
@@ -170,6 +292,141 @@ export default function LearnerDetailPage() {
         studentId,
         curricula: curriculaTypes,
     });
+    const hasCbcExtensions = slotExtensions.length > 0;
+    const hasAttendanceSummary = Boolean(attendanceData?.statistics);
+    const hasAssessmentSummary = Boolean(student?.grade_summary && student.grade_summary.total_assessments > 0);
+    const hasHistory = historyEnrollments.length > 0;
+    const hasReportActions = canGenerateSubjectReport && reportableSubjectScopes.length > 0;
+    const showMobileReportBar = hasReportActions;
+
+    const primaryHeaderAction = useMemo(() => {
+        if (hasReportActions) {
+            return {
+                label: 'Open Report',
+                href: defaultSubjectReportHref,
+                mobileClassName: 'hidden md:inline-flex',
+            };
+        }
+
+        if (canEdit) {
+            return {
+                label: 'Edit',
+                href: `/learners/${studentId}/edit`,
+                mobileClassName: '',
+            };
+        }
+
+        return null;
+    }, [canEdit, defaultSubjectReportHref, hasReportActions, studentId]);
+
+    const toggleSection = useCallback((section: LearnerSectionKey) => {
+        setSectionState((current) => ({
+            ...current,
+            [section]: !current[section],
+        }));
+    }, []);
+
+    useEffect(() => {
+        const stored = window.sessionStorage.getItem(sectionStorageKey);
+        if (!stored) {
+            setSectionState(DEFAULT_SECTION_STATE);
+            return;
+        }
+
+        try {
+            const parsed = JSON.parse(stored) as Partial<Record<LearnerSectionKey, boolean>>;
+            setSectionState({
+                ...DEFAULT_SECTION_STATE,
+                ...parsed,
+            });
+        } catch {
+            window.sessionStorage.removeItem(sectionStorageKey);
+            setSectionState(DEFAULT_SECTION_STATE);
+        }
+    }, [sectionStorageKey]);
+
+    useEffect(() => {
+        window.sessionStorage.setItem(sectionStorageKey, JSON.stringify(sectionState));
+    }, [sectionState, sectionStorageKey]);
+
+    useEffect(() => {
+        const scrollRoot = document.getElementById('dashboard-scroll-root');
+        if (!scrollRoot) {
+            return;
+        }
+
+        const handleScroll = () => {
+            window.sessionStorage.setItem(scrollStorageKey, String(scrollRoot.scrollTop));
+        };
+
+        handleScroll();
+        scrollRoot.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            handleScroll();
+            scrollRoot.removeEventListener('scroll', handleScroll);
+        };
+    }, [scrollStorageKey]);
+
+    useEffect(() => {
+        scrollRestoredRef.current = false;
+    }, [scrollStorageKey]);
+
+    useEffect(() => {
+        if (requestedSection) {
+            return;
+        }
+
+        if (scrollRestoredRef.current) {
+            return;
+        }
+
+        const scrollRoot = document.getElementById('dashboard-scroll-root');
+        const storedScrollTop = Number(window.sessionStorage.getItem(scrollStorageKey) ?? '');
+
+        if (!scrollRoot || !Number.isFinite(storedScrollTop)) {
+            scrollRestoredRef.current = true;
+            return;
+        }
+
+        scrollRestoredRef.current = true;
+        window.requestAnimationFrame(() => {
+            scrollRoot.scrollTop = storedScrollTop;
+        });
+    }, [requestedSection, scrollStorageKey, studentId]);
+
+    useEffect(() => {
+        if (!requestedSection) {
+            return;
+        }
+
+        setSectionState((current) => ({
+            ...current,
+            [requestedSection]: true,
+        }));
+
+        const timer = window.setTimeout(() => {
+            document.getElementById(`learner-section-${requestedSection}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 100);
+
+        return () => window.clearTimeout(timer);
+    }, [requestedSection]);
+
+    useEffect(() => {
+        if (!showMobileReportBar) {
+            document.documentElement.style.removeProperty('--assistant-widget-offset');
+            return;
+        }
+
+        document.documentElement.style.setProperty('--assistant-widget-offset', '6rem');
+
+        return () => {
+            document.documentElement.style.removeProperty('--assistant-widget-offset');
+        };
+    }, [showMobileReportBar]);
 
     const handleDelete = async () => {
         await deleteStudent();
@@ -234,6 +491,69 @@ export default function LearnerDetailPage() {
             ) : <Badge variant="default">Inactive</Badge>,
         },
     ];
+    const currentActionTitle = hasReportActions
+        ? 'Current action: open learner reporting'
+        : canEdit
+            ? 'Current action: update the learner profile'
+            : 'Current action: review learner status';
+    const currentActionDescription = hasReportActions
+        ? 'Open the learner report to review current subject performance and reporting access for this learner.'
+        : canEdit
+            ? 'Update learner details, enrollment status, or cohort placement from one place.'
+            : 'Review the learner summary, current cohort placement, and participation details.';
+    const reportsSummary = reportScopesLoading
+        ? 'Loading report scopes'
+        : hasReportActions
+            ? `${reportableSubjectScopes.length} subject report scope${reportableSubjectScopes.length === 1 ? '' : 's'} available`
+            : canGenerateSubjectReport
+                ? 'No learner report scopes are available'
+                : 'Reporting is not available for this role';
+    const enrollmentsSummary = activeEnrollments.length > 0
+        ? `${activeEnrollments.length} active cohort enrollment${activeEnrollments.length === 1 ? '' : 's'}`
+        : 'No active cohort enrollments';
+    const contactSummary = student?.primary_cohort_name
+        ? `${student.primary_cohort_name} · ${student.primary_curriculum ?? 'Curriculum not set'}`
+        : 'No primary cohort assigned';
+    const subjectParticipationSummary = currentCohortName
+        ? `${currentSubjectIds.size} current subject${currentSubjectIds.size === 1 ? '' : 's'} in ${currentCohortName}`
+        : 'No current cohort linked for subject participation';
+    const attendanceSummary = attendanceData?.statistics
+        ? `${attendanceData.statistics.attendance_percentage.toFixed(1)}% attendance rate`
+        : 'No attendance summary recorded';
+    const assessmentSummary = student?.grade_summary
+        ? `${student.grade_summary.total_assessments} assessment${student.grade_summary.total_assessments === 1 ? '' : 's'} recorded`
+        : 'No assessment summary recorded';
+    const cbcSummary = hasCbcExtensions
+        ? `${slotExtensions.length} learner insight section${slotExtensions.length === 1 ? '' : 's'}`
+        : 'No curriculum insight extensions';
+    const historySummary = hasHistory
+        ? `${historyEnrollments.length} historical enrollment${historyEnrollments.length === 1 ? '' : 's'}`
+        : 'No enrollment history';
+    const headerMenuItems = [
+        ...(canManage ? [
+            {
+                label: 'Enroll in Cohort',
+                onSelect: () => setEnrollOpen(true),
+                icon: <UserPlus className="h-4 w-4" />,
+            },
+            {
+                label: 'Update Status',
+                onSelect: () => setStatusOpen(true),
+                icon: <Users className="h-4 w-4" />,
+            },
+        ] : []),
+        ...(canEdit && !hasReportActions ? [] : canEdit ? [{
+            label: 'Edit',
+            href: `/learners/${studentId}/edit`,
+            icon: <Edit className="h-4 w-4" />,
+        }] : []),
+        ...(canEdit ? [{
+            label: 'Delete',
+            onSelect: () => setDeleteOpen(true),
+            destructive: true,
+            icon: <Trash2 className="h-4 w-4" />,
+        }] : []),
+    ];
 
     if (loading) return <LoadingSpinner message="Loading student..." />;
     if (error || !student) return (
@@ -246,37 +566,27 @@ export default function LearnerDetailPage() {
     );
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className={`space-y-6 ${showMobileReportBar ? 'pb-28 md:pb-0' : ''}`}>
+            <div className="flex items-start justify-between gap-3">
                 <Link href={backHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />Back to Learners
                     </Button>
                 </Link>
-                <div className="flex gap-2">
-                    {canManage && (
-                        <Button variant="ghost" onClick={() => setEnrollOpen(true)}>
-                            <UserPlus className="mr-2 h-4 w-4" />Enroll in Cohort
-                        </Button>
-                    )}
-                    {canManage && (
-                        <Button variant="ghost" onClick={() => setStatusOpen(true)}>
-                            Update Status
-                        </Button>
-                    )}
-                    {canEdit && (
-                        <Link href={`/learners/${studentId}/edit`}>
+                <div className="flex shrink-0 items-center gap-2">
+                    {primaryHeaderAction ? (
+                        <Link href={primaryHeaderAction.href} className={primaryHeaderAction.mobileClassName}>
                             <Button>
-                                <Edit className="mr-2 h-4 w-4" />Edit
+                                {hasReportActions ? (
+                                    <FileBarChart className="mr-2 h-4 w-4" />
+                                ) : (
+                                    <Edit className="mr-2 h-4 w-4" />
+                                )}
+                                {primaryHeaderAction.label}
                             </Button>
                         </Link>
-                    )}
-                    {canEdit && (
-                        <Button variant="ghost" onClick={() => setDeleteOpen(true)}>
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
-                    )}
+                    ) : null}
+                    <ActionMenu hideLabelOnMobile items={headerMenuItems} />
                 </div>
             </div>
 
@@ -284,15 +594,14 @@ export default function LearnerDetailPage() {
                 <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
             )}
 
-            {/* Profile */}
             <Card>
-                <div className="flex items-start gap-6 p-2">
-                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-blue-100 text-blue-600 shrink-0">
-                        <User className="h-12 w-12" />
+                <div className="flex flex-col gap-5 p-1 sm:flex-row sm:items-start">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-blue-600 shrink-0 sm:h-24 sm:w-24">
+                        <User className="h-10 w-10 sm:h-12 sm:w-12" />
                     </div>
                     <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                            <h1 className="text-3xl font-bold text-gray-900">{student.full_name}</h1>
+                        <div className="mb-2 flex flex-wrap items-center gap-3">
+                            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{student.full_name}</h1>
                             <Badge variant={STATUS_VARIANTS[student.status] ?? 'default'}>
                                 {student.status}
                             </Badge>
@@ -305,7 +614,7 @@ export default function LearnerDetailPage() {
                                 <Badge variant="info">{student.cohort_count} Cohorts</Badge>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                             {[
                                 { label: 'Admission Number', value: student.admission_number },
                                 { label: 'Date of Birth', value: student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A' },
@@ -322,62 +631,159 @@ export default function LearnerDetailPage() {
                 </div>
             </Card>
 
-            {/* Active Enrollments */}
             <Card>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">Active Cohort Enrollments</h2>
-                    {canManage && (
-                        <Button size="sm" onClick={() => setEnrollOpen(true)}>
-                            <UserPlus className="mr-2 h-4 w-4" />Add Cohort
-                        </Button>
-                    )}
+                <div className="space-y-2">
+                    <h2 className="text-lg font-semibold text-gray-900">{currentActionTitle}</h2>
+                    <p className="text-sm text-gray-600">{currentActionDescription}</p>
                 </div>
-                {activeEnrollments.length === 0
-                    ? <p className="text-sm text-gray-500 text-center py-4">No active cohort enrollments</p>
-                    : <DataTable
-                        data={activeEnrollments as unknown as Record<string, unknown>[]}
-                        columns={activeColumns as unknown as Column<Record<string, unknown>>[]}
-                        enableSearch
-                        searchPlaceholder="Search enrollments..."
-                        emptyMessage="No active enrollments"
-                    />
-                }
             </Card>
 
-            {/* Contact + Primary Cohort */}
-            <div className="grid gap-6 lg:grid-cols-2">
-                <Card>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
-                    <div className="space-y-3">
-                        {student.email && (
-                            <div className="flex items-center gap-3">
-                                <Mail className="h-5 w-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm text-gray-600">Email</p>
-                                    <p className="font-medium text-gray-900">{student.email}</p>
-                                </div>
+            {canGenerateSubjectReport ? (
+                <LearnerSectionCard
+                    sectionId="learner-section-reports"
+                    title="Reports"
+                    summary={reportsSummary}
+                    open={sectionState.reports}
+                    onToggle={() => toggleSection('reports')}
+                >
+                    <div className="space-y-4">
+                        {reportScopesLoading ? (
+                            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
+                                Loading report scopes...
                             </div>
-                        )}
-                        {student.phone && (
-                            <div className="flex items-center gap-3">
-                                <Phone className="h-5 w-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm text-gray-600">Phone</p>
-                                    <p className="font-medium text-gray-900">{student.phone}</p>
-                                </div>
+                        ) : reportScopesError ? (
+                            <ErrorBanner message={reportScopesError} onDismiss={() => undefined} />
+                        ) : reportableSubjectScopes.length === 0 ? (
+                            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
+                                No learner report scopes are available for your current reporting permissions.
                             </div>
-                        )}
-                        {!student.email && !student.phone && (
-                            <p className="text-sm text-gray-500">No contact information available</p>
+                        ) : (
+                            <>
+                                <div className="flex flex-wrap gap-2">
+                                    {reportableSubjectScopes.map((scope) => (
+                                        <Badge key={scope.cohort_subject_id} variant="info">
+                                            {scope.subject_code} · {scope.subject_name}
+                                        </Badge>
+                                    ))}
+                                </div>
+                                {canGenerateOverviewReport && reportScopes?.can_view_overview ? (
+                                    <div className="hidden md:block">
+                                        <Link href={overviewReportHref}>
+                                            <Button variant="secondary">
+                                                <FileText className="mr-2 h-4 w-4" />
+                                                Open Overall Report
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                ) : null}
+                            </>
                         )}
                     </div>
-                </Card>
+                </LearnerSectionCard>
+            ) : null}
 
-                <Card>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Primary Cohort</h2>
-                    {!student.primary_cohort
-                        ? <p className="text-sm text-gray-500">No primary cohort assigned</p>
-                        : (
+            <LearnerSectionCard
+                sectionId="learner-section-enrollments"
+                title="Enrollments"
+                summary={enrollmentsSummary}
+                open={sectionState.enrollments}
+                onToggle={() => toggleSection('enrollments')}
+            >
+                <div className="space-y-4">
+                    {canManage ? (
+                        <div className="flex justify-end">
+                            <Button size="sm" onClick={() => setEnrollOpen(true)}>
+                                <UserPlus className="mr-2 h-4 w-4" />Add Cohort
+                            </Button>
+                        </div>
+                    ) : null}
+                    {activeEnrollments.length === 0 ? (
+                        <p className="py-4 text-center text-sm text-gray-500">No active cohort enrollments</p>
+                    ) : (
+                        <>
+                            <div className="space-y-3 md:hidden">
+                                {activeEnrollments.map((row) => (
+                                    <div key={`${row.cohort}-${row.enrolled_date}`} className="rounded-xl border border-gray-200 p-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="space-y-2">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <p className="font-semibold text-gray-900">{row.cohort_name}</p>
+                                                    {row.cohort === student.primary_cohort ? (
+                                                        <Badge variant="default" size="sm">Primary</Badge>
+                                                    ) : null}
+                                                    <Badge variant={ENROLLMENT_TYPE_VARIANTS[row.enrollment_type] ?? 'default'}>
+                                                        {row.enrollment_type}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-sm text-gray-500">
+                                                    {row.curriculum_name} · {row.cohort_level}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    Enrolled {new Date(row.enrolled_date).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            {canManage ? (
+                                                <Button size="sm" variant="ghost" onClick={() => setUnenrollTarget(row)}>
+                                                    <UserMinus className="h-4 w-4 text-red-600" />
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="hidden md:block">
+                                <DataTable
+                                    data={activeEnrollments as unknown as Record<string, unknown>[]}
+                                    columns={activeColumns as unknown as Column<Record<string, unknown>>[]}
+                                    enableSearch
+                                    searchPlaceholder="Search enrollments..."
+                                    emptyMessage="No active enrollments"
+                                />
+                            </div>
+                        </>
+                    )}
+                </div>
+            </LearnerSectionCard>
+
+            <LearnerSectionCard
+                sectionId="learner-section-contact"
+                title="Contact & Primary Cohort"
+                summary={contactSummary}
+                open={sectionState.contact}
+                onToggle={() => toggleSection('contact')}
+            >
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-gray-200 p-4">
+                        <h3 className="mb-4 text-base font-semibold text-gray-900">Contact Information</h3>
+                        <div className="space-y-3">
+                            {student.email ? (
+                                <div className="flex items-center gap-3">
+                                    <Mail className="h-5 w-5 text-gray-400" />
+                                    <div>
+                                        <p className="text-sm text-gray-600">Email</p>
+                                        <p className="font-medium text-gray-900">{student.email}</p>
+                                    </div>
+                                </div>
+                            ) : null}
+                            {student.phone ? (
+                                <div className="flex items-center gap-3">
+                                    <Phone className="h-5 w-5 text-gray-400" />
+                                    <div>
+                                        <p className="text-sm text-gray-600">Phone</p>
+                                        <p className="font-medium text-gray-900">{student.phone}</p>
+                                    </div>
+                                </div>
+                            ) : null}
+                            {!student.email && !student.phone ? (
+                                <p className="text-sm text-gray-500">No contact information available</p>
+                            ) : null}
+                        </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 p-4">
+                        <h3 className="mb-4 text-base font-semibold text-gray-900">Primary Cohort</h3>
+                        {!student.primary_cohort ? (
+                            <p className="text-sm text-gray-500">No primary cohort assigned</p>
+                        ) : (
                             <div className="space-y-3">
                                 <div className="flex items-center gap-3">
                                     <GraduationCap className="h-5 w-5 text-gray-400" />
@@ -394,69 +800,19 @@ export default function LearnerDetailPage() {
                                     </div>
                                 </div>
                             </div>
-                        )
-                    }
-                </Card>
-            </div>
-
-            {canGenerateSubjectReport && (
-                <Card>
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <FileBarChart className="h-5 w-5 text-blue-600" />
-                                <h2 className="text-lg font-semibold text-gray-900">Reporting</h2>
-                            </div>
-                            <p className="text-sm text-gray-500">
-                                Open backend-owned learner reporting previews for subject and school-level performance.
-                            </p>
-                        </div>
-
-                        {reportScopesLoading ? (
-                            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
-                                Loading report scopes...
-                            </div>
-                        ) : reportScopesError ? (
-                            <div className="max-w-xl">
-                                <ErrorBanner message={reportScopesError} onDismiss={() => undefined} />
-                            </div>
-                        ) : reportableSubjectScopes.length === 0 ? (
-                            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
-                                No learner report scopes are available for your current reporting permissions.
-                            </div>
-                        ) : (
-                            <div className="flex flex-wrap gap-2">
-                                <Link href={defaultSubjectReportHref}>
-                                    <Button variant="secondary">
-                                        <FileBarChart className="mr-2 h-4 w-4" />
-                                        Open Subject Report
-                                    </Button>
-                                </Link>
-                                {canGenerateOverviewReport && reportScopes?.can_view_overview ? (
-                                <Link href={overviewReportHref}>
-                                    <Button>
-                                        <FileText className="mr-2 h-4 w-4" />
-                                        Open Overall Report
-                                    </Button>
-                                </Link>
-                                ) : null}
-                            </div>
                         )}
                     </div>
-                </Card>
-            )}
+                </div>
+            </LearnerSectionCard>
 
-            <Card>
+            <LearnerSectionCard
+                sectionId="learner-section-subjectParticipation"
+                title="Subject Participation"
+                summary={subjectParticipationSummary}
+                open={sectionState.subjectParticipation}
+                onToggle={() => toggleSection('subjectParticipation')}
+            >
                 <div className="space-y-4">
-                    <div className="space-y-1">
-                        <h2 className="text-lg font-semibold text-gray-900">Subject Participation</h2>
-                        <p className="text-sm text-gray-500">
-                            {canManageSubjectParticipation
-                                ? 'Use the learner&apos;s current cohort subject offerings to manage explicit subject participation.'
-                                : 'Read-only subject participation status for the learner&apos;s current cohort subjects.'}
-                        </p>
-                    </div>
-
                     {!currentCohortId ? (
                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
                             {canManageSubjectParticipation
@@ -517,50 +873,53 @@ export default function LearnerDetailPage() {
                             })}
                         </div>
                     )}
-                </div>
-            </Card>
 
-            {/* Current Subjects */}
-            {student.current_subjects && student.current_subjects.length > 0 && (
-                <Card>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Current Subjects</h2>
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                        {student.current_subjects.map(subject => (
-                            <div key={`${subject.cohort}-${subject.id}`} className="p-3 border rounded-lg">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <p className="font-medium text-gray-900">{subject.code} — {subject.name}</p>
-                                        <p className="text-xs text-gray-500 mt-1">{subject.cohort}</p>
+                    {student.current_subjects && student.current_subjects.length > 0 ? (
+                        <div className="space-y-3 border-t border-gray-200 pt-4">
+                            <h3 className="text-base font-semibold text-gray-900">Current Subjects</h3>
+                            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                {student.current_subjects.map(subject => (
+                                    <div key={`${subject.cohort}-${subject.id}`} className="rounded-lg border border-gray-200 p-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="font-medium text-gray-900">{subject.code} — {subject.name}</p>
+                                                <p className="mt-1 text-xs text-gray-500">{subject.cohort}</p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                {subject.is_compulsory ? <Badge variant="default" size="sm">Core</Badge> : null}
+                                                {canGenerateSubjectReport && reportableSubjectScopeIds.has(subject.id) ? (
+                                                    <Link href={buildLearnerSubjectReportHref(studentId, subject.id, { returnTo: reportReturnTo })}>
+                                                        <Button variant="ghost" size="sm">
+                                                            <FileBarChart className="h-4 w-4" />
+                                                            Subject Report
+                                                        </Button>
+                                                    </Link>
+                                                ) : null}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        {subject.is_compulsory && <Badge variant="default" size="sm">Core</Badge>}
-                                        {canGenerateSubjectReport && reportableSubjectScopeIds.has(subject.id) ? (
-                                            <Link href={buildLearnerSubjectReportHref(studentId, subject.id)}>
-                                                <Button variant="ghost" size="sm">
-                                                    <FileBarChart className="h-4 w-4" />
-                                                    Subject Report
-                                                </Button>
-                                            </Link>
-                                        ) : null}
-                                    </div>
-                                </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </Card>
-            )}
+                        </div>
+                    ) : null}
+                </div>
+            </LearnerSectionCard>
 
-            {/* Attendance */}
-            {attendanceData?.statistics && (
-                <Card>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Attendance Summary</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+            {hasAttendanceSummary ? (
+                <LearnerSectionCard
+                    sectionId="learner-section-attendance"
+                    title="Attendance Summary"
+                    summary={attendanceSummary}
+                    open={sectionState.attendance}
+                    onToggle={() => toggleSection('attendance')}
+                >
+                    <div className="grid grid-cols-2 gap-4 text-center md:grid-cols-5">
                         {[
-                            { label: 'Total Sessions', value: attendanceData.statistics.total, color: 'text-gray-900' },
-                            { label: 'Present', value: attendanceData.statistics.present, color: 'text-green-600' },
-                            { label: 'Absent', value: attendanceData.statistics.absent, color: 'text-red-600' },
-                            { label: 'Late', value: attendanceData.statistics.late, color: 'text-yellow-600' },
-                            { label: 'Attendance Rate', value: `${attendanceData.statistics.attendance_percentage.toFixed(1)}%`, color: 'text-blue-600' },
+                            { label: 'Total Sessions', value: attendanceData?.statistics?.total ?? 0, color: 'text-gray-900' },
+                            { label: 'Present', value: attendanceData?.statistics?.present ?? 0, color: 'text-green-600' },
+                            { label: 'Absent', value: attendanceData?.statistics?.absent ?? 0, color: 'text-red-600' },
+                            { label: 'Late', value: attendanceData?.statistics?.late ?? 0, color: 'text-yellow-600' },
+                            { label: 'Attendance Rate', value: `${(attendanceData?.statistics?.attendance_percentage ?? 0).toFixed(1)}%`, color: 'text-blue-600' },
                         ].map(s => (
                             <div key={s.label}>
                                 <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -568,46 +927,112 @@ export default function LearnerDetailPage() {
                             </div>
                         ))}
                     </div>
-                </Card>
-            )}
+                </LearnerSectionCard>
+            ) : null}
 
-            {/* Assessment Summary */}
-            {student.grade_summary && student.grade_summary.total_assessments > 0 && (
-                <Card>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Assessment Summary</h2>
+            {hasAssessmentSummary ? (
+                <LearnerSectionCard
+                    sectionId="learner-section-assessment"
+                    title="Assessment Summary"
+                    summary={assessmentSummary}
+                    open={sectionState.assessment}
+                    onToggle={() => toggleSection('assessment')}
+                >
                     <div className="space-y-2">
                         <div className="flex justify-between">
                             <span className="text-gray-600">Average Score</span>
-                            <span className="font-semibold">{student.grade_summary.average_score.toFixed(1)}</span>
+                            <span className="font-semibold">{student.grade_summary!.average_score.toFixed(1)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-600">Assessments Recorded</span>
-                            <span className="font-semibold">{student.grade_summary.total_assessments}</span>
+                            <span className="font-semibold">{student.grade_summary!.total_assessments}</span>
                         </div>
                     </div>
-                </Card>
-            )}
-            {slotExtensions.length > 0 && (
-                <div className="space-y-4">
-                    {slotExtensions.map(ext => (
-                        <ext.component key={ext.key} studentId={studentId} />
-                    ))}
-                </div>
-            )}
+                </LearnerSectionCard>
+            ) : null}
 
-            {/* Enrollment History */}
-            {historyEnrollments.length > 0 && (
-                <Card>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Enrollment History</h2>
-                    <DataTable
-                        data={historyEnrollments as unknown as Record<string, unknown>[]}
-                        columns={historyColumns as unknown as Column<Record<string, unknown>>[]}
-                        enableSearch
-                        searchPlaceholder="Search enrollment history..."
-                        emptyMessage="No enrollment history"
-                    />
-                </Card>
-            )}
+            {hasCbcExtensions ? (
+                <LearnerSectionCard
+                    sectionId="learner-section-cbc"
+                    title="CBC Competency Progress"
+                    summary={cbcSummary}
+                    open={sectionState.cbc}
+                    onToggle={() => toggleSection('cbc')}
+                >
+                    <div className="space-y-4">
+                        {slotExtensions.map(ext => (
+                            <ext.component key={ext.key} studentId={studentId} />
+                        ))}
+                    </div>
+                </LearnerSectionCard>
+            ) : null}
+
+            {hasHistory ? (
+                <LearnerSectionCard
+                    sectionId="learner-section-history"
+                    title="Enrollment History"
+                    summary={historySummary}
+                    open={sectionState.history}
+                    onToggle={() => toggleSection('history')}
+                >
+                    <div className="space-y-4">
+                        <div className="space-y-3 md:hidden">
+                            {historyEnrollments.map((row) => (
+                                <div key={`${row.cohort}-${row.enrolled_date}-${row.completion_date ?? 'active'}`} className="rounded-xl border border-gray-200 p-4">
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <p className="font-semibold text-gray-900">{row.cohort_name}</p>
+                                            {row.end_reason ? (
+                                                <Badge variant={END_REASON_VARIANTS[row.end_reason] ?? 'default'}>
+                                                    {END_REASON_LABELS[row.end_reason] ?? row.end_reason}
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="default">Inactive</Badge>
+                                            )}
+                                        </div>
+                                        <p className="text-sm text-gray-500">{row.enrollment_type_display}</p>
+                                        <p className="text-xs text-gray-500">
+                                            Enrolled {new Date(row.enrolled_date).toLocaleDateString()}
+                                            {row.completion_date ? ` · Ended ${new Date(row.completion_date).toLocaleDateString()}` : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="hidden md:block">
+                            <DataTable
+                                data={historyEnrollments as unknown as Record<string, unknown>[]}
+                                columns={historyColumns as unknown as Column<Record<string, unknown>>[]}
+                                enableSearch
+                                searchPlaceholder="Search enrollment history..."
+                                emptyMessage="No enrollment history"
+                            />
+                        </div>
+                    </div>
+                </LearnerSectionCard>
+            ) : null}
+
+            {showMobileReportBar ? (
+                <div className="theme-surface-elevated fixed inset-x-0 bottom-0 z-30 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden theme-border">
+                    <div className="flex items-center gap-3">
+                        <Link href={defaultSubjectReportHref} className="flex-1">
+                            <Button className="w-full">
+                                <FileBarChart className="mr-2 h-4 w-4" />
+                                Open Subject Report
+                            </Button>
+                        </Link>
+                        <ActionMenu
+                            items={[
+                                ...(canGenerateOverviewReport && reportScopes?.can_view_overview ? [{
+                                    label: 'Open Overall Report',
+                                    href: overviewReportHref,
+                                    icon: <FileText className="h-4 w-4" />,
+                                }] : []),
+                            ]}
+                        />
+                    </div>
+                </div>
+            ) : null}
 
             {/* Modals */}
             <StatusModal

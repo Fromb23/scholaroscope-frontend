@@ -425,6 +425,12 @@ export function AssistantWidget() {
   const [feedbackPending, setFeedbackPending] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState('');
+  const mobileBottomOffsetStyle = useMemo(
+    () => ({
+      bottom: 'calc(env(safe-area-inset-bottom) + var(--assistant-widget-offset, 1rem))',
+    }),
+    []
+  );
 
   const quickPrompts = useMemo(() => roleQuickPrompts(activeRole), [activeRole]);
   const hasPendingSuggestion = !suggestionsLoading && Boolean(activeSuggestion);
@@ -575,9 +581,12 @@ export function AssistantWidget() {
   return (
     <>
       {mode !== 'open' ? (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6">
+        <div
+          className="pointer-events-none fixed right-4 z-30 md:!bottom-6 md:right-6"
+          style={mobileBottomOffsetStyle}
+        >
           {mode === 'minimized' ? (
-            <div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border theme-border theme-surface-elevated px-3 py-2 shadow-lg">
+            <div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border theme-border theme-surface-elevated px-2.5 py-2 shadow-lg sm:px-3">
               <button
                 type="button"
                 onClick={() => setMode('open')}
@@ -585,9 +594,11 @@ export function AssistantWidget() {
                 aria-label="Open ScholaroScope Guide"
               >
                 <MessageCircle className="h-4 w-4 shrink-0" />
-                <span>Guide</span>
+                <span className="hidden sm:inline">Guide</span>
                 {pageContext?.pageTitle ? (
-                  <span className="max-w-32 truncate text-xs theme-muted">{pageContext.pageTitle}</span>
+                  <span className="hidden max-w-32 truncate text-xs theme-muted sm:inline">
+                    {pageContext.pageTitle}
+                  </span>
                 ) : null}
               </button>
               <button
@@ -603,13 +614,13 @@ export function AssistantWidget() {
             <Button
               type="button"
               onClick={() => setMode('open')}
-              className="pointer-events-auto rounded-full px-4 py-3 shadow-lg"
+              className="pointer-events-auto h-12 w-12 rounded-full px-0 py-0 shadow-lg sm:h-auto sm:w-auto sm:px-4 sm:py-3"
               aria-label="Open ScholaroScope Guide"
             >
               <MessageCircle className="h-4 w-4" />
-              Guide
+              <span className="hidden sm:inline">Guide</span>
               {hasPendingSuggestion ? (
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold">
+                <span className="hidden rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold sm:inline-flex">
                   New
                 </span>
               ) : null}
@@ -619,7 +630,10 @@ export function AssistantWidget() {
       ) : null}
 
       {mode === 'open' ? (
-        <div className="pointer-events-none fixed inset-x-2 bottom-2 z-50 max-w-[calc(100vw-1rem)] md:inset-auto md:bottom-6 md:right-6 md:w-[380px] md:max-w-[calc(100vw-2rem)]">
+        <div
+          className="pointer-events-none fixed inset-x-2 z-40 max-w-[calc(100vw-1rem)] md:inset-auto md:!bottom-6 md:right-6 md:w-[380px] md:max-w-[calc(100vw-2rem)]"
+          style={mobileBottomOffsetStyle}
+        >
           <Card className="pointer-events-auto theme-surface-elevated h-[75vh] max-h-[75vh] w-full overflow-hidden rounded-2xl border p-0 shadow-2xl md:h-[42rem] md:max-h-[42rem] md:w-[380px]">
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between gap-3 border-b theme-border px-4 py-3">

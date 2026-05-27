@@ -7,12 +7,14 @@
 // No any. No alert(). No API calls.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
     BookOpen, Edit2, Trash2, ChevronDown, ChevronRight,
     Plus,
     ExternalLink,
+    Link2,
 } from 'lucide-react';
+import { ActionMenu } from '@/app/components/ui/ActionMenu';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
@@ -30,6 +32,14 @@ export interface CurriculumSubjectGroup {
     curriculumName: string;
     curriculumType: string;
     subjects: Map<string, Subject[]>;
+}
+
+export function getCurriculumGroupKey(curriculumName: string): string {
+    return curriculumName.trim().toLowerCase();
+}
+
+export function getSubjectGroupKey(curriculumName: string, subjectName: string): string {
+    return `${getCurriculumGroupKey(curriculumName)}::${subjectName.trim().toLowerCase()}`;
 }
 
 export function groupSubjects(subjects: Subject[], search: string): CurriculumSubjectGroup[] {
@@ -77,6 +87,8 @@ interface SubjectNameGroupProps {
     onAddLevel: (s: Subject) => void;
     onAssignToCohort: (s: Subject) => void;
     canManage: boolean;
+    open: boolean;
+    onToggle: () => void;
 }
 
 export function SubjectNameGroup({
@@ -87,14 +99,14 @@ export function SubjectNameGroup({
     onDelete,
     onAssignToCohort,
     canManage,
+    open,
+    onToggle,
 }: SubjectNameGroupProps) {
-    const [open, setOpen] = useState(true);
-
     return (
         <div className="overflow-hidden rounded-lg border theme-border">
             <button
                 type="button"
-                onClick={() => setOpen(v => !v)}
+                onClick={onToggle}
                 className="theme-surface theme-hover-surface flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
             >
                 {open
@@ -120,58 +132,88 @@ export function SubjectNameGroup({
             {open && (
                 <div className="divide-y divide-gray-200 border-t theme-border">
                     {levels.map(subject => (
-                        <div
-                            key={subject.id}
-                            className="theme-surface-muted theme-hover-surface flex flex-col gap-3 px-4 py-3 pl-9 transition-colors sm:flex-row sm:items-center"
-                        >
-                            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="w-24 shrink-0 font-mono text-xs font-medium theme-text">{subject.code}</span>
-                                    <Badge variant="blue" size="sm" className="shrink-0">{subject.level}</Badge>
+                        <div key={subject.id} className="theme-surface-muted theme-hover-surface px-4 py-3 pl-9 transition-colors">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                                <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="w-24 shrink-0 font-mono text-xs font-medium theme-text">{subject.code}</span>
+                                        <Badge variant="blue" size="sm" className="shrink-0">{subject.level}</Badge>
+                                    </div>
+                                    {subject.description && (
+                                        <p className="truncate text-xs theme-muted">
+                                            {subject.description}
+                                        </p>
+                                    )}
                                 </div>
-                                {subject.description && (
-                                    <p className="truncate text-xs theme-muted">
-                                        {subject.description}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end">
-                                {canManage ? (
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="secondary"
-                                        onClick={() => onAssignToCohort(subject)}
-                                        className="w-full sm:w-auto"
-                                    >
-                                        Assign to Cohort
-                                    </Button>
-                                ) : null}
-                                <a
-                                    href={`/academic/subjects/${subject.id}`}
-                                    className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-info"
-                                    title="View Subject"
-                                >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                </a>
-                                {canManage ? (
-                                    <>
-                                        <button
+                                <div className="flex items-center gap-2 md:ml-auto md:justify-end">
+                                    {canManage ? (
+                                        <Button
                                             type="button"
-                                            onClick={() => onEdit(subject)}
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => onAssignToCohort(subject)}
+                                            className="hidden md:inline-flex"
+                                        >
+                                            Assign to Cohort
+                                        </Button>
+                                    ) : null}
+                                    <div className="hidden items-center gap-2 md:flex">
+                                        <a
+                                            href={`/academic/subjects/${subject.id}`}
                                             className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-info"
+                                            title="View Subject"
                                         >
-                                            <Edit2 className="h-3.5 w-3.5" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => onDelete(subject.id)}
-                                            className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-danger"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
-                                    </>
-                                ) : null}
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                        {canManage ? (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onEdit(subject)}
+                                                    className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-info"
+                                                >
+                                                    <Edit2 className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onDelete(subject.id)}
+                                                    className="rounded-lg p-1.5 theme-subtle transition-colors theme-hover-danger"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </>
+                                        ) : null}
+                                    </div>
+                                    <ActionMenu
+                                        className="md:hidden"
+                                        hideLabelOnMobile
+                                        items={[
+                                            ...(canManage ? [{
+                                                label: 'Assign to Cohort',
+                                                onSelect: () => onAssignToCohort(subject),
+                                                icon: <Link2 className="h-4 w-4" />,
+                                            }] : []),
+                                            {
+                                                label: 'View Subject',
+                                                href: `/academic/subjects/${subject.id}`,
+                                                icon: <ExternalLink className="h-4 w-4" />,
+                                            },
+                                            ...(canManage ? [
+                                                {
+                                                    label: 'Edit',
+                                                    onSelect: () => onEdit(subject),
+                                                    icon: <Edit2 className="h-4 w-4" />,
+                                                },
+                                                {
+                                                    label: 'Delete',
+                                                    onSelect: () => onDelete(subject.id),
+                                                    destructive: true,
+                                                    icon: <Trash2 className="h-4 w-4" />,
+                                                },
+                                            ] : []),
+                                        ]}
+                                    />
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -192,19 +234,33 @@ interface CurriculumGroupProps {
     onAddLevel: (s: Subject) => void;
     onAssignToCohort: (s: Subject) => void;
     canManage: boolean;
+    open: boolean;
+    onToggle: () => void;
+    isSubjectOpen: (name: string) => boolean;
+    onSubjectToggle: (name: string) => void;
 }
 
 export function CurriculumGroup({
-    curriculumName, curriculumType, subjectGroups, onEdit, onDelete, onAddLevel, onAssignToCohort, canManage,
+    curriculumName,
+    curriculumType,
+    subjectGroups,
+    onEdit,
+    onDelete,
+    onAddLevel,
+    onAssignToCohort,
+    canManage,
+    open,
+    onToggle,
+    isSubjectOpen,
+    onSubjectToggle,
 }: CurriculumGroupProps) {
-    const [open, setOpen] = useState(true);
     const totalSubjects = Array.from(subjectGroups.values()).flat().length;
 
     return (
         <div className="overflow-hidden rounded-xl border theme-border">
             <button
                 type="button"
-                onClick={() => setOpen(v => !v)}
+                onClick={onToggle}
                 className="theme-surface-elevated theme-hover-surface flex w-full items-center gap-3 px-5 py-4 text-left transition-colors"
             >
                 {open
@@ -238,6 +294,8 @@ export function CurriculumGroup({
                             onAddLevel={onAddLevel}
                             onAssignToCohort={onAssignToCohort}
                             canManage={canManage}
+                            open={isSubjectOpen(name)}
+                            onToggle={() => onSubjectToggle(name)}
                         />
                     ))}
                 </div>
