@@ -497,7 +497,6 @@ export function CohortFormModal({
             size="lg"
         >
             <div className="space-y-5">
-                {formError && <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />}
                 {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
                     <CurriculumLifecycleNotice
                         status={selectedCurriculum.offering_status}
@@ -569,6 +568,15 @@ export function CohortFormModal({
                 <p className="text-xs text-gray-400">
                     Cohort name is auto-generated from level, stream, and academic year.
                 </p>
+
+                {formError ? (
+                    <ErrorBanner
+                        message={formError}
+                        onDismiss={() => setFormError(null)}
+                        autoDismissMs={5000}
+                        compact
+                    />
+                ) : null}
 
                 <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                     <Button variant="secondary" onClick={onClose}>Cancel</Button>

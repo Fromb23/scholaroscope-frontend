@@ -95,8 +95,6 @@ export function CurriculumFormModal({
             title={editing ? 'Edit Curriculum' : 'Add New Curriculum'}
         >
             <form onSubmit={handleSubmit} className="space-y-4">
-                {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
-
                 <Input
                     label="Curriculum Code"
                     value={form.curriculum_type}
@@ -144,6 +142,15 @@ export function CurriculumFormModal({
                     />
                     <span className="text-sm font-medium text-gray-700">Active Curriculum</span>
                 </label>
+
+                {error ? (
+                    <ErrorBanner
+                        message={error}
+                        onDismiss={() => setError(null)}
+                        autoDismissMs={5000}
+                        compact
+                    />
+                ) : null}
 
                 <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                     <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>

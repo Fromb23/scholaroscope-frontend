@@ -8,7 +8,6 @@ import {
     AlertTriangle,
     ArrowLeft,
     CalendarDays,
-    CheckCircle2,
     Clock3,
     Download,
     Edit,
@@ -148,8 +147,10 @@ export function LessonPlanDetailPage() {
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
     const [markUsedOpen, setMarkUsedOpen] = useState(false);
+    const [markUsedError, setMarkUsedError] = useState<string | null>(null);
     const [reflection, setReflection] = useState('');
     const [scheduleOpen, setScheduleOpen] = useState(false);
+    const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [transientNotice, setTransientNotice] = useState<string | null>(null);
     const [scheduleForm, setScheduleForm] = useState<{
@@ -242,7 +243,7 @@ export function LessonPlanDetailPage() {
         setTransientNotice(noticeMessage);
         const timer = window.setTimeout(() => {
             setTransientNotice(null);
-        }, 5000);
+        }, 4000);
 
         return () => {
             window.clearTimeout(timer);
@@ -305,6 +306,7 @@ export function LessonPlanDetailPage() {
         setReflection(lessonPlan.reflection ?? '');
         setActionError(null);
         setActionSuccess(null);
+        setMarkUsedError(null);
         setMarkUsedOpen(true);
     };
 
@@ -324,6 +326,7 @@ export function LessonPlanDetailPage() {
         });
         setActionError(null);
         setActionSuccess(null);
+        setScheduleError(null);
         setScheduleOpen(true);
     }, [lessonPlan]);
 
@@ -377,8 +380,8 @@ export function LessonPlanDetailPage() {
         }
 
         setPendingActionKey(actionKey(lessonPlan.id, 'used'));
-        setActionError(null);
         setActionSuccess(null);
+        setMarkUsedError(null);
 
         try {
             await markUsed({ reflection: reflection.trim() });
@@ -386,7 +389,7 @@ export function LessonPlanDetailPage() {
             setReflection('');
             setActionSuccess('Lesson plan marked as used.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Action failed.');
+            setMarkUsedError(err instanceof Error ? err.message : 'Action failed.');
         } finally {
             setPendingActionKey(null);
         }
@@ -400,8 +403,8 @@ export function LessonPlanDetailPage() {
         }
 
         setPendingActionKey(actionKey(lessonPlan.id, 'scheduled'));
-        setActionError(null);
         setActionSuccess(null);
+        setScheduleError(null);
 
         try {
             const response = await scheduleLesson({
@@ -421,7 +424,7 @@ export function LessonPlanDetailPage() {
                     : 'Lesson scheduled.'
             );
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Action failed.');
+            setScheduleError(err instanceof Error ? err.message : 'Action failed.');
         } finally {
             setPendingActionKey(null);
         }
@@ -647,22 +650,30 @@ export function LessonPlanDetailPage() {
                 </div>
             </div>
 
-            {(noticeMessage ?? transientNotice) ? (
-                <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    {noticeMessage ?? transientNotice}
-                </div>
+            {transientNotice ? (
+                <ErrorBanner
+                    message={transientNotice}
+                    variant="success"
+                    autoDismissMs={4000}
+                    onDismiss={() => setTransientNotice(null)}
+                />
             ) : null}
 
             {actionError ? (
-                <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
+                <ErrorBanner
+                    message={actionError}
+                    onDismiss={() => setActionError(null)}
+                    autoDismissMs={5000}
+                />
             ) : null}
 
             {actionSuccess ? (
-                <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    {actionSuccess}
-                </div>
+                <ErrorBanner
+                    message={actionSuccess}
+                    variant="success"
+                    onDismiss={() => setActionSuccess(null)}
+                    autoDismissMs={4000}
+                />
             ) : null}
 
             {preparedAssignment ? (
@@ -897,6 +908,7 @@ export function LessonPlanDetailPage() {
                 onClose={() => {
                     setMarkUsedOpen(false);
                     setReflection('');
+                    setMarkUsedError(null);
                 }}
                 title="Mark Lesson Plan as Used"
                 size="md"
@@ -917,6 +929,15 @@ export function LessonPlanDetailPage() {
                         />
                     </div>
 
+                    {markUsedError ? (
+                        <ErrorBanner
+                            message={markUsedError}
+                            onDismiss={() => setMarkUsedError(null)}
+                            autoDismissMs={5000}
+                            compact
+                        />
+                    ) : null}
+
                     <div className="flex flex-wrap justify-end gap-3">
                         <Button
                             type="button"
@@ -924,6 +945,7 @@ export function LessonPlanDetailPage() {
                             onClick={() => {
                                 setMarkUsedOpen(false);
                                 setReflection('');
+                                setMarkUsedError(null);
                             }}
                         >
                             Cancel
@@ -941,7 +963,10 @@ export function LessonPlanDetailPage() {
 
             <Modal
                 isOpen={scheduleOpen}
-                onClose={() => setScheduleOpen(false)}
+                onClose={() => {
+                    setScheduleOpen(false);
+                    setScheduleError(null);
+                }}
                 title={isInstructor ? 'Schedule This Lesson' : 'Schedule Lesson'}
                 size="lg"
             >
@@ -1154,8 +1179,24 @@ export function LessonPlanDetailPage() {
                         ) : null}
                     </div>
 
+                    {scheduleError ? (
+                        <ErrorBanner
+                            message={scheduleError}
+                            onDismiss={() => setScheduleError(null)}
+                            autoDismissMs={5000}
+                            compact
+                        />
+                    ) : null}
+
                     <div className="flex flex-wrap justify-end gap-3">
-                        <Button type="button" variant="secondary" onClick={() => setScheduleOpen(false)}>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                                setScheduleOpen(false);
+                                setScheduleError(null);
+                            }}
+                        >
                             Cancel
                         </Button>
                         <Button

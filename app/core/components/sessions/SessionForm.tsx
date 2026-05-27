@@ -9,14 +9,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Calendar, Clock, BookOpen, Users, AlertCircle, X } from 'lucide-react';
+import { Save, Calendar, Clock, BookOpen, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -64,20 +66,6 @@ const DEFAULT_FORM: SessionFormData = {
     venue: '',
     auto_create_attendance: true,
 };
-
-// ── Sub-component: error banner ───────────────────────────────────────────
-
-function ErrorBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
-    return (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span className="flex-1 whitespace-pre-wrap">{message}</span>
-            <button onClick={onDismiss} className="text-red-400 hover:text-red-600 shrink-0">
-                <X className="h-4 w-4" />
-            </button>
-        </div>
-    );
-}
 
 // ── SessionForm ───────────────────────────────────────────────────────────
 
@@ -142,6 +130,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const submitErrorRef = useScrollIntoViewOnMessage(submitError);
 
     // Auto-select active term
     useEffect(() => {
@@ -226,7 +215,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             router.push(`/sessions/${session.id}`);
         } catch (err) {
             setSubmitError(extractErrorMessage(err as ApiError));
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setSaving(false);
         }
@@ -245,10 +233,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            {submitError && (
-                <ErrorBanner message={submitError} onDismiss={() => setSubmitError(null)} />
-            )}
-
             {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
                 <CurriculumLifecycleNotice
                     status={selectedCurriculum.offering_status}
@@ -438,6 +422,15 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                     </label>
                 </div>
             </Card>
+
+            {submitError ? (
+                <ErrorBanner
+                    ref={submitErrorRef}
+                    message={submitError}
+                    onDismiss={() => setSubmitError(null)}
+                    autoDismissMs={5000}
+                />
+            ) : null}
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-4">

@@ -10,6 +10,7 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LessonPlanReferenceEditorSlot } from '@/app/core/components/lessonPlans/LessonPlanReferenceEditorSlot';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import {
     referenceRecordToInput,
     validateReferencePages,
@@ -164,6 +165,7 @@ export function LessonPlanForm({
     ));
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const formErrorRef = useScrollIntoViewOnMessage(formError);
     const plannedOutcomeMap = useMemo(
         () => new Map(lessonPlan.planned_outcomes.map((outcome) => [outcome.outcome_id, outcome])),
         [lessonPlan.planned_outcomes],
@@ -249,7 +251,6 @@ export function LessonPlanForm({
             router.push(`/lesson-plans/${updated.id}?notice=updated`);
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'Failed to save lesson plan.');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setSaving(false);
         }
@@ -257,10 +258,6 @@ export function LessonPlanForm({
 
     return (
         <form id="lesson-plan-form" onSubmit={handleSubmit} className="space-y-6 pb-28 md:pb-0">
-            {formError ? (
-                <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
-            ) : null}
-
             <Card>
                 <div className="space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -486,6 +483,15 @@ export function LessonPlanForm({
                     </div>
                 </div>
             </Card>
+
+            {formError ? (
+                <ErrorBanner
+                    ref={formErrorRef}
+                    message={formError}
+                    onDismiss={() => setFormError(null)}
+                    autoDismissMs={5000}
+                />
+            ) : null}
 
             <div className="hidden flex-wrap items-center justify-end gap-3 md:flex">
                 <Link href={`/lesson-plans/${lessonPlan.id}`}>

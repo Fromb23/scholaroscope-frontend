@@ -7,9 +7,10 @@
 // No any. Typed props. Reuses ErrorBanner and InlineAlert.
 // ============================================================================
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
-    Puzzle, Check, X, Power, PowerOff, ChevronRight, BookOpen,
+    Puzzle, Check, Power, PowerOff, ChevronRight, BookOpen,
     Clock, UserCheck, Ban, Plus, Trash2, Mail,
     Copy, CheckCheck, ChevronDown, Link,
 } from 'lucide-react';
@@ -25,7 +26,11 @@ import { pluginAPI } from '@/app/core/api/plugins';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useCurriculumDisableRequests } from '@/app/core/hooks/useCurriculumDisableWorkflow';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
-import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
+import {
+    canManageCurriculumPlugin,
+    getCurriculumPluginManagementBlockMessage,
+    resolveCurriculumForType,
+} from '@/app/core/lib/curriculumLifecycle';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import type { Curriculum, CurriculumDisableRequest } from '@/app/core/types/academic';
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
@@ -93,21 +98,18 @@ function resolvePluginCurriculum(plugin: InstalledPlugin, curricula: Curriculum[
 
 interface FeedbackBannerProps {
     feedback: { type: 'success' | 'error'; message: string } | null;
+    onDismiss: () => void;
 }
 
-function FeedbackBanner({ feedback }: FeedbackBannerProps) {
+function FeedbackBanner({ feedback, onDismiss }: FeedbackBannerProps) {
     if (!feedback) return null;
     return (
-        <div className={`flex items-center gap-2 p-3 rounded-xl text-sm ${feedback.type === 'success'
-            ? 'bg-green-50 border border-green-200 text-green-700'
-            : 'bg-red-50 border border-red-200 text-red-700'
-            }`}>
-            {feedback.type === 'success'
-                ? <Check className="h-4 w-4 shrink-0" />
-                : <X className="h-4 w-4 shrink-0" />
-            }
-            {feedback.message}
-        </div>
+        <ErrorBanner
+            message={feedback.message}
+            variant={feedback.type === 'success' ? 'success' : 'error'}
+            onDismiss={onDismiss}
+            autoDismissMs={feedback.type === 'success' ? 4000 : 5000}
+        />
     );
 }
 
@@ -365,7 +367,7 @@ export function MembersTab() {
                 </Button>
             </div>
 
-            <FeedbackBanner feedback={feedback} />
+            <FeedbackBanner feedback={feedback} onDismiss={() => setFeedback(null)} />
 
             {loading && <LoadingSpinner fullScreen={false} message="Loading invites..." />}
 
@@ -427,6 +429,8 @@ interface InstalledPluginCardProps {
     onToggle: (id: number) => void;
     onWorkflowChanged: () => void;
     toggling: boolean;
+    highlighted?: boolean;
+    containerRef?: (node: HTMLDivElement | null) => void;
 }
 
 export function InstalledPluginCard({
@@ -436,6 +440,8 @@ export function InstalledPluginCard({
     onToggle,
     onWorkflowChanged,
     toggling,
+    highlighted = false,
+    containerRef,
 }: InstalledPluginCardProps) {
     const [curriculumOpen, setCurriculumOpen] = useState(false);
     const [disableWorkflowOpen, setDisableWorkflowOpen] = useState(false);
@@ -444,16 +450,75 @@ export function InstalledPluginCard({
     const isActive = plugin.state === 'active' || plugin.is_active;
     const PluginModal = pluginModalSlots[plugin.key] ?? null;
     const showLifecycleStatus = Boolean(curriculum && isCurriculumManagedPlugin);
+    const canManagePluginCurriculum = canManageCurriculumPlugin({
+        pluginActive: isActive,
+        pluginAvailable: plugin.is_available,
+        curriculum,
+        disableRequestStatus: latestDisableRequest?.status ?? null,
+    });
+    const manageCurriculumHelperText = getCurriculumPluginManagementBlockMessage({
+        pluginActive: isActive,
+        pluginAvailable: plugin.is_available,
+        curriculum,
+        disableRequestStatus: latestDisableRequest?.status ?? null,
+    });
+    const workflowButtonLabel = (() => {
+        if (!curriculum) {
+            return 'Manage lifecycle';
+        }
+
+        if (curriculum.offering_status === 'REACTIVATING') {
+            return 'View reactivation progress';
+        }
+
+        if (curriculum.offering_status === 'FAILED' || latestDisableRequest?.status === 'FAILED') {
+            return 'Review disable failure';
+        }
+
+        if (
+            curriculum.offering_status === 'DISABLE_REQUESTED'
+            || curriculum.offering_status === 'DRAINING'
+            || curriculum.offering_status === 'FINALIZING'
+            || latestDisableRequest?.status === 'PENDING'
+            || latestDisableRequest?.status === 'DRAINING'
+            || latestDisableRequest?.status === 'WAITING_DUE_DATES'
+            || latestDisableRequest?.status === 'FINALIZING'
+        ) {
+            return 'View progress';
+        }
+
+        if (curriculum.offering_status === 'DISABLED') {
+            return latestDisableRequest ? 'View status' : 'Reactivate';
+        }
+
+        return latestDisableRequest ? 'View progress' : 'Start disable workflow';
+    })();
 
     const openCurriculum = () => {
+        if (!PluginModal || !canManagePluginCurriculum) {
+            return;
+        }
+
         setModalKey(k => k + 1);
         setCurriculumOpen(true);
     };
 
     return (
         <>
-            <div className={`flex items-start justify-between p-4 rounded-xl border transition-colors ${isActive ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100'
-                }`}>
+            <div
+                ref={containerRef}
+                tabIndex={-1}
+                className={`flex items-start justify-between rounded-xl border p-4 transition-[background-color,border-color,box-shadow] outline-none ${
+                    highlighted
+                        ? 'theme-info-surface'
+                        : isActive
+                            ? 'bg-white border-gray-200'
+                            : 'bg-gray-50 border-gray-100'
+                }`}
+                style={highlighted ? {
+                    boxShadow: '0 0 0 3px color-mix(in srgb, var(--color-primary) 26%, transparent)',
+                } : undefined}
+            >
                 <div className="flex items-start gap-4">
                     <div className={`p-2.5 rounded-xl shrink-0 ${isActive ? 'bg-blue-100' : 'bg-gray-100'}`}>
                         <Puzzle className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
@@ -492,7 +557,7 @@ export function InstalledPluginCard({
                             </div>
                         ) : null}
 
-                        {PluginModal && isActive && (
+                        {PluginModal && canManagePluginCurriculum && (
                             <button
                                 onClick={openCurriculum}
                                 className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
@@ -502,6 +567,12 @@ export function InstalledPluginCard({
                                 <ChevronRight className="h-3 w-3" />
                             </button>
                         )}
+
+                        {PluginModal && !canManagePluginCurriculum && manageCurriculumHelperText ? (
+                            <div className="theme-warning-surface mt-3 rounded-lg px-3 py-2 text-xs theme-text">
+                                {manageCurriculumHelperText}
+                            </div>
+                        ) : null}
                     </div>
                 </div>
                 {!plugin.is_core ? (
@@ -512,9 +583,7 @@ export function InstalledPluginCard({
                                 variant={curriculum?.offering_status === 'DISABLED' ? 'secondary' : 'primary'}
                                 onClick={() => setDisableWorkflowOpen(true)}
                             >
-                                {latestDisableRequest
-                                    ? (curriculum?.offering_status === 'DISABLED' ? 'View status' : 'View progress')
-                                    : (curriculum?.offering_status === 'DISABLED' ? 'Reactivate' : 'Start disable workflow')}
+                                {workflowButtonLabel}
                             </Button>
                         </div>
                     ) : (
@@ -559,6 +628,7 @@ export function InstalledPluginCard({
 
 export function PluginsTab() {
     const { plugins, loading, error, refetch } = usePlugins();
+    const searchParams = useSearchParams();
     const { curricula } = useCurricula();
     const {
         data: disableRequests = [],
@@ -570,11 +640,43 @@ export function PluginsTab() {
     const [toggling, setToggling] = useState(false);
     const [localPlugins, setLocalPlugins] = useState<InstalledPlugin[]>([]);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [highlightedPluginKey, setHighlightedPluginKey] = useState<string | null>(null);
+    const pluginCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
+    const pluginQuery = searchParams.get('plugin')?.trim().toLowerCase() ?? '';
+    const curriculumQuery = searchParams.get('curriculum') ?? '';
 
     useEffect(() => {
         setLocalPlugins(plugins);
     }, [plugins]);
+
+    useEffect(() => {
+        if (!pluginQuery || localPlugins.length === 0) {
+            return;
+        }
+
+        const matchedPlugin = localPlugins.find((plugin) => plugin.key.toLowerCase() === pluginQuery);
+        const node = matchedPlugin ? pluginCardRefs.current[matchedPlugin.key] : null;
+
+        if (!matchedPlugin || !node) {
+            return;
+        }
+
+        setHighlightedPluginKey(matchedPlugin.key);
+
+        const frame = window.requestAnimationFrame(() => {
+            node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            node.focus({ preventScroll: true });
+        });
+        const timer = window.setTimeout(() => {
+            setHighlightedPluginKey((current) => current === matchedPlugin.key ? null : current);
+        }, 4500);
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.clearTimeout(timer);
+        };
+    }, [curriculumQuery, localPlugins, pluginQuery]);
 
     const curriculumByPluginId = useMemo(() => (
         new Map<number, Curriculum | null>(
@@ -638,7 +740,7 @@ export function PluginsTab() {
 
     return (
         <div className="space-y-6">
-            <FeedbackBanner feedback={feedback} />
+            <FeedbackBanner feedback={feedback} onDismiss={() => setFeedback(null)} />
 
             <div>
                 <div className="mb-3">
@@ -660,6 +762,10 @@ export function PluginsTab() {
                                 onToggle={handleToggle}
                                 onWorkflowChanged={handleWorkflowChanged}
                                 toggling={toggling}
+                                highlighted={highlightedPluginKey === p.key}
+                                containerRef={(node) => {
+                                    pluginCardRefs.current[p.key] = node;
+                                }}
                             />
                         ))
                     }
@@ -689,6 +795,10 @@ export function PluginsTab() {
                             onToggle={handleToggle}
                             onWorkflowChanged={handleWorkflowChanged}
                             toggling={toggling}
+                            highlighted={highlightedPluginKey === p.key}
+                            containerRef={(node) => {
+                                pluginCardRefs.current[p.key] = node;
+                            }}
                         />
                     ))}
                 </div>

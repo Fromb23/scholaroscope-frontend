@@ -2,8 +2,10 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { Settings, Users, Puzzle } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Settings, Users, Puzzle } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
+import { Button } from '@/app/components/ui/Button';
 import { AppearanceSettingsCard } from '@/app/components/theme/AppearanceSettingsCard';
 import { MembersTab, PluginsTab } from '@/app/core/components/settings/SettingsComponents';
 
@@ -28,10 +30,15 @@ function SettingsContent() {
   const searchParams = useSearchParams();
 
   const tabParam = searchParams.get('tab') as Tab;
-  const activeTab: Tab = VALID_TABS.includes(tabParam) ? tabParam : 'general';
+  const activeTab: Tab = VALID_TABS.includes(tabParam)
+    ? tabParam
+    : (searchParams.get('plugin') ? 'plugins' : 'general');
+  const cameFromCurricula = searchParams.get('from') === 'curricula';
 
   const setActiveTab = (tab: Tab) => {
-    router.replace(`?tab=${tab}`, { scroll: false });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
   };
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
@@ -42,9 +49,20 @@ function SettingsContent() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold theme-text">Settings</h1>
-        <p className="theme-muted mt-1 text-sm">Manage your workspace configuration and team</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold theme-text">Settings</h1>
+          <p className="theme-muted mt-1 text-sm">Manage your workspace configuration and team</p>
+        </div>
+
+        {activeTab === 'plugins' ? (
+          <Link href="/academic/curricula">
+            <Button variant={cameFromCurricula ? 'secondary' : 'ghost'} size="sm">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Curricula
+            </Button>
+          </Link>
+        ) : null}
       </div>
 
       <div className="theme-card-muted flex gap-1 rounded-xl p-1.5">

@@ -1,11 +1,10 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-    AlertCircle,
     ArrowLeft,
     Bot,
     BookOpen,
@@ -33,6 +32,7 @@ import {
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import {
     useCreateLessonPlan,
@@ -51,7 +51,6 @@ import type {
 
 export function GenerateLessonPlanPage() {
     const router = useRouter();
-    const errorContainerRef = useRef<HTMLDivElement | null>(null);
     const { curricula } = useCurricula();
     const { terms } = useTerms();
     const { assignments, isLoading: assignmentsLoading, error: assignmentsError } = useInstructorCohortAccess();
@@ -142,6 +141,9 @@ export function GenerateLessonPlanPage() {
         : curriculumContext?.ai_generation_available ?? null;
     const aiGenerationAvailable = aiGenerationAvailability === true;
     const activeErrorMessage = submittingError || createError || generateError || null;
+    const errorContainerRef = useScrollIntoViewOnMessage(
+        activeErrorMessage || (showRetryWithoutAi ? '__retry__' : null)
+    );
     const showMissingReferenceWarning = (
         plannedOutcomes.length > 0
         && referenceCoverage.missingOutcomes.length > 0
@@ -211,22 +213,6 @@ export function GenerateLessonPlanPage() {
 
         setUseAi(aiGenerationAvailability);
     }, [aiGenerationAvailability]);
-
-    useEffect(() => {
-        if (!activeErrorMessage && !showRetryWithoutAi) {
-            return;
-        }
-
-        const node = errorContainerRef.current;
-        if (!node) {
-            return;
-        }
-
-        requestAnimationFrame(() => {
-            node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            node.focus({ preventScroll: true });
-        });
-    }, [activeErrorMessage, showRetryWithoutAi]);
 
     const submitButtonDisabled = submitting
         || curriculumLoading
@@ -450,8 +436,9 @@ export function GenerateLessonPlanPage() {
             >
                 {activeErrorMessage && !showRetryWithoutAi ? (
                     <ErrorBanner
-                        message={activeErrorMessage || 'We could not generate the lesson plan.'}
+                        message={activeErrorMessage}
                         onDismiss={clearVisibleErrors}
+                        autoDismissMs={5000}
                     />
                 ) : null}
 
@@ -606,10 +593,13 @@ export function GenerateLessonPlanPage() {
                 </Card>
 
                 {activeErrorMessage ? (
-                    <div className="theme-danger-surface hidden rounded-lg px-4 py-3 text-sm md:flex md:items-start md:gap-3">
-                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-danger)]" />
-                        <span className="flex-1">{activeErrorMessage}</span>
-                    </div>
+                    <ErrorBanner
+                        message={activeErrorMessage}
+                        onDismiss={clearVisibleErrors}
+                        autoDismissMs={5000}
+                        compact
+                        className="hidden md:flex"
+                    />
                 ) : null}
 
                 <div className="hidden justify-end md:flex">
@@ -622,9 +612,12 @@ export function GenerateLessonPlanPage() {
             <div className="theme-surface-elevated fixed inset-x-0 bottom-0 z-30 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden theme-border">
                 <div className="mx-auto max-w-6xl space-y-3">
                     {activeErrorMessage ? (
-                        <div className="theme-danger-surface rounded-lg px-3 py-2 text-sm">
-                            {activeErrorMessage}
-                        </div>
+                        <ErrorBanner
+                            message={activeErrorMessage}
+                            onDismiss={clearVisibleErrors}
+                            autoDismissMs={5000}
+                            compact
+                        />
                     ) : null}
                     <Button
                         type="submit"

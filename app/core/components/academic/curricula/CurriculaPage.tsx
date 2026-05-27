@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, Plus, Edit, Trash2, CheckCircle } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, CheckCircle, Puzzle } from 'lucide-react';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -22,7 +22,12 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { CurriculumFormModal } from '@/app/core/components/curricula/CurriculumFormModal';
 import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
-import { canCreateCurriculumWork, canEditCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
+import {
+    canCreateCurriculumWork,
+    canEditCurriculumWork,
+    resolveCurriculumPluginKey,
+} from '@/app/core/lib/curriculumLifecycle';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
@@ -50,12 +55,54 @@ export function CurriculaPage() {
     const lifecycleCurricula = curricula.filter((curriculum) => curriculum.offering_status !== 'ACTIVE');
     const shouldOpenCreate = searchParams.get('create') === '1';
     const returnTo = searchParams.get('returnTo');
+    const pageErrorRef = useScrollIntoViewOnMessage(pageError);
     const createInitialData = useMemo<CurriculumFormData>(() => ({
         name: isCambridgeCurriculumType(searchParams.get('curriculum_type')) ? CAMBRIDGE_BRIDGE_NAME : (searchParams.get('name') ?? ''),
         curriculum_type: (searchParams.get('curriculum_type') ?? '') as CurriculumType,
         description: '',
         is_active: true,
     }), [searchParams]);
+    const pluginSettingsHeaderHref = '/admin/settings?tab=plugins';
+
+    const getPluginSettingsHref = (curriculum: Curriculum): string | null => {
+        const pluginKey = resolveCurriculumPluginKey(curriculum);
+
+        if (!pluginKey) {
+            return null;
+        }
+
+        const params = new URLSearchParams({
+            tab: 'plugins',
+            plugin: pluginKey,
+            curriculum: String(curriculum.id),
+            from: 'curricula',
+        });
+
+        return `/admin/settings?${params.toString()}`;
+    };
+
+    const getPluginActionLabel = (curriculum: Curriculum): string | null => {
+        if (!resolveCurriculumPluginKey(curriculum)) {
+            return null;
+        }
+
+        switch (curriculum.offering_status) {
+            case 'ACTIVE':
+                return 'Manage plugin';
+            case 'DISABLE_REQUESTED':
+            case 'DRAINING':
+            case 'FINALIZING':
+                return 'View disable workflow';
+            case 'DISABLED':
+                return 'Reactivate in Plugin Settings';
+            case 'FAILED':
+                return 'Review disable failure';
+            case 'REACTIVATING':
+                return 'View reactivation progress';
+            default:
+                return 'Manage plugin';
+        }
+    };
 
     const openCreate = () => {
         if (!curricula.some((curriculum) => canCreateCurriculumWork(curriculum))) {
@@ -142,20 +189,35 @@ export function CurriculaPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Curricula</h1>
                     <p className="mt-2 text-gray-600">Manage educational curricula and programs</p>
                 </div>
-                <Button
-                    onClick={openCreate}
-                    disabled={!curricula.some((curriculum) => canCreateCurriculumWork(curriculum))}
-                >
-                    <Plus className="mr-2 h-4 w-4" />Add Curriculum
-                </Button>
+                <div className="flex flex-wrap gap-3">
+                    <Link href={pluginSettingsHeaderHref}>
+                        <Button type="button" variant="secondary">
+                            <Puzzle className="mr-2 h-4 w-4" />
+                            Plugin settings
+                        </Button>
+                    </Link>
+                    <Button
+                        onClick={openCreate}
+                        disabled={!curricula.some((curriculum) => canCreateCurriculumWork(curriculum))}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />Add Curriculum
+                    </Button>
+                </div>
             </div>
 
-            {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
+            {pageError ? (
+                <ErrorBanner
+                    ref={pageErrorRef}
+                    message={pageError}
+                    onDismiss={() => setPageError(null)}
+                    autoDismissMs={5000}
+                />
+            ) : null}
 
             {lifecycleCurricula.length > 0 ? (
                 <CurriculumLifecycleNotice
@@ -216,6 +278,8 @@ export function CurriculaPage() {
                                 <TableHead>Status</TableHead>
                                 <TableHead>Subjects</TableHead>
                                 <TableHead>Cohorts</TableHead>
+                                <TableHead>Plugin</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -227,6 +291,17 @@ export function CurriculaPage() {
                                     <TableCell><CurriculumLifecycleBadge status={c.offering_status} /></TableCell>
                                     <TableCell><Badge variant="info">{c.subjects_count ?? 0}</Badge></TableCell>
                                     <TableCell><Badge variant="info">{c.cohorts_count ?? 0}</Badge></TableCell>
+                                    <TableCell>
+                                        {getPluginSettingsHref(c) && getPluginActionLabel(c) ? (
+                                            <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
+                                                <Button type="button" size="sm" variant="secondary">
+                                                    {getPluginActionLabel(c)}
+                                                </Button>
+                                            </Link>
+                                        ) : (
+                                            <span className="text-sm text-gray-400">—</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell><RowActions curriculum={c} /></TableCell>
                                 </TableRow>
                             ))}
@@ -248,6 +323,8 @@ export function CurriculaPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Plugin</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -257,6 +334,17 @@ export function CurriculaPage() {
                                     <TableCell><span className="font-medium">{getCurriculumBridgeName(c)}</span></TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
                                     <TableCell><CurriculumLifecycleBadge status={c.offering_status} /></TableCell>
+                                    <TableCell>
+                                        {getPluginSettingsHref(c) && getPluginActionLabel(c) ? (
+                                            <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
+                                                <Button type="button" size="sm" variant="secondary">
+                                                    {getPluginActionLabel(c)}
+                                                </Button>
+                                            </Link>
+                                        ) : (
+                                            <span className="text-sm text-gray-400">—</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell><RowActions curriculum={c} /></TableCell>
                                 </TableRow>
                             ))}

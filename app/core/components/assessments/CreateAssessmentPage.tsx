@@ -16,6 +16,7 @@ import { useCreateAssessmentForm, useRubricScales } from '@/app/core/hooks/useAs
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
 import { useAuth } from '@/app/context/AuthContext';
@@ -96,6 +97,7 @@ export function CreateAssessmentPage() {
     const { cohorts } = useCohorts();
     const { subjects } = useCohortSubjects(selectedCohortId || undefined);
     const { rubricScales } = useRubricScales();
+    const saveErrorRef = useScrollIntoViewOnMessage(saveError);
 
     const assignedCohorts = useMemo(() => (
         Array.from(
@@ -254,8 +256,6 @@ export function CreateAssessmentPage() {
                     title="Assessment creation status"
                 />
             ) : null}
-
-            {saveError && <ErrorBanner message={saveError} onDismiss={dismissError} />}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <Card>
@@ -424,6 +424,15 @@ export function CreateAssessmentPage() {
                         </div>
                     </div>
                 </Card>
+
+                {saveError ? (
+                    <ErrorBanner
+                        ref={saveErrorRef}
+                        message={saveError}
+                        onDismiss={dismissError}
+                        autoDismissMs={5000}
+                    />
+                ) : null}
 
                 <div className="flex items-center justify-end gap-4">
                     <Link href="/assessments">
