@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import {
     Globe, Building2, Check, MessageSquare, Edit, Trash2,
-    ChevronDown, ChevronUp, AlertCircle,
+    ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';

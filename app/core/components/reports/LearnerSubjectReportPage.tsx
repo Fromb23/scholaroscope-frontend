@@ -233,9 +233,11 @@ function KeyValueTable({
 function ReportScopeButtons({
   learnerId,
   scopes,
+  returnTo,
 }: {
   learnerId: number;
   scopes: LearnerAvailableReportScope[];
+  returnTo: string;
 }) {
   if (scopes.length === 0) {
     return null;
@@ -246,7 +248,7 @@ function ReportScopeButtons({
       {scopes.map((scope) => (
         <Link
           key={scope.cohort_subject_id}
-          href={buildLearnerSubjectReportHref(learnerId, scope.cohort_subject_id)}
+          href={buildLearnerSubjectReportHref(learnerId, scope.cohort_subject_id, { returnTo })}
         >
           <Button variant="secondary" size="sm">
             {scope.subject_code} - {scope.subject_name}
@@ -262,11 +264,13 @@ function AccessState({
   scopes,
   title,
   description,
+  returnTo,
 }: {
   learnerId: number;
   scopes: LearnerAvailableReportScope[];
   title: string;
   description: string;
+  returnTo: string;
 }) {
   return (
     <Card>
@@ -277,12 +281,12 @@ function AccessState({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Link href={`/learners/${learnerId}`}>
+          <Link href={returnTo}>
             <Button variant="secondary">Return to learner profile</Button>
           </Link>
         </div>
 
-        <ReportScopeButtons learnerId={learnerId} scopes={scopes} />
+        <ReportScopeButtons learnerId={learnerId} scopes={scopes} returnTo={returnTo} />
       </div>
     </Card>
   );
@@ -335,6 +339,7 @@ export function LearnerSubjectReportPage() {
   const searchParams = useSearchParams();
   const learnerId = Number(params.learnerId);
   const requestedCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject'));
+  const returnTo = searchParams.get('returnTo') || `/learners/${learnerId}`;
 
   const { student, loading: learnerLoading, error: learnerError } = useStudent(learnerId);
   const {
@@ -435,7 +440,7 @@ export function LearnerSubjectReportPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Link href={`/learners/${learnerId}`}>
+          <Link href={returnTo}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4" />
               Back to Learner Profile
@@ -544,6 +549,7 @@ export function LearnerSubjectReportPage() {
           scopes={allowedSubjectScopes}
           title="You do not have access to this learner report."
           description="Return to learner profile or choose one of your assigned subjects."
+          returnTo={returnTo}
         />
       ) : null}
 
@@ -553,6 +559,7 @@ export function LearnerSubjectReportPage() {
           scopes={allowedSubjectScopes}
           title="You do not have access to this learner report."
           description="Return to learner profile or choose one of your assigned subjects."
+          returnTo={returnTo}
         />
       ) : null}
 
@@ -565,7 +572,7 @@ export function LearnerSubjectReportPage() {
                 Select one of your allowed learner subject scopes to load the preview.
               </p>
             </div>
-            <ReportScopeButtons learnerId={learnerId} scopes={allowedSubjectScopes} />
+            <ReportScopeButtons learnerId={learnerId} scopes={allowedSubjectScopes} returnTo={returnTo} />
           </div>
         </Card>
       ) : null}

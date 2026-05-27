@@ -16,6 +16,7 @@ import {
     RotateCcw,
     Users,
 } from 'lucide-react';
+import { ActionMenu } from '@/app/components/ui/ActionMenu';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -340,7 +341,7 @@ export function LessonPlanDetailPage() {
                 setLearnerTaskChoice(
                     parsed.choice ?? (hasPreparedAssignment ? 'existing' : 'none')
                 );
-                setLearnerTaskOpen(Boolean(parsed.open) || searchParams.get('section') === 'learner-task');
+                setLearnerTaskOpen(searchParams.get('section') === 'learner-task');
                 return;
             } catch {
                 window.sessionStorage.removeItem(learnerTaskStorageKey ?? '');
@@ -434,6 +435,11 @@ export function LessonPlanDetailPage() {
             });
         }, 50);
     }, [hasPreparedAssignment]);
+    const closeLearnerTaskSection = useCallback(() => {
+        setLearnerTaskOpen(false);
+        setLearnerTaskError(null);
+        setLearnerTaskSuccess(null);
+    }, []);
 
     const handleSimpleAction = async (action: 'reviewed' | 'archived' | 'restored') => {
         if (!lessonPlan) {
@@ -514,7 +520,7 @@ export function LessonPlanDetailPage() {
                 },
             });
             setLearnerTaskChoice('existing');
-            setLearnerTaskOpen(true);
+            setLearnerTaskOpen(false);
             setLearnerTaskSuccess(
                 `${response.detail} It can be issued at the end of the lesson.`
             );
@@ -730,6 +736,38 @@ export function LessonPlanDetailPage() {
     const learnerTaskReturnTo = latestPreparedAssignment
         ? `/lesson-plans/${lessonPlan.id}?section=learner-task&highlightAssignment=${latestPreparedAssignment.id}`
         : `/lesson-plans/${lessonPlan.id}?section=learner-task`;
+    const currentActionPrimary = !hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+        ? {
+            label: 'Prepare learner task',
+            onClick: openLearnerTaskSection,
+            icon: <FilePlus2 className="mr-1.5 h-4 w-4" />,
+        }
+        : canScheduleLesson(lessonPlan.status)
+            ? {
+                label: 'Schedule this lesson',
+                onClick: handleOpenSchedule,
+                icon: <CalendarDays className="mr-1.5 h-4 w-4" />,
+            }
+            : lessonPlan.session
+                ? {
+                    label: 'Open scheduled lesson',
+                    href: `/sessions/${lessonPlan.session}`,
+                    icon: <Link2 className="mr-1.5 h-4 w-4" />,
+                }
+                : hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+                    ? {
+                        label: 'Review learner task',
+                        onClick: openLearnerTaskSection,
+                        icon: <FilePlus2 className="mr-1.5 h-4 w-4" />,
+                    }
+                    : null;
+    const learnerTaskStatus = latestPreparedAssignment
+        ? latestPreparedAssignment.status === 'DRAFT'
+            ? 'Prepared'
+            : 'Issued'
+        : learnerTaskChoice === 'prepare'
+            ? 'Draft in progress'
+            : 'Not prepared';
 
     return (
         <div className="space-y-6">
@@ -757,102 +795,56 @@ export function LessonPlanDetailPage() {
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 print:hidden">
-                        {canScheduleLesson(lessonPlan.status) ? (
-                            <Button
-                                size="sm"
-                                onClick={handleOpenSchedule}
-                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
-                            >
-                                <CalendarDays className="mr-1.5 h-4 w-4" />
-                                {isInstructor ? 'Schedule this lesson' : 'Schedule lesson'}
-                            </Button>
-                        ) : null}
-
-                        <Link href={`/lesson-plans/${lessonPlan.id}/edit`}>
-                            <Button variant="secondary" size="sm">
-                                <Edit className="mr-1.5 h-4 w-4" />
-                                Edit
-                            </Button>
-                        </Link>
-
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                                void handleExportPdf();
-                            }}
-                            disabled={pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')}
-                        >
-                            <Download className="mr-1.5 h-4 w-4" />
-                            {pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')
-                                ? 'Downloading...'
-                                : isInstructor
-                                    ? 'Download lesson plan'
-                                    : 'Download PDF'}
-                        </Button>
-
-                        {canMarkLessonPlanReviewed(lessonPlan.status) ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    void handleSimpleAction('reviewed');
-                                }}
-                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'reviewed')}
-                            >
-                                Mark Reviewed
-                            </Button>
-                        ) : null}
-
-                        {canMarkLessonPlanUsed(lessonPlan.status) ? (
-                            <Button
-                                size="sm"
-                                onClick={handleOpenMarkUsed}
-                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'used')}
-                            >
-                                Mark Used
-                            </Button>
-                        ) : null}
-
-                        {canPrepareAssignmentDraft(lessonPlan.status) ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={openLearnerTaskSection}
-                            >
-                                <FilePlus2 className="mr-1.5 h-4 w-4" />
-                                Prepare learner task
-                            </Button>
-                        ) : null}
-
-                        {canArchiveLessonPlan(lessonPlan.status) ? (
-                            <Button
-                                size="sm"
-                                variant="danger"
-                                onClick={() => {
-                                    void handleSimpleAction('archived');
-                                }}
-                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'archived')}
-                            >
-                                Archive
-                            </Button>
-                        ) : null}
-
-                        {canRestoreLessonPlan(lessonPlan.status) ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    void handleSimpleAction('restored');
-                                }}
-                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'restored')}
-                            >
-                                <RotateCcw className="mr-1.5 h-4 w-4" />
-                                Restore
-                            </Button>
-                        ) : null}
+                    <div className="print:hidden">
+                        <ActionMenu
+                            items={[
+                                {
+                                    label: 'Edit',
+                                    href: `/lesson-plans/${lessonPlan.id}/edit`,
+                                    icon: <Edit className="h-4 w-4" />,
+                                },
+                                {
+                                    label: pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')
+                                        ? 'Downloading...'
+                                        : isInstructor
+                                            ? 'Download lesson plan'
+                                            : 'Download PDF',
+                                    onSelect: () => {
+                                        void handleExportPdf();
+                                    },
+                                    disabled: pendingActionKey === actionKey(lessonPlan.id, 'export-pdf'),
+                                    icon: <Download className="h-4 w-4" />,
+                                },
+                                ...(canMarkLessonPlanReviewed(lessonPlan.status) ? [{
+                                    label: 'Mark Reviewed',
+                                    onSelect: () => {
+                                        void handleSimpleAction('reviewed');
+                                    },
+                                    disabled: pendingActionKey === actionKey(lessonPlan.id, 'reviewed'),
+                                }] : []),
+                                ...(canMarkLessonPlanUsed(lessonPlan.status) ? [{
+                                    label: 'Mark Used',
+                                    onSelect: handleOpenMarkUsed,
+                                    disabled: pendingActionKey === actionKey(lessonPlan.id, 'used'),
+                                }] : []),
+                                ...(canArchiveLessonPlan(lessonPlan.status) ? [{
+                                    label: 'Archive',
+                                    onSelect: () => {
+                                        void handleSimpleAction('archived');
+                                    },
+                                    disabled: pendingActionKey === actionKey(lessonPlan.id, 'archived'),
+                                    destructive: true,
+                                }] : []),
+                                ...(canRestoreLessonPlan(lessonPlan.status) ? [{
+                                    label: 'Restore',
+                                    onSelect: () => {
+                                        void handleSimpleAction('restored');
+                                    },
+                                    disabled: pendingActionKey === actionKey(lessonPlan.id, 'restored'),
+                                    icon: <RotateCcw className="h-4 w-4" />,
+                                }] : []),
+                            ]}
+                        />
                     </div>
                 </div>
             </div>
@@ -883,120 +875,117 @@ export function LessonPlanDetailPage() {
                 />
             ) : null}
 
-            {isInstructor ? (
-                <Card>
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-gray-900">
-                                {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
-                                    ? 'Next step: prepare learner task'
-                                    : canScheduleLesson(lessonPlan.status)
+            <Card>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+                                ? 'Next step: prepare learner task'
+                                : canScheduleLesson(lessonPlan.status)
                                     ? 'Next step: schedule this lesson'
                                     : lessonPlan.status === 'USED'
                                         ? 'Post-lesson follow-up'
                                         : lessonPlan.session
                                             ? 'Next step: use this plan in class'
                                             : 'Lesson preparation is ready'}
-                            </h2>
-                            <p className="text-sm text-gray-600">
-                                {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
-                                    ? 'Plan the learner task now so class time stays focused on attendance, teaching, and the final issue step.'
-                                    : canScheduleLesson(lessonPlan.status)
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                            {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+                                ? 'Plan the learner task now so class time stays focused on attendance, teaching, and the final issue step.'
+                                : canScheduleLesson(lessonPlan.status)
                                     ? 'Choose when this lesson should happen so it appears in your teaching day.'
                                     : lessonPlan.status === 'USED'
                                         ? 'This lesson preparation has already been used in class. Reopen the lesson or download the plan for follow-up work.'
                                         : lessonPlan.session
                                             ? 'This lesson preparation is already linked to a scheduled lesson. Open it when you are ready to teach.'
                                             : 'Review the plan, then continue with your next teaching action.'}
-                            </p>
-                        </div>
-
-                        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
-                            {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status) ? (
-                                <Button
-                                    type="button"
-                                    className="w-full sm:w-auto"
-                                    onClick={openLearnerTaskSection}
-                                >
-                                    <FilePlus2 className="mr-1.5 h-4 w-4" />
-                                    Prepare learner task
-                                </Button>
-                            ) : null}
-
-                            {canScheduleLesson(lessonPlan.status) ? (
-                                <Button
-                                    className="w-full sm:w-auto"
-                                    variant={!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status) ? 'secondary' : 'primary'}
-                                    onClick={handleOpenSchedule}
-                                    disabled={pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
-                                >
-                                    <CalendarDays className="mr-1.5 h-4 w-4" />
-                                    Schedule this lesson
-                                </Button>
-                            ) : null}
-
-                            {lessonPlan.session ? (
-                                <Link href={`/sessions/${lessonPlan.session}`} className="w-full sm:w-auto">
-                                    <Button variant="secondary" className="w-full sm:w-auto">
-                                        <Link2 className="mr-1.5 h-4 w-4" />
-                                        Open scheduled lesson
-                                    </Button>
-                                </Link>
-                            ) : null}
-
-                            {hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status) ? (
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="w-full sm:w-auto"
-                                    onClick={openLearnerTaskSection}
-                                >
-                                    <FilePlus2 className="mr-1.5 h-4 w-4" />
-                                    Review learner task
-                                </Button>
-                            ) : null}
-
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="w-full sm:w-auto"
-                                onClick={() => {
-                                    void handleExportPdf();
-                                }}
-                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')}
-                            >
-                                <Download className="mr-1.5 h-4 w-4" />
-                                Download lesson plan
-                            </Button>
-                        </div>
+                        </p>
                     </div>
-                </Card>
-            ) : null}
+
+                    {currentActionPrimary ? (
+                        'href' in currentActionPrimary && currentActionPrimary.href ? (
+                            <Link href={currentActionPrimary.href} className="w-full lg:w-auto">
+                                <Button className="w-full lg:w-auto">
+                                    {currentActionPrimary.icon}
+                                    {currentActionPrimary.label}
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Button
+                                className="w-full lg:w-auto"
+                                onClick={currentActionPrimary.onClick}
+                                disabled={currentActionPrimary.label === 'Schedule this lesson' && pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
+                            >
+                                {currentActionPrimary.icon}
+                                {currentActionPrimary.label}
+                            </Button>
+                        )
+                    ) : null}
+                </div>
+            </Card>
 
             <div ref={learnerTaskSectionRef} id="learner-task" className="scroll-mt-24">
                 <Card className={highlightedAssignmentId && latestPreparedAssignment?.id === highlightedAssignmentId ? 'border-blue-300 bg-blue-50/50' : undefined}>
                     <div className="space-y-5">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-2">
-                                <h2 className="text-lg font-semibold text-gray-900">Learner task</h2>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-lg font-semibold text-gray-900">Learner task</h2>
+                                    <Badge
+                                        variant={
+                                            learnerTaskStatus === 'Issued'
+                                                ? 'green'
+                                                : learnerTaskStatus === 'Prepared'
+                                                    ? 'blue'
+                                                    : learnerTaskStatus === 'Draft in progress'
+                                                        ? 'yellow'
+                                                        : 'default'
+                                        }
+                                    >
+                                        {learnerTaskStatus}
+                                    </Badge>
+                                </div>
                                 <p className="text-sm text-gray-600">
-                                    Prepare learner evidence for this lesson now, then issue it during or after class when teaching is complete.
+                                    {latestPreparedAssignment
+                                        ? latestPreparedAssignment.status === 'DRAFT'
+                                            ? 'Prepared now and ready to issue after the lesson.'
+                                            : 'Already part of the learner follow-up flow.'
+                                        : learnerTaskChoice === 'prepare'
+                                            ? 'A draft is in progress for this lesson.'
+                                            : 'No learner task is prepared for this lesson yet.'}
                                 </p>
                             </div>
 
-                            {latestPreparedAssignment ? (
-                                <Link
-                                    href={`/academic/cohorts/${latestPreparedAssignment.cohort_id}/assignments/${latestPreparedAssignment.id}?${new URLSearchParams({
-                                        returnTo: learnerTaskReturnTo,
-                                    }).toString()}`}
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
                                     className="w-full sm:w-auto"
+                                    onClick={() => {
+                                        if (learnerTaskOpen) {
+                                            closeLearnerTaskSection();
+                                        } else {
+                                            openLearnerTaskSection();
+                                        }
+                                    }}
                                 >
-                                    <Button variant="secondary" size="sm" className="w-full sm:w-auto">
-                                        <Link2 className="mr-1.5 h-4 w-4" />
-                                        Open learner task
-                                    </Button>
-                                </Link>
-                            ) : null}
+                                    {learnerTaskOpen ? 'Collapse' : latestPreparedAssignment ? 'Review' : 'Expand'}
+                                </Button>
+                                {latestPreparedAssignment ? (
+                                    <Link
+                                        href={`/academic/cohorts/${latestPreparedAssignment.cohort_id}/assignments/${latestPreparedAssignment.id}?${new URLSearchParams({
+                                            returnTo: learnerTaskReturnTo,
+                                        }).toString()}`}
+                                        className="w-full sm:w-auto"
+                                    >
+                                        <Button variant="ghost" size="sm" className="w-full sm:w-auto">
+                                            <Link2 className="mr-1.5 h-4 w-4" />
+                                            Open learner task
+                                        </Button>
+                                    </Link>
+                                ) : null}
+                            </div>
                         </div>
 
                         {learnerTaskError ? (
@@ -1015,63 +1004,6 @@ export function LessonPlanDetailPage() {
                                 autoDismissMs={4000}
                             />
                         ) : null}
-
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setLearnerTaskChoice('none');
-                                    setLearnerTaskOpen(false);
-                                    setLearnerTaskSuccess(null);
-                                    setLearnerTaskError(null);
-                                }}
-                                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                                    learnerTaskChoice === 'none'
-                                        ? 'border-gray-900 bg-gray-900 text-white'
-                                        : 'border-gray-200 bg-white text-gray-800'
-                                }`}
-                            >
-                                <div className="text-sm font-medium">No task for this lesson</div>
-                                <div className={`mt-1 text-xs ${learnerTaskChoice === 'none' ? 'text-gray-200' : 'text-gray-500'}`}>
-                                    Keep this lesson focused on live teaching only.
-                                </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setLearnerTaskChoice('prepare');
-                                    setLearnerTaskOpen(true);
-                                }}
-                                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                                    learnerTaskChoice === 'prepare'
-                                        ? 'border-blue-600 bg-blue-50 text-blue-900'
-                                        : 'border-gray-200 bg-white text-gray-800'
-                                }`}
-                            >
-                                <div className="text-sm font-medium">Prepare learner task</div>
-                                <div className={`mt-1 text-xs ${learnerTaskChoice === 'prepare' ? 'text-blue-700' : 'text-gray-500'}`}>
-                                    Plan the task now and issue it later.
-                                </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setLearnerTaskChoice('existing');
-                                    setLearnerTaskOpen(Boolean(hasPreparedAssignment));
-                                }}
-                                disabled={!hasPreparedAssignment}
-                                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                                    learnerTaskChoice === 'existing'
-                                        ? 'border-green-600 bg-green-50 text-green-900'
-                                        : 'border-gray-200 bg-white text-gray-800'
-                                } ${!hasPreparedAssignment ? 'cursor-not-allowed opacity-60' : ''}`}
-                            >
-                                <div className="text-sm font-medium">Use existing prepared task</div>
-                                <div className={`mt-1 text-xs ${learnerTaskChoice === 'existing' ? 'text-green-700' : 'text-gray-500'}`}>
-                                    {hasPreparedAssignment ? 'Continue with the task already linked to this lesson.' : 'No prepared learner task yet.'}
-                                </div>
-                            </button>
-                        </div>
 
                         {latestPreparedAssignment ? (
                             <div className={`rounded-lg border px-4 py-3 text-sm ${
@@ -1093,72 +1025,101 @@ export function LessonPlanDetailPage() {
                             </div>
                         ) : null}
 
-                        {learnerTaskChoice === 'prepare' && learnerTaskOpen ? (
+                        {learnerTaskOpen ? (
                             <div className="space-y-4 rounded-lg border border-gray-200 p-4">
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    <Input
-                                        label="Learner task title"
-                                        value={learnerTaskTitle}
-                                        onChange={(event) => setLearnerTaskTitle(event.target.value)}
-                                        placeholder="Learner task title"
-                                    />
-                                    <Select
-                                        label="Task type"
-                                        value={learnerTaskType}
-                                        onChange={(event) => setLearnerTaskType(event.target.value as 'class_exercise' | 'homework' | 'group_activity')}
-                                        options={[
-                                            { value: 'class_exercise', label: 'Plan class exercise' },
-                                            { value: 'homework', label: 'Plan homework' },
-                                            { value: 'group_activity', label: 'Plan group activity' },
-                                        ]}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">What should learners do?</label>
-                                    <textarea
-                                        value={learnerTaskInstructions}
-                                        onChange={(event) => setLearnerTaskInstructions(event.target.value)}
-                                        rows={5}
-                                        placeholder="Describe the learner task."
-                                        className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    <Input
-                                        label="Due date"
-                                        type="datetime-local"
-                                        value={learnerTaskDueAt}
-                                        onChange={(event) => setLearnerTaskDueAt(event.target.value)}
-                                    />
-                                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                                        Outcomes, class subject, and curriculum context will be attached from this lesson preparation automatically.
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                        <h3 className="text-sm font-semibold text-gray-900">Review learner task setup</h3>
+                                        <p className="text-sm text-gray-600">
+                                            Keep this compact until you choose to prepare or review the task details.
+                                        </p>
                                     </div>
+                                    <Button type="button" variant="ghost" size="sm" onClick={closeLearnerTaskSection}>
+                                        Collapse
+                                    </Button>
                                 </div>
+
+                                <Select
+                                    label="Learner task"
+                                    value={learnerTaskChoice}
+                                    onChange={(event) => setLearnerTaskChoice(event.target.value as 'none' | 'prepare' | 'existing')}
+                                    options={[
+                                        { value: 'none', label: 'Not for this lesson' },
+                                        { value: 'prepare', label: 'Prepare learner task' },
+                                        { value: 'existing', label: hasPreparedAssignment ? 'Review prepared task' : 'No prepared task yet', disabled: !hasPreparedAssignment },
+                                    ]}
+                                />
+
+                                {learnerTaskChoice === 'prepare' ? (
+                                    <>
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <Input
+                                                label="Learner task title"
+                                                value={learnerTaskTitle}
+                                                onChange={(event) => setLearnerTaskTitle(event.target.value)}
+                                                placeholder="Learner task title"
+                                            />
+                                            <Select
+                                                label="Task type"
+                                                value={learnerTaskType}
+                                                onChange={(event) => setLearnerTaskType(event.target.value as 'class_exercise' | 'homework' | 'group_activity')}
+                                                options={[
+                                                    { value: 'class_exercise', label: 'Plan class exercise' },
+                                                    { value: 'homework', label: 'Plan homework' },
+                                                    { value: 'group_activity', label: 'Plan group activity' },
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-gray-700">What should learners do?</label>
+                                            <textarea
+                                                value={learnerTaskInstructions}
+                                                onChange={(event) => setLearnerTaskInstructions(event.target.value)}
+                                                rows={5}
+                                                placeholder="Describe the learner task."
+                                                className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <Input
+                                                label="Due date"
+                                                type="datetime-local"
+                                                value={learnerTaskDueAt}
+                                                onChange={(event) => setLearnerTaskDueAt(event.target.value)}
+                                            />
+                                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                                                Outcomes, class subject, and curriculum context will be attached from this lesson preparation automatically.
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : null}
 
                                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         onClick={() => {
-                                            setLearnerTaskChoice(hasPreparedAssignment ? 'existing' : 'none');
-                                            setLearnerTaskOpen(false);
+                                            setLearnerTaskChoice('none');
+                                            closeLearnerTaskSection();
                                         }}
                                     >
                                         Not for this lesson
                                     </Button>
-                                    <Button
-                                        type="button"
-                                        onClick={() => {
-                                            void handleSaveLearnerTask();
-                                        }}
-                                        disabled={pendingActionKey === actionKey(lessonPlan.id, 'learner-task')}
-                                    >
-                                        {pendingActionKey === actionKey(lessonPlan.id, 'learner-task')
-                                            ? 'Saving...'
-                                            : 'Save learner task'}
-                                    </Button>
+                                    {learnerTaskChoice === 'prepare' ? (
+                                        <Button
+                                            type="button"
+                                            onClick={() => {
+                                                void handleSaveLearnerTask();
+                                            }}
+                                            disabled={pendingActionKey === actionKey(lessonPlan.id, 'learner-task')}
+                                        >
+                                            {pendingActionKey === actionKey(lessonPlan.id, 'learner-task')
+                                                ? 'Saving...'
+                                                : 'Save learner task'}
+                                        </Button>
+                                    ) : null}
                                 </div>
                             </div>
                         ) : null}
