@@ -6,19 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/(dashboard)/learners/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/learners/[id]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/academic/SubjectComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/SubjectComponents.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assistant/AssistantWidget.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assistant/AssistantWidget.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/LearnerOverviewReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/LearnerOverviewReportPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/LearnerSubjectReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/LearnerSubjectReportPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/academic/useSubjectsPage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/academic/useSubjectsPage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/lib/learnerReportingRoutes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/lib/learnerReportingRoutes.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/announcements/components/AnnouncementComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/announcements/components/AnnouncementComponents.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/announcements/components/AnnouncementsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/announcements/components/AnnouncementsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/CBCLearnerInsights.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/CBCLearnerInsights.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/curriculum/CurriculumDisableWorkflowModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/curriculum/CurriculumDisableWorkflowModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/settings/SettingsComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/settings/SettingsComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useCurriculumDisableWorkflow.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useCurriculumDisableWorkflow.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/lib/curriculumLifecycle.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/lib/curriculumLifecycle.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,23 +41,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.6857593123740005" />
-      <entry key="MS500" value="4.6336139614999166" />
-      <entry key="S2" value="8.223629675537953" />
-      <entry key="S5" value="11.276300457077824" />
-      <entry key="S10" value="13.20289163871181" />
-      <entry key="S30" value="14.94671933178106" />
-      <entry key="S60" value="15.45641897639121" />
-      <entry key="M2" value="15.723823442036307" />
-      <entry key="M5" value="15.8884567865567" />
-      <entry key="M10" value="15.944298495889557" />
-      <entry key="M15" value="15.97346845248916" />
-      <entry key="M30" value="16.466048901375906" />
-      <entry key="H1" value="19.89220640997867" />
-      <entry key="H2" value="31.665203659069068" />
-      <entry key="H4" value="64.7065747648428" />
-      <entry key="D1" value="370.099681154838" />
-      <entry key="W1" value="896.9249845181246" />
+      <entry key="MS100" value="2.0783928760843717" />
+      <entry key="MS500" value="5.0963542688300585" />
+      <entry key="S2" value="7.604569463408126" />
+      <entry key="S5" value="8.393842872554572" />
+      <entry key="S10" value="8.688195916364919" />
+      <entry key="S30" value="8.894053125242618" />
+      <entry key="S60" value="8.94677031473392" />
+      <entry key="M2" value="8.973330381994629" />
+      <entry key="M5" value="9.066625808305096" />
+      <entry key="M10" value="10.542607245695763" />
+      <entry key="M15" value="13.201398481726027" />
+      <entry key="M30" value="20.59123407620383" />
+      <entry key="H1" value="30.173942341993047" />
+      <entry key="H2" value="45.344238113620115" />
+      <entry key="H4" value="79.33257405753791" />
+      <entry key="D1" value="386.14283235492354" />
+      <entry key="W1" value="918.2086271078463" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -74,37 +65,37 @@
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
       <entry key="S10" value="0.0" />
-      <entry key="S30" value="2.479257304913081E-253" />
-      <entry key="S60" value="4.979214099547319E-127" />
-      <entry key="M2" value="7.05635465346471E-64" />
-      <entry key="M5" value="5.488228189320498E-26" />
-      <entry key="M10" value="2.3426967770756216E-13" />
-      <entry key="M15" value="3.80023733266543E-9" />
-      <entry key="M30" value="6.164606575157462E-5" />
-      <entry key="H1" value="0.007852675990101303" />
-      <entry key="H2" value="0.09013070518973601" />
-      <entry key="H4" value="0.3529605398976528" />
-      <entry key="D1" value="2.5243882443073815" />
-      <entry key="W1" value="5.8083352070445065" />
+      <entry key="S30" value="1.8715130916438184E-279" />
+      <entry key="S60" value="4.326098810295273E-140" />
+      <entry key="M2" value="2.079927597368539E-70" />
+      <entry key="M5" value="1.340353296960155E-28" />
+      <entry key="M10" value="1.1577362812662288E-14" />
+      <entry key="M15" value="5.117679634205795E-10" />
+      <entry key="M30" value="2.2622289352278718E-5" />
+      <entry key="H1" value="0.004757001323628244" />
+      <entry key="H2" value="0.0701504669127261" />
+      <entry key="H4" value="0.3113902811011932" />
+      <entry key="D1" value="2.47221345350115" />
+      <entry key="W1" value="5.791031558351589" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.6395230854286862" />
-      <entry key="MS500" value="4.6027124719008885" />
-      <entry key="S2" value="8.206113366045033" />
-      <entry key="S5" value="11.263600304616478" />
-      <entry key="S10" value="13.19454401632885" />
-      <entry key="S30" value="14.943313242684408" />
-      <entry key="S60" value="15.454623492110425" />
-      <entry key="M2" value="15.722901352934516" />
-      <entry key="M5" value="15.888081942350308" />
-      <entry key="M10" value="15.94411005602899" />
-      <entry key="M15" value="15.973342539574992" />
-      <entry key="M30" value="16.466046007346357" />
-      <entry key="H1" value="19.90001925229343" />
-      <entry key="H2" value="31.755291811899816" />
-      <entry key="H4" value="65.05946462619559" />
-      <entry key="D1" value="372.6239504323457" />
-      <entry key="W1" value="902.7332796655575" />
+      <entry key="MS100" value="2.0062747667685668" />
+      <entry key="MS500" value="5.041281415419598" />
+      <entry key="S2" value="7.581001407619029" />
+      <entry key="S5" value="8.383163237039117" />
+      <entry key="S10" value="8.682621899676173" />
+      <entry key="S30" value="8.892140461990369" />
+      <entry key="S60" value="8.945806980706944" />
+      <entry key="M2" value="8.972846950932604" />
+      <entry key="M5" value="9.066430645107173" />
+      <entry key="M10" value="10.542496516526002" />
+      <entry key="M15" value="13.201308850377377" />
+      <entry key="M30" value="20.5911898469276" />
+      <entry key="H1" value="30.178650140503212" />
+      <entry key="H2" value="45.41434166868901" />
+      <entry key="H4" value="79.64389471036229" />
+      <entry key="D1" value="388.6149280293627" />
+      <entry key="W1" value="923.9996185428134" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -219,7 +210,7 @@
       <workItem from="1779688501072" duration="848000" />
       <workItem from="1779733036337" duration="5186000" />
       <workItem from="1779774858720" duration="7312000" />
-      <workItem from="1779877347465" duration="6310000" />
+      <workItem from="1779877347465" duration="7285000" />
     </task>
     <servers />
   </component>

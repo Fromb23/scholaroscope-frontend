@@ -3,6 +3,10 @@ import type {
   CurriculumDisableRequestStatus,
   CurriculumOfferingStatus,
 } from '@/app/core/types/academic';
+import {
+  canStartNewDisableRequest,
+  isActiveDisableRequestStatus,
+} from '@/app/core/lib/curriculumDisableLifecycle';
 
 export type CurriculumRouteIntent =
   | 'read'
@@ -254,14 +258,6 @@ const CURRICULUM_PLUGIN_KEY_BY_TYPE: Record<string, string> = {
   CAMBRIDGE: 'cambridge',
 };
 
-const CURRICULUM_MANAGEMENT_BLOCKING_REQUEST_STATUSES = new Set<CurriculumDisableRequestStatus>([
-  'PENDING',
-  'DRAINING',
-  'WAITING_DUE_DATES',
-  'FINALIZING',
-  'FAILED',
-]);
-
 export function resolveCurriculumPluginKey(
   curriculum?: Pick<Curriculum, 'curriculum_type'> | null,
 ): string | null {
@@ -277,38 +273,36 @@ export function canManageCurriculumPlugin({
   pluginActive,
   pluginAvailable,
   curriculum,
-  disableRequestStatus,
+  activeDisableRequestStatus,
+  latestDisableRequestStatus,
 }: {
   pluginActive: boolean;
   pluginAvailable: boolean;
   curriculum?: Pick<Curriculum, 'offering_status'> | null;
-  disableRequestStatus?: CurriculumDisableRequestStatus | null;
+  activeDisableRequestStatus?: CurriculumDisableRequestStatus | null;
+  latestDisableRequestStatus?: CurriculumDisableRequestStatus | null;
 }): boolean {
   if (!pluginActive || !pluginAvailable || !curriculum) {
     return false;
   }
 
-  if (curriculum.offering_status !== 'ACTIVE') {
-    return false;
-  }
-
-  if (disableRequestStatus && CURRICULUM_MANAGEMENT_BLOCKING_REQUEST_STATUSES.has(disableRequestStatus)) {
-    return false;
-  }
-
-  return true;
+  return canStartNewDisableRequest({
+    isEnabled: curriculum.offering_status === 'ACTIVE',
+    activeDisableRequestStatus,
+    latestDisableRequestStatus,
+  });
 }
 
 export function getCurriculumPluginManagementBlockMessage({
   pluginActive,
   pluginAvailable,
   curriculum,
-  disableRequestStatus,
+  activeDisableRequestStatus,
 }: {
   pluginActive: boolean;
   pluginAvailable: boolean;
   curriculum?: Pick<Curriculum, 'offering_status'> | null;
-  disableRequestStatus?: CurriculumDisableRequestStatus | null;
+  activeDisableRequestStatus?: CurriculumDisableRequestStatus | null;
 }): string | null {
   if (!curriculum) {
     return null;
@@ -322,7 +316,7 @@ export function getCurriculumPluginManagementBlockMessage({
     return 'Activate this plugin to resume curriculum management.';
   }
 
-  if (disableRequestStatus === 'WAITING_DUE_DATES') {
+  if (activeDisableRequestStatus === 'WAITING_DUE_DATES') {
     return 'Curriculum management is paused while this curriculum is draining.';
   }
 
@@ -339,7 +333,7 @@ export function getCurriculumPluginManagementBlockMessage({
     case 'REACTIVATING':
       return 'Curriculum management will resume after reactivation completes.';
     default:
-      return disableRequestStatus && CURRICULUM_MANAGEMENT_BLOCKING_REQUEST_STATUSES.has(disableRequestStatus)
+      return isActiveDisableRequestStatus(activeDisableRequestStatus)
         ? 'Curriculum management is paused while the lifecycle workflow is in progress.'
         : null;
   }

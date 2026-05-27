@@ -27,6 +27,11 @@ import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useCurriculumDisableRequests } from '@/app/core/hooks/useCurriculumDisableWorkflow';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import {
+    canStartNewDisableRequest,
+    getDisableRequestStatusLabel,
+    isActiveDisableRequestStatus,
+} from '@/app/core/lib/curriculumDisableLifecycle';
+import {
     canManageCurriculumPlugin,
     getCurriculumPluginManagementBlockMessage,
     resolveCurriculumForType,
@@ -92,6 +97,63 @@ function resolvePluginCurriculum(plugin: InstalledPlugin, curricula: Curriculum[
 
     const exactNameMatch = curricula.find((curriculum) => curriculum.name.trim().toLowerCase() === plugin.name.trim().toLowerCase());
     return exactNameMatch ?? null;
+}
+
+function getDisableRequestTimestamp(request: CurriculumDisableRequest): number {
+    return new Date(request.requested_at).getTime();
+}
+
+function isDisableWorkflowInProgress(
+    curriculum: Curriculum | null,
+    activeDisableRequest: CurriculumDisableRequest | null,
+): boolean {
+    if (!curriculum) {
+        return false;
+    }
+
+    return Boolean(
+        activeDisableRequest
+        || curriculum.offering_status === 'DISABLE_REQUESTED'
+        || curriculum.offering_status === 'DRAINING'
+        || curriculum.offering_status === 'FINALIZING'
+    );
+}
+
+function getWorkflowSummaryText(
+    curriculum: Curriculum,
+    latestDisableRequest: CurriculumDisableRequest | null,
+    activeDisableRequest: CurriculumDisableRequest | null,
+): string {
+    if (curriculum.offering_status === 'DISABLED') {
+        return 'Historical records remain readable. New work is blocked.';
+    }
+
+    if (curriculum.offering_status === 'FAILED') {
+        return 'Disable workflow needs review before this curriculum can be used again.';
+    }
+
+    if (curriculum.offering_status === 'REACTIVATING') {
+        return 'This curriculum is being reactivated.';
+    }
+
+    if (isDisableWorkflowInProgress(curriculum, activeDisableRequest)) {
+        return activeDisableRequest
+            ? `Disable workflow in progress: ${getDisableRequestStatusLabel(activeDisableRequest.status)}.`
+            : 'Disable workflow in progress.';
+    }
+
+    switch (latestDisableRequest?.status) {
+        case 'CANCELLED':
+            return 'Previous disable request cancelled.';
+        case 'FAILED':
+            return 'Previous disable request failed.';
+        case 'COMPLETED':
+            return curriculum.offering_status === 'ACTIVE'
+                ? 'Previous disable request completed. This curriculum is active again.'
+                : 'Curriculum disabled. Historical records remain readable.';
+        default:
+            return 'Managed through the curriculum lifecycle workflow.';
+    }
 }
 
 // ── FeedbackBanner ────────────────────────────────────────────────────────
@@ -425,9 +487,10 @@ export function MembersTab() {
 interface InstalledPluginCardProps {
     plugin: InstalledPlugin;
     curriculum: Curriculum | null;
+    activeDisableRequest: CurriculumDisableRequest | null;
     latestDisableRequest: CurriculumDisableRequest | null;
     onToggle: (id: number) => void;
-    onWorkflowChanged: () => void;
+    onWorkflowChanged: () => Promise<void>;
     toggling: boolean;
     highlighted?: boolean;
     containerRef?: (node: HTMLDivElement | null) => void;
@@ -436,6 +499,7 @@ interface InstalledPluginCardProps {
 export function InstalledPluginCard({
     plugin,
     curriculum,
+    activeDisableRequest,
     latestDisableRequest,
     onToggle,
     onWorkflowChanged,
@@ -450,17 +514,24 @@ export function InstalledPluginCard({
     const isActive = plugin.state === 'active' || plugin.is_active;
     const PluginModal = pluginModalSlots[plugin.key] ?? null;
     const showLifecycleStatus = Boolean(curriculum && isCurriculumManagedPlugin);
+    const canStartDisableWorkflow = canStartNewDisableRequest({
+        isEnabled: Boolean(isActive && plugin.is_available && curriculum?.is_active && curriculum.offering_status === 'ACTIVE'),
+        activeDisableRequestStatus: activeDisableRequest?.status ?? null,
+        latestDisableRequestStatus: latestDisableRequest?.status ?? null,
+    });
+    const workflowInProgress = isDisableWorkflowInProgress(curriculum, activeDisableRequest);
     const canManagePluginCurriculum = canManageCurriculumPlugin({
         pluginActive: isActive,
         pluginAvailable: plugin.is_available,
         curriculum,
-        disableRequestStatus: latestDisableRequest?.status ?? null,
+        activeDisableRequestStatus: activeDisableRequest?.status ?? null,
+        latestDisableRequestStatus: latestDisableRequest?.status ?? null,
     });
     const manageCurriculumHelperText = getCurriculumPluginManagementBlockMessage({
         pluginActive: isActive,
         pluginAvailable: plugin.is_available,
         curriculum,
-        disableRequestStatus: latestDisableRequest?.status ?? null,
+        activeDisableRequestStatus: activeDisableRequest?.status ?? null,
     });
     const workflowButtonLabel = (() => {
         if (!curriculum) {
@@ -471,27 +542,27 @@ export function InstalledPluginCard({
             return 'View reactivation progress';
         }
 
-        if (curriculum.offering_status === 'FAILED' || latestDisableRequest?.status === 'FAILED') {
-            return 'Review disable failure';
+        if (workflowInProgress) {
+            return 'View disable progress';
         }
 
-        if (
-            curriculum.offering_status === 'DISABLE_REQUESTED'
-            || curriculum.offering_status === 'DRAINING'
-            || curriculum.offering_status === 'FINALIZING'
-            || latestDisableRequest?.status === 'PENDING'
-            || latestDisableRequest?.status === 'DRAINING'
-            || latestDisableRequest?.status === 'WAITING_DUE_DATES'
-            || latestDisableRequest?.status === 'FINALIZING'
-        ) {
-            return 'View progress';
+        if (curriculum.offering_status === 'FAILED') {
+            return 'Review disable failure';
         }
 
         if (curriculum.offering_status === 'DISABLED') {
             return latestDisableRequest ? 'View status' : 'Reactivate';
         }
 
-        return latestDisableRequest ? 'View progress' : 'Start disable workflow';
+        if (canStartDisableWorkflow) {
+            return 'Disable curriculum';
+        }
+
+        if (latestDisableRequest?.status === 'FAILED') {
+            return 'Review previous failure';
+        }
+
+        return latestDisableRequest ? 'View status' : 'Manage lifecycle';
     })();
 
     const openCurriculum = () => {
@@ -544,15 +615,7 @@ export function InstalledPluginCard({
                                     Curriculum: <span className="font-medium text-gray-900">{getCurriculumBridgeName(curriculum)}</span>
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                    {curriculum.offering_status === 'DISABLED'
-                                        ? 'Historical records remain readable. New work is blocked.'
-                                        : curriculum.offering_status === 'DRAINING'
-                                            ? 'New work is blocked while existing work drains.'
-                                            : curriculum.offering_status === 'FINALIZING'
-                                                ? 'Writes are blocked while finalization runs.'
-                                                : latestDisableRequest
-                                                    ? `Workflow status: ${latestDisableRequest.status}`
-                                                    : 'Managed through the curriculum lifecycle workflow.'}
+                                    {getWorkflowSummaryText(curriculum, latestDisableRequest, activeDisableRequest)}
                                 </p>
                             </div>
                         ) : null}
@@ -614,10 +677,9 @@ export function InstalledPluginCard({
                     isOpen={disableWorkflowOpen}
                     onClose={() => setDisableWorkflowOpen(false)}
                     curriculum={curriculum}
-                    activeRequestId={latestDisableRequest?.id ?? null}
-                    onCompleted={() => {
-                        void onWorkflowChanged();
-                    }}
+                    latestRequestId={latestDisableRequest?.id ?? null}
+                    activeRequestId={activeDisableRequest?.id ?? null}
+                    onCompleted={onWorkflowChanged}
                 />
             ) : null}
         </>
@@ -689,7 +751,24 @@ export function PluginsTab() {
 
         disableRequests.forEach((request) => {
             const existing = byCurriculumId.get(request.curriculum);
-            if (!existing || new Date(request.requested_at).getTime() > new Date(existing.requested_at).getTime()) {
+            if (!existing || getDisableRequestTimestamp(request) > getDisableRequestTimestamp(existing)) {
+                byCurriculumId.set(request.curriculum, request);
+            }
+        });
+
+        return byCurriculumId;
+    }, [disableRequests]);
+
+    const activeDisableRequestByCurriculumId = useMemo(() => {
+        const byCurriculumId = new Map<number, CurriculumDisableRequest>();
+
+        disableRequests.forEach((request) => {
+            if (!isActiveDisableRequestStatus(request.status)) {
+                return;
+            }
+
+            const existing = byCurriculumId.get(request.curriculum);
+            if (!existing || getDisableRequestTimestamp(request) > getDisableRequestTimestamp(existing)) {
                 byCurriculumId.set(request.curriculum, request);
             }
         });
@@ -755,6 +834,10 @@ export function PluginsTab() {
                                 key={p.id}
                                 plugin={p}
                                 curriculum={curriculumByPluginId.get(p.id) ?? null}
+                                activeDisableRequest={(() => {
+                                    const curriculum = curriculumByPluginId.get(p.id);
+                                    return curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
+                                })()}
                                 latestDisableRequest={(() => {
                                     const curriculum = curriculumByPluginId.get(p.id);
                                     return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
@@ -788,6 +871,10 @@ export function PluginsTab() {
                             key={p.id}
                             plugin={p}
                             curriculum={curriculumByPluginId.get(p.id) ?? null}
+                            activeDisableRequest={(() => {
+                                const curriculum = curriculumByPluginId.get(p.id);
+                                return curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
+                            })()}
                             latestDisableRequest={(() => {
                                 const curriculum = curriculumByPluginId.get(p.id);
                                 return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
