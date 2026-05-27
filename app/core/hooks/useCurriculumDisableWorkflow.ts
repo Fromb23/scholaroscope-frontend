@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { curriculumAPI, curriculumDisableRequestAPI } from '@/app/core/api/academic';
+import { isActiveDisableRequestStatus } from '@/app/core/lib/curriculumDisableLifecycle';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 import type {
   CurriculumDisableImpactResponse,
@@ -14,14 +15,8 @@ import type {
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
-const POLLING_STATUSES: CurriculumDisableRequestStatus[] = [
-  'DRAINING',
-  'WAITING_DUE_DATES',
-  'FINALIZING',
-];
-
 function shouldPoll(status?: CurriculumDisableRequestStatus | null): boolean {
-  return Boolean(status && POLLING_STATUSES.includes(status));
+  return isActiveDisableRequestStatus(status);
 }
 
 function toError(error: unknown, fallback: string): Error {

@@ -15,7 +15,7 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { CurriculumDisableImpactSummary } from '@/app/core/components/curriculum/CurriculumDisableImpactSummary';
-import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
+import { CurriculumDisableRequestStatusBadge } from '@/app/core/components/curriculum/CurriculumDisableRequestStatusBadge';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import {
   useCancelCurriculumDisableRequest,
@@ -23,12 +23,17 @@ import {
   useCurriculumDisableRequest,
   useReactivateCurriculum,
   useRequestCurriculumDisable,
-  useRetryCurriculumDisableRequest,
 } from '@/app/core/hooks/useCurriculumDisableWorkflow';
+import {
+  canStartNewDisableRequest,
+  getDisableRequestStatusLabel,
+  isActiveDisableRequestStatus,
+} from '@/app/core/lib/curriculumDisableLifecycle';
 import { getCurriculumStatusMessage } from '@/app/core/lib/curriculumLifecycle';
 import type {
   Curriculum,
   CurriculumDisableMode,
+  CurriculumDisableRequest,
   CurriculumDisableRequestStatus,
 } from '@/app/core/types/academic';
 
@@ -49,10 +54,6 @@ function canCancel(status?: CurriculumDisableRequestStatus | null): boolean {
   return status === 'PENDING' || status === 'DRAINING' || status === 'WAITING_DUE_DATES';
 }
 
-function canRetry(status?: CurriculumDisableRequestStatus | null): boolean {
-  return status === 'FAILED';
-}
-
 function canReactivate(curriculum?: Curriculum | null): boolean {
   return Boolean(
     curriculum
@@ -65,67 +66,141 @@ function canReactivate(curriculum?: Curriculum | null): boolean {
   );
 }
 
+function isCurriculumAvailableForDisable(curriculum?: Curriculum | null): boolean {
+  return Boolean(curriculum && curriculum.is_active && curriculum.offering_status === 'ACTIVE');
+}
+
+function getRequestPanelTitle(
+  request: CurriculumDisableRequest,
+  canStartWorkflow: boolean,
+): string {
+  if (isActiveDisableRequestStatus(request.status)) {
+    return 'Disable workflow in progress';
+  }
+
+  switch (request.status) {
+    case 'CANCELLED':
+      return 'Previous disable request cancelled';
+    case 'FAILED':
+      return 'Previous disable request failed';
+    case 'COMPLETED':
+      return canStartWorkflow ? 'Previous disable request completed' : 'Curriculum disabled';
+    default:
+      return 'Disable request';
+  }
+}
+
+function getRequestPanelMessage(
+  request: CurriculumDisableRequest,
+  curriculum: Curriculum,
+  canStartWorkflow: boolean,
+): string {
+  if (isActiveDisableRequestStatus(request.status)) {
+    return 'This curriculum is currently being prepared for disable.';
+  }
+
+  switch (request.status) {
+    case 'CANCELLED':
+      return isCurriculumAvailableForDisable(curriculum)
+        ? 'This curriculum is active. You can start a new disable request if needed.'
+        : getCurriculumStatusMessage(curriculum.offering_status, 'ADMIN');
+    case 'FAILED':
+      return isCurriculumAvailableForDisable(curriculum)
+        ? 'This curriculum is active. Review the reason, then start a new disable request if needed.'
+        : getCurriculumStatusMessage(curriculum.offering_status, 'ADMIN');
+    case 'COMPLETED':
+      return canStartWorkflow
+        ? 'This curriculum is active again. You can start a new disable request if needed.'
+        : 'This curriculum is disabled. Historical records remain available in read-only form.';
+    default:
+      return getCurriculumStatusMessage(curriculum.offering_status, 'ADMIN');
+  }
+}
+
 export function CurriculumDisableWorkflowModal({
   isOpen,
   onClose,
   curriculum,
+  latestRequestId = null,
   activeRequestId = null,
   onCompleted,
 }: {
   isOpen: boolean;
   onClose: () => void;
   curriculum: Curriculum;
+  latestRequestId?: number | null;
   activeRequestId?: number | null;
-  onCompleted?: () => void;
+  onCompleted?: () => Promise<void> | void;
 }) {
   const [mode, setMode] = useState<CurriculumDisableMode>('GRACEFUL');
-  const [localRequestId, setLocalRequestId] = useState<number | null>(activeRequestId);
+  const [displayRequestId, setDisplayRequestId] = useState<number | null>(activeRequestId ?? latestRequestId);
   const [error, setError] = useState<string | null>(null);
+  const curriculumAvailableForDisable = isCurriculumAvailableForDisable(curriculum);
 
   useEffect(() => {
     if (!isOpen) {
       setMode('GRACEFUL');
-      setLocalRequestId(activeRequestId ?? null);
+      setDisplayRequestId(activeRequestId ?? latestRequestId ?? null);
       setError(null);
       return;
     }
 
-    setLocalRequestId(activeRequestId ?? null);
-  }, [activeRequestId, isOpen]);
+    setDisplayRequestId(activeRequestId ?? latestRequestId ?? null);
+  }, [activeRequestId, isOpen, latestRequestId]);
+
+  const canStartWorkflow = canStartNewDisableRequest({
+    isEnabled: curriculumAvailableForDisable,
+    activeDisableRequestStatus: activeRequestId ? 'PENDING' : null,
+    latestDisableRequestStatus: null,
+  });
 
   const {
     data: impactResponse,
     isLoading: impactLoading,
     refetch: refetchImpact,
-  } = useCurriculumDisableImpact(curriculum.id, isOpen && !localRequestId);
+  } = useCurriculumDisableImpact(curriculum.id, isOpen && canStartWorkflow);
 
   useEffect(() => {
-    if (impactResponse?.active_disable_request_id && !localRequestId) {
-      setLocalRequestId(impactResponse.active_disable_request_id);
+    if (
+      impactResponse?.active_disable_request_id
+      && !activeRequestId
+      && impactResponse.active_disable_request_id !== displayRequestId
+    ) {
+      setDisplayRequestId(impactResponse.active_disable_request_id);
     }
-  }, [impactResponse?.active_disable_request_id, localRequestId]);
+  }, [activeRequestId, displayRequestId, impactResponse?.active_disable_request_id]);
 
   const {
     data: disableRequest,
     isLoading: requestLoading,
     refetch: refetchRequest,
-  } = useCurriculumDisableRequest(localRequestId, isOpen && typeof localRequestId === 'number');
+  } = useCurriculumDisableRequest(displayRequestId, isOpen && typeof displayRequestId === 'number');
 
   const requestDisable = useRequestCurriculumDisable(curriculum.id);
-  const cancelRequest = useCancelCurriculumDisableRequest(localRequestId ?? 0, curriculum.id);
-  const retryRequest = useRetryCurriculumDisableRequest(localRequestId ?? 0, curriculum.id);
+  const cancelRequest = useCancelCurriculumDisableRequest(displayRequestId ?? 0, curriculum.id);
   const reactivateCurriculum = useReactivateCurriculum(curriculum.id);
 
-  const impact = disableRequest?.impact_snapshot ?? impactResponse?.impact_snapshot ?? null;
-  const busy = requestDisable.isPending || cancelRequest.isPending || retryRequest.isPending || reactivateCurriculum.isPending;
+  const requestStatus = disableRequest?.status ?? null;
+  const resolvedCanStartWorkflow = canStartNewDisableRequest({
+    isEnabled: curriculumAvailableForDisable,
+    activeDisableRequestStatus: activeRequestId ? 'PENDING' : null,
+    latestDisableRequestStatus: requestStatus,
+  });
+  const requestImpact = disableRequest?.impact_snapshot ?? null;
+  const startImpact = impactResponse?.impact_snapshot ?? null;
+  const busy = requestDisable.isPending || cancelRequest.isPending || reactivateCurriculum.isPending;
+  const showRequestPanel = typeof displayRequestId === 'number';
+  const requestResolved = !showRequestPanel || Boolean(disableRequest);
+  const requestIsActive = isActiveDisableRequestStatus(requestStatus);
+  const showStartWorkflow = resolvedCanStartWorkflow && requestResolved;
 
-  const progressItems = useMemo(() => {
+  const requestDetails = useMemo(() => {
     if (!disableRequest) {
       return [];
     }
 
     return [
-      { label: 'Status', value: disableRequest.status },
+      { label: 'Status', value: getDisableRequestStatusLabel(disableRequest.status) },
       { label: 'Mode', value: disableRequest.mode },
       { label: 'Requested by', value: disableRequest.requested_by_email || 'Unknown' },
       { label: 'Requested at', value: formatDateTime(disableRequest.requested_at) },
@@ -133,6 +208,8 @@ export function CurriculumDisableWorkflowModal({
       { label: 'Drain started', value: formatDateTime(disableRequest.drain_started_at) },
       { label: 'Finalize after', value: formatDateTime(disableRequest.finalize_after) },
       { label: 'Finalized at', value: formatDateTime(disableRequest.finalized_at) },
+      { label: 'Cancelled at', value: formatDateTime(disableRequest.cancelled_at) },
+      { label: 'Failed at', value: formatDateTime(disableRequest.failed_at) },
       {
         label: 'Admin notifications',
         value: disableRequest.admin_notification_sent_at ? 'Sent' : 'Pending',
@@ -144,6 +221,16 @@ export function CurriculumDisableWorkflowModal({
     ];
   }, [disableRequest]);
 
+  const refreshView = async ({ includeRequest = showRequestPanel }: { includeRequest?: boolean } = {}) => {
+    const tasks: Array<Promise<unknown>> = [Promise.resolve(onCompleted?.()), refetchImpact()];
+
+    if (includeRequest && typeof displayRequestId === 'number') {
+      tasks.push(refetchRequest());
+    }
+
+    await Promise.all(tasks);
+  };
+
   const handleStartWorkflow = async () => {
     setError(null);
     try {
@@ -151,8 +238,8 @@ export function CurriculumDisableWorkflowModal({
         mode,
         confirm: true,
       });
-      setLocalRequestId(response.request.id);
-      onCompleted?.();
+      setDisplayRequestId(response.request.id);
+      await refreshView({ includeRequest: false });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to start disable workflow.');
     }
@@ -161,22 +248,11 @@ export function CurriculumDisableWorkflowModal({
   const handleCancel = async () => {
     setError(null);
     try {
-      await cancelRequest.mutateAsync();
-      onCompleted?.();
-      await refetchRequest();
+      const response = await cancelRequest.mutateAsync();
+      setDisplayRequestId(response.id);
+      await refreshView();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to cancel disable workflow.');
-    }
-  };
-
-  const handleRetry = async () => {
-    setError(null);
-    try {
-      await retryRequest.mutateAsync();
-      onCompleted?.();
-      await refetchRequest();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to retry disable workflow.');
     }
   };
 
@@ -184,32 +260,30 @@ export function CurriculumDisableWorkflowModal({
     setError(null);
     try {
       await reactivateCurriculum.mutateAsync();
-      onCompleted?.();
-      await refetchImpact();
-      if (localRequestId) {
-        await refetchRequest();
-      }
+      await refreshView();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to reactivate curriculum.');
     }
   };
 
-  const renderProgress = () => {
+  const renderRequestPanel = () => {
     if (requestLoading || !disableRequest) {
       return <LoadingSpinner fullScreen={false} message="Loading workflow status..." />;
     }
+
+    const panelTitle = getRequestPanelTitle(disableRequest, resolvedCanStartWorkflow);
+    const panelMessage = getRequestPanelMessage(disableRequest, curriculum, resolvedCanStartWorkflow);
+    const showHistoricalImpact = requestIsActive || !resolvedCanStartWorkflow;
 
     return (
       <div className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-900">Disable workflow</p>
-              <CurriculumLifecycleBadge status={disableRequest.curriculum_offering_status} />
+              <p className="text-sm font-semibold text-gray-900">{panelTitle}</p>
+              <CurriculumDisableRequestStatusBadge status={disableRequest.status} />
             </div>
-            <p className="text-sm text-gray-600">
-              {getCurriculumStatusMessage(disableRequest.curriculum_offering_status, 'ADMIN')}
-            </p>
+            <p className="text-sm text-gray-600">{panelMessage}</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -217,25 +291,19 @@ export function CurriculumDisableWorkflowModal({
               variant="secondary"
               size="sm"
               onClick={() => {
-                void refetchRequest();
+                void refreshView();
               }}
             >
               <RefreshCcw className="mr-1.5 h-4 w-4" />
               Refresh
             </Button>
-            {canCancel(disableRequest.status) ? (
+            {requestIsActive && canCancel(disableRequest.status) ? (
               <Button type="button" variant="secondary" size="sm" onClick={handleCancel} disabled={busy}>
                 <XCircle className="mr-1.5 h-4 w-4" />
                 Cancel disable
               </Button>
             ) : null}
-            {canRetry(disableRequest.status) ? (
-              <Button type="button" size="sm" onClick={handleRetry} disabled={busy}>
-                <RotateCcw className="mr-1.5 h-4 w-4" />
-                Retry
-              </Button>
-            ) : null}
-            {canReactivate(curriculum) ? (
+            {!resolvedCanStartWorkflow && canReactivate(curriculum) ? (
               <Button type="button" size="sm" onClick={handleReactivate} disabled={busy}>
                 <RotateCcw className="mr-1.5 h-4 w-4" />
                 Reactivate
@@ -257,7 +325,7 @@ export function CurriculumDisableWorkflowModal({
         ) : null}
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {progressItems.map((item) => (
+          {requestDetails.map((item) => (
             <div key={item.label} className="rounded-lg border border-gray-200 px-3 py-2">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{item.label}</p>
               <p className="mt-1 text-sm text-gray-900">{item.value}</p>
@@ -265,8 +333,8 @@ export function CurriculumDisableWorkflowModal({
           ))}
         </div>
 
-        {impact ? (
-          <CurriculumDisableImpactSummary impact={impact} />
+        {showHistoricalImpact && requestImpact ? (
+          <CurriculumDisableImpactSummary impact={requestImpact} />
         ) : null}
 
         {disableRequest.finalization_snapshot?.closure_summary || disableRequest.finalization_snapshot?.reporting ? (
@@ -299,11 +367,88 @@ export function CurriculumDisableWorkflowModal({
     );
   };
 
+  const renderStartWorkflow = () => {
+    if (impactLoading || !startImpact) {
+      return <LoadingSpinner fullScreen={false} message="Loading disable impact..." />;
+    }
+
+    return (
+      <>
+        <CurriculumLifecycleNotice
+          status={curriculum.offering_status}
+          title="This is a lifecycle transition"
+          message="Historical data will remain readable. New work is blocked once draining starts. Existing pending work will either finish gracefully or be force-finalized. Final reports and notifications are part of this workflow."
+        />
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium">Choose how the disable should proceed</p>
+              <p>
+                Graceful mode waits for safe completion or the computed finalize window. Force mode moves directly toward finalization and archives or closes pending work.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Select
+          label="Disable mode"
+          value={mode}
+          onChange={(event) => setMode(event.target.value as CurriculumDisableMode)}
+          options={MODE_OPTIONS}
+        />
+
+        {startImpact.recommended_finalize_after ? (
+          <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            Recommended finalize-after window: {formatDateTime(startImpact.recommended_finalize_after)}
+          </div>
+        ) : null}
+
+        <CurriculumDisableImpactSummary impact={startImpact} />
+
+        <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
+            Close
+          </Button>
+          <Button type="button" onClick={handleStartWorkflow} disabled={busy}>
+            {requestDisable.isPending
+              ? 'Starting...'
+              : disableRequest
+                ? 'Start new disable request'
+                : 'Disable curriculum'}
+          </Button>
+        </div>
+      </>
+    );
+  };
+
+  const renderUnavailableState = () => (
+    <div className="space-y-4">
+      <CurriculumLifecycleNotice
+        status={curriculum.offering_status}
+        role="ADMIN"
+      />
+
+      <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
+        <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
+          Close
+        </Button>
+        {canReactivate(curriculum) ? (
+          <Button type="button" onClick={handleReactivate} disabled={busy}>
+            <RotateCcw className="mr-1.5 h-4 w-4" />
+            Reactivate
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={localRequestId ? 'Curriculum Disable Progress' : 'Disable Curriculum'}
+      title={activeRequestId || requestIsActive ? 'Curriculum Disable Progress' : 'Disable Curriculum'}
       size="lg"
     >
       <div className="space-y-4">
@@ -311,57 +456,9 @@ export function CurriculumDisableWorkflowModal({
           <ErrorBanner message={error} onDismiss={() => setError(null)} />
         ) : null}
 
-        {localRequestId ? renderProgress() : (
-          <>
-            {impactLoading || !impact ? (
-              <LoadingSpinner fullScreen={false} message="Loading disable impact..." />
-            ) : (
-              <>
-                <CurriculumLifecycleNotice
-                  status={curriculum.offering_status}
-                  title="This is a lifecycle transition"
-                  message="Historical data will remain readable. New work is blocked once draining starts. Existing pending work will either finish gracefully or be force-finalized. Final reports and notifications are part of this workflow."
-                />
-
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div className="space-y-1">
-                      <p className="font-medium">Choose how the disable should proceed</p>
-                      <p>
-                        Graceful mode waits for safe completion or the computed finalize window. Force mode moves directly toward finalization and archives or closes pending work.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Select
-                  label="Disable mode"
-                  value={mode}
-                  onChange={(event) => setMode(event.target.value as CurriculumDisableMode)}
-                  options={MODE_OPTIONS}
-                />
-
-                {impact.recommended_finalize_after ? (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                    Recommended finalize-after window: {formatDateTime(impact.recommended_finalize_after)}
-                  </div>
-                ) : null}
-
-                <CurriculumDisableImpactSummary impact={impact} />
-
-                <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
-                  <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
-                    Close
-                  </Button>
-                  <Button type="button" onClick={handleStartWorkflow} disabled={busy}>
-                    {requestDisable.isPending ? 'Starting...' : 'Start disable workflow'}
-                  </Button>
-                </div>
-              </>
-            )}
-          </>
-        )}
+        {showRequestPanel ? renderRequestPanel() : null}
+        {showStartWorkflow ? renderStartWorkflow() : null}
+        {!showRequestPanel && !showStartWorkflow ? renderUnavailableState() : null}
       </div>
     </Modal>
   );
