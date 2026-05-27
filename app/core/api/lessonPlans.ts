@@ -5,13 +5,17 @@ import {
     normalizeBlobError,
 } from '@/app/core/api/downloads';
 import type { PaginatedResponse } from '@/app/core/types/api';
+import type {
+    PrepareAssignmentFromLessonPlanPayload,
+    PrepareAssignmentFromLessonPlanResponse,
+    PreparedAssignmentsForLessonPlanResponse,
+} from '@/app/core/types/assignments';
 import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
 import type {
     AvailableLessonPlanParticipatingCohortsResponse,
     GenerateLessonPlanFromSessionPayload,
     GenerateLessonPlanPayload,
     GenerateLessonPlanResponse,
-    LessonPlanAssignmentDraftResponse,
     LessonPlan,
     LessonPlanCreatePayload,
     LessonPlanQueryParams,
@@ -140,9 +144,29 @@ export const lessonPlanAPI = {
         return response.data;
     },
 
-    createAssignmentDraft: async (id: number): Promise<LessonPlanAssignmentDraftResponse> => {
-        const response = await apiClient.post<LessonPlanAssignmentDraftResponse>(
+    createAssignmentDraft: async (id: number): Promise<PrepareAssignmentFromLessonPlanResponse> => {
+        const response = await apiClient.post<PrepareAssignmentFromLessonPlanResponse>(
             `${LESSON_PLANS_BASE_PATH}/${id}/create_assignment_draft/`
+        );
+        return response.data;
+    },
+
+    prepareAssignment: async (
+        id: number,
+        payload: PrepareAssignmentFromLessonPlanPayload,
+    ): Promise<PrepareAssignmentFromLessonPlanResponse> => {
+        const response = await apiClient.post<PrepareAssignmentFromLessonPlanResponse>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/prepare-assignment/`,
+            payload,
+        );
+        return response.data;
+    },
+
+    getPreparedAssignments: async (
+        id: number,
+    ): Promise<PreparedAssignmentsForLessonPlanResponse> => {
+        const response = await apiClient.get<PreparedAssignmentsForLessonPlanResponse>(
+            `${LESSON_PLANS_BASE_PATH}/${id}/prepared-assignments/`
         );
         return response.data;
     },

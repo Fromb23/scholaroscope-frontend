@@ -87,13 +87,31 @@ function summarizeEvaluation(
     return evaluation.narrative || 'Review saved';
 }
 
-function getAssignmentsReturnHref(cohortId: number, returnTo: string | null): string {
+function getSafeReturnHref(cohortId: number, returnTo: string | null): string {
     const defaultHref = `/academic/cohorts/${cohortId}/assignments`;
     if (!returnTo) {
         return defaultHref;
     }
 
-    return returnTo.startsWith(defaultHref) ? returnTo : defaultHref;
+    if (
+        returnTo.startsWith(defaultHref)
+        || returnTo.startsWith('/lesson-plans/')
+        || returnTo.startsWith('/sessions/')
+    ) {
+        return returnTo;
+    }
+
+    return defaultHref;
+}
+
+function getReturnLabel(returnHref: string): string {
+    if (returnHref.startsWith('/lesson-plans/')) {
+        return 'Back to Lesson Preparation';
+    }
+    if (returnHref.startsWith('/sessions/')) {
+        return 'Back to Lesson';
+    }
+    return 'Back to Assignments';
 }
 
 export default function CohortAssignmentDetailPage() {
@@ -154,8 +172,12 @@ export default function CohortAssignmentDetailPage() {
     const deleteMutation = useDeleteAssignment();
     const bridgeMutation = useBridgeAssignmentEvaluation();
     const assignmentsHref = useMemo(
-        () => getAssignmentsReturnHref(cohortId, searchParams.get('returnTo')),
+        () => getSafeReturnHref(cohortId, searchParams.get('returnTo')),
         [cohortId, searchParams]
+    );
+    const returnLabel = useMemo(
+        () => getReturnLabel(assignmentsHref),
+        [assignmentsHref]
     );
 
     const visibleCohortSubjects = useMemo(() => (
@@ -310,7 +332,7 @@ export default function CohortAssignmentDetailPage() {
                     <Link href={assignmentsHref}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Assignments
+                            {returnLabel}
                         </Button>
                     </Link>
                 </div>

@@ -1,5 +1,9 @@
 import type { PlannedOutcome } from '@/app/core/types/lessonPlans';
-import type { Assignment } from '@/app/core/types/assignments';
+import type {
+  Assignment,
+  IssuePreparedAssignmentPayload,
+  IssuePreparedAssignmentResponse,
+} from '@/app/core/types/assignments';
 
 export enum SessionType {
   LESSON = 'LESSON',
@@ -168,6 +172,9 @@ export interface SessionAssignmentDraftResponse {
   created: boolean;
   assignment: Assignment;
 }
+
+export type SessionIssuePreparedAssignmentPayload = IssuePreparedAssignmentPayload;
+export type SessionIssuePreparedAssignmentResponse = IssuePreparedAssignmentResponse;
 
 export interface SessionFormData {
   cohort_subject: number | null;

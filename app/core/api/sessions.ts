@@ -20,6 +20,8 @@ import {
   SessionCohortsResponse,
   SessionCohort,
   SessionFormData,
+  SessionIssuePreparedAssignmentPayload,
+  SessionIssuePreparedAssignmentResponse,
 } from '../types/session';
 import { CohortSubject } from '../types/academic';
 
@@ -204,6 +206,16 @@ export const sessionAPI = {
   ): Promise<SessionAssignmentDraftResponse> => {
     const res = await apiClient.post<SessionAssignmentDraftResponse>(
       `/sessions/${id}/create_assignment_from_lesson/`,
+    );
+    return res.data;
+  },
+  issuePreparedAssignment: async (
+    id: number,
+    data: SessionIssuePreparedAssignmentPayload,
+  ): Promise<SessionIssuePreparedAssignmentResponse> => {
+    const res = await apiClient.post<SessionIssuePreparedAssignmentResponse>(
+      `/sessions/${id}/issue-prepared-assignment/`,
+      data,
     );
     return res.data;
   },

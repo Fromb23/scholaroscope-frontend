@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -29,6 +29,10 @@ import { LessonPlanReferences } from '@/app/core/components/lessonPlans/LessonPl
 import { LessonPlanSections } from '@/app/core/components/lessonPlans/LessonPlanSections';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
 import {
+    usePrepareAssignmentFromLessonPlan,
+    usePreparedAssignmentsForLessonPlan,
+} from '@/app/core/hooks/useAssignments';
+import {
     useAvailableLessonPlanParticipatingCohortSubjects,
     useLessonPlanDetail,
 } from '@/app/core/hooks/useLessonPlans';
@@ -44,7 +48,6 @@ import {
     type LessonPlan,
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
-import type { Assignment } from '@/app/core/types/assignments';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
@@ -122,6 +125,27 @@ function formatLearnerCount(count: number): string {
     return `${count} learner${count === 1 ? '' : 's'}`;
 }
 
+function buildLessonTaskTitle(lessonPlan: LessonPlan): string {
+    const baseTitle = lessonPlan.title?.trim() || 'Lesson task';
+    return `${baseTitle} Learner Task`;
+}
+
+function buildLessonTaskInstructions(lessonPlan: LessonPlan): string {
+    const sections: string[] = [];
+
+    if (lessonPlan.objectives.length > 0) {
+        sections.push(
+            `Objectives:\n${lessonPlan.objectives.map((objective) => `- ${objective}`).join('\n')}`
+        );
+    }
+
+    if (lessonPlan.assessment_strategy?.trim()) {
+        sections.push(`Assessment strategy:\n${lessonPlan.assessment_strategy.trim()}`);
+    }
+
+    return sections.join('\n\n').trim();
+}
+
 export function LessonPlanDetailPage() {
     const params = useParams();
     const pathname = usePathname();
@@ -140,9 +164,15 @@ export function LessonPlanDetailPage() {
         archive,
         restore,
         scheduleLesson,
-        createAssignmentDraft,
         exportPdf,
     } = useLessonPlanDetail(lessonPlanId);
+    const prepareAssignmentMutation = usePrepareAssignmentFromLessonPlan();
+    const {
+        draft: preparedAssignmentDraft,
+        issued: issuedAssignments,
+    } = usePreparedAssignmentsForLessonPlan(lessonPlanId, {
+        enabled: Boolean(lessonPlanId),
+    });
     const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -151,8 +181,17 @@ export function LessonPlanDetailPage() {
     const [reflection, setReflection] = useState('');
     const [scheduleOpen, setScheduleOpen] = useState(false);
     const [scheduleError, setScheduleError] = useState<string | null>(null);
-    const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [transientNotice, setTransientNotice] = useState<string | null>(null);
+    const learnerTaskSectionRef = useRef<HTMLDivElement | null>(null);
+    const [learnerTaskOpen, setLearnerTaskOpen] = useState(false);
+    const [learnerTaskChoice, setLearnerTaskChoice] = useState<'none' | 'prepare' | 'existing'>('none');
+    const [learnerTaskType, setLearnerTaskType] = useState<'class_exercise' | 'homework' | 'group_activity'>('class_exercise');
+    const [learnerTaskTitle, setLearnerTaskTitle] = useState('');
+    const [learnerTaskInstructions, setLearnerTaskInstructions] = useState('');
+    const [learnerTaskDueAt, setLearnerTaskDueAt] = useState('');
+    const [learnerTaskError, setLearnerTaskError] = useState<string | null>(null);
+    const [learnerTaskSuccess, setLearnerTaskSuccess] = useState<string | null>(null);
+    const [highlightedAssignmentId, setHighlightedAssignmentId] = useState<number | null>(null);
     const [scheduleForm, setScheduleForm] = useState<{
         session_date: string;
         start_time: string;
@@ -170,6 +209,7 @@ export function LessonPlanDetailPage() {
         description: '',
         participating_cohort_subject_ids: [],
     });
+    const learnerTaskStorageKey = lessonPlanId ? `lesson-plan-learner-task:${lessonPlanId}` : null;
     const {
         data: availableParticipatingCohortData,
         cohortSubjects: availableParticipatingCohortSubjects,
@@ -271,6 +311,130 @@ export function LessonPlanDetailPage() {
         router.replace(nextUrl, { scroll: false });
     }, [pathname, router, searchParams]);
 
+    const latestPreparedAssignment = preparedAssignmentDraft ?? issuedAssignments[0] ?? null;
+    const hasPreparedAssignment = Boolean(latestPreparedAssignment);
+
+    useEffect(() => {
+        if (!lessonPlan) {
+            return;
+        }
+
+        const storedDraft = learnerTaskStorageKey
+            ? window.sessionStorage.getItem(learnerTaskStorageKey)
+            : null;
+
+        if (storedDraft) {
+            try {
+                const parsed = JSON.parse(storedDraft) as {
+                    title?: string;
+                    instructions?: string;
+                    dueAt?: string;
+                    type?: 'class_exercise' | 'homework' | 'group_activity';
+                    choice?: 'none' | 'prepare' | 'existing';
+                    open?: boolean;
+                };
+                setLearnerTaskTitle(parsed.title ?? buildLessonTaskTitle(lessonPlan));
+                setLearnerTaskInstructions(parsed.instructions ?? buildLessonTaskInstructions(lessonPlan));
+                setLearnerTaskDueAt(parsed.dueAt ?? '');
+                setLearnerTaskType(parsed.type ?? 'class_exercise');
+                setLearnerTaskChoice(
+                    parsed.choice ?? (hasPreparedAssignment ? 'existing' : 'none')
+                );
+                setLearnerTaskOpen(Boolean(parsed.open) || searchParams.get('section') === 'learner-task');
+                return;
+            } catch {
+                window.sessionStorage.removeItem(learnerTaskStorageKey ?? '');
+            }
+        }
+
+        setLearnerTaskTitle(preparedAssignmentDraft?.title ?? buildLessonTaskTitle(lessonPlan));
+        setLearnerTaskInstructions(
+            preparedAssignmentDraft?.instructions ?? buildLessonTaskInstructions(lessonPlan)
+        );
+        setLearnerTaskDueAt(preparedAssignmentDraft?.due_at ? preparedAssignmentDraft.due_at.slice(0, 16) : '');
+        setLearnerTaskType(preparedAssignmentDraft?.delivery_mode === 'GROUP' ? 'group_activity' : 'class_exercise');
+        setLearnerTaskChoice(hasPreparedAssignment ? 'existing' : 'none');
+        setLearnerTaskOpen(searchParams.get('section') === 'learner-task');
+    }, [
+        hasPreparedAssignment,
+        learnerTaskStorageKey,
+        lessonPlan,
+        preparedAssignmentDraft?.delivery_mode,
+        preparedAssignmentDraft?.due_at,
+        preparedAssignmentDraft?.instructions,
+        preparedAssignmentDraft?.title,
+        searchParams,
+    ]);
+
+    useEffect(() => {
+        if (!learnerTaskStorageKey || !lessonPlan) {
+            return;
+        }
+
+        window.sessionStorage.setItem(
+            learnerTaskStorageKey,
+            JSON.stringify({
+                choice: learnerTaskChoice,
+                open: learnerTaskOpen,
+                title: learnerTaskTitle,
+                instructions: learnerTaskInstructions,
+                dueAt: learnerTaskDueAt,
+                type: learnerTaskType,
+            })
+        );
+    }, [
+        learnerTaskChoice,
+        learnerTaskDueAt,
+        learnerTaskInstructions,
+        learnerTaskOpen,
+        learnerTaskStorageKey,
+        learnerTaskTitle,
+        learnerTaskType,
+        lessonPlan,
+    ]);
+
+    useEffect(() => {
+        const section = searchParams.get('section');
+        if (section !== 'learner-task') {
+            return;
+        }
+
+        setLearnerTaskOpen(true);
+        const timer = window.setTimeout(() => {
+            learnerTaskSectionRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 100);
+
+        return () => window.clearTimeout(timer);
+    }, [searchParams]);
+
+    useEffect(() => {
+        const highlightValue = Number(searchParams.get('highlightAssignment') ?? '');
+        if (!Number.isFinite(highlightValue) || highlightValue <= 0) {
+            return;
+        }
+
+        setHighlightedAssignmentId(highlightValue);
+        const timer = window.setTimeout(() => {
+            setHighlightedAssignmentId(null);
+        }, 5000);
+
+        return () => window.clearTimeout(timer);
+    }, [searchParams]);
+
+    const openLearnerTaskSection = useCallback(() => {
+        setLearnerTaskChoice(hasPreparedAssignment ? 'existing' : 'prepare');
+        setLearnerTaskOpen(true);
+        setTimeout(() => {
+            learnerTaskSectionRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 50);
+    }, [hasPreparedAssignment]);
+
     const handleSimpleAction = async (action: 'reviewed' | 'archived' | 'restored') => {
         if (!lessonPlan) {
             return;
@@ -330,21 +494,40 @@ export function LessonPlanDetailPage() {
         setScheduleOpen(true);
     }, [lessonPlan]);
 
-    const handleCreateAssignmentDraft = async () => {
+    const handleSaveLearnerTask = async () => {
         if (!lessonPlan) {
             return;
         }
 
-        setPendingActionKey(actionKey(lessonPlan.id, 'assignment-draft'));
-        setActionError(null);
-        setActionSuccess(null);
+        setPendingActionKey(actionKey(lessonPlan.id, 'learner-task'));
+        setLearnerTaskError(null);
+        setLearnerTaskSuccess(null);
 
         try {
-            const response = await createAssignmentDraft();
-            setPreparedAssignment(response.assignment);
-            setActionSuccess(response.detail);
+            const response = await prepareAssignmentMutation.mutateAsync({
+                lessonPlanId: lessonPlan.id,
+                data: {
+                    title: learnerTaskTitle.trim() || undefined,
+                    instructions: learnerTaskInstructions.trim() || undefined,
+                    due_at: learnerTaskDueAt ? new Date(learnerTaskDueAt).toISOString() : null,
+                    delivery_mode: learnerTaskType === 'group_activity' ? 'GROUP' : 'INDIVIDUAL',
+                },
+            });
+            setLearnerTaskChoice('existing');
+            setLearnerTaskOpen(true);
+            setLearnerTaskSuccess(
+                `${response.detail} It can be issued at the end of the lesson.`
+            );
+            setHighlightedAssignmentId(response.assignment.id);
+            if (learnerTaskStorageKey) {
+                window.sessionStorage.removeItem(learnerTaskStorageKey);
+            }
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Action failed.');
+            setLearnerTaskError(
+                err instanceof Error
+                    ? err.message
+                    : 'We could not prepare a learner task for this lesson.'
+            );
         } finally {
             setPendingActionKey(null);
         }
@@ -456,8 +639,17 @@ export function LessonPlanDetailPage() {
             status: lessonPlan?.status ?? null,
             has_session: Boolean(lessonPlan?.session),
             can_schedule: lessonPlan ? canScheduleLesson(lessonPlan.status) : false,
+            has_prepared_task: hasPreparedAssignment,
         },
         visibleActions: [
+            ...(lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
+                ? [{
+                    label: 'Prepare learner task',
+                    type: 'page_action' as const,
+                    target: 'open_learner_task_section',
+                    handler: openLearnerTaskSection,
+                }]
+                : []),
             ...(lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
                 ? [{
                     label: 'Schedule this lesson',
@@ -474,7 +666,14 @@ export function LessonPlanDetailPage() {
                 }]
                 : []),
         ],
-        nextSafeAction: lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
+        nextSafeAction: lessonPlan && canPrepareAssignmentDraft(lessonPlan.status) && !hasPreparedAssignment
+            ? {
+                label: 'Prepare learner task',
+                type: 'page_action' as const,
+                target: 'open_learner_task_section',
+                handler: openLearnerTaskSection,
+            }
+            : lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
             ? {
                 label: 'Schedule this lesson',
                 type: 'page_action' as const,
@@ -492,7 +691,14 @@ export function LessonPlanDetailPage() {
         emptyStateReason: !loading && !lessonPlan
             ? 'This lesson plan could not be loaded.'
             : undefined,
-    }), [handleOpenSchedule, isInstructor, lessonPlan, loading]);
+    }), [
+        handleOpenSchedule,
+        hasPreparedAssignment,
+        isInstructor,
+        lessonPlan,
+        loading,
+        openLearnerTaskSection,
+    ]);
 
     useAssistantPageContext(assistantContext);
 
@@ -520,6 +726,10 @@ export function LessonPlanDetailPage() {
             />
         );
     }
+
+    const learnerTaskReturnTo = latestPreparedAssignment
+        ? `/lesson-plans/${lessonPlan.id}?section=learner-task&highlightAssignment=${latestPreparedAssignment.id}`
+        : `/lesson-plans/${lessonPlan.id}?section=learner-task`;
 
     return (
         <div className="space-y-6">
@@ -610,13 +820,10 @@ export function LessonPlanDetailPage() {
                             <Button
                                 size="sm"
                                 variant="secondary"
-                                onClick={() => {
-                                    void handleCreateAssignmentDraft();
-                                }}
-                                disabled={pendingActionKey === actionKey(lessonPlan.id, 'assignment-draft')}
+                                onClick={openLearnerTaskSection}
                             >
                                 <FilePlus2 className="mr-1.5 h-4 w-4" />
-                                Prepare assignment draft
+                                Prepare learner task
                             </Button>
                         ) : null}
 
@@ -676,24 +883,14 @@ export function LessonPlanDetailPage() {
                 />
             ) : null}
 
-            {preparedAssignment ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                    <span className="font-medium">Assignment draft ready.</span>{' '}
-                    <Link
-                        href={`/academic/cohorts/${preparedAssignment.cohort_id}/assignments/${preparedAssignment.id}?returnTo=/lesson-plans/${lessonPlan.id}`}
-                        className="font-medium underline underline-offset-2"
-                    >
-                        Open assignment
-                    </Link>
-                </div>
-            ) : null}
-
             {isInstructor ? (
                 <Card>
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="space-y-2">
                             <h2 className="text-lg font-semibold text-gray-900">
-                                {canScheduleLesson(lessonPlan.status)
+                                {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+                                    ? 'Next step: prepare learner task'
+                                    : canScheduleLesson(lessonPlan.status)
                                     ? 'Next step: schedule this lesson'
                                     : lessonPlan.status === 'USED'
                                         ? 'Post-lesson follow-up'
@@ -702,7 +899,9 @@ export function LessonPlanDetailPage() {
                                             : 'Lesson preparation is ready'}
                             </h2>
                             <p className="text-sm text-gray-600">
-                                {canScheduleLesson(lessonPlan.status)
+                                {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+                                    ? 'Plan the learner task now so class time stays focused on attendance, teaching, and the final issue step.'
+                                    : canScheduleLesson(lessonPlan.status)
                                     ? 'Choose when this lesson should happen so it appears in your teaching day.'
                                     : lessonPlan.status === 'USED'
                                         ? 'This lesson preparation has already been used in class. Reopen the lesson or download the plan for follow-up work.'
@@ -713,9 +912,21 @@ export function LessonPlanDetailPage() {
                         </div>
 
                         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
+                            {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status) ? (
+                                <Button
+                                    type="button"
+                                    className="w-full sm:w-auto"
+                                    onClick={openLearnerTaskSection}
+                                >
+                                    <FilePlus2 className="mr-1.5 h-4 w-4" />
+                                    Prepare learner task
+                                </Button>
+                            ) : null}
+
                             {canScheduleLesson(lessonPlan.status) ? (
                                 <Button
                                     className="w-full sm:w-auto"
+                                    variant={!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status) ? 'secondary' : 'primary'}
                                     onClick={handleOpenSchedule}
                                     disabled={pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
                                 >
@@ -733,18 +944,15 @@ export function LessonPlanDetailPage() {
                                 </Link>
                             ) : null}
 
-                            {canPrepareAssignmentDraft(lessonPlan.status) ? (
+                            {hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status) ? (
                                 <Button
                                     type="button"
                                     variant="secondary"
                                     className="w-full sm:w-auto"
-                                    onClick={() => {
-                                        void handleCreateAssignmentDraft();
-                                    }}
-                                    disabled={pendingActionKey === actionKey(lessonPlan.id, 'assignment-draft')}
+                                    onClick={openLearnerTaskSection}
                                 >
                                     <FilePlus2 className="mr-1.5 h-4 w-4" />
-                                    Prepare assignment draft
+                                    Review learner task
                                 </Button>
                             ) : null}
 
@@ -764,6 +972,199 @@ export function LessonPlanDetailPage() {
                     </div>
                 </Card>
             ) : null}
+
+            <div ref={learnerTaskSectionRef} id="learner-task" className="scroll-mt-24">
+                <Card className={highlightedAssignmentId && latestPreparedAssignment?.id === highlightedAssignmentId ? 'border-blue-300 bg-blue-50/50' : undefined}>
+                    <div className="space-y-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="space-y-2">
+                                <h2 className="text-lg font-semibold text-gray-900">Learner task</h2>
+                                <p className="text-sm text-gray-600">
+                                    Prepare learner evidence for this lesson now, then issue it during or after class when teaching is complete.
+                                </p>
+                            </div>
+
+                            {latestPreparedAssignment ? (
+                                <Link
+                                    href={`/academic/cohorts/${latestPreparedAssignment.cohort_id}/assignments/${latestPreparedAssignment.id}?${new URLSearchParams({
+                                        returnTo: learnerTaskReturnTo,
+                                    }).toString()}`}
+                                    className="w-full sm:w-auto"
+                                >
+                                    <Button variant="secondary" size="sm" className="w-full sm:w-auto">
+                                        <Link2 className="mr-1.5 h-4 w-4" />
+                                        Open learner task
+                                    </Button>
+                                </Link>
+                            ) : null}
+                        </div>
+
+                        {learnerTaskError ? (
+                            <ErrorBanner
+                                message={learnerTaskError}
+                                onDismiss={() => setLearnerTaskError(null)}
+                                autoDismissMs={5000}
+                            />
+                        ) : null}
+
+                        {learnerTaskSuccess ? (
+                            <ErrorBanner
+                                message={learnerTaskSuccess}
+                                variant="success"
+                                onDismiss={() => setLearnerTaskSuccess(null)}
+                                autoDismissMs={4000}
+                            />
+                        ) : null}
+
+                        <div className="grid gap-3 md:grid-cols-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setLearnerTaskChoice('none');
+                                    setLearnerTaskOpen(false);
+                                    setLearnerTaskSuccess(null);
+                                    setLearnerTaskError(null);
+                                }}
+                                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
+                                    learnerTaskChoice === 'none'
+                                        ? 'border-gray-900 bg-gray-900 text-white'
+                                        : 'border-gray-200 bg-white text-gray-800'
+                                }`}
+                            >
+                                <div className="text-sm font-medium">No task for this lesson</div>
+                                <div className={`mt-1 text-xs ${learnerTaskChoice === 'none' ? 'text-gray-200' : 'text-gray-500'}`}>
+                                    Keep this lesson focused on live teaching only.
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setLearnerTaskChoice('prepare');
+                                    setLearnerTaskOpen(true);
+                                }}
+                                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
+                                    learnerTaskChoice === 'prepare'
+                                        ? 'border-blue-600 bg-blue-50 text-blue-900'
+                                        : 'border-gray-200 bg-white text-gray-800'
+                                }`}
+                            >
+                                <div className="text-sm font-medium">Prepare learner task</div>
+                                <div className={`mt-1 text-xs ${learnerTaskChoice === 'prepare' ? 'text-blue-700' : 'text-gray-500'}`}>
+                                    Plan the task now and issue it later.
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setLearnerTaskChoice('existing');
+                                    setLearnerTaskOpen(Boolean(hasPreparedAssignment));
+                                }}
+                                disabled={!hasPreparedAssignment}
+                                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
+                                    learnerTaskChoice === 'existing'
+                                        ? 'border-green-600 bg-green-50 text-green-900'
+                                        : 'border-gray-200 bg-white text-gray-800'
+                                } ${!hasPreparedAssignment ? 'cursor-not-allowed opacity-60' : ''}`}
+                            >
+                                <div className="text-sm font-medium">Use existing prepared task</div>
+                                <div className={`mt-1 text-xs ${learnerTaskChoice === 'existing' ? 'text-green-700' : 'text-gray-500'}`}>
+                                    {hasPreparedAssignment ? 'Continue with the task already linked to this lesson.' : 'No prepared learner task yet.'}
+                                </div>
+                            </button>
+                        </div>
+
+                        {latestPreparedAssignment ? (
+                            <div className={`rounded-lg border px-4 py-3 text-sm ${
+                                latestPreparedAssignment.status === 'DRAFT'
+                                    ? 'border-blue-200 bg-blue-50 text-blue-800'
+                                    : 'border-green-200 bg-green-50 text-green-800'
+                            }`}>
+                                <div className="font-medium">
+                                    {latestPreparedAssignment.status === 'DRAFT'
+                                        ? 'Learner task prepared'
+                                        : 'Learner task already issued'}
+                                </div>
+                                <div className="mt-1">
+                                    {latestPreparedAssignment.title}
+                                    {latestPreparedAssignment.status === 'DRAFT'
+                                        ? ' can be issued at the end of the lesson.'
+                                        : ' is already part of the learner follow-up flow.'}
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {learnerTaskChoice === 'prepare' && learnerTaskOpen ? (
+                            <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <Input
+                                        label="Learner task title"
+                                        value={learnerTaskTitle}
+                                        onChange={(event) => setLearnerTaskTitle(event.target.value)}
+                                        placeholder="Learner task title"
+                                    />
+                                    <Select
+                                        label="Task type"
+                                        value={learnerTaskType}
+                                        onChange={(event) => setLearnerTaskType(event.target.value as 'class_exercise' | 'homework' | 'group_activity')}
+                                        options={[
+                                            { value: 'class_exercise', label: 'Plan class exercise' },
+                                            { value: 'homework', label: 'Plan homework' },
+                                            { value: 'group_activity', label: 'Plan group activity' },
+                                        ]}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-gray-700">What should learners do?</label>
+                                    <textarea
+                                        value={learnerTaskInstructions}
+                                        onChange={(event) => setLearnerTaskInstructions(event.target.value)}
+                                        rows={5}
+                                        placeholder="Describe the learner task."
+                                        className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <Input
+                                        label="Due date"
+                                        type="datetime-local"
+                                        value={learnerTaskDueAt}
+                                        onChange={(event) => setLearnerTaskDueAt(event.target.value)}
+                                    />
+                                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                                        Outcomes, class subject, and curriculum context will be attached from this lesson preparation automatically.
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setLearnerTaskChoice(hasPreparedAssignment ? 'existing' : 'none');
+                                            setLearnerTaskOpen(false);
+                                        }}
+                                    >
+                                        Not for this lesson
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={() => {
+                                            void handleSaveLearnerTask();
+                                        }}
+                                        disabled={pendingActionKey === actionKey(lessonPlan.id, 'learner-task')}
+                                    >
+                                        {pendingActionKey === actionKey(lessonPlan.id, 'learner-task')
+                                            ? 'Saving...'
+                                            : 'Save learner task'}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                </Card>
+            </div>
 
             {lessonPlan.status === 'ARCHIVED' ? (
                 <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     AlertCircle,
@@ -41,6 +41,10 @@ import {
 } from '@/app/core/components/assignments/assignmentUtils';
 import { getCurriculumTypeLabel } from '@/app/core/lib/curriculumBridge';
 import { getSessionTeachingWorkflow } from '@/app/core/registry/pluginRoutes';
+import {
+    useIssuePreparedAssignment,
+    usePreparedAssignmentsForLessonPlan,
+} from '@/app/core/hooks/useAssignments';
 import type { Assignment } from '@/app/core/types/assignments';
 import type { RescheduleSessionPayload } from '@/app/core/types/session';
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
@@ -211,6 +215,7 @@ function scrollToSection(sectionId: string) {
 
 export function SessionDetailPage() {
     const params = useParams();
+    const searchParams = useSearchParams();
     const sessionId = Number(params.id);
     const { activeRole } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
@@ -220,6 +225,7 @@ export function SessionDetailPage() {
     const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
     const [creatingAssignment, setCreatingAssignment] = useState(false);
+    const [issuingPreparedTask, setIssuingPreparedTask] = useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
     const [taughtSelections, setTaughtSelections] = useState<Record<number, TaughtStatus | ''>>({});
@@ -227,6 +233,8 @@ export function SessionDetailPage() {
     const [attendanceOpen, setAttendanceOpen] = useState(false);
     const [taughtOutcomesOpen, setTaughtOutcomesOpen] = useState(false);
     const [checklistOpen, setChecklistOpen] = useState(false);
+    const [skipPreparedTaskPrompt, setSkipPreparedTaskPrompt] = useState(false);
+    const [highlightedAssignmentId, setHighlightedAssignmentId] = useState<number | null>(null);
     const {
         session,
         attendanceRecords,
@@ -240,6 +248,13 @@ export function SessionDetailPage() {
         confirmTaughtOutcomes,
         createAssignmentFromLesson,
     } = useSessionDetail(sessionId, searchQuery);
+    const issuePreparedAssignmentMutation = useIssuePreparedAssignment();
+    const {
+        draft: lessonPlanPreparedDraft,
+        issued: lessonPlanIssuedAssignments,
+    } = usePreparedAssignmentsForLessonPlan(session?.lesson_plan_id ?? null, {
+        enabled: Boolean(session?.lesson_plan_id),
+    });
 
     const { activeCohorts } = useSessionCohorts(sessionId);
 
@@ -302,7 +317,10 @@ export function SessionDetailPage() {
         hasConfirmedTaughtOutcomes
     );
     const showPreparedAssignmentScopeNote = Boolean(
-        preparedAssignment && usesExpandedSessionScope(preparedAssignment)
+        (preparedAssignment ?? lessonPlanPreparedDraft ?? lessonPlanIssuedAssignments[0] ?? null)
+        && usesExpandedSessionScope(
+            (preparedAssignment ?? lessonPlanPreparedDraft ?? lessonPlanIssuedAssignments[0]) as Assignment
+        )
     );
     const lessonDateLabel = formatSessionDate(session?.session_date);
     const lessonTimeLabel = [
@@ -366,6 +384,27 @@ export function SessionDetailPage() {
         isInProgress,
         isScheduled,
     ]);
+    const preparedTaskDraft = [preparedAssignment, lessonPlanPreparedDraft].find(
+        (assignment) => assignment?.status === 'DRAFT'
+    ) ?? null;
+    const issuedPreparedTask = [
+        ...(preparedAssignment && preparedAssignment.status !== 'DRAFT' ? [preparedAssignment] : []),
+        ...lessonPlanIssuedAssignments,
+    ][0] ?? null;
+    const learnerTaskForLesson = preparedTaskDraft ?? issuedPreparedTask ?? null;
+    const hasPreparedTaskForLesson = Boolean(learnerTaskForLesson);
+    const preparedTaskWasIssued = Boolean(
+        learnerTaskForLesson && learnerTaskForLesson.status !== 'DRAFT'
+    );
+    const showPreparedTaskIssueAction = Boolean(
+        preparedTaskDraft && (currentWorkflowStep === 'complete' || currentWorkflowStep === 'post_lesson')
+    );
+    const showQuickFollowUpAction = Boolean(
+        currentWorkflowStep === 'post_lesson'
+        && !preparedTaskDraft
+        && !issuedPreparedTask
+        && canCreateAssignmentFromLesson
+    );
     const showAttendanceSection = currentWorkflowStep === 'attendance' || isCompleted || needsCompletion;
     const showTaughtOutcomesSection = hasLessonPlan && (
         currentWorkflowStep === 'confirm_taught'
@@ -488,6 +527,74 @@ export function SessionDetailPage() {
 
         previousHasConfirmedTaughtOutcomes.current = hasConfirmedTaughtOutcomes;
     }, [hasConfirmedTaughtOutcomes, isInProgress]);
+
+    useEffect(() => {
+        setSkipPreparedTaskPrompt(false);
+    }, [preparedTaskDraft?.id, issuedPreparedTask?.id, sessionId]);
+
+    useEffect(() => {
+        if (currentWorkflowStep === 'attendance') {
+            setAttendanceOpen(true);
+            setTaughtOutcomesOpen(false);
+            return;
+        }
+
+        if (currentWorkflowStep === 'confirm_taught') {
+            setAttendanceOpen(false);
+            setTaughtOutcomesOpen(true);
+            return;
+        }
+
+        if (currentWorkflowStep === 'complete') {
+            setAttendanceOpen(false);
+            setTaughtOutcomesOpen(false);
+        }
+    }, [currentWorkflowStep]);
+
+    useEffect(() => {
+        const section = searchParams.get('section');
+        if (!section) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            if (section === 'lesson-preparation') {
+                scrollToSection('lesson-preparation-section');
+                return;
+            }
+            if (section === 'post-lesson') {
+                scrollToSection('post-lesson-section');
+                return;
+            }
+            if (section === 'attendance') {
+                revealAttendanceSection();
+                return;
+            }
+            if (section === 'taught-outcomes') {
+                revealTaughtOutcomesSection();
+                return;
+            }
+            if (section === 'complete') {
+                scrollToSection('lesson-complete-section');
+            }
+        }, 100);
+
+        return () => window.clearTimeout(timer);
+    }, [revealAttendanceSection, revealTaughtOutcomesSection, searchParams]);
+
+    useEffect(() => {
+        const highlightValue = Number(searchParams.get('highlightAssignment') ?? '');
+        if (!Number.isFinite(highlightValue) || highlightValue <= 0) {
+            return;
+        }
+
+        setHighlightedAssignmentId(highlightValue);
+        const timer = window.setTimeout(() => {
+            setHighlightedAssignmentId(null);
+        }, 5000);
+
+        return () => window.clearTimeout(timer);
+    }, [searchParams]);
 
     const {
         draft,
@@ -773,11 +880,48 @@ export function SessionDetailPage() {
             setWorkflowSuccess(null);
             const response = await createAssignmentFromLesson();
             setPreparedAssignment(response.assignment);
-            setWorkflowSuccess(response.detail);
+            setWorkflowSuccess(
+                response.created
+                    ? 'Quick follow-up task prepared.'
+                    : 'Quick follow-up task already prepared.'
+            );
         } catch (error) {
-            setWorkflowError(error instanceof Error ? error.message : 'We could not prepare an assignment draft.');
+            setWorkflowError(
+                error instanceof Error
+                    ? error.message
+                    : 'We could not prepare a quick follow-up task.'
+            );
         } finally {
             setCreatingAssignment(false);
+        }
+    };
+
+    const handleIssuePreparedTask = async () => {
+        if (!session || !preparedTaskDraft) {
+            return;
+        }
+
+        try {
+            setIssuingPreparedTask(true);
+            setWorkflowError(null);
+            setWorkflowSuccess(null);
+            const response = await issuePreparedAssignmentMutation.mutateAsync({
+                sessionId: session.id,
+                data: {
+                    assignment_id: preparedTaskDraft.id,
+                },
+            });
+            setPreparedAssignment(response.assignment);
+            setSkipPreparedTaskPrompt(false);
+            setWorkflowSuccess(response.detail);
+        } catch (error) {
+            setWorkflowError(
+                error instanceof Error
+                    ? error.message
+                    : 'We could not issue the learner task.'
+            );
+        } finally {
+            setIssuingPreparedTask(false);
         }
     };
 
@@ -796,6 +940,37 @@ export function SessionDetailPage() {
             </div>
         );
     }
+
+    const lessonTaskReturnSection = currentWorkflowStep === 'post_lesson'
+        ? 'post-lesson'
+        : 'lesson-preparation';
+    const lessonTaskReturnTo = learnerTaskForLesson
+        ? `/sessions/${session.id}?section=${lessonTaskReturnSection}&highlightAssignment=${learnerTaskForLesson.id}`
+        : `/sessions/${session.id}?section=${lessonTaskReturnSection}`;
+    const currentActionTitle = isScheduled
+        ? 'Current action: get ready to teach'
+        : currentWorkflowStep === 'attendance'
+            ? 'Current action: take attendance'
+            : currentWorkflowStep === 'confirm_taught'
+                ? 'Current action: confirm what was taught'
+                : currentWorkflowStep === 'complete'
+                    ? 'Current action: complete lesson'
+                    : 'Current action: record follow-up';
+    const currentActionDescription = isScheduled
+        ? (hasPreparedTaskForLesson
+            ? 'Lesson preparation is linked and the learner task is ready. Start from the lesson window when class begins.'
+            : 'Review lesson preparation, prepare the learner task if needed, and start from the lesson window when class begins.')
+        : currentWorkflowStep === 'attendance'
+            ? 'Keep teaching time focused. Mark attendance first so the next class action becomes visible.'
+            : currentWorkflowStep === 'confirm_taught'
+                ? 'Attendance is saved. Confirm the planned outcomes taught in class before you complete the lesson.'
+                : currentWorkflowStep === 'complete'
+                    ? (preparedTaskDraft
+                        ? 'Attendance and taught outcomes are saved. Complete the lesson, and issue the prepared learner task when needed.'
+                        : 'Attendance and taught outcomes are saved. Complete the lesson, then handle any follow-up after class.')
+                    : (preparedTaskDraft
+                        ? 'The prepared learner task was not issued yet. Issue it now or leave it for later review.'
+                        : 'Use post-lesson time for learner performance, review, and any follow-up task.');
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
@@ -958,18 +1133,108 @@ export function SessionDetailPage() {
                 </div>
             ) : null}
 
-            {preparedAssignment ? (
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-                    <span className="font-medium">Assignment draft ready.</span>{' '}
+            {!isHistorical ? (
+                <Card className="theme-info-surface">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold theme-text">{currentActionTitle}</h2>
+                            <p className="text-sm theme-muted">{currentActionDescription}</p>
+                        </div>
+
+                        <div className="flex w-full flex-col gap-3 sm:w-auto sm:min-w-[220px]">
+                            {isScheduled && (isScheduledReady || isScheduledOverdue) ? (
+                                <Button
+                                    className="w-full"
+                                    onClick={handleStartLesson}
+                                    disabled={!session.can_start_now}
+                                >
+                                    <PlayCircle className="mr-1.5 h-4 w-4" />
+                                    {isScheduledOverdue ? 'Start late' : 'Start lesson'}
+                                </Button>
+                            ) : null}
+
+                            {isScheduled && hasLessonPlan ? (
+                                <Link href={`/lesson-plans/${session.lesson_plan_id}`} className="w-full">
+                                    <Button variant="secondary" className="w-full">
+                                        <BookOpen className="mr-1.5 h-4 w-4" />
+                                        View lesson preparation
+                                    </Button>
+                                </Link>
+                            ) : null}
+
+                            {currentWorkflowStep === 'attendance' ? (
+                                <Button variant="primary" className="w-full" onClick={revealAttendanceSection}>
+                                    <ClipboardCheck className="mr-1.5 h-4 w-4" />
+                                    Take attendance
+                                </Button>
+                            ) : null}
+
+                            {currentWorkflowStep === 'confirm_taught' ? (
+                                <Button
+                                    variant="primary"
+                                    className="w-full"
+                                    onClick={revealTaughtOutcomesSection}
+                                >
+                                    <Target className="mr-1.5 h-4 w-4" />
+                                    Confirm what was taught
+                                </Button>
+                            ) : null}
+
+                            {currentWorkflowStep === 'complete' ? (
+                                <>
+                                    <Button variant="primary" className="w-full" onClick={handleCompleteLesson}>
+                                        <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                                        Complete lesson
+                                    </Button>
+                                    {showPreparedTaskIssueAction ? (
+                                        <Button
+                                            variant="secondary"
+                                            className="w-full"
+                                            onClick={() => {
+                                                void handleIssuePreparedTask();
+                                            }}
+                                            disabled={issuingPreparedTask}
+                                        >
+                                            <FilePlus2 className="mr-1.5 h-4 w-4" />
+                                            {issuingPreparedTask ? 'Issuing...' : 'Issue prepared task'}
+                                        </Button>
+                                    ) : null}
+                                </>
+                            ) : null}
+
+                            {currentWorkflowStep === 'post_lesson' && canRecordEvidence && teachingWorkflow ? (
+                                <Link href={teachingWorkflow.href} className="w-full">
+                                    <Button className="w-full">
+                                        <FileText className="mr-1.5 h-4 w-4" />
+                                        Record learner performance
+                                    </Button>
+                                </Link>
+                            ) : null}
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
+
+            {learnerTaskForLesson ? (
+                <div className={`rounded-xl border p-3 text-sm ${
+                    highlightedAssignmentId === learnerTaskForLesson.id
+                        ? 'border-blue-300 bg-blue-50 text-blue-700'
+                        : 'border-blue-200 bg-blue-50 text-blue-700'
+                }`}>
+                    <span className="font-medium">
+                        {preparedTaskWasIssued ? 'Learner task issued.' : 'Learner task prepared.'}
+                    </span>{' '}
                     <Link
-                        href={`/academic/cohorts/${preparedAssignment.cohort_id}/assignments/${preparedAssignment.id}?returnTo=/sessions/${session.id}`}
+                        href={`/academic/cohorts/${learnerTaskForLesson.cohort_id}/assignments/${learnerTaskForLesson.id}?${new URLSearchParams({
+                            returnTo: lessonTaskReturnTo,
+                        }).toString()}`}
                         className="font-medium underline underline-offset-2"
                     >
-                        Open assignment
+                        Open learner task
                     </Link>
                     {showPreparedAssignmentScopeNote ? (
                         <p className="mt-2">
-                            This assignment can include learners from all active classes linked to the source session.
+                            This learner task can include learners from all active classes linked to the source session.
                         </p>
                     ) : null}
                 </div>
@@ -1039,7 +1304,7 @@ export function SessionDetailPage() {
 
             {hasLessonPlan ? (
                 <Card>
-                    <div className="space-y-4">
+                    <div id="lesson-preparation-section" className="space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -1054,6 +1319,19 @@ export function SessionDetailPage() {
                                 <p className="mt-1 text-sm text-gray-600">
                                     The outcomes below come from the lesson plan prepared before this lesson was scheduled.
                                 </p>
+                                <div className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+                                    preparedTaskDraft
+                                        ? 'border-blue-200 bg-blue-50 text-blue-800'
+                                        : issuedPreparedTask
+                                            ? 'border-green-200 bg-green-50 text-green-800'
+                                            : 'border-gray-200 bg-gray-50 text-gray-600'
+                                }`}>
+                                    {preparedTaskDraft
+                                        ? 'Learner task prepared'
+                                        : issuedPreparedTask
+                                            ? 'Learner task already issued'
+                                            : 'No learner task prepared'}
+                                </div>
                             </div>
 
                             <Link href={`/lesson-plans/${session.lesson_plan_id}`} className="w-full sm:w-auto shrink-0">
@@ -1186,16 +1464,37 @@ export function SessionDetailPage() {
                                     ? 'This lesson ran past its scheduled end time. Review attendance, confirm taught outcomes if needed, and complete it manually.'
                                     : 'Attendance and taught outcomes are saved. Complete the lesson, then return later for learner performance or assignment follow-up.'}
                             </p>
+                            {preparedTaskDraft ? (
+                                <p className="text-sm text-gray-500">
+                                    A learner task is already prepared for this lesson and can be issued here without opening the full assignment workspace.
+                                </p>
+                            ) : null}
                         </div>
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            className="w-full sm:w-auto"
-                            onClick={handleCompleteLesson}
-                        >
-                            <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                            Complete lesson
-                        </Button>
+                        <div className="flex w-full flex-col gap-3 sm:w-auto">
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={handleCompleteLesson}
+                            >
+                                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                                Complete lesson
+                            </Button>
+                            {showPreparedTaskIssueAction ? (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    className="w-full sm:w-auto"
+                                    onClick={() => {
+                                        void handleIssuePreparedTask();
+                                    }}
+                                    disabled={issuingPreparedTask}
+                                >
+                                    <FilePlus2 className="mr-1.5 h-4 w-4" />
+                                    {issuingPreparedTask ? 'Issuing...' : 'Issue prepared task'}
+                                </Button>
+                            ) : null}
+                        </div>
                     </div>
                 </Card>
                 </div>
@@ -1216,6 +1515,15 @@ export function SessionDetailPage() {
                             </p>
                         </div>
 
+                        {preparedTaskDraft && !skipPreparedTaskPrompt ? (
+                            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                                <div className="font-medium">Prepared task was not issued.</div>
+                                <div className="mt-1">
+                                    Issue it now, or leave it in draft and return later.
+                                </div>
+                            </div>
+                        ) : null}
+
                         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                             {canRecordEvidence && teachingWorkflow ? (
                                 <Link href={teachingWorkflow.href} className="w-full sm:w-auto">
@@ -1234,7 +1542,32 @@ export function SessionDetailPage() {
                                 </div>
                             )}
 
-                            {canCreateAssignmentFromLesson ? (
+                            {preparedTaskDraft && !preparedTaskWasIssued && !skipPreparedTaskPrompt ? (
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        className="w-full sm:w-auto"
+                                        onClick={() => {
+                                            void handleIssuePreparedTask();
+                                        }}
+                                        disabled={issuingPreparedTask}
+                                    >
+                                        <FilePlus2 className="mr-1.5 h-4 w-4" />
+                                        {issuingPreparedTask ? 'Issuing...' : 'Issue now'}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="w-full sm:w-auto"
+                                        onClick={() => setSkipPreparedTaskPrompt(true)}
+                                    >
+                                        Skip
+                                    </Button>
+                                </>
+                            ) : null}
+
+                            {showQuickFollowUpAction ? (
                                 <Button
                                     size="sm"
                                     variant="secondary"
@@ -1243,7 +1576,7 @@ export function SessionDetailPage() {
                                     disabled={creatingAssignment}
                                 >
                                     <FilePlus2 className="mr-1.5 h-4 w-4" />
-                                    {creatingAssignment ? 'Preparing...' : 'Create assignment from this lesson'}
+                                    {creatingAssignment ? 'Preparing...' : 'Prepare quick follow-up task'}
                                 </Button>
                             ) : null}
 
