@@ -11,7 +11,7 @@ import {
     Award,
     CheckCircle,
 } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
@@ -39,6 +39,7 @@ export function AssessmentDetailPage() {
         exportError,
         searchQuery,
         downloadingPdf,
+        scoreEntryFocusRequest,
         visibleLearnerCount,
         totalLearnerCount,
         stats,
@@ -62,6 +63,7 @@ export function AssessmentDetailPage() {
         handleActivate,
         handleFinalize,
     } = useAssessmentDetailPage();
+    const focusedScoreEntryRef = useRef<string | null>(null);
     const unscoredCount = Math.max(totalLearnerCount - stats.scored, 0);
     const scrollToScoreEntry = useCallback(() => {
         document.getElementById('assessment-score-entry')?.scrollIntoView({
@@ -75,6 +77,23 @@ export function AssessmentDetailPage() {
             block: 'start',
         });
     }, []);
+    useEffect(() => {
+        if (!scoreEntryFocusRequest || loading || scoresLoading || !assessment) {
+            return;
+        }
+
+        if (focusedScoreEntryRef.current === scoreEntryFocusRequest) {
+            return;
+        }
+
+        focusedScoreEntryRef.current = scoreEntryFocusRequest;
+        window.requestAnimationFrame(() => {
+            document.getElementById('assessment-score-entry')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        });
+    }, [assessment, loading, scoreEntryFocusRequest, scoresLoading]);
     const assistantContext = useMemo(() => ({
         pageKey: 'assessment_detail',
         pageTitle: assessment?.name ?? 'Assessment Detail',
