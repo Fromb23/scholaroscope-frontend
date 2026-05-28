@@ -122,6 +122,13 @@ export const assessmentAPI = {
     return response.data;
   },
 
+  getOpenForStudent: async (studentId: number): Promise<Assessment[]> => {
+    const response = await apiClient.get<Assessment[]>('/assessments/open_for_student/', {
+      params: { student_id: studentId }
+    });
+    return response.data;
+  },
+
   create: async (data: Partial<Assessment>): Promise<Assessment> => {
     const response = await apiClient.post<Assessment>('/assessments/', data);
     return response.data;

@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams, type ReadonlyURLSearchParams } f
 import Link from 'next/link';
 import {
     ArrowLeft, Edit, Mail, Phone, User,
-    ChevronDown, ChevronRight, FileBarChart, FileText, GraduationCap,
+    ChevronDown, ChevronRight, ClipboardList, FileBarChart, FileText, GraduationCap,
     Trash2, UserPlus, UserMinus, Users, BookOpen,
 } from 'lucide-react';
 import { useStudent } from '@/app/core/hooks/useStudents';
@@ -13,6 +13,7 @@ import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohort } from '@/app/core/hooks/useCohortSubjects';
 import { useStudentAttendanceHistory } from '@/app/core/hooks/useSessions';
 import { useLearnerAvailableReportScopes } from '@/app/core/hooks/useReporting';
+import { useOpenAssessmentsForStudent } from '@/app/core/hooks/useAssessments';
 import { useAuth } from '@/app/context/AuthContext';
 import { hasCapability, isAdminOrAbove } from '@/app/utils/permissions';
 import {
@@ -29,6 +30,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import {
     StatusModal, EnrollModal, UnenrollModal, DeleteStudentModal,
 } from '@/app/core/components/learners/LearnerModals';
+import { LearnerAssessmentPickerModal } from '@/app/core/components/learners/LearnerAssessmentPickerModal';
 import type { StudentCohortEnrollment } from '@/app/core/types/student';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
@@ -202,6 +204,7 @@ export default function LearnerDetailPage() {
     const [enrollOpen, setEnrollOpen] = useState(false);
     const [unenrollTarget, setUnenrollTarget] = useState<StudentCohortEnrollment | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [assessmentPickerOpen, setAssessmentPickerOpen] = useState(false);
     const [sectionState, setSectionState] = useState<Record<LearnerSectionKey, boolean>>(DEFAULT_SECTION_STATE);
     const sectionStorageKey = useMemo(
         () => `learner-profile-sections:${studentId}`,
@@ -218,11 +221,17 @@ export default function LearnerDetailPage() {
     const canManageSubjectParticipation = isAdminOrAbove(user, activeRole);
     const canGenerateOverviewReport = !!user && (user.is_superadmin || activeRole === 'ADMIN');
     const canGenerateSubjectReport = !!user && (user.is_superadmin || activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
+    const canRecordAssessment = activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR';
     const {
         scopes: reportScopes,
         loading: reportScopesLoading,
         error: reportScopesError,
     } = useLearnerAvailableReportScopes(studentId, { enabled: canGenerateSubjectReport });
+    const {
+        assessments: openAssessments,
+        loading: openAssessmentsLoading,
+        error: openAssessmentsError,
+    } = useOpenAssessmentsForStudent(studentId, { enabled: canRecordAssessment });
 
     const availableCohorts = useMemo(() => {
         if (!cohorts || !student) return [];
@@ -319,12 +328,49 @@ export default function LearnerDetailPage() {
         return null;
     }, [canEdit, defaultSubjectReportHref, hasReportActions, studentId]);
 
+    const openAssessmentCount = openAssessments.length;
+    const hasOpenAssessments = openAssessmentCount > 0;
+    const recordAssessmentSummary = !canRecordAssessment
+        ? null
+        : openAssessmentsLoading
+            ? 'Loading open assessments for this learner.'
+            : openAssessmentsError
+                ? openAssessmentsError
+                : hasOpenAssessments
+                    ? openAssessmentCount === 1
+                        ? 'Open the current scorable assessment for this learner.'
+                        : `Choose from ${openAssessmentCount} open assessments for this learner.`
+                    : 'No open assessments are available for this learner.';
+
     const toggleSection = useCallback((section: LearnerSectionKey) => {
         setSectionState((current) => ({
             ...current,
             [section]: !current[section],
         }));
     }, []);
+
+    const navigateToAssessmentScoreEntry = useCallback((assessmentId: number) => {
+        router.push(`/assessments/${assessmentId}?student=${studentId}&focus=score-entry`);
+    }, [router, studentId]);
+
+    const handleRecordAssessment = useCallback(() => {
+        if (openAssessmentsLoading || !hasOpenAssessments) {
+            return;
+        }
+
+        if (openAssessmentCount === 1) {
+            navigateToAssessmentScoreEntry(openAssessments[0].id);
+            return;
+        }
+
+        setAssessmentPickerOpen(true);
+    }, [
+        hasOpenAssessments,
+        navigateToAssessmentScoreEntry,
+        openAssessmentCount,
+        openAssessments,
+        openAssessmentsLoading,
+    ]);
 
     useEffect(() => {
         const stored = window.sessionStorage.getItem(sectionStorageKey);
@@ -586,6 +632,16 @@ export default function LearnerDetailPage() {
                             </Button>
                         </Link>
                     ) : null}
+                    {canRecordAssessment ? (
+                        <Button
+                            variant="secondary"
+                            onClick={handleRecordAssessment}
+                            disabled={openAssessmentsLoading || !hasOpenAssessments || Boolean(openAssessmentsError)}
+                        >
+                            <ClipboardList className="h-4 w-4" />
+                            {openAssessmentsLoading ? 'Loading…' : 'Record Assessment'}
+                        </Button>
+                    ) : null}
                     <ActionMenu hideLabelOnMobile items={headerMenuItems} />
                 </div>
             </div>
@@ -635,6 +691,21 @@ export default function LearnerDetailPage() {
                 <div className="space-y-2">
                     <h2 className="text-lg font-semibold text-gray-900">{currentActionTitle}</h2>
                     <p className="text-sm text-gray-600">{currentActionDescription}</p>
+                    {canRecordAssessment && recordAssessmentSummary ? (
+                        <div className="border-t border-gray-200 pt-4">
+                            <div className="flex items-start gap-3">
+                                <div className="rounded-lg border border-blue-100 bg-blue-50 p-2 text-blue-600">
+                                    <ClipboardList className="h-4 w-4" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium text-gray-900">Assessment scoring</p>
+                                    <p className={`text-sm ${openAssessmentsError ? 'text-red-600' : 'text-gray-600'}`}>
+                                        {recordAssessmentSummary}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             </Card>
 
@@ -1062,6 +1133,15 @@ export default function LearnerDetailPage() {
                 onConfirm={handleDelete}
                 studentName={student.full_name}
                 loading={actionLoading}
+            />
+            <LearnerAssessmentPickerModal
+                isOpen={assessmentPickerOpen}
+                onClose={() => setAssessmentPickerOpen(false)}
+                assessments={openAssessments}
+                onSelect={(assessment) => {
+                    setAssessmentPickerOpen(false);
+                    navigateToAssessmentScoreEntry(assessment.id);
+                }}
             />
         </div>
     );

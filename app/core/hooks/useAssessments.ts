@@ -125,6 +125,55 @@ export const useAssessments = (params?: {
   };
 };
 
+// ── useOpenAssessmentsForStudent ──────────────────────────────────────────
+
+export const useOpenAssessmentsForStudent = (
+  studentId: number | null,
+  options?: { enabled?: boolean }
+) => {
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const enabled = (options?.enabled ?? true)
+    && Number.isInteger(studentId)
+    && Number(studentId) > 0;
+
+  const fetchAssessments = useCallback(async () => {
+    if (!enabled || !studentId) {
+      setAssessments([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await assessmentAPI.getOpenForStudent(studentId);
+      const openAssessments = unwrapList(data).filter(
+        (assessment) => assessment.status === AssessmentStatus.ACTIVE && assessment.can_score !== false
+      );
+      setAssessments(openAssessments);
+    } catch (err) {
+      setAssessments([]);
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch open assessments'));
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, studentId]);
+
+  useEffect(() => {
+    void fetchAssessments();
+  }, [fetchAssessments]);
+
+  return {
+    assessments,
+    loading,
+    error,
+    refetch: fetchAssessments,
+  };
+};
+
 // ── useAssessmentDetail ───────────────────────────────────────────────────
 
 export const useAssessmentDetail = (assessmentId: number | null) => {

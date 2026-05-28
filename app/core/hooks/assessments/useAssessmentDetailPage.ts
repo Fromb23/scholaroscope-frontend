@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import { useAssessmentDetail, useAssessmentScores } from '@/app/core/hooks/useAssessments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -22,9 +22,16 @@ function normalizeSearchValue(value: string | number | null | undefined): string
 export function useAssessmentDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const assessmentId = Number(params.id);
+    const focusTarget = searchParams.get('focus');
+    const requestedStudentParam = searchParams.get('student');
+    const parsedStudentId = requestedStudentParam ? Number(requestedStudentParam) : NaN;
+    const focusedStudentId = Number.isInteger(parsedStudentId) && parsedStudentId > 0
+        ? parsedStudentId
+        : null;
 
     const {
         assessment,
@@ -50,6 +57,7 @@ export function useAssessmentDetailPage() {
     const [exportError, setExportError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const seededStudentFilterRef = useRef<string | null>(null);
 
     const isFinalized = assessment?.status === AssessmentStatus.FINALIZED;
     const isDraft = assessment?.status === AssessmentStatus.DRAFT;
@@ -116,6 +124,33 @@ export function useAssessmentDetailPage() {
     }, [assessment?.total_marks, draft, rubricLevelById, searchQuery, sortedScores]);
     const stats = useMemo(() => calculateScoreStats(sortedScores), [sortedScores]);
     const scoredBy = user?.email ?? 'system';
+    const scoreEntryFocusRequest = focusTarget === 'score-entry'
+        ? `${assessmentId}:${focusedStudentId ?? 'all'}`
+        : null;
+
+    useEffect(() => {
+        if (!focusedStudentId || scoresLoading) {
+            return;
+        }
+
+        const seedKey = `${assessmentId}:${focusedStudentId}`;
+        if (seededStudentFilterRef.current === seedKey) {
+            return;
+        }
+
+        seededStudentFilterRef.current = seedKey;
+        const targetScore = sortedScores.find((score) => score.student === focusedStudentId);
+        if (!targetScore) {
+            return;
+        }
+
+        const seededQuery = targetScore.student_admission?.trim() || targetScore.student_name;
+        if (!seededQuery) {
+            return;
+        }
+
+        setSearchQuery((current) => current.trim() || seededQuery);
+    }, [assessmentId, focusedStudentId, scoresLoading, sortedScores]);
 
     const handleScoreChange = (
         studentId: number,
@@ -250,6 +285,8 @@ export function useAssessmentDetailPage() {
         exportError,
         searchQuery,
         downloadingPdf,
+        scoreEntryFocusRequest,
+        focusedStudentId,
         visibleLearnerCount: filteredScores.length,
         totalLearnerCount: sortedScores.length,
         stats,
