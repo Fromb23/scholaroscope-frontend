@@ -1,6 +1,6 @@
 'use client';
 
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -637,18 +637,19 @@ export function LessonPlanDetailPage() {
             };
         });
     };
-    const assistantContext = useMemo(() => ({
-        pageKey: 'lesson_plan_detail',
-        pageTitle: isInstructor ? 'Lesson Preparation' : 'Lesson Plan',
-        state: {
-            is_loading: loading,
-            status: lessonPlan?.status ?? null,
-            has_session: Boolean(lessonPlan?.session),
-            can_schedule: lessonPlan ? canScheduleLesson(lessonPlan.status) : false,
-            has_prepared_task: hasPreparedAssignment,
-        },
-        visibleActions: [
-            ...(lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
+    const canShowPrepareLearnerTaskAction = Boolean(
+        lessonPlan && !hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+    );
+    const canShowScheduleLessonAction = Boolean(
+        lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
+    );
+    const canShowOpenScheduledLessonAction = Boolean(lessonPlan?.session);
+    const canShowReviewLearnerTaskAction = Boolean(
+        lessonPlan && hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+    );
+    const assistantContext = useMemo(() => {
+        const visibleActions = [
+            ...(canShowPrepareLearnerTaskAction
                 ? [{
                     label: 'Prepare learner task',
                     type: 'page_action' as const,
@@ -656,7 +657,7 @@ export function LessonPlanDetailPage() {
                     handler: openLearnerTaskSection,
                 }]
                 : []),
-            ...(lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
+            ...(canShowScheduleLessonAction
                 ? [{
                     label: 'Schedule this lesson',
                     type: 'page_action' as const,
@@ -664,40 +665,74 @@ export function LessonPlanDetailPage() {
                     handler: handleOpenSchedule,
                 }]
                 : []),
-            ...(lessonPlan?.session
+            ...(canShowOpenScheduledLessonAction
                 ? [{
                     label: 'Open linked lesson',
                     type: 'navigate' as const,
-                    href: `/sessions/${lessonPlan.session}`,
+                    href: `/sessions/${lessonPlan?.session}`,
                 }]
                 : []),
-        ],
-        nextSafeAction: lessonPlan && canPrepareAssignmentDraft(lessonPlan.status) && !hasPreparedAssignment
+            ...(canShowReviewLearnerTaskAction
+                ? [{
+                    label: 'Review learner task',
+                    type: 'page_action' as const,
+                    target: 'open_learner_task_section',
+                    handler: openLearnerTaskSection,
+                }]
+                : []),
+        ];
+
+        const nextSafeAction = canShowPrepareLearnerTaskAction
             ? {
                 label: 'Prepare learner task',
                 type: 'page_action' as const,
                 target: 'open_learner_task_section',
                 handler: openLearnerTaskSection,
             }
-            : lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
-            ? {
-                label: 'Schedule this lesson',
-                type: 'page_action' as const,
-                target: 'open_schedule_modal',
-                handler: handleOpenSchedule,
-            }
-            : (lessonPlan?.session
+            : canShowScheduleLessonAction
                 ? {
-                    label: 'Open linked lesson',
-                    type: 'navigate' as const,
-                    href: `/sessions/${lessonPlan.session}`,
+                    label: 'Schedule this lesson',
+                    type: 'page_action' as const,
+                    target: 'open_schedule_modal',
+                    handler: handleOpenSchedule,
                 }
-                : undefined),
-        workflowStep: lessonPlan?.session ? 'scheduled' : 'lesson_preparation',
-        emptyStateReason: !loading && !lessonPlan
-            ? 'This lesson plan could not be loaded.'
-            : undefined,
-    }), [
+                : canShowOpenScheduledLessonAction
+                    ? {
+                        label: 'Open linked lesson',
+                        type: 'navigate' as const,
+                        href: `/sessions/${lessonPlan?.session}`,
+                    }
+                    : canShowReviewLearnerTaskAction
+                        ? {
+                            label: 'Review learner task',
+                            type: 'page_action' as const,
+                            target: 'open_learner_task_section',
+                            handler: openLearnerTaskSection,
+                        }
+                        : undefined;
+
+        return {
+            pageKey: 'lesson_plan_detail',
+            pageTitle: isInstructor ? 'Lesson Preparation' : 'Lesson Plan',
+            state: {
+                is_loading: loading,
+                status: lessonPlan?.status ?? null,
+                has_session: Boolean(lessonPlan?.session),
+                can_schedule: lessonPlan ? canScheduleLesson(lessonPlan.status) : false,
+                has_prepared_task: hasPreparedAssignment,
+            },
+            visibleActions,
+            nextSafeAction,
+            workflowStep: lessonPlan?.session ? 'scheduled' : 'lesson_preparation',
+            emptyStateReason: !loading && !lessonPlan
+                ? 'This lesson plan could not be loaded.'
+                : undefined,
+        };
+    }, [
+        canShowOpenScheduledLessonAction,
+        canShowPrepareLearnerTaskAction,
+        canShowReviewLearnerTaskAction,
+        canShowScheduleLessonAction,
         handleOpenSchedule,
         hasPreparedAssignment,
         isInstructor,
@@ -736,31 +771,51 @@ export function LessonPlanDetailPage() {
     const learnerTaskReturnTo = latestPreparedAssignment
         ? `/lesson-plans/${lessonPlan.id}?section=learner-task&highlightAssignment=${latestPreparedAssignment.id}`
         : `/lesson-plans/${lessonPlan.id}?section=learner-task`;
-    const currentActionPrimary = !hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
-        ? {
+    const nextStepActions: Array<{
+        key: string;
+        label: string;
+        icon: ReactNode;
+        href?: string;
+        onClick?: () => void;
+        disabled?: boolean;
+    }> = [];
+
+    if (canShowPrepareLearnerTaskAction) {
+        nextStepActions.push({
+            key: 'prepare-learner-task',
             label: 'Prepare learner task',
             onClick: openLearnerTaskSection,
-            icon: <FilePlus2 className="mr-1.5 h-4 w-4" />,
-        }
-        : canScheduleLesson(lessonPlan.status)
-            ? {
-                label: 'Schedule this lesson',
-                onClick: handleOpenSchedule,
-                icon: <CalendarDays className="mr-1.5 h-4 w-4" />,
-            }
-            : lessonPlan.session
-                ? {
-                    label: 'Open scheduled lesson',
-                    href: `/sessions/${lessonPlan.session}`,
-                    icon: <Link2 className="mr-1.5 h-4 w-4" />,
-                }
-                : hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
-                    ? {
-                        label: 'Review learner task',
-                        onClick: openLearnerTaskSection,
-                        icon: <FilePlus2 className="mr-1.5 h-4 w-4" />,
-                    }
-                    : null;
+            icon: <FilePlus2 className="h-4 w-4" />,
+        });
+    }
+
+    if (canShowScheduleLessonAction) {
+        nextStepActions.push({
+            key: 'schedule-lesson',
+            label: 'Schedule this lesson',
+            onClick: handleOpenSchedule,
+            disabled: pendingActionKey === actionKey(lessonPlan.id, 'scheduled'),
+            icon: <CalendarDays className="h-4 w-4" />,
+        });
+    }
+
+    if (canShowOpenScheduledLessonAction) {
+        nextStepActions.push({
+            key: 'open-scheduled-lesson',
+            label: 'Open scheduled lesson',
+            href: `/sessions/${lessonPlan.session}`,
+            icon: <Link2 className="h-4 w-4" />,
+        });
+    }
+
+    if (canShowReviewLearnerTaskAction) {
+        nextStepActions.push({
+            key: 'review-learner-task',
+            label: 'Review learner task',
+            onClick: openLearnerTaskSection,
+            icon: <FilePlus2 className="h-4 w-4" />,
+        });
+    }
     const learnerTaskStatus = latestPreparedAssignment
         ? latestPreparedAssignment.status === 'DRAFT'
             ? 'Prepared'
@@ -879,47 +934,56 @@ export function LessonPlanDetailPage() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
                         <h2 className="text-lg font-semibold text-gray-900">
-                            {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+                            {canShowPrepareLearnerTaskAction
                                 ? 'Next step: prepare learner task'
-                                : canScheduleLesson(lessonPlan.status)
+                                : canShowScheduleLessonAction
                                     ? 'Next step: schedule this lesson'
-                                    : lessonPlan.status === 'USED'
-                                        ? 'Post-lesson follow-up'
-                                        : lessonPlan.session
+                                        : lessonPlan.status === 'USED'
+                                            ? 'Post-lesson follow-up'
+                                        : canShowOpenScheduledLessonAction
                                             ? 'Next step: use this plan in class'
                                             : 'Lesson preparation is ready'}
                         </h2>
                         <p className="text-sm text-gray-600">
-                            {!hasPreparedAssignment && canPrepareAssignmentDraft(lessonPlan.status)
+                            {canShowPrepareLearnerTaskAction
                                 ? 'Plan the learner task now so class time stays focused on attendance, teaching, and the final issue step.'
-                                : canScheduleLesson(lessonPlan.status)
+                                : canShowScheduleLessonAction
                                     ? 'Choose when this lesson should happen so it appears in your teaching day.'
                                     : lessonPlan.status === 'USED'
                                         ? 'This lesson preparation has already been used in class. Reopen the lesson or download the plan for follow-up work.'
-                                        : lessonPlan.session
+                                        : canShowOpenScheduledLessonAction
                                             ? 'This lesson preparation is already linked to a scheduled lesson. Open it when you are ready to teach.'
                                             : 'Review the plan, then continue with your next teaching action.'}
                         </p>
                     </div>
 
-                    {currentActionPrimary ? (
-                        'href' in currentActionPrimary && currentActionPrimary.href ? (
-                            <Link href={currentActionPrimary.href} className="w-full lg:w-auto">
-                                <Button className="w-full lg:w-auto">
-                                    {currentActionPrimary.icon}
-                                    {currentActionPrimary.label}
-                                </Button>
-                            </Link>
-                        ) : (
-                            <Button
-                                className="w-full lg:w-auto"
-                                onClick={currentActionPrimary.onClick}
-                                disabled={currentActionPrimary.label === 'Schedule this lesson' && pendingActionKey === actionKey(lessonPlan.id, 'scheduled')}
-                            >
-                                {currentActionPrimary.icon}
-                                {currentActionPrimary.label}
-                            </Button>
-                        )
+                    {nextStepActions.length > 0 ? (
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                            {nextStepActions.map((action, index) => (
+                                action.href ? (
+                                    <Link href={action.href} key={action.key} className="w-full sm:w-auto">
+                                        <Button
+                                            variant={index === 0 ? 'primary' : 'secondary'}
+                                            className="w-full sm:w-auto"
+                                        >
+                                            {action.icon}
+                                            {action.label}
+                                        </Button>
+                                    </Link>
+                                ) : (
+                                    <Button
+                                        key={action.key}
+                                        variant={index === 0 ? 'primary' : 'secondary'}
+                                        className="w-full sm:w-auto"
+                                        onClick={action.onClick}
+                                        disabled={action.disabled}
+                                    >
+                                        {action.icon}
+                                        {action.label}
+                                    </Button>
+                                )
+                            ))}
+                        </div>
                     ) : null}
                 </div>
             </Card>
