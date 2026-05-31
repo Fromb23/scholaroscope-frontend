@@ -1,19 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, BookOpen, Calendar, Clock, Loader2 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { EndLessonReviewModal } from '@/app/core/components/sessions/EndLessonReviewModal';
 import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
-import type { Session, SessionLifecycleReminder } from '@/app/core/types/session';
-
-interface FeedbackState {
-    tone: 'success' | 'error';
-    message: string;
-}
+import type { SessionLifecycleReminder } from '@/app/core/types/session';
 
 function formatSessionDate(value: string): string {
     const date = new Date(`${value}T00:00:00`);
@@ -70,7 +64,7 @@ interface SessionReminderCardProps {
     reminder: SessionLifecycleReminder;
     onContinue: (sessionId: number) => void;
     onReviewAttendance: (sessionId: number) => void;
-    onEndLesson: (reminder: SessionLifecycleReminder) => void;
+    onEndLesson: (sessionId: number) => void;
 }
 
 function SessionReminderCard({
@@ -150,9 +144,9 @@ function SessionReminderCard({
                         type="button"
                         variant="danger"
                         className="w-full"
-                        onClick={() => onEndLesson(reminder)}
+                        onClick={() => onEndLesson(session.id)}
                     >
-                        Complete lesson
+                        End lesson
                     </Button>
                 </div>
             </div>
@@ -169,65 +163,23 @@ export function SessionReminderPanel() {
         loading,
         error,
         refetch,
-        completeSession,
     } = useSessionLifecycleReminders();
-    const [selectedReminder, setSelectedReminder] = useState<SessionLifecycleReminder | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [modalError, setModalError] = useState<string | null>(null);
-    const [feedback, setFeedback] = useState<FeedbackState | null>(null);
 
     const openCount = useMemo(
         () => reminders.filter((reminder) => reminder.type === 'OPEN_LESSON').length,
         [reminders]
     );
 
-    useEffect(() => {
-        if (!feedback) return undefined;
-
-        const timeout = window.setTimeout(() => {
-            setFeedback(null);
-        }, 4000);
-
-        return () => {
-            window.clearTimeout(timeout);
-        };
-    }, [feedback]);
-
     const handleContinue = (sessionId: number) => {
         router.push(`/sessions/${sessionId}`);
     };
 
     const handleReviewAttendance = (sessionId: number) => {
-        router.push(getReviewAttendancePath(sessionId));
+        router.push(`${getReviewAttendancePath(sessionId)}?section=attendance`);
     };
 
-    const handleReviewFromModal = (session: Session) => {
-        setSelectedReminder(null);
-        router.push(getReviewAttendancePath(session.id));
-    };
-
-    const handleEndLesson = (reminder: SessionLifecycleReminder) => {
-        setModalError(null);
-        setSelectedReminder(reminder);
-    };
-
-    const handleConfirmEndLesson = async () => {
-        if (!selectedReminder) return;
-
-        setIsSubmitting(true);
-        setModalError(null);
-
-        try {
-            await completeSession(selectedReminder.session.id);
-            setSelectedReminder(null);
-            setFeedback({ tone: 'success', message: 'Lesson completed.' });
-        } catch {
-            const message = 'Could not complete lesson. Review attendance and try again.';
-            setModalError(message);
-            setFeedback({ tone: 'error', message });
-        } finally {
-            setIsSubmitting(false);
-        }
+    const handleEndLesson = (sessionId: number) => {
+        router.push(`/sessions/${sessionId}?section=complete`);
     };
 
     if (loading && reminders.length === 0) {
@@ -290,20 +242,6 @@ export function SessionReminderPanel() {
                         </div>
                     </div>
 
-                    {feedback && (
-                        <div
-                            role="status"
-                            aria-live="polite"
-                            className={`mt-4 rounded-lg px-4 py-3 text-sm ${
-                                feedback.tone === 'success'
-                                    ? 'theme-success-surface text-[color:var(--color-success)]'
-                                    : 'theme-danger-surface text-[color:var(--color-danger)]'
-                            }`}
-                        >
-                            {feedback.message}
-                        </div>
-                    )}
-
                     {error && reminders.length > 0 && (
                         <div className="mt-4 flex flex-col gap-3 rounded-lg px-4 py-3 text-sm theme-warning-surface sm:flex-row sm:items-center sm:justify-between">
                             <span>Some lesson reminders may be out of date.</span>
@@ -332,20 +270,6 @@ export function SessionReminderPanel() {
                     ))}
                 </div>
             </Card>
-
-            <EndLessonReviewModal
-                isOpen={selectedReminder !== null}
-                session={selectedReminder?.session ?? null}
-                isSubmitting={isSubmitting}
-                errorMessage={modalError}
-                onClose={() => {
-                    if (isSubmitting) return;
-                    setSelectedReminder(null);
-                    setModalError(null);
-                }}
-                onReviewAttendance={handleReviewFromModal}
-                onConfirm={handleConfirmEndLesson}
-            />
         </>
     );
 }

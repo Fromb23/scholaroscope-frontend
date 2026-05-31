@@ -105,6 +105,25 @@ export interface SessionLifecycleReminder {
   severity: 'info' | 'warning' | 'danger';
 }
 
+export type SessionClosureNextStep =
+  | 'ATTENDANCE'
+  | 'TAUGHT_OUTCOMES'
+  | 'EVIDENCE'
+  | 'REFLECTION'
+  | 'READY';
+
+export interface SessionClosureState {
+  ready: boolean;
+  next_step: SessionClosureNextStep;
+  message: string;
+  missing: string[];
+  requires_evidence: boolean;
+  has_attendance: boolean;
+  has_taught_outcomes: boolean;
+  has_required_evidence: boolean;
+  has_reflection: boolean;
+}
+
 export interface SessionDetail extends Session {
   attendance_records: AttendanceRecord[];
 }

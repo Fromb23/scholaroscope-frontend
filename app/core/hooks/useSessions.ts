@@ -23,6 +23,7 @@ import {
   AttendanceRecord,
   BulkAttendanceData,
   ConfirmTaughtOutcomesPayload,
+  SessionClosureState,
   SessionAssignmentDraftResponse,
   SessionCohort,
   SessionFormData,
@@ -324,11 +325,28 @@ export const useSessionDetail = (
 ) => {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [closureState, setClosureState] = useState<SessionClosureState | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     currentPage: 1, pageSize: 0, totalItems: 0, totalPages: 1,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchClosureState = useCallback(async (): Promise<SessionClosureState | null> => {
+    if (!sessionId) {
+      setClosureState(null);
+      return null;
+    }
+
+    try {
+      const data = await sessionAPI.getClosureState(sessionId);
+      setClosureState(data);
+      return data;
+    } catch {
+      setClosureState(null);
+      return null;
+    }
+  }, [sessionId]);
 
   const fetchSession = useCallback(async () => {
     if (!sessionId) { setLoading(false); return; }
@@ -336,15 +354,17 @@ export const useSessionDetail = (
     try {
       setLoading(true);
 
-      const [sessionData, attendanceData] = await Promise.all([
+      const [sessionData, attendanceData, closureData] = await Promise.all([
         sessionAPI.getById(sessionId),
         sessionAPI.getAttendanceRecords(sessionId, {
           page_size: 1000,
           ...(searchQuery ? { search: searchQuery } : {}),
         }),
+        sessionAPI.getClosureState(sessionId).catch(() => null),
       ]);
 
       setSession(sessionData);
+      setClosureState(closureData);
 
       const records = unwrapList(attendanceData);
       const totalItems = Array.isArray(attendanceData)
@@ -422,8 +442,10 @@ export const useSessionDetail = (
 
   return {
     session, attendanceRecords, pagination,
+    closureState,
     loading, error,
     refetch: fetchSession,
+    refetchClosureState: fetchClosureState,
     markAttendance,
     reseedAttendance,
     completeSession,
