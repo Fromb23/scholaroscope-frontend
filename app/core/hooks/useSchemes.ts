@@ -109,13 +109,13 @@ export function useGenerateScheme() {
     };
 }
 
-export function useSchemeSubjectStrands(subjectId: number | null) {
+export function useSchemeSubjectStrands(cohortSubjectId: number | null) {
     const [strands, setStrands] = useState<SchemeSubjectStrandOption[]>([]);
-    const [loading, setLoading] = useState(Boolean(subjectId));
+    const [loading, setLoading] = useState(Boolean(cohortSubjectId));
     const [error, setError] = useState<string | null>(null);
 
     const fetchStrands = useCallback(async () => {
-        if (!subjectId) {
+        if (!cohortSubjectId) {
             setStrands([]);
             setLoading(false);
             setError(null);
@@ -124,7 +124,7 @@ export function useSchemeSubjectStrands(subjectId: number | null) {
 
         try {
             setLoading(true);
-            const data = await schemesAPI.getSubjectStrands(subjectId);
+            const data = await schemesAPI.getSubjectStrands(cohortSubjectId);
             setStrands(data);
             setError(null);
         } catch (err) {
@@ -132,13 +132,13 @@ export function useSchemeSubjectStrands(subjectId: number | null) {
             setError(
                 extractErrorMessage(
                     err as ApiError,
-                    'We could not load the strand range for this subject.',
+                    'We could not load the strand range for this class subject.',
                 ),
             );
         } finally {
             setLoading(false);
         }
-    }, [subjectId]);
+    }, [cohortSubjectId]);
 
     useEffect(() => {
         void fetchStrands();

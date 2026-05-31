@@ -99,11 +99,11 @@ export const schemesAPI = {
         downloadBlob(file.blob, file.fileName);
     },
 
-    getSubjectStrands: async (subjectId: number): Promise<SchemeSubjectStrandOption[]> => {
+    getSubjectStrands: async (cohortSubjectId: number): Promise<SchemeSubjectStrandOption[]> => {
         const response = await apiClient.get<SchemeSubjectStrandOption[]>(
-            '/cbc/strands/by_subject/',
+            `${SCHEMES_BASE_PATH}/subject-strands/`,
             {
-                params: { subject_id: subjectId },
+                params: { cohort_subject_id: cohortSubjectId },
             },
         );
         return response.data;

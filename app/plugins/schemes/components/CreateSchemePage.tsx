@@ -47,6 +47,8 @@ interface TeachingContextOption {
 
 const REFLECTION_NOTICE =
     'Lesson reflections will be auto-filled from lesson reflections recorded after taught outcomes or learner performance evidence.';
+const NO_REGISTERED_STRAND_RANGE_MESSAGE =
+    "No strand range is registered for this class subject yet. Register the subject's sub-strands in curriculum setup before generating a scheme.";
 
 function unwrapCohortSubjects(
     data: CohortSubject[] | PaginatedResponse<CohortSubject>,
@@ -374,6 +376,9 @@ export function CreateSchemePage() {
             : null
     ), [curricula, selectedCurriculumId]);
 
+    const resolvedSelectedCohortSubjectId = selectedContext?.cohortSubjectId
+        ?? (selectedCohortSubjectId ? Number(selectedCohortSubjectId) : null);
+
     const resolvedSelectedSubjectId = selectedContext?.subjectId
         ?? (selectedSubjectId ? Number(selectedSubjectId) : null);
 
@@ -423,7 +428,7 @@ export function CreateSchemePage() {
         strands,
         loading: strandsLoading,
         error: strandsError,
-    } = useSchemeSubjectStrands(resolvedSelectedSubjectId);
+    } = useSchemeSubjectStrands(resolvedSelectedCohortSubjectId);
 
     const flattenedSubStrands = useMemo(
         () => flattenSubjectStrands(strands),
@@ -441,17 +446,19 @@ export function CreateSchemePage() {
 
         const first = flattenedSubStrands[0];
         const last = flattenedSubStrands[flattenedSubStrands.length - 1];
+        const hasStartSelection = flattenedSubStrands.some(
+            (item) => String(item.subStrandId) === startSubStrandId,
+        );
+        const hasEndSelection = flattenedSubStrands.some(
+            (item) => String(item.subStrandId) === endSubStrandId,
+        );
 
-        if (!startStrandId) {
+        if (!startStrandId || !hasStartSelection) {
             setStartStrandId(String(first.strandId));
-        }
-        if (!startSubStrandId) {
             setStartSubStrandId(String(first.subStrandId));
         }
-        if (!endStrandId) {
+        if (!endStrandId || !hasEndSelection) {
             setEndStrandId(String(last.strandId));
-        }
-        if (!endSubStrandId) {
             setEndSubStrandId(String(last.subStrandId));
         }
     }, [endStrandId, endSubStrandId, flattenedSubStrands, startStrandId, startSubStrandId]);
@@ -682,7 +689,7 @@ export function CreateSchemePage() {
             if (!selectedLevelLabel) {
                 return 'Choose the level or grade.';
             }
-            if (!selectedCohortSubjectId) {
+            if (!resolvedSelectedCohortSubjectId || Number.isNaN(resolvedSelectedCohortSubjectId)) {
                 return 'Choose the class / subject.';
             }
             if (!selectedTerm) {
@@ -715,7 +722,7 @@ export function CreateSchemePage() {
                 return strandsError;
             }
             if (flattenedSubStrands.length === 0) {
-                return 'No strand range is available for this subject yet.';
+                return NO_REGISTERED_STRAND_RANGE_MESSAGE;
             }
             return rangeValidation.error;
         }
@@ -756,7 +763,7 @@ export function CreateSchemePage() {
             return;
         }
 
-        if (!selectedTerm || !selectedCohortSubjectId || !rangeValidation.curriculumRange) {
+        if (!selectedTerm || !resolvedSelectedCohortSubjectId || !rangeValidation.curriculumRange) {
             setStepError('Complete the draft scheme setup before generating.');
             return;
         }
@@ -767,7 +774,7 @@ export function CreateSchemePage() {
 
             const payload = {
                 term: Number(selectedTermId),
-                cohort_subject: Number(selectedCohortSubjectId),
+                cohort_subject: resolvedSelectedCohortSubjectId,
                 title: title.trim(),
                 exceptional_weeks: exceptionalWeekPreview.exceptionalWeeks,
                 non_blocking_exam_notes: exceptionalWeekPreview.notes,
@@ -1109,7 +1116,7 @@ export function CreateSchemePage() {
                         <ErrorState message={strandsError} fullScreen={false} />
                     ) : flattenedSubStrands.length === 0 ? (
                         <div className="rounded-xl border theme-border bg-gray-50 px-4 py-5 text-sm theme-subtle">
-                            No strand structure is available for this subject yet.
+                            {NO_REGISTERED_STRAND_RANGE_MESSAGE}
                         </div>
                     ) : (
                         <div className="grid gap-4 xl:grid-cols-2">
