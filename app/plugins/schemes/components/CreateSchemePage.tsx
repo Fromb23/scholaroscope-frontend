@@ -309,14 +309,14 @@ export function CreateSchemePage() {
     }, [activeCurricula, selectedCurriculumId]);
 
     useEffect(() => {
-        if (isInstructor && contextOptions.length === 1) {
+        if (isInstructor && contextOptions.length === 1 && !selectedCohortSubjectId) {
             const [option] = contextOptions;
             setSelectedCurriculumId(option.curriculumId ? String(option.curriculumId) : '');
             setSelectedSubjectId(String(option.subjectId));
             setSelectedLevelLabel(option.levelLabel);
             setSelectedCohortSubjectId(String(option.cohortSubjectId));
         }
-    }, [contextOptions, isInstructor]);
+    }, [contextOptions, isInstructor, selectedCohortSubjectId]);
 
     useEffect(() => {
         if (!isInstructor && user && !selectedTeacherId) {
@@ -374,11 +374,16 @@ export function CreateSchemePage() {
             : null
     ), [curricula, selectedCurriculumId]);
 
+    const resolvedSelectedSubjectId = selectedContext?.subjectId
+        ?? (selectedSubjectId ? Number(selectedSubjectId) : null);
+
     const selectedSubject = useMemo<Subject | null>(() => (
-        selectedSubjectId
-            ? subjects.find((subject) => String(subject.id) === selectedSubjectId) ?? null
+        resolvedSelectedSubjectId
+            ? subjects.find((subject) => subject.id === resolvedSelectedSubjectId) ?? null
             : null
-    ), [selectedSubjectId, subjects]);
+    ), [resolvedSelectedSubjectId, subjects]);
+
+    const selectedSubjectLabel = selectedSubject?.name ?? selectedContext?.subjectName ?? 'Not selected';
 
     const selectedTerm = useMemo<Term | null>(() => (
         selectedTermId
@@ -418,7 +423,7 @@ export function CreateSchemePage() {
         strands,
         loading: strandsLoading,
         error: strandsError,
-    } = useSchemeSubjectStrands(selectedSubject?.id ?? null);
+    } = useSchemeSubjectStrands(resolvedSelectedSubjectId);
 
     const flattenedSubStrands = useMemo(
         () => flattenSubjectStrands(strands),
@@ -671,7 +676,7 @@ export function CreateSchemePage() {
             if (!selectedCurriculum) {
                 return 'Choose the curriculum.';
             }
-            if (!selectedSubject) {
+            if (!resolvedSelectedSubjectId || Number.isNaN(resolvedSelectedSubjectId)) {
                 return 'Choose the subject.';
             }
             if (!selectedLevelLabel) {
@@ -1178,7 +1183,7 @@ export function CreateSchemePage() {
                         </div>
                         <div className="rounded-lg bg-gray-50 px-3 py-2">
                             <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Subject</dt>
-                            <dd className="mt-1 text-sm theme-text">{selectedSubject?.name ?? 'Not selected'}</dd>
+                            <dd className="mt-1 text-sm theme-text">{selectedSubjectLabel}</dd>
                         </div>
                         <div className="rounded-lg bg-gray-50 px-3 py-2">
                             <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Level / Grade</dt>
