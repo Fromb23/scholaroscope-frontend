@@ -82,7 +82,10 @@ interface Props {
     learningOutcomeId: number;
     learners: SessionLearner[];
     observedAt: string;
-    onClose: (result?: BulkClassEvidenceResult) => void;
+    onClose: (
+        result?: BulkClassEvidenceResult,
+        context?: { evaluationType: 'RUBRIC' | 'DESCRIPTIVE' }
+    ) => void;
 }
 
 export function BulkClassModal({ sessionId, learningOutcomeId, learners, observedAt, onClose }: Props) {
@@ -105,7 +108,7 @@ export function BulkClassModal({ sessionId, learningOutcomeId, learners, observe
         };
         try {
             const result = await bulkCreate.mutateAsync(payload);
-            onClose(result);
+            onClose(result, { evaluationType: evalType });
         } catch (e) {
             dispatch({ type: 'set_error', payload: extractErrorMessage(e) });
         }

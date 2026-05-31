@@ -14,6 +14,8 @@ import {
   AttendanceSummary,
   BulkAttendanceData,
   ConfirmTaughtOutcomesPayload,
+  RecordLessonReflectionPayload,
+  RecordLessonReflectionResponse,
   LinkCohortRequest,
   RescheduleSessionPayload,
   SessionAssignmentDraftResponse,
@@ -197,6 +199,16 @@ export const sessionAPI = {
   ): Promise<SessionDetail> => {
     const res = await apiClient.post<SessionDetail>(
       `/sessions/${id}/confirm_taught_outcomes/`,
+      data,
+    );
+    return res.data;
+  },
+  recordReflection: async (
+    id: number,
+    data: RecordLessonReflectionPayload,
+  ): Promise<RecordLessonReflectionResponse> => {
+    const res = await apiClient.post<RecordLessonReflectionResponse>(
+      `/sessions/${id}/record_reflection/`,
       data,
     );
     return res.data;

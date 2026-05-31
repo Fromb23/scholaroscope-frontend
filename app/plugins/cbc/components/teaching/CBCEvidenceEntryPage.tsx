@@ -9,6 +9,7 @@ import { useAssistantPageContext } from '@/app/core/components/assistant/useAssi
 import { LearnerEvidenceRow } from '@/app/plugins/cbc/components/evidence/LearnerEvidenceRow';
 import { BulkClassModal } from '@/app/plugins/cbc/components/evidence/BulkClassModal';
 import { EvidenceSuccessBanner } from '@/app/plugins/cbc/components/evidence/EvidenceSuccessBanner';
+import { LessonReflectionCard } from '@/app/core/components/sessions/LessonReflectionCard';
 import {
     CBCNav,
     CBCBreadcrumb,
@@ -176,6 +177,18 @@ export function CBCEvidenceEntryPage() {
                     result={page.bulkSuccess}
                     onContinueRecording={continueRecordingEvidence}
                     onDismiss={() => setBulkSuccess(null)}
+                />
+            )}
+
+            {page.reflectionPrompt !== null && (
+                <LessonReflectionCard
+                    key={page.reflectionPrompt.key}
+                    sessionId={sessionId}
+                    source="PERFORMANCE_RECORDING"
+                    evidenceSummary={page.reflectionPrompt.evidenceSummary}
+                    metadata={page.reflectionPrompt.metadata}
+                    title="Reflect on learner performance"
+                    description="Record a short reflection while the class evidence is still fresh. Saving this does not interrupt the evidence flow."
                 />
             )}
 
