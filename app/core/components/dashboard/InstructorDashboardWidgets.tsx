@@ -33,7 +33,7 @@ const dashboardActionRowClass = `${themeClasses.dashboardActionRow} p-3`;
 
 function getTodayScheduleActionLabel(session: Session) {
     if (session.schedule_state === 'IN_PROGRESS_OVERDUE' || session.needs_completion) {
-        return 'Complete lesson';
+        return 'End lesson';
     }
 
     if (session.status === 'IN_PROGRESS') {

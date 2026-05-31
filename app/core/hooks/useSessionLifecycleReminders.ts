@@ -3,7 +3,6 @@ import { sessionAPI } from '@/app/core/api/sessions';
 import { useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
-import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import type {
@@ -277,12 +276,6 @@ export function useSessionLifecycleReminders() {
         await Promise.all([refetchToday(), fetchRecentSessions()]);
     }, [fetchRecentSessions, refetchToday]);
 
-    const completeSession = useCallback(async (sessionId: number) => {
-        await sessionAPI.complete(sessionId);
-        emitSessionDataChanged();
-        await refetch();
-    }, [refetch]);
-
     return {
         reminders,
         needsClosingCount,
@@ -290,6 +283,5 @@ export function useSessionLifecycleReminders() {
         loading: todayLoading || recentLoading,
         error: error ?? todayError,
         refetch,
-        completeSession,
     };
 }

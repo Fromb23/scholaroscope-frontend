@@ -18,6 +18,7 @@ import {
   RecordLessonReflectionResponse,
   LinkCohortRequest,
   RescheduleSessionPayload,
+  SessionClosureState,
   SessionAssignmentDraftResponse,
   SessionCohortsResponse,
   SessionCohort,
@@ -157,6 +158,11 @@ export const sessionAPI = {
 
   getAttendanceSummary: async (id: number): Promise<AttendanceSummary> => {
     const res = await apiClient.get<AttendanceSummary>(`/sessions/${id}/attendance_summary/`);
+    return res.data;
+  },
+
+  getClosureState: async (id: number): Promise<SessionClosureState> => {
+    const res = await apiClient.get<SessionClosureState>(`/sessions/${id}/closure-state/`);
     return res.data;
   },
 

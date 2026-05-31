@@ -119,8 +119,8 @@ function getPriorityLessonAction(sessions: Session[]): PriorityLessonAction | nu
     if (needsCompletion) {
         return {
             session: needsCompletion,
-            title: 'Complete lesson',
-            description: `${needsCompletion.subject_name} with ${needsCompletion.cohort_name} is still open. Review attendance and finish your teaching record.`,
+            title: 'End lesson',
+            description: `${needsCompletion.subject_name} with ${needsCompletion.cohort_name} is still open. Finish the missing teaching record: attendance, taught outcomes, learner performance, and reflection.`,
         };
     }
 
@@ -138,7 +138,7 @@ function getPriorityLessonAction(sessions: Session[]): PriorityLessonAction | nu
 
 function getTodayLessonActionLabel(session: Session) {
     if (session.schedule_state === 'IN_PROGRESS_OVERDUE' || session.needs_completion) {
-        return 'Complete lesson';
+        return 'End lesson';
     }
 
     if (session.status === 'IN_PROGRESS') {
@@ -553,7 +553,7 @@ function SessionWorkspaceView() {
                             </Link>
                             <Link href={`/sessions/${priorityTodayAction.session.id}`} className="w-full sm:w-auto">
                                 <Button variant="secondary" className="w-full sm:w-auto">
-                                    Complete lesson
+                                    End lesson
                                 </Button>
                             </Link>
                         </div>

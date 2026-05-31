@@ -121,9 +121,9 @@ function buildNextAction({
     if (overdueLesson) {
         return {
             key: 'complete-overdue-lesson',
-            title: 'Complete this lesson',
-            description: `${overdueLesson.subject_name} with ${overdueLesson.cohort_name} is still open. Review attendance and finish your teaching record.`,
-            primaryLabel: 'Complete lesson',
+            title: 'End this lesson',
+            description: `${overdueLesson.subject_name} with ${overdueLesson.cohort_name} is still open. Finish the missing teaching record: attendance, taught outcomes, learner performance, and reflection.`,
+            primaryLabel: 'End lesson',
             primaryPath: `/sessions/${overdueLesson.id}`,
             secondaryLabel: 'Review attendance',
             secondaryPath: `/sessions/${overdueLesson.id}`,
@@ -138,7 +138,7 @@ function buildNextAction({
         return {
             key: 'continue-open-lesson',
             title: 'Continue your lesson',
-            description: `${openLesson.subject_name} with ${openLesson.cohort_name} is already in progress. Finish attendance, confirm what was taught, and close the lesson when class ends.`,
+            description: `${openLesson.subject_name} with ${openLesson.cohort_name} is already in progress. Finish attendance, confirm what was taught, record learner performance, and add reflection before you close the lesson record.`,
             primaryLabel: 'Continue lesson',
             primaryPath: `/sessions/${openLesson.id}`,
             secondaryLabel: 'Review attendance',
