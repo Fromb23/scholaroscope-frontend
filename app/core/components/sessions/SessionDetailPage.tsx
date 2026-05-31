@@ -30,6 +30,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AttendanceStatsStrip } from '@/app/core/components/sessions/AttendanceStats';
 import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable';
 import { ParticipatingCohorts } from '@/app/core/components/sessions/ParticipatingCohorts';
+import { LessonReflectionCard } from '@/app/core/components/sessions/LessonReflectionCard';
 import {
     clampDashboardScrollToContent,
     scrollDashboardSectionIntoView,
@@ -225,6 +226,7 @@ export function SessionDetailPage() {
     const [workflowError, setWorkflowError] = useState<string | null>(null);
     const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
+    const [showTaughtOutcomesReflection, setShowTaughtOutcomesReflection] = useState(false);
     const [creatingAssignment, setCreatingAssignment] = useState(false);
     const [issuingPreparedTask, setIssuingPreparedTask] = useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
@@ -883,10 +885,11 @@ export function SessionDetailPage() {
                     status: taughtSelections[outcome.outcome_id] as TaughtStatus,
                 })),
             });
+            setShowTaughtOutcomesReflection(true);
             setGuidedSection('complete');
             setWorkflowSuccess(
                 isInstructor
-                    ? 'What was taught is confirmed. Next step: complete lesson.'
+                    ? 'What was taught is confirmed. Add a lesson reflection, then complete the lesson.'
                     : 'What was taught has been confirmed.'
             );
         } catch (error) {
@@ -992,9 +995,11 @@ export function SessionDetailPage() {
             : currentWorkflowStep === 'confirm_taught'
                 ? 'Attendance is saved. Confirm the planned outcomes taught in class before you complete the lesson.'
                 : currentWorkflowStep === 'complete'
-                    ? (preparedTaskDraft
-                        ? 'Attendance and taught outcomes are saved. Complete the lesson, and issue the prepared learner task when needed.'
-                        : 'Attendance and taught outcomes are saved. Complete the lesson, then handle any follow-up after class.')
+                    ? (showTaughtOutcomesReflection
+                        ? 'Attendance and taught outcomes are saved. Add a lesson reflection, then complete the lesson.'
+                        : preparedTaskDraft
+                            ? 'Attendance and taught outcomes are saved. Complete the lesson, and issue the prepared learner task when needed.'
+                            : 'Attendance and taught outcomes are saved. Complete the lesson, then handle any follow-up after class.')
                     : (preparedTaskDraft
                     ? 'The prepared learner task was not issued yet. Issue it now or leave it for later review.'
                     : 'Use post-lesson time for learner performance, review, and any follow-up task.');
@@ -1400,7 +1405,9 @@ export function SessionDetailPage() {
                                 <p className="text-sm text-gray-600">
                                     {needsCompletion
                                         ? 'This lesson ran past its scheduled end time. Review attendance, confirm taught outcomes if needed, and complete it manually.'
-                                        : 'Attendance and taught outcomes are saved. Complete the lesson, then return later for learner performance or assignment follow-up.'}
+                                        : showTaughtOutcomesReflection
+                                            ? 'Attendance and taught outcomes are saved. Add a lesson reflection, then complete the lesson.'
+                                            : 'Attendance and taught outcomes are saved. Complete the lesson, then return later for learner performance or assignment follow-up.'}
                                 </p>
                             </div>
                             {showPreparedTaskIssueAction ? (
@@ -1592,6 +1599,19 @@ export function SessionDetailPage() {
                             <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                                 What was taught has been saved for this lesson.
                             </div>
+                        ) : null}
+
+                        {showTaughtOutcomesReflection ? (
+                            <LessonReflectionCard
+                                sessionId={session.id}
+                                source="TAUGHT_OUTCOMES"
+                                metadata={{
+                                    confirmed_outcome_ids: confirmedTaughtOutcomes.map((outcome) => outcome.outcome_id),
+                                    confirmed_outcome_count: confirmedTaughtOutcomes.length,
+                                }}
+                                title="Add lesson reflection"
+                                description="Write a short reflection before moving on. It will update the linked lesson plan reflection."
+                            />
                         ) : null}
 
                         <div className="space-y-4">

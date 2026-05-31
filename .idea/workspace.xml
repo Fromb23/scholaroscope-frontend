@@ -4,14 +4,18 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="" />
+    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/registerAll.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/registerAll.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/routeAccess.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/routeAccess.ts" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="614" />
+    <option name="cachedIndexableFilesCount" value="619" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -35,23 +39,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.843925302369991" />
-      <entry key="MS500" value="4.207364322632206" />
-      <entry key="S2" value="6.03223169396321" />
-      <entry key="S5" value="6.73699293070403" />
-      <entry key="S10" value="7.823256660622561" />
-      <entry key="S30" value="10.631595027861641" />
-      <entry key="S60" value="12.161828649495138" />
-      <entry key="M2" value="13.934047757633842" />
-      <entry key="M5" value="17.30386139043641" />
-      <entry key="M10" value="20.550886442349118" />
-      <entry key="M15" value="23.68042400186898" />
-      <entry key="M30" value="31.693224161858026" />
-      <entry key="H1" value="41.99178273186318" />
-      <entry key="H2" value="57.684355211282686" />
-      <entry key="H4" value="91.87437279028606" />
-      <entry key="D1" value="398.9569294555831" />
-      <entry key="W1" value="931.8055559382283" />
+      <entry key="MS100" value="1.0026728165310548" />
+      <entry key="MS500" value="1.972306059368996" />
+      <entry key="S2" value="6.2206777340397945" />
+      <entry key="S5" value="10.87479672416809" />
+      <entry key="S10" value="13.800308505152083" />
+      <entry key="S30" value="16.424824040871634" />
+      <entry key="S60" value="17.18796832688659" />
+      <entry key="M2" value="17.587855874699695" />
+      <entry key="M5" value="18.049214183170914" />
+      <entry key="M10" value="21.082837763557983" />
+      <entry key="M15" value="26.135783616477884" />
+      <entry key="M30" value="41.170462831768305" />
+      <entry key="H1" value="60.806690675748186" />
+      <entry key="H2" value="84.07811932995658" />
+      <entry key="H4" value="122.46482418970457" />
+      <entry key="D1" value="434.08101199290417" />
+      <entry key="W1" value="972.2446039686914" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -59,37 +63,37 @@
       <entry key="S2" value="0.0" />
       <entry key="S5" value="0.0" />
       <entry key="S10" value="0.0" />
-      <entry key="S30" value="2.69213517889713E-283" />
-      <entry key="S60" value="5.188578975882636E-142" />
-      <entry key="M2" value="2.277845248449206E-71" />
-      <entry key="M5" value="5.533624510294988E-29" />
-      <entry key="M10" value="7.438833584840436E-15" />
-      <entry key="M15" value="3.810686564455077E-10" />
-      <entry key="M30" value="1.952098013595764E-5" />
-      <entry key="H1" value="0.0044189166052711355" />
-      <entry key="H2" value="0.06761169639344253" />
-      <entry key="H4" value="0.30570369418782406" />
-      <entry key="D1" value="2.46463098666615" />
-      <entry key="W1" value="5.788490854658972" />
+      <entry key="S30" value="9.020402422316101E-307" />
+      <entry key="S60" value="9.49757991401814E-154" />
+      <entry key="M2" value="3.0818143866914045E-77" />
+      <entry key="M5" value="2.486122884929088E-31" />
+      <entry key="M10" value="4.986103573863153E-16" />
+      <entry key="M15" value="6.287927569486502E-11" />
+      <entry key="M30" value="7.929645463935992E-6" />
+      <entry key="H1" value="0.002816384081385652" />
+      <entry key="H2" value="0.05397714009512831" />
+      <entry key="H4" value="0.2731459123935716" />
+      <entry key="D1" value="2.4188052774987865" />
+      <entry key="W1" value="5.772991570452105" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.780006440563629" />
-      <entry key="MS500" value="4.176323770869063" />
-      <entry key="S2" value="6.020938517996939" />
-      <entry key="S5" value="6.7318557088521915" />
-      <entry key="S10" value="7.820057063633299" />
-      <entry key="S30" value="10.62995543028216" />
-      <entry key="S60" value="12.160850882734795" />
-      <entry key="M2" value="13.93346549625091" />
-      <entry key="M5" value="17.303556521546827" />
-      <entry key="M10" value="20.550700917003073" />
-      <entry key="M15" value="23.680280503023862" />
-      <entry key="M30" value="31.69314736116899" />
-      <entry key="H1" value="41.996136560691205" />
-      <entry key="H2" value="57.75191198648876" />
-      <entry key="H4" value="92.18000327014268" />
-      <entry key="D1" value="401.4214422142612" />
-      <entry key="W1" value="937.5940065713545" />
+      <entry key="MS100" value="0.9819871164198156" />
+      <entry key="MS500" value="1.959827793657942" />
+      <entry key="S2" value="6.207848742056826" />
+      <entry key="S5" value="10.865057359094129" />
+      <entry key="S10" value="13.793969499260763" />
+      <entry key="S30" value="16.422270163345615" />
+      <entry key="S60" value="17.186627223148374" />
+      <entry key="M2" value="17.587168493728704" />
+      <entry key="M5" value="18.048924498373534" />
+      <entry key="M10" value="21.08262200138332" />
+      <entry key="M15" value="26.135564444893063" />
+      <entry key="M30" value="41.17026092865043" />
+      <entry key="H1" value="60.809345471740436" />
+      <entry key="H2" value="84.13198050013176" />
+      <entry key="H4" value="122.73786505971492" />
+      <entry key="D1" value="436.49969408816753" />
+      <entry key="W1" value="978.0175543893466" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -101,29 +105,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "git-widget-placeholder": "feature/curriculum-plugin-disable-ui",
-    "javascript.preferred.runtime.type.id": "node",
-    "js.debugger.nextJs.config.created.client": "true",
-    "js.debugger.nextJs.config.created.server": "true",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
-    "ts.external.directory.path": "/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;lesson-reflection&quot;,
+    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
+    &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
+    &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="npm.Next.js: server-side">
     <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
       <method v="2" />
@@ -205,6 +209,7 @@
       <workItem from="1779733036337" duration="5186000" />
       <workItem from="1779774858720" duration="7312000" />
       <workItem from="1779877347465" duration="7603000" />
+      <workItem from="1780226161963" duration="7482000" />
     </task>
     <servers />
   </component>

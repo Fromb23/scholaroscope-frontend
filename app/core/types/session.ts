@@ -167,6 +167,27 @@ export interface ConfirmTaughtOutcomesPayload {
   }>;
 }
 
+export type LessonReflectionSource =
+  | 'TAUGHT_OUTCOMES'
+  | 'PERFORMANCE_RECORDING'
+  | 'SESSION_COMPLETION'
+  | 'MANUAL';
+
+export interface RecordLessonReflectionPayload {
+  reflection: string;
+  source?: LessonReflectionSource;
+  evidence_summary?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RecordLessonReflectionResponse {
+  detail: string;
+  reflection_id: number;
+  lesson_plan_id: number | null;
+  reflection: string;
+  source: LessonReflectionSource;
+}
+
 export interface SessionAssignmentDraftResponse {
   detail: string;
   created: boolean;

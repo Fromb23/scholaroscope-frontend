@@ -45,7 +45,7 @@ export function EvidenceSuccessBanner({
             <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
             <div className="flex-1 space-y-1">
                 <p className="text-sm text-green-700 font-medium">
-                    Class performance recorded. You can add more evidence or return to the completed lesson summary.
+                    Class performance recorded. Add a short reflection next, keep recording, or return to the completed lesson summary.
                 </p>
                 <p className="text-xs text-green-700/80">
                     New records created for {result.created_count} of {result.eligible_count} eligible learner{result.eligible_count !== 1 ? 's' : ''}.
