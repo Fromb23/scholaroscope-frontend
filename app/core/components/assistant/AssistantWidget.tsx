@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -39,11 +40,49 @@ import type {
 } from '@/app/core/types/assistant';
 
 type AssistantWidgetMode = 'closed' | 'minimized' | 'open';
+type AssistantDesktopSide = 'left' | 'right';
 
 interface AssistantThreadItem {
   id: string;
   userMessage: string;
   response: AssistantChatResponse;
+}
+
+const ASSISTANT_WIDGET_MODE_STORAGE_PREFIX = 'scholaroscope.assistant.widgetMode.v1';
+
+function widgetModeStorageKey(pageKey?: string): string {
+  return `${ASSISTANT_WIDGET_MODE_STORAGE_PREFIX}:${pageKey ?? 'global'}`;
+}
+
+function readStoredWidgetMode(pageKey?: string): AssistantWidgetMode | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const stored = window.localStorage.getItem(widgetModeStorageKey(pageKey));
+  if (stored === 'closed' || stored === 'minimized' || stored === 'open') {
+    return stored;
+  }
+  return null;
+}
+
+function persistWidgetMode(pageKey: string | undefined, mode: AssistantWidgetMode): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(widgetModeStorageKey(pageKey), mode);
+}
+
+function preferredWidgetMode(state: Record<string, unknown> | undefined): AssistantWidgetMode {
+  const requested = state?.assistant_default_mode;
+  return requested === 'closed' || requested === 'minimized' || requested === 'open'
+    ? requested
+    : 'closed';
+}
+
+function preferredDesktopSide(state: Record<string, unknown> | undefined): AssistantDesktopSide {
+  return state?.assistant_desktop_side === 'left' ? 'left' : 'right';
 }
 
 const QUICK_PROMPTS_BY_ROLE: Record<Role, string[]> = {
@@ -324,8 +363,8 @@ function EmptyState({
           </span>
         </div>
         <p className="mt-2 text-sm theme-text">
-          Hi, I&apos;m your ScholaroScope Guide. Ask me what this page does, what to do next, or
-          how to complete a workflow.
+          Hi, I&apos;m your ScholaroScope Guide. Ask me what this page does, what to do next, or how
+          to complete a workflow.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {quickPrompts.map((prompt) => (
@@ -342,7 +381,9 @@ function EmptyState({
 
         {nextSafeAction ? (
           <div className="mt-4 rounded-xl border theme-border bg-white/50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide theme-muted">Next safe action</p>
+            <p className="text-xs font-medium uppercase tracking-wide theme-muted">
+              Next safe action
+            </p>
             <div className="mt-2">
               <ActionButton action={nextSafeAction} onClick={onAction} />
             </div>
@@ -419,7 +460,8 @@ export function AssistantWidget() {
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [feedbackCategory, setFeedbackCategory] = useState<AssistantFeedbackCategory>('FEATURE_REQUEST');
+  const [feedbackCategory, setFeedbackCategory] =
+    useState<AssistantFeedbackCategory>('FEATURE_REQUEST');
   const [feedbackTitle, setFeedbackTitle] = useState('Feature request from assistant');
   const [feedbackDescription, setFeedbackDescription] = useState('');
   const [feedbackPending, setFeedbackPending] = useState(false);
@@ -429,14 +471,23 @@ export function AssistantWidget() {
     () => ({
       bottom: 'calc(env(safe-area-inset-bottom) + var(--assistant-widget-offset, 1rem))',
     }),
-    []
+    [],
+  );
+  const defaultMode = useMemo(() => preferredWidgetMode(pageContext?.state), [pageContext?.state]);
+  const desktopSide = useMemo(() => preferredDesktopSide(pageContext?.state), [pageContext?.state]);
+  const setWidgetMode = useCallback(
+    (nextMode: AssistantWidgetMode) => {
+      setMode(nextMode);
+      persistWidgetMode(pageContext?.pageKey, nextMode);
+    },
+    [pageContext?.pageKey],
   );
 
   const quickPrompts = useMemo(() => roleQuickPrompts(activeRole), [activeRole]);
   const hasPendingSuggestion = !suggestionsLoading && Boolean(activeSuggestion);
   const suggestionForPanel = useMemo(
     () => activeSuggestion ?? suggestions[0] ?? null,
-    [activeSuggestion, suggestions]
+    [activeSuggestion, suggestions],
   );
 
   useEffect(() => {
@@ -460,12 +511,17 @@ export function AssistantWidget() {
     });
   }, [chatError, feedbackMessage, feedbackOpen, pendingUserMessage, thread]);
 
+  useEffect(() => {
+    const storedMode = readStoredWidgetMode(pageContext?.pageKey);
+    setMode(storedMode ?? defaultMode);
+  }, [defaultMode, pageContext?.pageKey]);
+
   const openFeedbackForm = (seed?: {
     title?: string;
     description?: string;
     category?: AssistantFeedbackCategory;
   }) => {
-    setMode('open');
+    setWidgetMode('open');
     setFeedbackOpen(true);
     setFeedbackMessage(null);
     setFeedbackCategory(seed?.category ?? 'FEATURE_REQUEST');
@@ -475,7 +531,7 @@ export function AssistantWidget() {
 
   const handleAssistantAction = (action: AssistantAction) => {
     if (action.type === 'chat_prompt') {
-      setMode('open');
+      setWidgetMode('open');
       void sendMessage(action.prompt || action.label);
       return;
     }
@@ -498,7 +554,7 @@ export function AssistantWidget() {
       return;
     }
 
-    setMode('open');
+    setWidgetMode('open');
     setPending(true);
     setPendingUserMessage(trimmed);
     setChatError(null);
@@ -566,7 +622,7 @@ export function AssistantWidget() {
           description: feedbackDescription.trim(),
           category: feedbackCategory,
           userMessage: lastUserMessage,
-        })
+        }),
       );
       setFeedbackMessage(response.message);
       setFeedbackDescription('');
@@ -582,14 +638,18 @@ export function AssistantWidget() {
     <>
       {mode !== 'open' ? (
         <div
-          className="pointer-events-none fixed right-4 z-30 md:!bottom-6 md:right-6"
+          className={`pointer-events-none fixed z-30 ${
+            desktopSide === 'left'
+              ? 'left-4 md:!bottom-6 md:left-6 md:right-auto'
+              : 'right-4 md:!bottom-6 md:right-6'
+          }`}
           style={mobileBottomOffsetStyle}
         >
           {mode === 'minimized' ? (
             <div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border theme-border theme-surface-elevated px-2.5 py-2 shadow-lg sm:px-3">
               <button
                 type="button"
-                onClick={() => setMode('open')}
+                onClick={() => setWidgetMode('open')}
                 className="theme-focus-ring inline-flex min-w-0 items-center gap-2 rounded-full text-sm font-medium theme-text"
                 aria-label="Open ScholaroScope Guide"
               >
@@ -603,7 +663,7 @@ export function AssistantWidget() {
               </button>
               <button
                 type="button"
-                onClick={() => setMode('closed')}
+                onClick={() => setWidgetMode('closed')}
                 className="theme-focus-ring rounded-full p-1 theme-muted transition-colors hover:text-[color:var(--color-text)]"
                 aria-label="Close guide"
               >
@@ -613,7 +673,7 @@ export function AssistantWidget() {
           ) : (
             <Button
               type="button"
-              onClick={() => setMode('open')}
+              onClick={() => setWidgetMode('open')}
               className="pointer-events-auto h-12 w-12 rounded-full px-0 py-0 shadow-lg sm:h-auto sm:w-auto sm:px-4 sm:py-3"
               aria-label="Open ScholaroScope Guide"
             >
@@ -631,7 +691,9 @@ export function AssistantWidget() {
 
       {mode === 'open' ? (
         <div
-          className="pointer-events-none fixed inset-x-2 z-40 max-w-[calc(100vw-1rem)] md:inset-auto md:!bottom-6 md:right-6 md:w-[380px] md:max-w-[calc(100vw-2rem)]"
+          className={`pointer-events-none fixed inset-x-2 z-40 max-w-[calc(100vw-1rem)] md:inset-auto md:!bottom-6 md:w-[380px] md:max-w-[calc(100vw-2rem)] ${
+            desktopSide === 'left' ? 'md:left-6 md:right-auto' : 'md:right-6'
+          }`}
           style={mobileBottomOffsetStyle}
         >
           <Card className="pointer-events-auto theme-surface-elevated h-[75vh] max-h-[75vh] w-full overflow-hidden rounded-2xl border p-0 shadow-2xl md:h-[42rem] md:max-h-[42rem] md:w-[380px]">
@@ -640,7 +702,9 @@ export function AssistantWidget() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Compass className="h-4 w-4 text-[color:var(--color-primary)]" />
-                    <h2 className="truncate text-sm font-semibold theme-text">ScholaroScope Guide</h2>
+                    <h2 className="truncate text-sm font-semibold theme-text">
+                      ScholaroScope Guide
+                    </h2>
                   </div>
                   <p className="mt-1 truncate text-xs theme-muted">
                     {pageContext?.pageTitle ?? 'Contextual help for this workspace'}
@@ -649,7 +713,7 @@ export function AssistantWidget() {
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setMode('minimized')}
+                    onClick={() => setWidgetMode('minimized')}
                     className="theme-focus-ring rounded-lg p-2 theme-hover-surface"
                     aria-label="Minimize guide"
                   >
@@ -657,7 +721,7 @@ export function AssistantWidget() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMode('closed')}
+                    onClick={() => setWidgetMode('closed')}
                     className="theme-focus-ring rounded-lg p-2 theme-hover-surface"
                     aria-label="Close guide"
                   >
@@ -716,7 +780,9 @@ export function AssistantWidget() {
                     ))
                   )}
 
-                  {pendingUserMessage ? <PendingConversation userMessage={pendingUserMessage} /> : null}
+                  {pendingUserMessage ? (
+                    <PendingConversation userMessage={pendingUserMessage} />
+                  ) : null}
 
                   {feedbackOpen ? (
                     <div className="rounded-2xl border theme-border theme-surface-muted p-4">
@@ -761,7 +827,9 @@ export function AssistantWidget() {
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-sm font-medium theme-text">Description</label>
+                          <label className="mb-1 block text-sm font-medium theme-text">
+                            Description
+                          </label>
                           <textarea
                             value={feedbackDescription}
                             onChange={(event) => setFeedbackDescription(event.target.value)}
