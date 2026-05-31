@@ -16,3 +16,5 @@ import '@/app/plugins/announcements/registry/navigationExtension';
 import '@/app/plugins/announcements/registry/routeAccessExtension';
 import '@/app/plugins/requests/registry/navigationExtension';
 import '@/app/plugins/requests/registry/routeAccessExtension';
+import '@/app/plugins/schemes/registry/navigationExtension';
+import '@/app/plugins/schemes/registry/routeAccessExtension';

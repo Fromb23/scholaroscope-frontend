@@ -63,6 +63,7 @@ const platformContextBlockedPatterns: RegExp[] = [
     /^\/learners/,
     /^\/sessions/,
     /^\/lesson-plans/,
+    /^\/schemes/,
     /^\/assessments/,
     /^\/reports/,
     /^\/cbc/,
