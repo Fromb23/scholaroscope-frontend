@@ -42,6 +42,8 @@ import type {
     AssignmentGroupEvaluationUpdatePayload,
     AssignmentGroupReuseSource,
     AssignmentGroupMemberCreatePayload,
+    AssignmentGroupMemberMovePayload,
+    AssignmentGroupMemberParticipationPayload,
     AssignmentGroupSubmission,
     AssignmentGroupSubmissionCreatePayload,
     AssignmentGroupUpdatePayload,
@@ -1038,6 +1040,78 @@ export function useRemoveAssignmentGroupMember() {
         },
         onSuccess: async ({ assignmentId, groupId }) => {
             await invalidateAssignmentGroupDependencies(queryClient, assignmentId, groupId);
+        },
+    });
+}
+
+export function useUpdateAssignmentGroupMemberParticipation() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            groupId,
+            memberId,
+            data,
+        }: {
+            assignmentId: number;
+            groupId: number;
+            memberId: number;
+            data: AssignmentGroupMemberParticipationPayload;
+        }) => {
+            try {
+                return await assignmentGroupAPI.updateMemberParticipation(groupId, memberId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to update learner participation.'));
+            }
+        },
+        onSuccess: async (member, variables) => {
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                variables.assignmentId,
+                variables.groupId
+            );
+            if (member.group !== variables.groupId) {
+                await invalidateAssignmentGroupDependencies(
+                    queryClient,
+                    variables.assignmentId,
+                    member.group
+                );
+            }
+        },
+    });
+}
+
+export function useMoveAssignmentGroupMember() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({
+            groupId,
+            memberId,
+            data,
+        }: {
+            assignmentId: number;
+            groupId: number;
+            memberId: number;
+            data: AssignmentGroupMemberMovePayload;
+        }) => {
+            try {
+                return await assignmentGroupAPI.moveMember(groupId, memberId, data);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to move learner to another group.'));
+            }
+        },
+        onSuccess: async (member, variables) => {
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                variables.assignmentId,
+                variables.groupId
+            );
+            await invalidateAssignmentGroupDependencies(
+                queryClient,
+                variables.assignmentId,
+                member.group
+            );
         },
     });
 }

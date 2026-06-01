@@ -9,10 +9,18 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
-import { useAssessments, useAssessmentScores } from '@/app/core/hooks/useAssessments';
+import {
+    useAssessments,
+    useAssessmentReviewSummary,
+    useAssessmentScores,
+} from '@/app/core/hooks/useAssessments';
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import type { Session } from '@/app/core/types/session';
-import type { Assessment, AssessmentScore } from '@/app/core/types/assessment';
+import type {
+    Assessment,
+    AssessmentReviewSummary,
+    AssessmentScore,
+} from '@/app/core/types/assessment';
 import { cohortSubjectAPI } from '../api/academic';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -58,6 +66,7 @@ function computeMetrics(
     students: { id: number; status?: string }[],
     assessments: Assessment[],
     scores: AssessmentScore[],
+    reviewSummary: AssessmentReviewSummary | null,
     sessions: Session[]
 ): DashboardMetrics {
     const now = new Date();
@@ -79,7 +88,15 @@ function computeMetrics(
         return d >= weekAgo && d <= now;
     }).length;
 
-    const needsGrading = scores.filter(s => !s.score && !s.rubric_level).length;
+    const fallbackNeedsGrading = scores.filter((score) => (
+        score.score == null
+        && score.rubric_level == null
+        && (
+            score.status === 'PENDING_REVIEW'
+            || score.status == null
+        )
+    )).length;
+    const needsGrading = reviewSummary?.pending_review_count ?? fallbackNeedsGrading;
 
     const upcomingSessions = sessions.filter(s => {
         if (!s.start_time) return false;
@@ -131,7 +148,7 @@ function generateAlerts(metrics: DashboardMetrics): DashboardAlert[] {
     if (metrics.assessments.needsGrading > 100) {
         alerts.push({
             id: 1, type: 'warning',
-            message: `${metrics.assessments.needsGrading} assessment scores need grading`,
+            message: `${metrics.assessments.needsGrading} submissions need review`,
             action: 'Grade Now', link: '/assessments',
         });
     }
@@ -179,13 +196,21 @@ export function useAdminDashboard() {
         term: currentTerm?.id,
     });
     const { scores, loading: scoresLoading } = useAssessmentScores();
+    const {
+        summary: reviewSummary,
+        loading: reviewSummaryLoading,
+        refetch: refetchReviewSummary,
+    } = useAssessmentReviewSummary({
+        term: currentTerm?.id,
+        enabled: Boolean(currentTerm?.id),
+    });
 
     const isLoading = studentsLoading || cohortsLoading || sessionsLoading ||
-        assessmentsLoading || scoresLoading || termLoading || yearLoading;
+        assessmentsLoading || scoresLoading || reviewSummaryLoading || termLoading || yearLoading;
 
     const metrics = useMemo(
-        () => computeMetrics(students, assessments, scores, sessions),
-        [students, assessments, scores, sessions]
+        () => computeMetrics(students, assessments, scores, reviewSummary, sessions),
+        [students, assessments, scores, reviewSummary, sessions]
     );
 
     const alerts = useMemo(
@@ -198,9 +223,10 @@ export function useAdminDashboard() {
             refetchStudents(),
             refetchSessions(),
             refetchAssessments(),
+            refetchReviewSummary(),
         ]);
         setLastRefresh(new Date());
-    }, [refetchStudents, refetchSessions, refetchAssessments]);
+    }, [refetchStudents, refetchSessions, refetchAssessments, refetchReviewSummary]);
 
     useEffect(() => {
         cohortSubjectAPI.getUnattended()

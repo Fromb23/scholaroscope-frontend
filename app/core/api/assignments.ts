@@ -32,8 +32,11 @@ import type {
     AssignmentGroupEvaluationListResponse,
     AssignmentGroupEvaluationUpdatePayload,
     AssignmentGroupListResponse,
+    AssignmentGroupMember,
     AssignmentGroupReuseSourceListResponse,
     AssignmentGroupMemberCreatePayload,
+    AssignmentGroupMemberMovePayload,
+    AssignmentGroupMemberParticipationPayload,
     AssignmentGroupSubmission,
     AssignmentGroupSubmissionCreatePayload,
     AssignmentGroupSubmissionListResponse,
@@ -313,6 +316,30 @@ export const assignmentGroupAPI = {
 
     removeMember: async (groupId: number, studentId: number): Promise<void> => {
         await apiClient.delete(`${ASSIGNMENT_GROUPS_BASE}/${groupId}/members/${studentId}/`);
+    },
+
+    updateMemberParticipation: async (
+        groupId: number,
+        memberId: number,
+        data: AssignmentGroupMemberParticipationPayload
+    ): Promise<AssignmentGroupMember> => {
+        const response = await apiClient.patch<AssignmentGroupMember>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/members/${memberId}/participation/`,
+            data
+        );
+        return response.data;
+    },
+
+    moveMember: async (
+        groupId: number,
+        memberId: number,
+        data: AssignmentGroupMemberMovePayload
+    ): Promise<AssignmentGroupMember> => {
+        const response = await apiClient.post<AssignmentGroupMember>(
+            `${ASSIGNMENT_GROUPS_BASE}/${groupId}/members/${memberId}/move/`,
+            data
+        );
+        return response.data;
     },
 
     listSubmissions: async (groupId: number): Promise<AssignmentGroupSubmissionListResponse> => {

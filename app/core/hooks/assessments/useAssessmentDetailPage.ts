@@ -7,8 +7,10 @@ import { useAssessmentDetail, useAssessmentScores } from '@/app/core/hooks/useAs
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAuth } from '@/app/context/AuthContext';
 import {
+    AssessmentScoreStatus,
     AssessmentStatus,
     calculateScoreStats,
+    hasAssessmentScoreDraftField,
     type AssessmentScore,
     type AssessmentScoreDraft,
     getAssessmentScoreDraftValue,
@@ -98,6 +100,11 @@ export function useAssessmentDetailPage() {
                 'comments',
                 score.comments ?? ''
             ) ?? '';
+            const currentStatus = getAssessmentScoreDraftValue(
+                scoreDraft,
+                'status',
+                score.status
+            );
             const currentRubricLevel = currentRubricLevelId != null
                 ? rubricLevelById.get(currentRubricLevelId)
                 : null;
@@ -118,6 +125,8 @@ export function useAssessmentDetailPage() {
                 currentPercentage,
                 currentRubricCode,
                 currentRubricLabel,
+                currentStatus,
+                score.status_display,
                 currentComments,
             ].some((value) => normalizeSearchValue(value).includes(normalizedQuery));
         });
@@ -157,10 +166,36 @@ export function useAssessmentDetailPage() {
         field: keyof AssessmentScoreDraft,
         value: number | string | null
     ) => {
-        setDraft((previous) => ({
-            ...previous,
-            [studentId]: { ...previous[studentId], [field]: value },
-        }));
+        setDraft((previous) => {
+            const nextDraft = {
+                ...(previous[studentId] ?? {}),
+                [field]: value,
+            };
+
+            if (field === 'status') {
+                const nextStatus = value as AssessmentScoreStatus | null;
+                if (
+                    nextStatus != null
+                    && nextStatus !== AssessmentScoreStatus.PENDING_REVIEW
+                ) {
+                    nextDraft.score = null;
+                    nextDraft.rubric_level = null;
+                }
+            }
+
+            if (
+                (field === 'score' || field === 'rubric_level')
+                && value != null
+                && hasAssessmentScoreDraftField(nextDraft, 'status')
+            ) {
+                delete nextDraft.status;
+            }
+
+            return {
+                ...previous,
+                [studentId]: nextDraft,
+            };
+        });
     };
 
     const handleSaveScores = async () => {
@@ -191,17 +226,29 @@ export function useAssessmentDetailPage() {
                         'comments',
                         score.comments ?? ''
                     );
+                    const resolvedStatus = getAssessmentScoreDraftValue(
+                        scoreDraft,
+                        'status',
+                        score.status
+                    );
+                    const statusWasEdited = hasAssessmentScoreDraftField(
+                        scoreDraft,
+                        'status'
+                    );
 
                     return {
-                    student_id: score.student,
-                    score: assessment.evaluation_type === 'NUMERIC'
-                        ? (resolvedScore ?? undefined)
-                        : undefined,
-                    rubric_level_id: assessment.evaluation_type === 'RUBRIC'
-                        ? (resolvedRubricLevel ?? undefined)
-                        : undefined,
-                    comments: resolvedComments ?? '',
-                };
+                        student_id: score.student,
+                        score: assessment.evaluation_type === 'NUMERIC'
+                            ? (resolvedScore ?? undefined)
+                            : undefined,
+                        rubric_level_id: assessment.evaluation_type === 'RUBRIC'
+                            ? (resolvedRubricLevel ?? undefined)
+                            : undefined,
+                        ...(statusWasEdited && resolvedStatus != null
+                            ? { status: resolvedStatus }
+                            : {}),
+                        comments: resolvedComments ?? '',
+                    };
                 }),
                 scored_by: scoredBy,
             });

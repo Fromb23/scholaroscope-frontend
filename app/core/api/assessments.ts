@@ -13,7 +13,8 @@ import {
   RubricLevel,
   BulkScoreData,
   AssessmentStatistics,
-  StudentScoresResponse
+  StudentScoresResponse,
+  AssessmentReviewSummary,
 } from '../types/assessment';
 import type { PaginatedResponse } from '@/app/core/types/api';
 
@@ -162,6 +163,18 @@ export const assessmentAPI = {
   getClassStatistics: async (id: number) => {
     const response = await apiClient.get<AssessmentStatistics>(
       `/assessments/${id}/class_statistics/`
+    );
+    return response.data;
+  },
+
+  getReviewSummary: async (term?: number): Promise<AssessmentReviewSummary> => {
+    const response = await apiClient.get<AssessmentReviewSummary>(
+      '/assessments/review-summary/',
+      {
+        params: {
+          term,
+        },
+      }
     );
     return response.data;
   },

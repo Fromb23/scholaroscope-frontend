@@ -18,6 +18,7 @@ import {
   RubricScaleDetail,
   BulkScoreData,
   StudentScoresResponse,
+  AssessmentReviewSummary,
 } from '../types/assessment';
 import { PaginatedResponse } from '@/app/core/types/api';
 import { ApiError, extractErrorMessage } from '../types/errors';
@@ -301,6 +302,50 @@ export const useAssessmentScores = (params?: {
     scores, loading, error, totalItems,
     refetch: fetchScores,
     updateScore, bulkEntry,
+  };
+};
+
+export const useAssessmentReviewSummary = (params?: {
+  term?: number;
+  enabled?: boolean;
+}) => {
+  const [summary, setSummary] = useState<AssessmentReviewSummary | null>(null);
+  const [loading, setLoading] = useState(params?.enabled !== false);
+  const [error, setError] = useState<string | null>(null);
+  const enabled = params?.enabled ?? true;
+
+  const fetchSummary = useCallback(async () => {
+    if (!enabled) {
+      setSummary(null);
+      setError(null);
+      setLoading(false);
+      return null;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await assessmentAPI.getReviewSummary(params?.term);
+      setSummary(data);
+      return data;
+    } catch (err) {
+      setSummary(null);
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessment review summary'));
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, params?.term]);
+
+  useEffect(() => {
+    void fetchSummary();
+  }, [fetchSummary]);
+
+  return {
+    summary,
+    loading,
+    error,
+    refetch: fetchSummary,
   };
 };
 
