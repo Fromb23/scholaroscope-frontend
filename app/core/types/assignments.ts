@@ -356,6 +356,14 @@ export interface AssignmentGroup {
     updated_at: string;
 }
 
+export type AssignmentGroupMemberParticipationStatus =
+    | 'PARTICIPATED'
+    | 'ABSENT'
+    | 'DID_NOT_PARTICIPATE'
+    | 'EXCUSED'
+    | 'LATE_ADDED'
+    | 'REMOVED';
+
 export interface AssignmentGroupMember {
     id: number;
     assignment: number;
@@ -364,6 +372,10 @@ export interface AssignmentGroupMember {
     student_name: string;
     admission_number: string;
     joined_at: string;
+    participation_status: AssignmentGroupMemberParticipationStatus;
+    participation_status_display: string;
+    participation_note?: string;
+    left_at?: string | null;
 }
 
 export interface AssignmentGroupCreatePayload {
@@ -397,6 +409,15 @@ export interface AssignmentGroupBulkMemberCreateResponse {
     created_count: number;
     existing_count: number;
     group: AssignmentGroup;
+}
+
+export interface AssignmentGroupMemberParticipationPayload {
+    participation_status: AssignmentGroupMemberParticipationStatus;
+    participation_note?: string;
+}
+
+export interface AssignmentGroupMemberMovePayload {
+    target_group_id: number;
 }
 
 export interface AssignmentAutoGenerateGroupsPayload {

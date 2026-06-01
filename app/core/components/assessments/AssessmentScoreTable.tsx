@@ -6,6 +6,7 @@ import type { Column } from '@/app/components/ui/Table';
 import {
     AssessmentScore,
     AssessmentDetail,
+    AssessmentScoreStatus,
     type AssessmentScoreDraft,
     getAssessmentScoreDraftValue,
 } from '@/app/core/types/assessment';
@@ -22,11 +23,53 @@ interface Props {
 const fieldClasses = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500';
 const sectionLabelClasses = 'text-xs font-medium uppercase tracking-wide text-gray-500';
 
+const STATUS_LABELS: Record<AssessmentScoreStatus, string> = {
+    [AssessmentScoreStatus.PENDING_REVIEW]: 'Needs review',
+    [AssessmentScoreStatus.GRADED]: 'Graded',
+    [AssessmentScoreStatus.ABSENT]: 'Absent',
+    [AssessmentScoreStatus.EXCUSED]: 'Excused',
+    [AssessmentScoreStatus.NOT_ASSIGNED]: 'Not assigned',
+    [AssessmentScoreStatus.NOT_ADMITTED_YET]: 'Not admitted yet',
+    [AssessmentScoreStatus.LATE_ENROLLED]: 'Joined after assessment',
+};
+
+const STATUS_OPTIONS = [
+    { value: AssessmentScoreStatus.PENDING_REVIEW, label: STATUS_LABELS.PENDING_REVIEW },
+    { value: AssessmentScoreStatus.ABSENT, label: STATUS_LABELS.ABSENT },
+    { value: AssessmentScoreStatus.EXCUSED, label: STATUS_LABELS.EXCUSED },
+    { value: AssessmentScoreStatus.LATE_ENROLLED, label: STATUS_LABELS.LATE_ENROLLED },
+    { value: AssessmentScoreStatus.NOT_ASSIGNED, label: STATUS_LABELS.NOT_ASSIGNED },
+    { value: AssessmentScoreStatus.NOT_ADMITTED_YET, label: STATUS_LABELS.NOT_ADMITTED_YET },
+];
+
 export function AssessmentScoreTable({
     assessment, scores, draft, loading, readOnly, onScoreChange,
 }: Props) {
+    const resolveRowValues = (row: AssessmentScore) => {
+        const scoreDraft = draft[row.student];
+        const currentScore = getAssessmentScoreDraftValue(scoreDraft, 'score', row.score);
+        const currentRubricLevel = getAssessmentScoreDraftValue(
+            scoreDraft,
+            'rubric_level',
+            row.rubric_level
+        );
+        const currentStatus = getAssessmentScoreDraftValue(
+            scoreDraft,
+            'status',
+            row.status
+        ) ?? AssessmentScoreStatus.PENDING_REVIEW;
+        const hasRecordedGrade = currentScore != null || currentRubricLevel != null;
+
+        return {
+            currentScore,
+            currentRubricLevel,
+            currentStatus,
+            hasRecordedGrade,
+        };
+    };
+
     const renderNumericScoreInput = (row: AssessmentScore, stacked = false) => {
-        const current = getAssessmentScoreDraftValue(draft[row.student], 'score', row.score);
+        const { currentScore: current } = resolveRowValues(row);
         const percentage = (
             current != null
             && assessment.total_marks
@@ -63,7 +106,7 @@ export function AssessmentScoreTable({
 
     const renderRubricLevelSelect = (row: AssessmentScore) => (
         <select
-            value={(getAssessmentScoreDraftValue(draft[row.student], 'rubric_level', row.rubric_level))?.toString() ?? ''}
+            value={(resolveRowValues(row).currentRubricLevel)?.toString() ?? ''}
             disabled={readOnly}
             onChange={(event) => onScoreChange(
                 row.student,
@@ -92,6 +135,50 @@ export function AssessmentScoreTable({
         />
     );
 
+    const renderStatusSelect = (row: AssessmentScore) => {
+        const { currentStatus, hasRecordedGrade } = resolveRowValues(row);
+        const statusLabel = STATUS_LABELS[currentStatus] ?? row.status_display ?? 'Needs review';
+
+        if (hasRecordedGrade) {
+            return (
+                <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                    {STATUS_LABELS.GRADED}
+                </span>
+            );
+        }
+
+        if (readOnly) {
+            return (
+                <span className={[
+                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                    currentStatus === AssessmentScoreStatus.PENDING_REVIEW
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-slate-100 text-slate-700',
+                ].join(' ')}>
+                    {statusLabel}
+                </span>
+            );
+        }
+
+        return (
+            <select
+                value={currentStatus}
+                onChange={(event) => onScoreChange(
+                    row.student,
+                    'status',
+                    event.target.value as AssessmentScoreStatus
+                )}
+                className={fieldClasses}
+            >
+                {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                        {option.label}
+                    </option>
+                ))}
+            </select>
+        );
+    };
+
     const columns: Column<AssessmentScore>[] = [
         {
             key: 'student_name', header: 'Student', sortable: true,
@@ -105,6 +192,11 @@ export function AssessmentScoreTable({
         {
             key: 'student_admission', header: 'Admission No.', sortable: true,
             render: row => <span className="text-gray-600">{row.student_admission}</span>,
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            render: row => renderStatusSelect(row),
         },
     ];
 
@@ -171,6 +263,11 @@ export function AssessmentScoreTable({
                                         {renderRubricLevelSelect(row)}
                                     </div>
                                 )}
+
+                                <div className="space-y-1.5">
+                                    <p className={sectionLabelClasses}>Status</p>
+                                    {renderStatusSelect(row)}
+                                </div>
 
                                 <div className="space-y-1.5">
                                     <p className={sectionLabelClasses}>Comments</p>

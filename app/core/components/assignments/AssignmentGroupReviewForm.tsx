@@ -72,6 +72,10 @@ function buildCompetencyOptions() {
     ];
 }
 
+function isParticipatingMember(member: AssignmentGroupMember) {
+    return member.participation_status === 'PARTICIPATED';
+}
+
 function buildInitialOverrideDrafts(
     members: AssignmentGroupMember[],
     evaluation?: AssignmentGroupEvaluation | null,
@@ -220,6 +224,10 @@ export function AssignmentGroupReviewForm({
         }
 
         return groupMembers.flatMap((member) => {
+            if (!isParticipatingMember(member)) {
+                return [];
+            }
+
             const draft = overrideDrafts[member.student];
             if (!draft?.enabled) {
                 return [];
@@ -410,6 +418,46 @@ export function AssignmentGroupReviewForm({
                 options={PROJECTION_MODE_OPTIONS}
             />
 
+            <div className="space-y-3 rounded-lg border theme-border theme-surface-muted p-4">
+                <div className="space-y-1">
+                    <div className="text-sm font-medium theme-text">Group participation</div>
+                    <p className="text-sm theme-muted">
+                        This group score applies only to learners marked as participated.
+                    </p>
+                </div>
+
+                {groupMembers.length === 0 ? (
+                    <p className="text-sm theme-muted">Add group members before recording a group review.</p>
+                ) : (
+                    <div className="space-y-2">
+                        {groupMembers.map((member) => (
+                            <div
+                                key={member.id}
+                                className="flex flex-col gap-2 rounded-lg border theme-border theme-surface-elevated px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
+                            >
+                                <div className="min-w-0">
+                                    <div className="text-sm font-medium theme-text">{member.student_name}</div>
+                                    <div className="text-xs theme-subtle">{member.admission_number}</div>
+                                    {member.participation_note ? (
+                                        <div className="mt-1 text-xs theme-muted">{member.participation_note}</div>
+                                    ) : null}
+                                </div>
+                                <div className="text-left sm:text-right">
+                                    <div className="text-xs font-medium theme-subtle">
+                                        {member.participation_status_display}
+                                    </div>
+                                    <div className="text-xs theme-muted">
+                                        {isParticipatingMember(member)
+                                            ? 'Receives group evidence'
+                                            : 'Does not receive group evidence'}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {projectionMode === 'APPLY_WITH_OVERRIDES' ? (
                 <div className="space-y-3 rounded-lg border theme-border theme-surface-muted p-4">
                     <div className="space-y-1">
@@ -419,8 +467,8 @@ export function AssignmentGroupReviewForm({
                         </p>
                     </div>
 
-                    <div className="theme-warning-surface rounded-lg px-4 py-3 text-sm">
-                        Per-learner evidence exclusion is not available from the current backend response, so overrides can only adjust score and feedback fields.
+                    <div className="theme-info-surface rounded-lg px-4 py-3 text-sm">
+                        This group score applies only to learners marked as participated.
                     </div>
 
                     {groupMembers.length === 0 ? (
@@ -440,24 +488,48 @@ export function AssignmentGroupReviewForm({
 
                                 return (
                                     <div key={member.id} className="rounded-lg border theme-border theme-surface-elevated p-4">
-                                        <label className="flex items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                checked={draft.enabled}
-                                                onChange={(event) => updateOverrideDraft(member.student, 'enabled', event.target.checked)}
-                                                className="theme-checkbox mt-1 h-4 w-4 rounded theme-border"
-                                            />
-                                            <div className="flex-1">
-                                                <div className="text-sm font-medium theme-text">
-                                                    {member.student_name}
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <label className="flex items-start gap-3">
+                                                {isParticipatingMember(member) ? (
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={draft.enabled}
+                                                        onChange={(event) => updateOverrideDraft(member.student, 'enabled', event.target.checked)}
+                                                        className="theme-checkbox mt-1 h-4 w-4 rounded theme-border"
+                                                    />
+                                                ) : (
+                                                    <span className="mt-1 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium theme-subtle">
+                                                        Skip
+                                                    </span>
+                                                )}
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-medium theme-text">
+                                                        {member.student_name}
+                                                    </div>
+                                                    <div className="text-xs theme-subtle">
+                                                        {member.admission_number}
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs theme-subtle">
-                                                    {member.admission_number}
-                                                </div>
-                                            </div>
-                                        </label>
+                                            </label>
 
-                                        {draft.enabled ? (
+                                            <div className="space-y-1 text-left sm:text-right">
+                                                <div className="text-xs font-medium theme-subtle">
+                                                    {member.participation_status_display}
+                                                </div>
+                                                {!isParticipatingMember(member) ? (
+                                                    <div className="text-xs theme-muted">
+                                                        This learner will not receive group evidence.
+                                                    </div>
+                                                ) : null}
+                                                {member.participation_note ? (
+                                                    <div className="text-xs theme-subtle">
+                                                        {member.participation_note}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        </div>
+
+                                        {isParticipatingMember(member) && draft.enabled ? (
                                             <div className="mt-4 grid gap-3 md:grid-cols-2">
                                                 {evaluationType === 'NUMERIC' ? (
                                                     <Input
@@ -502,12 +574,9 @@ export function AssignmentGroupReviewForm({
                                                 </div>
 
                                                 <label className="flex items-start gap-3 rounded-lg border theme-border px-4 py-3 text-sm theme-muted md:col-span-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        disabled
-                                                        className="theme-checkbox mt-1 h-4 w-4 rounded theme-border"
-                                                    />
-                                                    <span>Exclude from evidence is awaiting backend support.</span>
+                                                    <span>
+                                                        Overrides adjust feedback and scores for participating learners only.
+                                                    </span>
                                                 </label>
                                             </div>
                                         ) : null}

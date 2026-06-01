@@ -44,6 +44,16 @@ export enum AssessmentStatus {
   FINALIZED = 'FINALIZED',
 }
 
+export enum AssessmentScoreStatus {
+  PENDING_REVIEW = 'PENDING_REVIEW',
+  GRADED = 'GRADED',
+  ABSENT = 'ABSENT',
+  EXCUSED = 'EXCUSED',
+  NOT_ASSIGNED = 'NOT_ASSIGNED',
+  NOT_ADMITTED_YET = 'NOT_ADMITTED_YET',
+  LATE_ENROLLED = 'LATE_ENROLLED',
+}
+
 export interface RubricLevel {
   id: number;
   rubric_scale: number;
@@ -140,6 +150,10 @@ export interface AssessmentScore {
   rubric_level: number | null;
   rubric_level_label: string | null;
   rubric_level_code: string | null;
+  status: AssessmentScoreStatus;
+  status_display: string;
+  status_note?: string;
+  is_pending_review: boolean;
   comments: string;
   submitted_at: string | null;
   graded_at: string;
@@ -149,7 +163,18 @@ export interface AssessmentScore {
 export interface AssessmentScoreDraft {
   score?: number | null;
   rubric_level?: number | null;
+  status?: AssessmentScoreStatus | null;
   comments?: string;
+}
+
+export interface AssessmentReviewSummary {
+  pending_review_count: number;
+  graded_count: number;
+  absent_count: number;
+  excused_count: number;
+  late_enrolled_count: number;
+  not_assigned_count: number;
+  not_admitted_yet_count: number;
 }
 
 export interface AssessmentStatistics {
@@ -194,6 +219,7 @@ export interface BulkScoreData {
     student_id: number;
     score?: number;
     rubric_level_id?: number;
+    status?: AssessmentScoreStatus;
     comments?: string;
     narrative?: string;
   }[];

@@ -190,10 +190,13 @@ function buildNextAction({
     }
 
     if (metrics.assessments.needsGrading > 0) {
+        const reviewExemptCount = metrics.assessments.reviewExemptCount;
         return {
             key: 'grade-pending-work',
             title: 'Grade pending work',
-            description: `${metrics.assessments.needsGrading} assessment${metrics.assessments.needsGrading === 1 ? '' : 's'} still need your review.`,
+            description: reviewExemptCount > 0
+                ? `${metrics.assessments.needsGrading} submission${metrics.assessments.needsGrading === 1 ? '' : 's'} need review · ${reviewExemptCount} absent/not eligible.`
+                : `${metrics.assessments.needsGrading} submission${metrics.assessments.needsGrading === 1 ? '' : 's'} need review.`,
             primaryLabel: 'Grade work',
             primaryPath: '/assessments?status=pending',
             secondaryLabel: 'Open assessments',

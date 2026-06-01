@@ -578,10 +578,10 @@ export function AssessmentsSummaryCard({
                     onClick={() => router.push('/assessments?status=pending')}
                     className="rounded-xl p-4 text-left theme-warning-surface transition-all hover:scale-[1.02] hover:shadow-md"
                 >
-                    <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Needs grading</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Needs review</p>
                     <p className="mt-2 text-3xl font-bold text-amber-700">{needsGrading}</p>
                     <p className="mt-1 text-xs theme-muted">
-                        {needsGrading > 0 ? 'Open your grading queue.' : 'No grading backlog right now.'}
+                        {needsGrading > 0 ? 'Open your review queue.' : 'No review queue right now.'}
                     </p>
                 </button>
                 <button

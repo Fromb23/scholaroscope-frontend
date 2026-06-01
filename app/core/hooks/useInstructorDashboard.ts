@@ -8,10 +8,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
-import { useAssessments, useAssessmentScores } from '@/app/core/hooks/useAssessments';
+import {
+    useAssessments,
+    useAssessmentReviewSummary,
+    useAssessmentScores,
+} from '@/app/core/hooks/useAssessments';
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import { useInstructorAttendanceRisk } from '@/app/core/hooks/useInstructorAttendanceRisk';
 import type { Session } from '@/app/core/types/session';
+import type { AssessmentReviewSummary, AssessmentScoreStatus } from '@/app/core/types/assessment';
 import type {
     TeachingAssignment,
     HistoryEntry,
@@ -34,6 +39,7 @@ export interface InstructorMetrics {
     };
     assessments: {
         needsGrading: number;
+        reviewExemptCount: number;
         upcoming: number;
     };
     sessions: {
@@ -51,7 +57,13 @@ export interface InstructorMetrics {
 function computeInstructorMetrics(
     students: { id: number; status?: string }[],
     assessments: { assessment_date?: string | null }[],
-    scores: { score?: number | null; rubric_level?: number | null; assessment?: unknown }[],
+    scores: {
+        score?: number | null;
+        rubric_level?: number | null;
+        status?: AssessmentScoreStatus;
+        assessment?: unknown;
+    }[],
+    reviewSummary: AssessmentReviewSummary | null,
     sessions: Session[],
     attendanceRiskCount: number,
     attendanceRiskLearnerCount: number,
@@ -61,7 +73,24 @@ function computeInstructorMetrics(
 
     const activeStudents = students.filter(s => s.status === 'ACTIVE');
 
-    const needsGrading = scores.filter(s => !s.score && !s.rubric_level).length;
+    const fallbackNeedsGrading = scores.filter((score) => (
+        score.score == null
+        && score.rubric_level == null
+        && (
+            score.status === 'PENDING_REVIEW'
+            || score.status == null
+        )
+    )).length;
+    const needsGrading = reviewSummary?.pending_review_count ?? fallbackNeedsGrading;
+    const reviewExemptCount = reviewSummary
+        ? (
+            reviewSummary.absent_count
+            + reviewSummary.excused_count
+            + reviewSummary.late_enrolled_count
+            + reviewSummary.not_assigned_count
+            + reviewSummary.not_admitted_yet_count
+        )
+        : 0;
     const upcomingAssessments = assessments.filter(a => {
         if (!a.assessment_date) return false;
         const d = new Date(a.assessment_date);
@@ -101,7 +130,11 @@ function computeInstructorMetrics(
             riskCount: attendanceRiskCount,
             riskLearnerCount: attendanceRiskLearnerCount,
         },
-        assessments: { needsGrading, upcoming: upcomingAssessments },
+        assessments: {
+            needsGrading,
+            reviewExemptCount,
+            upcoming: upcomingAssessments,
+        },
         sessions: { today: sessions.length, upcoming: upcomingSessions },
         performance: { averageScore, needsSupport },
     };
@@ -113,7 +146,7 @@ function generateInstructorAlerts(metrics: InstructorMetrics): DashboardAlert[] 
     if (metrics.assessments.needsGrading > 50) {
         alerts.push({
             id: 1, type: 'warning',
-            message: `${metrics.assessments.needsGrading} assignments need grading`,
+            message: `${metrics.assessments.needsGrading} submissions need review`,
             action: 'Grade Now', link: '/assessments',
         });
     }
@@ -212,6 +245,14 @@ export function useInstructorDashboard() {
     });
     const { scores, loading: scoresLoading } = useAssessmentScores();
     const {
+        summary: reviewSummary,
+        loading: reviewSummaryLoading,
+        refetch: refetchReviewSummary,
+    } = useAssessmentReviewSummary({
+        term: currentTerm?.id,
+        enabled: Boolean(currentTerm?.id),
+    });
+    const {
         count: attendanceRiskCount,
         uniqueLearnerCount: attendanceRiskLearnerCount,
         loading: attendanceRiskLoading,
@@ -222,18 +263,28 @@ export function useInstructorDashboard() {
     });
 
     const isLoading = studentsLoading || sessionsLoading ||
-        assessmentsLoading || scoresLoading || termLoading || yearLoading || teachingLoadLoading;
+        assessmentsLoading || scoresLoading || reviewSummaryLoading ||
+        termLoading || yearLoading || teachingLoadLoading;
 
     const metrics = useMemo(
         () => computeInstructorMetrics(
             students,
             assessments,
             scores,
+            reviewSummary,
             sessions,
             attendanceRiskCount,
             attendanceRiskLearnerCount,
         ),
-        [students, assessments, scores, sessions, attendanceRiskCount, attendanceRiskLearnerCount]
+        [
+            students,
+            assessments,
+            scores,
+            reviewSummary,
+            sessions,
+            attendanceRiskCount,
+            attendanceRiskLearnerCount,
+        ]
     );
 
     const alerts = useMemo(
@@ -278,11 +329,19 @@ export function useInstructorDashboard() {
             refetchStudents(),
             refetchSessions(),
             refetchAssessments(),
+            refetchReviewSummary(),
             refetchAttendanceRisk(),
             loadTeachingLoad(),
         ]);
         setLastRefresh(new Date());
-    }, [refetchStudents, refetchSessions, refetchAssessments, refetchAttendanceRisk, loadTeachingLoad]);
+    }, [
+        refetchStudents,
+        refetchSessions,
+        refetchAssessments,
+        refetchReviewSummary,
+        refetchAttendanceRisk,
+        loadTeachingLoad,
+    ]);
 
     useEffect(() => {
         const interval = setInterval(refresh, 5 * 60 * 1000);

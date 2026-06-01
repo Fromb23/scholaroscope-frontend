@@ -43,7 +43,9 @@ import {
     useCopyAssignmentGroupsFromSource,
     useCreateAssignmentGroup,
     useDeleteAssignmentGroup,
+    useMoveAssignmentGroupMember,
     useRemoveAssignmentGroupMember,
+    useUpdateAssignmentGroupMemberParticipation,
     useUpdateAssignmentGroup,
 } from '@/app/core/hooks/useAssignments';
 import type {
@@ -51,6 +53,8 @@ import type {
     AssignmentAutoGenerateMode,
     AssignmentEligibleLearner,
     AssignmentGroup,
+    AssignmentGroupMember,
+    AssignmentGroupMemberParticipationStatus,
     AssignmentGroupReuseSource,
 } from '@/app/core/types/assignments';
 
@@ -66,6 +70,12 @@ type GroupWorkflowMode = 'CREATE' | 'GENERATE' | 'REUSE';
 type GroupDraft = {
     name: string;
     notes: string;
+};
+
+type MemberDraft = {
+    participationStatus: AssignmentGroupMemberParticipationStatus;
+    participationNote: string;
+    moveTargetGroupId: number | '';
 };
 
 const textareaClassName = [
@@ -141,6 +151,23 @@ function mergeSelection(currentIds: number[], nextIds: number[]): number[] {
 
 function formatDate(value?: string | null): string {
     return value ? new Date(value).toLocaleDateString() : '-';
+}
+
+function getParticipationStatusClass(status: AssignmentGroupMemberParticipationStatus): string {
+    if (status === 'PARTICIPATED') return 'theme-success-surface';
+    if (status === 'REMOVED') return 'theme-warning-surface';
+    return 'theme-surface-muted theme-border theme-muted';
+}
+
+function getParticipationStatusOptions() {
+    return [
+        { value: 'PARTICIPATED', label: 'Participated' },
+        { value: 'ABSENT', label: 'Absent' },
+        { value: 'DID_NOT_PARTICIPATE', label: 'Did not participate' },
+        { value: 'EXCUSED', label: 'Excused' },
+        { value: 'LATE_ADDED', label: 'Late added' },
+        { value: 'REMOVED', label: 'Removed' },
+    ];
 }
 
 interface CollapsibleSectionProps {
@@ -351,10 +378,17 @@ function GroupSummaryRow({
     saving,
     deleting,
     removing,
+    updatingMember,
+    movingMember,
+    memberDrafts,
+    groupOptions,
     onToggle,
     onDraftChange,
     onSave,
     onDelete,
+    onMemberDraftChange,
+    onSaveMemberParticipation,
+    onMoveMember,
     onRemoveMember,
 }: {
     group: AssignmentGroup;
@@ -363,10 +397,17 @@ function GroupSummaryRow({
     saving: boolean;
     deleting: boolean;
     removing: boolean;
+    updatingMember: boolean;
+    movingMember: boolean;
+    memberDrafts: Record<number, MemberDraft>;
+    groupOptions: Array<{ value: number; label: string }>;
     onToggle: () => void;
     onDraftChange: (nextDraft: GroupDraft) => void;
     onSave: () => void;
     onDelete: () => void;
+    onMemberDraftChange: (memberId: number, nextDraft: MemberDraft) => void;
+    onSaveMemberParticipation: (member: AssignmentGroupMember) => void;
+    onMoveMember: (member: AssignmentGroupMember) => void;
     onRemoveMember: (studentId: number, studentName: string) => void;
 }) {
     const memberCount = group.member_count ?? group.members?.length ?? 0;
@@ -459,7 +500,7 @@ function GroupSummaryRow({
                             <div className="space-y-1">
                                 <div className="text-sm font-medium theme-text">Learners</div>
                                 <p className="text-sm theme-muted">
-                                    Remove learners one at a time here. Bulk additions stay in the add-learners section.
+                                    Update participation, move learners between groups, or remove them here. Bulk additions stay in the add-learners section.
                                 </p>
                             </div>
 
@@ -467,30 +508,114 @@ function GroupSummaryRow({
                                 <p className="mt-3 text-sm theme-muted">No learners added yet.</p>
                             ) : (
                                 <div className="mt-3 space-y-2">
-                                    {(group.members ?? []).map((member) => (
-                                        <div
-                                            key={member.id}
-                                            className="flex flex-col gap-3 rounded-lg border theme-border theme-surface-elevated px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                                        >
-                                            <div className="min-w-0">
-                                                <div className="truncate text-sm font-medium theme-text">
-                                                    {member.student_name}
-                                                </div>
-                                                <div className="text-xs theme-subtle">{member.admission_number}</div>
-                                            </div>
+                                    {(group.members ?? []).map((member) => {
+                                        const memberDraft = memberDrafts[member.id] ?? {
+                                            participationStatus: member.participation_status,
+                                            participationNote: member.participation_note ?? '',
+                                            moveTargetGroupId: '',
+                                        };
+                                        const availableTargetGroups = groupOptions.filter(
+                                            (option) => option.value !== group.id
+                                        );
+                                        const excludedFromEvidence = member.participation_status !== 'PARTICIPATED';
 
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                className="w-full sm:w-auto"
-                                                onClick={() => onRemoveMember(member.student, member.student_name)}
-                                                disabled={removing}
+                                        return (
+                                            <div
+                                                key={member.id}
+                                                className="space-y-3 rounded-lg border theme-border theme-surface-elevated px-4 py-3"
                                             >
-                                                Remove
-                                            </Button>
-                                        </div>
-                                    ))}
+                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                    <div className="min-w-0">
+                                                        <div className="truncate text-sm font-medium theme-text">
+                                                            {member.student_name}
+                                                        </div>
+                                                        <div className="text-xs theme-subtle">{member.admission_number}</div>
+                                                    </div>
+
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`rounded-full border px-2 py-0.5 text-xs ${getParticipationStatusClass(member.participation_status)}`}>
+                                                            {member.participation_status_display}
+                                                        </span>
+                                                        {excludedFromEvidence ? (
+                                                            <span className="text-xs theme-muted">
+                                                                Excluded from group evidence
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid gap-3 lg:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_minmax(0,13rem)]">
+                                                    <Select
+                                                        label="Participation"
+                                                        value={memberDraft.participationStatus}
+                                                        onChange={(event) => onMemberDraftChange(member.id, {
+                                                            ...memberDraft,
+                                                            participationStatus: event.target.value as AssignmentGroupMemberParticipationStatus,
+                                                        })}
+                                                        options={getParticipationStatusOptions()}
+                                                    />
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium theme-text">Participation note</label>
+                                                        <textarea
+                                                            value={memberDraft.participationNote}
+                                                            onChange={(event) => onMemberDraftChange(member.id, {
+                                                                ...memberDraft,
+                                                                participationNote: event.target.value,
+                                                            })}
+                                                            rows={3}
+                                                            className={textareaClassName}
+                                                            placeholder="Add absence, excusal, or participation notes"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <Button
+                                                            type="button"
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            className="w-full"
+                                                            onClick={() => onSaveMemberParticipation(member)}
+                                                            disabled={updatingMember}
+                                                        >
+                                                            {updatingMember ? 'Saving...' : 'Save status'}
+                                                        </Button>
+
+                                                        <Select
+                                                            label="Move to group"
+                                                            value={memberDraft.moveTargetGroupId}
+                                                            onChange={(event) => onMemberDraftChange(member.id, {
+                                                                ...memberDraft,
+                                                                moveTargetGroupId: event.target.value ? Number(event.target.value) : '',
+                                                            })}
+                                                            options={[
+                                                                { value: '', label: availableTargetGroups.length > 0 ? 'Choose group' : 'No other groups' },
+                                                                ...availableTargetGroups,
+                                                            ]}
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="w-full"
+                                                            onClick={() => onMoveMember(member)}
+                                                            disabled={movingMember || availableTargetGroups.length === 0 || memberDraft.moveTargetGroupId === ''}
+                                                        >
+                                                            Move learner
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="w-full"
+                                                            onClick={() => onRemoveMember(member.student, member.student_name)}
+                                                            disabled={removing}
+                                                        >
+                                                            Remove
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -529,6 +654,8 @@ export function AssignmentGroupsPanel({
     const updateMutation = useUpdateAssignmentGroup();
     const deleteMutation = useDeleteAssignmentGroup();
     const bulkAddMutation = useBulkAddAssignmentGroupMembers();
+    const updateMemberParticipationMutation = useUpdateAssignmentGroupMemberParticipation();
+    const moveMemberMutation = useMoveAssignmentGroupMember();
     const autoGenerateMutation = useAutoGenerateAssignmentGroups(assignment.id);
     const copyGroupsMutation = useCopyAssignmentGroupsFromSource(assignment.id);
     const removeMemberMutation = useRemoveAssignmentGroupMember();
@@ -542,6 +669,7 @@ export function AssignmentGroupsPanel({
     const [groupName, setGroupName] = useState('');
     const [groupNotes, setGroupNotes] = useState('');
     const [renameDrafts, setRenameDrafts] = useState<Record<number, GroupDraft>>({});
+    const [memberDrafts, setMemberDrafts] = useState<Record<number, MemberDraft>>({});
 
     const [manualGroupId, setManualGroupId] = useState<number | null>(null);
     const [manualSearch, setManualSearch] = useState('');
@@ -596,6 +724,18 @@ export function AssignmentGroupsPanel({
                 },
             ])
         ));
+        setMemberDrafts(() => Object.fromEntries(
+            groups.flatMap((group) => (
+                (group.members ?? []).map((member) => [
+                    member.id,
+                    {
+                        participationStatus: member.participation_status,
+                        participationNote: member.participation_note ?? '',
+                        moveTargetGroupId: '',
+                    },
+                ])
+            ))
+        ));
     }, [groups]);
 
     useEffect(() => {
@@ -635,7 +775,11 @@ export function AssignmentGroupsPanel({
 
     const assignedStudentIds = useMemo(() => (
         new Set(
-            groups.flatMap((group) => (group.members ?? []).map((member) => member.student))
+            groups.flatMap((group) => (
+                (group.members ?? [])
+                    .filter((member) => member.participation_status !== 'REMOVED')
+                    .map((member) => member.student)
+            ))
         )
     ), [groups]);
 
@@ -675,7 +819,14 @@ export function AssignmentGroupsPanel({
         [reuseSourcesQuery.sources, selectedReuseSourceId]
     );
     const groupedLearnerCount = useMemo(
-        () => groups.reduce((total, group) => total + (group.member_count ?? group.members?.length ?? 0), 0),
+        () => groups.reduce(
+            (total, group) => total + (
+                group.member_count
+                ?? group.members?.filter((member) => member.participation_status !== 'REMOVED').length
+                ?? 0
+            ),
+            0
+        ),
         [groups]
     );
 
@@ -809,6 +960,66 @@ export function AssignmentGroupsPanel({
             setSuccessMessage(`Removed ${studentName} from ${group.name}.`);
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to remove learner from group.');
+        }
+    };
+
+    const handleMemberDraftChange = (memberId: number, nextDraft: MemberDraft) => {
+        setMemberDrafts((current) => ({
+            ...current,
+            [memberId]: nextDraft,
+        }));
+    };
+
+    const handleSaveMemberParticipation = async (
+        group: AssignmentGroup,
+        member: AssignmentGroupMember
+    ) => {
+        resetFeedback();
+        const memberDraft = memberDrafts[member.id] ?? {
+            participationStatus: member.participation_status,
+            participationNote: member.participation_note ?? '',
+            moveTargetGroupId: '',
+        };
+
+        try {
+            await updateMemberParticipationMutation.mutateAsync({
+                assignmentId: assignment.id,
+                groupId: group.id,
+                memberId: member.id,
+                data: {
+                    participation_status: memberDraft.participationStatus,
+                    participation_note: memberDraft.participationNote.trim(),
+                },
+            });
+            setSuccessMessage(`Updated ${member.student_name}.`);
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Failed to update learner participation.');
+        }
+    };
+
+    const handleMoveMember = async (
+        group: AssignmentGroup,
+        member: AssignmentGroupMember
+    ) => {
+        resetFeedback();
+        const memberDraft = memberDrafts[member.id];
+        if (!memberDraft?.moveTargetGroupId) {
+            setActionError('Choose a target group before moving this learner.');
+            return;
+        }
+
+        try {
+            await moveMemberMutation.mutateAsync({
+                assignmentId: assignment.id,
+                groupId: group.id,
+                memberId: member.id,
+                data: {
+                    target_group_id: Number(memberDraft.moveTargetGroupId),
+                },
+            });
+            setSuccessMessage(`Moved ${member.student_name} to the selected group.`);
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Failed to move learner.');
         }
     };
 
@@ -1341,6 +1552,10 @@ export function AssignmentGroupsPanel({
                                 saving={updateMutation.isPending}
                                 deleting={deleteMutation.isPending}
                                 removing={removeMemberMutation.isPending}
+                                updatingMember={updateMemberParticipationMutation.isPending}
+                                movingMember={moveMemberMutation.isPending}
+                                memberDrafts={memberDrafts}
+                                groupOptions={groupOptions}
                                 onToggle={() => setExpandedGroupId((current) => current === group.id ? null : group.id)}
                                 onDraftChange={(nextDraft) => setRenameDrafts((current) => ({
                                     ...current,
@@ -1348,6 +1563,13 @@ export function AssignmentGroupsPanel({
                                 }))}
                                 onSave={() => void handleSaveGroup(group)}
                                 onDelete={() => void handleDeleteGroup(group)}
+                                onMemberDraftChange={handleMemberDraftChange}
+                                onSaveMemberParticipation={(member) => (
+                                    void handleSaveMemberParticipation(group, member)
+                                )}
+                                onMoveMember={(member) => (
+                                    void handleMoveMember(group, member)
+                                )}
                                 onRemoveMember={(studentId, studentName) => (
                                     void handleRemoveMember(group, studentId, studentName)
                                 )}
