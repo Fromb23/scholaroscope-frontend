@@ -47,6 +47,7 @@ import type {
     AssignmentGroupSubmission,
     AssignmentGroupSubmissionCreatePayload,
     AssignmentGroupUpdatePayload,
+    AssignmentLifecycleState,
     AssignmentPublishPayload,
     AssignmentPublishResponse,
     IssuePreparedAssignmentPayload,
@@ -115,6 +116,9 @@ async function invalidateAssignmentDependencies(
         queryClient.invalidateQueries({ queryKey: assignmentKeys.all }),
         assignmentId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.detail(assignmentId) })
+            : Promise.resolve(),
+        assignmentId
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.lifecycleState(assignmentId) })
             : Promise.resolve(),
         assignmentId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.eligibleLearnersPrefix(assignmentId) })
@@ -265,6 +269,37 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
     return {
         assignment: query.data ?? null,
         loading: query.isLoading || (enabled && instructorAccess.isInstructor && instructorAccess.isLoading),
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
+}
+
+export function useAssignmentLifecycleState(
+    assignmentId: number | null,
+    options?: UseAssignmentsOptions
+) {
+    const enabled = (options?.enabled ?? true) && typeof assignmentId === 'number' && assignmentId > 0;
+
+    const query = useQuery<AssignmentLifecycleState, Error>({
+        queryKey: assignmentKeys.lifecycleState(assignmentId),
+        queryFn: async () => {
+            if (!assignmentId) {
+                throw new Error('Assignment id is required.');
+            }
+
+            try {
+                return await assignmentsAPI.getLifecycleState(assignmentId);
+            } catch (err) {
+                throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment workflow.'));
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        lifecycleState: query.data ?? null,
+        loading: query.isLoading,
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };
@@ -884,9 +919,32 @@ export function useReopenAssignment() {
     return useMutation({
         mutationFn: async (assignmentId: number) => {
             try {
-                return await assignmentsAPI.reopen(assignmentId);
+                return await assignmentsAPI.reopenLearnerWork(assignmentId);
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to reopen assignment.'));
+            }
+        },
+        onSuccess: async (assignment) => {
+            await invalidateAssignmentDependencies(queryClient, assignment.id);
+        },
+    });
+}
+
+export function useReopenLearnerWork() {
+    return useReopenAssignment();
+}
+
+export function useRestoreAssignmentToReview() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (assignmentId: number) => {
+            try {
+                return await assignmentsAPI.restoreToReview(assignmentId);
+            } catch (err) {
+                throw new Error(
+                    extractErrorMessage(err as ApiError, 'Failed to restore assignment to review.')
+                );
             }
         },
         onSuccess: async (assignment) => {

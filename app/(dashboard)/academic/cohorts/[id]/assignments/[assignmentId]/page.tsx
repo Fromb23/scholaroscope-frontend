@@ -4,15 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
-    Archive,
     ArrowLeft,
     BookOpen,
     ClipboardList,
     Clock,
     Eye,
     FileCheck2,
-    Send,
-    Trash2,
     Users,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
@@ -23,6 +20,8 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
+import { AssignmentLifecycleActionCard } from '@/app/core/components/assignments/AssignmentLifecycleActionCard';
+import { AssignmentLifecycleConfirmModal } from '@/app/core/components/assignments/AssignmentLifecycleConfirmModal';
 import { AssignmentGroupEvaluationsPanel } from '@/app/core/components/assignments/AssignmentGroupEvaluationsPanel';
 import { AssignmentGroupsPanel } from '@/app/core/components/assignments/AssignmentGroupsPanel';
 import { AssignmentPublishModal } from '@/app/core/components/assignments/AssignmentPublishModal';
@@ -30,10 +29,13 @@ import { AssignmentReviewForm } from '@/app/core/components/assignments/Assignme
 import { AssignmentGroupSubmissionsPanel } from '@/app/core/components/assignments/AssignmentGroupSubmissionsPanel';
 import {
     getAssignmentDeliveryBadgeVariant,
+    getAssignmentDeliveryLabel,
     getAssignmentParticipatingCohortCount,
     formatDateTime,
     getAssignmentEvaluationBadgeVariant,
+    getAssignmentEvaluationLabel,
     getAssignmentStatusBadgeVariant,
+    getAssignmentStatusLabel,
     getRecipientStatusBadgeVariant,
     getSubmissionStatusBadgeVariant,
     hasCBCOutcome,
@@ -45,16 +47,22 @@ import {
     useAssignmentDetail,
     useAssignmentEvaluations,
     useAssignmentGroups,
+    useAssignmentLifecycleState,
     useAssignmentRecipients,
     useAssignmentSubmissions,
     useBridgeAssignmentEvaluation,
     useCloseAssignment,
     useDeleteAssignment,
+    useReopenLearnerWork,
+    useRestoreAssignmentToReview,
 } from '@/app/core/hooks/useAssignments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useRubricScaleDetail } from '@/app/core/hooks/useAssessments';
 import { useAuth } from '@/app/context/AuthContext';
-import type { AssignmentEvaluation } from '@/app/core/types/assignments';
+import type {
+    AssignmentEvaluation,
+    AssignmentLifecycleAction,
+} from '@/app/core/types/assignments';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 
 type DetailTab =
@@ -127,6 +135,8 @@ export default function CohortAssignmentDetailPage() {
     const [activeTab, setActiveTab] = useState<DetailTab>('overview');
     const [editOpen, setEditOpen] = useState(false);
     const [publishOpen, setPublishOpen] = useState(false);
+    const [publishMode, setPublishMode] = useState<'issue' | 'add_learners'>('issue');
+    const [confirmAction, setConfirmAction] = useState<AssignmentLifecycleAction | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -136,6 +146,11 @@ export default function CohortAssignmentDetailPage() {
         : user.is_superadmin
             || activeRole === 'ADMIN'
             || (isInstructor && instructorAccess.cohortIds.includes(cohortId));
+    const canManageAssignments = Boolean(user) && (
+        Boolean(user?.is_superadmin)
+        || activeRole === 'ADMIN'
+        || activeRole === 'INSTRUCTOR'
+    );
 
     const {
         cohort,
@@ -151,6 +166,9 @@ export default function CohortAssignmentDetailPage() {
         error: assignmentError,
     } = useAssignmentDetail(isValidRoute ? assignmentId : null, {
         enabled: isValidRoute,
+    });
+    const lifecycleQuery = useAssignmentLifecycleState(isValidRoute ? assignmentId : null, {
+        enabled: isValidRoute && allowed && canManageAssignments,
     });
     const recipientsQuery = useAssignmentRecipients(assignment?.id ?? null, {
         enabled: Boolean(assignment?.id) && assignment?.delivery_mode === 'INDIVIDUAL',
@@ -169,6 +187,8 @@ export default function CohortAssignmentDetailPage() {
     const rubricScaleQuery = useRubricScaleDetail(assignment?.rubric_scale ?? null);
     const closeMutation = useCloseAssignment();
     const archiveMutation = useArchiveAssignment();
+    const reopenLearnerWorkMutation = useReopenLearnerWork();
+    const restoreToReviewMutation = useRestoreAssignmentToReview();
     const deleteMutation = useDeleteAssignment();
     const bridgeMutation = useBridgeAssignmentEvaluation();
     const assignmentsHref = useMemo(
@@ -195,11 +215,6 @@ export default function CohortAssignmentDetailPage() {
     const evaluationBySubmissionId = useMemo(() => (
         new Map(evaluationsQuery.evaluations.map((evaluation) => [evaluation.submission, evaluation]))
     ), [evaluationsQuery.evaluations]);
-    const canManageAssignments = Boolean(user) && (
-        Boolean(user?.is_superadmin)
-        || activeRole === 'ADMIN'
-        || activeRole === 'INSTRUCTOR'
-    );
     const isGroupAssignment = assignment?.delivery_mode === 'GROUP';
     const participatingCohortCount = useMemo(
         () => getAssignmentParticipatingCohortCount(assignment?.curriculum_context),
@@ -289,9 +304,10 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         try {
             await closeMutation.mutateAsync(assignment.id);
-            setSuccessMessage('Assignment closed.');
+            setConfirmAction(null);
+            setSuccessMessage('Learner work finished.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to close assignment.');
+            setActionError(err instanceof Error ? err.message : 'Failed to finish learner work.');
         }
     };
 
@@ -299,9 +315,32 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         try {
             await archiveMutation.mutateAsync(assignment.id);
-            setSuccessMessage('Assignment archived.');
+            setConfirmAction(null);
+            setSuccessMessage('Assignment record stored.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to archive assignment.');
+            setActionError(err instanceof Error ? err.message : 'Failed to store assignment record.');
+        }
+    };
+
+    const handleRestoreToReview = async () => {
+        setActionError(null);
+        try {
+            await restoreToReviewMutation.mutateAsync(assignment.id);
+            setConfirmAction(null);
+            setSuccessMessage('Assignment restored to review.');
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Failed to restore assignment to review.');
+        }
+    };
+
+    const handleReopenLearnerWork = async () => {
+        setActionError(null);
+        try {
+            await reopenLearnerWorkMutation.mutateAsync(assignment.id);
+            setConfirmAction(null);
+            setSuccessMessage('Learner work reopened.');
+        } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Failed to reopen learner work.');
         }
     };
 
@@ -324,6 +363,117 @@ export default function CohortAssignmentDetailPage() {
             setActionError(err instanceof Error ? err.message : 'Failed to bridge evaluation.');
         }
     };
+
+    const lifecycleState = lifecycleQuery.lifecycleState;
+    const pendingLifecycleAction: AssignmentLifecycleAction | null = deleteMutation.isPending
+        ? 'DELETE_DRAFT'
+        : closeMutation.isPending
+            ? 'FINISH_LEARNER_WORK'
+            : archiveMutation.isPending
+                ? 'STORE_RECORD'
+                : reopenLearnerWorkMutation.isPending
+                    ? 'REOPEN_LEARNER_WORK'
+                    : restoreToReviewMutation.isPending
+                        ? 'RESTORE_TO_REVIEW'
+                        : null;
+
+    const openPublishModal = (mode: 'issue' | 'add_learners') => {
+        setPublishMode(mode);
+        setPublishOpen(true);
+    };
+
+    const handleLifecycleAction = (action: AssignmentLifecycleAction) => {
+        setActionError(null);
+        setSuccessMessage(null);
+
+        switch (action) {
+            case 'ISSUE_ASSIGNMENT':
+                openPublishModal('issue');
+                break;
+            case 'EDIT_ASSIGNMENT':
+                setEditOpen(true);
+                break;
+            case 'DELETE_DRAFT':
+                void handleDelete();
+                break;
+            case 'MANAGE_GROUPS':
+            case 'MARK_PARTICIPATION':
+                setActiveTab('groups');
+                break;
+            case 'ADD_LEARNERS':
+                openPublishModal('add_learners');
+                break;
+            case 'RECORD_SUBMISSION':
+                setActiveTab(isGroupAssignment ? 'group-submissions' : 'submissions');
+                break;
+            case 'REVIEW_WORK':
+                setActiveTab(isGroupAssignment ? 'group-evaluations' : 'submissions');
+                break;
+            case 'RECORD_EVIDENCE':
+                setActiveTab(isGroupAssignment ? 'group-evaluations' : 'evaluations');
+                break;
+            case 'VIEW_RECORD':
+                setActiveTab('overview');
+                break;
+            case 'FINISH_LEARNER_WORK':
+            case 'STORE_RECORD':
+            case 'REOPEN_LEARNER_WORK':
+            case 'RESTORE_TO_REVIEW':
+                setConfirmAction(action);
+                break;
+            default:
+                break;
+        }
+    };
+
+    const confirmTitle = confirmAction === 'FINISH_LEARNER_WORK'
+        ? 'Finish learner work?'
+        : confirmAction === 'STORE_RECORD'
+            ? 'Store assignment record?'
+            : confirmAction === 'RESTORE_TO_REVIEW'
+                ? 'Restore to review?'
+                : confirmAction === 'REOPEN_LEARNER_WORK'
+                    ? 'Reopen learner work?'
+                    : '';
+    const confirmMessage = confirmAction === 'FINISH_LEARNER_WORK'
+        ? 'Learners will no longer submit normally. You can still review work, mark participation, and record evidence.'
+        : confirmAction === 'STORE_RECORD'
+            ? 'This assignment will leave the active workflow and be stored for records. You can restore it to review later.'
+            : confirmAction === 'RESTORE_TO_REVIEW'
+                ? 'This brings the assignment back to the review list. Learner submissions remain closed.'
+                : confirmAction === 'REOPEN_LEARNER_WORK'
+                    ? 'Learners may continue submitting or participating. Use this only if the work period was closed too early.'
+                    : '';
+    const confirmLabel = confirmAction === 'FINISH_LEARNER_WORK'
+        ? 'Finish learner work'
+        : confirmAction === 'STORE_RECORD'
+            ? 'Store assignment record'
+            : confirmAction === 'RESTORE_TO_REVIEW'
+                ? 'Restore to review'
+                : confirmAction === 'REOPEN_LEARNER_WORK'
+                    ? 'Reopen learner work'
+                    : '';
+    const confirmPendingLabel = confirmAction === 'FINISH_LEARNER_WORK'
+        ? 'Finishing learner work...'
+        : confirmAction === 'STORE_RECORD'
+            ? 'Storing record...'
+            : confirmAction === 'RESTORE_TO_REVIEW'
+                ? 'Restoring to review...'
+                : confirmAction === 'REOPEN_LEARNER_WORK'
+                    ? 'Reopening learner work...'
+                    : '';
+    const confirmWarnings = lifecycleState
+        ? (
+            confirmAction === 'FINISH_LEARNER_WORK'
+                ? lifecycleState.warnings
+                : confirmAction === 'STORE_RECORD'
+                    ? lifecycleState.warnings
+                    : []
+        )
+        : [];
+    const confirmBlockingItems = lifecycleState
+        ? (confirmAction === 'STORE_RECORD' ? lifecycleState.blocking_items : [])
+        : [];
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
@@ -358,13 +508,13 @@ export default function CohortAssignmentDetailPage() {
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)}>
-                                    {assignment.status}
+                                    {lifecycleState?.teacher_stage_label ?? getAssignmentStatusLabel(assignment.status)}
                                 </Badge>
                                 <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)}>
-                                    {assignment.delivery_mode}
+                                    {getAssignmentDeliveryLabel(assignment.delivery_mode)}
                                 </Badge>
                                 <Badge variant={getAssignmentEvaluationBadgeVariant(assignment.evaluation_type)}>
-                                    {assignment.evaluation_type}
+                                    {getAssignmentEvaluationLabel(assignment.evaluation_type)}
                                 </Badge>
                                 {hasCBCOutcome(assignment) ? (
                                     <Badge variant="green">CBC-linked outcomes</Badge>
@@ -377,40 +527,6 @@ export default function CohortAssignmentDetailPage() {
                                 </p>
                             </div>
                         </div>
-
-                        {canManageAssignments ? (
-                            <div className="flex flex-wrap gap-2">
-                                {assignment.status === 'DRAFT' ? (
-                                    <>
-                                        <Button type="button" onClick={() => setPublishOpen(true)}>
-                                            <Send className="mr-2 h-4 w-4" />
-                                            Publish
-                                        </Button>
-                                        <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-                                            Edit Draft
-                                        </Button>
-                                        <Button type="button" variant="danger" onClick={handleDelete}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete
-                                        </Button>
-                                    </>
-                                ) : null}
-
-                                {assignment.status === 'PUBLISHED' ? (
-                                    <Button type="button" variant="secondary" onClick={handleClose} disabled={closeMutation.isPending}>
-                                        <Clock className="mr-2 h-4 w-4" />
-                                        {closeMutation.isPending ? 'Closing...' : 'Close'}
-                                    </Button>
-                                ) : null}
-
-                                {assignment.status === 'CLOSED' ? (
-                                    <Button type="button" variant="secondary" onClick={handleArchive} disabled={archiveMutation.isPending}>
-                                        <Archive className="mr-2 h-4 w-4" />
-                                        {archiveMutation.isPending ? 'Archiving...' : 'Archive'}
-                                    </Button>
-                                ) : null}
-                            </div>
-                        ) : null}
                     </div>
                 </div>
             </div>
@@ -423,6 +539,27 @@ export default function CohortAssignmentDetailPage() {
                 <div className="theme-success-surface rounded-lg px-4 py-3 text-sm">
                     {successMessage}
                 </div>
+            ) : null}
+
+            {canManageAssignments ? (
+                lifecycleQuery.loading ? (
+                    <Card>
+                        <LoadingSpinner fullScreen={false} message="Loading assignment workflow..." />
+                    </Card>
+                ) : lifecycleQuery.error ? (
+                    <ErrorBanner
+                        message={lifecycleQuery.error}
+                        onDismiss={() => void lifecycleQuery.refetch()}
+                    />
+                ) : lifecycleState ? (
+                    <AssignmentLifecycleActionCard
+                        lifecycleState={lifecycleState}
+                        deliveryMode={assignment.delivery_mode}
+                        onAction={handleLifecycleAction}
+                        pendingAction={pendingLifecycleAction}
+                        disabled={Boolean(pendingLifecycleAction)}
+                    />
+                ) : null
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -531,8 +668,8 @@ export default function CohortAssignmentDetailPage() {
                                 <div className="text-sm font-medium theme-text">{assignment.instructor_name}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Delivery Mode</div>
-                                <div className="text-sm font-medium theme-text">{assignment.delivery_mode}</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Delivery</div>
+                                <div className="text-sm font-medium theme-text">{getAssignmentDeliveryLabel(assignment.delivery_mode)}</div>
                             </div>
                             <div className="space-y-1">
                                 <div className="text-xs font-medium uppercase tracking-wide theme-muted">Starts At</div>
@@ -556,7 +693,7 @@ export default function CohortAssignmentDetailPage() {
                             </div>
                             <div className="space-y-1">
                                 <div className="text-xs font-medium uppercase tracking-wide theme-muted">Evaluation</div>
-                                <div className="text-sm font-medium theme-text">{assignment.evaluation_type}</div>
+                                <div className="text-sm font-medium theme-text">{getAssignmentEvaluationLabel(assignment.evaluation_type)}</div>
                             </div>
                             <div className="space-y-1">
                                 <div className="text-xs font-medium uppercase tracking-wide theme-muted">Total Marks</div>
@@ -575,11 +712,11 @@ export default function CohortAssignmentDetailPage() {
                                 <div className="text-sm font-medium theme-text">{formatDateTime(assignment.created_at)}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Published</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Issued</div>
                                 <div className="text-sm font-medium theme-text">{formatDateTime(assignment.published_at)}</div>
                             </div>
                             <div className="space-y-1">
-                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Closed</div>
+                                <div className="text-xs font-medium uppercase tracking-wide theme-muted">Learner Work Finished</div>
                                 <div className="text-sm font-medium theme-text">{formatDateTime(assignment.closed_at)}</div>
                             </div>
                             {assignment.created_from_session_title ? (
@@ -654,26 +791,6 @@ export default function CohortAssignmentDetailPage() {
                         </div>
                     </Card>
 
-                    {assignment.status === 'DRAFT' && canManageAssignments ? (
-                        <Card>
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                <div className="space-y-1">
-                                    <h2 className="text-lg font-semibold theme-text">Publish Draft</h2>
-                                    <p className="text-sm theme-muted">
-                                        {assignment.delivery_mode === 'GROUP'
-                                            ? 'Publish this assignment workspace now, then create groups and add members from the Groups tab.'
-                                            : assignment.created_from_session != null
-                                                ? 'Publish this assignment to the active source-session scope or an explicit learner list without leaving cohort context.'
-                                                : 'Publish this assignment to active cohort learners or an explicit learner list without leaving cohort context.'}
-                                    </p>
-                                </div>
-                                <Button type="button" onClick={() => setPublishOpen(true)}>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    Publish Draft
-                                </Button>
-                            </div>
-                        </Card>
-                    ) : null}
                 </div>
             ) : null}
 
@@ -942,9 +1059,34 @@ export default function CohortAssignmentDetailPage() {
                 isOpen={publishOpen}
                 onClose={() => setPublishOpen(false)}
                 onPublished={() => {
-                    setSuccessMessage('Assignment published.');
+                    setSuccessMessage(
+                        publishMode === 'issue'
+                            ? 'Assignment issued.'
+                            : 'Learners added to assignment.'
+                    );
                     setPublishOpen(false);
                 }}
+            />
+
+            <AssignmentLifecycleConfirmModal
+                isOpen={confirmAction != null}
+                onClose={() => setConfirmAction(null)}
+                onConfirm={
+                    confirmAction === 'FINISH_LEARNER_WORK'
+                        ? handleClose
+                        : confirmAction === 'STORE_RECORD'
+                            ? handleArchive
+                            : confirmAction === 'RESTORE_TO_REVIEW'
+                                ? handleRestoreToReview
+                                : handleReopenLearnerWork
+                }
+                title={confirmTitle}
+                message={confirmMessage}
+                confirmLabel={confirmLabel}
+                confirmPendingLabel={confirmPendingLabel}
+                blockingItems={confirmBlockingItems}
+                warnings={confirmWarnings}
+                pending={Boolean(pendingLifecycleAction)}
             />
         </div>
     );

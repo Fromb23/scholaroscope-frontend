@@ -7,8 +7,11 @@ import { Card } from '@/app/components/ui/Card';
 import {
     formatDate,
     getAssignmentDeliveryBadgeVariant,
+    getAssignmentDeliveryLabel,
     getAssignmentEvaluationBadgeVariant,
+    getAssignmentEvaluationLabel,
     getAssignmentStatusBadgeVariant,
+    getAssignmentStatusLabel,
     isAssignmentDueSoon,
     isAssignmentOverdue,
 } from '@/app/core/components/assignments/assignmentUtils';
@@ -19,11 +22,11 @@ function getDueState(assignment: Assignment): {
     variant: 'default' | 'yellow' | 'red' | 'purple';
 } {
     if (assignment.status === 'ARCHIVED') {
-        return { label: 'Archived', variant: 'purple' };
+        return { label: 'Stored', variant: 'purple' };
     }
 
     if (assignment.status === 'CLOSED') {
-        return { label: 'Closed', variant: 'yellow' };
+        return { label: 'Reviewing', variant: 'yellow' };
     }
 
     if (!assignment.due_at) {
@@ -86,13 +89,13 @@ export function AssignmentCard({
                 <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)} size="sm">
-                            {assignment.status}
+                            {getAssignmentStatusLabel(assignment.status)}
                         </Badge>
                         <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)} size="sm">
-                            {assignment.delivery_mode}
+                            {getAssignmentDeliveryLabel(assignment.delivery_mode)}
                         </Badge>
                         <Badge variant={getAssignmentEvaluationBadgeVariant(assignment.evaluation_type)} size="sm">
-                            {assignment.evaluation_type}
+                            {getAssignmentEvaluationLabel(assignment.evaluation_type)}
                         </Badge>
                     </div>
 
@@ -152,7 +155,7 @@ export function AssignmentCard({
                             className="w-full sm:w-auto"
                             onClick={() => onEdit(assignment)}
                         >
-                            Edit Draft
+                            Edit preparation
                         </Button>
                     ) : null}
                 </div>

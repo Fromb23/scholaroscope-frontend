@@ -52,6 +52,8 @@ export const assignmentKeys = {
         ['assignments', 'list', filters] as const,
     detail: (assignmentId: number | null) =>
         ['assignments', 'detail', assignmentId] as const,
+    lifecycleState: (assignmentId: number | null) =>
+        ['assignments', 'lifecycle-state', assignmentId] as const,
     preparedForLessonPlan: (lessonPlanId: number | null) =>
         ['assignments', 'prepared-for-lesson-plan', lessonPlanId] as const,
     eligibleLearnersPrefix: (assignmentId: number | null) =>

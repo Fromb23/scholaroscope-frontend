@@ -40,25 +40,25 @@ import type {
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
-    { value: '', label: 'All Statuses' },
-    { value: 'DRAFT', label: 'Draft' },
-    { value: 'PUBLISHED', label: 'Published' },
-    { value: 'CLOSED', label: 'Closed' },
-    { value: 'ARCHIVED', label: 'Archived' },
+    { value: '', label: 'All stages' },
+    { value: 'DRAFT', label: 'Preparing' },
+    { value: 'PUBLISHED', label: 'Issued' },
+    { value: 'CLOSED', label: 'Reviewing' },
+    { value: 'ARCHIVED', label: 'Stored' },
 ];
 
 const EVALUATION_OPTIONS: Array<{ value: string; label: string }> = [
-    { value: '', label: 'All Evaluation Types' },
-    { value: 'NUMERIC', label: 'Numeric' },
+    { value: '', label: 'All evaluation styles' },
+    { value: 'NUMERIC', label: 'Marks' },
     { value: 'RUBRIC', label: 'Rubric' },
-    { value: 'DESCRIPTIVE', label: 'Descriptive' },
-    { value: 'COMPETENCY', label: 'Competency' },
+    { value: 'DESCRIPTIVE', label: 'Written feedback' },
+    { value: 'COMPETENCY', label: 'Competency check' },
 ];
 
 const DELIVERY_MODE_OPTIONS: Array<{ value: string; label: string }> = [
-    { value: '', label: 'All Delivery Modes' },
-    { value: 'INDIVIDUAL', label: 'Individual' },
-    { value: 'GROUP', label: 'Group' },
+    { value: '', label: 'All delivery modes' },
+    { value: 'INDIVIDUAL', label: 'Individual work' },
+    { value: 'GROUP', label: 'Group work' },
 ];
 
 function normalizeQueryParam(
@@ -122,8 +122,8 @@ function CohortSubjectWorkspaceCard({
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
                     {[
                         { label: 'Total', value: totalCount, tone: 'theme-text' },
-                        { label: 'Draft', value: draftCount, tone: 'theme-text' },
-                        { label: 'Published', value: publishedCount, tone: 'theme-text' },
+                        { label: 'Preparing', value: draftCount, tone: 'theme-text' },
+                        { label: 'Issued', value: publishedCount, tone: 'theme-text' },
                         { label: 'Due soon', value: dueSoonCount, tone: dueSoonCount > 0 ? 'text-[color:var(--color-warning)]' : 'theme-text' },
                         { label: 'Overdue', value: overdueCount, tone: overdueCount > 0 ? 'text-[color:var(--color-danger)]' : 'theme-text' },
                     ].map((metric) => (
@@ -540,7 +540,7 @@ export default function CohortAssignmentsPage() {
                             color="blue"
                         />
                         <StatsCard
-                            title="Published"
+                            title="Issued"
                             value={publishedCount}
                             icon={BookOpen}
                             color="green"
