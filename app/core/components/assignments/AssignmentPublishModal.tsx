@@ -35,6 +35,7 @@ export function AssignmentPublishModal({
 }: AssignmentPublishModalProps) {
     const learnersQuery = useAssignmentEligibleLearners(assignment.id, { source: 'all' });
     const publishMutation = usePublishAssignment();
+    const isAlreadyIssued = assignment.status === 'PUBLISHED';
     const hasLinkedLesson = assignment.created_from_session != null;
     const hasExistingRecipients = assignment.recipients_count > 0;
     const audienceOptions = useMemo(
@@ -47,9 +48,11 @@ export function AssignmentPublishModal({
     );
     const showSessionScopeNote = usesExpandedSessionScope(assignment);
     const [audienceChoice, setAudienceChoice] = useState<TeacherPublishAudienceChoice>(
-        hasExistingRecipients
-            ? 'keep_current'
-            : getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson)
+        isAlreadyIssued
+            ? 'selected_learners'
+            : hasExistingRecipients
+                ? 'keep_current'
+                : getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson)
     );
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [learnerSearch, setLearnerSearch] = useState('');
@@ -59,14 +62,16 @@ export function AssignmentPublishModal({
         if (!isOpen) return;
 
         setAudienceChoice(
-            hasExistingRecipients
-                ? 'keep_current'
-                : getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson)
+            isAlreadyIssued
+                ? 'selected_learners'
+                : hasExistingRecipients
+                    ? 'keep_current'
+                    : getDefaultTeacherAssignmentAudienceChoice(hasLinkedLesson)
         );
         setSelectedStudentIds([]);
         setLearnerSearch('');
         setFormError(null);
-    }, [hasExistingRecipients, hasLinkedLesson, isOpen]);
+    }, [hasExistingRecipients, hasLinkedLesson, isAlreadyIssued, isOpen]);
 
     const filteredLearners = useMemo(() => {
         const normalizedSearch = learnerSearch.trim().toLowerCase();
@@ -142,7 +147,12 @@ export function AssignmentPublishModal({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Publish Assignment" size="lg">
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={isAlreadyIssued ? 'Add Learners' : 'Issue Assignment'}
+            size="lg"
+        >
             <div className="space-y-5">
                 {formError ? (
                     <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
@@ -151,6 +161,8 @@ export function AssignmentPublishModal({
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
                     {assignment.delivery_mode === 'GROUP'
                         ? 'This is a group assignment. Publishing opens the workspace, then you add or generate learner groups from the Groups tab.'
+                        : isAlreadyIssued
+                            ? 'This assignment is already issued. Add learners here without reopening learner work.'
                         : hasLinkedLesson
                             ? 'Publishing this draft uses the source session scope and sends it to the learners you choose below.'
                             : 'Publishing this draft sends it to the learners you choose below.'}
@@ -249,7 +261,9 @@ export function AssignmentPublishModal({
                         Cancel
                     </Button>
                     <Button type="button" onClick={handlePublish} disabled={saving}>
-                        {saving ? 'Publishing...' : 'Publish Assignment'}
+                        {saving
+                            ? (isAlreadyIssued ? 'Saving learners...' : 'Issuing assignment...')
+                            : (isAlreadyIssued ? 'Save learners' : 'Issue assignment')}
                     </Button>
                 </div>
             </div>

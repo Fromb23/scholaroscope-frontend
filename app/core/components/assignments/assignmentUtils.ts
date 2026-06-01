@@ -37,6 +37,21 @@ export function getAssignmentStatusBadgeVariant(status: AssignmentStatus): Badge
     }
 }
 
+export function getAssignmentStatusLabel(status: AssignmentStatus): string {
+    switch (status) {
+        case 'DRAFT':
+            return 'Preparing';
+        case 'PUBLISHED':
+            return 'Issued';
+        case 'CLOSED':
+            return 'Reviewing';
+        case 'ARCHIVED':
+            return 'Stored';
+        default:
+            return status;
+    }
+}
+
 export function getAssignmentEvaluationBadgeVariant(
     evaluationType: AssignmentEvaluationType
 ): BadgeVariant {
@@ -54,6 +69,23 @@ export function getAssignmentEvaluationBadgeVariant(
     }
 }
 
+export function getAssignmentEvaluationLabel(
+    evaluationType: AssignmentEvaluationType
+): string {
+    switch (evaluationType) {
+        case 'NUMERIC':
+            return 'Marks';
+        case 'RUBRIC':
+            return 'Rubric';
+        case 'DESCRIPTIVE':
+            return 'Written feedback';
+        case 'COMPETENCY':
+            return 'Competency check';
+        default:
+            return evaluationType;
+    }
+}
+
 export function getAssignmentDeliveryBadgeVariant(
     deliveryMode: AssignmentDeliveryMode
 ): BadgeVariant {
@@ -64,6 +96,19 @@ export function getAssignmentDeliveryBadgeVariant(
             return 'blue';
         default:
             return 'default';
+    }
+}
+
+export function getAssignmentDeliveryLabel(
+    deliveryMode: AssignmentDeliveryMode
+): string {
+    switch (deliveryMode) {
+        case 'GROUP':
+            return 'Group work';
+        case 'INDIVIDUAL':
+            return 'Individual work';
+        default:
+            return deliveryMode;
     }
 }
 

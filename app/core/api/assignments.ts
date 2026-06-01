@@ -41,6 +41,7 @@ import type {
     AssignmentGroupSubmissionCreatePayload,
     AssignmentGroupSubmissionListResponse,
     AssignmentGroupUpdatePayload,
+    AssignmentLifecycleState,
     AssignmentRecipient,
     AssignmentRecipientCreatePayload,
     AssignmentRecipientListResponse,
@@ -67,6 +68,13 @@ export const assignmentsAPI = {
 
     getById: async (id: number): Promise<Assignment> => {
         const response = await apiClient.get<Assignment>(`${ASSIGNMENTS_BASE}/${id}/`);
+        return response.data;
+    },
+
+    getLifecycleState: async (id: number): Promise<AssignmentLifecycleState> => {
+        const response = await apiClient.get<AssignmentLifecycleState>(
+            `${ASSIGNMENTS_BASE}/${id}/lifecycle-state/`
+        );
         return response.data;
     },
 
@@ -115,6 +123,20 @@ export const assignmentsAPI = {
 
     reopen: async (id: number): Promise<Assignment> => {
         const response = await apiClient.post<Assignment>(`${ASSIGNMENTS_BASE}/${id}/reopen/`);
+        return response.data;
+    },
+
+    reopenLearnerWork: async (id: number): Promise<Assignment> => {
+        const response = await apiClient.post<Assignment>(
+            `${ASSIGNMENTS_BASE}/${id}/reopen-learner-work/`
+        );
+        return response.data;
+    },
+
+    restoreToReview: async (id: number): Promise<Assignment> => {
+        const response = await apiClient.post<Assignment>(
+            `${ASSIGNMENTS_BASE}/${id}/restore-to-review/`
+        );
         return response.data;
     },
 

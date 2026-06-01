@@ -3,6 +3,23 @@ import type { PaginatedResponse } from '@/app/core/types/api';
 export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
 export type AssignmentDeliveryMode = 'INDIVIDUAL' | 'GROUP';
 export type AssignmentEvaluationType = 'NUMERIC' | 'RUBRIC' | 'DESCRIPTIVE' | 'COMPETENCY';
+export type AssignmentLifecycleStage = 'PREPARING' | 'ISSUED' | 'REVIEWING' | 'STORED';
+export type AssignmentLifecycleAction =
+    | 'EDIT_ASSIGNMENT'
+    | 'ISSUE_ASSIGNMENT'
+    | 'DELETE_DRAFT'
+    | 'MANAGE_GROUPS'
+    | 'ADD_LEARNERS'
+    | 'RECORD_SUBMISSION'
+    | 'MARK_PARTICIPATION'
+    | 'FINISH_LEARNER_WORK'
+    | 'REVIEW_WORK'
+    | 'RECORD_EVIDENCE'
+    | 'REOPEN_LEARNER_WORK'
+    | 'STORE_RECORD'
+    | 'VIEW_RECORD'
+    | 'RESTORE_TO_REVIEW';
+export type AssignmentLifecycleNextAction = AssignmentLifecycleAction | 'NONE';
 export type AssignmentRecipientMode =
     | 'ALL_ACTIVE_COHORT_LEARNERS'
     | 'PRESENT_IN_SOURCE_SESSION'
@@ -38,6 +55,31 @@ export interface AssignmentRecipientCreationResult {
     created_count: number;
     existing_count: number;
     recipient_ids: number[];
+}
+
+export interface AssignmentLifecycleSummary {
+    recipients_count: number;
+    submissions_count: number;
+    pending_review_count: number;
+    missing_count: number;
+    groups_count: number;
+    group_members_count: number;
+    unresolved_participation_count: number;
+    evidence_pending_count: number;
+}
+
+export interface AssignmentLifecycleState {
+    stage: AssignmentLifecycleStage;
+    teacher_stage_label: string;
+    status: AssignmentStatus;
+    next_action: AssignmentLifecycleNextAction;
+    next_action_label: string;
+    next_action_description: string;
+    ready_for_next_action: boolean;
+    blocking_items: string[];
+    warnings: string[];
+    allowed_actions: AssignmentLifecycleAction[];
+    summary: AssignmentLifecycleSummary;
 }
 
 export interface AssignmentOutcome {
