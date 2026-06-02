@@ -16,12 +16,6 @@ import type {
     EvidenceRecord,
 } from '@/app/plugins/cbc/types/cbc';
 
-interface ReflectionPromptState {
-    key: string;
-    evidenceSummary: Record<string, unknown>;
-    metadata: Record<string, unknown>;
-}
-
 export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
     const { data: session, isLoading: sessionLoading, error: sessionError } =
         useTeachingSession(sessionId);
@@ -85,7 +79,6 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
     const [formError, setFormError] = useState<string | null>(null);
     const [showBulk, setShowBulk] = useState(false);
     const [bulkSuccess, setBulkSuccess] = useState<BulkClassEvidenceResult | null>(null);
-    const [reflectionPrompt, setReflectionPrompt] = useState<ReflectionPromptState | null>(null);
 
     const resetForm = () => {
         setAddingFor(null);
@@ -109,48 +102,16 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
                 narrative: narrative.trim(),
                 observed_at: session.session_date,
             });
-            setReflectionPrompt({
-                key: `single-${studentId}-${Date.now()}`,
-                evidenceSummary: {
-                    session_id: sessionId,
-                    learner_id: studentId,
-                    learning_outcome_id: learningOutcomeId,
-                    evaluation_type: evalType,
-                    rubric_based: evalType === 'RUBRIC',
-                    observation_based: evalType === 'DESCRIPTIVE',
-                },
-                metadata: {
-                    trigger: 'single_evidence_saved',
-                },
-            });
             resetForm();
         } catch (e: unknown) {
             setFormError(extractErrorMessage(e));
         }
     };
 
-    const handleBulkClose = (
-        result?: BulkClassEvidenceResult,
-        context?: { evaluationType: 'RUBRIC' | 'DESCRIPTIVE' },
-    ) => {
+    const handleBulkClose = (result?: BulkClassEvidenceResult) => {
         setShowBulk(false);
         if (result) {
             setBulkSuccess(result);
-            setReflectionPrompt({
-                key: `bulk-${Date.now()}`,
-                evidenceSummary: {
-                    session_id: sessionId,
-                    learning_outcome_id: learningOutcomeId,
-                    evaluation_type: context?.evaluationType ?? null,
-                    rubric_based: context?.evaluationType === 'RUBRIC',
-                    observation_based: context?.evaluationType === 'DESCRIPTIVE',
-                },
-                metadata: {
-                    trigger: 'bulk_evidence_saved',
-                    created_count: result.created_count,
-                    eligible_count: result.eligible_count,
-                },
-            });
         }
     };
 
@@ -218,7 +179,6 @@ export function useEvidenceEntry(sessionId: number, learningOutcomeId: number) {
         formError,
         showBulk, setShowBulk,
         bulkSuccess, setBulkSuccess,
-        reflectionPrompt,
         createEvidencePending: createEvidence.isPending,
         resetForm, handleSubmit, handleBulkClose,
     };

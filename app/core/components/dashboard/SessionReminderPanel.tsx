@@ -171,15 +171,15 @@ export function SessionReminderPanel() {
     );
 
     const handleContinue = (sessionId: number) => {
-        router.push(`/sessions/${sessionId}`);
+        router.push(`/sessions/${sessionId}?notice=session-current-step`);
     };
 
     const handleReviewAttendance = (sessionId: number) => {
-        router.push(`${getReviewAttendancePath(sessionId)}?section=attendance`);
+        router.push(`${getReviewAttendancePath(sessionId)}?section=attendance&notice=session-current-step`);
     };
 
     const handleEndLesson = (sessionId: number) => {
-        router.push(`/sessions/${sessionId}?section=complete`);
+        router.push(`/sessions/${sessionId}?section=complete&notice=session-current-step`);
     };
 
     if (loading && reminders.length === 0) {
