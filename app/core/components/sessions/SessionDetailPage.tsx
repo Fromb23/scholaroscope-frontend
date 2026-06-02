@@ -1137,6 +1137,9 @@ export function SessionDetailPage() {
         );
     }
 
+    const lessonPlanHref = session.lesson_plan_id
+        ? `/lesson-plans/${session.lesson_plan_id}`
+        : null;
     const lessonTaskReturnSection = currentWorkflowStep === 'post_lesson'
         ? 'post-lesson'
         : 'lesson-preparation';
@@ -1266,34 +1269,47 @@ export function SessionDetailPage() {
                         <p className="mt-0.5 text-sm text-gray-500">{session.term_name}</p>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
-                        <Badge variant="blue">{session.session_type_display}</Badge>
-                        {isScheduled ? <Badge variant="default">Scheduled</Badge> : null}
-                        {isScheduledOverdue ? <Badge variant="orange">Overdue</Badge> : null}
-                        {isInProgress && !isInProgressOverdue ? <Badge variant="yellow">In progress</Badge> : null}
-                        {isInProgressOverdue ? <Badge variant="red">Needs completion</Badge> : null}
-                        {isCompleted ? <Badge variant="green">Completed</Badge> : null}
+                    <div className="shrink-0 space-y-2">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Badge variant="blue">{session.session_type_display}</Badge>
+                            {isScheduled ? <Badge variant="default">Scheduled</Badge> : null}
+                            {isScheduledOverdue ? <Badge variant="orange">Overdue</Badge> : null}
+                            {isInProgress && !isInProgressOverdue ? <Badge variant="yellow">In progress</Badge> : null}
+                            {isInProgressOverdue ? <Badge variant="red">Needs completion</Badge> : null}
+                            {isCompleted ? <Badge variant="green">Completed</Badge> : null}
+                        </div>
+
+                        {lessonPlanHref || !isHistorical ? (
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                {lessonPlanHref ? (
+                                    <Link href={lessonPlanHref}>
+                                        <Button variant="secondary" size="sm">
+                                            <BookOpen className="mr-1.5 h-4 w-4" />
+                                            {isInstructor ? 'Back to lesson preparation' : 'Back to lesson plan'}
+                                        </Button>
+                                    </Link>
+                                ) : null}
+
+                                {!isHistorical ? (
+                                    <ActionMenu
+                                        items={[
+                                            ...(canReschedule ? [{
+                                                label: 'Reschedule lesson',
+                                                onSelect: () => setShowRescheduleModal(true),
+                                                icon: <Calendar className="h-4 w-4" />,
+                                            }] : []),
+                                            ...(!isCompleted ? [{
+                                                label: 'Edit',
+                                                href: `/sessions/${session.id}/edit`,
+                                                icon: <Edit className="h-4 w-4" />,
+                                            }] : []),
+                                        ]}
+                                    />
+                                ) : null}
+                            </div>
+                        ) : null}
                     </div>
                 </div>
-
-                {!isHistorical ? (
-                    <div className="flex justify-end">
-                        <ActionMenu
-                            items={[
-                                ...(canReschedule ? [{
-                                    label: 'Reschedule lesson',
-                                    onSelect: () => setShowRescheduleModal(true),
-                                    icon: <Calendar className="h-4 w-4" />,
-                                }] : []),
-                                ...(!isCompleted ? [{
-                                    label: 'Edit',
-                                    href: `/sessions/${session.id}/edit`,
-                                    icon: <Edit className="h-4 w-4" />,
-                                }] : []),
-                            ]}
-                        />
-                    </div>
-                ) : null}
 
                 {isScheduledLocked ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
