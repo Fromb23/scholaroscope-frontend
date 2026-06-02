@@ -27,12 +27,20 @@ function resolveActionUser(
     };
 }
 
-export const useInstructors = () => {
+export const useInstructors = (options?: { enabled?: boolean }) => {
     const [instructors, setInstructors] = useState<GlobalUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const enabled = options?.enabled ?? true;
 
-    const fetchInstructors = async () => {
+    const fetchInstructors = useCallback(async () => {
+        if (!enabled) {
+            setInstructors([]);
+            setError(null);
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
             const data = await instructorsAPI.getAll();
@@ -43,9 +51,11 @@ export const useInstructors = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [enabled]);
 
-    useEffect(() => { fetchInstructors(); }, []);
+    useEffect(() => {
+        void fetchInstructors();
+    }, [fetchInstructors]);
 
     const createInstructor = async (data: UserCreatePayload) => {
         try {

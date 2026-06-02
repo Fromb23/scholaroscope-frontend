@@ -16,11 +16,13 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import Modal from '@/app/components/ui/Modal';
 import { Select } from '@/app/components/ui/Select';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
+import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useModalState } from '@/app/core/hooks/useModalState';
+import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import type { LessonPlan, LessonPlanStatus } from '@/app/core/types/lessonPlans';
 import {
     LESSON_PLAN_STATUS_OPTIONS,
@@ -138,6 +140,122 @@ interface RowActionFeedback {
     variant: 'error' | 'success';
 }
 
+interface LessonPlanInstructorOption {
+    value: string;
+    label: string;
+}
+
+interface LessonPlanGroupSection {
+    key: string;
+    label: string;
+    description: string;
+    items: LessonPlan[];
+}
+
+interface LessonPlanGroup {
+    key: string;
+    label: string;
+    description: string;
+    itemCount: number;
+    sections: LessonPlanGroupSection[];
+}
+
+function toOptionalNumber(value: string): number | undefined {
+    if (!value) {
+        return undefined;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function buildLessonPlanGroups(
+    lessonPlans: LessonPlan[],
+    groupingMode: AdminGroupingMode,
+): LessonPlanGroup[] {
+    const groups = new Map<string, {
+        label: string;
+        description: string;
+        itemCount: number;
+        sections: Map<string, LessonPlanGroupSection>;
+    }>();
+
+    lessonPlans.forEach((lessonPlan) => {
+        const cohortLabel = lessonPlan.cohort_name?.trim() || 'Unassigned class';
+        const subjectLabel = lessonPlan.subject_name?.trim() || 'Unassigned subject';
+        const instructorLabel = teacherLabel(lessonPlan);
+        let groupKey = `cohort:${lessonPlan.cohort ?? cohortLabel}`;
+        let groupLabel = cohortLabel;
+        let groupDescription = "Class view starts from learners' classroom context.";
+        let sectionKey = `subject:${lessonPlan.subject ?? subjectLabel}`;
+        let sectionLabel = subjectLabel;
+        let sectionDescription = `${instructorLabel} ownership stays visible on each lesson plan card.`;
+
+        if (groupingMode === 'instructor') {
+            groupKey = `teacher:${lessonPlan.teacher ?? instructorLabel}`;
+            groupLabel = instructorLabel;
+            groupDescription = 'Instructor view starts from teacher workload.';
+            sectionKey = `class-subject:${lessonPlan.cohort ?? cohortLabel}:${lessonPlan.subject ?? subjectLabel}`;
+            sectionLabel = `${cohortLabel} · ${subjectLabel}`;
+            sectionDescription = 'Class and subject context for this instructor.';
+        } else if (groupingMode === 'subject') {
+            groupKey = `subject:${lessonPlan.subject ?? subjectLabel}`;
+            groupLabel = subjectLabel;
+            groupDescription = 'Subject view highlights where the teaching load sits across classes.';
+            sectionKey = `class-teacher:${lessonPlan.cohort ?? cohortLabel}:${lessonPlan.teacher ?? instructorLabel}`;
+            sectionLabel = `${cohortLabel} · ${instructorLabel}`;
+            sectionDescription = 'Class and instructor context for this subject.';
+        }
+
+        if (!groups.has(groupKey)) {
+            groups.set(groupKey, {
+                label: groupLabel,
+                description: groupDescription,
+                itemCount: 0,
+                sections: new Map<string, LessonPlanGroupSection>(),
+            });
+        }
+
+        const group = groups.get(groupKey);
+        if (!group) {
+            return;
+        }
+
+        group.itemCount += 1;
+
+        if (!group.sections.has(sectionKey)) {
+            group.sections.set(sectionKey, {
+                key: sectionKey,
+                label: sectionLabel,
+                description: sectionDescription,
+                items: [],
+            });
+        }
+
+        const section = group.sections.get(sectionKey);
+        if (!section) {
+            return;
+        }
+
+        section.items.push(lessonPlan);
+    });
+
+    return Array.from(groups.entries())
+        .map(([key, group]) => ({
+            key,
+            label: group.label,
+            description: group.description,
+            itemCount: group.itemCount,
+            sections: Array.from(group.sections.values())
+                .map((section) => ({
+                    ...section,
+                    items: sortLessonPlans(section.items),
+                }))
+                .sort((left, right) => left.label.localeCompare(right.label)),
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label));
+}
+
 function LessonPlanActions({
     lessonPlan,
     pendingActionKey,
@@ -184,7 +302,7 @@ function LessonPlanActions({
                     disabled={isPending('used')}
                     className={buttonClassName}
                 >
-                    Mark Used
+                    Close Lesson
                 </Button>
             ) : null}
 
@@ -220,12 +338,14 @@ function LessonPlanActions({
 
 export function LessonPlansPage() {
     const router = useRouter();
-    const { activeRole } = useAuth();
+    const { activeRole, user } = useAuth();
+    const isInstructor = activeRole === 'INSTRUCTOR';
+    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
     const { curricula } = useCurricula();
-    const { lessonPlans, loading, error, refetch, markReviewed, markUsed, archive, restore } = useLessonPlans();
     const { terms } = useTerms();
     const { subjects } = useSubjects();
     const { cohorts } = useCohorts();
+    const { instructors } = useInstructors({ enabled: isAdminLike });
     const canCreateLessonPlan = useMemo(
         () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
         [curricula]
@@ -235,10 +355,29 @@ export function LessonPlansPage() {
     const [termFilter, setTermFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [cohortFilter, setCohortFilter] = useState('');
+    const [instructorFilter, setInstructorFilter] = useState('');
+    const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
+    const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
     const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
     const [rowActionFeedback, setRowActionFeedback] = useState<Record<number, RowActionFeedback>>({});
     const [reflection, setReflection] = useState('');
     const [markUsedError, setMarkUsedError] = useState<string | null>(null);
+    const lessonPlanFilters = useMemo(() => ({
+        status: statusFilter || undefined,
+        term: toOptionalNumber(termFilter),
+        subject: toOptionalNumber(subjectFilter),
+        cohort: toOptionalNumber(cohortFilter),
+    }), [cohortFilter, statusFilter, subjectFilter, termFilter]);
+    const {
+        lessonPlans,
+        loading,
+        error,
+        refetch,
+        markReviewed,
+        markUsed,
+        archive,
+        restore,
+    } = useLessonPlans(lessonPlanFilters);
     const {
         target: markUsedTarget,
         isOpen: isMarkUsedOpen,
@@ -247,9 +386,55 @@ export function LessonPlansPage() {
     } = useModalState<LessonPlan>();
 
     const subtitle =
-        activeRole === 'INSTRUCTOR'
+        isInstructor
             ? 'Prepare lessons, review what is ready for class, and schedule the next one.'
-            : 'Monitor lesson preparation across the organization.';
+            : viewMode === 'my_teaching'
+                ? 'Use My Teaching to view only lesson plans tied to your own teaching work.'
+                : 'Admin supervision shows organization work by class, instructor, and subject.';
+    const createButtonLabel = isInstructor
+        ? 'Prepare a lesson'
+        : viewMode === 'my_teaching'
+            ? 'Plan my lesson'
+            : 'Create lesson plan';
+
+    const instructorOptions = useMemo<LessonPlanInstructorOption[]>(() => {
+        const options = new Map<string, LessonPlanInstructorOption>();
+
+        instructors.forEach((instructor) => {
+            options.set(`id:${instructor.id}`, {
+                value: `id:${instructor.id}`,
+                label: instructor.full_name || instructor.email,
+            });
+        });
+
+        lessonPlans.forEach((lessonPlan) => {
+            if (typeof lessonPlan.teacher === 'number' && Number.isFinite(lessonPlan.teacher)) {
+                const key = `id:${lessonPlan.teacher}`;
+                if (!options.has(key)) {
+                    options.set(key, {
+                        value: key,
+                        label: teacherLabel(lessonPlan),
+                    });
+                }
+                return;
+            }
+
+            const teacherName = normalizeText(lessonPlan.teacher_name);
+            if (!teacherName) {
+                return;
+            }
+
+            const key = `name:${teacherName}`;
+            if (!options.has(key)) {
+                options.set(key, {
+                    value: key,
+                    label: lessonPlan.teacher_name?.trim() || 'Unnamed instructor',
+                });
+            }
+        });
+
+        return Array.from(options.values()).sort((left, right) => left.label.localeCompare(right.label));
+    }, [instructors, lessonPlans]);
 
     const filteredLessonPlans = useMemo(() => {
         const normalizedSearch = search.trim().toLowerCase();
@@ -272,6 +457,27 @@ export function LessonPlansPage() {
                     return false;
                 }
 
+                if (isAdminLike && viewMode === 'my_teaching') {
+                    const matchesTeacherId = typeof lessonPlan.teacher === 'number' && lessonPlan.teacher === user?.id;
+                    const matchesTeacherName = normalizeText(lessonPlan.teacher_name) === normalizeText(user?.full_name);
+
+                    if (!matchesTeacherId && !matchesTeacherName) {
+                        return false;
+                    }
+                }
+
+                if (isAdminLike && viewMode === 'admin_supervision' && instructorFilter) {
+                    if (instructorFilter.startsWith('id:')) {
+                        if (String(lessonPlan.teacher ?? '') !== instructorFilter.slice(3)) {
+                            return false;
+                        }
+                    } else if (instructorFilter.startsWith('name:')) {
+                        if (normalizeText(lessonPlan.teacher_name) !== instructorFilter.slice(5)) {
+                            return false;
+                        }
+                    }
+                }
+
                 if (!normalizedSearch) {
                     return true;
                 }
@@ -292,7 +498,29 @@ export function LessonPlansPage() {
                 return haystack.includes(normalizedSearch);
             })
         );
-    }, [cohortFilter, lessonPlans, search, statusFilter, subjectFilter, termFilter]);
+    }, [
+        cohortFilter,
+        instructorFilter,
+        isAdminLike,
+        lessonPlans,
+        search,
+        statusFilter,
+        subjectFilter,
+        termFilter,
+        user?.full_name,
+        user?.id,
+        viewMode,
+    ]);
+
+    const groupedLessonPlans = useMemo(
+        () => (
+            isAdminLike && viewMode === 'admin_supervision'
+                ? buildLessonPlanGroups(filteredLessonPlans, groupingMode)
+                : []
+        ),
+        [filteredLessonPlans, groupingMode, isAdminLike, viewMode]
+    );
+    const hasServerFilters = Boolean(statusFilter || termFilter || subjectFilter || cohortFilter);
 
     const setLessonPlanFeedback = (lessonPlanId: number, feedback: RowActionFeedback | null) => {
         setRowActionFeedback((current) => {
@@ -378,7 +606,7 @@ export function LessonPlansPage() {
             setReflection('');
             setLessonPlanFeedback(markUsedTarget.id, {
                 action: 'used',
-                message: 'Lesson plan marked as used.',
+                message: 'Lesson closure recorded.',
                 variant: 'success',
             });
         } catch (err) {
@@ -386,6 +614,100 @@ export function LessonPlansPage() {
         } finally {
             setPendingActionKey(null);
         }
+    };
+
+    const renderLessonPlanCard = (lessonPlan: LessonPlan) => {
+        const lessonSummary = getLessonSummary(lessonPlan);
+        const feedback = rowActionFeedback[lessonPlan.id];
+
+        return (
+            <Card key={lessonPlan.id} className="p-4 sm:p-5">
+                <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)_auto] xl:items-start">
+                    <div className="min-w-0 space-y-3">
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap items-start gap-2">
+                                <h2 className="min-w-0 flex-1 text-base font-semibold text-gray-900 line-clamp-2 sm:text-lg">
+                                    {lessonPlan.title}
+                                </h2>
+                                {lessonPlan.generated_by_ai ? (
+                                    <Badge variant="purple" size="sm">
+                                        AI
+                                    </Badge>
+                                ) : null}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                                {getLessonStatusLabel(lessonPlan)}
+                            </p>
+                            {lessonSummary ? (
+                                <p className="text-sm leading-6 text-gray-600 line-clamp-2">
+                                    {lessonSummary}
+                                </p>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <dl className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                        <LessonPlanMetaItem
+                            label="Status"
+                            value={<LessonPlanStatusBadge status={lessonPlan.status} size="sm" />}
+                        />
+                        <LessonPlanMetaItem
+                            label="Lesson Date"
+                            value={formatDate(getLessonDate(lessonPlan))}
+                        />
+                        <LessonPlanMetaItem
+                            label="Cohort"
+                            value={lessonPlan.cohort_name || '-'}
+                        />
+                        <LessonPlanMetaItem
+                            label="Subject"
+                            value={lessonPlan.subject_name || '-'}
+                        />
+                        <LessonPlanMetaItem
+                            label="Term"
+                            value={lessonPlan.term_name || '-'}
+                        />
+                        <LessonPlanMetaItem
+                            label="Teacher"
+                            value={teacherLabel(lessonPlan)}
+                        />
+                        <LessonPlanMetaItem
+                            label="Updated"
+                            value={formatUpdatedAt(lessonPlan.updated_at)}
+                        />
+                    </dl>
+
+                    <div className="space-y-3 xl:min-w-[12rem]">
+                        <LessonPlanActions
+                            lessonPlan={lessonPlan}
+                            pendingActionKey={pendingActionKey}
+                            onView={(plan) => router.push(`/lesson-plans/${plan.id}`)}
+                            onMarkReviewed={(plan) => {
+                                void handleRowAction(plan, 'reviewed');
+                            }}
+                            onMarkUsed={handleOpenMarkUsed}
+                            onArchive={(plan) => {
+                                void handleRowAction(plan, 'archived');
+                            }}
+                            onRestore={(plan) => {
+                                void handleRowAction(plan, 'restored');
+                            }}
+                            className="w-full xl:flex-col xl:items-stretch"
+                            buttonClassName="w-full sm:w-auto xl:w-full"
+                        />
+                        {feedback ? (
+                            <ErrorBanner
+                                message={feedback.message}
+                                variant={feedback.variant}
+                                compact
+                                autoDismissMs={feedback.variant === 'error' ? 5000 : 4000}
+                                onDismiss={() => setLessonPlanFeedback(lessonPlan.id, null)}
+                            />
+                        ) : null}
+                    </div>
+                </div>
+            </Card>
+        );
     };
 
     if (loading && lessonPlans.length === 0) {
@@ -409,7 +731,7 @@ export function LessonPlansPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        {activeRole === 'INSTRUCTOR' ? 'Lesson Preparation' : 'Lesson Plans'}
+                        {isInstructor ? 'Lesson Preparation' : 'Lesson Plans'}
                     </h1>
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
@@ -418,13 +740,13 @@ export function LessonPlansPage() {
                     <Link href="/lesson-plans/new">
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
-                            {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
+                            {createButtonLabel}
                         </Button>
                     </Link>
                 ) : (
                     <Button disabled>
                         <Plus className="mr-2 h-4 w-4" />
-                        {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
+                        {createButtonLabel}
                     </Button>
                 )}
             </div>
@@ -438,8 +760,81 @@ export function LessonPlansPage() {
                 />
             ) : null}
 
+            {isAdminLike ? (
+                <Card>
+                    <div className="space-y-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="space-y-2">
+                                <h2 className="text-base font-semibold text-gray-900">Workspace mode</h2>
+                                <p className="text-sm text-gray-500">
+                                    Admin supervision shows organization work by class, instructor, and subject.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={viewMode === 'admin_supervision' ? 'secondary' : 'ghost'}
+                                    onClick={() => setViewMode('admin_supervision')}
+                                >
+                                    Admin supervision
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                                    onClick={() => setViewMode('my_teaching')}
+                                >
+                                    My Teaching
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 lg:grid-cols-2">
+                            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                                Admin supervision shows organization work by class, instructor, and subject.
+                            </div>
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                                Use My Teaching to view only your own teaching work.
+                            </div>
+                        </div>
+
+                        {viewMode === 'admin_supervision' ? (
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-semibold text-gray-900">Grouping</h3>
+                                    <p className="text-sm text-gray-500">
+                                        {groupingMode === 'instructor'
+                                            ? 'Instructor view starts from teacher workload.'
+                                            : "Class view starts from learners' classroom context."}
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={groupingMode === 'class' ? 'secondary' : 'ghost'}
+                                        onClick={() => setGroupingMode('class')}
+                                    >
+                                        Class view
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={groupingMode === 'instructor' ? 'secondary' : 'ghost'}
+                                        onClick={() => setGroupingMode('instructor')}
+                                    >
+                                        Instructor view
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                </Card>
+            ) : null}
+
             <Card>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+                <div className={`grid grid-cols-1 gap-4 ${isAdminLike && viewMode === 'admin_supervision' ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
                     <Input
                         label="Search"
                         value={search}
@@ -495,18 +890,30 @@ export function LessonPlansPage() {
                             })),
                         ]}
                     />
+
+                    {isAdminLike && viewMode === 'admin_supervision' ? (
+                        <Select
+                            label="Instructor"
+                            value={instructorFilter}
+                            onChange={(event) => setInstructorFilter(event.target.value)}
+                            options={[
+                                { value: '', label: 'All instructors' },
+                                ...instructorOptions,
+                            ]}
+                        />
+                    ) : null}
                 </div>
             </Card>
 
-            {lessonPlans.length === 0 ? (
+            {lessonPlans.length === 0 && !hasServerFilters && !search ? (
                 <Card>
                     <div className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <h2 className="mt-3 text-base font-semibold text-gray-900">
-                            {activeRole === 'INSTRUCTOR' ? 'No lesson preparations yet' : 'No lesson plans yet'}
+                            {isInstructor ? 'No lesson preparations yet' : 'No lesson plans yet'}
                         </h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            {activeRole === 'INSTRUCTOR'
+                            {isInstructor
                                 ? 'Start by choosing one of your assigned class subjects and the outcomes you want to teach.'
                                 : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
@@ -514,13 +921,13 @@ export function LessonPlansPage() {
                             <Link href="/lesson-plans/new">
                                 <Button className="mt-4">
                                     <Plus className="mr-2 h-4 w-4" />
-                                    {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
+                                    {createButtonLabel}
                                 </Button>
                             </Link>
                         ) : (
                             <Button className="mt-4" disabled>
                                 <Plus className="mr-2 h-4 w-4" />
-                                {activeRole === 'INSTRUCTOR' ? 'Prepare a lesson' : 'Plan a lesson'}
+                                {createButtonLabel}
                             </Button>
                         )}
                     </div>
@@ -530,108 +937,47 @@ export function LessonPlansPage() {
                     <div className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <h2 className="mt-3 text-base font-semibold text-gray-900">
-                            {activeRole === 'INSTRUCTOR' ? 'No matching lesson preparations' : 'No matching lesson plans'}
+                            {isInstructor ? 'No matching lesson preparations' : 'No matching lesson plans'}
                         </h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            Adjust the search or filters to find a different lesson plan.
+                            {viewMode === 'my_teaching'
+                                ? 'No lesson plans match your My Teaching view yet.'
+                                : 'Adjust the search or filters to find a different lesson plan.'}
                         </p>
                     </div>
                 </Card>
-            ) : (
-                <div className="space-y-4 pb-24">
-                    {filteredLessonPlans.map((lessonPlan) => {
-                        const lessonSummary = getLessonSummary(lessonPlan);
-                        const feedback = rowActionFeedback[lessonPlan.id];
+            ) : isAdminLike && viewMode === 'admin_supervision' ? (
+                <div className="space-y-6 pb-24">
+                    {groupedLessonPlans.map((group) => (
+                        <section key={group.key} className="space-y-4">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900">{group.label}</h2>
+                                    <p className="text-sm text-gray-500">{group.description}</p>
+                                </div>
+                                <Badge variant="blue" size="sm">
+                                    {group.itemCount} lesson plan{group.itemCount === 1 ? '' : 's'}
+                                </Badge>
+                            </div>
 
-                        return (
-                            <Card key={lessonPlan.id} className="p-4 sm:p-5">
-                                <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)_auto] xl:items-start">
-                                    <div className="min-w-0 space-y-3">
-                                        <div className="space-y-2">
-                                            <div className="flex flex-wrap items-start gap-2">
-                                                <h2 className="min-w-0 flex-1 text-base font-semibold text-gray-900 line-clamp-2 sm:text-lg">
-                                                    {lessonPlan.title}
-                                                </h2>
-                                                {lessonPlan.generated_by_ai ? (
-                                                    <Badge variant="purple" size="sm">
-                                                        AI
-                                                    </Badge>
-                                                ) : null}
-                                            </div>
-                                            <p className="text-sm text-gray-500">
-                                                {getLessonStatusLabel(lessonPlan)}
-                                            </p>
-                                            {lessonSummary ? (
-                                                <p className="text-sm leading-6 text-gray-600 line-clamp-2">
-                                                    {lessonSummary}
-                                                </p>
-                                            ) : null}
-                                        </div>
+                            {group.sections.map((section) => (
+                                <div key={section.key} className="space-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+                                    <div className="space-y-1">
+                                        <h3 className="text-sm font-semibold text-gray-900">{section.label}</h3>
+                                        <p className="text-sm text-gray-500">{section.description}</p>
                                     </div>
 
-                                    <dl className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-                                        <LessonPlanMetaItem
-                                            label="Status"
-                                            value={<LessonPlanStatusBadge status={lessonPlan.status} size="sm" />}
-                                        />
-                                        <LessonPlanMetaItem
-                                            label="Lesson Date"
-                                            value={formatDate(getLessonDate(lessonPlan))}
-                                        />
-                                        <LessonPlanMetaItem
-                                            label="Cohort"
-                                            value={lessonPlan.cohort_name || '-'}
-                                        />
-                                        <LessonPlanMetaItem
-                                            label="Subject"
-                                            value={lessonPlan.subject_name || '-'}
-                                        />
-                                        <LessonPlanMetaItem
-                                            label="Term"
-                                            value={lessonPlan.term_name || '-'}
-                                        />
-                                        <LessonPlanMetaItem
-                                            label="Teacher"
-                                            value={teacherLabel(lessonPlan)}
-                                        />
-                                        <LessonPlanMetaItem
-                                            label="Updated"
-                                            value={formatUpdatedAt(lessonPlan.updated_at)}
-                                        />
-                                    </dl>
-
-                                    <div className="space-y-3 xl:min-w-[12rem]">
-                                        <LessonPlanActions
-                                            lessonPlan={lessonPlan}
-                                            pendingActionKey={pendingActionKey}
-                                            onView={(plan) => router.push(`/lesson-plans/${plan.id}`)}
-                                            onMarkReviewed={(plan) => {
-                                                void handleRowAction(plan, 'reviewed');
-                                            }}
-                                            onMarkUsed={handleOpenMarkUsed}
-                                            onArchive={(plan) => {
-                                                void handleRowAction(plan, 'archived');
-                                            }}
-                                            onRestore={(plan) => {
-                                                void handleRowAction(plan, 'restored');
-                                            }}
-                                            className="w-full xl:flex-col xl:items-stretch"
-                                            buttonClassName="w-full sm:w-auto xl:w-full"
-                                        />
-                                        {feedback ? (
-                                            <ErrorBanner
-                                                message={feedback.message}
-                                                variant={feedback.variant}
-                                                compact
-                                                autoDismissMs={feedback.variant === 'error' ? 5000 : 4000}
-                                                onDismiss={() => setLessonPlanFeedback(lessonPlan.id, null)}
-                                            />
-                                        ) : null}
+                                    <div className="space-y-4">
+                                        {section.items.map(renderLessonPlanCard)}
                                     </div>
                                 </div>
-                            </Card>
-                        );
-                    })}
+                            ))}
+                        </section>
+                    ))}
+                </div>
+            ) : (
+                <div className="space-y-4 pb-24">
+                    {filteredLessonPlans.map(renderLessonPlanCard)}
                 </div>
             )}
 
@@ -642,16 +988,16 @@ export function LessonPlansPage() {
                     setReflection('');
                     setMarkUsedError(null);
                 }}
-                title="Mark Lesson Plan as Used"
+                title="Post-lesson closure"
                 size="md"
             >
                 <form onSubmit={handleSubmitMarkUsed} className="space-y-4">
                     <p className="text-sm text-gray-600">
-                        Add reflection notes for this lesson. The backend remains authoritative for the final state.
+                        Record the post-lesson reflection after teaching. The backend remains authoritative for the final state.
                     </p>
 
                     <div className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700">Reflection</label>
+                        <label className="block text-sm font-medium text-gray-700">Post-lesson reflection</label>
                         <textarea
                             value={reflection}
                             onChange={(event) => setReflection(event.target.value)}
@@ -686,7 +1032,7 @@ export function LessonPlansPage() {
                             type="submit"
                             disabled={!markUsedTarget || pendingActionKey === actionKey(markUsedTarget.id, 'used')}
                         >
-                            Mark Used
+                            Save closure
                         </Button>
                     </div>
                 </form>

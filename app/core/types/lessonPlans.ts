@@ -168,7 +168,6 @@ export interface LessonPlanUpdatePayload {
     assessment_strategy?: string;
     differentiation?: string;
     conclusion?: string;
-    reflection?: string;
     reference_pages?: ReferencePagePayload[];
 }
 

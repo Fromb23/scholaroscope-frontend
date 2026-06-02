@@ -827,6 +827,9 @@ export function LessonPlanDetailPage() {
         : learnerTaskChoice === 'prepare'
             ? 'Draft in progress'
             : 'Not prepared';
+    const postLessonReflection = lessonPlan.status === 'USED'
+        ? lessonPlan.reflection?.trim() ?? ''
+        : '';
 
     return (
         <div className="space-y-6">
@@ -882,7 +885,7 @@ export function LessonPlanDetailPage() {
                                     disabled: pendingActionKey === actionKey(lessonPlan.id, 'reviewed'),
                                 }] : []),
                                 ...(canMarkLessonPlanUsed(lessonPlan.status) ? [{
-                                    label: 'Mark Used',
+                                    label: 'Close lesson and record reflection',
                                     onSelect: handleOpenMarkUsed,
                                     disabled: pendingActionKey === actionKey(lessonPlan.id, 'used'),
                                 }] : []),
@@ -1241,6 +1244,26 @@ export function LessonPlanDetailPage() {
                 </div>
             </Card>
 
+            {postLessonReflection ? (
+                <Card>
+                    <div className="space-y-3">
+                        <div className="space-y-1">
+                            <h2 className="text-base font-semibold text-gray-900">
+                                Post-lesson reflection
+                            </h2>
+                            <p className="text-sm text-gray-500">
+                                Recorded after the lesson was taught.
+                            </p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                            <p className="whitespace-pre-wrap text-sm leading-6 text-gray-800">
+                                {postLessonReflection}
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
+
             <Card>
                 <div className="space-y-4">
                     <div className="space-y-1">
@@ -1320,16 +1343,16 @@ export function LessonPlanDetailPage() {
                     setReflection('');
                     setMarkUsedError(null);
                 }}
-                title="Mark Lesson Plan as Used"
+                title="Post-lesson closure"
                 size="md"
             >
                 <form onSubmit={handleSubmitMarkUsed} className="space-y-4">
                     <p className="text-sm text-gray-600">
-                        Add reflection notes for this lesson. The returned lesson plan will refresh this page after the update.
+                        Record the post-lesson reflection after teaching. The lesson plan will refresh after this closure action is saved.
                     </p>
 
                     <div className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700">Reflection</label>
+                        <label className="block text-sm font-medium text-gray-700">Post-lesson reflection</label>
                         <textarea
                             value={reflection}
                             onChange={(event) => setReflection(event.target.value)}
@@ -1365,7 +1388,7 @@ export function LessonPlanDetailPage() {
                             disabled={pendingActionKey === actionKey(lessonPlan.id, 'used')}
                         >
                             <Clock3 className="mr-1.5 h-4 w-4" />
-                            Mark Used
+                            Save closure
                         </Button>
                     </div>
                 </form>
