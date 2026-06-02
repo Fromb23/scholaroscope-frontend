@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -23,13 +23,14 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useCohortSessions, useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
-import { groupBy } from '@/app/utils/groupBy';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
+import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import { useAuth } from '@/app/context/AuthContext';
 import type { Session } from '@/app/core/types/session';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -86,6 +87,10 @@ function getSessionInstructorLabel(session: Session) {
         || session.created_by_email?.trim()
         || session.created_by?.trim()
         || 'Unknown instructor';
+}
+
+function normalizeText(value: string | null | undefined): string {
+    return (value ?? '').trim().toLowerCase();
 }
 
 function SessionLifecycleHint({ session }: { session: Session }) {
@@ -361,14 +366,33 @@ function CohortSessionsCards({
 
 function SessionWorkspaceView() {
     const router = useRouter();
-    const { activeRole } = useAuth();
+    const { activeRole, user } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
+    const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
+    const [selectedCohortId, setSelectedCohortId] = useState<number | undefined>();
+    const [selectedInstructorFilter, setSelectedInstructorFilter] = useState('');
+    const effectiveMyTeachingMode = isInstructor || viewMode === 'my_teaching';
+    const selectedInstructorId = useMemo(() => {
+        if (!selectedInstructorFilter.startsWith('id:')) {
+            return undefined;
+        }
+
+        const parsed = Number(selectedInstructorFilter.slice(3));
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }, [selectedInstructorFilter]);
+    const { instructors } = useInstructors({ enabled: isAdminLike });
     const { sessions, loading, error, refetch } = useSessions({
         term: selectedTerm,
         session_type: selectedType,
+        cohort_subject__cohort: selectedCohortId,
+        instructor_id: isAdminLike
+            ? (effectiveMyTeachingMode ? user?.id : selectedInstructorId)
+            : undefined,
     });
     const { sessions: todaySessions } = useTodaySessions();
     const { terms } = useTerms();
@@ -378,36 +402,277 @@ function SessionWorkspaceView() {
         [curricula]
     );
     const workspaceBackHref = isInstructor ? '/dashboard/instructor' : '/dashboard/admin';
+    const actionLabel = isInstructor || viewMode === 'my_teaching'
+        ? 'Prepare a lesson'
+        : 'Create lesson plan';
 
-    const totalSessions = sessions.length;
-    const todayCount = todaySessions.length;
-    const mergedSessionsCount = sessions.filter((session) => (
+    useEffect(() => {
+        if (viewMode === 'my_teaching') {
+            setSelectedInstructorFilter('');
+        }
+    }, [viewMode]);
+
+    const instructorOptions = useMemo(() => {
+        const options = new Map<string, { value: string; label: string }>();
+
+        instructors.forEach((instructor) => {
+            options.set(`id:${instructor.id}`, {
+                value: `id:${instructor.id}`,
+                label: instructor.full_name || instructor.email,
+            });
+        });
+
+        sessions.forEach((session) => {
+            if (typeof session.created_by_id === 'number') {
+                const key = `id:${session.created_by_id}`;
+                if (!options.has(key)) {
+                    options.set(key, {
+                        value: key,
+                        label: getSessionInstructorLabel(session),
+                    });
+                }
+                return;
+            }
+
+            const instructorName = normalizeText(getSessionInstructorLabel(session));
+            if (!instructorName) {
+                return;
+            }
+
+            const key = `name:${instructorName}`;
+            if (!options.has(key)) {
+                options.set(key, {
+                    value: key,
+                    label: getSessionInstructorLabel(session),
+                });
+            }
+        });
+
+        return Array.from(options.values()).sort((left, right) => left.label.localeCompare(right.label));
+    }, [instructors, sessions]);
+
+    const matchesInstructorSelection = useCallback((session: Session, filterValue: string) => {
+        if (!filterValue) {
+            return true;
+        }
+
+        if (filterValue.startsWith('id:')) {
+            return String(session.created_by_id ?? '') === filterValue.slice(3);
+        }
+
+        if (filterValue.startsWith('name:')) {
+            return normalizeText(getSessionInstructorLabel(session)) === filterValue.slice(5);
+        }
+
+        return true;
+    }, []);
+
+    const matchesMyTeachingSession = useCallback((session: Session) => {
+        const matchesInstructorId = typeof session.created_by_id === 'number' && session.created_by_id === user?.id;
+        const matchesInstructorName = normalizeText(getSessionInstructorLabel(session)) === normalizeText(user?.full_name);
+        return matchesInstructorId || matchesInstructorName;
+    }, [user?.full_name, user?.id]);
+
+    const visibleSessions = useMemo(() => (
+        sessions.filter((session) => {
+            if (selectedType && session.session_type !== selectedType) {
+                return false;
+            }
+
+            if (selectedTerm && session.term !== selectedTerm) {
+                return false;
+            }
+
+            if (selectedCohortId && session.cohort_id !== selectedCohortId) {
+                return false;
+            }
+
+            if (isAdminLike && effectiveMyTeachingMode) {
+                return matchesMyTeachingSession(session);
+            }
+
+            if (isAdminLike && selectedInstructorFilter) {
+                return matchesInstructorSelection(session, selectedInstructorFilter);
+            }
+
+            return true;
+        })
+    ), [
+        effectiveMyTeachingMode,
+        isAdminLike,
+        selectedCohortId,
+        selectedInstructorFilter,
+        selectedTerm,
+        selectedType,
+        matchesInstructorSelection,
+        matchesMyTeachingSession,
+        sessions,
+    ]);
+
+    const visibleTodaySessions = useMemo(() => (
+        todaySessions.filter((session) => {
+            if (selectedType && session.session_type !== selectedType) {
+                return false;
+            }
+
+            if (selectedTerm && session.term !== selectedTerm) {
+                return false;
+            }
+
+            if (selectedCohortId && session.cohort_id !== selectedCohortId) {
+                return false;
+            }
+
+            if (isAdminLike && effectiveMyTeachingMode) {
+                return matchesMyTeachingSession(session);
+            }
+
+            if (isAdminLike && selectedInstructorFilter) {
+                return matchesInstructorSelection(session, selectedInstructorFilter);
+            }
+
+            return true;
+        })
+    ), [
+        effectiveMyTeachingMode,
+        isAdminLike,
+        selectedCohortId,
+        selectedInstructorFilter,
+        selectedTerm,
+        selectedType,
+        matchesInstructorSelection,
+        matchesMyTeachingSession,
+        todaySessions,
+    ]);
+
+    const totalSessions = visibleSessions.length;
+    const todayCount = visibleTodaySessions.length;
+    const mergedSessionsCount = visibleSessions.filter((session) => (
         session.linked_cohorts && session.linked_cohorts.length > 1
     )).length;
     const priorityTodayAction = useMemo(
-        () => getPriorityLessonAction(todaySessions),
-        [todaySessions]
+        () => (effectiveMyTeachingMode ? getPriorityLessonAction(visibleTodaySessions) : null),
+        [effectiveMyTeachingMode, visibleTodaySessions]
     );
-    const avgAttendance = sessions.length > 0
-        ? sessions.reduce((sum, session) => {
+    const avgAttendance = visibleSessions.length > 0
+        ? visibleSessions.reduce((sum, session) => {
             const total = session.attendance_count.total;
             const present = session.attendance_count.present;
             return sum + (total > 0 ? (present / total) * 100 : 0);
-        }, 0) / sessions.length
+        }, 0) / visibleSessions.length
         : 0;
+
+    const sessionGroups = useMemo(() => {
+        if (groupingMode === 'instructor' && isAdminLike && viewMode === 'admin_supervision') {
+            const groups = new Map<string, {
+                key: string;
+                label: string;
+                description: string;
+                itemCount: number;
+                sections: Array<{
+                    key: string;
+                    label: string;
+                    description: string;
+                    items: Session[];
+                }>;
+            }>();
+
+            visibleSessions.forEach((session) => {
+                const instructorLabel = getSessionInstructorLabel(session);
+                const instructorKey = typeof session.created_by_id === 'number'
+                    ? `id:${session.created_by_id}`
+                    : `name:${normalizeText(instructorLabel) || 'unknown'}`;
+                const sectionKey = `cohort:${session.cohort_id}`;
+                const sectionLabel = `${session.cohort_name} · ${session.cohort_level}`;
+
+                if (!groups.has(instructorKey)) {
+                    groups.set(instructorKey, {
+                        key: instructorKey,
+                        label: instructorLabel,
+                        description: 'Instructor view starts from teacher workload.',
+                        itemCount: 0,
+                        sections: [],
+                    });
+                }
+
+                const group = groups.get(instructorKey);
+                if (!group) {
+                    return;
+                }
+
+                group.itemCount += 1;
+
+                const existingSection = group.sections.find((section) => section.key === sectionKey);
+                if (existingSection) {
+                    existingSection.items.push(session);
+                    return;
+                }
+
+                group.sections.push({
+                    key: sectionKey,
+                    label: sectionLabel,
+                    description: "Class view starts from learners' classroom context.",
+                    items: [session],
+                });
+            });
+
+            return Array.from(groups.values())
+                .map((group) => ({
+                    ...group,
+                    sections: group.sections
+                        .map((section) => ({
+                            ...section,
+                            items: sortSessionsByDate(section.items),
+                        }))
+                        .sort((left, right) => left.label.localeCompare(right.label)),
+                }))
+                .sort((left, right) => left.label.localeCompare(right.label));
+        }
+
+        const groups = new Map<string, {
+            key: string;
+            label: string;
+            description: string;
+            items: Session[];
+        }>();
+
+        visibleSessions.forEach((session) => {
+            const key = `cohort:${session.cohort_id}`;
+            const label = `${session.cohort_name} · ${session.cohort_level}`;
+
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    key,
+                    label,
+                    description: "Class view starts from learners' classroom context.",
+                    items: [],
+                });
+            }
+
+            groups.get(key)?.items.push(session);
+        });
+
+        return Array.from(groups.values())
+            .map((group) => ({
+                ...group,
+                items: sortSessionsByDate(group.items),
+            }))
+            .sort((left, right) => left.label.localeCompare(right.label));
+    }, [groupingMode, isAdminLike, viewMode, visibleSessions]);
+
     const assistantContext = useMemo(() => ({
         pageKey: 'sessions_overview',
-        pageTitle: isInstructor ? 'My Lessons' : 'Scheduled Lessons',
+        pageTitle: effectiveMyTeachingMode ? 'My Lessons' : 'Scheduled Lessons',
         state: {
             is_loading: loading,
-            is_empty: !loading && !error && sessions.length === 0,
-            no_results: !loading && Boolean(selectedTerm || selectedType) && sessions.length === 0,
+            is_empty: !loading && !error && visibleSessions.length === 0,
+            no_results: !loading && Boolean(selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter) && visibleSessions.length === 0,
             today_lessons: todayCount,
             has_priority_lesson: Boolean(priorityTodayAction),
         },
         visibleActions: [
             ...(canPlanLesson
-                ? [{ label: 'Prepare lesson', type: 'navigate' as const, href: '/lesson-plans/new' }]
+                ? [{ label: actionLabel, type: 'navigate' as const, href: '/lesson-plans/new' }]
                 : []),
             ...(isInstructor
                 ? [{ label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' }]
@@ -415,54 +680,274 @@ function SessionWorkspaceView() {
         ],
         nextSafeAction: canPlanLesson
             ? {
-                label: 'Prepare lesson',
+                label: actionLabel,
                 type: 'navigate' as const,
                 href: '/lesson-plans/new',
             }
             : undefined,
         workflowStep: todayCount > 0 ? 'scheduled_lessons' : 'plan_then_schedule',
-        emptyStateReason: !loading && !error && sessions.length === 0
+        emptyStateReason: !loading && !error && visibleSessions.length === 0
             ? 'No lessons are scheduled yet.'
-            : (!loading && Boolean(selectedTerm || selectedType) && sessions.length === 0
+            : (!loading && Boolean(selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter) && visibleSessions.length === 0
                 ? 'No lessons match the current filters.'
                 : undefined),
     }), [
+        actionLabel,
+        canPlanLesson,
+        effectiveMyTeachingMode,
         error,
         isInstructor,
         loading,
-        canPlanLesson,
         priorityTodayAction,
+        selectedCohortId,
+        selectedInstructorFilter,
         selectedTerm,
         selectedType,
-        sessions.length,
         todayCount,
+        visibleSessions.length,
     ]);
 
-    useAssistantPageContext(assistantContext);
-
-    const grouped = useMemo(() => (
-        groupBy(sessions, {
-            keyFn: (session) => session.cohort_id,
-            labelFn: (session) => `${session.cohort_name} · ${session.cohort_level}`,
-        })
-    ), [sessions]);
-
-    const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
+    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        setCollapsedGroups(new Set(Array.from(grouped.keys())));
-    }, [grouped]);
+        setCollapsedGroups(new Set());
+    }, [sessionGroups]);
 
-    const toggleGroup = (cohortId: number) => {
+    const toggleGroup = (groupKey: string) => {
         setCollapsedGroups((previous) => {
             const next = new Set(previous);
-            if (next.has(cohortId)) {
-                next.delete(cohortId);
+            if (next.has(groupKey)) {
+                next.delete(groupKey);
             } else {
-                next.add(cohortId);
+                next.add(groupKey);
             }
             return next;
         });
+    };
+
+    useAssistantPageContext(assistantContext);
+
+    const renderClassGroup = (group: {
+        key: string;
+        label: string;
+        description: string;
+        items: Session[];
+    }) => {
+        const isCollapsed = collapsedGroups.has(group.key);
+        const groupTotal = group.items.reduce((sum, session) => sum + session.attendance_count.total, 0);
+        const groupPresent = group.items.reduce((sum, session) => sum + session.attendance_count.present, 0);
+        const groupPercentage = groupTotal > 0 ? Math.round((groupPresent / groupTotal) * 100) : 0;
+
+        return (
+            <Card key={group.key} className="overflow-hidden">
+                <div
+                    onClick={() => toggleGroup(group.key)}
+                    className="theme-surface-muted theme-hover-surface cursor-pointer select-none border-b px-4 py-3 transition-colors theme-border"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="theme-surface-elevated shrink-0 rounded-lg border p-1.5 shadow-sm theme-border">
+                            {isCollapsed
+                                ? <ChevronRight className="h-4 w-4 text-blue-600" />
+                                : <ChevronDown className="h-4 w-4 text-blue-600" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="truncate text-sm font-semibold theme-text">
+                                    {group.label}
+                                </h3>
+                                <Badge variant="blue" size="sm">
+                                    {group.items.length} session{group.items.length !== 1 ? 's' : ''}
+                                </Badge>
+                            </div>
+                            <p className="mt-0.5 text-xs theme-muted">
+                                {groupPresent}/{groupTotal} present ·{' '}
+                                <span className={groupPercentage >= 80 ? 'text-green-600' : groupPercentage >= 60 ? 'text-yellow-600' : 'text-red-600'}>
+                                    {groupPercentage}%
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {!isCollapsed ? (
+                    <>
+                        <div className="p-4 md:hidden">
+                            <CohortSessionsCards sessions={group.items} />
+                        </div>
+                        <div className="hidden overflow-x-auto md:block theme-surface">
+                            <div className="min-w-[640px]">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date & Time</TableHead>
+                                            <TableHead>Subject</TableHead>
+                                            <TableHead>Cohorts</TableHead>
+                                            <TableHead>Instructor</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Venue</TableHead>
+                                            <TableHead>Attendance</TableHead>
+                                            <TableHead>Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {group.items.map((session) => {
+                                            const { total, present } = session.attendance_count;
+                                            const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+                                            const isMerged = session.linked_cohorts && session.linked_cohorts.length > 1;
+
+                                            return (
+                                                <TableRow
+                                                    key={session.id}
+                                                    onClick={() => router.push(`/sessions/${session.id}`)}
+                                                    className="cursor-pointer transition-colors theme-hover-surface"
+                                                >
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="theme-info-surface shrink-0 rounded-lg p-1.5">
+                                                                <Calendar className="h-3.5 w-3.5 text-blue-600" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="whitespace-nowrap text-sm font-medium theme-text">
+                                                                    {formatSessionDate(session.session_date)}
+                                                                </div>
+                                                                <div className="whitespace-nowrap text-xs theme-muted">
+                                                                    {getSessionTimeLabel(session)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="whitespace-nowrap text-sm font-medium theme-text">
+                                                            {session.subject_name}
+                                                        </div>
+                                                        <div className="text-xs theme-muted">{session.subject_code}</div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="whitespace-nowrap text-sm theme-text">
+                                                            {isMerged
+                                                                ? session.linked_cohorts.map((cohort) => cohort.cohort_name).join(', ')
+                                                                : session.cohort_name}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <SessionInstructor
+                                                            session={session}
+                                                            className="text-sm theme-text"
+                                                            linkClassName="text-sm theme-link hover:underline"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant="blue">{session.session_type_display}</Badge>
+                                                            <SessionLifecycleHint session={session} />
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-1 whitespace-nowrap text-sm theme-muted">
+                                                            <MapPin className="h-3.5 w-3.5 theme-subtle shrink-0" />
+                                                            {session.venue || '-'}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <div>
+                                                                <div className="text-sm font-medium theme-text">
+                                                                    {present}/{total}
+                                                                </div>
+                                                                <Badge variant={getAttendanceColor(percentage)} size="sm">
+                                                                    {percentage}%
+                                                                </Badge>
+                                                            </div>
+                                                            {percentage === 100 && total > 0 ? (
+                                                                <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                                                            ) : null}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="primary"
+                                                            size="sm"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                router.push(`/sessions/${session.id}`);
+                                                            }}
+                                                        >
+                                                            View
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </>
+                ) : null}
+            </Card>
+        );
+    };
+
+    const renderInstructorGroup = (group: {
+        key: string;
+        label: string;
+        description: string;
+        itemCount: number;
+        sections: Array<{
+            key: string;
+            label: string;
+            description: string;
+            items: Session[];
+        }>;
+    }) => {
+        const isCollapsed = collapsedGroups.has(group.key);
+
+        return (
+            <Card key={group.key} className="overflow-hidden">
+                <div
+                    onClick={() => toggleGroup(group.key)}
+                    className="theme-surface-muted theme-hover-surface cursor-pointer select-none border-b px-4 py-3 transition-colors theme-border"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="theme-surface-elevated shrink-0 rounded-lg border p-1.5 shadow-sm theme-border">
+                            {isCollapsed
+                                ? <ChevronRight className="h-4 w-4 text-blue-600" />
+                                : <ChevronDown className="h-4 w-4 text-blue-600" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="truncate text-sm font-semibold theme-text">{group.label}</h3>
+                                <Badge variant="blue" size="sm">
+                                    {group.itemCount} session{group.itemCount !== 1 ? 's' : ''}
+                                </Badge>
+                            </div>
+                            <p className="mt-0.5 text-xs theme-muted">{group.description}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {!isCollapsed ? (
+                    <div className="space-y-4 p-4">
+                        {group.sections.map((section) => (
+                            <div key={section.key} className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                                <div className="mb-4">
+                                    <h4 className="text-sm font-semibold theme-text">{section.label}</h4>
+                                    <p className="mt-1 text-sm theme-muted">{section.description}</p>
+                                </div>
+                                <div className="md:hidden">
+                                    <CohortSessionsCards sessions={section.items} />
+                                </div>
+                                <div className="hidden md:block">
+                                    <Card className="p-0">
+                                        <CohortSessionsTable sessions={section.items} />
+                                    </Card>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
+            </Card>
+        );
     };
 
     return (
@@ -479,12 +964,12 @@ function SessionWorkspaceView() {
             <div className="flex justify-between items-start gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold theme-text">
-                        {isInstructor ? 'My Lessons' : 'Scheduled Lessons'}
+                        {effectiveMyTeachingMode ? 'My Lessons' : 'Scheduled Lessons'}
                     </h1>
                     <p className="mt-1 text-sm theme-muted">
-                        {isInstructor
+                        {effectiveMyTeachingMode
                             ? 'Start lessons, take attendance, and complete your teaching records.'
-                            : 'Review scheduled lessons, attendance, and cohort lesson history from one workspace.'}
+                            : 'Admin supervision shows organization work by class, instructor, and subject.'}
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -500,28 +985,101 @@ function SessionWorkspaceView() {
                         <Link href="/lesson-plans/new">
                             <Button size="sm">
                                 <Plus className="w-4 h-4 sm:mr-1" />
-                                <span className="hidden sm:inline">Prepare a lesson</span>
+                                <span className="hidden sm:inline">{actionLabel}</span>
                             </Button>
                         </Link>
                     ) : (
                         <Button size="sm" disabled>
                             <Plus className="w-4 h-4 sm:mr-1" />
-                            <span className="hidden sm:inline">Prepare a lesson</span>
+                            <span className="hidden sm:inline">{actionLabel}</span>
                         </Button>
                     )}
                 </div>
             </div>
 
+            {isAdminLike ? (
+                <Card>
+                    <div className="space-y-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="space-y-2">
+                                <h2 className="text-base font-semibold theme-text">Workspace mode</h2>
+                                <p className="text-sm theme-muted">
+                                    Admin supervision shows organization work by class, instructor, and subject.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={viewMode === 'admin_supervision' ? 'secondary' : 'ghost'}
+                                    onClick={() => setViewMode('admin_supervision')}
+                                >
+                                    Admin supervision
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                                    onClick={() => setViewMode('my_teaching')}
+                                >
+                                    My Teaching
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 lg:grid-cols-2">
+                            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                                Admin supervision shows organization work by class, instructor, and subject.
+                            </div>
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                                Use My Teaching to view only your own teaching work.
+                            </div>
+                        </div>
+
+                        {viewMode === 'admin_supervision' ? (
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-semibold theme-text">Grouping</h3>
+                                    <p className="text-sm theme-muted">
+                                        {groupingMode === 'instructor'
+                                            ? 'Instructor view starts from teacher workload.'
+                                            : "Class view starts from learners' classroom context."}
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={groupingMode === 'class' ? 'secondary' : 'ghost'}
+                                        onClick={() => setGroupingMode('class')}
+                                    >
+                                        Class view
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={groupingMode === 'instructor' ? 'secondary' : 'ghost'}
+                                        onClick={() => setGroupingMode('instructor')}
+                                    >
+                                        Instructor view
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                </Card>
+            ) : null}
+
             <DesktopOnly>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <StatsCard title={isInstructor ? 'Total Lessons' : 'Scheduled Lessons'} value={totalSessions} icon={Calendar} color="blue" />
+                    <StatsCard title={effectiveMyTeachingMode ? 'Total Lessons' : 'Scheduled Lessons'} value={totalSessions} icon={Calendar} color="blue" />
                     <StatsCard title="Today's Lessons" value={todayCount} icon={Clock} color="green" />
-                    <StatsCard title={isInstructor ? 'Combined Lessons' : 'Combined Lessons'} value={mergedSessionsCount} icon={Layers} color="purple" />
+                    <StatsCard title="Combined Lessons" value={mergedSessionsCount} icon={Layers} color="purple" />
                     <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
                 </div>
             </DesktopOnly>
 
-            {isInstructor && priorityTodayAction ? (
+            {effectiveMyTeachingMode && priorityTodayAction ? (
                 <Card>
                     <div className="space-y-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -561,12 +1119,12 @@ function SessionWorkspaceView() {
                 </Card>
             ) : null}
 
-            {todaySessions.length > 0 ? (
+            {visibleTodaySessions.length > 0 ? (
                 <Card>
                     <div className="p-4">
                         <div className="flex items-center justify-between mb-3">
                             <h2 className="text-base font-semibold theme-text">
-                                Today&apos;s Lessons
+                                {effectiveMyTeachingMode ? "Today's Lessons" : "Today's Sessions"}
                             </h2>
                             {!isInstructor ? (
                                 <Link href="/sessions/today">
@@ -575,7 +1133,7 @@ function SessionWorkspaceView() {
                             ) : null}
                         </div>
                         <div className="space-y-2">
-                            {todaySessions.slice(0, 3).map((session) => {
+                            {visibleTodaySessions.slice(0, 3).map((session) => {
                                 const isMerged = session.linked_cohorts && session.linked_cohorts.length > 1;
 
                                 return (
@@ -614,7 +1172,7 @@ function SessionWorkspaceView() {
                         </div>
                     </div>
                 </Card>
-            ) : isInstructor ? (
+            ) : effectiveMyTeachingMode ? (
                 <Card>
                     <div className="py-10 text-center">
                         <Calendar className="mx-auto h-12 w-12 theme-subtle" />
@@ -626,12 +1184,12 @@ function SessionWorkspaceView() {
                             {canPlanLesson ? (
                                 <Link href="/lesson-plans/new" className="w-full sm:w-auto">
                                     <Button className="w-full sm:w-auto">
-                                        Prepare a lesson
+                                        {actionLabel}
                                     </Button>
                                 </Link>
                             ) : (
                                 <Button className="w-full sm:w-auto" disabled>
-                                    Prepare a lesson
+                                    {actionLabel}
                                 </Button>
                             )}
                             <Link href="/academic/cohorts" className="w-full sm:w-auto">
@@ -645,10 +1203,10 @@ function SessionWorkspaceView() {
             ) : null}
 
             <Card>
-                <div className="p-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-4 space-y-4">
+                    <div className={`grid grid-cols-1 gap-3 ${isAdminLike ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
                         <Select
-                            label=""
+                            label="Term"
                             value={selectedTerm?.toString() || ''}
                             onChange={(event) => setSelectedTerm(event.target.value ? Number(event.target.value) : undefined)}
                             options={[
@@ -657,26 +1215,51 @@ function SessionWorkspaceView() {
                             ]}
                         />
                         <Select
-                            label=""
-                            value=""
-                            onChange={(event) => {
-                                const nextValue = event.target.value;
-                                router.push(nextValue ? `/sessions?cohort=${nextValue}` : '/sessions');
-                            }}
+                            label="Class"
+                            value={selectedCohortId?.toString() || ''}
+                            onChange={(event) => setSelectedCohortId(event.target.value ? Number(event.target.value) : undefined)}
                             options={[
-                                { value: '', label: 'Cohort History' },
+                                { value: '', label: 'All classes' },
                                 ...cohorts.map((cohort) => ({
                                     value: String(cohort.id),
                                     label: `${cohort.name} - ${cohort.level}`,
                                 })),
                             ]}
                         />
+                        {isAdminLike && viewMode === 'admin_supervision' ? (
+                            <Select
+                                label="Instructor"
+                                value={selectedInstructorFilter}
+                                onChange={(event) => setSelectedInstructorFilter(event.target.value)}
+                                options={[
+                                    { value: '', label: 'All instructors' },
+                                    ...instructorOptions,
+                                ]}
+                            />
+                        ) : null}
                         <Select
-                            label=""
+                            label="Session type"
                             value={selectedType || ''}
                             onChange={(event) => setSelectedType(event.target.value || undefined)}
                             options={SESSION_TYPES}
                         />
+                        {isAdminLike ? (
+                            <div className="flex items-end">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={() => {
+                                        if (selectedCohortId) {
+                                            router.push(`/sessions?cohort=${selectedCohortId}`);
+                                        }
+                                    }}
+                                    disabled={!selectedCohortId}
+                                >
+                                    Open cohort history
+                                </Button>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </Card>
@@ -688,36 +1271,36 @@ function SessionWorkspaceView() {
                     <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
                     <p className="mt-2 theme-muted">Loading sessions...</p>
                 </div>
-            ) : sessions.length === 0 ? (
+            ) : visibleSessions.length === 0 ? (
                 <Card>
                     <div className="py-12 text-center">
                         <Calendar className="mx-auto h-12 w-12 theme-subtle" />
                         <h3 className="mt-2 text-sm font-medium theme-text">
-                            {isInstructor ? 'No lessons scheduled yet' : 'No sessions found'}
+                            {effectiveMyTeachingMode ? 'No lessons scheduled yet' : 'No sessions found'}
                         </h3>
                         <p className="mt-1 text-sm theme-muted">
-                            {selectedTerm || selectedType
+                            {selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter
                                 ? 'Try adjusting your filters'
-                                : isInstructor
+                                : effectiveMyTeachingMode
                                     ? 'No lessons scheduled yet. Prepare a lesson plan or check your assigned classes.'
-                                    : 'Get started by planning a lesson'}
+                                    : 'No scheduled sessions match the current supervision view.'}
                         </p>
-                        {!selectedTerm && !selectedType ? (
+                        {!selectedTerm && !selectedType && !selectedCohortId && !selectedInstructorFilter ? (
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
                                 {canPlanLesson ? (
                                     <Link href="/lesson-plans/new" className="w-full sm:w-auto">
                                         <Button className="w-full sm:w-auto">
                                             <Plus className="mr-2 h-4 w-4" />
-                                            {isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}
+                                            {actionLabel}
                                         </Button>
                                     </Link>
                                 ) : (
                                     <Button className="w-full sm:w-auto" disabled>
                                         <Plus className="mr-2 h-4 w-4" />
-                                        {isInstructor ? 'Prepare a lesson' : 'Plan a lesson'}
+                                        {actionLabel}
                                     </Button>
                                 )}
-                                {isInstructor ? (
+                                {effectiveMyTeachingMode ? (
                                     <Link href="/academic/cohorts" className="w-full sm:w-auto">
                                         <Button variant="secondary" className="w-full sm:w-auto">
                                             View my classes
@@ -730,167 +1313,35 @@ function SessionWorkspaceView() {
                 </Card>
             ) : (
                 <div className="space-y-4">
-                    {Array.from(grouped.entries()).map(([cohortId, group]) => {
-                        const isCollapsed = collapsedGroups.has(cohortId);
-                        const groupTotal = group.items.reduce((sum, session) => sum + session.attendance_count.total, 0);
-                        const groupPresent = group.items.reduce((sum, session) => sum + session.attendance_count.present, 0);
-                        const groupPercentage = groupTotal > 0 ? Math.round((groupPresent / groupTotal) * 100) : 0;
-
-                        return (
-                            <Card key={`group-${cohortId}`} className="overflow-hidden">
-                                <div
-                                    onClick={() => toggleGroup(cohortId)}
-                                    className="theme-surface-muted theme-hover-surface cursor-pointer select-none border-b px-4 py-3 transition-colors theme-border"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="theme-surface-elevated shrink-0 rounded-lg border p-1.5 shadow-sm theme-border">
-                                            {isCollapsed
-                                                ? <ChevronRight className="h-4 w-4 text-blue-600" />
-                                                : <ChevronDown className="h-4 w-4 text-blue-600" />}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <h3 className="truncate text-sm font-semibold theme-text">
-                                                    {group.label}
-                                                </h3>
-                                                <Badge variant="blue" size="sm">
-                                                    {group.items.length} session{group.items.length !== 1 ? 's' : ''}
-                                                </Badge>
-                                            </div>
-                                            <p className="mt-0.5 text-xs theme-muted">
-                                                {groupPresent}/{groupTotal} present ·{' '}
-                                                <span className={groupPercentage >= 80 ? 'text-green-600' : groupPercentage >= 60 ? 'text-yellow-600' : 'text-red-600'}>
-                                                    {groupPercentage}%
-                                                </span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {!isCollapsed ? (
-                                    <>
-                                        <div className="p-4 md:hidden">
-                                            <CohortSessionsCards sessions={group.items} />
-                                        </div>
-                                        <div className="hidden overflow-x-auto md:block theme-surface">
-                                            <div className="min-w-[640px]">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Date & Time</TableHead>
-                                                        <TableHead>Subject</TableHead>
-                                                        <TableHead>Cohorts</TableHead>
-                                                        <TableHead>Type</TableHead>
-                                                        <TableHead>Venue</TableHead>
-                                                        <TableHead>Attendance</TableHead>
-                                                        <TableHead>Actions</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {group.items.map((session) => {
-                                                        const { total, present } = session.attendance_count;
-                                                        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-                                                        const isMerged = session.linked_cohorts && session.linked_cohorts.length > 1;
-
-                                                        return (
-                                                            <TableRow
-                                                                key={session.id}
-                                                                onClick={() => router.push(`/sessions/${session.id}`)}
-                                                                className="cursor-pointer transition-colors theme-hover-surface"
-                                                            >
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="theme-info-surface shrink-0 rounded-lg p-1.5">
-                                                                            <Calendar className="h-3.5 w-3.5 text-blue-600" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <div className="whitespace-nowrap text-sm font-medium theme-text">
-                                                                                {formatSessionDate(session.session_date)}
-                                                                            </div>
-                                                                            <div className="whitespace-nowrap text-xs theme-muted">
-                                                                                {getSessionTimeLabel(session)}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <div className="whitespace-nowrap text-sm font-medium theme-text">
-                                                                        {session.subject_name}
-                                                                    </div>
-                                                                    <div className="text-xs theme-muted">{session.subject_code}</div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    {isMerged ? (
-                                                                        <div>
-                                                                            <Badge variant="purple" size="sm">
-                                                                                <Layers className="w-3 h-3 mr-1" />
-                                                                                {session.linked_cohorts.length} cohorts
-                                                                            </Badge>
-                                                                            <div className="mt-1 whitespace-nowrap text-xs theme-muted">
-                                                                                {session.linked_cohorts.slice(0, 2).map((cohort) => cohort.cohort_name).join(', ')}
-                                                                                {session.linked_cohorts.length > 2 ? ` +${session.linked_cohorts.length - 2}` : ''}
-                                                                            </div>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div>
-                                                                            <div className="whitespace-nowrap text-sm font-medium theme-text">{session.cohort_name}</div>
-                                                                            <div className="text-xs theme-muted">{session.cohort_level}</div>
-                                                                        </div>
-                                                                    )}
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Badge variant="blue">{session.session_type_display}</Badge>
-                                                                        <SessionLifecycleHint session={session} />
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-1 whitespace-nowrap text-sm theme-muted">
-                                                                        <MapPin className="h-3.5 w-3.5 theme-subtle shrink-0" />
-                                                                        {session.venue || '-'}
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div>
-                                                                            <div className="text-sm font-medium theme-text">{present}/{total}</div>
-                                                                            <Badge variant={getAttendanceColor(percentage)} size="sm">{percentage}%</Badge>
-                                                                        </div>
-                                                                        {percentage === 100 ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" /> : null}
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <Button
-                                                                        variant="primary"
-                                                                        size="sm"
-                                                                        onClick={(event) => {
-                                                                            event.stopPropagation();
-                                                                            router.push(`/sessions/${session.id}`);
-                                                                        }}
-                                                                    >
-                                                                        View
-                                                                    </Button>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        );
-                                                    })}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                        </div>
-                                    </>
-                                ) : null}
-                            </Card>
-                        );
-                    })}
+                    {groupingMode === 'instructor' && isAdminLike && viewMode === 'admin_supervision'
+                        ? sessionGroups.map((group) => renderInstructorGroup(group as {
+                            key: string;
+                            label: string;
+                            description: string;
+                            itemCount: number;
+                            sections: Array<{
+                                key: string;
+                                label: string;
+                                description: string;
+                                items: Session[];
+                            }>;
+                        }))
+                        : sessionGroups.map((group) => renderClassGroup(group as {
+                            key: string;
+                            label: string;
+                            description: string;
+                            items: Session[];
+                        }))}
                 </div>
             )}
 
-            {sessions.length > 0 ? (
+            {visibleSessions.length > 0 ? (
                 <p className="text-sm theme-muted">
-                    Showing <span className="font-medium">{sessions.length}</span> sessions across{' '}
-                    <span className="font-medium">{grouped.size}</span> cohort{grouped.size !== 1 ? 's' : ''}
-                    {mergedSessionsCount > 0 ? <span className="ml-2 text-purple-600">· {mergedSessionsCount} merged</span> : null}
+                    Showing <span className="font-medium">{visibleSessions.length}</span> session
+                    {visibleSessions.length !== 1 ? 's' : ''}{' '}
+                    {effectiveMyTeachingMode
+                        ? 'within your teaching workspace.'
+                        : 'in the current supervision view.'}
                 </p>
             ) : null}
         </div>

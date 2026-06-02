@@ -43,7 +43,6 @@ interface LessonPlanFormState {
     assessment_strategy: string;
     differentiation: string;
     conclusion: string;
-    reflection: string;
 }
 
 function buildInitialState(lessonPlan: LessonPlan): LessonPlanFormState {
@@ -58,7 +57,6 @@ function buildInitialState(lessonPlan: LessonPlan): LessonPlanFormState {
         assessment_strategy: lessonPlan.assessment_strategy ?? '',
         differentiation: lessonPlan.differentiation ?? '',
         conclusion: lessonPlan.conclusion ?? '',
-        reflection: lessonPlan.reflection ?? '',
     };
 }
 
@@ -229,7 +227,6 @@ export function LessonPlanForm({
             assessment_strategy: formData.assessment_strategy.trim(),
             differentiation: formData.differentiation.trim(),
             conclusion: formData.conclusion.trim(),
-            reflection: formData.reflection.trim(),
         };
 
         if (curriculumContext?.supports_reference_alignment) {
@@ -435,10 +432,10 @@ export function LessonPlanForm({
                 <div className="space-y-5">
                     <div className="space-y-1">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                            Assessment and reflection
+                            Assessment and closure
                         </p>
                         <p className="text-sm text-gray-500">
-                            Review how the lesson closes, how learning is checked, and what you want to improve next time.
+                            Review how the lesson closes and how learning is checked before teaching.
                         </p>
                     </div>
 
@@ -467,16 +464,6 @@ export function LessonPlanForm({
                         <textarea
                             value={formData.conclusion}
                             onChange={(event) => updateField('conclusion', event.target.value)}
-                            rows={5}
-                            className={TEXTAREA_CLASSNAME}
-                        />
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700">Reflection</label>
-                        <textarea
-                            value={formData.reflection}
-                            onChange={(event) => updateField('reflection', event.target.value)}
                             rows={5}
                             className={TEXTAREA_CLASSNAME}
                         />

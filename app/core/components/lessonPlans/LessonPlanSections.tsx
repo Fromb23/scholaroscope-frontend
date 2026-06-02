@@ -206,11 +206,6 @@ export function LessonPlanSections({ lessonPlan }: LessonPlanSectionsProps) {
                         description="Wrap-up"
                         body={renderText(lessonPlan.conclusion)}
                     />
-                    <DocumentSection
-                        title="Reflection"
-                        description="Reflection after teaching"
-                        body={renderText(lessonPlan.reflection)}
-                    />
                 </div>
             </Card>
 

@@ -11,9 +11,14 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { Select } from '@/app/components/ui/Select';
+import { useCurricula, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
+import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useSchemes } from '@/app/core/hooks/useSchemes';
+import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import type { SchemeOfWork } from '@/app/core/types/schemes';
+import { useAuth } from '@/app/context/AuthContext';
 import { formatTimestamp } from '@/app/plugins/schemes/lib/workflow';
 
 function getStatusVariant(scheme: SchemeOfWork): 'success' | 'warning' | 'default' {
@@ -49,7 +54,25 @@ function matchesSearch(scheme: SchemeOfWork, search: string): boolean {
   ].some((value) => normalizeText(value).includes(normalizedSearch));
 }
 
-function SectionHeading({ title, description }: { title: string; description?: string }) {
+function teacherLabel(scheme: SchemeOfWork): string {
+  return scheme.teacher_name?.trim() || 'Unassigned instructor';
+}
+
+function toOptionalNumber(value: string): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+interface SectionHeadingProps {
+  title: string;
+  description?: string;
+}
+
+function SectionHeading({ title, description }: SectionHeadingProps) {
   return (
     <div>
       <h2 className="text-lg font-semibold theme-text">{title}</h2>
@@ -120,7 +143,7 @@ function SchemeCard({
         </div>
         <div className="rounded-lg bg-gray-50 px-3 py-2">
           <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">Teacher</dt>
-          <dd className="mt-1 text-sm theme-text">{scheme.teacher_name}</dd>
+          <dd className="mt-1 text-sm theme-text">{teacherLabel(scheme)}</dd>
         </div>
         <div className="rounded-lg bg-gray-50 px-3 py-2">
           <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -133,18 +156,211 @@ function SchemeCard({
   );
 }
 
+interface SchemeGroupSection {
+  key: string;
+  label: string;
+  description: string;
+  items: SchemeOfWork[];
+}
+
+interface SchemeGroup {
+  key: string;
+  label: string;
+  description: string;
+  itemCount: number;
+  sections: SchemeGroupSection[];
+}
+
+function buildAdminSchemeGroups(
+  schemes: SchemeOfWork[],
+  groupingMode: AdminGroupingMode,
+): SchemeGroup[] {
+  const groups = new Map<string, {
+    label: string;
+    description: string;
+    itemCount: number;
+    sections: Map<string, SchemeGroupSection>;
+  }>();
+
+  schemes.forEach((scheme) => {
+    const cohortLabel = scheme.cohort_name?.trim() || 'Unassigned class';
+    const subjectLabel = scheme.subject_name?.trim() || 'Unassigned subject';
+    const instructorLabel = teacherLabel(scheme);
+
+    let groupKey = `cohort:${scheme.cohort ?? cohortLabel}`;
+    let groupLabel = cohortLabel;
+    let groupDescription = "Class view starts from learners' classroom context.";
+    let sectionKey = `subject:${scheme.subject ?? subjectLabel}`;
+    let sectionLabel = subjectLabel;
+    let sectionDescription = `Teacher: ${instructorLabel}`;
+
+    if (groupingMode === 'instructor') {
+      groupKey = `teacher:${scheme.teacher ?? instructorLabel}`;
+      groupLabel = instructorLabel;
+      groupDescription = 'Instructor view starts from teacher workload.';
+      sectionKey = `class-subject:${scheme.cohort ?? cohortLabel}:${scheme.subject ?? subjectLabel}`;
+      sectionLabel = `${cohortLabel} · ${subjectLabel}`;
+      sectionDescription = 'Class and subject context for this instructor.';
+    } else if (groupingMode === 'subject') {
+      groupKey = `subject:${scheme.subject ?? subjectLabel}`;
+      groupLabel = subjectLabel;
+      groupDescription = 'Subject view highlights where the scheme workload sits across classes.';
+      sectionKey = `class-teacher:${scheme.cohort ?? cohortLabel}:${scheme.teacher ?? instructorLabel}`;
+      sectionLabel = `${cohortLabel} · ${instructorLabel}`;
+      sectionDescription = 'Class and instructor context for this subject.';
+    }
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        label: groupLabel,
+        description: groupDescription,
+        itemCount: 0,
+        sections: new Map<string, SchemeGroupSection>(),
+      });
+    }
+
+    const group = groups.get(groupKey);
+    if (!group) {
+      return;
+    }
+
+    group.itemCount += 1;
+
+    if (!group.sections.has(sectionKey)) {
+      group.sections.set(sectionKey, {
+        key: sectionKey,
+        label: sectionLabel,
+        description: sectionDescription,
+        items: [],
+      });
+    }
+
+    group.sections.get(sectionKey)?.items.push(scheme);
+  });
+
+  return Array.from(groups.entries())
+    .map(([key, group]) => ({
+      key,
+      label: group.label,
+      description: group.description,
+      itemCount: group.itemCount,
+      sections: Array.from(group.sections.values())
+        .map((section) => ({
+          ...section,
+          items: [...section.items].sort((left, right) => left.title.localeCompare(right.title)),
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label)),
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+}
+
 export function SchemesPage() {
   const router = useRouter();
-  const { schemes, loading, error, downloadSchemeDocx, downloadSchemeCsv } = useSchemes();
-  const { curricula } = useCurricula();
+  const { activeRole, user } = useAuth();
+  const isInstructor = activeRole === 'INSTRUCTOR';
+  const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+  const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
+  const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
   const [search, setSearch] = useState('');
+  const [termFilter, setTermFilter] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [cohortFilter, setCohortFilter] = useState('');
+  const [instructorFilter, setInstructorFilter] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [downloadingCsvId, setDownloadingCsvId] = useState<number | null>(null);
+  const { curricula } = useCurricula();
+  const { terms } = useTerms();
+  const { subjects } = useSubjects();
+  const { cohorts } = useCohorts();
+  const { instructors } = useInstructors({ enabled: isAdminLike });
+  const selectedInstructorId = useMemo(() => {
+    if (!instructorFilter.startsWith('id:')) {
+      return undefined;
+    }
+
+    const parsed = Number(instructorFilter.slice(3));
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [instructorFilter]);
+  const schemeFilters = useMemo(() => ({
+    term: toOptionalNumber(termFilter),
+    subject: toOptionalNumber(subjectFilter),
+    teacher: isInstructor || viewMode === 'my_teaching'
+      ? user?.id
+      : selectedInstructorId,
+  }), [isInstructor, selectedInstructorId, subjectFilter, termFilter, user?.id, viewMode]);
+  const { schemes, loading, error, downloadSchemeDocx, downloadSchemeCsv } = useSchemes(schemeFilters);
+  const createButtonLabel = isInstructor || viewMode === 'my_teaching'
+    ? 'Create my draft scheme'
+    : 'Create draft scheme';
+  const subtitle = isInstructor
+    ? 'Create draft schemes, review term coverage, and keep your teaching sequence organized.'
+    : viewMode === 'my_teaching'
+      ? 'Use My Teaching to view only schemes tied to your own teaching work.'
+      : 'Admin supervision shows organization work by class, instructor, and subject.';
+
+  const instructorOptions = useMemo(() => {
+    const options = new Map<string, { value: string; label: string }>();
+
+    instructors.forEach((instructor) => {
+      options.set(`id:${instructor.id}`, {
+        value: `id:${instructor.id}`,
+        label: instructor.full_name || instructor.email,
+      });
+    });
+
+    schemes.forEach((scheme) => {
+      if (typeof scheme.teacher === 'number') {
+        const key = `id:${scheme.teacher}`;
+        if (!options.has(key)) {
+          options.set(key, {
+            value: key,
+            label: teacherLabel(scheme),
+          });
+        }
+        return;
+      }
+
+      const schemeTeacher = normalizeText(scheme.teacher_name);
+      if (!schemeTeacher) {
+        return;
+      }
+
+      const key = `name:${schemeTeacher}`;
+      if (!options.has(key)) {
+        options.set(key, {
+          value: key,
+          label: teacherLabel(scheme),
+        });
+      }
+    });
+
+    return Array.from(options.values()).sort((left, right) => left.label.localeCompare(right.label));
+  }, [instructors, schemes]);
 
   const filteredSchemes = useMemo(
-    () => schemes.filter((scheme) => matchesSearch(scheme, search)),
-    [schemes, search],
+    () => schemes.filter((scheme) => {
+      if (!matchesSearch(scheme, search)) {
+        return false;
+      }
+
+      if (cohortFilter && String(scheme.cohort ?? '') !== cohortFilter) {
+        return false;
+      }
+
+      if (isAdminLike && viewMode === 'admin_supervision' && instructorFilter) {
+        if (instructorFilter.startsWith('id:')) {
+          return String(scheme.teacher ?? '') === instructorFilter.slice(3);
+        }
+
+        if (instructorFilter.startsWith('name:')) {
+          return normalizeText(scheme.teacher_name) === instructorFilter.slice(5);
+        }
+      }
+
+      return true;
+    }),
+    [cohortFilter, instructorFilter, isAdminLike, schemes, search, viewMode],
   );
 
   const multipleActiveCurricula = useMemo(() => {
@@ -184,6 +400,13 @@ export function SchemesPage() {
     return Array.from(groups.entries());
   }, [filteredSchemes, multipleActiveCurricula]);
 
+  const adminGroupedSchemes = useMemo(
+    () => (isAdminLike && viewMode === 'admin_supervision'
+      ? buildAdminSchemeGroups(filteredSchemes, groupingMode)
+      : []),
+    [filteredSchemes, groupingMode, isAdminLike, viewMode],
+  );
+
   const handleDownloadDocx = async (schemeId: number) => {
     try {
       setActionError(null);
@@ -220,26 +443,91 @@ export function SchemesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold theme-text">Schemes of Work</h1>
-          <p className="mt-1 text-sm theme-subtle">
-            Create draft schemes, review term coverage, and download the server export.
-          </p>
+          <h1 className="text-2xl font-bold theme-text">
+            {isInstructor ? 'My Schemes of Work' : 'Schemes of Work'}
+          </h1>
+          <p className="mt-1 text-sm theme-subtle">{subtitle}</p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search schemes"
-            className="min-w-[240px]"
-          />
-          <Link href="/schemes/new">
-            <Button type="button">
-              <Plus className="h-4 w-4" />
-              Create Draft Scheme
-            </Button>
-          </Link>
-        </div>
+        <Link href="/schemes/new">
+          <Button type="button">
+            <Plus className="h-4 w-4" />
+            {createButtonLabel}
+          </Button>
+        </Link>
       </div>
+
+      {isAdminLike ? (
+        <Card>
+          <div className="space-y-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-2">
+                <h2 className="text-base font-semibold theme-text">Workspace mode</h2>
+                <p className="text-sm theme-subtle">
+                  Admin supervision shows organization work by class, instructor, and subject.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={viewMode === 'admin_supervision' ? 'secondary' : 'ghost'}
+                  onClick={() => setViewMode('admin_supervision')}
+                >
+                  Admin supervision
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                  onClick={() => setViewMode('my_teaching')}
+                >
+                  My Teaching
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Admin supervision shows organization work by class, instructor, and subject.
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                Use My Teaching to view only your own teaching work.
+              </div>
+            </div>
+
+            {viewMode === 'admin_supervision' ? (
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold theme-text">Grouping</h3>
+                  <p className="text-sm theme-subtle">
+                    {groupingMode === 'instructor'
+                      ? 'Instructor view starts from teacher workload.'
+                      : "Class view starts from learners' classroom context."}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={groupingMode === 'class' ? 'secondary' : 'ghost'}
+                    onClick={() => setGroupingMode('class')}
+                  >
+                    Class view
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={groupingMode === 'instructor' ? 'secondary' : 'ghost'}
+                    onClick={() => setGroupingMode('instructor')}
+                  >
+                    Instructor view
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
 
       {actionError ? (
         <ErrorBanner
@@ -249,50 +537,100 @@ export function SchemesPage() {
         />
       ) : null}
 
+      <Card>
+        <div className={`grid grid-cols-1 gap-4 ${isAdminLike && viewMode === 'admin_supervision' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search schemes"
+            label="Search"
+          />
+          <Select
+            label="Term"
+            value={termFilter}
+            onChange={(event) => setTermFilter(event.target.value)}
+            options={[
+              { value: '', label: 'All terms' },
+              ...terms.map((term) => ({ value: String(term.id), label: term.name })),
+            ]}
+          />
+          <Select
+            label="Subject"
+            value={subjectFilter}
+            onChange={(event) => setSubjectFilter(event.target.value)}
+            options={[
+              { value: '', label: 'All subjects' },
+              ...subjects.map((subject) => ({ value: String(subject.id), label: subject.name })),
+            ]}
+          />
+          <Select
+            label="Class"
+            value={cohortFilter}
+            onChange={(event) => setCohortFilter(event.target.value)}
+            options={[
+              { value: '', label: 'All classes' },
+              ...cohorts.map((cohort) => ({ value: String(cohort.id), label: cohort.name })),
+            ]}
+          />
+          {isAdminLike && viewMode === 'admin_supervision' ? (
+            <Select
+              label="Instructor"
+              value={instructorFilter}
+              onChange={(event) => setInstructorFilter(event.target.value)}
+              options={[
+                { value: '', label: 'All instructors' },
+                ...instructorOptions,
+              ]}
+            />
+          ) : null}
+        </div>
+      </Card>
+
       {filteredSchemes.length === 0 ? (
         <Card className="space-y-4 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-700">
             <BookOpen className="h-7 w-7" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold theme-text">No schemes created yet</h2>
-            <p className="mt-1 text-sm theme-subtle">Create a draft scheme from your term plan.</p>
+            <h2 className="text-lg font-semibold theme-text">
+              {search || termFilter || subjectFilter || cohortFilter || (viewMode === 'admin_supervision' && instructorFilter)
+                ? 'No schemes match these filters'
+                : 'No schemes created yet'}
+            </h2>
+            <p className="mt-1 text-sm theme-subtle">
+              {viewMode === 'my_teaching'
+                ? 'No schemes are visible in your My Teaching view yet.'
+                : 'Create a draft scheme from your term plan.'}
+            </p>
           </div>
           <div className="flex justify-center">
             <Link href="/schemes/new">
               <Button type="button">
                 <Plus className="h-4 w-4" />
-                Create Draft Scheme
+                {createButtonLabel}
               </Button>
             </Link>
           </div>
         </Card>
-      ) : null}
+      ) : isAdminLike && viewMode === 'admin_supervision' ? (
+        adminGroupedSchemes.map((group) => (
+          <section key={group.key} className="space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <SectionHeading title={group.label} description={group.description} />
+              <Badge variant="blue" size="sm">
+                {group.itemCount} scheme{group.itemCount === 1 ? '' : 's'}
+              </Badge>
+            </div>
 
-      {groupedSchemes.map(([outerLabel, groups]) => (
-        <section key={outerLabel} className="space-y-4">
-          <SectionHeading
-            title={outerLabel}
-            description={multipleActiveCurricula ? 'Curriculum grouping' : 'Subject grouping'}
-          />
-
-          {Array.from(groups.entries()).map(([innerLabel, schemesInGroup]) => {
-            const title = multipleActiveCurricula ? innerLabel.split(':::')[0] : innerLabel;
-            const description = multipleActiveCurricula
-              ? innerLabel.split(':::')[1]
-              : `${schemesInGroup[0]?.subject_name ?? ''}`;
-
-            return (
-              <div key={`${outerLabel}-${innerLabel}`} className="space-y-3">
+            {group.sections.map((section) => (
+              <div key={section.key} className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-base font-semibold theme-text">{title}</h3>
-                  <p className="text-sm theme-subtle">
-                    {multipleActiveCurricula ? description : `Level / Grade`}
-                  </p>
+                  <h3 className="text-base font-semibold theme-text">{section.label}</h3>
+                  <p className="text-sm theme-subtle">{section.description}</p>
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-2">
-                  {schemesInGroup.map((scheme) => (
+                  {section.items.map((scheme) => (
                     <SchemeCard
                       key={scheme.id}
                       scheme={scheme}
@@ -305,10 +643,49 @@ export function SchemesPage() {
                   ))}
                 </div>
               </div>
-            );
-          })}
-        </section>
-      ))}
+            ))}
+          </section>
+        ))
+      ) : (
+        groupedSchemes.map(([outerLabel, groups]) => (
+          <section key={outerLabel} className="space-y-4">
+            <SectionHeading
+              title={outerLabel}
+              description={multipleActiveCurricula ? 'Curriculum grouping' : 'Subject grouping'}
+            />
+
+            {Array.from(groups.entries()).map(([innerLabel, schemesInGroup]) => {
+              const title = multipleActiveCurricula ? innerLabel.split(':::')[0] : innerLabel;
+              const description = multipleActiveCurricula
+                ? innerLabel.split(':::')[1]
+                : 'Level / Grade';
+
+              return (
+                <div key={`${outerLabel}-${innerLabel}`} className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <h3 className="text-base font-semibold theme-text">{title}</h3>
+                    <p className="text-sm theme-subtle">{description}</p>
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {schemesInGroup.map((scheme) => (
+                      <SchemeCard
+                        key={scheme.id}
+                        scheme={scheme}
+                        downloading={downloadingId === scheme.id}
+                        downloadingCsv={downloadingCsvId === scheme.id}
+                        onDownloadDocx={() => void handleDownloadDocx(scheme.id)}
+                        onDownloadCsv={() => void handleDownloadCsv(scheme.id)}
+                        onOpen={() => router.push(`/schemes/${scheme.id}`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+        ))
+      )}
     </div>
   );
 }
