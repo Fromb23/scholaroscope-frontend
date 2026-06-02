@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
     BookOpen,
@@ -24,11 +24,36 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 
+function buildOutcomeListHref(sessionId: number, returnTo?: string | null) {
+    const params = new URLSearchParams();
+
+    if (returnTo) {
+        params.set('returnTo', returnTo);
+    }
+
+    const query = params.toString();
+    return `/cbc/teaching/sessions/${sessionId}/outcomes${query ? `?${query}` : ''}`;
+}
+
+function buildOutcomeEvidenceHref(sessionId: number, learningOutcomeId: number, returnTo?: string | null) {
+    const params = new URLSearchParams({ action: 'record-evidence' });
+
+    if (returnTo) {
+        params.set('returnTo', returnTo);
+    }
+
+    return `/cbc/teaching/sessions/${sessionId}/outcomes/${learningOutcomeId}/evidence?${params.toString()}`;
+}
+
 export function CBCOutcomeSessionPage() {
     const params = useParams<{ sessionId: string; learningOutcomeId: string }>();
+    const searchParams = useSearchParams();
     const sessionId = Number(params.sessionId);
     const learningOutcomeId = Number(params.learningOutcomeId);
+    const returnTo = searchParams.get('returnTo');
     const page = useCBCOutcomeSessionPage(sessionId, learningOutcomeId);
+    const outcomesHref = buildOutcomeListHref(sessionId, returnTo);
+    const evidenceHref = buildOutcomeEvidenceHref(sessionId, learningOutcomeId, returnTo);
 
     if (page.loading) {
         return (
@@ -44,7 +69,7 @@ export function CBCOutcomeSessionPage() {
             <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <CBCNav />
                 <CBCError error="This learning goal is not part of this lesson." />
-                <Link href={`/cbc/teaching/sessions/${sessionId}/outcomes`}>
+                <Link href={outcomesHref}>
                     <Button variant="primary">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to what was taught
@@ -60,8 +85,8 @@ export function CBCOutcomeSessionPage() {
             <CBCBreadcrumb segments={[
                 { label: 'Teaching', href: '/cbc/teaching' },
                 { label: 'Lessons', href: '/cbc/teaching/sessions' },
-                { label: page.session.subject_name ?? 'Lesson', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
-                { label: 'What Was Taught', href: `/cbc/teaching/sessions/${sessionId}/outcomes` },
+                { label: page.session.subject_name ?? 'Lesson', href: outcomesHref },
+                { label: 'What Was Taught', href: outcomesHref },
                 { label: page.learningOutcome.code },
             ]} />
             <CBCTeachingSessionNav sessionId={sessionId} active="outcomes" />
@@ -216,7 +241,7 @@ export function CBCOutcomeSessionPage() {
                         </div>
                     </div>
                     <Link
-                        href={`/cbc/teaching/sessions/${sessionId}/outcomes/${learningOutcomeId}/evidence?action=record-evidence`}
+                        href={evidenceHref}
                         className="w-full sm:w-auto"
                     >
                         <Button variant="primary" size="lg" className="w-full sm:w-auto">

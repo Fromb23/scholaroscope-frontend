@@ -333,6 +333,7 @@ export function SessionDetailPage() {
     const hasReflection = closureState?.has_reflection ?? false;
     const requiresClosureReflection = showTaughtOutcomesReflection || showClosureReflection;
     const canRecordEvidence = Boolean(
+        isInProgress &&
         teachingWorkflow &&
         hasMarkedAttendance &&
         hasConfirmedTaughtOutcomes &&
@@ -439,12 +440,8 @@ export function SessionDetailPage() {
         || needsCompletion
     );
     const completionReturnTo = session ? `/sessions/${session.id}?section=complete` : '/sessions';
-    const postLessonReturnTo = session ? `/sessions/${session.id}?section=post-lesson` : '/sessions';
     const closureTeachingWorkflowHref = teachingWorkflow
         ? withReturnTo(teachingWorkflow.href, completionReturnTo)
-        : null;
-    const postLessonTeachingWorkflowHref = teachingWorkflow
-        ? withReturnTo(teachingWorkflow.href, postLessonReturnTo)
         : null;
     const clearWorkflowFeedback = useCallback(() => {
         setWorkflowError(null);
@@ -950,11 +947,11 @@ export function SessionDetailPage() {
             };
         }
 
-        if (closureNextStep === 'EVIDENCE') {
+        if (closureNextStep === 'EVIDENCE' && !isCompleted) {
             return {
                 label: 'Record learner performance',
-                type: closureTeachingWorkflowHref ? 'navigate' as const : 'page_action' as const,
-                ...(closureTeachingWorkflowHref
+                type: canRecordEvidence && closureTeachingWorkflowHref ? 'navigate' as const : 'page_action' as const,
+                ...(canRecordEvidence && closureTeachingWorkflowHref
                     ? { href: closureTeachingWorkflowHref }
                     : {
                         target: 'review_completion_section',
@@ -998,6 +995,8 @@ export function SessionDetailPage() {
         return undefined;
     }, [
         hasLessonPlan,
+        canRecordEvidence,
+        isCompleted,
         isInProgress,
         clearWorkflowFeedback,
         closureNextStep,
@@ -1046,7 +1045,7 @@ export function SessionDetailPage() {
                 target: 'review_completion_section',
                 handler: () => scrollToSection('lesson-complete-section'),
             },
-            ...(closureTeachingWorkflowHref
+            ...(canRecordEvidence && closureTeachingWorkflowHref
                 ? [{
                     label: 'Record learner performance',
                     type: 'navigate' as const,
@@ -1082,6 +1081,7 @@ export function SessionDetailPage() {
             : undefined,
     }), [
         currentWorkflowStep,
+        canRecordEvidence,
         closureNextStep,
         closureReady,
         closureTeachingWorkflowHref,
@@ -1298,7 +1298,7 @@ export function SessionDetailPage() {
                                     : 'All required teaching records are complete. Close the lesson record.')
                     : (preparedTaskDraft
                     ? 'The prepared learner task was not issued yet. Issue it now or leave it for later review.'
-                    : 'Use post-lesson time for learner performance, review, and any follow-up task.');
+                    : 'Use post-lesson time for review and any follow-up task.');
     const lessonPreparationSummary = `${session.planned_outcomes.length} planned outcome${session.planned_outcomes.length === 1 ? '' : 's'} · ${
         preparedTaskDraft
             ? 'learner task prepared'
@@ -1346,14 +1346,7 @@ export function SessionDetailPage() {
                             icon: <CheckCircle2 className="mr-1.5 h-4 w-4" />,
                             disabled: false,
                         }
-                        : currentWorkflowStep === 'post_lesson' && canRecordEvidence && teachingWorkflow
-                            ? {
-                                label: 'Record learner performance',
-                                href: postLessonTeachingWorkflowHref ?? teachingWorkflow.href,
-                                icon: <FileText className="mr-1.5 h-4 w-4" />,
-                                disabled: false,
-                            }
-                            : currentWorkflowStep === 'post_lesson' && preparedTaskDraft
+                        : currentWorkflowStep === 'post_lesson' && preparedTaskDraft
                                 ? {
                                     label: issuingPreparedTask ? 'Issuing...' : 'Issue prepared task',
                                     onClick: () => {
@@ -1798,11 +1791,11 @@ export function SessionDetailPage() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <h2 className="text-lg font-semibold text-gray-900">
-                                {isInstructor ? 'Post-lesson actions' : 'Record learner performance when ready'}
+                                {isInstructor ? 'Post-lesson actions' : 'Post-lesson summary'}
                             </h2>
                             <p className="text-sm text-gray-600">
                                 {isInstructor
-                                    ? 'Record learner performance, create follow-up work, or reopen the lesson preparation after class.'
+                                    ? 'Create follow-up work or reopen the lesson preparation after class.'
                                     : 'Post-lesson evidence and assignment work stay outside the live teaching window.'}
                             </p>
                         </div>
@@ -1817,22 +1810,15 @@ export function SessionDetailPage() {
                         ) : null}
 
                         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                            {canRecordEvidence && teachingWorkflow ? (
-                                <Link href={postLessonTeachingWorkflowHref ?? teachingWorkflow.href} className="w-full sm:w-auto">
-                                    <Button className="w-full sm:w-auto" size="sm">
-                                        <FileText className="mr-1.5 h-4 w-4" />
-                                        Record learner performance
-                                    </Button>
-                                </Link>
-                            ) : (
-                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                                    {!hasMarkedAttendance || !hasConfirmedTaughtOutcomes
+                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                {isCompleted
+                                    ? 'This lesson is completed. New learner performance cannot be recorded from the lesson workspace.'
+                                    : !hasMarkedAttendance || !hasConfirmedTaughtOutcomes
                                         ? 'Learner performance opens after attendance and taught outcomes are confirmed.'
                                         : taughtOutcomeCount === 0
                                             ? 'No outcomes were marked as taught for this lesson yet.'
-                                        : 'No curriculum evidence workflow is available for this lesson.'}
-                                </div>
-                            )}
+                                            : 'No curriculum evidence workflow is available for this lesson.'}
+                            </div>
 
                             <ActionMenu
                                 buttonLabel="More"
