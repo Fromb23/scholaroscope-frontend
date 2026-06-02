@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Target } from 'lucide-react';
 import { useSessionOutcomes } from '@/app/plugins/cbc/hooks/useSessionOutcomes';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -22,8 +22,10 @@ import { Badge } from '@/app/components/ui/Badge';
 
 export function CBCSessionOutcomesPage() {
   const { sessionId: raw } = useParams<{ sessionId: string }>();
+  const searchParams = useSearchParams();
   const sessionId = Number(raw);
   const page = useSessionOutcomes(sessionId);
+  const returnTo = searchParams.get('returnTo');
   const addOutcomesHref = `/cbc/teaching/sessions/${sessionId}/outcomes/add`;
   const learnersHref = `/cbc/teaching/sessions/${sessionId}/learners`;
   const lessonHref = page.session?.id ? `/sessions/${page.session.id}` : '/cbc/teaching/sessions';
@@ -210,6 +212,7 @@ export function CBCSessionOutcomesPage() {
                 key={link.id}
                 link={link}
                 sessionId={sessionId}
+                returnTo={returnTo}
                 editingNotes={page.editingNotes}
                 notesValue={page.notesValue}
                 markCoveredPending={page.markCoveredPending}

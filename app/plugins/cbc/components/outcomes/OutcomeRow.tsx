@@ -9,6 +9,7 @@ import type { OutcomeSessionWithEvidence } from '@/app/plugins/cbc/types/cbc';
 interface Props {
     link: OutcomeSessionWithEvidence;
     sessionId: number;
+    returnTo?: string | null;
     editingNotes: number | null;
     notesValue: string;
     markCoveredPending: boolean;
@@ -21,8 +22,30 @@ interface Props {
     onNotesChange: (value: string) => void;
 }
 
+function buildOutcomeDetailHref(sessionId: number, learningOutcomeId: number, returnTo?: string | null) {
+    const params = new URLSearchParams();
+
+    if (returnTo) {
+        params.set('returnTo', returnTo);
+    }
+
+    const query = params.toString();
+    return `/cbc/teaching/sessions/${sessionId}/outcomes/${learningOutcomeId}${query ? `?${query}` : ''}`;
+}
+
+function buildOutcomeEvidenceHref(sessionId: number, learningOutcomeId: number, returnTo?: string | null) {
+    const params = new URLSearchParams({ action: 'record-evidence' });
+
+    if (returnTo) {
+        params.set('returnTo', returnTo);
+    }
+
+    return `/cbc/teaching/sessions/${sessionId}/outcomes/${learningOutcomeId}/evidence?${params.toString()}`;
+}
+
 export function OutcomeRow({
     link, sessionId,
+    returnTo,
     editingNotes, notesValue,
     markCoveredPending, removeLinkPending,
     onToggleCovered, onRemove,
@@ -30,6 +53,8 @@ export function OutcomeRow({
 }: Props) {
     const isEditing = editingNotes === link.id;
     const hasEvidence = link.evidence_count > 0;
+    const detailHref = buildOutcomeDetailHref(sessionId, link.learning_outcome, returnTo);
+    const evidenceHref = buildOutcomeEvidenceHref(sessionId, link.learning_outcome, returnTo);
 
     return (
         <div className={`w-full max-w-full overflow-hidden border rounded-xl p-4 transition-all sm:p-5 ${link.covered
@@ -122,13 +147,18 @@ export function OutcomeRow({
                     )}
 
                     <div className="mt-3 flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between theme-border">
-                        <Link
-                            href={`/cbc/teaching/sessions/${sessionId}/outcomes/${link.learning_outcome}`}
-                            className="theme-link inline-flex items-center gap-2 text-sm font-medium"
-                        >
-                            <FileText className="h-4 w-4 shrink-0" />
-                            <span className="break-words">Record performance</span>
-                        </Link>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+                            <Link
+                                href={evidenceHref}
+                                className="theme-link inline-flex items-center gap-2 text-sm font-medium"
+                            >
+                                <FileText className="h-4 w-4 shrink-0" />
+                                <span className="break-words">Record performance</span>
+                            </Link>
+                            <Link href={detailHref} className="theme-link text-sm hover:underline">
+                                View learning goal details
+                            </Link>
+                        </div>
                         {hasEvidence && (
                             <Badge variant="green" size="sm" className="self-start sm:self-auto">
                                 {link.evidence_count} learner{link.evidence_count !== 1 ? 's' : ''} observed
