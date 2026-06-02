@@ -1,6 +1,7 @@
 // app/plugins/cbc/components/evidence/EvidenceSuccessBanner.tsx
 import Link from 'next/link';
 import { CheckCircle, X } from 'lucide-react';
+import { Button } from '@/app/components/ui/Button';
 import type { BulkClassEvidenceResult } from '@/app/plugins/cbc/types/cbc';
 
 function getAttendanceCounts(result: BulkClassEvidenceResult) {
@@ -22,6 +23,10 @@ interface Props {
     result: BulkClassEvidenceResult;
     onContinueRecording: () => void;
     onDismiss: () => void;
+    workspaceHref?: string;
+    canEndSession?: boolean;
+    endingSession?: boolean;
+    onEndSession?: () => void;
 }
 
 export function EvidenceSuccessBanner({
@@ -29,6 +34,10 @@ export function EvidenceSuccessBanner({
     result,
     onContinueRecording,
     onDismiss,
+    workspaceHref = `/sessions/${sessionId}`,
+    canEndSession = false,
+    endingSession = false,
+    onEndSession,
 }: Props) {
     const attendance = getAttendanceCounts(result);
     const attendanceParts = [
@@ -41,39 +50,45 @@ export function EvidenceSuccessBanner({
     ].filter(Boolean);
 
     return (
-        <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-            <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
+        <div className="theme-success-surface flex items-start gap-3 rounded-xl p-4">
+            <CheckCircle className="h-5 w-5 shrink-0 text-[color:var(--color-success)]" />
             <div className="flex-1 space-y-1">
-                <p className="text-sm text-green-700 font-medium">
-                    Class performance recorded. Add a short reflection next, keep recording, or return to the completed lesson summary.
+                <p className="text-sm font-medium theme-text">
+                    Class performance recorded. Continue adding observations, or return to the lesson workspace to close the lesson record.
                 </p>
-                <p className="text-xs text-green-700/80">
+                <p className="text-xs theme-muted">
                     New records created for {result.created_count} of {result.eligible_count} eligible learner{result.eligible_count !== 1 ? 's' : ''}.
                 </p>
                 {attendanceParts.length > 0 && (
-                    <p className="text-xs text-green-700/80">
+                    <p className="text-xs theme-muted">
                         Attendance: {attendanceParts.join(' · ')}
                     </p>
                 )}
                 <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
-                    <button
-                        type="button"
-                        onClick={onContinueRecording}
-                        className="theme-focus-ring inline-flex items-center justify-center rounded-lg border border-green-300 bg-white px-3 py-1.5 text-sm font-medium text-green-800 transition-colors hover:bg-green-100"
-                    >
+                    <Button type="button" variant="secondary" size="sm" onClick={onContinueRecording}>
                         Continue recording evidence
-                    </button>
+                    </Button>
+                    {canEndSession && onEndSession ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={onEndSession}
+                            disabled={endingSession}
+                        >
+                            {endingSession ? 'Ending…' : 'End session'}
+                        </Button>
+                    ) : null}
                     <Link
-                        href={`/sessions/${sessionId}`}
-                        className="theme-focus-ring inline-flex items-center justify-center rounded-lg border border-green-300 px-3 py-1.5 text-sm font-medium text-green-800 transition-colors hover:bg-green-100"
+                        href={workspaceHref}
+                        className="theme-button-secondary theme-focus-ring inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
                     >
-                        Back to completed lesson
+                        Back to lesson workspace
                     </Link>
                 </div>
             </div>
             <button
                 onClick={onDismiss}
-                className="text-green-400 hover:text-green-600"
+                className="theme-focus-ring theme-subtle shrink-0 rounded-lg p-1 transition-colors hover:text-[color:var(--color-text)]"
                 aria-label="Dismiss success message"
             >
                 <X className="h-4 w-4" />

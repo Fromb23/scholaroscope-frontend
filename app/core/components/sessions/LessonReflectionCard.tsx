@@ -109,11 +109,11 @@ export function LessonReflectionCard({
   };
 
   return (
-    <Card className="border-amber-200 bg-amber-50/60">
+    <Card className="border-amber-500/20">
       <div className="space-y-4">
         <div className="flex items-start gap-3">
-          <div className="rounded-lg bg-amber-100 p-2.5">
-            <MessageSquareText className="h-5 w-5 text-amber-700" />
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5">
+            <MessageSquareText className="h-5 w-5 text-[color:var(--color-warning)]" />
           </div>
           <div className="min-w-0">
             <h3 className="text-lg font-semibold theme-text">{title}</h3>
@@ -127,7 +127,7 @@ export function LessonReflectionCard({
               key={prompt}
               type="button"
               onClick={() => setReflection((current) => (current ? `${current}\n${prompt} ` : `${prompt} `))}
-              className="theme-focus-ring rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-sm text-amber-800 transition-colors hover:bg-amber-100"
+              className="theme-focus-ring theme-surface-muted rounded-lg border border-amber-500/20 px-3 py-1.5 text-sm theme-text transition-colors hover:border-amber-500/40 hover:bg-amber-500/10"
             >
               {prompt}
             </button>
@@ -146,14 +146,14 @@ export function LessonReflectionCard({
         </div>
 
         {error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="theme-danger-surface rounded-lg px-3 py-2 text-sm">
             {error}
           </p>
         ) : null}
 
         {savedMessage ? (
-          <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <div className="theme-success-surface flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-[color:var(--color-success)]" />
             <span>{savedMessage}</span>
           </div>
         ) : null}

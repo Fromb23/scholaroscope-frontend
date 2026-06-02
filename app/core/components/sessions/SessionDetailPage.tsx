@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     AlertCircle,
@@ -27,6 +27,7 @@ import { ActionMenu } from '@/app/components/ui/ActionMenu';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AttendanceStatsStrip } from '@/app/core/components/sessions/AttendanceStats';
 import { AttendanceTable } from '@/app/core/components/sessions/AttendanceTable';
@@ -55,6 +56,10 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
+type SessionPageNotice = {
+    message: string;
+    variant: 'info' | 'success';
+};
 
 const TAUGHT_STATUS_OPTIONS: Array<{
     value: TaughtStatus;
@@ -223,6 +228,7 @@ function withReturnTo(href: string, returnTo: string) {
 
 export function SessionDetailPage() {
     const params = useParams();
+    const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionId = Number(params.id);
@@ -232,6 +238,7 @@ export function SessionDetailPage() {
     const [workflowError, setWorkflowError] = useState<string | null>(null);
     const [workflowNotice, setWorkflowNotice] = useState<string | null>(null);
     const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
+    const [transientWorkflowNotice, setTransientWorkflowNotice] = useState<SessionPageNotice | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
     const [taughtOutcomesValidationError, setTaughtOutcomesValidationError] = useState<string | null>(null);
     const [showTaughtOutcomesReflection, setShowTaughtOutcomesReflection] = useState(false);
@@ -444,6 +451,46 @@ export function SessionDetailPage() {
         setWorkflowNotice(null);
         setWorkflowSuccess(null);
     }, []);
+    const noticeConfig = useMemo<SessionPageNotice | null>(() => {
+        const notice = searchParams.get('notice');
+
+        if (notice === 'evidence-recorded-next-close') {
+            return {
+                message: 'Class performance has been recorded. Finish by closing the lesson record.',
+                variant: 'info',
+            };
+        }
+
+        if (notice === 'lesson-closed') {
+            return {
+                message: 'Lesson record closed successfully.',
+                variant: 'success',
+            };
+        }
+
+        if (notice === 'attendance-next-taught') {
+            return {
+                message: 'Attendance saved. Continue by confirming what was taught.',
+                variant: 'info',
+            };
+        }
+
+        if (notice === 'taught-next-evidence') {
+            return {
+                message: 'What was taught is confirmed. Record learner performance for the taught outcomes.',
+                variant: 'info',
+            };
+        }
+
+        if (notice === 'session-current-step') {
+            return {
+                message: 'You were redirected to the current required lesson step.',
+                variant: 'info',
+            };
+        }
+
+        return null;
+    }, [searchParams]);
 
     const revealAttendanceSection = useCallback(() => {
         if (!showAttendanceSection) {
@@ -505,6 +552,30 @@ export function SessionDetailPage() {
             return next;
         });
     }, []);
+
+    useEffect(() => {
+        if (!noticeConfig) {
+            return;
+        }
+
+        setTransientWorkflowNotice(noticeConfig);
+    }, [noticeConfig]);
+
+    useEffect(() => {
+        const notice = searchParams.get('notice');
+        if (!notice || !pathname) {
+            return;
+        }
+
+        const nextSearchParams = new URLSearchParams(searchParams.toString());
+        nextSearchParams.delete('notice');
+
+        const nextUrl = nextSearchParams.toString()
+            ? `${pathname}?${nextSearchParams.toString()}`
+            : pathname;
+
+        router.replace(nextUrl, { scroll: false });
+    }, [pathname, router, searchParams]);
 
     useEffect(() => {
         if (guidedSection === 'attendance' && showAttendanceSection) {
@@ -1392,6 +1463,15 @@ export function SessionDetailPage() {
                     </div>
                 ) : null}
             </div>
+
+            {transientWorkflowNotice ? (
+                <ErrorBanner
+                    message={transientWorkflowNotice.message}
+                    variant={transientWorkflowNotice.variant}
+                    autoDismissMs={4000}
+                    onDismiss={() => setTransientWorkflowNotice(null)}
+                />
+            ) : null}
 
             {workflowError ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">

@@ -216,7 +216,7 @@ export function CBCOutcomeSessionPage() {
                         </div>
                     </div>
                     <Link
-                        href={`/cbc/teaching/sessions/${sessionId}/outcomes/${learningOutcomeId}/evidence`}
+                        href={`/cbc/teaching/sessions/${sessionId}/outcomes/${learningOutcomeId}/evidence?action=record-evidence`}
                         className="w-full sm:w-auto"
                     >
                         <Button variant="primary" size="lg" className="w-full sm:w-auto">
