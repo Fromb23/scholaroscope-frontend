@@ -321,7 +321,6 @@ export const useTodaySessions = () => {
 
 export const useSessionDetail = (
   sessionId: number | null,
-  searchQuery?: string,
 ) => {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -358,7 +357,6 @@ export const useSessionDetail = (
         sessionAPI.getById(sessionId),
         sessionAPI.getAttendanceRecords(sessionId, {
           page_size: 1000,
-          ...(searchQuery ? { search: searchQuery } : {}),
         }),
         sessionAPI.getClosureState(sessionId).catch(() => null),
       ]);
@@ -384,7 +382,7 @@ export const useSessionDetail = (
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, sessionId]);
+  }, [sessionId]);
 
   useEffect(() => { fetchSession(); }, [fetchSession]);
 

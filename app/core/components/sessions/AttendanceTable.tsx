@@ -8,6 +8,7 @@
 // ============================================================================
 
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 import { Save } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorState } from '@/app/components/ui/ErrorState';
@@ -37,7 +38,6 @@ interface AttendanceTableProps {
     onMarkAll: (status: string) => void;
     onSave: () => Promise<void>;
     onDismissError: () => void;
-    onSearch: (q: string) => void;
     onPaginationChange?: (page: number, pageSize: number) => void;
 }
 
@@ -47,8 +47,33 @@ export function AttendanceTable({
     records, draft, loading, saving, saveError,
     readOnly, pagination,
     onUpdateStatus, onUpdateNotes, onMarkAll, onSave,
-    onDismissError, onSearch, onPaginationChange,
+    onDismissError, onPaginationChange,
 }: AttendanceTableProps) {
+    const [localSearch, setLocalSearch] = useState('');
+    const filteredRecords = useMemo(() => {
+        const query = localSearch.trim().toLowerCase();
+
+        if (!query) {
+            return records;
+        }
+
+        return records.filter((record) => {
+            const draftEntry = draft[record.student];
+            const haystack = [
+                record.student_name,
+                record.student_admission,
+                record.subject_name,
+                record.cohort_name,
+                draftEntry?.status ?? record.status ?? '',
+                draftEntry?.notes ?? record.notes ?? '',
+            ]
+                .join(' ')
+                .toLowerCase();
+
+            return haystack.includes(query);
+        });
+    }, [draft, localSearch, records]);
+    const hasActiveSearch = localSearch.trim().length > 0;
 
     const columns: Column<AttendanceRecord>[] = [
         {
@@ -110,7 +135,7 @@ export function AttendanceTable({
                     {readOnly ? 'Attendance Records' : 'Mark Attendance'}
                 </h2>
                 {!readOnly && (
-                    <Button onClick={onSave} disabled={saving}>
+                    <Button onClick={onSave} disabled={saving} className="hidden sm:inline-flex">
                         <Save className="mr-2 h-4 w-4" />
                         {saving ? 'Saving...' : 'Save'}
                     </Button>
@@ -136,16 +161,29 @@ export function AttendanceTable({
             <div className="overflow-x-auto rounded-xl border border-gray-200">
                 <div className="min-w-[520px]">
                     <DataTable
-                        data={records as AttendanceWithIndex[]}
+                        data={filteredRecords as AttendanceWithIndex[]}
                         columns={columns}
                         loading={loading}
                         enableSearch
-                        onSearch={q => { onSearch(q); }}
+                        onSearch={setLocalSearch}
+                        searchPlaceholder="Search learners, admissions, class, subject, status, or notes"
+                        emptyMessage={hasActiveSearch ? 'No learners match this search.' : 'No attendance records are available yet.'}
                         pagination={pagination}
                         onPaginationChange={onPaginationChange}
                     />
                 </div>
             </div>
+
+            {!readOnly && (
+                <div className="sticky bottom-3 z-10 sm:hidden">
+                    <div className="rounded-xl border px-3 py-3 shadow-lg theme-border theme-surface-elevated">
+                        <Button onClick={onSave} disabled={saving} className="w-full">
+                            <Save className="mr-2 h-4 w-4" />
+                            {saving ? 'Saving...' : 'Save attendance'}
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

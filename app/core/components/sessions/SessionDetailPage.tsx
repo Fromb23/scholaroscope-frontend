@@ -229,11 +229,11 @@ export function SessionDetailPage() {
     const { activeRole } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
 
-    const [searchQuery, setSearchQuery] = useState('');
     const [workflowError, setWorkflowError] = useState<string | null>(null);
     const [workflowNotice, setWorkflowNotice] = useState<string | null>(null);
     const [workflowSuccess, setWorkflowSuccess] = useState<string | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
+    const [taughtOutcomesValidationError, setTaughtOutcomesValidationError] = useState<string | null>(null);
     const [showTaughtOutcomesReflection, setShowTaughtOutcomesReflection] = useState(false);
     const [showClosureReflection, setShowClosureReflection] = useState(false);
     const [creatingAssignment, setCreatingAssignment] = useState(false);
@@ -262,7 +262,7 @@ export function SessionDetailPage() {
         rescheduleSession,
         confirmTaughtOutcomes,
         createAssignmentFromLesson,
-    } = useSessionDetail(sessionId, searchQuery);
+    } = useSessionDetail(sessionId);
     const issuePreparedAssignmentMutation = useIssuePreparedAssignment();
     const {
         draft: lessonPlanPreparedDraft,
@@ -563,6 +563,7 @@ export function SessionDetailPage() {
         });
 
         setTaughtSelections(nextSelections);
+        setTaughtOutcomesValidationError(null);
     }, [session]);
 
     useEffect(() => {
@@ -768,10 +769,38 @@ export function SessionDetailPage() {
         ? `${attendanceMarkedCount}/${attendanceStats.total} learners marked`
         : 'No attendance records are available yet.';
     const plannedOutcomeCount = session?.planned_outcomes.length ?? 0;
+    const canEditTaughtOutcomes = isInProgress && hasMarkedAttendance && !isHistorical && !isCompleted && !confirmingTaughtOutcomes;
+    const allPlannedOutcomesSelected = session?.planned_outcomes.every(
+        (outcome) => Boolean(taughtSelections[outcome.outcome_id])
+    ) ?? false;
+    const canConfirmTaughtOutcomes = (
+        isInProgress
+        && hasMarkedAttendance
+        && !isHistorical
+        && !isCompleted
+        && plannedOutcomeCount > 0
+        && allPlannedOutcomesSelected
+        && !confirmingTaughtOutcomes
+    );
+    const taughtOutcomesSelectionMessage = (
+        canEditTaughtOutcomes
+        && plannedOutcomeCount > 0
+        && !allPlannedOutcomesSelected
+    )
+        ? 'Select a taught status for every planned outcome before confirming.'
+        : taughtOutcomesValidationError;
     const taughtOutcomesSectionSummary = plannedOutcomeCount > 0
         ? `${plannedOutcomeCount} planned outcome${plannedOutcomeCount === 1 ? '' : 's'} · ${hasConfirmedTaughtOutcomes ? 'confirmed' : 'not yet confirmed'}`
         : 'No planned outcomes are linked to this lesson.';
     const checklistSummary = `${completedWorkflowSteps}/${workflowSteps.length} steps complete`;
+
+    const handleTaughtSelectionChange = useCallback((outcomeId: number, status: TaughtStatus) => {
+        setTaughtSelections((current) => ({
+            ...current,
+            [outcomeId]: status,
+        }));
+        setTaughtOutcomesValidationError(null);
+    }, []);
 
     const handleEndLessonIntent = useCallback(async () => {
         try {
@@ -1031,21 +1060,31 @@ export function SessionDetailPage() {
         }
     };
 
-    const handleConfirmWhatWasTaught = async () => {
+    const handleConfirmWhatWasTaught = useCallback(async () => {
         if (!session) {
+            return;
+        }
+
+        if (confirmingTaughtOutcomes) {
             return;
         }
 
         const missingOutcomes = session.planned_outcomes.filter(
             (outcome) => !taughtSelections[outcome.outcome_id]
         );
+
         if (missingOutcomes.length > 0) {
-            setWorkflowError('Confirm every planned outcome before continuing.');
+            setTaughtOutcomesValidationError('Select a taught status for every planned outcome before confirming.');
+            return;
+        }
+
+        if (!isInProgress || !hasMarkedAttendance || isHistorical || isCompleted || session.planned_outcomes.length === 0) {
             return;
         }
 
         try {
             setConfirmingTaughtOutcomes(true);
+            setTaughtOutcomesValidationError(null);
             clearWorkflowFeedback();
             await confirmTaughtOutcomes({
                 outcomes: session.planned_outcomes.map((outcome) => ({
@@ -1065,7 +1104,18 @@ export function SessionDetailPage() {
         } finally {
             setConfirmingTaughtOutcomes(false);
         }
-    };
+    }, [
+        clearWorkflowFeedback,
+        confirmTaughtOutcomes,
+        confirmingTaughtOutcomes,
+        hasMarkedAttendance,
+        isCompleted,
+        isHistorical,
+        isInProgress,
+        isInstructor,
+        session,
+        taughtSelections,
+    ]);
 
     const handleCreateAssignmentFromLesson = async () => {
         if (!session) {
@@ -1778,7 +1828,6 @@ export function SessionDetailPage() {
                             );
                         }}
                         onDismissError={dismissError}
-                        onSearch={setSearchQuery}
                     />
                 </CollapsibleSection>
             ) : null}
@@ -1807,19 +1856,19 @@ export function SessionDetailPage() {
                                     <Button
                                         size="sm"
                                         onClick={handleConfirmWhatWasTaught}
-                                        disabled={
-                                            confirmingTaughtOutcomes ||
-                                            !isInProgress ||
-                                            !hasMarkedAttendance ||
-                                            isHistorical ||
-                                            session.planned_outcomes.length === 0
-                                        }
+                                        disabled={!canConfirmTaughtOutcomes}
                                     >
                                         {confirmingTaughtOutcomes ? 'Saving...' : 'Confirm what was taught'}
                                     </Button>
                                 ) : null}
                             </div>
                         </div>
+
+                        {taughtOutcomesSelectionMessage ? (
+                            <div className="rounded-lg border px-3 py-2 text-sm theme-border theme-surface-muted theme-muted">
+                                {taughtOutcomesSelectionMessage}
+                            </div>
+                        ) : null}
 
                         {confirmedTaughtOutcomes.length > 0 ? (
                             <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
@@ -1856,31 +1905,21 @@ export function SessionDetailPage() {
 
                                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                                         {TAUGHT_STATUS_OPTIONS.map((option) => (
-                                            <label
+                                            <button
                                                 key={`${outcome.outcome_id}-${option.value}`}
-                                                className={`cursor-pointer rounded-lg border p-3 text-sm transition-colors ${
+                                                type="button"
+                                                disabled={!canEditTaughtOutcomes}
+                                                aria-pressed={taughtSelections[outcome.outcome_id] === option.value}
+                                                onClick={() => handleTaughtSelectionChange(outcome.outcome_id, option.value)}
+                                                className={`theme-focus-ring rounded-lg border p-3 text-left text-sm transition-colors ${
                                                     taughtSelections[outcome.outcome_id] === option.value
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-gray-200 hover:border-blue-300'
-                                                }`}
+                                                        ? 'border-blue-500 theme-surface-elevated'
+                                                        : 'theme-border theme-hover-surface'
+                                                } ${!canEditTaughtOutcomes ? 'cursor-not-allowed opacity-60' : ''}`}
                                             >
-                                                <input
-                                                    type="radio"
-                                                    name={`outcome-${outcome.outcome_id}`}
-                                                    value={option.value}
-                                                    checked={taughtSelections[outcome.outcome_id] === option.value}
-                                                    onChange={() => {
-                                                        setTaughtSelections((current) => ({
-                                                            ...current,
-                                                            [outcome.outcome_id]: option.value,
-                                                        }));
-                                                    }}
-                                                    disabled={!isInProgress || !hasMarkedAttendance || isHistorical || isCompleted}
-                                                    className="sr-only"
-                                                />
-                                                <div className="font-medium text-gray-900">{option.label}</div>
-                                                <div className="mt-1 text-xs text-gray-500">{option.description}</div>
-                                            </label>
+                                                <div className="font-medium theme-text">{option.label}</div>
+                                                <div className="mt-1 text-xs theme-muted">{option.description}</div>
+                                            </button>
                                         ))}
                                     </div>
                                 </div>

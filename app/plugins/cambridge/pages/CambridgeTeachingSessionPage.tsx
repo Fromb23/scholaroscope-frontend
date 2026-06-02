@@ -30,7 +30,7 @@ export default function CambridgeTeachingSessionPage() {
     const sessionId = Number(rawSessionId ?? 0);
     const [errorVisible, setErrorVisible] = useState(true);
 
-    const { session, loading: sessionLoading, error: sessionError } = useSessionDetail(sessionId, '');
+    const { session, loading: sessionLoading, error: sessionError } = useSessionDetail(sessionId);
 
     const installationSubjectId =
         session?.subject_source === 'cambridge' && session.subject_id ? session.subject_id : null;
