@@ -4,30 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/assessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/assessments.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/assignments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/assignments.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentScoreTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentScoreTable.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assignments/AssignmentGroupReviewForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assignments/AssignmentGroupReviewForm.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assignments/AssignmentGroupsPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assignments/AssignmentGroupsPanel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboardWidgets.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/TeacherNextActionPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/TeacherNextActionPanel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/assessments/useAssessmentDetailPage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/assessments/useAssessmentDetailPage.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useAdminDashboard.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useAdminDashboard.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useAssessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useAssessments.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useAssignments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useAssignments.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useInstructorDashboard.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useInstructorDashboard.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/assessment.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/assessment.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/assignments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/assignments.ts" afterDir="false" />
-    </list>
+    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="632" />
+    <option name="cachedIndexableFilesCount" value="634" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -224,6 +208,7 @@
       <workItem from="1780226161963" duration="11269000" />
       <workItem from="1780256832958" duration="404000" />
       <workItem from="1780260638673" duration="1872000" />
+      <workItem from="1780377777765" duration="356000" />
     </task>
     <servers />
   </component>

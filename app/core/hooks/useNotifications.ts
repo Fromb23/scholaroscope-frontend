@@ -2,11 +2,18 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationAPI } from '@/app/core/api/notifications';
+import { maybeShowBrowserNotification } from '@/app/core/lib/browserNotification';
 import { queueNotificationSound, initializeNotificationSound } from '@/app/core/lib/notificationSound';
-import { isSessionNotification } from '@/app/core/lib/notificationUtils';
+import { getNotificationSoundKey, isSessionNotification } from '@/app/core/lib/notificationUtils';
 import type { Notification } from '@/app/core/types/notifications';
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 15_000; // Polling only; true realtime still requires WebSocket/SSE.
+
+function buildNotificationSnapshot(nextNotifications: Notification[]): Map<number, string> {
+  return new Map(
+    nextNotifications.map((notification) => [notification.id, getNotificationSoundKey(notification)])
+  );
+}
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -14,44 +21,44 @@ export function useNotifications() {
   const [loading, setLoading] = useState(false);
   const notificationsRef = useRef<Notification[]>([]);
   const hasEstablishedBaseline = useRef(false);
-  const previousUnreadIds = useRef<Set<number>>(new Set<number>());
-  const previousUnreadCount = useRef(0);
+  const previousSnapshot = useRef<Map<number, string>>(new Map());
 
   const commitNotifications = useCallback((nextNotifications: Notification[], detectNew: boolean) => {
     const unread = nextNotifications.filter((notification) => !notification.is_read);
-    const nextUnreadIds = new Set(unread.map((notification) => notification.id));
-    const nextUnreadCount = unread.length;
+    const nextSnapshot = buildNotificationSnapshot(nextNotifications);
 
     setNotifications(nextNotifications);
     notificationsRef.current = nextNotifications;
-    setUnreadCount(nextUnreadCount);
+    setUnreadCount(unread.length);
 
     if (!detectNew) {
-      previousUnreadIds.current = nextUnreadIds;
-      previousUnreadCount.current = nextUnreadCount;
+      previousSnapshot.current = nextSnapshot;
       return;
     }
 
     if (!hasEstablishedBaseline.current) {
       hasEstablishedBaseline.current = true;
-      previousUnreadIds.current = nextUnreadIds;
-      previousUnreadCount.current = nextUnreadCount;
+      previousSnapshot.current = nextSnapshot;
       return;
     }
 
     const newUnreadNotifications = unread.filter(
-      (notification) => !previousUnreadIds.current.has(notification.id)
+      (notification) =>
+        previousSnapshot.current.get(notification.id) !== getNotificationSoundKey(notification)
     );
 
-    if (newUnreadNotifications.length > 0 || nextUnreadCount > previousUnreadCount.current) {
+    if (newUnreadNotifications.length > 0) {
       queueNotificationSound(
         newUnreadNotifications.some(isSessionNotification) ? 'session' : 'normal',
-        newUnreadNotifications.map((notification) => notification.id)
+        newUnreadNotifications.map((notification) => getNotificationSoundKey(notification))
       );
+
+      newUnreadNotifications.forEach((notification) => {
+        maybeShowBrowserNotification(notification);
+      });
     }
 
-    previousUnreadIds.current = nextUnreadIds;
-    previousUnreadCount.current = nextUnreadCount;
+    previousSnapshot.current = nextSnapshot;
   }, []);
 
   const syncNotifications = useCallback(async (showLoading = false) => {

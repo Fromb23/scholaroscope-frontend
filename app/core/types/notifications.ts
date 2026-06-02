@@ -11,10 +11,12 @@ export interface Notification {
     is_read: boolean;
     read_at: string | null;
     created_at: string;
+    updated_at?: string | null;
 }
 
 export interface UnreadCountResponse {
-    unread_count: number;
+    unread_count?: number;
+    count?: number;
 }
 
 export interface MarkReadPayload {
