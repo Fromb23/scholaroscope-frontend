@@ -23,7 +23,7 @@ export function EditSessionPage() {
     const params = useParams();
     const sessionId = Number(params.id);
 
-    const { session, loading } = useSessionDetail(sessionId, '');
+    const { session, loading } = useSessionDetail(sessionId);
     const lifecycle = useCurriculumLifecycleGuard({
         curriculumType: session?.curriculum_type ?? null,
         routeIntent: 'edit',
