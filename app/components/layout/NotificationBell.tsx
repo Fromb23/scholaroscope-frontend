@@ -56,7 +56,7 @@ function NotificationItem({
         {notification.body && (
           <p className="theme-muted mt-0.5 line-clamp-2 text-xs">{notification.body}</p>
         )}
-        <p className="theme-subtle mt-1 text-xs">{timeAgo(notification.created_at)}</p>
+        <p className="theme-subtle mt-1 text-xs">{timeAgo(notification.updated_at ?? notification.created_at)}</p>
       </div>
     </button>
   );
