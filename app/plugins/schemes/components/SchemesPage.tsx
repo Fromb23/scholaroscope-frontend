@@ -106,6 +106,11 @@ function SchemeCard({
             {scheme.is_historical ? <Badge variant="warning">Historical record</Badge> : null}
           </div>
           <p className="mt-1 text-sm theme-subtle">{scheme.title}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="blue">{scheme.entries_count} lesson drafts</Badge>
+            <Badge variant="default">{scheme.active_learning_week_count} active weeks</Badge>
+            <Badge variant="default">{scheme.lessons_per_week} lessons/week</Badge>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
