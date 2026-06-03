@@ -42,6 +42,7 @@ interface ParticipatingCohortsProps {
     sessionId: number;
     isHistorical?: boolean;
     canManageLinks?: boolean;
+    onParticipationChanged?: () => Promise<void> | void;
     primaryCohort?: {
         id: number;
         name: string;
@@ -53,6 +54,7 @@ export function ParticipatingCohorts({
     sessionId,
     isHistorical = false,
     canManageLinks = true,
+    onParticipationChanged,
     primaryCohort,
 }: ParticipatingCohortsProps) {
     const [open, setOpen] = useState(false);
@@ -112,6 +114,11 @@ export function ParticipatingCohorts({
         setActionError(null);
         try {
             await linkCohortSubject(cohortSubjectId);
+            try {
+                await onParticipationChanged?.();
+            } catch (refreshError) {
+                console.error('Participating class linked, but session refresh failed:', refreshError);
+            }
         } catch (err: unknown) {
             setActionError(getActionErrorMessage(err, 'Failed to add participating class.'));
             throw err;
@@ -122,6 +129,11 @@ export function ParticipatingCohorts({
         setActionError(null);
         try {
             await unlinkCohort(cohortId);
+            try {
+                await onParticipationChanged?.();
+            } catch (refreshError) {
+                console.error('Participating class unlinked, but session refresh failed:', refreshError);
+            }
             setConfirmUnlink(null);
         } catch (err: unknown) {
             setActionError(getActionErrorMessage(err, 'Failed to unlink class.'));

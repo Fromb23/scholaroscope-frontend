@@ -37,12 +37,40 @@ interface WorkflowNotice {
     variant: 'info' | 'success';
 }
 
-function buildLessonWorkspaceHref(sessionId: number, canOfferEndSession: boolean) {
-    if (!canOfferEndSession) {
-        return `/sessions/${sessionId}`;
+function withQueryParams(href: string, params: Record<string, string | null | undefined>) {
+    const [basePath, existingQuery = ''] = href.split('?', 2);
+    const searchParams = new URLSearchParams(existingQuery);
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+            searchParams.set(key, value);
+        } else {
+            searchParams.delete(key);
+        }
+    });
+
+    if (searchParams.size === 0) {
+        return basePath;
     }
 
-    return `/sessions/${sessionId}?notice=evidence-recorded-next-close&section=complete`;
+    return `${basePath}?${searchParams.toString()}`;
+}
+
+function buildLessonWorkspaceHref(
+    sessionId: number,
+    canOfferEndSession: boolean,
+    returnTo?: string | null,
+) {
+    const baseHref = returnTo || `/sessions/${sessionId}`;
+
+    if (!canOfferEndSession) {
+        return baseHref;
+    }
+
+    return withQueryParams(baseHref, {
+        notice: 'evidence-recorded-next-close',
+        section: 'complete',
+    });
 }
 
 export function CBCEvidenceEntryPage() {
@@ -55,6 +83,8 @@ export function CBCEvidenceEntryPage() {
     const highlightStudentId = searchParams.get('highlightStudent') ?? searchParams.get('student');
     const section = searchParams.get('section');
     const action = searchParams.get('action');
+    const notice = searchParams.get('notice');
+    const returnTo = searchParams.get('returnTo');
 
     const page = useEvidenceEntry(sessionId, learningOutcomeId);
     const isLoading = page.isPageLoading || page.isEvidencePanelLoading;
@@ -79,7 +109,11 @@ export function CBCEvidenceEntryPage() {
     );
     const hasRecordedEvidence = eligibleWithEvidenceCount > 0 || page.bulkSuccess !== null;
     const canOfferEndSession = page.session?.status === 'IN_PROGRESS' && hasRecordedEvidence;
-    const lessonWorkspaceHref = buildLessonWorkspaceHref(sessionId, canOfferEndSession);
+    const lessonWorkspaceHref = buildLessonWorkspaceHref(sessionId, canOfferEndSession, returnTo);
+    const completedLessonWorkspaceHref = withQueryParams(
+        returnTo || `/sessions/${sessionId}`,
+        { notice: 'lesson-closed' }
+    );
     const [observationsOpen, setObservationsOpen] = useState(() => hasWorkflowIntent);
     const [completionPending, setCompletionPending] = useState(false);
     const [completionError, setCompletionError] = useState<string | null>(null);
@@ -91,6 +125,13 @@ export function CBCEvidenceEntryPage() {
         : 'Record class performance';
 
     const workflowNoticeConfig = useMemo<WorkflowNotice | null>(() => {
+        if (notice === 'closure-evidence-required') {
+            return {
+                message: 'Learner performance is required before this lesson can be closed.',
+                variant: 'info',
+            };
+        }
+
         if (action === 'record-evidence') {
             return {
                 message: 'You were brought here to record learner performance for this lesson outcome.',
@@ -113,7 +154,7 @@ export function CBCEvidenceEntryPage() {
         }
 
         return null;
-    }, [action, highlightStudentId, section]);
+    }, [action, highlightStudentId, notice, section]);
 
     useEffect(() => {
         if (hasWorkflowIntent) {
@@ -166,17 +207,17 @@ export function CBCEvidenceEntryPage() {
             const completedSession = await sessionAPI.complete(sessionId);
 
             if (completedSession.status === 'COMPLETED') {
-                router.push(`/sessions/${sessionId}?notice=lesson-closed`);
+                router.push(completedLessonWorkspaceHref);
                 return;
             }
 
-            router.push(`/sessions/${sessionId}?notice=evidence-recorded-next-close&section=complete`);
+            router.push(lessonWorkspaceHref);
         } catch (error) {
             const apiError = error as ApiError;
             const status = apiError.response?.status;
 
             if (typeof status === 'number' && status >= 400 && status < 500) {
-                router.push(`/sessions/${sessionId}?notice=evidence-recorded-next-close&section=complete`);
+                router.push(lessonWorkspaceHref);
                 return;
             }
 
@@ -186,7 +227,7 @@ export function CBCEvidenceEntryPage() {
         } finally {
             setCompletionPending(false);
         }
-    }, [lessonWorkspaceHref, page.session, router, sessionId]);
+    }, [completedLessonWorkspaceHref, lessonWorkspaceHref, page.session, router, sessionId]);
 
     const assistantContext = useMemo(() => ({
         pageKey: 'cbc_evidence_entry',

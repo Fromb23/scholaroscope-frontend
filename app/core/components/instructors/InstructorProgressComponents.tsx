@@ -10,10 +10,15 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
-    Calendar, ChevronDown, ChevronRight,
+    Calendar,
+    ChevronDown,
+    ChevronRight,
+    GraduationCap,
+    TrendingUp,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import type { TeachingAssignment } from '@/app/core/types/academic';
 import type { Session } from '@/app/core/types/session';
 
 // ── SessionCohortGroup ────────────────────────────────────────────────────
@@ -29,6 +34,18 @@ function attendanceVariant(rate: number): 'success' | 'blue' | 'yellow' | 'defau
     if (rate >= 60) return 'blue';
     if (rate > 0) return 'yellow';
     return 'default';
+}
+
+function teachingSourceLabel(assignment: TeachingAssignment) {
+    if (assignment.source?.trim()) {
+        return assignment.source.trim().toUpperCase();
+    }
+
+    if (assignment.subject_source?.trim()) {
+        return assignment.subject_source.trim().toUpperCase();
+    }
+
+    return assignment.curriculum_name ?? assignment.curriculum_type;
 }
 
 function SessionCohortGroup({ group }: { group: SessionGroup }) {
@@ -49,7 +66,7 @@ function SessionCohortGroup({ group }: { group: SessionGroup }) {
                     ? <ChevronDown className="h-4 w-4 text-blue-600 shrink-0" />
                     : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
                 }
-                <span className="font-semibold text-gray-900 flex-1 min-w-0 truncate">
+                <span className="font-semibold text-gray-900 flex-1 min-w-0 break-words">
                     {group.cohortName}
                 </span>
                 <Badge variant="info" size="sm" className="shrink-0 ml-auto">
@@ -68,11 +85,11 @@ function SessionCohortGroup({ group }: { group: SessionGroup }) {
                                 return (
                                     <div key={session.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 truncate">
+                                            <p className="text-sm font-medium text-gray-900 break-words">
                                                 {session.title || session.subject_name}
                                             </p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                                <span className="text-xs text-gray-400">{session.subject_name}</span>
+                                            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                                                <span className="text-xs text-gray-400 break-words">{session.subject_name}</span>
                                                 <span className="text-xs text-gray-300">·</span>
                                                 <span className="text-xs text-gray-400 shrink-0">
                                                     {new Date(session.session_date).toLocaleDateString('en-GB', {
@@ -152,6 +169,117 @@ export function GroupedSessions({ sessions }: GroupedSessionsProps) {
         <div className="space-y-3">
             {groups.map(group => (
                 <SessionCohortGroup key={group.cohortId} group={group} />
+            ))}
+        </div>
+    );
+}
+
+interface TeachingAssignmentsListProps {
+    assignments: TeachingAssignment[];
+}
+
+export function TeachingAssignmentsList({ assignments }: TeachingAssignmentsListProps) {
+    if (assignments.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="grid gap-3 lg:grid-cols-2">
+            {assignments.map((assignment) => (
+                <div
+                    key={`${assignment.cohort_id}-${assignment.subject_id}-${assignment.academic_year}-${teachingSourceLabel(assignment)}`}
+                    className="rounded-xl border border-blue-100 bg-blue-50/60 p-4"
+                >
+                    <div className="flex items-start gap-3">
+                        <div className="rounded-xl bg-white p-2 text-blue-600 shadow-sm">
+                            <GraduationCap className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="info" size="sm">
+                                    {assignment.cohort_name}
+                                </Badge>
+                                {assignment.subject_code ? (
+                                    <Badge variant="default" size="sm">
+                                        {assignment.subject_code}
+                                    </Badge>
+                                ) : null}
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900 break-words">
+                                {assignment.subject_name}
+                            </p>
+                            <div className="grid gap-2 text-xs text-gray-600 sm:grid-cols-3">
+                                <div>
+                                    <p className="font-semibold uppercase tracking-wide text-gray-500">Academic Year</p>
+                                    <p className="mt-1 break-words">{assignment.academic_year}</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-wide text-gray-500">Curriculum</p>
+                                    <p className="mt-1 break-words">{assignment.curriculum_name ?? assignment.curriculum_type}</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-wide text-gray-500">Source</p>
+                                    <p className="mt-1 break-words">{teachingSourceLabel(assignment)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+interface CbcProgressAssignmentsProps {
+    assignments: TeachingAssignment[];
+}
+
+export function CbcProgressAssignments({ assignments }: CbcProgressAssignmentsProps) {
+    return (
+        <div className="grid gap-3 xl:grid-cols-2">
+            {assignments.map((assignment) => (
+                <div
+                    key={`${assignment.cohort_id}-${assignment.subject_id}-${assignment.academic_year}`}
+                    className="rounded-xl border border-gray-200 bg-white p-4"
+                >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="purple" size="sm">
+                                    {assignment.cohort_name}
+                                </Badge>
+                                {assignment.subject_code ? (
+                                    <Badge variant="default" size="sm">
+                                        {assignment.subject_code}
+                                    </Badge>
+                                ) : null}
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900 break-words">
+                                {assignment.subject_name}
+                            </p>
+                            <div className="grid gap-2 text-xs text-gray-600 sm:grid-cols-3">
+                                <div>
+                                    <p className="font-semibold uppercase tracking-wide text-gray-500">Academic Year</p>
+                                    <p className="mt-1 break-words">{assignment.academic_year}</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-wide text-gray-500">Curriculum</p>
+                                    <p className="mt-1 break-words">{assignment.curriculum_name ?? assignment.curriculum_type}</p>
+                                </div>
+                                <div>
+                                    <p className="font-semibold uppercase tracking-wide text-gray-500">Source</p>
+                                    <p className="mt-1 break-words">{teachingSourceLabel(assignment)}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <Link href={`/cbc/progress/cohort/${assignment.cohort_id}`} className="w-full lg:w-auto">
+                            <Button size="sm" variant="ghost" className="w-full lg:w-auto">
+                                <TrendingUp className="mr-1 h-3.5 w-3.5" />
+                                View Progress
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
             ))}
         </div>
     );

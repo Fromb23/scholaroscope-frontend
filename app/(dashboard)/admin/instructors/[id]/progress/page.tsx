@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
-    ArrowLeft, Calendar, Users, TrendingUp, CheckCircle,
+    ArrowLeft, Calendar, Users, CheckCircle,
     AlertCircle, Award, GraduationCap, Pencil,
     KeyRound, Power, PowerOff, Trash2, BookOpen,
 } from 'lucide-react';
@@ -15,7 +14,6 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { instructorsAPI } from '@/app/core/api/instructors';
 import {
-    getTeachingAssignmentKey,
     useInstructorProgress,
 } from '@/app/core/hooks/useInstructorProgress';
 import { useBackNavigation } from '@/app/core/hooks/useBackNavigation';
@@ -26,7 +24,9 @@ import {
     CohortAssignModal,
 } from '@/app/core/components/instructors/InstructorModals';
 import {
+    CbcProgressAssignments,
     GroupedSessions,
+    TeachingAssignmentsList,
 } from '@/app/core/components/instructors/InstructorProgressComponents';
 import type { UserUpdatePayload } from '@/app/core/types/globalUsers';
 import {
@@ -138,7 +138,7 @@ export default function InstructorProgressPage() {
     ];
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="mx-auto max-w-7xl space-y-6">
             <Button variant="ghost" size="sm" onClick={goBack}>
                 <ArrowLeft className="h-4 w-4 mr-2" />Back to Instructors
             </Button>
@@ -172,7 +172,7 @@ export default function InstructorProgressPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-lg font-bold text-gray-900 truncate">{instructor.full_name}</h1>
+                            <h1 className="text-lg font-bold text-gray-900 break-words">{instructor.full_name}</h1>
                             <Badge variant={globalStatusVariant(globalStatus)} size="sm">
                                 {globalStatusLabel(globalStatus)}
                             </Badge>
@@ -180,7 +180,7 @@ export default function InstructorProgressPage() {
                                 {membershipStatusLabel(instructor.membership_status)}
                             </Badge>
                         </div>
-                        <p className="text-gray-500 text-sm truncate">{instructor.email}</p>
+                        <p className="text-sm text-gray-500 break-all">{instructor.email}</p>
                         {instructor.state_message ? (
                             <p className="mt-1 text-sm text-gray-500">{instructor.state_message}</p>
                         ) : null}
@@ -224,20 +224,9 @@ export default function InstructorProgressPage() {
                     </Button>
                 </div>
 
-                {/* Row 3 — teaching badges */}
+                {/* Row 3 — teaching assignments */}
                 {teachingAssignments.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {teachingAssignments.map((assignment) => (
-                            <Badge
-                                key={getTeachingAssignmentKey(assignment)}
-                                variant="info"
-                                size="sm"
-                            >
-                                <GraduationCap className="h-3 w-3 mr-1 inline" />
-                                {assignment.cohort_name} — {assignment.subject_name}
-                            </Badge>
-                        ))}
-                    </div>
+                    <TeachingAssignmentsList assignments={teachingAssignments} />
                 )}
             </div>
 
@@ -278,26 +267,7 @@ export default function InstructorProgressPage() {
                             <Award className="h-5 w-5 text-purple-500" />
                             <h2 className="text-lg font-semibold text-gray-900">CBC Outcome Progress</h2>
                         </div>
-                        <div className="space-y-3">
-                            {cbcTeachingAssignments.map((assignment) => (
-                                <div
-                                    key={getTeachingAssignmentKey(assignment)}
-                                    className="flex items-center justify-between p-4 border border-gray-200 rounded-xl"
-                                >
-                                    <div>
-                                        <p className="font-medium text-gray-900">
-                                            {assignment.cohort_name} — {assignment.subject_name}
-                                        </p>
-                                        <p className="text-xs text-gray-500">{assignment.academic_year}</p>
-                                    </div>
-                                    <Link href={`/cbc/progress/cohort/${assignment.cohort_id}`}>
-                                        <Button size="sm" variant="ghost">
-                                            <TrendingUp className="h-3.5 w-3.5 mr-1" />View Progress
-                                        </Button>
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
+                        <CbcProgressAssignments assignments={cbcTeachingAssignments} />
                     </div>
                 </Card>
             )}

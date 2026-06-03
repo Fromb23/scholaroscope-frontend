@@ -1,6 +1,6 @@
 import type { Session } from '@/app/core/types/session';
 
-type SessionTeachingSession = Pick<
+export type SessionTeachingSession = Pick<
     Session,
     'id' | 'curriculum_name' | 'curriculum_type' | 'subject_id' | 'subject_source' | 'offering_id' | 'cambridge_cohort_subject_id'
 >;
@@ -19,7 +19,22 @@ interface SessionTeachingWorkflowResolver {
     resolve: (session: SessionTeachingSession) => SessionTeachingWorkflow | null;
 }
 
+export interface SessionClosureEvidenceWorkflowContext {
+    requiredOutcomeIds: number[];
+    returnTo: string;
+    session: SessionTeachingSession;
+}
+
+interface SessionClosureEvidenceWorkflowResolver {
+    key: string;
+    priority?: number;
+    resolve: (
+        context: SessionClosureEvidenceWorkflowContext
+    ) => string | null | Promise<string | null>;
+}
+
 const _sessionTeachingResolvers: SessionTeachingWorkflowResolver[] = [];
+const _sessionClosureEvidenceResolvers: SessionClosureEvidenceWorkflowResolver[] = [];
 
 export function registerSessionTeachingWorkflowResolver(
     resolver: SessionTeachingWorkflowResolver
@@ -27,6 +42,14 @@ export function registerSessionTeachingWorkflowResolver(
     if (_sessionTeachingResolvers.some((entry) => entry.key === resolver.key)) return;
     _sessionTeachingResolvers.push(resolver);
     _sessionTeachingResolvers.sort((left, right) => (left.priority ?? 100) - (right.priority ?? 100));
+}
+
+export function registerSessionClosureEvidenceWorkflowResolver(
+    resolver: SessionClosureEvidenceWorkflowResolver
+): void {
+    if (_sessionClosureEvidenceResolvers.some((entry) => entry.key === resolver.key)) return;
+    _sessionClosureEvidenceResolvers.push(resolver);
+    _sessionClosureEvidenceResolvers.sort((left, right) => (left.priority ?? 100) - (right.priority ?? 100));
 }
 
 export function getSessionTeachingWorkflow(
@@ -46,4 +69,30 @@ export function getSessionTeachingRoute(
     session: SessionTeachingSession | null | undefined
 ): string | null {
     return getSessionTeachingWorkflow(session)?.href ?? null;
+}
+
+export function getSessionClosureEvidenceWorkflowHref(
+    context: SessionClosureEvidenceWorkflowContext
+): string | null {
+    for (const resolver of _sessionClosureEvidenceResolvers) {
+        const result = resolver.resolve(context);
+        if (typeof result === 'string' && result) {
+            return result;
+        }
+    }
+
+    return null;
+}
+
+export async function resolveSessionClosureEvidenceWorkflowHref(
+    context: SessionClosureEvidenceWorkflowContext
+): Promise<string | null> {
+    for (const resolver of _sessionClosureEvidenceResolvers) {
+        const result = await resolver.resolve(context);
+        if (result) {
+            return result;
+        }
+    }
+
+    return null;
 }
