@@ -32,6 +32,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import type {
   CurriculumRangeInput,
   ExceptionalWeekInput,
+  GenerateSchemePayload,
   SchemeNonBlockingExamNotes,
   SchemeWeekType,
 } from '@/app/core/types/schemes';
@@ -124,6 +125,15 @@ function buildLearningWeekConfigs(weekCount: number): CreateSchemeWeekConfig[] {
   }));
 }
 
+function parseIntegerInput(value: string): number | null {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
 export function CreateSchemePage() {
   const router = useRouter();
   const { activeRole, user } = useAuth();
@@ -153,6 +163,9 @@ export function CreateSchemePage() {
   const [learningWeeks, setLearningWeeks] = useState<CreateSchemeWeekConfig[]>([]);
   const [expandedLearningWeek, setExpandedLearningWeek] = useState<number | null>(1);
   const [expandedWeekNotes, setExpandedWeekNotes] = useState<Record<number, boolean>>({});
+  const [lessonsPerWeek, setLessonsPerWeek] = useState('1');
+  const [lessonDurationMinutes, setLessonDurationMinutes] = useState('40');
+  const [weeklyTeachingLoadConfirmed, setWeeklyTeachingLoadConfirmed] = useState(false);
 
   const [startStrandId, setStartStrandId] = useState('');
   const [startSubStrandId, setStartSubStrandId] = useState('');
@@ -543,6 +556,21 @@ export function CreateSchemePage() {
     [exceptionalWeekPreview.exceptionalWeeks, termWeekCount],
   );
 
+  const lessonsPerWeekValue = useMemo(
+    () => parseIntegerInput(lessonsPerWeek),
+    [lessonsPerWeek],
+  );
+
+  const lessonDurationMinutesValue = useMemo(
+    () => parseIntegerInput(lessonDurationMinutes),
+    [lessonDurationMinutes],
+  );
+
+  const totalPlannedLessons = useMemo(
+    () => learningWeekSummary.activeLearningWeekCount * (lessonsPerWeekValue ?? 0),
+    [learningWeekSummary.activeLearningWeekCount, lessonsPerWeekValue],
+  );
+
   const rangeValidation = useMemo(() => {
     if (!startSubStrandId || !endSubStrandId) {
       return {
@@ -609,6 +637,19 @@ export function CreateSchemePage() {
       if (learningWeekSummary.activeLearningWeekCount <= 0) {
         return 'There must be at least one active learning week.';
       }
+      if (lessonsPerWeekValue === null || lessonsPerWeekValue < 1 || lessonsPerWeekValue > 10) {
+        return 'Lessons per week must be between 1 and 10.';
+      }
+      if (!weeklyTeachingLoadConfirmed) {
+        return 'Confirm the weekly teaching periods for this subject before continuing.';
+      }
+      if (
+        lessonDurationMinutesValue === null ||
+        lessonDurationMinutesValue < 20 ||
+        lessonDurationMinutesValue > 120
+      ) {
+        return 'Lesson duration must be between 20 and 120 minutes.';
+      }
       return null;
     }
 
@@ -667,10 +708,12 @@ export function CreateSchemePage() {
       setStepError(null);
       clearError();
 
-      const payload = {
+      const payload: GenerateSchemePayload = {
         term: Number(selectedTermId),
         cohort_subject: resolvedSelectedCohortSubjectId,
         title: title.trim(),
+        lessons_per_week: lessonsPerWeekValue ?? 1,
+        lesson_duration_minutes: lessonDurationMinutesValue ?? 40,
         exceptional_weeks: exceptionalWeekPreview.exceptionalWeeks,
         non_blocking_exam_notes: exceptionalWeekPreview.notes,
         curriculum_range: rangeValidation.curriculumRange,
@@ -706,6 +749,8 @@ export function CreateSchemePage() {
         current_step: currentStep,
         term_week_count: termWeekCount,
         active_learning_weeks: learningWeekSummary.activeLearningWeekCount,
+        lessons_per_week: lessonsPerWeekValue,
+        total_planned_lessons: totalPlannedLessons,
       },
       workflowStep:
         currentStep === 1
@@ -716,7 +761,14 @@ export function CreateSchemePage() {
               ? 'strand-range'
               : 'review-and-generate',
     }),
-    [currentStep, learningWeekSummary.activeLearningWeekCount, loading, termWeekCount],
+    [
+      currentStep,
+      learningWeekSummary.activeLearningWeekCount,
+      lessonsPerWeekValue,
+      loading,
+      termWeekCount,
+      totalPlannedLessons,
+    ],
   );
 
   useAssistantPageContext(assistantContext);
@@ -751,7 +803,7 @@ export function CreateSchemePage() {
 
       <div className="grid gap-3 xl:grid-cols-4">
         <StepMarker currentStep={currentStep} step={1} title="Teaching Context" />
-        <StepMarker currentStep={currentStep} step={2} title="Learning Weeks" />
+        <StepMarker currentStep={currentStep} step={2} title="Weeks & Load" />
         <StepMarker currentStep={currentStep} step={3} title="Strand Range" />
         <StepMarker currentStep={currentStep} step={4} title="Review & Generate" />
       </div>
@@ -901,19 +953,21 @@ export function CreateSchemePage() {
       {currentStep === 2 ? (
         <Card className="space-y-6">
           <div>
-            <h2 className="text-lg font-semibold theme-text">Step 2: Set learning weeks</h2>
+            <h2 className="text-lg font-semibold theme-text">
+              Step 2: Set learning weeks and teaching load
+            </h2>
             <p className="mt-1 text-sm theme-subtle">
-              Mark only the weeks that break the normal teaching flow. Keep the rest as teaching
-              weeks.
+              Mark only the weeks that break the normal teaching flow, then confirm how many times
+              this subject meets each active week.
             </p>
           </div>
 
           {selectedTerm ? (
             <>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 <div className="rounded-lg bg-gray-50 px-4 py-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Total weeks
+                    Total term weeks
                   </p>
                   <p className="mt-1 text-base font-semibold theme-text">{termWeekCount}</p>
                 </div>
@@ -927,6 +981,20 @@ export function CreateSchemePage() {
                 </div>
                 <div className="rounded-lg bg-gray-50 px-4 py-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Lessons per week
+                  </p>
+                  <p className="mt-1 text-base font-semibold theme-text">
+                    {lessonsPerWeekValue ?? 'Not set'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-gray-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Total planned lessons
+                  </p>
+                  <p className="mt-1 text-base font-semibold theme-text">{totalPlannedLessons}</p>
+                </div>
+                <div className="rounded-lg bg-gray-50 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                     Exceptional weeks
                   </p>
                   <p className="mt-1 text-base font-semibold theme-text">
@@ -934,6 +1002,68 @@ export function CreateSchemePage() {
                   </p>
                 </div>
               </div>
+
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900">
+                <div className="flex items-start gap-3">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="font-medium">Weekly teaching periods</p>
+                    <p className="mt-1">
+                      Different subjects meet different numbers of times per week. Mathematics may
+                      meet 5 times, while Computer Studies may meet 3 times. This controls how
+                      many lesson rows are created in each active week.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="space-y-2">
+                  <Input
+                    label="Weekly teaching periods / lessons per week"
+                    type="number"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={lessonsPerWeek}
+                    onChange={(event) => {
+                      setLessonsPerWeek(event.target.value);
+                      setWeeklyTeachingLoadConfirmed(false);
+                    }}
+                  />
+                  <p className="text-sm theme-subtle">
+                    Set this deliberately even if the subject meets once per week.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Input
+                    label="Lesson duration in minutes"
+                    type="number"
+                    min={20}
+                    max={120}
+                    step={5}
+                    value={lessonDurationMinutes}
+                    onChange={(event) => setLessonDurationMinutes(event.target.value)}
+                  />
+                  <p className="text-sm theme-subtle">
+                    This snapshot is stored with the generated scheme for future reference.
+                  </p>
+                </div>
+              </div>
+
+              <label className="flex items-start gap-3 rounded-xl border theme-border bg-gray-50 px-4 py-3 text-sm theme-text">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  checked={weeklyTeachingLoadConfirmed}
+                  onChange={(event) => setWeeklyTeachingLoadConfirmed(event.target.checked)}
+                />
+                <span>
+                  I confirm this subject should generate {lessonsPerWeekValue ?? lessonsPerWeek}{' '}
+                  lesson row{lessonsPerWeekValue === 1 ? '' : 's'} in each active week.
+                </span>
+              </label>
 
               <div className="space-y-3">
                 {learningWeeks.map((week) => {
@@ -1063,7 +1193,7 @@ export function CreateSchemePage() {
             <h2 className="text-lg font-semibold theme-text">Step 3: Select curriculum range</h2>
             <p className="mt-1 text-sm theme-subtle">
               The system will include all strands and sub-strands in this range and distribute them
-              across active learning weeks.
+              across the generated lesson rows.
             </p>
           </div>
 
@@ -1156,11 +1286,37 @@ export function CreateSchemePage() {
             </div>
             <div className="rounded-lg bg-gray-50 px-3 py-2">
               <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Total term weeks
+              </dt>
+              <dd className="mt-1 text-sm theme-text">{termWeekCount}</dd>
+            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
                 Active weeks
               </dt>
               <dd className="mt-1 text-sm theme-text">
                 {learningWeekSummary.activeLearningWeekCount}
               </dd>
+            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Lessons per week
+              </dt>
+              <dd className="mt-1 text-sm theme-text">{lessonsPerWeekValue ?? 'Not set'}</dd>
+            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Lesson duration
+              </dt>
+              <dd className="mt-1 text-sm theme-text">
+                {lessonDurationMinutesValue ?? 'Not set'} minutes
+              </dd>
+            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Total planned lessons
+              </dt>
+              <dd className="mt-1 text-sm theme-text">{totalPlannedLessons}</dd>
             </div>
             <div className="rounded-lg bg-gray-50 px-3 py-2">
               <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">

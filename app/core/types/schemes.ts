@@ -38,6 +38,8 @@ export interface GenerateSchemePayload {
     cohort_subject: number;
     teacher?: number;
     title?: string;
+    lessons_per_week: number;
+    lesson_duration_minutes?: number;
     exceptional_weeks?: ExceptionalWeekInput[];
     non_blocking_exam_notes?: SchemeNonBlockingExamNotes;
     curriculum_range: CurriculumRangeInput;
@@ -100,6 +102,8 @@ export interface SchemeOfWork {
     status: SchemeStatus;
     status_display: string;
     generation_mode: SchemeGenerationMode;
+    lessons_per_week: number;
+    lesson_duration_minutes: number;
     non_blocking_exam_notes: SchemeNonBlockingExamNotes;
     curriculum_range: Partial<CurriculumRangeInput>;
     generation_context: Record<string, unknown>;
@@ -112,6 +116,7 @@ export interface SchemeOfWork {
     term_week_count: number;
     active_learning_week_count: number;
     exceptional_week_count: number;
+    total_lesson_slots?: number;
     entries_count: number;
     created_at: string;
     updated_at: string;

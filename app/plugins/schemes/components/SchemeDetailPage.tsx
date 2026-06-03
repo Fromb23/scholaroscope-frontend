@@ -588,6 +588,8 @@ export function SchemeDetailPage() {
           <div className="flex flex-wrap gap-2">
             <Badge variant="blue">{scheme.entries_count} lesson drafts</Badge>
             <Badge variant="default">{scheme.active_learning_week_count} active weeks</Badge>
+            <Badge variant="default">{scheme.lessons_per_week} lessons/week</Badge>
+            <Badge variant="default">{scheme.lesson_duration_minutes} min lessons</Badge>
             {scheme.exceptional_week_count > 0 ? (
               <Badge variant="warning">{scheme.exceptional_week_count} exceptional weeks</Badge>
             ) : null}
@@ -619,6 +621,18 @@ export function SchemeDetailPage() {
           <MetaItem label="Term" value={scheme.term_name} />
           <MetaItem label="Academic Year" value={scheme.academic_year_name} />
           <MetaItem label="Teacher" value={scheme.teacher_name} />
+          <MetaItem
+            label="Weekly teaching periods"
+            value={`${scheme.lessons_per_week} lessons per week`}
+          />
+          <MetaItem
+            label="Lesson duration"
+            value={`${scheme.lesson_duration_minutes} minutes`}
+          />
+          <MetaItem
+            label="Planned lesson rows"
+            value={String(scheme.total_lesson_slots ?? scheme.entries_count)}
+          />
           <MetaItem label="Last updated" value={formatTimestamp(scheme.updated_at)} />
         </div>
 
