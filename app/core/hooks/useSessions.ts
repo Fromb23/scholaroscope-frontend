@@ -14,7 +14,10 @@ import {
   AttendanceQueryParams,
 } from '@/app/core/api/sessions';
 import { cohortAPI, cohortSubjectAPI } from '@/app/core/api/academic';
-import { subscribeToSessionDataChanged } from '@/app/core/lib/sessionEvents';
+import {
+  emitSessionDataChanged,
+  subscribeToSessionDataChanged,
+} from '@/app/core/lib/sessionEvents';
 import {
   AvailableSessionCohortSubject,
   AvailableSessionCohortSubjectsResponse,
@@ -390,12 +393,20 @@ export const useSessionDetail = (
     if (!sessionId) return;
     await sessionAPI.markAttendance(sessionId, data);
     await fetchSession();
+    emitSessionDataChanged({
+      reason: 'attendance_updated',
+      sessionId,
+    });
   };
 
   const reseedAttendance = async (): Promise<void> => {
     if (!sessionId) return;
     await sessionAPI.reseedAttendance(sessionId);
     await fetchSession();
+    emitSessionDataChanged({
+      reason: 'attendance_updated',
+      sessionId,
+    });
   };
 
   const startSession = async (): Promise<void> => {
@@ -403,6 +414,10 @@ export const useSessionDetail = (
     const updated = await sessionAPI.start(sessionId);
     setSession(updated);
     await fetchSession();
+    emitSessionDataChanged({
+      reason: 'session_started',
+      sessionId,
+    });
   };
 
   const completeSession = async (): Promise<void> => {
@@ -410,6 +425,10 @@ export const useSessionDetail = (
     const updated = await sessionAPI.complete(sessionId);
     setSession(updated);
     await fetchSession();
+    emitSessionDataChanged({
+      reason: 'session_completed',
+      sessionId,
+    });
   };
 
   const rescheduleSession = async (
@@ -419,6 +438,10 @@ export const useSessionDetail = (
     const updated = await sessionAPI.reschedule(sessionId, data);
     setSession(updated);
     await fetchSession();
+    emitSessionDataChanged({
+      reason: 'session_rescheduled',
+      sessionId,
+    });
   };
 
   const confirmTaughtOutcomes = async (
@@ -428,6 +451,10 @@ export const useSessionDetail = (
     const updated = await sessionAPI.confirmTaughtOutcomes(sessionId, data);
     setSession(updated);
     await fetchSession();
+    emitSessionDataChanged({
+      reason: 'taught_outcomes_confirmed',
+      sessionId,
+    });
   };
 
   const createAssignmentFromLesson = async (): Promise<SessionAssignmentDraftResponse> => {
@@ -713,12 +740,20 @@ export const useSessionCohorts = (sessionId: number | null) => {
     if (!sessionId) return;
     await sessionCohortAPI.linkCohort(sessionId, { cohort_subject_id: cohortSubjectId });
     await fetchLinkedCohorts();
+    emitSessionDataChanged({
+      reason: 'participation_updated',
+      sessionId,
+    });
   };
 
   const unlinkCohort = async (cohortId: number): Promise<void> => {
     if (!sessionId) return;
     await sessionCohortAPI.unlinkCohort(sessionId, cohortId);
     await fetchLinkedCohorts();
+    emitSessionDataChanged({
+      reason: 'participation_updated',
+      sessionId,
+    });
   };
 
   return {

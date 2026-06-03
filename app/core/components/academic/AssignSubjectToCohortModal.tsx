@@ -38,6 +38,8 @@ export function AssignSubjectToCohortModal({
     const [isCompulsory, setIsCompulsory] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [linkedCohortIds, setLinkedCohortIds] = useState<Set<number>>(new Set());
+    const [checkingLinkedCohorts, setCheckingLinkedCohorts] = useState(false);
 
     const { cohorts, loading: cohortsLoading } = useCohorts(
         subject ? { curriculum: subject.curriculum } : undefined,
@@ -65,10 +67,19 @@ export function AssignSubjectToCohortModal({
 
         return matchingLevel.length > 0 ? matchingLevel : currentYearCohorts;
     }, [cohorts, subject]);
+    const selectableCohorts = useMemo(() => (
+        availableCohorts.filter((cohort) => !linkedCohortIds.has(cohort.id))
+    ), [availableCohorts, linkedCohortIds]);
+    const duplicateCohorts = useMemo(() => (
+        availableCohorts.filter((cohort) => linkedCohortIds.has(cohort.id))
+    ), [availableCohorts, linkedCohortIds]);
 
     const alreadyLinked = Boolean(
         subject
-        && cohortDetail?.subjects.some((cohortSubject) => cohortSubject.subject === subject.id)
+        && (
+            linkedCohortIds.has(selectedCohort ?? -1)
+            || cohortDetail?.subjects.some((cohortSubject) => cohortSubject.subject === subject.id)
+        )
     );
 
     const handleClose = () => {
@@ -76,6 +87,50 @@ export function AssignSubjectToCohortModal({
         setError(null);
         onClose();
     };
+
+    useEffect(() => {
+        let isActive = true;
+
+        if (!isOpen || !subject || availableCohorts.length === 0) {
+            setLinkedCohortIds(new Set());
+            setCheckingLinkedCohorts(false);
+            return () => {
+                isActive = false;
+            };
+        }
+
+        setCheckingLinkedCohorts(true);
+
+        void Promise.all(
+            availableCohorts.map(async (cohort) => {
+                const detail = await cohortAPI.getById(cohort.id);
+                const hasSubject = detail.subjects.some((cohortSubject) => cohortSubject.subject === subject.id);
+                return hasSubject ? cohort.id : null;
+            })
+        ).then((results) => {
+            if (!isActive) {
+                return;
+            }
+
+            setLinkedCohortIds(new Set(
+                results.filter((cohortId): cohortId is number => typeof cohortId === 'number')
+            ));
+        }).catch(() => {
+            if (!isActive) {
+                return;
+            }
+
+            setLinkedCohortIds(new Set());
+        }).finally(() => {
+            if (isActive) {
+                setCheckingLinkedCohorts(false);
+            }
+        });
+
+        return () => {
+            isActive = false;
+        };
+    }, [availableCohorts, isOpen, subject]);
 
     const handleAssign = async () => {
         if (!subject || !selectedCohort) {
@@ -132,15 +187,30 @@ export function AssignSubjectToCohortModal({
                         setSelectedCohortId(event.target.value);
                         setError(null);
                     }}
-                    disabled={cohortsLoading || !subject}
+                    disabled={cohortsLoading || checkingLinkedCohorts || !subject}
                     options={[
-                        { value: '', label: cohortsLoading ? 'Loading cohorts...' : 'Select cohort...' },
-                        ...availableCohorts.map((cohort) => ({
+                        {
+                            value: '',
+                            label: cohortsLoading
+                                ? 'Loading cohorts...'
+                                : checkingLinkedCohorts
+                                    ? 'Checking linked cohorts...'
+                                    : 'Select cohort...',
+                        },
+                        ...selectableCohorts.map((cohort) => ({
                             value: String(cohort.id),
                             label: `${cohort.name} · ${cohort.academic_year_name}`,
                         })),
                     ]}
                 />
+
+                {!checkingLinkedCohorts && duplicateCohorts.length > 0 ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                        {duplicateCohorts.length === 1
+                            ? '1 cohort already has this subject, so it is not shown in the list.'
+                            : `${duplicateCohorts.length} cohorts already have this subject, so they are not shown in the list.`}
+                    </div>
+                ) : null}
 
                 <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3">
                     <input
@@ -173,9 +243,15 @@ export function AssignSubjectToCohortModal({
                     </div>
                 ) : null}
 
-                {!cohortsLoading && subject && availableCohorts.length === 0 ? (
+                {!cohortsLoading && !checkingLinkedCohorts && subject && availableCohorts.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
                         No current cohorts are available for {subject.level} in {subject.curriculum_name}.
+                    </div>
+                ) : null}
+
+                {!cohortsLoading && !checkingLinkedCohorts && subject && availableCohorts.length > 0 && selectableCohorts.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
+                        Every matching current cohort already has {subject.name} linked.
                     </div>
                 ) : null}
 
