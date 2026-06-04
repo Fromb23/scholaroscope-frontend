@@ -94,6 +94,10 @@ export function useGenerateScheme() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const generateScheme = async (payload: GenerateSchemePayload): Promise<SchemeOfWork> => {
     try {
       setSubmitting(true);
@@ -115,7 +119,7 @@ export function useGenerateScheme() {
     generateScheme,
     submitting,
     error,
-    clearError: () => setError(null),
+    clearError,
   };
 }
 

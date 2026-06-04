@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -171,6 +171,9 @@ export function CreateSchemePage() {
   const [startSubStrandId, setStartSubStrandId] = useState('');
   const [endStrandId, setEndStrandId] = useState('');
   const [endSubStrandId, setEndSubStrandId] = useState('');
+  const [rangeInitializedForKey, setRangeInitializedForKey] = useState<string | null>(null);
+  const [rangeTouched, setRangeTouched] = useState(false);
+  const [generationFailure, setGenerationFailure] = useState<string | null>(null);
 
   useEffect(() => {
     if (isInstructor) {
@@ -427,34 +430,56 @@ export function CreateSchemePage() {
   } = useSchemeSubjectStrands(resolvedSelectedCohortSubjectId);
 
   const flattenedSubStrands = useMemo(() => flattenSubjectStrands(strands), [strands]);
+  const strandRangeKey = useMemo(() => {
+    if (!resolvedSelectedCohortSubjectId || flattenedSubStrands.length === 0) {
+      return null;
+    }
+
+    return `${resolvedSelectedCohortSubjectId}:${flattenedSubStrands
+      .map((item) => item.subStrandId)
+      .join(',')}`;
+  }, [flattenedSubStrands, resolvedSelectedCohortSubjectId]);
+
+  const resolveSubStrandIdForStrand = useCallback(
+    (strandId: string, edge: 'first' | 'last') => {
+      const strand = strands.find((item) => String(item.id) === strandId);
+      if (!strand || strand.sub_strands.length === 0) {
+        return '';
+      }
+
+      const subStrand =
+        edge === 'last'
+          ? strand.sub_strands[strand.sub_strands.length - 1]
+          : strand.sub_strands[0];
+      return String(subStrand.id);
+    },
+    [strands],
+  );
 
   useEffect(() => {
-    if (flattenedSubStrands.length === 0) {
+    if (!strandRangeKey || flattenedSubStrands.length === 0) {
       setStartStrandId('');
       setStartSubStrandId('');
       setEndStrandId('');
       setEndSubStrandId('');
+      setRangeInitializedForKey(null);
+      setRangeTouched(false);
+      return;
+    }
+
+    if (rangeInitializedForKey === strandRangeKey) {
       return;
     }
 
     const first = flattenedSubStrands[0];
     const last = flattenedSubStrands[flattenedSubStrands.length - 1];
-    const hasStartSelection = flattenedSubStrands.some(
-      (item) => String(item.subStrandId) === startSubStrandId,
-    );
-    const hasEndSelection = flattenedSubStrands.some(
-      (item) => String(item.subStrandId) === endSubStrandId,
-    );
-
-    if (!startStrandId || !hasStartSelection) {
-      setStartStrandId(String(first.strandId));
-      setStartSubStrandId(String(first.subStrandId));
-    }
-    if (!endStrandId || !hasEndSelection) {
-      setEndStrandId(String(last.strandId));
-      setEndSubStrandId(String(last.subStrandId));
-    }
-  }, [endStrandId, endSubStrandId, flattenedSubStrands, startStrandId, startSubStrandId]);
+    setStartStrandId(String(first.strandId));
+    setStartSubStrandId(String(first.subStrandId));
+    setEndStrandId(String(last.strandId));
+    setEndSubStrandId(String(last.subStrandId));
+    setRangeInitializedForKey(strandRangeKey);
+    setRangeTouched(false);
+  }, [flattenedSubStrands, rangeInitializedForKey, strandRangeKey]);
 
   const startStrandOptions = useMemo(
     () =>
@@ -575,6 +600,7 @@ export function CreateSchemePage() {
     if (!startSubStrandId || !endSubStrandId) {
       return {
         error: 'Choose the first and last topic to cover.',
+        warning: null as string | null,
         curriculumRange: null as CurriculumRangeInput | null,
       };
     }
@@ -585,19 +611,17 @@ export function CreateSchemePage() {
     if (!start || !end) {
       return {
         error: 'The selected strand range could not be resolved.',
-        curriculumRange: null,
-      };
-    }
-
-    if (start.order > end.order) {
-      return {
-        error: 'The first topic to cover must come before the last topic to cover.',
+        warning: null,
         curriculumRange: null,
       };
     }
 
     return {
       error: null,
+      warning:
+        start.order > end.order
+          ? 'Your selected end topic appears earlier in the curriculum order. This is allowed when your teaching plan needs a custom sequence.'
+          : null,
       curriculumRange: {
         start_strand_id: start.strandId,
         start_substrand_id: start.subStrandId,
@@ -606,6 +630,64 @@ export function CreateSchemePage() {
       },
     };
   }, [endSubStrandId, flattenedSubStrands, startSubStrandId]);
+
+  const generationSetupFingerprint = useMemo(
+    () =>
+      JSON.stringify({
+        selectedCurriculumId,
+        selectedSubjectId,
+        selectedLevelLabel,
+        selectedCohortSubjectId,
+        selectedTermId,
+        selectedTeacherId,
+        title,
+        learningWeeks,
+        lessonsPerWeek,
+        lessonDurationMinutes,
+        weeklyTeachingLoadConfirmed,
+        startStrandId,
+        startSubStrandId,
+        endStrandId,
+        endSubStrandId,
+      }),
+    [
+      endStrandId,
+      endSubStrandId,
+      learningWeeks,
+      lessonDurationMinutes,
+      lessonsPerWeek,
+      selectedCohortSubjectId,
+      selectedCurriculumId,
+      selectedLevelLabel,
+      selectedSubjectId,
+      selectedTeacherId,
+      selectedTermId,
+      startStrandId,
+      startSubStrandId,
+      title,
+      weeklyTeachingLoadConfirmed,
+    ],
+  );
+  const previousGenerationSetupFingerprint = useRef(generationSetupFingerprint);
+
+  useEffect(() => {
+    if (previousGenerationSetupFingerprint.current === generationSetupFingerprint) {
+      return;
+    }
+
+    previousGenerationSetupFingerprint.current = generationSetupFingerprint;
+
+    if (!generationFailure) {
+      return;
+    }
+
+    setGenerationFailure(null);
+    clearError();
+  }, [
+    clearError,
+    generationFailure,
+    generationSetupFingerprint,
+  ]);
 
   const validateStep = (step: number): string | null => {
     if (step === 1) {
@@ -682,12 +764,14 @@ export function CreateSchemePage() {
     }
 
     setStepError(null);
+    setGenerationFailure(null);
     clearError();
     setCurrentStep((step) => Math.min(step + 1, 4));
   };
 
   const handleBack = () => {
     setStepError(null);
+    setGenerationFailure(null);
     clearError();
     setCurrentStep((step) => Math.max(step - 1, 1));
   };
@@ -706,6 +790,7 @@ export function CreateSchemePage() {
 
     try {
       setStepError(null);
+      setGenerationFailure(null);
       clearError();
 
       const payload: GenerateSchemePayload = {
@@ -726,7 +811,9 @@ export function CreateSchemePage() {
       const generated = await generateScheme(payload);
       router.push(`/schemes/${generated.id}`);
     } catch (err) {
-      setStepError(err instanceof Error ? err.message : 'We could not generate the draft scheme.');
+      setGenerationFailure(
+        err instanceof Error ? err.message : 'We could not generate the draft scheme.',
+      );
     }
   };
 
@@ -751,6 +838,7 @@ export function CreateSchemePage() {
         active_learning_weeks: learningWeekSummary.activeLearningWeekCount,
         lessons_per_week: lessonsPerWeekValue,
         total_planned_lessons: totalPlannedLessons,
+        range_touched: rangeTouched,
       },
       workflowStep:
         currentStep === 1
@@ -766,6 +854,7 @@ export function CreateSchemePage() {
       learningWeekSummary.activeLearningWeekCount,
       lessonsPerWeekValue,
       loading,
+      rangeTouched,
       termWeekCount,
       totalPlannedLessons,
     ],
@@ -781,7 +870,7 @@ export function CreateSchemePage() {
     return <ErrorState message={adminContextError} fullScreen={false} />;
   }
 
-  const visibleError = stepError || generateError || null;
+  const visibleError = generationFailure ? null : stepError || generateError || null;
 
   return (
     <div className="space-y-6 pb-24 lg:pb-12">
@@ -1192,8 +1281,8 @@ export function CreateSchemePage() {
           <div>
             <h2 className="text-lg font-semibold theme-text">Step 3: Select curriculum range</h2>
             <p className="mt-1 text-sm theme-subtle">
-              The system will include all strands and sub-strands in this range and distribute them
-              across the generated lesson rows.
+              Choose the topics this scheme should cover. You can start from any strand or
+              sub-strand and end at any topic that fits your teaching plan.
             </p>
           </div>
 
@@ -1204,53 +1293,118 @@ export function CreateSchemePage() {
               {NO_REGISTERED_STRAND_RANGE_MESSAGE}
             </div>
           ) : (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <Card className="space-y-4">
-                <h3 className="text-base font-semibold theme-text">First topic to cover</h3>
-                <Select
-                  label="First Strand"
-                  value={startStrandId}
-                  onChange={(event) => {
-                    setStartStrandId(event.target.value);
-                    setStartSubStrandId('');
-                  }}
-                  options={[{ value: '', label: 'Select first strand' }, ...startStrandOptions]}
-                />
-                <Select
-                  label="First Sub-strand"
-                  value={startSubStrandId}
-                  onChange={(event) => setStartSubStrandId(event.target.value)}
-                  options={[
-                    { value: '', label: 'Select first sub-strand' },
-                    ...startSubStrandOptions,
-                  ]}
-                />
-              </Card>
+            <div className="space-y-4">
+              {rangeValidation.warning ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  {rangeValidation.warning}
+                </div>
+              ) : null}
 
-              <Card className="space-y-4">
-                <h3 className="text-base font-semibold theme-text">Last topic to cover</h3>
-                <Select
-                  label="Last Strand"
-                  value={endStrandId}
-                  onChange={(event) => {
-                    setEndStrandId(event.target.value);
-                    setEndSubStrandId('');
-                  }}
-                  options={[{ value: '', label: 'Select last strand' }, ...endStrandOptions]}
-                />
-                <Select
-                  label="Last Sub-strand"
-                  value={endSubStrandId}
-                  onChange={(event) => setEndSubStrandId(event.target.value)}
-                  options={[{ value: '', label: 'Select last sub-strand' }, ...endSubStrandOptions]}
-                />
-              </Card>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <Card className="space-y-4">
+                  <h3 className="text-base font-semibold theme-text">First topic to cover</h3>
+                  <Select
+                    label="First Strand"
+                    value={startStrandId}
+                    onChange={(event) => {
+                      const nextStrandId = event.target.value;
+                      setRangeTouched(true);
+                      setStartStrandId(nextStrandId);
+                      setStartSubStrandId(resolveSubStrandIdForStrand(nextStrandId, 'first'));
+                    }}
+                    options={[{ value: '', label: 'Select first strand' }, ...startStrandOptions]}
+                  />
+                  <Select
+                    label="First Sub-strand"
+                    value={startSubStrandId}
+                    onChange={(event) => {
+                      setRangeTouched(true);
+                      setStartSubStrandId(event.target.value);
+                    }}
+                    options={[
+                      { value: '', label: 'Select first sub-strand' },
+                      ...startSubStrandOptions,
+                    ]}
+                  />
+                </Card>
+
+                <Card className="space-y-4">
+                  <h3 className="text-base font-semibold theme-text">Last topic to cover</h3>
+                  <Select
+                    label="Last Strand"
+                    value={endStrandId}
+                    onChange={(event) => {
+                      const nextStrandId = event.target.value;
+                      setRangeTouched(true);
+                      setEndStrandId(nextStrandId);
+                      setEndSubStrandId(resolveSubStrandIdForStrand(nextStrandId, 'last'));
+                    }}
+                    options={[{ value: '', label: 'Select last strand' }, ...endStrandOptions]}
+                  />
+                  <Select
+                    label="Last Sub-strand"
+                    value={endSubStrandId}
+                    onChange={(event) => {
+                      setRangeTouched(true);
+                      setEndSubStrandId(event.target.value);
+                    }}
+                    options={[{ value: '', label: 'Select last sub-strand' }, ...endSubStrandOptions]}
+                  />
+                </Card>
+              </div>
             </div>
           )}
         </Card>
       ) : null}
 
-      {currentStep === 4 ? (
+      {generationFailure ? (
+        <Card className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold theme-text">Draft scheme generation failed</h2>
+            <p className="mt-1 text-sm theme-subtle">{generationFailure}</p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button type="button" onClick={() => void handleGenerate()} disabled={submitting}>
+              {submitting ? 'Retrying...' : 'Retry generation'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setGenerationFailure(null);
+                clearError();
+                setCurrentStep(3);
+              }}
+            >
+              Back to strand range
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setGenerationFailure(null);
+                clearError();
+                setCurrentStep(2);
+              }}
+            >
+              Back to teaching load
+            </Button>
+            <Link href="/schemes">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setGenerationFailure(null);
+                  clearError();
+                }}
+              >
+                Back to schemes
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      ) : currentStep === 4 ? (
         <Card className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold theme-text">Step 4: Review and generate</h2>
@@ -1358,6 +1512,9 @@ export function CreateSchemePage() {
                   ?.subStrandName
               }
             </p>
+            {rangeValidation.warning ? (
+              <p className="mt-3 text-sm text-amber-700">{rangeValidation.warning}</p>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900">
@@ -1377,14 +1534,14 @@ export function CreateSchemePage() {
           type="button"
           variant="ghost"
           onClick={handleBack}
-          disabled={currentStep === 1 || submitting}
+          disabled={(currentStep === 1 && !generationFailure) || submitting}
         >
           <ChevronLeft className="h-4 w-4" />
           Back
         </Button>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          {currentStep < 4 ? (
+          {generationFailure ? null : currentStep < 4 ? (
             <Button type="button" onClick={handleNext}>
               Next
               <ChevronRight className="h-4 w-4" />
