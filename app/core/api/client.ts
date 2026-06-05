@@ -4,6 +4,7 @@ import { redirectToLogin } from '@/app/core/auth/navigation';
 import { clearAccessToken, getAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+let hasWarnedAboutApiBaseUrl = false;
 
 type AuthFailureHandler = () => void;
 
@@ -18,6 +19,45 @@ interface RefreshPayload {
 
 let authFailureHandler: AuthFailureHandler | null = null;
 let refreshPromise: Promise<string> | null = null;
+
+function apiBaseUrlIncludesApiPath(baseURL: string): boolean {
+  const normalized = baseURL.trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(
+      normalized,
+      typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+    );
+    return parsed.pathname.includes('/api');
+  } catch {
+    return normalized.includes('/api');
+  }
+}
+
+function warnOnMisconfiguredApiBaseUrl(): void {
+  if (typeof window === 'undefined' || hasWarnedAboutApiBaseUrl) {
+    return;
+  }
+
+  if (apiBaseUrlIncludesApiPath(API_BASE_URL)) {
+    return;
+  }
+
+  hasWarnedAboutApiBaseUrl = true;
+  console.warn(
+    '[apiClient] NEXT_PUBLIC_API_URL should point to the backend API and include /api.',
+    {
+      currentBaseURL: API_BASE_URL,
+      expectedExample: 'https://backend.example.com/api',
+    }
+  );
+}
+
+warnOnMisconfiguredApiBaseUrl();
 
 function isAuthEndpoint(url?: string): boolean {
   return !!url && (

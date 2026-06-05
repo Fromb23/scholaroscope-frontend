@@ -90,6 +90,8 @@ Requirements:
 Environment:
 
 - `NEXT_PUBLIC_API_URL` points the frontend at the backend API.
+- `NEXT_PUBLIC_API_URL` must include `/api`, for example `https://backend.example.com/api`.
+- Wrong: `https://frontend.example.com` or `https://frontend.example.com/api` unless `/api` on that host is proxied to Django.
 - If unset, the client defaults to `http://127.0.0.1:8000/api`.
 
 Useful commands:

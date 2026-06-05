@@ -27,14 +27,74 @@ import type {
   OfficialPathway,
   OfficialPathwayCatalog,
   OfficialSubjectCombination,
+  OfficialSubjectCombinationSubject,
   OfficialTrack,
 } from '@/app/core/types/curriculumExtensions';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import { renderCohortSubjectPanelExtension } from '@/app/core/registry/cohortSubjectPanels';
 
+const CBC_PATHWAY_CATALOGUE_ERROR =
+  'Could not load CBC pathway catalogue. Check API routing for /api/cbc/pathways/.';
+
 function isCbcSeniorLevel(level: string): boolean {
     const normalized = level.replace(/\s+/g, '').toLowerCase();
     return normalized === 'grade10' || normalized === 'grade11' || normalized === 'grade12';
+}
+
+function isValidOfficialPathwayCatalog(
+  catalog: OfficialPathwayCatalog | null | undefined
+): catalog is OfficialPathwayCatalog {
+  return Boolean(
+    catalog
+    && typeof catalog.listPathways === 'function'
+    && typeof catalog.listTracks === 'function'
+    && typeof catalog.listCombinations === 'function'
+  );
+}
+
+function looksLikeHtmlErrorMessage(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized.startsWith('<!doctype html')
+    || normalized.startsWith('<html')
+    || normalized.includes('<body')
+    || normalized.includes('<head')
+  );
+}
+
+function resolveCbcCatalogueErrorMessage(error: unknown, fallback: string): string {
+  const extracted = extractErrorMessage(error as ApiError, fallback);
+
+  if (!extracted || looksLikeHtmlErrorMessage(extracted)) {
+    return CBC_PATHWAY_CATALOGUE_ERROR;
+  }
+
+  if (extracted.includes('NEXT_PUBLIC_API_URL must point to the backend API and include /api.')) {
+    return extracted;
+  }
+
+  return extracted;
+}
+
+function getCombinationSubjects(
+  combination: OfficialSubjectCombination
+): OfficialSubjectCombinationSubject[] {
+  return Array.isArray(combination.subjects) ? combination.subjects : [];
+}
+
+function getCombinationLabel(combination: OfficialSubjectCombination): string {
+  const subjects = getCombinationSubjects(combination);
+  const subjectNames = subjects.map((subject) => subject.subject_name).join(', ');
+
+  if (subjectNames) {
+    return `#${combination.official_code} — ${subjectNames}`;
+  }
+
+  if (combination.name) {
+    return `#${combination.official_code} — ${combination.name}`;
+  }
+
+  return `#${combination.official_code} — Subjects unavailable`;
 }
 
 // ── SubjectPanel ──────────────────────────────────────────────────────────
@@ -444,7 +504,7 @@ interface CohortFormModalProps {
     academicYears: AcademicYear[];
     curricula: Curriculum[];
     lockedCurriculum?: Curriculum | null;
-    officialPathwayCatalog: OfficialPathwayCatalog;
+    officialPathwayCatalog?: OfficialPathwayCatalog | null;
     onSave: (data: CohortFormState, isEdit: boolean, cohortId?: number) => Promise<void>;
     initialData: CohortFormState;
 }
@@ -484,23 +544,45 @@ export function CohortFormModal({
         }
     }, [editingCohort, formData.curriculum, isOpen, lockedCurriculum]);
 
-    const selectedCurriculum = curricula.find((curriculum) => curriculum.id === Number(formData.curriculum)) ?? lockedCurriculum ?? null;
-    const seniorCbcMode = (selectedCurriculum?.curriculum_type === 'CBE') && isCbcSeniorLevel(formData.level);
+    const selectedCurriculumId = Number(formData.curriculum);
+    const selectedCurriculum = curricula.find((curriculum) => curriculum.id === selectedCurriculumId) ?? null;
+    const effectiveCurriculum = selectedCurriculum
+        ?? (lockedCurriculum?.id === selectedCurriculumId ? lockedCurriculum : null)
+        ?? null;
+    const effectiveCurriculumType = effectiveCurriculum?.curriculum_type
+        ?? (editingCohort?.curriculum === selectedCurriculumId ? editingCohort.curriculum_type : null);
+    const seniorCbcModePending = Boolean(isOpen && formData.curriculum && effectiveCurriculumType === null);
+    const seniorCbcMode = effectiveCurriculumType === 'CBE' && isCbcSeniorLevel(formData.level || editingCohort?.level || '');
     const lifecycle = useCurriculumLifecycleGuard({
-        curriculumId: selectedCurriculum?.id ?? editingCohort?.curriculum ?? null,
-        curriculumType: selectedCurriculum?.curriculum_type ?? editingCohort?.curriculum_type ?? null,
+        curriculumId: effectiveCurriculum?.id ?? editingCohort?.curriculum ?? null,
+        curriculumType: effectiveCurriculumType ?? null,
         routeIntent: editingCohort ? 'edit' : 'create',
         allowWhenNoCurriculum: true,
     });
 
     useEffect(() => {
-        if (!isOpen || !seniorCbcMode) {
+        if (!isOpen) {
             setPathways([]);
             setTracks([]);
             setCombinations([]);
             setPathwaysLoading(false);
             setTracksLoading(false);
             setCombinationsLoading(false);
+            return;
+        }
+
+        if (!seniorCbcMode) {
+            setPathways([]);
+            setTracks([]);
+            setCombinations([]);
+            setPathwaysLoading(false);
+            setTracksLoading(false);
+            setCombinationsLoading(false);
+
+            if (seniorCbcModePending) {
+                return;
+            }
+
             setFormData((prev) => (
                 prev.pathway_id || prev.track_id || prev.combination_id
                     ? { ...prev, pathway_id: '', track_id: '', combination_id: '' }
@@ -509,16 +591,28 @@ export function CohortFormModal({
             return;
         }
 
+        if (!isValidOfficialPathwayCatalog(officialPathwayCatalog)) {
+            setPathways([]);
+            setTracks([]);
+            setCombinations([]);
+            setPathwaysLoading(false);
+            setTracksLoading(false);
+            setCombinationsLoading(false);
+            setFormError(CBC_PATHWAY_CATALOGUE_ERROR);
+            return;
+        }
+
         let active = true;
         setPathwaysLoading(true);
-        officialPathwayCatalog.listPathways()
+        Promise.resolve()
+            .then(() => officialPathwayCatalog.listPathways())
             .then((rows) => {
                 if (!active) return;
                 setPathways(rows);
             })
             .catch((err) => {
                 if (!active) return;
-                setFormError(extractErrorMessage(err as ApiError, 'Failed to load CBC pathways.'));
+                setFormError(resolveCbcCatalogueErrorMessage(err, 'Failed to load CBC pathways.'));
             })
             .finally(() => {
                 if (active) setPathwaysLoading(false);
@@ -527,12 +621,23 @@ export function CohortFormModal({
         return () => {
             active = false;
         };
-    }, [isOpen, officialPathwayCatalog, seniorCbcMode]);
+    }, [isOpen, officialPathwayCatalog, seniorCbcMode, seniorCbcModePending]);
 
     useEffect(() => {
-        if (!isOpen || !seniorCbcMode || !formData.pathway_id) {
+        if (!isOpen) {
             setTracks([]);
             setTracksLoading(false);
+            return;
+        }
+
+        if (!seniorCbcMode || !formData.pathway_id) {
+            setTracks([]);
+            setTracksLoading(false);
+
+            if (seniorCbcModePending) {
+                return;
+            }
+
             setFormData((prev) => (
                 prev.track_id || prev.combination_id
                     ? { ...prev, track_id: '', combination_id: '' }
@@ -541,16 +646,31 @@ export function CohortFormModal({
             return;
         }
 
+        if (!isValidOfficialPathwayCatalog(officialPathwayCatalog)) {
+            setTracks([]);
+            setTracksLoading(false);
+            setFormError(CBC_PATHWAY_CATALOGUE_ERROR);
+            return;
+        }
+
+        const pathwayId = Number(formData.pathway_id);
+        if (!Number.isFinite(pathwayId)) {
+            setTracks([]);
+            setTracksLoading(false);
+            return;
+        }
+
         let active = true;
         setTracksLoading(true);
-        officialPathwayCatalog.listTracks(Number(formData.pathway_id))
+        Promise.resolve()
+            .then(() => officialPathwayCatalog.listTracks(pathwayId))
             .then((rows) => {
                 if (!active) return;
                 setTracks(rows);
             })
             .catch((err) => {
                 if (!active) return;
-                setFormError(extractErrorMessage(err as ApiError, 'Failed to load CBC tracks.'));
+                setFormError(resolveCbcCatalogueErrorMessage(err, 'Failed to load CBC tracks.'));
             })
             .finally(() => {
                 if (active) setTracksLoading(false);
@@ -559,12 +679,23 @@ export function CohortFormModal({
         return () => {
             active = false;
         };
-    }, [formData.pathway_id, isOpen, officialPathwayCatalog, seniorCbcMode]);
+    }, [formData.pathway_id, isOpen, officialPathwayCatalog, seniorCbcMode, seniorCbcModePending]);
 
     useEffect(() => {
-        if (!isOpen || !seniorCbcMode || !formData.track_id) {
+        if (!isOpen) {
             setCombinations([]);
             setCombinationsLoading(false);
+            return;
+        }
+
+        if (!seniorCbcMode || !formData.track_id) {
+            setCombinations([]);
+            setCombinationsLoading(false);
+
+            if (seniorCbcModePending) {
+                return;
+            }
+
             setFormData((prev) => (
                 prev.combination_id
                     ? { ...prev, combination_id: '' }
@@ -573,16 +704,31 @@ export function CohortFormModal({
             return;
         }
 
+        if (!isValidOfficialPathwayCatalog(officialPathwayCatalog)) {
+            setCombinations([]);
+            setCombinationsLoading(false);
+            setFormError(CBC_PATHWAY_CATALOGUE_ERROR);
+            return;
+        }
+
+        const trackId = Number(formData.track_id);
+        if (!Number.isFinite(trackId)) {
+            setCombinations([]);
+            setCombinationsLoading(false);
+            return;
+        }
+
         let active = true;
         setCombinationsLoading(true);
-        officialPathwayCatalog.listCombinations(Number(formData.track_id), formData.level)
+        Promise.resolve()
+            .then(() => officialPathwayCatalog.listCombinations(trackId, formData.level))
             .then((rows) => {
                 if (!active) return;
                 setCombinations(rows);
             })
             .catch((err) => {
                 if (!active) return;
-                setFormError(extractErrorMessage(err as ApiError, 'Failed to load CBC subject combinations.'));
+                setFormError(resolveCbcCatalogueErrorMessage(err, 'Failed to load CBC subject combinations.'));
             })
             .finally(() => {
                 if (active) setCombinationsLoading(false);
@@ -591,7 +737,7 @@ export function CohortFormModal({
         return () => {
             active = false;
         };
-    }, [formData.level, formData.track_id, isOpen, officialPathwayCatalog, seniorCbcMode]);
+    }, [formData.level, formData.track_id, isOpen, officialPathwayCatalog, seniorCbcMode, seniorCbcModePending]);
 
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {
@@ -623,9 +769,9 @@ export function CohortFormModal({
             size="lg"
         >
             <div className="space-y-5">
-                {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
+                {effectiveCurriculum && effectiveCurriculum.offering_status !== 'ACTIVE' ? (
                     <CurriculumLifecycleNotice
-                        status={selectedCurriculum.offering_status}
+                        status={effectiveCurriculum.offering_status}
                         role={lifecycle.role}
                         title={editingCohort ? 'Cohort updates are restricted' : 'Cohort creation is restricted'}
                         message={lifecycle.message}
@@ -754,7 +900,7 @@ export function CohortFormModal({
                                     },
                                     ...combinations.map((combination) => ({
                                         value: String(combination.id),
-                                        label: `#${combination.official_code} — ${combination.subjects.map((subject) => subject.subject_name).join(', ')}`,
+                                        label: getCombinationLabel(combination),
                                     })),
                                 ]}
                             />
@@ -770,7 +916,6 @@ export function CohortFormModal({
                     <ErrorBanner
                         message={formError}
                         onDismiss={() => setFormError(null)}
-                        autoDismissMs={5000}
                         compact
                     />
                 ) : null}
