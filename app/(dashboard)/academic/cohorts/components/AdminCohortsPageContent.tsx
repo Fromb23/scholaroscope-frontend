@@ -536,6 +536,7 @@ export function AdminCohortsPageContent() {
                 academicYears={academicYears}
                 curricula={curricula}
                 lockedCurriculum={quickAction.isActive ? quickAction.curriculum : null}
+                officialPathwayCatalog={cbcPathwayAPI}
                 onSave={handleSave}
                 initialData={initialFormData}
             />

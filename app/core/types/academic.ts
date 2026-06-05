@@ -6,7 +6,7 @@ import type { StudentSummary } from './student';
 import type {
   CbcCohortProfileSummary,
   CbcSubjectCategory,
-} from '../../plugins/cbc/types/pathways';
+} from '@/app/core/types/curriculumExtensions';
 
 export interface ListQueryParams {
   organization?: number;
