@@ -23,10 +23,19 @@ import { useSubjects } from '@/app/core/hooks/useAcademic';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
+import type {
+  OfficialPathway,
+  OfficialPathwayCatalog,
+  OfficialSubjectCombination,
+  OfficialTrack,
+} from '@/app/core/types/curriculumExtensions';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import { renderCohortSubjectPanelExtension } from '@/app/core/registry/cohortSubjectPanels';
-import { cbcPathwayAPI } from '@/app/plugins/cbc/api/pathways';
-import type { CbcPathway, CbcSubjectCombination, CbcTrack } from '@/app/plugins/cbc/types/pathways';
+
+function isCbcSeniorLevel(level: string): boolean {
+    const normalized = level.replace(/\s+/g, '').toLowerCase();
+    return normalized === 'grade10' || normalized === 'grade11' || normalized === 'grade12';
+}
 
 // ── SubjectPanel ──────────────────────────────────────────────────────────
 
@@ -418,11 +427,6 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
 
 // ── CohortFormModal ───────────────────────────────────────────────────────
 
-function isCbcSeniorLevel(level: string): boolean {
-    const normalized = level.replace(/\s+/g, '').toLowerCase();
-    return normalized === 'grade10' || normalized === 'grade11' || normalized === 'grade12';
-}
-
 interface CohortFormState {
     academic_year: string;
     curriculum: string;
@@ -440,21 +444,22 @@ interface CohortFormModalProps {
     academicYears: AcademicYear[];
     curricula: Curriculum[];
     lockedCurriculum?: Curriculum | null;
+    officialPathwayCatalog: OfficialPathwayCatalog;
     onSave: (data: CohortFormState, isEdit: boolean, cohortId?: number) => Promise<void>;
     initialData: CohortFormState;
 }
 
 export function CohortFormModal({
     isOpen, onClose, editingCohort,
-    academicYears, curricula, lockedCurriculum, onSave, initialData,
+    academicYears, curricula, lockedCurriculum, officialPathwayCatalog, onSave, initialData,
 }: CohortFormModalProps) {
     const [formData, setFormData] = useState<CohortFormState>(initialData);
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [subjectPanelOpen, setSubjectPanelOpen] = useState(false);
-    const [pathways, setPathways] = useState<CbcPathway[]>([]);
-    const [tracks, setTracks] = useState<CbcTrack[]>([]);
-    const [combinations, setCombinations] = useState<CbcSubjectCombination[]>([]);
+    const [pathways, setPathways] = useState<OfficialPathway[]>([]);
+    const [tracks, setTracks] = useState<OfficialTrack[]>([]);
+    const [combinations, setCombinations] = useState<OfficialSubjectCombination[]>([]);
     const [pathwaysLoading, setPathwaysLoading] = useState(false);
     const [tracksLoading, setTracksLoading] = useState(false);
     const [combinationsLoading, setCombinationsLoading] = useState(false);
@@ -506,7 +511,7 @@ export function CohortFormModal({
 
         let active = true;
         setPathwaysLoading(true);
-        cbcPathwayAPI.listPathways()
+        officialPathwayCatalog.listPathways()
             .then((rows) => {
                 if (!active) return;
                 setPathways(rows);
@@ -522,7 +527,7 @@ export function CohortFormModal({
         return () => {
             active = false;
         };
-    }, [isOpen, seniorCbcMode]);
+    }, [isOpen, officialPathwayCatalog, seniorCbcMode]);
 
     useEffect(() => {
         if (!isOpen || !seniorCbcMode || !formData.pathway_id) {
@@ -538,7 +543,7 @@ export function CohortFormModal({
 
         let active = true;
         setTracksLoading(true);
-        cbcPathwayAPI.listTracks(Number(formData.pathway_id))
+        officialPathwayCatalog.listTracks(Number(formData.pathway_id))
             .then((rows) => {
                 if (!active) return;
                 setTracks(rows);
@@ -554,7 +559,7 @@ export function CohortFormModal({
         return () => {
             active = false;
         };
-    }, [formData.pathway_id, isOpen, seniorCbcMode]);
+    }, [formData.pathway_id, isOpen, officialPathwayCatalog, seniorCbcMode]);
 
     useEffect(() => {
         if (!isOpen || !seniorCbcMode || !formData.track_id) {
@@ -570,7 +575,7 @@ export function CohortFormModal({
 
         let active = true;
         setCombinationsLoading(true);
-        cbcPathwayAPI.listCombinations(Number(formData.track_id), formData.level)
+        officialPathwayCatalog.listCombinations(Number(formData.track_id), formData.level)
             .then((rows) => {
                 if (!active) return;
                 setCombinations(rows);
@@ -586,7 +591,7 @@ export function CohortFormModal({
         return () => {
             active = false;
         };
-    }, [formData.level, formData.track_id, isOpen, seniorCbcMode]);
+    }, [formData.level, formData.track_id, isOpen, officialPathwayCatalog, seniorCbcMode]);
 
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {

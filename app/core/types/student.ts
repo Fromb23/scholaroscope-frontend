@@ -5,7 +5,7 @@
 import type {
   CbcRegistrationStatus,
   CbcSubjectCategory,
-} from '../../plugins/cbc/types/pathways';
+} from '@/app/core/types/curriculumExtensions';
 
 export interface CohortEnrollment {
   id: number;
