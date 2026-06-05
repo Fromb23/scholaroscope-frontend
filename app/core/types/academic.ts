@@ -3,6 +3,10 @@
 // ============================================================================
 
 import type { StudentSummary } from './student';
+import type {
+  CbcCohortProfileSummary,
+  CbcSubjectCategory,
+} from '../../plugins/cbc/types/pathways';
 
 export interface ListQueryParams {
   organization?: number;
@@ -357,6 +361,7 @@ export interface Cohort {
   students_count: number;
   subjects_count: number;
   is_current_year: boolean;
+  cbc_profile?: CbcCohortProfileSummary | null;
   created_at: string;
 }
 
@@ -377,6 +382,9 @@ export interface CohortSubject {
   teaching_link_id?: number | null;
   cbc_cohort_subject_id?: number | null;
   subject_profile_id?: number | null;
+  subject_category?: CbcSubjectCategory;
+  locked?: boolean;
+  blocked_reason?: string | null;
 
   has_active_instructor?: boolean;
   active_instructor?: {

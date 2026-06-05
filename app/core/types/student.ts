@@ -2,6 +2,11 @@
 // app/types/student.ts - Student Types (Updated for Many-to-Many)
 // ============================================================================
 
+import type {
+  CbcRegistrationStatus,
+  CbcSubjectCategory,
+} from '../../plugins/cbc/types/pathways';
+
 export interface CohortEnrollment {
   id: number;
   name: string;
@@ -24,6 +29,10 @@ export interface StudentCohortEnrollment {
   enrollment_type_display: string;
   notes: string;
   end_reason: 'COMPLETED' | 'GRADUATED' | 'TRANSFERRED' | 'WRONG_ASSIGNMENT' | 'WITHDRAWN' | 'PROMOTED' | null;
+  subject_registration_status?: CbcRegistrationStatus;
+  locked_at?: string | null;
+  locked_by?: number | null;
+  lock_reason?: string;
 }
 
 export interface StudentSummary {
@@ -48,6 +57,9 @@ export interface StudentCurrentSubject {
   is_compulsory: boolean;
   cohort_id?: number;
   subject_id?: number;
+  subject_category?: CbcSubjectCategory;
+  locked?: boolean;
+  blocked_reason?: string | null;
 }
 
 export interface Student {

@@ -259,7 +259,11 @@ function ReadOnlyLearnerTable({ learners }: { learners: StudentSummary[] }) {
 }
 
 function buildEnrollResultMessage(result: BulkSubjectEnrollResponse) {
-    return `Enroll processed: ${result.processed}. Created ${result.created}, reactivated ${result.reactivated}, already active ${result.already_active}, rejected ${result.rejected}.`;
+    const base = `Enroll processed: ${result.processed}. Created ${result.created}, reactivated ${result.reactivated}, already active ${result.already_active}, rejected ${result.rejected}.`;
+    if (result.rejected > 0) {
+        return `${base} Rejected learners may be outside the active CBC combination or have locked subject registration.`;
+    }
+    return base;
 }
 
 function buildUnenrollResultMessage(result: BulkSubjectUnenrollResponse) {
@@ -327,6 +331,7 @@ export default function CohortSubjectLearnersPage() {
         () => cohortSubjectsQuery.data?.find((subject) => subject.id === cohortSubjectId) ?? null,
         [cohortSubjectId, cohortSubjectsQuery.data]
     );
+    const coreLockedSubject = cohortSubject?.locked || cohortSubject?.subject_category === 'CORE';
 
     useEffect(() => {
         if (!learnerData) return;
@@ -461,6 +466,13 @@ export default function CohortSubjectLearnersPage() {
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
+            {coreLockedSubject ? (
+                <ErrorBanner
+                    message="Core CBC subjects are global curriculum requirements. Learners should not be removed from this subject through the normal subject participation flow."
+                    onDismiss={() => undefined}
+                />
+            ) : null}
+
             <div className="space-y-3">
                 <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
@@ -564,7 +576,7 @@ export default function CohortSubjectLearnersPage() {
                         actionLabel={unenrollMutation.isPending ? 'Removing...' : 'Bulk Unenroll'}
                         actionVariant="danger"
                         onAction={() => unenrollMutation.mutate(Array.from(selectedEnrolled))}
-                        actionDisabled={selectedEnrolled.size === 0 || isMutating}
+                        actionDisabled={coreLockedSubject || selectedEnrolled.size === 0 || isMutating}
                         emptyMessage="No learners enrolled in this subject yet."
                     />
 
@@ -595,7 +607,9 @@ export default function CohortSubjectLearnersPage() {
                         <p className="text-sm text-gray-600">
                             {instructorView
                                 ? 'This is a read-only learner list for your assigned cohort subject.'
-                                : 'This screen manages explicit subject participation. It does not add or remove learners from the parent cohort.'}
+                                : coreLockedSubject
+                                    ? 'This screen shows a core CBC subject. Core learner participation is locked as a global curriculum requirement.'
+                                    : 'This screen manages explicit subject participation. It does not add or remove learners from the parent cohort.'}
                         </p>
                     </div>
                 </div>
