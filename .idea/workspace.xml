@@ -6,15 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionForm.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionForm.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/registry/pluginRoutes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/registry/pluginRoutes.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/session.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/session.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/registry/teachingRouteExtension.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/registry/teachingRouteExtension.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/registerAll.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/registerAll.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,61 +38,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.3563093608501076" />
-      <entry key="MS500" value="3.323196961784506" />
-      <entry key="S2" value="7.297840321886518" />
-      <entry key="S5" value="10.993364610050941" />
-      <entry key="S10" value="13.120344412533157" />
-      <entry key="S30" value="14.940221508524358" />
-      <entry key="S60" value="15.456442013787786" />
-      <entry key="M2" value="15.724708105164112" />
-      <entry key="M5" value="15.889096015413124" />
-      <entry key="M10" value="15.972480661350689" />
-      <entry key="M15" value="16.246291626210983" />
-      <entry key="M30" value="20.791349820652897" />
-      <entry key="H1" value="41.5857589618689" />
-      <entry key="H2" value="81.2628250033615" />
-      <entry key="H4" value="139.98999953459952" />
-      <entry key="D1" value="528.9678672333462" />
-      <entry key="W1" value="1232.3687315375103" />
+      <entry key="MS100" value="3.7647602816323967E-6" />
+      <entry key="MS500" value="0.11680609638283244" />
+      <entry key="S2" value="2.3955189868001483" />
+      <entry key="S5" value="5.231502138385423" />
+      <entry key="S10" value="7.190807274532963" />
+      <entry key="S30" value="13.061564580425175" />
+      <entry key="S60" value="22.015475325896176" />
+      <entry key="M2" value="32.6676068259901" />
+      <entry key="M5" value="43.242652755576266" />
+      <entry key="M10" value="47.82332263708749" />
+      <entry key="M15" value="49.71461930139132" />
+      <entry key="M30" value="55.77912961781395" />
+      <entry key="H1" value="77.08776118394016" />
+      <entry key="H2" value="117.04824049579076" />
+      <entry key="H4" value="176.03852861553685" />
+      <entry key="D1" value="565.42995670034" />
+      <entry key="W1" value="1269.1939186789489" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="0.0" />
-      <entry key="MS500" value="0.0" />
-      <entry key="S2" value="0.0" />
-      <entry key="S5" value="0.0" />
-      <entry key="S10" value="4.709611339848213E-253" />
-      <entry key="S30" value="7.780276345222066E-85" />
-      <entry key="S60" value="8.820587477726225E-43" />
-      <entry key="M2" value="9.391798271750836E-22" />
-      <entry key="M5" value="3.882393062697989E-9" />
-      <entry key="M10" value="6.230885220173774E-5" />
-      <entry key="M15" value="0.0015716885915675917" />
-      <entry key="M30" value="0.03964452788932659" />
-      <entry key="H1" value="0.19910934003132733" />
-      <entry key="H2" value="0.44627696444198" />
-      <entry key="H4" value="0.6771219484222961" />
-      <entry key="D1" value="2.307720537678092" />
-      <entry key="W1" value="6.314671216697741" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0" />
+      <entry key="S60" value="1.0" />
+      <entry key="M2" value="1.0" />
+      <entry key="M5" value="1.000000002932158" />
+      <entry key="M10" value="1.0000541494045878" />
+      <entry key="M15" value="1.0014312948997863" />
+      <entry key="M30" value="1.0378324582836795" />
+      <entry key="H1" value="1.194505680169363" />
+      <entry key="H2" value="1.441087548521569" />
+      <entry key="H4" value="1.6731735682116786" />
+      <entry key="D1" value="3.305472302684848" />
+      <entry key="W1" value="7.313792006753751" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.3167525041934858" />
-      <entry key="MS500" value="3.3009134484935214" />
-      <entry key="S2" value="7.283279956558623" />
-      <entry key="S5" value="10.983574130765668" />
-      <entry key="S10" value="13.114269456244518" />
-      <entry key="S30" value="14.937856219877707" />
-      <entry key="S60" value="15.455210863693813" />
-      <entry key="M2" value="15.724079908432698" />
-      <entry key="M5" value="15.888841644362135" />
-      <entry key="M10" value="15.972414762680778" />
-      <entry key="M15" value="16.24777218248155" />
-      <entry key="M30" value="20.83087251677284" />
-      <entry key="H1" value="41.7846169620437" />
-      <entry key="H2" value="81.70880287533711" />
-      <entry key="H4" value="140.6668676998648" />
-      <entry key="D1" value="531.2754397724383" />
-      <entry key="W1" value="1238.6833518987123" />
+      <entry key="MS100" value="0.0011857552362303583" />
+      <entry key="MS500" value="0.32167309671961897" />
+      <entry key="S2" value="2.977794483200219" />
+      <entry key="S5" value="6.021371090001383" />
+      <entry key="S10" value="8.07634270250438" />
+      <entry key="S30" value="14.020270838899691" />
+      <entry key="S60" value="22.99351037705329" />
+      <entry key="M2" value="33.655890779430756" />
+      <entry key="M5" value="44.23767898660017" />
+      <entry key="M10" value="48.82082776908594" />
+      <entry key="M15" value="50.71433123495277" />
+      <entry key="M30" value="56.81602173095064" />
+      <entry key="H1" value="78.28160777239187" />
+      <entry key="H2" value="118.48882526151712" />
+      <entry key="H4" value="177.71134619886283" />
+      <entry key="D1" value="568.7352638547598" />
+      <entry key="W1" value="1276.5076573664023" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -112,29 +104,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;pathway&quot;,
-    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
-    &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
-    &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "practical-arts",
+    "javascript.preferred.runtime.type.id": "node",
+    "js.debugger.nextJs.config.created.client": "true",
+    "js.debugger.nextJs.config.created.server": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
+    "ts.external.directory.path": "/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="npm.Next.js: server-side">
     <configuration name="Next.js: debug client-side" type="JavascriptDebugType" uri="http://localhost:3000/">
       <method v="2" />
@@ -225,7 +217,7 @@
       <workItem from="1780504526078" duration="5517000" />
       <workItem from="1780645237268" duration="299000" />
       <workItem from="1780649847696" duration="6799000" />
-      <workItem from="1780680158497" duration="3465000" />
+      <workItem from="1780680158497" duration="5964000" />
     </task>
     <servers />
   </component>
@@ -239,6 +231,12 @@
           <url>file://$PROJECT_DIR$/app/core/components/cohorts/CohortComponents.tsx</url>
           <line>10</line>
           <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts</url>
+          <line>30</line>
+          <properties lambdaOrdinal="-1" />
+          <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
