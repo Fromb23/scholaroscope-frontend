@@ -33,6 +33,7 @@ import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort } from '@/app/core/types/academic';
 import { getCurriculumBridgeName, getCurriculumOptionLabel } from '@/app/core/lib/curriculumBridge';
+import { cbcPathwayAPI } from '@/app/plugins/cbc/api/pathways';
 import { useCambridgeCohortQuickAction } from '@/app/plugins/cambridge/lib/cohortQuickAction';
 import { buildAcademicYearOptions, parseOptionalNumber } from '@/app/(dashboard)/academic/cohorts/components/cohortsPageShared';
 
@@ -152,7 +153,15 @@ export function AdminCohortsPageContent() {
     }, [editingCohort, quickAction.setupPending, shouldOpenCreate]);
 
     const handleSave = async (
-        data: { academic_year: string; curriculum: string; level: string; stream: string },
+        data: {
+            academic_year: string;
+            curriculum: string;
+            level: string;
+            stream: string;
+            pathway_id: string;
+            track_id: string;
+            combination_id: string;
+        },
         isEdit: boolean,
         cohortId?: number
     ) => {
@@ -162,13 +171,32 @@ export function AdminCohortsPageContent() {
             level: data.level,
             stream: data.stream || undefined,
         };
+        const normalizedLevel = data.level.replace(/\s+/g, '').toLowerCase();
+        const selectedPayloadCurriculum = curricula.find(
+            (curriculum) => curriculum.id === Number(data.curriculum)
+        ) ?? selectedCurriculum ?? null;
+        const requiresCbcProfile = (
+            selectedPayloadCurriculum?.curriculum_type === 'CBE'
+            && (normalizedLevel === 'grade10' || normalizedLevel === 'grade11' || normalizedLevel === 'grade12')
+            && Boolean(data.combination_id)
+        );
 
         if (isEdit && cohortId) {
-            await updateCohort(cohortId, payload);
+            const updated = await updateCohort(cohortId, payload);
+            if (requiresCbcProfile) {
+                const offered = await cbcPathwayAPI.offerCombination(Number(data.combination_id));
+                await cbcPathwayAPI.configureCohortProfile(updated.id, offered.id);
+            }
+            await refetch();
             return;
         }
 
-        await createCohort(payload);
+        const created = await createCohort(payload);
+        if (requiresCbcProfile) {
+            const offered = await cbcPathwayAPI.offerCombination(Number(data.combination_id));
+            await cbcPathwayAPI.configureCohortProfile(created.id, offered.id);
+        }
+        await refetch();
     };
 
     const handleDelete = async (cohort: Cohort) => {
@@ -199,6 +227,9 @@ export function AdminCohortsPageContent() {
                     : '',
         level: editingCohort?.level ?? '',
         stream: editingCohort?.stream ?? '',
+        pathway_id: editingCohort?.cbc_profile ? String(editingCohort.cbc_profile.pathway_id) : '',
+        track_id: editingCohort?.cbc_profile ? String(editingCohort.cbc_profile.track_id) : '',
+        combination_id: editingCohort?.cbc_profile ? String(editingCohort.cbc_profile.combination_id) : '',
     };
 
     const columns: Column<Cohort>[] = [
@@ -207,19 +238,26 @@ export function AdminCohortsPageContent() {
             header: 'Cohort',
             sortable: true,
             render: (cohort) => (
-                <div className="flex items-center gap-2">
-                    <Link
-                        href={`/academic/cohorts/${cohort.id}`}
-                        className="font-medium text-blue-600 hover:underline"
-                    >
-                        {cohort.name}
-                    </Link>
-                    {!cohort.is_current_year && (
-                        <Badge variant="default" size="sm">
-                            <History className="mr-1 h-3 w-3" />
-                            Historical
-                        </Badge>
-                    )}
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href={`/academic/cohorts/${cohort.id}`}
+                            className="font-medium text-blue-600 hover:underline"
+                        >
+                            {cohort.name}
+                        </Link>
+                        {!cohort.is_current_year && (
+                            <Badge variant="default" size="sm">
+                                <History className="mr-1 h-3 w-3" />
+                                Historical
+                            </Badge>
+                        )}
+                    </div>
+                    {cohort.cbc_profile ? (
+                        <p className="text-xs text-gray-500">
+                            {cohort.cbc_profile.pathway_name} · {cohort.cbc_profile.track_name} · #{cohort.cbc_profile.combination_code}
+                        </p>
+                    ) : null}
                 </div>
             ),
         },

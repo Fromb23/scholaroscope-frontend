@@ -25,6 +25,8 @@ import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import { renderCohortSubjectPanelExtension } from '@/app/core/registry/cohortSubjectPanels';
+import { cbcPathwayAPI } from '@/app/plugins/cbc/api/pathways';
+import type { CbcPathway, CbcSubjectCombination, CbcTrack } from '@/app/plugins/cbc/types/pathways';
 
 // ── SubjectPanel ──────────────────────────────────────────────────────────
 
@@ -416,11 +418,19 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
 
 // ── CohortFormModal ───────────────────────────────────────────────────────
 
+function isCbcSeniorLevel(level: string): boolean {
+    const normalized = level.replace(/\s+/g, '').toLowerCase();
+    return normalized === 'grade10' || normalized === 'grade11' || normalized === 'grade12';
+}
+
 interface CohortFormState {
     academic_year: string;
     curriculum: string;
     level: string;
     stream: string;
+    pathway_id: string;
+    track_id: string;
+    combination_id: string;
 }
 
 interface CohortFormModalProps {
@@ -442,6 +452,12 @@ export function CohortFormModal({
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [subjectPanelOpen, setSubjectPanelOpen] = useState(false);
+    const [pathways, setPathways] = useState<CbcPathway[]>([]);
+    const [tracks, setTracks] = useState<CbcTrack[]>([]);
+    const [combinations, setCombinations] = useState<CbcSubjectCombination[]>([]);
+    const [pathwaysLoading, setPathwaysLoading] = useState(false);
+    const [tracksLoading, setTracksLoading] = useState(false);
+    const [combinationsLoading, setCombinationsLoading] = useState(false);
 
     // Sync when initialData changes (open/close)
     useEffect(() => {
@@ -464,6 +480,7 @@ export function CohortFormModal({
     }, [editingCohort, formData.curriculum, isOpen, lockedCurriculum]);
 
     const selectedCurriculum = curricula.find((curriculum) => curriculum.id === Number(formData.curriculum)) ?? lockedCurriculum ?? null;
+    const seniorCbcMode = (selectedCurriculum?.curriculum_type === 'CBE') && isCbcSeniorLevel(formData.level);
     const lifecycle = useCurriculumLifecycleGuard({
         curriculumId: selectedCurriculum?.id ?? editingCohort?.curriculum ?? null,
         curriculumType: selectedCurriculum?.curriculum_type ?? editingCohort?.curriculum_type ?? null,
@@ -471,9 +488,113 @@ export function CohortFormModal({
         allowWhenNoCurriculum: true,
     });
 
+    useEffect(() => {
+        if (!isOpen || !seniorCbcMode) {
+            setPathways([]);
+            setTracks([]);
+            setCombinations([]);
+            setPathwaysLoading(false);
+            setTracksLoading(false);
+            setCombinationsLoading(false);
+            setFormData((prev) => (
+                prev.pathway_id || prev.track_id || prev.combination_id
+                    ? { ...prev, pathway_id: '', track_id: '', combination_id: '' }
+                    : prev
+            ));
+            return;
+        }
+
+        let active = true;
+        setPathwaysLoading(true);
+        cbcPathwayAPI.listPathways()
+            .then((rows) => {
+                if (!active) return;
+                setPathways(rows);
+            })
+            .catch((err) => {
+                if (!active) return;
+                setFormError(extractErrorMessage(err as ApiError, 'Failed to load CBC pathways.'));
+            })
+            .finally(() => {
+                if (active) setPathwaysLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [isOpen, seniorCbcMode]);
+
+    useEffect(() => {
+        if (!isOpen || !seniorCbcMode || !formData.pathway_id) {
+            setTracks([]);
+            setTracksLoading(false);
+            setFormData((prev) => (
+                prev.track_id || prev.combination_id
+                    ? { ...prev, track_id: '', combination_id: '' }
+                    : prev
+            ));
+            return;
+        }
+
+        let active = true;
+        setTracksLoading(true);
+        cbcPathwayAPI.listTracks(Number(formData.pathway_id))
+            .then((rows) => {
+                if (!active) return;
+                setTracks(rows);
+            })
+            .catch((err) => {
+                if (!active) return;
+                setFormError(extractErrorMessage(err as ApiError, 'Failed to load CBC tracks.'));
+            })
+            .finally(() => {
+                if (active) setTracksLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [formData.pathway_id, isOpen, seniorCbcMode]);
+
+    useEffect(() => {
+        if (!isOpen || !seniorCbcMode || !formData.track_id) {
+            setCombinations([]);
+            setCombinationsLoading(false);
+            setFormData((prev) => (
+                prev.combination_id
+                    ? { ...prev, combination_id: '' }
+                    : prev
+            ));
+            return;
+        }
+
+        let active = true;
+        setCombinationsLoading(true);
+        cbcPathwayAPI.listCombinations(Number(formData.track_id), formData.level)
+            .then((rows) => {
+                if (!active) return;
+                setCombinations(rows);
+            })
+            .catch((err) => {
+                if (!active) return;
+                setFormError(extractErrorMessage(err as ApiError, 'Failed to load CBC subject combinations.'));
+            })
+            .finally(() => {
+                if (active) setCombinationsLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [formData.level, formData.track_id, isOpen, seniorCbcMode]);
+
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {
             setFormError('Academic year, curriculum, and grade level are required.');
+            return;
+        }
+        if (seniorCbcMode && (!formData.pathway_id || !formData.track_id || !formData.combination_id)) {
+            setFormError('CBC senior cohorts require pathway, track, and official subject combination selection.');
             return;
         }
         if (!lifecycle.allowed) {
@@ -565,6 +686,77 @@ export function CohortFormModal({
                     />
                 </div>
 
+                {seniorCbcMode ? (
+                    <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-900">CBC Senior School Configuration</p>
+                            <p className="mt-1 text-xs text-gray-600">
+                                Pathway, track, and subject combination are stored as structured CBC data, not in the cohort name.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <Select
+                                label="Pathway"
+                                value={formData.pathway_id}
+                                onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    pathway_id: e.target.value,
+                                    track_id: '',
+                                    combination_id: '',
+                                }))}
+                                disabled={!lifecycle.allowed || pathwaysLoading}
+                                options={[
+                                    {
+                                        value: '',
+                                        label: pathwaysLoading ? 'Loading pathways...' : 'Select pathway',
+                                    },
+                                    ...pathways.map((pathway) => ({
+                                        value: String(pathway.id),
+                                        label: pathway.name,
+                                    })),
+                                ]}
+                            />
+                            <Select
+                                label="Track"
+                                value={formData.track_id}
+                                onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    track_id: e.target.value,
+                                    combination_id: '',
+                                }))}
+                                disabled={!lifecycle.allowed || !formData.pathway_id || tracksLoading}
+                                options={[
+                                    {
+                                        value: '',
+                                        label: tracksLoading ? 'Loading tracks...' : 'Select track',
+                                    },
+                                    ...tracks.map((track) => ({
+                                        value: String(track.id),
+                                        label: track.name,
+                                    })),
+                                ]}
+                            />
+                            <Select
+                                label="Subject Combination"
+                                value={formData.combination_id}
+                                onChange={(e) => setFormData(prev => ({ ...prev, combination_id: e.target.value }))}
+                                disabled={!lifecycle.allowed || !formData.track_id || combinationsLoading}
+                                options={[
+                                    {
+                                        value: '',
+                                        label: combinationsLoading ? 'Loading combinations...' : 'Select combination',
+                                    },
+                                    ...combinations.map((combination) => ({
+                                        value: String(combination.id),
+                                        label: `#${combination.official_code} — ${combination.subjects.map((subject) => subject.subject_name).join(', ')}`,
+                                    })),
+                                ]}
+                            />
+                        </div>
+                    </div>
+                ) : null}
+
                 <p className="text-xs text-gray-400">
                     Cohort name is auto-generated from level, stream, and academic year.
                 </p>
@@ -619,7 +811,9 @@ export function CohortFormModal({
 
                 {!editingCohort && (
                     <p className="text-xs text-gray-400 text-center">
-                        You can link subjects after creating the cohort by editing it.
+                        {seniorCbcMode
+                            ? 'After creation, the cohort keeps the selected CBC combination as structured metadata. Subject linking stays constrained by that backend profile.'
+                            : 'You can link subjects after creating the cohort by editing it.'}
                     </p>
                 )}
             </div>

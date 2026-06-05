@@ -257,6 +257,7 @@ export default function LearnerDetailPage() {
     );
     const currentCohortId = currentEnrollment?.cohort ?? null;
     const currentCohortName = currentEnrollment?.cohort_name ?? null;
+    const subjectRegistrationLocked = currentEnrollment?.subject_registration_status === 'LOCKED';
     const { subjects: cohortSubjects, loading: cohortSubjectsLoading } = useCohortSubjectsByCohort(currentCohortId);
     const currentSubjectIds = useMemo(
         () => new Set((student?.current_subjects ?? []).map(subject => subject.id)),
@@ -884,6 +885,13 @@ export default function LearnerDetailPage() {
                 onToggle={() => toggleSection('subjectParticipation')}
             >
                 <div className="space-y-4">
+                    {subjectRegistrationLocked ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            Subject registration is locked.
+                            {currentEnrollment?.lock_reason ? ` ${currentEnrollment.lock_reason}` : ' Use pathway transfer/reclassification for non-core subject changes.'}
+                        </div>
+                    ) : null}
+
                     {!currentCohortId ? (
                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
                             {canManageSubjectParticipation
@@ -915,10 +923,18 @@ export default function LearnerDetailPage() {
                                                     <Badge variant={isParticipating ? 'default' : 'warning'}>
                                                         {isParticipating ? 'Participating' : 'Not Participating'}
                                                     </Badge>
+                                                    {subject.subject_category === 'CORE' || subject.locked ? (
+                                                        <Badge variant="info">Core — global</Badge>
+                                                    ) : null}
+                                                    {subject.subject_category === 'PATHWAY_COMBINATION' ? (
+                                                        <Badge variant="success">Pathway</Badge>
+                                                    ) : null}
                                                 </div>
                                                 <p className="text-sm text-gray-500">
                                                     {canManageSubjectParticipation
-                                                        ? isParticipating
+                                                        ? subjectRegistrationLocked && !subject.locked
+                                                            ? 'Subject registration is locked. Use pathway transfer/reclassification.'
+                                                            : isParticipating
                                                             ? 'This learner is currently enrolled in the cohort subject.'
                                                             : 'Open the cohort subject learner page to add this learner to the subject offering.'
                                                         : isParticipating
@@ -957,7 +973,12 @@ export default function LearnerDetailPage() {
                                                 <p className="mt-1 text-xs text-gray-500">{subject.cohort}</p>
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
-                                                {subject.is_compulsory ? <Badge variant="default" size="sm">Core</Badge> : null}
+                                                {subject.subject_category === 'CORE' || subject.locked ? (
+                                                    <Badge variant="info" size="sm">Core — global</Badge>
+                                                ) : subject.subject_category === 'PATHWAY_COMBINATION' ? (
+                                                    <Badge variant="success" size="sm">Pathway</Badge>
+                                                ) : null}
+                                                {subject.locked ? <Badge variant="warning" size="sm">Locked</Badge> : null}
                                                 {canGenerateSubjectReport && reportableSubjectScopeIds.has(subject.id) ? (
                                                     <Link href={buildLearnerSubjectReportHref(studentId, subject.id, { returnTo: reportReturnTo })}>
                                                         <Button variant="ghost" size="sm">
