@@ -36,7 +36,7 @@ export interface OfficialSubjectCombination {
   track_id: number;
   track_name: string;
   track_code: string;
-  subjects: OfficialSubjectCombinationSubject[];
+  subjects?: OfficialSubjectCombinationSubject[] | null;
 }
 
 export interface CbcCohortProfileSummary {

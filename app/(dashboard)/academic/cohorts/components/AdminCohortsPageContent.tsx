@@ -212,6 +212,7 @@ export function AdminCohortsPageContent() {
         }
     };
 
+    const editingCbcProfile = editingCohort?.cbc_profile ?? null;
     const initialFormData = {
         academic_year: editingCohort
             ? String(editingCohort.academic_year)
@@ -227,9 +228,9 @@ export function AdminCohortsPageContent() {
                     : '',
         level: editingCohort?.level ?? '',
         stream: editingCohort?.stream ?? '',
-        pathway_id: editingCohort?.cbc_profile ? String(editingCohort.cbc_profile.pathway_id) : '',
-        track_id: editingCohort?.cbc_profile ? String(editingCohort.cbc_profile.track_id) : '',
-        combination_id: editingCohort?.cbc_profile ? String(editingCohort.cbc_profile.combination_id) : '',
+        pathway_id: editingCbcProfile?.pathway_id ? String(editingCbcProfile.pathway_id) : '',
+        track_id: editingCbcProfile?.track_id ? String(editingCbcProfile.track_id) : '',
+        combination_id: editingCbcProfile?.combination_id ? String(editingCbcProfile.combination_id) : '',
     };
 
     const columns: Column<Cohort>[] = [
