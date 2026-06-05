@@ -544,6 +544,19 @@ export interface CBCSubStrandCatalogEntry {
   registered: boolean;
 }
 
+export type CBCCatalogContentStatus =
+  | 'CATALOGUE_ONLY'
+  | 'CONTENT_MISSING'
+  | 'CONTENT_READY'
+  | 'PARTIAL';
+
+export type CBCCatalogRegistrationStatus =
+  | 'CATALOGUE_ONLY'
+  | 'CONTENT_MISSING'
+  | 'NOT_REGISTERED'
+  | 'PARTIALLY_REGISTERED'
+  | 'FULLY_REGISTERED';
+
 export interface CBCStrandCatalogEntry {
   id: number;
   code: string;
@@ -553,6 +566,11 @@ export interface CBCStrandCatalogEntry {
   registered: boolean;
   any_registered: boolean;
   all_registered: boolean;
+  total_sub_strands_count: number;
+  registered_sub_strands_count: number;
+  content_status: CBCCatalogContentStatus;
+  is_content_ready: boolean;
+  registration_status: CBCCatalogRegistrationStatus;
   sub_strands: CBCSubStrandCatalogEntry[];
 }
 
@@ -564,6 +582,12 @@ export interface CBCCatalogLevel {
   registered: boolean;
   any_registered: boolean;
   all_registered: boolean;
+  total_strands_count: number;
+  total_sub_strands_count: number;
+  registered_sub_strands_count: number;
+  content_status: CBCCatalogContentStatus;
+  is_content_ready: boolean;
+  registration_status: CBCCatalogRegistrationStatus;
   strands: CBCStrandCatalogEntry[];
 }
 
