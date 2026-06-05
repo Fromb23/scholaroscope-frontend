@@ -49,6 +49,7 @@ import {
     getSessionTeachingWorkflow,
     resolveSessionClosureEvidenceWorkflowHref,
 } from '@/app/core/registry/pluginRoutes';
+import { getSessionDetailExtensions } from '@/app/core/registry/sessionDetailExtensions';
 import {
     useIssuePreparedAssignment,
     usePreparedAssignmentsForLessonPlan,
@@ -289,7 +290,7 @@ export function SessionDetailPage() {
     });
 
     const { activeCohorts } = useSessionCohorts(sessionId);
-    const isCbcSession = session?.curriculum_type === 'CBE';
+    const isCbcSession = session ? ['CBE', 'CBC'].includes(session.curriculum_type) : false;
 
     const isHistorical = session ? !session.is_current_year : false;
     const sessionStatus = session?.status ?? 'SCHEDULED';
@@ -342,6 +343,8 @@ export function SessionDetailPage() {
     const requiresEvidence = closureState?.requires_evidence ?? taughtOutcomeCount > 0;
     const hasRequiredEvidence = closureState?.has_required_evidence ?? !requiresEvidence;
     const hasReflection = closureState?.has_reflection ?? false;
+    const closureEvidenceMessage = closureState?.message?.trim()
+        || 'Learner performance is required before this lesson can be closed.';
     const requiresClosureReflection = showTaughtOutcomesReflection || showClosureReflection;
     const canRecordEvidence = Boolean(
         isInProgress &&
@@ -714,7 +717,10 @@ export function SessionDetailPage() {
                 return;
             }
 
-            setWorkflowNotice('Learner performance is required before this lesson can be closed.');
+            setWorkflowNotice(
+                latestClosureState.message?.trim()
+                    || 'Learner performance is required before this lesson can be closed.',
+            );
             openCompletionSection();
             return;
         }
@@ -1572,7 +1578,7 @@ export function SessionDetailPage() {
                             ? 'Confirm what was taught before this lesson can be closed.'
                             : closureNextStep === 'EVIDENCE'
                                 ? (closureTeachingWorkflowHref || isClosureEvidenceWorkflowPending
-                                    ? 'Record learner performance for the outcomes taught before this lesson record can be closed.'
+                                    ? closureEvidenceMessage
                                     : 'Learner performance is required, but no curriculum evidence workflow is available for this lesson.')
                                 : closureNextStep === 'REFLECTION'
                                     ? 'Add a lesson reflection before closing this lesson record.'
@@ -1638,6 +1644,14 @@ export function SessionDetailPage() {
                                 }
                                 : null;
     const currentActionShowsLessonPreparation = currentActionPrimary?.label === 'View lesson preparation';
+    const sessionDetailExtensionContext = {
+        session,
+        closureState,
+        isHistorical,
+        isInProgress,
+        isCompleted,
+    };
+    const sessionDetailExtensions = getSessionDetailExtensions(sessionDetailExtensionContext);
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
@@ -1883,6 +1897,19 @@ export function SessionDetailPage() {
                 </div>
             </Card>
 
+            {sessionDetailExtensions.map((extension) => {
+                const ExtensionComponent = extension.Component;
+                return (
+                    <ExtensionComponent
+                        key={extension.key}
+                        {...sessionDetailExtensionContext}
+                        onSessionDataChanged={async () => {
+                            await Promise.all([refetch(), refetchClosureState()]);
+                        }}
+                    />
+                );
+            })}
+
             {hasLessonPlan ? (
                 <CollapsibleSection
                     sectionId="lesson-preparation-section"
@@ -2012,7 +2039,7 @@ export function SessionDetailPage() {
                                                 ? 'What was taught is still missing. End lesson to open the taught outcomes step.'
                                                 : closureNextStep === 'EVIDENCE'
                                                     ? (closureTeachingWorkflowHref || isClosureEvidenceWorkflowPending
-                                                        ? 'Learner performance is still required. End lesson to open the performance workflow.'
+                                                        ? closureEvidenceMessage
                                                         : 'Learner performance is required, but no curriculum evidence workflow is available for this lesson.')
                                                     : closureNextStep === 'REFLECTION'
                                                         ? 'Add the required lesson reflection, then end the lesson again to close the record.'

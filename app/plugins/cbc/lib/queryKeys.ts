@@ -102,6 +102,14 @@ export const cbcKeys = {
         detail: (id: number) => ['cbc', 'report-policies', id] as const,
     },
 
+    fineArtsPracticals: {
+        all: ['cbc', 'fine-arts-practicals'] as const,
+        tasks: (termNumber?: number | null) =>
+            ['cbc', 'fine-arts-practicals', 'tasks', termNumber ?? null] as const,
+        detail: (sessionId: number) =>
+            ['cbc', 'fine-arts-practicals', 'detail', sessionId] as const,
+    },
+
     // Teaching sessions
     teachingSessions: {
         all: ['cbc', 'teaching-sessions'] as const,

@@ -3,6 +3,10 @@ import {
     registerSessionTeachingWorkflowResolver,
 } from '@/app/core/registry/pluginRoutes';
 import { teachingAPI } from '@/app/plugins/cbc/api/cbc';
+import {
+    buildFineArtsPracticalWorkflowHref,
+    isCbcFineArtsPracticalSession,
+} from '@/app/plugins/cbc/lib/fineArtsPracticals';
 
 function withQueryParams(href: string, params: Record<string, string | null | undefined>) {
     const [basePath, existingQuery = ''] = href.split('?', 2);
@@ -34,7 +38,17 @@ registerSessionTeachingWorkflowResolver({
     key: 'cbc-session-teaching',
     priority: 10,
     resolve: (session) => {
-        if (session.curriculum_type !== 'CBE') return null;
+        if (!['CBE', 'CBC'].includes(session.curriculum_type)) return null;
+
+        if (isCbcFineArtsPracticalSession(session)) {
+            return {
+                pluginKey: 'cbc',
+                href: buildFineArtsPracticalWorkflowHref(session.id),
+                title: 'Fine Arts Practical',
+                actionLabel: 'Record practical evidence',
+                description: 'Resolve the official coursework task, review the practical requirements, and record Fine Arts evidence for this session.',
+            };
+        }
 
         return {
             pluginKey: 'cbc',
@@ -50,8 +64,12 @@ registerSessionClosureEvidenceWorkflowResolver({
     key: 'cbc-session-closure-evidence',
     priority: 10,
     resolve: async ({ requiredOutcomeIds, returnTo, session }) => {
-        if (session.curriculum_type !== 'CBE' || requiredOutcomeIds.length === 0) {
+        if (!['CBE', 'CBC'].includes(session.curriculum_type) || requiredOutcomeIds.length === 0) {
             return null;
+        }
+
+        if (isCbcFineArtsPracticalSession(session)) {
+            return buildFineArtsPracticalWorkflowHref(session.id, returnTo);
         }
 
         if (requiredOutcomeIds.length === 1) {

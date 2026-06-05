@@ -29,6 +29,7 @@ import { Select } from '@/app/components/ui/Select';
 import { LessonPlanReferences } from '@/app/core/components/lessonPlans/LessonPlanReferences';
 import { LessonPlanSections } from '@/app/core/components/lessonPlans/LessonPlanSections';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
+import { getLessonPlanScheduleExtensions } from '@/app/core/registry/lessonPlanScheduleExtensions';
 import {
     usePrepareAssignmentFromLessonPlan,
     usePreparedAssignmentsForLessonPlan,
@@ -44,6 +45,7 @@ import {
     canPrepareAssignmentDraft,
     canScheduleLesson,
     canRestoreLessonPlan,
+    type ScheduleLessonFormData,
     SCHEDULE_LESSON_SESSION_TYPE_OPTIONS,
     type AvailableLessonPlanParticipatingCohortSubject,
     type LessonPlan,
@@ -182,6 +184,7 @@ export function LessonPlanDetailPage() {
     const [reflection, setReflection] = useState('');
     const [scheduleOpen, setScheduleOpen] = useState(false);
     const [scheduleError, setScheduleError] = useState<string | null>(null);
+    const [scheduleFieldErrors, setScheduleFieldErrors] = useState<Record<string, string>>({});
     const [transientNotice, setTransientNotice] = useState<string | null>(null);
     const learnerTaskSectionRef = useRef<HTMLDivElement | null>(null);
     const [learnerTaskOpen, setLearnerTaskOpen] = useState(false);
@@ -193,15 +196,7 @@ export function LessonPlanDetailPage() {
     const [learnerTaskError, setLearnerTaskError] = useState<string | null>(null);
     const [learnerTaskSuccess, setLearnerTaskSuccess] = useState<string | null>(null);
     const [highlightedAssignmentId, setHighlightedAssignmentId] = useState<number | null>(null);
-    const [scheduleForm, setScheduleForm] = useState<{
-        session_date: string;
-        start_time: string;
-        end_time: string;
-        session_type: ScheduleLessonSessionType;
-        venue: string;
-        description: string;
-        participating_cohort_subject_ids: number[];
-    }>({
+    const [scheduleForm, setScheduleForm] = useState<ScheduleLessonFormData>({
         session_date: '',
         start_time: '',
         end_time: '',
@@ -231,6 +226,41 @@ export function LessonPlanDetailPage() {
         )),
         [availableParticipatingCohortSubjects, scheduleForm.participating_cohort_subject_ids]
     );
+    const scheduleExtensionContext = useMemo(
+        () => (lessonPlan ? { lessonPlan, scheduleForm } : null),
+        [lessonPlan, scheduleForm],
+    );
+    const scheduleExtensions = useMemo(
+        () => (
+            scheduleExtensionContext
+                ? getLessonPlanScheduleExtensions(scheduleExtensionContext)
+                : []
+        ),
+        [scheduleExtensionContext],
+    );
+
+    const handleScheduleFormPatch = useCallback((patch: Partial<ScheduleLessonFormData>) => {
+        setScheduleForm((current) => ({
+            ...current,
+            ...patch,
+            ...(
+                patch.session_type && patch.session_type !== 'PRACTICAL'
+                    ? { practical_context: undefined }
+                    : {}
+            ),
+        }));
+        setScheduleFieldErrors((current) => {
+            const next = { ...current };
+            Object.keys(patch).forEach((key) => {
+                delete next[key];
+            });
+            if (patch.session_type && patch.session_type !== 'PRACTICAL') {
+                delete next.practical_context;
+            }
+            return next;
+        });
+        setScheduleError(null);
+    }, []);
 
     useEffect(() => {
         setScheduleForm((current) => {
@@ -497,6 +527,7 @@ export function LessonPlanDetailPage() {
         setActionError(null);
         setActionSuccess(null);
         setScheduleError(null);
+        setScheduleFieldErrors({});
         setScheduleOpen(true);
     }, [lessonPlan]);
 
@@ -594,6 +625,20 @@ export function LessonPlanDetailPage() {
         setPendingActionKey(actionKey(lessonPlan.id, 'scheduled'));
         setActionSuccess(null);
         setScheduleError(null);
+        setScheduleFieldErrors({});
+
+        if (scheduleExtensionContext) {
+            const extensionErrors = scheduleExtensions.reduce<Record<string, string>>((result, extension) => {
+                Object.assign(result, extension.validate?.(scheduleExtensionContext) ?? {});
+                return result;
+            }, {});
+
+            if (Object.keys(extensionErrors).length > 0) {
+                setScheduleFieldErrors(extensionErrors);
+                setPendingActionKey(null);
+                return;
+            }
+        }
 
         try {
             const response = await scheduleLesson({
@@ -604,6 +649,7 @@ export function LessonPlanDetailPage() {
                 venue: scheduleForm.venue.trim() || undefined,
                 description: scheduleForm.description.trim() || undefined,
                 participating_cohort_subject_ids: scheduleForm.participating_cohort_subject_ids,
+                practical_context: scheduleForm.practical_context,
             });
             await refetch();
             setScheduleOpen(false);
@@ -1399,6 +1445,7 @@ export function LessonPlanDetailPage() {
                 onClose={() => {
                     setScheduleOpen(false);
                     setScheduleError(null);
+                    setScheduleFieldErrors({});
                 }}
                 title={isInstructor ? 'Schedule This Lesson' : 'Schedule Lesson'}
                 size="lg"
@@ -1415,60 +1462,66 @@ export function LessonPlanDetailPage() {
                             label="Date"
                             type="date"
                             value={scheduleForm.session_date}
-                            onChange={(event) => setScheduleForm((current) => ({
-                                ...current,
+                            onChange={(event) => handleScheduleFormPatch({
                                 session_date: event.target.value,
-                            }))}
+                            })}
                             required
                         />
                         <Input
                             label="Venue"
                             value={scheduleForm.venue}
-                            onChange={(event) => setScheduleForm((current) => ({
-                                ...current,
+                            onChange={(event) => handleScheduleFormPatch({
                                 venue: event.target.value,
-                            }))}
+                            })}
                             placeholder="Optional venue"
                         />
                         <Select
                             label="Session category"
                             value={scheduleForm.session_type}
-                            onChange={(event) => setScheduleForm((current) => ({
-                                ...current,
+                            onChange={(event) => handleScheduleFormPatch({
                                 session_type: event.target.value as ScheduleLessonSessionType,
-                            }))}
+                            })}
                             options={SCHEDULE_LESSON_SESSION_TYPE_OPTIONS}
                         />
                         <Input
                             label="Start time"
                             type="time"
                             value={scheduleForm.start_time}
-                            onChange={(event) => setScheduleForm((current) => ({
-                                ...current,
+                            onChange={(event) => handleScheduleFormPatch({
                                 start_time: event.target.value,
-                            }))}
+                            })}
                             required
                         />
                         <Input
                             label="End time"
                             type="time"
                             value={scheduleForm.end_time}
-                            onChange={(event) => setScheduleForm((current) => ({
-                                ...current,
+                            onChange={(event) => handleScheduleFormPatch({
                                 end_time: event.target.value,
-                            }))}
+                            })}
                             required
                         />
                     </div>
+
+                    {scheduleExtensionContext ? scheduleExtensions.map((extension) => {
+                        const ExtensionComponent = extension.Component;
+                        return (
+                            <ExtensionComponent
+                                key={extension.key}
+                                {...scheduleExtensionContext}
+                                errors={scheduleFieldErrors}
+                                onChange={handleScheduleFormPatch}
+                            />
+                        );
+                    }) : null}
 
                     <div className="space-y-1">
                         <label className="block text-sm font-medium text-gray-700">Notes</label>
                         <textarea
                             value={scheduleForm.description}
-                            onChange={(event) => setScheduleForm((current) => ({
-                                ...current,
+                            onChange={(event) => handleScheduleFormPatch({
                                 description: event.target.value,
-                            }))}
+                            })}
                             rows={4}
                             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Optional lesson notes"

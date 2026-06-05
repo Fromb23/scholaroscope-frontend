@@ -216,6 +216,79 @@ export interface SessionAssignmentDraftResponse {
 export type SessionIssuePreparedAssignmentPayload = IssuePreparedAssignmentPayload;
 export type SessionIssuePreparedAssignmentResponse = IssuePreparedAssignmentResponse;
 
+export type FineArtsEvidenceType =
+  | 'PROCESS_JOURNAL'
+  | 'RESEARCH_WRITEUP'
+  | 'FINISHED_ARTWORK'
+  | 'ORAL_PRESENTATION'
+  | 'PORTFOLIO_ENTRY'
+  | 'EXHIBITION_RECORD'
+  | 'TEACHER_FEEDBACK'
+  | 'PEER_CRITIQUE'
+  | 'SELF_ASSESSMENT'
+  | 'SKETCH'
+  | 'MATERIAL_EXPERIMENTATION';
+
+export interface FineArtsPracticalAssessmentCriterion {
+  key: string;
+  label: string;
+  max_marks: number;
+}
+
+export interface FineArtsCourseworkTask {
+  id: number;
+  task_code: string;
+  name: string;
+  term_number: number;
+  annual_theme: string;
+  term_sub_theme: string;
+  strand: string;
+  sub_strand: string;
+  max_score: number;
+  assessment_criteria: FineArtsPracticalAssessmentCriterion[];
+  required_evidence: string[];
+  exhibition_type: 'MINI_EXHIBITION' | 'END_YEAR_EXHIBITION';
+  is_active: boolean;
+}
+
+export interface FineArtsPracticalRequirement {
+  key: string;
+  label: string;
+  required: boolean;
+  recorded: boolean;
+  evidence_type: FineArtsEvidenceType;
+}
+
+export interface FineArtsPracticalContract {
+  id?: number;
+  session_id: number;
+  resolved: boolean;
+  message: string | null;
+  coursework_task: FineArtsCourseworkTask | null;
+  assessment_criteria: FineArtsPracticalAssessmentCriterion[];
+  requirements: FineArtsPracticalRequirement[];
+  additional_requirements: FineArtsPracticalRequirement[];
+  teacher_feedback: string;
+  missing_keys: string[];
+  missing_labels: string[];
+  has_required_evidence: boolean;
+  allowed_evidence_types: FineArtsEvidenceType[];
+}
+
+export interface FineArtsPracticalEvidencePayload {
+  evidence_type: FineArtsEvidenceType;
+  recorded?: boolean;
+  notes?: string;
+  learner_id?: number;
+  artifact_metadata?: Record<string, unknown>;
+}
+
+export interface SessionPracticalContext {
+  family: 'FINE_ARTS';
+  coursework_task_id?: number;
+  task_code?: string;
+}
+
 export interface SessionFormData {
   cohort_subject: number | null;
   subject_source?: 'kernel' | 'cbc' | 'cambridge';
@@ -230,12 +303,14 @@ export interface SessionFormData {
   venue: string;
   auto_create_attendance: boolean;
   is_unplanned?: boolean;
+  practical_context?: SessionPracticalContext;
 }
 
 export interface CohortSubjectOption {
   source: 'kernel' | 'cbc' | 'cambridge';
   id: string;
   label: string;
+  subject_name?: string | null;
   subject_id?: number | null;
   teaching_link_id?: number | null;
   cbc_cohort_subject_id?: number | null;
