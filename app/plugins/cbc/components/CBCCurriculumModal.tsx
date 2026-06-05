@@ -10,6 +10,7 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { cbcCatalogAPI, cbcSelectionAPI } from '@/app/plugins/cbc/api/cbc';
 import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
 import { academicKeys } from '@/app/core/lib/queryKeys';
+import { resolveCBCCatalogBadge } from '@/app/plugins/cbc/lib/catalogStatus';
 import type {
     CBCCatalog,
     CBCCatalogLevel,
@@ -135,6 +136,13 @@ function StrandRow({
     const selectedCount = allIds.filter(id => selection.has(id)).length;
     const allSelected = selectedCount === allIds.length && allIds.length > 0;
     const partialSelected = selectedCount > 0 && selectedCount < allIds.length;
+    const badge = resolveCBCCatalogBadge({
+        registration_status: strand.registration_status,
+        content_status: strand.content_status,
+        any_registered: strand.any_registered,
+        all_registered: strand.all_registered,
+        total_sub_strands_count: strand.total_sub_strands_count,
+    });
 
     return (
         <div className="border-b border-gray-100 last:border-0">
@@ -153,12 +161,7 @@ function StrandRow({
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-800">{strand.name}</span>
                         <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{strand.code}</span>
-                        {strand.all_registered && !partialSelected && (
-                            <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">All registered</span>
-                        )}
-                        {strand.any_registered && !strand.all_registered && (
-                            <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">Partial</span>
-                        )}
+                        {badge && <span className={badge.className}>{badge.label}</span>}
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">{selectedCount}/{allIds.length} sub-strands</span>
@@ -202,6 +205,13 @@ function LevelSection({
     const selectedCount = allSubIds.filter(id =>
         Object.values(selection.strands).some(s => s.has(id))
     ).length;
+    const badge = resolveCBCCatalogBadge({
+        registration_status: level.registration_status,
+        content_status: level.content_status,
+        any_registered: level.any_registered,
+        all_registered: level.all_registered,
+        total_sub_strands_count: level.total_sub_strands_count,
+    });
 
     return (
         <div className="border border-gray-200 rounded-xl overflow-hidden mb-2">
@@ -212,12 +222,7 @@ function LevelSection({
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-gray-900 capitalize">{level.level}</span>
                     <span className="text-xs font-mono text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">{level.code}</span>
-                    {level.all_registered && (
-                        <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">All registered</span>
-                    )}
-                    {level.any_registered && !level.all_registered && (
-                        <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">Partial</span>
-                    )}
+                    {badge && <span className={badge.className}>{badge.label}</span>}
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-400">{selectedCount}/{allSubIds.length} sub-strands</span>
