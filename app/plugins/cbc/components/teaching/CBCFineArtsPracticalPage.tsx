@@ -1,0 +1,193 @@
+'use client';
+
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, CheckCircle2, Palette } from 'lucide-react';
+
+import { Badge } from '@/app/components/ui/Badge';
+import { Button } from '@/app/components/ui/Button';
+import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { useSessionDetail } from '@/app/core/hooks/useSessions';
+import { sessionAPI } from '@/app/core/api/sessions';
+import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { CBCBreadcrumb, CBCNav } from '@/app/plugins/cbc/components/CBCComponents';
+import { FineArtsPracticalRequirementsCard } from '@/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard';
+import { useSessionFineArtsPractical } from '@/app/plugins/cbc/hooks/useFineArtsPracticals';
+import { isCbcFineArtsPracticalSession } from '@/app/plugins/cbc/lib/fineArtsPracticals';
+
+function withQueryParams(href: string, params: Record<string, string | null | undefined>) {
+    const [basePath, existingQuery = ''] = href.split('?', 2);
+    const searchParams = new URLSearchParams(existingQuery);
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+            searchParams.set(key, value);
+        } else {
+            searchParams.delete(key);
+        }
+    });
+
+    return searchParams.size > 0 ? `${basePath}?${searchParams.toString()}` : basePath;
+}
+
+export function CBCFineArtsPracticalPage() {
+    const { sessionId: sessionIdRaw } = useParams<{ sessionId: string }>();
+    const sessionId = Number(sessionIdRaw);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get('returnTo') || `/sessions/${sessionId}?section=complete`;
+    const { session, loading, error, refetch, refetchClosureState } = useSessionDetail(sessionId);
+    const practicalQuery = useSessionFineArtsPractical(sessionId, Boolean(session));
+    const [completionPending, setCompletionPending] = useState(false);
+    const [completionError, setCompletionError] = useState<string | null>(null);
+
+    const backHref = useMemo(
+        () => withQueryParams(returnTo, { notice: null }),
+        [returnTo],
+    );
+    const completionReturnHref = useMemo(
+        () => withQueryParams(returnTo, { notice: 'lesson-closed' }),
+        [returnTo],
+    );
+    const incompleteReturnHref = useMemo(
+        () => withQueryParams(returnTo, {
+            notice: 'evidence-recorded-next-close',
+            section: 'complete',
+        }),
+        [returnTo],
+    );
+
+    const handleCloseLesson = async () => {
+        try {
+            setCompletionPending(true);
+            setCompletionError(null);
+            const updatedSession = await sessionAPI.complete(sessionId);
+
+            if (updatedSession.status === 'COMPLETED') {
+                router.push(completionReturnHref);
+                return;
+            }
+
+            router.push(incompleteReturnHref);
+        } catch (mutationError) {
+            setCompletionError(
+                extractErrorMessage(mutationError as ApiError, 'We could not close the lesson record.'),
+            );
+        } finally {
+            setCompletionPending(false);
+        }
+    };
+
+    if (loading && !session) {
+        return <LoadingSpinner message="Loading Fine Arts practical workflow..." fullScreen={false} />;
+    }
+
+    if (error) {
+        return <ErrorBanner message={error} onDismiss={() => {}} />;
+    }
+
+    if (!session) {
+        return <div className="p-6 text-sm text-gray-600">Session not found.</div>;
+    }
+
+    if (!isCbcFineArtsPracticalSession(session)) {
+        return (
+            <ErrorBanner
+                message="This session is not a CBC Fine Arts practical session."
+                onDismiss={() => {}}
+            />
+        );
+    }
+
+    const practical = practicalQuery.data ?? null;
+    const canEdit = session.status === 'IN_PROGRESS';
+    const canClose = canEdit && Boolean(practical?.has_required_evidence);
+
+    return (
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
+            <div className="space-y-4">
+                <Link href={backHref}>
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to lesson workspace
+                    </Button>
+                </Link>
+
+                <CBCNav />
+                <CBCBreadcrumb
+                    segments={[
+                        { label: 'Teaching', href: '/cbc/teaching' },
+                        { label: 'My Lessons', href: '/cbc/teaching/sessions' },
+                        { label: session.title || session.subject_name || `Session ${session.id}`, href: returnTo },
+                        { label: 'Fine Arts Practical' },
+                    ]}
+                />
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <Palette className="h-5 w-5 text-orange-700" />
+                            <h1 className="text-2xl font-semibold text-gray-900">Fine Arts Practical</h1>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                            Resolve the coursework task, record the required practical evidence, then return to close the lesson record.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Badge variant="blue">{session.session_type_display}</Badge>
+                        <Badge variant={session.status === 'COMPLETED' ? 'green' : session.status === 'IN_PROGRESS' ? 'yellow' : 'default'}>
+                            {session.status === 'IN_PROGRESS' ? 'In progress' : session.status}
+                        </Badge>
+                    </div>
+                </div>
+            </div>
+
+            {completionError ? (
+                <ErrorBanner
+                    message={completionError}
+                    onDismiss={() => setCompletionError(null)}
+                />
+            ) : null}
+
+            <FineArtsPracticalRequirementsCard
+                sessionId={session.id}
+                editable={canEdit}
+                onStateChange={async () => {
+                    await Promise.all([
+                        refetch(),
+                        refetchClosureState(),
+                        practicalQuery.refetch(),
+                    ]);
+                }}
+                footer={(
+                    <div className="flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-gray-600">
+                            {practical?.has_required_evidence
+                                ? 'Required Fine Arts evidence is complete. You can now close the lesson record.'
+                                : practical?.message ?? 'Resolve the coursework task and record the required evidence before closing the lesson.'}
+                        </p>
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <Link href={backHref}>
+                                <Button variant="secondary">Return to lesson workspace</Button>
+                            </Link>
+                            {session.status === 'IN_PROGRESS' ? (
+                                <Button
+                                    type="button"
+                                    onClick={() => {
+                                        void handleCloseLesson();
+                                    }}
+                                    disabled={!canClose || completionPending}
+                                >
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    {completionPending ? 'Closing...' : 'Close lesson record'}
+                                </Button>
+                            ) : null}
+                        </div>
+                    </div>
+                )}
+            />
+        </div>
+    );
+}

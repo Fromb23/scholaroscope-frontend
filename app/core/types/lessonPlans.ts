@@ -1,4 +1,4 @@
-import type { Session } from '@/app/core/types/session';
+import type { Session, SessionPracticalContext } from '@/app/core/types/session';
 import type {
     PrepareAssignmentFromLessonPlanResponse,
     PreparedAssignmentsForLessonPlanResponse,
@@ -219,6 +219,14 @@ export interface ScheduleLessonPayload {
     venue?: string;
     description?: string;
     participating_cohort_subject_ids?: number[];
+    practical_context?: SessionPracticalContext;
+}
+
+export interface ScheduleLessonFormData extends ScheduleLessonPayload {
+    session_type: ScheduleLessonSessionType;
+    venue: string;
+    description: string;
+    participating_cohort_subject_ids: number[];
 }
 
 export interface ScheduleLessonResponse {

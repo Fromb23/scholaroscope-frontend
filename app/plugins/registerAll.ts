@@ -7,6 +7,7 @@ import '@/app/plugins/cbc/registry/navigationExtension';
 import '@/app/plugins/cbc/registry/providerExtension';
 import '@/app/plugins/cbc/registry/routeAccessExtension';
 import '@/app/plugins/cbc/registry/teachingRouteExtension';
+import '@/app/plugins/cbc/registry/fineArtsPracticalExtensions';
 import '@/app/plugins/cambridge/registry/cohortSubjectPanelExtension';
 import '@/app/plugins/cambridge/registry/navigationExtension';
 import '@/app/plugins/cambridge/registry/providerExtension';

@@ -2,7 +2,16 @@ import type { Session } from '@/app/core/types/session';
 
 export type SessionTeachingSession = Pick<
     Session,
-    'id' | 'curriculum_name' | 'curriculum_type' | 'subject_id' | 'subject_source' | 'offering_id' | 'cambridge_cohort_subject_id'
+    | 'id'
+    | 'curriculum_name'
+    | 'curriculum_type'
+    | 'subject_id'
+    | 'subject_name'
+    | 'subject_code'
+    | 'subject_source'
+    | 'offering_id'
+    | 'cambridge_cohort_subject_id'
+    | 'session_type'
 >;
 
 export interface SessionTeachingWorkflow {

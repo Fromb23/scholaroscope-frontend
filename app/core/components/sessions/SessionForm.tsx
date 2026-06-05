@@ -23,6 +23,7 @@ import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessio
 import { useCurricula, useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
+import { getSessionFormExtensions } from '@/app/core/registry/sessionFormExtensions';
 import { useAuth } from '@/app/context/AuthContext';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
@@ -131,6 +132,16 @@ export function SessionForm({ currentYear }: SessionFormProps) {
     const [saving, setSaving] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const submitErrorRef = useScrollIntoViewOnMessage(submitError);
+    const sessionFormExtensionContext = useMemo(() => ({
+        formData,
+        selectedSubjectOption,
+        selectedCurriculum,
+        terms,
+    }), [formData, selectedCurriculum, selectedSubjectOption, terms]);
+    const sessionFormExtensions = useMemo(
+        () => getSessionFormExtensions(sessionFormExtensionContext),
+        [sessionFormExtensionContext],
+    );
 
     // Auto-select active term
     useEffect(() => {
@@ -143,8 +154,19 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         field: keyof SessionFormData,
         value: SessionFormData[keyof SessionFormData]
     ) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-        setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
+        setFormData(prev => ({
+            ...prev,
+            [field]: value,
+            ...(field === 'session_type' ? { practical_context: undefined } : {}),
+        }));
+        setErrors(prev => {
+            const next = { ...prev };
+            delete next[field];
+            if (field === 'session_type') {
+                delete next.practical_context;
+            }
+            return next;
+        });
         setSubmitError(null);
     };
 
@@ -157,10 +179,12 @@ export function SessionForm({ currentYear }: SessionFormProps) {
             subject_source: undefined,
             subject_id: null,
             title: '',
+            practical_context: undefined,
         }));
         setErrors(prev => {
             const next = { ...prev };
             delete next.cohort_subject;
+            delete next.practical_context;
             return next;
         });
         setSubmitError(null);
@@ -177,10 +201,12 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 : undefined,
             subject_id: option?.session_supported ? (option.subject_id ?? null) : null,
             title: '',
+            practical_context: undefined,
         }));
         setErrors(prev => {
             const next = { ...prev };
             delete next.cohort_subject;
+            delete next.practical_context;
             return next;
         });
         setSubmitError(null);
@@ -198,6 +224,9 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         if (formData.start_time && formData.end_time && formData.start_time >= formData.end_time) {
             newErrors.end_time = 'End time must be after start time';
         }
+        sessionFormExtensions.forEach((extension) => {
+            Object.assign(newErrors, extension.validate?.(sessionFormExtensionContext) ?? {});
+        });
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -359,6 +388,18 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                     </div>
                 </div>
             </Card>
+
+            {sessionFormExtensions.map((extension) => {
+                const ExtensionComponent = extension.Component;
+                return (
+                    <ExtensionComponent
+                        key={extension.key}
+                        {...sessionFormExtensionContext}
+                        errors={errors}
+                        onChange={handleChange}
+                    />
+                );
+            })}
 
             {/* Time & Location */}
             <Card>
