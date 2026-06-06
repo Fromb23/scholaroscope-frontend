@@ -57,14 +57,14 @@ export function FineArtsPracticalFieldset({
         <Card>
             <div className="space-y-4 p-6">
                 <div className="flex items-start gap-3">
-                    <div className="rounded-lg bg-orange-50 p-2 text-orange-700">
+                    <div className="theme-surface-elevated rounded-lg border p-2 theme-border theme-text">
                         <Palette className="h-5 w-5" />
                     </div>
                     <div className="space-y-1">
-                        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-                        <p className="text-sm text-gray-600">{description}</p>
+                        <h2 className="text-lg font-semibold theme-text">{title}</h2>
+                        <p className="text-sm theme-muted">{description}</p>
                         {typeof termNumber === 'number' ? (
-                            <p className="text-xs text-gray-500">Showing official Term {termNumber} coursework tasks.</p>
+                            <p className="text-xs theme-subtle">Showing official Term {termNumber} coursework tasks.</p>
                         ) : null}
                     </div>
                 </div>
@@ -74,7 +74,7 @@ export function FineArtsPracticalFieldset({
                 ) : null}
 
                 {tasksQuery.error ? (
-                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <div className="rounded-lg border px-3 py-2 text-sm theme-border theme-muted">
                         We could not load the official Fine Arts coursework tasks.
                     </div>
                 ) : null}
@@ -104,51 +104,51 @@ export function FineArtsPracticalFieldset({
                 />
 
                 {selectedTask ? (
-                    <div className="space-y-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
+                    <div className="space-y-4 rounded-xl border p-4 theme-border theme-surface-muted">
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-orange-700">
+                            <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-semibold theme-border theme-text">
                                 {selectedTask.task_code}
                             </span>
-                            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-700">
+                            <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
                                 {formatExhibitionLabel(selectedTask.exhibition_type)}
                             </span>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Theme</p>
-                                <p className="mt-1 text-sm font-medium text-gray-900">{selectedTask.annual_theme}</p>
-                                <p className="text-sm text-gray-700">{selectedTask.term_sub_theme}</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Theme</p>
+                                <p className="mt-1 text-sm font-medium theme-text">{selectedTask.annual_theme}</p>
+                                <p className="text-sm theme-muted">{selectedTask.term_sub_theme}</p>
                             </div>
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Task focus</p>
-                                <p className="mt-1 text-sm font-medium text-gray-900">{selectedTask.strand}</p>
-                                <p className="text-sm text-gray-700">{selectedTask.sub_strand}</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Task focus</p>
+                                <p className="mt-1 text-sm font-medium theme-text">{selectedTask.strand}</p>
+                                <p className="text-sm theme-muted">{selectedTask.sub_strand}</p>
                             </div>
                         </div>
 
                         <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Marks breakdown</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Marks breakdown</p>
                             <div className="mt-2 space-y-2">
                                 {selectedTask.assessment_criteria.map((criterion) => (
                                     <div
                                         key={criterion.key}
-                                        className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm"
+                                        className="theme-surface-elevated flex items-center justify-between rounded-lg border px-3 py-2 text-sm theme-border"
                                     >
-                                        <span className="text-gray-800">{criterion.label}</span>
-                                        <span className="font-semibold text-gray-900">{criterion.max_marks} marks</span>
+                                        <span className="theme-text">{criterion.label}</span>
+                                        <span className="font-semibold theme-text">{criterion.max_marks} marks</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         <div>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Required evidence</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Required evidence</p>
                             <div className="mt-2 flex flex-wrap gap-2">
                                 {selectedTask.required_evidence.map((item) => (
                                     <span
                                         key={item}
-                                        className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-700"
+                                        className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted"
                                     >
                                         {formatRequiredEvidenceLabel(item)}
                                     </span>

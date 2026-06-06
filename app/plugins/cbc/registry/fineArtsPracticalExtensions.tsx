@@ -106,8 +106,8 @@ function SessionDetailFineArtsPracticalExtension({
             <Card>
                 <div className="space-y-4 p-6">
                     <div className="space-y-1">
-                        <h2 className="text-lg font-semibold text-gray-900">Fine Arts Practical Task Required</h2>
-                        <p className="text-sm text-gray-600">
+                        <h2 className="text-lg font-semibold theme-text">Fine Arts Practical Task Required</h2>
+                        <p className="text-sm theme-muted">
                             {contract?.message ?? 'Resolve the official Fine Arts coursework task before recording evidence or closing this practical session.'}
                         </p>
                     </div>
@@ -128,7 +128,7 @@ function SessionDetailFineArtsPracticalExtension({
             onStateChange={onSessionDataChanged}
             footer={(
                 editable ? (
-                    <div className="flex justify-end border-t border-gray-200 pt-4">
+                    <div className="flex justify-end border-t pt-4 theme-border">
                         <Link href={workflowHref}>
                             <Button variant="secondary">Open Fine Arts workflow</Button>
                         </Link>
