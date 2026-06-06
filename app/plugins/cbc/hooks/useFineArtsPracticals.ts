@@ -3,7 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
-import type { FineArtsPracticalEvidencePayload } from '@/app/core/types/session';
+import type {
+    FineArtsLearnerEvidencePayload,
+    FineArtsPracticalEvidencePayload,
+} from '@/app/core/types/session';
 import { cbcFineArtsPracticalsAPI } from '@/app/plugins/cbc/api/fineArtsPracticals';
 import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
 
@@ -53,6 +56,61 @@ export function useRecordFineArtsPracticalEvidence(sessionId: number) {
         onSuccess: (data) => {
             queryClient.setQueryData(cbcKeys.fineArtsPracticals.detail(sessionId), data);
             emitSessionDataChanged({ reason: 'fine_arts_practical_evidence_recorded', sessionId });
+        },
+    });
+}
+
+export function useSessionFineArtsLearnerEvidence(
+    sessionId: number | null,
+    enabled: boolean = true,
+) {
+    return useQuery({
+        queryKey: sessionId ? cbcKeys.fineArtsPracticals.learnerMatrix(sessionId) : cbcKeys.fineArtsPracticals.all,
+        queryFn: () => cbcFineArtsPracticalsAPI.getSessionFineArtsLearnerEvidence(sessionId!),
+        enabled: Boolean(sessionId) && enabled,
+        staleTime: 60 * 1000,
+    });
+}
+
+export function useRecordFineArtsLearnerEvidence(sessionId: number) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (payload: FineArtsLearnerEvidencePayload) => (
+            cbcFineArtsPracticalsAPI.recordFineArtsLearnerEvidence(sessionId, payload)
+        ),
+        onSuccess: async () => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.detail(sessionId) }),
+                queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.learnerMatrix(sessionId) }),
+            ]);
+            emitSessionDataChanged({ reason: 'fine_arts_learner_evidence_recorded', sessionId });
+        },
+    });
+}
+
+export function useUploadFineArtsLearnerEvidenceAttachment(sessionId: number) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (payload: {
+            evidenceId: number;
+            file: File;
+            caption?: string;
+            onUploadProgress?: (percent: number) => void;
+        }) => (
+            cbcFineArtsPracticalsAPI.uploadFineArtsLearnerEvidenceAttachment(
+                sessionId,
+                payload.evidenceId,
+                payload,
+            )
+        ),
+        onSuccess: async () => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.detail(sessionId) }),
+                queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.learnerMatrix(sessionId) }),
+            ]);
+            emitSessionDataChanged({ reason: 'fine_arts_learner_evidence_attachment_uploaded', sessionId });
         },
     });
 }

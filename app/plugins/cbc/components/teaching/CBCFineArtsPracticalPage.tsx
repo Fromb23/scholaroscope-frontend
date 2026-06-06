@@ -38,7 +38,7 @@ export function CBCFineArtsPracticalPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const returnTo = searchParams.get('returnTo') || `/sessions/${sessionId}?section=complete`;
-    const { session, loading, error, refetch, refetchClosureState } = useSessionDetail(sessionId);
+    const { session, closureState, loading, error, refetch, refetchClosureState } = useSessionDetail(sessionId);
     const practicalQuery = useSessionFineArtsPractical(sessionId, Boolean(session));
     const [completionPending, setCompletionPending] = useState(false);
     const [completionError, setCompletionError] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export function CBCFineArtsPracticalPage() {
     }
 
     if (!session) {
-        return <div className="p-6 text-sm text-gray-600">Session not found.</div>;
+        return <div className="p-6 text-sm theme-muted">Session not found.</div>;
     }
 
     if (!isCbcFineArtsPracticalSession(session)) {
@@ -103,7 +103,7 @@ export function CBCFineArtsPracticalPage() {
 
     const practical = practicalQuery.data ?? null;
     const canEdit = session.status === 'IN_PROGRESS';
-    const canClose = canEdit && Boolean(practical?.has_required_evidence);
+    const canClose = canEdit && Boolean(closureState?.ready);
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
@@ -128,10 +128,10 @@ export function CBCFineArtsPracticalPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                            <Palette className="h-5 w-5 text-orange-700" />
-                            <h1 className="text-2xl font-semibold text-gray-900">Fine Arts Practical</h1>
+                            <Palette className="h-5 w-5 theme-muted" />
+                            <h1 className="text-2xl font-semibold theme-text">Fine Arts Practical</h1>
                         </div>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm theme-muted">
                             Resolve the coursework task, record the required practical evidence, then return to close the lesson record.
                         </p>
                     </div>
@@ -162,11 +162,13 @@ export function CBCFineArtsPracticalPage() {
                     ]);
                 }}
                 footer={(
-                    <div className="flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm text-gray-600">
-                            {practical?.has_required_evidence
+                    <div className="flex flex-col gap-3 border-t pt-4 theme-border sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm theme-muted">
+                            {closureState?.ready
                                 ? 'Required Fine Arts evidence is complete. You can now close the lesson record.'
-                                : practical?.message ?? 'Resolve the coursework task and record the required evidence before closing the lesson.'}
+                                : practical?.session_proof_complete && !practical?.learner_evidence_ready
+                                    ? 'Session proof is complete. Record learner worksheet evidence before closing this Fine Arts practical.'
+                                    : practical?.message ?? 'Resolve the coursework task and record the required evidence before closing the lesson.'}
                         </p>
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <Link href={backHref}>

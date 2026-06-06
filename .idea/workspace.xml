@@ -5,8 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/session.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/session.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalFieldset.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalFieldset.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCFineArtsPracticalPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCFineArtsPracticalPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useFineArtsPracticals.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useFineArtsPracticals.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/registry/fineArtsPracticalExtensions.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/registry/fineArtsPracticalExtensions.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,61 +44,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="3.7647602816323967E-6" />
-      <entry key="MS500" value="0.11680609638283244" />
-      <entry key="S2" value="2.3955189868001483" />
-      <entry key="S5" value="5.231502138385423" />
-      <entry key="S10" value="7.190807274532963" />
-      <entry key="S30" value="13.061564580425175" />
-      <entry key="S60" value="22.015475325896176" />
-      <entry key="M2" value="32.6676068259901" />
-      <entry key="M5" value="43.242652755576266" />
-      <entry key="M10" value="47.82332263708749" />
-      <entry key="M15" value="49.71461930139132" />
-      <entry key="M30" value="55.77912961781395" />
-      <entry key="H1" value="77.08776118394016" />
-      <entry key="H2" value="117.04824049579076" />
-      <entry key="H4" value="176.03852861553685" />
-      <entry key="D1" value="565.42995670034" />
-      <entry key="W1" value="1269.1939186789489" />
+      <entry key="MS100" value="2.1332260902943734" />
+      <entry key="MS500" value="3.4408040308058094" />
+      <entry key="S2" value="5.585599844406891" />
+      <entry key="S5" value="9.474638877707033" />
+      <entry key="S10" value="14.119109224517517" />
+      <entry key="S30" value="20.269843617328586" />
+      <entry key="S60" value="22.45859654819066" />
+      <entry key="M2" value="23.681658644308484" />
+      <entry key="M5" value="24.52956606914541" />
+      <entry key="M10" value="26.636290118332038" />
+      <entry key="M15" value="30.622995753281263" />
+      <entry key="M30" value="43.968610727083245" />
+      <entry key="H1" value="70.01604581705459" />
+      <entry key="H2" value="114.46741190956807" />
+      <entry key="H4" value="178.91497374564776" />
+      <entry key="D1" value="577.9190326261255" />
+      <entry key="W1" value="1290.143884515167" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="1.0" />
-      <entry key="MS500" value="1.0" />
-      <entry key="S2" value="1.0" />
-      <entry key="S5" value="1.0" />
-      <entry key="S10" value="1.0" />
-      <entry key="S30" value="1.0" />
-      <entry key="S60" value="1.0" />
-      <entry key="M2" value="1.0" />
-      <entry key="M5" value="1.000000002932158" />
-      <entry key="M10" value="1.0000541494045878" />
-      <entry key="M15" value="1.0014312948997863" />
-      <entry key="M30" value="1.0378324582836795" />
-      <entry key="H1" value="1.194505680169363" />
-      <entry key="H2" value="1.441087548521569" />
-      <entry key="H4" value="1.6731735682116786" />
-      <entry key="D1" value="3.305472302684848" />
-      <entry key="W1" value="7.313792006753751" />
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="1.2921019808014324E-168" />
+      <entry key="S10" value="1.1367066379684031E-84" />
+      <entry key="S30" value="1.043636994374881E-28" />
+      <entry key="S60" value="1.0215855296424672E-14" />
+      <entry key="M2" value="1.0107351431717737E-7" />
+      <entry key="M5" value="0.0015916770260824356" />
+      <entry key="M10" value="0.03989798745310904" />
+      <entry key="M15" value="0.11692466686921837" />
+      <entry key="M30" value="0.35462531963843047" />
+      <entry key="H1" value="0.6982476211970663" />
+      <entry key="H2" value="1.1017954853868603" />
+      <entry key="H4" value="1.4630066716933052" />
+      <entry key="D1" value="3.2323452426969825" />
+      <entry key="W1" value="7.290455051630996" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.0011857552362303583" />
-      <entry key="MS500" value="0.32167309671961897" />
-      <entry key="S2" value="2.977794483200219" />
-      <entry key="S5" value="6.021371090001383" />
-      <entry key="S10" value="8.07634270250438" />
-      <entry key="S30" value="14.020270838899691" />
-      <entry key="S60" value="22.99351037705329" />
-      <entry key="M2" value="33.655890779430756" />
-      <entry key="M5" value="44.23767898660017" />
-      <entry key="M10" value="48.82082776908594" />
-      <entry key="M15" value="50.71433123495277" />
-      <entry key="M30" value="56.81602173095064" />
-      <entry key="H1" value="78.28160777239187" />
-      <entry key="H2" value="118.48882526151712" />
-      <entry key="H4" value="177.71134619886283" />
-      <entry key="D1" value="568.7352638547598" />
-      <entry key="W1" value="1276.5076573664023" />
+      <entry key="MS100" value="2.0802335823819877" />
+      <entry key="MS500" value="3.4203592785234833" />
+      <entry key="S2" value="5.576681127008831" />
+      <entry key="S5" value="9.467586774880353" />
+      <entry key="S10" value="14.113247303989311" />
+      <entry key="S30" value="20.266811014136763" />
+      <entry key="S60" value="22.456884626400544" />
+      <entry key="M2" value="23.680747813971863" />
+      <entry key="M5" value="24.530771409144624" />
+      <entry key="M10" value="26.675894784164832" />
+      <entry key="M15" value="30.73959137812555" />
+      <entry key="M30" value="44.32285031307666" />
+      <entry key="H1" value="70.7138758883289" />
+      <entry key="H2" value="115.56880683191852" />
+      <entry key="H4" value="180.37766106520132" />
+      <entry key="D1" value="581.1512150264705" />
+      <entry key="W1" value="1297.434286225091" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -217,7 +223,7 @@
       <workItem from="1780504526078" duration="5517000" />
       <workItem from="1780645237268" duration="299000" />
       <workItem from="1780649847696" duration="6799000" />
-      <workItem from="1780680158497" duration="5964000" />
+      <workItem from="1780680158497" duration="6658000" />
     </task>
     <servers />
   </component>
@@ -234,7 +240,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts</url>
-          <line>30</line>
+          <line>34</line>
           <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="2" />
         </line-breakpoint>

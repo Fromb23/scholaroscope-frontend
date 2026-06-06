@@ -122,6 +122,11 @@ export interface SessionClosureState {
   has_taught_outcomes: boolean;
   has_required_evidence: boolean;
   has_reflection: boolean;
+  missing_keys?: string[];
+  missing_labels?: string[];
+  session_proof_complete?: boolean;
+  learner_evidence_ready?: boolean;
+  learner_evidence_summary?: FineArtsLearnerEvidenceSummary;
 }
 
 export interface SessionDetail extends Session {
@@ -229,6 +234,14 @@ export type FineArtsEvidenceType =
   | 'SKETCH'
   | 'MATERIAL_EXPERIMENTATION';
 
+export type FineArtsLearnerEvidenceStatus =
+  | 'NOT_STARTED'
+  | 'SUBMITTED'
+  | 'REVIEWED'
+  | 'NEEDS_IMPROVEMENT'
+  | 'ACCEPTED'
+  | 'MISSING';
+
 export interface FineArtsPracticalAssessmentCriterion {
   key: string;
   label: string;
@@ -269,6 +282,10 @@ export interface FineArtsPracticalContract {
   requirements: FineArtsPracticalRequirement[];
   additional_requirements: FineArtsPracticalRequirement[];
   teacher_feedback: string;
+  session_proof_complete?: boolean;
+  session_proof_message?: string | null;
+  learner_evidence_ready?: boolean;
+  learner_evidence_summary?: FineArtsLearnerEvidenceSummary;
   missing_keys: string[];
   missing_labels: string[];
   has_required_evidence: boolean;
@@ -279,8 +296,111 @@ export interface FineArtsPracticalEvidencePayload {
   evidence_type: FineArtsEvidenceType;
   recorded?: boolean;
   notes?: string;
-  learner_id?: number;
   artifact_metadata?: Record<string, unknown>;
+}
+
+export interface FineArtsLearnerEvidencePayload extends FineArtsPracticalEvidencePayload {
+  learner_id: number;
+  status?: FineArtsLearnerEvidenceStatus;
+  outcome_ids?: number[];
+}
+
+export interface FineArtsLearnerEvidenceAttachment {
+  id: number;
+  original_name: string;
+  original_size: number;
+  optimized_size: number;
+  mime_type: string;
+  stored_format: string;
+  width: number | null;
+  height: number | null;
+  file_hash: string;
+  processing_status: 'PROCESSING' | 'READY' | 'FAILED';
+  caption: string;
+  file_url: string | null;
+  thumbnail_url: string | null;
+  uploaded_at: string | null;
+}
+
+export interface FineArtsLearnerEvidenceOutcomeLink {
+  id: number;
+  code: string;
+  description: string;
+}
+
+export interface FineArtsLearnerEvidenceCell {
+  id: number | null;
+  evidence_type: FineArtsEvidenceType;
+  recorded: boolean;
+  status: FineArtsLearnerEvidenceStatus;
+  notes: string;
+  outcome_ids: number[];
+  outcomes: FineArtsLearnerEvidenceOutcomeLink[];
+  attachments: FineArtsLearnerEvidenceAttachment[];
+  attachment_count: number;
+  artifact_metadata: Record<string, unknown>;
+  recorded_at: string | null;
+  updated_at: string | null;
+}
+
+export interface FineArtsLearnerProgress {
+  recorded: number;
+  required: number;
+  label: string;
+}
+
+export interface FineArtsLearnerEvidenceLearner {
+  learner_id: number;
+  name: string;
+  admission_number: string;
+  attendance_status: string | null;
+  evidence: Record<string, FineArtsLearnerEvidenceCell>;
+  progress: FineArtsLearnerProgress;
+}
+
+export interface FineArtsTaughtOutcomeLink {
+  outcome_id: number;
+  code: string;
+  text: string;
+  strand: string;
+  sub_strand: string;
+  status: string;
+}
+
+export interface FineArtsLearnerEvidenceGap {
+  learner_id: number;
+  name: string;
+  admission_number: string;
+  evidence_type?: FineArtsEvidenceType;
+}
+
+export interface FineArtsLearnerEvidenceSummary {
+  learners_total?: number;
+  learners_with_required_evidence?: number;
+  required_cells_total?: number;
+  required_cells_recorded?: number;
+  present_learners_total: number;
+  present_learners_with_evidence: number;
+  missing_required_evidence_types: FineArtsEvidenceType[];
+  missing_learners: FineArtsLearnerEvidenceGap[];
+  entries_missing_outcome_links: FineArtsLearnerEvidenceGap[];
+  missing_attendance?: FineArtsLearnerEvidenceGap[];
+  policy?: string;
+  ready?: boolean;
+  message?: string | null;
+  missing_keys?: string[];
+  missing_labels?: string[];
+}
+
+export interface FineArtsLearnerEvidenceMatrix {
+  session_id: number;
+  resolved: boolean;
+  message: string | null;
+  coursework_task: FineArtsCourseworkTask | null;
+  taught_outcomes: FineArtsTaughtOutcomeLink[];
+  evidence_types: FineArtsEvidenceType[];
+  learners: FineArtsLearnerEvidenceLearner[];
+  summary: FineArtsLearnerEvidenceSummary;
 }
 
 export interface SessionPracticalContext {
