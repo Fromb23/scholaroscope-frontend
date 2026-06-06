@@ -108,8 +108,8 @@ export const cbcKeys = {
             ['cbc', 'fine-arts-practicals', 'tasks', termNumber ?? null] as const,
         detail: (sessionId: number) =>
             ['cbc', 'fine-arts-practicals', 'detail', sessionId] as const,
-        learnerMatrix: (sessionId: number) =>
-            ['cbc', 'fine-arts-practicals', 'learner-matrix', sessionId] as const,
+        learnerMatrix: (sessionId: number, scope: 'present' | 'all' = 'present') =>
+            ['cbc', 'fine-arts-practicals', 'learner-matrix', sessionId, scope] as const,
     },
 
     // Teaching sessions

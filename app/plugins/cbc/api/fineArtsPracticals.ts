@@ -83,9 +83,15 @@ export const cbcFineArtsPracticalsAPI = {
 
   getSessionFineArtsLearnerEvidence: async (
     sessionId: number,
+    params?: {
+      scope?: 'present' | 'all';
+    },
   ): Promise<FineArtsLearnerEvidenceMatrix> => {
     const response = await apiClient.get<FineArtsLearnerEvidenceMatrix>(
       `/cbc/sessions/${sessionId}/fine-arts-practical/learner-evidence/`,
+      {
+        params: params?.scope ? { scope: params.scope } : undefined,
+      },
     );
 
     return response.data;

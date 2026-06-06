@@ -392,15 +392,36 @@ export interface FineArtsLearnerEvidenceSummary {
   missing_labels?: string[];
 }
 
+export type FineArtsWorksheetScope = 'present' | 'all';
+
+export type FineArtsWorksheetNextAction =
+  | 'mark_attendance'
+  | 'resolve_practical'
+  | 'retry';
+
+export interface FineArtsWorksheetError {
+  code:
+    | 'attendance_required'
+    | 'no_present_learners'
+    | 'workflow_not_resolved'
+    | 'permission_denied';
+  message: string;
+  next_action: FineArtsWorksheetNextAction;
+}
+
 export interface FineArtsLearnerEvidenceMatrix {
   session_id: number;
   resolved: boolean;
+  requires_attendance?: boolean;
+  scope?: FineArtsWorksheetScope;
   message: string | null;
   coursework_task: FineArtsCourseworkTask | null;
   taught_outcomes: FineArtsTaughtOutcomeLink[];
   evidence_types: FineArtsEvidenceType[];
+  required_evidence_types?: FineArtsEvidenceType[];
   learners: FineArtsLearnerEvidenceLearner[];
   summary: FineArtsLearnerEvidenceSummary;
+  error?: FineArtsWorksheetError | null;
 }
 
 export interface SessionPracticalContext {

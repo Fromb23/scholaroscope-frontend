@@ -9,9 +9,26 @@ export interface ApiErrorDetail {
     [field: string]: string | string[];
 }
 
+export interface ApiStructuredError {
+    type?: string;
+    code?: string;
+    message?: string;
+    next_action?: string;
+}
+
+export type ApiErrorResponseData =
+    | ApiErrorDetail
+    | string
+    | string[]
+    | {
+        error?: ApiStructuredError;
+        message?: string;
+        requires_attendance?: boolean;
+    };
+
 export interface ApiError {
     response?: {
-        data?: ApiErrorDetail | string | string[];
+        data?: ApiErrorResponseData;
         status?: number;
     };
     message?: string;
@@ -35,6 +52,18 @@ export function extractErrorMessage(err: ApiError, fallback = 'An error occurred
     if (typeof data === 'string') return data;
 
     if (typeof data === 'object') {
+        const structuredError = 'error' in data ? data.error : undefined;
+        if (
+            structuredError
+            && typeof structuredError === 'object'
+            && !Array.isArray(structuredError)
+            && typeof structuredError.message === 'string'
+        ) {
+            return structuredError.message;
+        }
+        if ('message' in data && typeof data.message === 'string') {
+            return data.message;
+        }
         return Object.values(data)
             .flat()
             .join('\n');

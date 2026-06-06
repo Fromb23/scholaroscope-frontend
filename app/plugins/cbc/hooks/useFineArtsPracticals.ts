@@ -63,10 +63,11 @@ export function useRecordFineArtsPracticalEvidence(sessionId: number) {
 export function useSessionFineArtsLearnerEvidence(
     sessionId: number | null,
     enabled: boolean = true,
+    scope: 'present' | 'all' = 'present',
 ) {
     return useQuery({
-        queryKey: sessionId ? cbcKeys.fineArtsPracticals.learnerMatrix(sessionId) : cbcKeys.fineArtsPracticals.all,
-        queryFn: () => cbcFineArtsPracticalsAPI.getSessionFineArtsLearnerEvidence(sessionId!),
+        queryKey: sessionId ? cbcKeys.fineArtsPracticals.learnerMatrix(sessionId, scope) : cbcKeys.fineArtsPracticals.all,
+        queryFn: () => cbcFineArtsPracticalsAPI.getSessionFineArtsLearnerEvidence(sessionId!, { scope }),
         enabled: Boolean(sessionId) && enabled,
         staleTime: 60 * 1000,
     });
@@ -82,7 +83,7 @@ export function useRecordFineArtsLearnerEvidence(sessionId: number) {
         onSuccess: async () => {
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.detail(sessionId) }),
-                queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.learnerMatrix(sessionId) }),
+                queryClient.invalidateQueries({ queryKey: ['cbc', 'fine-arts-practicals', 'learner-matrix', sessionId] }),
             ]);
             emitSessionDataChanged({ reason: 'fine_arts_learner_evidence_recorded', sessionId });
         },
@@ -108,7 +109,7 @@ export function useUploadFineArtsLearnerEvidenceAttachment(sessionId: number) {
         onSuccess: async () => {
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.detail(sessionId) }),
-                queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.learnerMatrix(sessionId) }),
+                queryClient.invalidateQueries({ queryKey: ['cbc', 'fine-arts-practicals', 'learner-matrix', sessionId] }),
             ]);
             emitSessionDataChanged({ reason: 'fine_arts_learner_evidence_attachment_uploaded', sessionId });
         },
