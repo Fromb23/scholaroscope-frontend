@@ -2194,10 +2194,30 @@ export function SessionDetailPage() {
                         onSave={async () => {
                             await save();
                             await refetch();
-                            setGuidedSection('taught-outcomes');
+                            const latestClosureState = await refetchClosureState();
+                            if (!latestClosureState) {
+                                setWorkflowSuccess(
+                                    isInstructor
+                                        ? 'Attendance saved. The lesson workspace refreshed, but the next required step could not be resolved automatically.'
+                                        : 'Attendance updated.'
+                                );
+                                return;
+                            }
+
+                            await guideToClosureNextStep(latestClosureState);
                             setWorkflowSuccess(
                                 isInstructor
-                                    ? 'Attendance saved. Next step: confirm what was taught.'
+                                    ? (
+                                        latestClosureState.next_step === 'TAUGHT_OUTCOMES'
+                                            ? 'Attendance saved. Next step: confirm what was taught.'
+                                            : latestClosureState.next_step === 'EVIDENCE'
+                                                ? 'Attendance saved. Continue with the current learner performance step.'
+                                                : latestClosureState.next_step === 'REFLECTION'
+                                                    ? 'Attendance saved. Continue with the lesson reflection.'
+                                                    : latestClosureState.next_step === 'READY'
+                                                        ? 'Attendance saved. Continue with lesson completion.'
+                                                        : 'Attendance saved.'
+                                    )
                                     : 'Attendance updated.'
                             );
                         }}

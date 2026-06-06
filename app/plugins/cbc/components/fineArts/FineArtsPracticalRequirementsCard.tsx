@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, ClipboardList, FolderOpen, MessageSquareText, Palette, Users } from 'lucide-react';
 
 import { Badge } from '@/app/components/ui/Badge';
@@ -10,15 +11,13 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { subscribeToSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import type {
     FineArtsCourseworkTask,
-    FineArtsEvidenceType,
-    FineArtsLearnerEvidenceCell,
-    FineArtsLearnerEvidenceLearner,
     FineArtsPracticalContract,
     FineArtsPracticalEvidencePayload,
 } from '@/app/core/types/session';
-import { FineArtsLearnerEvidenceModal } from '@/app/plugins/cbc/components/fineArts/FineArtsLearnerEvidenceModal';
+import { FineArtsLearnerWorksheetPanel } from '@/app/plugins/cbc/components/fineArts/FineArtsLearnerWorksheetPanel';
 import {
     useFineArtsCourseworkTasks,
     useRecordFineArtsPracticalEvidence,
@@ -26,7 +25,11 @@ import {
     useSessionFineArtsLearnerEvidence,
     useSessionFineArtsPractical,
 } from '@/app/plugins/cbc/hooks/useFineArtsPracticals';
-import { hasResolvedFineArtsPracticalContract } from '@/app/plugins/cbc/lib/fineArtsPracticals';
+import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
+import {
+    getFineArtsWorksheetStorageKey,
+    hasResolvedFineArtsPracticalContract,
+} from '@/app/plugins/cbc/lib/fineArtsPracticals';
 
 interface FineArtsPracticalRequirementsCardProps {
     sessionId: number;
@@ -43,12 +46,6 @@ function formatExhibitionLabel(exhibitionType?: 'MINI_EXHIBITION' | 'END_YEAR_EX
 }
 
 function formatEvidenceLabel(value: string) {
-    return value
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function formatStatusLabel(value: string) {
     return value
         .replace(/_/g, ' ')
         .replace(/\b\w/g, (character) => character.toUpperCase());
@@ -74,15 +71,6 @@ function summaryText(contract: FineArtsPracticalContract | null | undefined) {
     return 'Fine Arts session proof and learner worksheet evidence are complete.';
 }
 
-function firstEvidenceType(
-    learner: FineArtsLearnerEvidenceLearner,
-    evidenceTypes: FineArtsEvidenceType[],
-) {
-    return evidenceTypes.find((evidenceType) => !learner.evidence[evidenceType]?.recorded)
-        ?? evidenceTypes[0]
-        ?? null;
-}
-
 export function FineArtsPracticalRequirementsCard({
     sessionId,
     editable = false,
@@ -90,24 +78,27 @@ export function FineArtsPracticalRequirementsCard({
     onStateChange,
     footer,
 }: FineArtsPracticalRequirementsCardProps) {
+    const queryClient = useQueryClient();
+    const [activeSection, setActiveSection] = useState<'proof' | 'learner'>('proof');
+    const [selectedTaskId, setSelectedTaskId] = useState<string>('');
+    const [teacherFeedbackDraft, setTeacherFeedbackDraft] = useState('');
+    const [error, setError] = useState<string | null>(null);
     const practicalQuery = useSessionFineArtsPractical(sessionId, true);
     const tasksQuery = useFineArtsCourseworkTasks();
-    const learnerMatrixQuery = useSessionFineArtsLearnerEvidence(sessionId, true);
     const resolveMutation = useResolveFineArtsPractical(sessionId);
     const evidenceMutation = useRecordFineArtsPracticalEvidence(sessionId);
 
     const contract = practicalQuery.data ?? null;
-    const matrix = learnerMatrixQuery.data ?? null;
     const tasks = tasksQuery.data ?? [];
-
-    const [activeSection, setActiveSection] = useState<'proof' | 'learner'>('proof');
-    const [selectedTaskId, setSelectedTaskId] = useState<string>('');
-    const [teacherFeedbackDraft, setTeacherFeedbackDraft] = useState('');
-    const [selectedCell, setSelectedCell] = useState<{
-        learnerId: number;
-        evidenceType: FineArtsEvidenceType;
-    } | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const resolved = hasResolvedFineArtsPracticalContract(contract);
+    const activeLearnerSectionEnabled = resolved && activeSection === 'learner';
+    const learnerMatrixQuery = useSessionFineArtsLearnerEvidence(
+        sessionId,
+        activeLearnerSectionEnabled,
+        'present',
+    );
+    const matrix = learnerMatrixQuery.data ?? null;
+    const activeSectionInitialized = useRef(false);
 
     useEffect(() => {
         setTeacherFeedbackDraft(contract?.teacher_feedback ?? '');
@@ -126,26 +117,83 @@ export function FineArtsPracticalRequirementsCard({
         editable && teacherFeedbackDraft.trim() !== (contract?.teacher_feedback ?? '').trim()
     ), [contract?.teacher_feedback, editable, teacherFeedbackDraft]);
 
-    const selectedLearner = useMemo(() => {
-        if (!selectedCell || !matrix) {
-            return null;
+    useEffect(() => {
+        if (activeSectionInitialized.current) {
+            return;
         }
 
-        return matrix.learners.find((learner) => learner.learner_id === selectedCell.learnerId) ?? null;
-    }, [matrix, selectedCell]);
-
-    const selectedLearnerCell: FineArtsLearnerEvidenceCell | null = useMemo(() => {
-        if (!selectedCell || !selectedLearner) {
-            return null;
+        let storedActiveSection: 'proof' | 'learner' | null = null;
+        if (typeof window !== 'undefined') {
+            const raw = window.sessionStorage.getItem(getFineArtsWorksheetStorageKey(sessionId));
+            if (raw) {
+                try {
+                    const parsed = JSON.parse(raw) as { activeSection?: 'proof' | 'learner' };
+                    storedActiveSection = parsed.activeSection ?? null;
+                } catch {
+                    storedActiveSection = null;
+                }
+            }
         }
 
-        return selectedLearner.evidence[selectedCell.evidenceType] ?? null;
-    }, [selectedCell, selectedLearner]);
+        if (storedActiveSection) {
+            setActiveSection(storedActiveSection);
+        } else if (contract?.session_proof_complete) {
+            setActiveSection('learner');
+        }
+
+        activeSectionInitialized.current = true;
+    }, [contract?.session_proof_complete, sessionId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const key = getFineArtsWorksheetStorageKey(sessionId);
+        let existing: Record<string, unknown> = {};
+        const raw = window.sessionStorage.getItem(key);
+        if (raw) {
+            try {
+                existing = JSON.parse(raw) as Record<string, unknown>;
+            } catch {
+                existing = {};
+            }
+        }
+
+        window.sessionStorage.setItem(key, JSON.stringify({
+            ...existing,
+            activeSection,
+        }));
+    }, [activeSection, sessionId]);
+
+    useEffect(() => {
+        const relevantReasons = new Set([
+            'attendance_updated',
+            'participation_updated',
+            'taught_outcomes_confirmed',
+            'fine_arts_practical_resolved',
+            'fine_arts_practical_evidence_recorded',
+            'fine_arts_learner_evidence_recorded',
+            'fine_arts_learner_evidence_attachment_uploaded',
+        ]);
+
+        return subscribeToSessionDataChanged((detail) => {
+            if (!detail?.sessionId || detail.sessionId !== sessionId) {
+                return;
+            }
+            if (detail.reason && !relevantReasons.has(detail.reason)) {
+                return;
+            }
+
+            void queryClient.invalidateQueries({ queryKey: cbcKeys.fineArtsPracticals.detail(sessionId) });
+            void queryClient.invalidateQueries({ queryKey: ['cbc', 'fine-arts-practicals', 'learner-matrix', sessionId] });
+        });
+    }, [queryClient, sessionId]);
 
     const handleStateChange = async () => {
         await Promise.all([
             practicalQuery.refetch(),
-            learnerMatrixQuery.refetch(),
+            activeSection === 'learner' ? learnerMatrixQuery.refetch() : Promise.resolve(),
         ]);
         await onStateChange?.();
     };
@@ -215,7 +263,6 @@ export function FineArtsPracticalRequirementsCard({
         );
     }
 
-    const resolved = hasResolvedFineArtsPracticalContract(contract);
     const courseworkTask: FineArtsCourseworkTask | null = contract?.coursework_task ?? null;
 
     return (
@@ -472,7 +519,7 @@ export function FineArtsPracticalRequirementsCard({
                                             </p>
                                         </div>
                                         <div className="rounded-lg border px-4 py-3 theme-border theme-surface-elevated">
-                                            <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Required cells recorded</p>
+                                            <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Required learner cells</p>
                                             <p className="mt-1 text-lg font-semibold theme-text">
                                                 {matrix?.summary.required_cells_recorded ?? 0}
                                                 /
@@ -480,11 +527,11 @@ export function FineArtsPracticalRequirementsCard({
                                             </p>
                                         </div>
                                         <div className="rounded-lg border px-4 py-3 theme-border theme-surface-elevated">
-                                            <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Coursework evidence types covered</p>
+                                            <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Required categories covered</p>
                                             <p className="mt-1 text-lg font-semibold theme-text">
-                                                {(matrix?.evidence_types.length ?? 0) - (contract?.learner_evidence_summary?.missing_required_evidence_types?.length ?? 0)}
+                                                {((matrix?.required_evidence_types?.length ?? 0) - (contract?.learner_evidence_summary?.missing_required_evidence_types?.length ?? 0))}
                                                 /
-                                                {matrix?.evidence_types.length ?? 0}
+                                                {matrix?.required_evidence_types?.length ?? 0}
                                             </p>
                                         </div>
                                     </div>
@@ -515,90 +562,17 @@ export function FineArtsPracticalRequirementsCard({
                                     ) : null}
                                 </div>
 
-                                {learnerMatrixQuery.isLoading && !matrix ? (
-                                    <LoadingSpinner message="Loading learner worksheet evidence..." fullScreen={false} />
-                                ) : null}
-
-                                {learnerMatrixQuery.error ? (
-                                    <ErrorBanner
-                                        message={extractErrorMessage(learnerMatrixQuery.error as ApiError, 'We could not load learner worksheet evidence.')}
-                                        onDismiss={() => {}}
-                                    />
-                                ) : null}
-
-                                {matrix?.resolved ? (
-                                    <div className="overflow-x-auto rounded-xl border theme-border">
-                                        <table className="min-w-[1100px] w-full text-sm">
-                                            <thead className="theme-surface-muted">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left font-semibold theme-text">Learner</th>
-                                                    {matrix.evidence_types.map((evidenceType) => (
-                                                        <th key={evidenceType} className="px-3 py-3 text-left font-semibold theme-text">
-                                                            {formatEvidenceLabel(evidenceType)}
-                                                        </th>
-                                                    ))}
-                                                    <th className="px-3 py-3 text-left font-semibold theme-text">Progress</th>
-                                                    <th className="px-3 py-3 text-left font-semibold theme-text">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="theme-surface">
-                                                {matrix.learners.map((learner) => (
-                                                    <tr key={learner.learner_id} className="border-t theme-border">
-                                                        <td className="px-4 py-3 align-top">
-                                                            <div>
-                                                                <p className="font-medium theme-text">{learner.name}</p>
-                                                                <p className="text-xs theme-muted">{learner.admission_number}</p>
-                                                                <p className="mt-1 text-xs theme-subtle">{learner.attendance_status ?? 'Attendance pending'}</p>
-                                                            </div>
-                                                        </td>
-                                                        {matrix.evidence_types.map((evidenceType) => {
-                                                            const cell = learner.evidence[evidenceType];
-                                                            return (
-                                                                <td key={`${learner.learner_id}-${evidenceType}`} className="px-3 py-3 align-top">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="theme-focus-ring flex w-full min-w-[140px] flex-col items-start gap-1 rounded-lg border px-3 py-2 text-left transition-colors theme-border theme-hover-surface"
-                                                                        onClick={() => setSelectedCell({
-                                                                            learnerId: learner.learner_id,
-                                                                            evidenceType,
-                                                                        })}
-                                                                    >
-                                                                        <span className="font-medium theme-text">{formatStatusLabel(cell.status)}</span>
-                                                                        <span className="text-xs theme-muted">{cell.attachment_count} attachment{cell.attachment_count === 1 ? '' : 's'}</span>
-                                                                    </button>
-                                                                </td>
-                                                            );
-                                                        })}
-                                                        <td className="px-3 py-3 align-top">
-                                                            <div className="rounded-lg border px-3 py-2 theme-border theme-surface-muted">
-                                                                <p className="font-medium theme-text">{learner.progress.label}</p>
-                                                                <p className="text-xs theme-muted">Required worksheet categories</p>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-3 py-3 align-top">
-                                                            <Button
-                                                                type="button"
-                                                                variant="secondary"
-                                                                onClick={() => {
-                                                                    const evidenceType = firstEvidenceType(learner, matrix.evidence_types);
-                                                                    if (!evidenceType) {
-                                                                        return;
-                                                                    }
-                                                                    setSelectedCell({
-                                                                        learnerId: learner.learner_id,
-                                                                        evidenceType,
-                                                                    });
-                                                                }}
-                                                            >
-                                                                Open
-                                                            </Button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : null}
+                                <FineArtsLearnerWorksheetPanel
+                                    sessionId={sessionId}
+                                    contract={contract}
+                                    matrix={matrix}
+                                    editable={editable}
+                                    isLoading={learnerMatrixQuery.isLoading}
+                                    loadError={(learnerMatrixQuery.error as ApiError) ?? null}
+                                    onRetry={handleStateChange}
+                                    onStateChange={handleStateChange}
+                                    onGoToSessionProof={() => setActiveSection('proof')}
+                                />
                             </div>
                         ) : null}
                     </>
@@ -606,19 +580,6 @@ export function FineArtsPracticalRequirementsCard({
 
                 {footer}
             </div>
-
-            <FineArtsLearnerEvidenceModal
-                sessionId={sessionId}
-                isOpen={Boolean(selectedCell)}
-                learner={selectedLearner}
-                evidenceType={selectedCell?.evidenceType ?? null}
-                courseworkTask={courseworkTask}
-                taughtOutcomes={matrix?.taught_outcomes ?? []}
-                cell={selectedLearnerCell}
-                editable={editable}
-                onClose={() => setSelectedCell(null)}
-                onStateChange={handleStateChange}
-            />
         </Card>
     );
 }

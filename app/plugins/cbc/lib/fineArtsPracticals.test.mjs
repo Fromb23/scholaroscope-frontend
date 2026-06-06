@@ -105,3 +105,130 @@ test('builds the dedicated Fine Arts practical workflow href for closure evidenc
         '/cbc/teaching/sessions/42/fine-arts-practical?action=record-evidence&notice=closure-evidence-required&returnTo=%2Fsessions%2F42%3Fsection%3Dcomplete',
     );
 });
+
+test('filters Fine Arts worksheet learners by name or admission number', async () => {
+    const { filterFineArtsLearners } = await loadFineArtsPracticalModule();
+
+    const learners = [
+        { learner_id: 1, name: 'Fine Artist', admission_number: 'FA001' },
+        { learner_id: 2, name: 'Mary Achieng', admission_number: 'FA002' },
+    ];
+
+    assert.deepEqual(
+        filterFineArtsLearners(learners, 'mary').map((learner) => learner.learner_id),
+        [2],
+    );
+    assert.deepEqual(
+        filterFineArtsLearners(learners, 'fa001').map((learner) => learner.learner_id),
+        [1],
+    );
+});
+
+test('restores persisted worksheet selection without resetting the active learner flow', async () => {
+    const { sanitizeFineArtsWorksheetUiState } = await loadFineArtsPracticalModule();
+
+    const learners = [
+        {
+            learner_id: 1,
+            name: 'Fine Artist',
+            admission_number: 'FA001',
+            evidence: {
+                PROCESS_JOURNAL: { recorded: true },
+                RESEARCH_WRITEUP: { recorded: false },
+            },
+        },
+        {
+            learner_id: 2,
+            name: 'Mary Achieng',
+            admission_number: 'FA002',
+            evidence: {
+                PROCESS_JOURNAL: { recorded: false },
+                RESEARCH_WRITEUP: { recorded: false },
+            },
+        },
+    ];
+
+    assert.deepEqual(
+        sanitizeFineArtsWorksheetUiState({
+            state: {
+                activeSection: 'learner',
+                search: 'mary',
+                learnerId: 1,
+                evidenceType: 'RESEARCH_WRITEUP',
+            },
+            learners,
+            evidenceTypes: ['PROCESS_JOURNAL', 'RESEARCH_WRITEUP'],
+            fallbackActiveSection: 'proof',
+        }),
+        {
+            activeSection: 'learner',
+            search: 'mary',
+            learnerId: 1,
+            evidenceType: 'RESEARCH_WRITEUP',
+        },
+    );
+});
+
+test('falls back to the next valid worksheet learner selection after attendance membership changes', async () => {
+    const { sanitizeFineArtsWorksheetUiState, getNextFineArtsWorksheetTarget } = await loadFineArtsPracticalModule();
+
+    const learners = [
+        {
+            learner_id: 2,
+            name: 'Mary Achieng',
+            admission_number: 'FA002',
+            evidence: {
+                PROCESS_JOURNAL: { recorded: false },
+                RESEARCH_WRITEUP: { recorded: false },
+            },
+        },
+    ];
+
+    assert.deepEqual(
+        sanitizeFineArtsWorksheetUiState({
+            state: {
+                activeSection: 'learner',
+                learnerId: 1,
+                evidenceType: 'PROCESS_JOURNAL',
+            },
+            learners,
+            evidenceTypes: ['PROCESS_JOURNAL', 'RESEARCH_WRITEUP'],
+            fallbackActiveSection: 'proof',
+        }),
+        {
+            activeSection: 'learner',
+            search: '',
+            learnerId: 2,
+            evidenceType: 'PROCESS_JOURNAL',
+        },
+    );
+
+    assert.deepEqual(
+        getNextFineArtsWorksheetTarget({
+            learners: [
+                {
+                    learner_id: 1,
+                    evidence: {
+                        PROCESS_JOURNAL: { recorded: true },
+                        RESEARCH_WRITEUP: { recorded: true },
+                    },
+                },
+                {
+                    learner_id: 2,
+                    evidence: {
+                        PROCESS_JOURNAL: { recorded: false },
+                        RESEARCH_WRITEUP: { recorded: true },
+                    },
+                },
+            ],
+            currentLearnerId: 1,
+            currentEvidenceType: 'PROCESS_JOURNAL',
+            evidenceTypes: ['PROCESS_JOURNAL', 'RESEARCH_WRITEUP'],
+            preferredEvidenceTypes: ['PROCESS_JOURNAL', 'RESEARCH_WRITEUP'],
+        }),
+        {
+            learnerId: 2,
+            evidenceType: 'PROCESS_JOURNAL',
+        },
+    );
+});
