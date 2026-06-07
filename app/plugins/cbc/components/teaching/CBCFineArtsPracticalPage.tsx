@@ -37,6 +37,7 @@ export function CBCFineArtsPracticalPage() {
     const sessionId = Number(sessionIdRaw);
     const router = useRouter();
     const searchParams = useSearchParams();
+    const action = searchParams.get('action');
     const returnTo = searchParams.get('returnTo') || `/sessions/${sessionId}?section=complete`;
     const { session, closureState, loading, error, refetch, refetchClosureState } = useSessionDetail(sessionId);
     const practicalQuery = useSessionFineArtsPractical(sessionId, Boolean(session));
@@ -104,6 +105,7 @@ export function CBCFineArtsPracticalPage() {
     const practical = practicalQuery.data ?? null;
     const canEdit = session.status === 'IN_PROGRESS';
     const canClose = canEdit && Boolean(closureState?.ready);
+    const guidedMode = action === 'record-evidence' || closureState?.next_step === 'EVIDENCE';
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
@@ -132,7 +134,9 @@ export function CBCFineArtsPracticalPage() {
                             <h1 className="text-2xl font-semibold theme-text">Fine Arts Practical</h1>
                         </div>
                         <p className="text-sm theme-muted">
-                            Resolve the coursework task, record the required practical evidence, then return to close the lesson record.
+                            {guidedMode
+                                ? 'Follow the next required evidence step, then return to the lesson workspace for any remaining closure action.'
+                                : 'Resolve the coursework task, record the required practical evidence, then return to close the lesson record.'}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -154,6 +158,7 @@ export function CBCFineArtsPracticalPage() {
             <FineArtsPracticalRequirementsCard
                 sessionId={session.id}
                 editable={canEdit}
+                guidedMode={guidedMode}
                 onStateChange={async () => {
                     await Promise.all([
                         refetch(),
@@ -166,6 +171,8 @@ export function CBCFineArtsPracticalPage() {
                         <p className="text-sm theme-muted">
                             {closureState?.ready
                                 ? 'Required Fine Arts evidence is complete. You can now close the lesson record.'
+                                : closureState?.next_step === 'REFLECTION'
+                                    ? 'Required Fine Arts evidence is complete. Return to the lesson workspace to add the lesson reflection.'
                                 : practical?.session_proof_complete && !practical?.learner_evidence_ready
                                     ? 'Session proof is complete. Record learner worksheet evidence before closing this Fine Arts practical.'
                                     : practical?.message ?? 'Resolve the coursework task and record the required evidence before closing the lesson.'}

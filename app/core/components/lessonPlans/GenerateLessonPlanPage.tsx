@@ -301,9 +301,14 @@ export function GenerateLessonPlanPage() {
                 force_regenerate: false,
                 use_ai: requestedUseAi,
             });
+            const generationMode = generated.lesson_plan.generated_by_ai
+                ? 'ai'
+                : generated.lesson_plan.ai_fallback_reason
+                    ? 'fallback'
+                    : 'rule-based';
 
             router.push(
-                `/lesson-plans/${generated.lesson_plan.id}?notice=${generated.created ? 'generated' : 'existing'}&mode=${generated.lesson_plan.generated_by_ai ? 'ai' : 'standard'}&references=${generated.selected_references_count}`
+                `/lesson-plans/${generated.lesson_plan.id}?notice=${generated.created ? 'generated' : 'existing'}&mode=${generationMode}&references=${generated.selected_references_count}`
             );
         } catch (submitError) {
             const status = (submitError as Error & { status?: number }).status;

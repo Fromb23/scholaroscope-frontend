@@ -41,12 +41,14 @@ import {
     useRecordFineArtsLearnerEvidence,
     useUploadFineArtsLearnerEvidenceAttachment,
 } from '@/app/plugins/cbc/hooks/useFineArtsPracticals';
+import { cbcFineArtsPracticalsAPI } from '@/app/plugins/cbc/api/fineArtsPracticals';
 
 interface FineArtsLearnerWorksheetPanelProps {
     sessionId: number;
     contract: FineArtsPracticalContract | null;
     matrix: FineArtsLearnerEvidenceMatrix | null;
     editable: boolean;
+    guidedMode?: boolean;
     isLoading: boolean;
     loadError: ApiError | null;
     onRetry: () => Promise<void> | void;
@@ -181,35 +183,12 @@ function sortEvidenceTypesForLearner(
     });
 }
 
-function cloneLearnersForNextAction(params: {
-    learners: FineArtsLearnerEvidenceLearner[];
-    learnerId: number;
-    evidenceType: FineArtsEvidenceType;
-    recorded: boolean;
-}) {
-    return params.learners.map((learner) => {
-        if (learner.learner_id !== params.learnerId) {
-            return learner;
-        }
-
-        return {
-            ...learner,
-            evidence: {
-                ...learner.evidence,
-                [params.evidenceType]: {
-                    ...learner.evidence[params.evidenceType],
-                    recorded: params.recorded,
-                },
-            },
-        };
-    });
-}
-
 export function FineArtsLearnerWorksheetPanel({
     sessionId,
     contract,
     matrix,
     editable,
+    guidedMode = false,
     isLoading,
     loadError,
     onRetry,
@@ -233,6 +212,8 @@ export function FineArtsLearnerWorksheetPanel({
     const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
     const [actionError, setActionError] = useState<{ message: string; nextAction?: FineArtsWorksheetNextAction } | null>(null);
+    const [mobileView, setMobileView] = useState<'queue' | 'learner'>('queue');
+    const [attachmentsOpen, setAttachmentsOpen] = useState(false);
 
     const requiredEvidenceTypes = useMemo(
         () => matrix?.required_evidence_types?.length
@@ -303,6 +284,8 @@ export function FineArtsLearnerWorksheetPanel({
         ?? (queryError ? { message: queryError.message, nextAction: queryError.next_action } : null)
         ?? (loadError ? { message: extractErrorMessage(loadError, 'We could not load learner worksheet evidence.') } : null)
     ), [actionError, loadError, matrixError, queryError]);
+    const showQueuePane = !guidedMode || mobileView === 'queue';
+    const showLearnerPane = !guidedMode || mobileView === 'learner';
 
     useEffect(() => {
         if (!matrix) {
@@ -377,13 +360,16 @@ export function FineArtsLearnerWorksheetPanel({
 
     useEffect(() => {
         if (!selectedLearner) {
+            if (guidedMode) {
+                setMobileView('queue');
+            }
             return;
         }
 
         if (!activeEvidenceType || !selectedLearner.evidence[activeEvidenceType]) {
             setActiveEvidenceType(orderedEvidenceTypes[0] ?? null);
         }
-    }, [activeEvidenceType, orderedEvidenceTypes, selectedLearner]);
+    }, [activeEvidenceType, guidedMode, orderedEvidenceTypes, selectedLearner]);
 
     useEffect(() => {
         setStatus(activeCell?.status ?? 'NOT_STARTED');
@@ -394,7 +380,14 @@ export function FineArtsLearnerWorksheetPanel({
         setPendingFiles([]);
         setUploadProgress({});
         setActionError(null);
+        setAttachmentsOpen(false);
     }, [activeCell]);
+
+    useEffect(() => {
+        if (pendingFiles.length > 0) {
+            setAttachmentsOpen(true);
+        }
+    }, [pendingFiles.length]);
 
     useEffect(() => {
         if (!visibleError) {
@@ -493,29 +486,34 @@ export function FineArtsLearnerWorksheetPanel({
             return;
         }
 
-        const result = await saveCurrentEvidence();
-        if (!result) {
+        const saved = await saveCurrentEvidence();
+        if (!saved) {
             return;
         }
 
-        const navigationLearners = cloneLearnersForNextAction({
-            learners: filteredLearners.length > 0 ? filteredLearners : matrix.learners,
-            learnerId: selectedLearner.learner_id,
-            evidenceType: activeEvidenceType,
-            recorded: result.recorded,
-        });
+        try {
+            const refreshedMatrix = await cbcFineArtsPracticalsAPI.getSessionFineArtsLearnerEvidence(
+                sessionId,
+                { scope: matrix.scope ?? 'present' },
+            );
 
-        const nextTarget = getNextFineArtsWorksheetTarget({
-            learners: navigationLearners,
-            currentLearnerId: selectedLearner.learner_id,
-            currentEvidenceType: activeEvidenceType,
-            evidenceTypes: displayEvidenceTypes,
-            preferredEvidenceTypes: displayEvidenceTypes,
-        });
+            const nextTarget = getNextFineArtsWorksheetTarget({
+                learners: refreshedMatrix.learners,
+                currentLearnerId: selectedLearner.learner_id,
+                currentEvidenceType: activeEvidenceType,
+                evidenceTypes: displayEvidenceTypes,
+                preferredEvidenceTypes: displayEvidenceTypes,
+            });
 
-        if (nextTarget) {
-            setSelectedLearnerId(nextTarget.learnerId);
-            setActiveEvidenceType(nextTarget.evidenceType);
+            if (nextTarget) {
+                setSelectedLearnerId(nextTarget.learnerId);
+                setActiveEvidenceType(nextTarget.evidenceType);
+                setMobileView('learner');
+            }
+        } catch (error) {
+            setActionError({
+                message: extractErrorMessage(error as ApiError, 'We saved the learner evidence, but could not load the next learner state.'),
+            });
         }
     };
 
@@ -590,7 +588,7 @@ export function FineArtsLearnerWorksheetPanel({
 
             {matrix && !matrix.error ? (
                 <div className="grid gap-4 xl:grid-cols-[320px,minmax(0,1fr)]">
-                    <div className="space-y-4 rounded-xl border p-4 theme-border theme-surface">
+                    <div className={`space-y-4 rounded-xl border p-4 theme-border theme-surface ${guidedMode && !showQueuePane ? 'hidden xl:block' : ''}`}>
                         <div className="space-y-3">
                             <label className="block">
                                 <span className="mb-2 flex items-center gap-2 text-sm font-medium theme-text">
@@ -605,25 +603,12 @@ export function FineArtsLearnerWorksheetPanel({
                                 />
                             </label>
 
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium theme-text">Queue filter</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {LEARNER_FILTERS.map((filter) => (
-                                        <button
-                                            key={filter.value}
-                                            type="button"
-                                            onClick={() => setLearnerFilter(filter.value)}
-                                            className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                                                learnerFilter === filter.value
-                                                    ? 'border-blue-200 bg-blue-100 text-blue-800'
-                                                    : 'theme-border theme-surface-muted theme-text hover:bg-gray-50'
-                                            }`}
-                                        >
-                                            {filter.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            <Select
+                                label="Queue filter"
+                                value={learnerFilter}
+                                onChange={(event) => setLearnerFilter(event.target.value as LearnerFilter)}
+                                options={LEARNER_FILTERS}
+                            />
                         </div>
 
                         <div className="space-y-2">
@@ -641,7 +626,12 @@ export function FineArtsLearnerWorksheetPanel({
                                         <button
                                             key={learner.learner_id}
                                             type="button"
-                                            onClick={() => setSelectedLearnerId(learner.learner_id)}
+                                            onClick={() => {
+                                                setSelectedLearnerId(learner.learner_id);
+                                                if (guidedMode) {
+                                                    setMobileView('learner');
+                                                }
+                                            }}
                                             className={`w-full rounded-xl border p-3 text-left transition-colors ${
                                                 selected
                                                     ? 'border-blue-300 bg-blue-50'
@@ -673,11 +663,23 @@ export function FineArtsLearnerWorksheetPanel({
                         </div>
                     </div>
 
-                    <div className="space-y-4 rounded-xl border p-4 theme-border theme-surface">
+                    <div className={`space-y-4 rounded-xl border p-4 theme-border theme-surface ${guidedMode && !showLearnerPane ? 'hidden xl:block' : ''}`}>
                         {selectedLearner ? (
                             <>
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                     <div className="space-y-2">
+                                        {guidedMode ? (
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                className="xl:hidden"
+                                                onClick={() => setMobileView('queue')}
+                                            >
+                                                <ArrowLeft className="h-4 w-4" />
+                                                Back to learners
+                                            </Button>
+                                        ) : null}
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h3 className="text-lg font-semibold theme-text">{selectedLearner.name}</h3>
                                             <Badge variant="default">{selectedLearner.admission_number}</Badge>
@@ -695,27 +697,6 @@ export function FineArtsLearnerWorksheetPanel({
                                                 </Badge>
                                             ) : null}
                                         </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-2 sm:flex-row">
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            disabled={!previousLearner}
-                                            onClick={() => setSelectedLearnerId(previousLearner?.learner_id ?? null)}
-                                        >
-                                            <ArrowLeft className="h-4 w-4" />
-                                            Previous learner
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            disabled={!nextLearner}
-                                            onClick={() => setSelectedLearnerId(nextLearner?.learner_id ?? null)}
-                                        >
-                                            Next learner
-                                            <ArrowRight className="h-4 w-4" />
-                                        </Button>
                                     </div>
                                 </div>
 
@@ -876,10 +857,16 @@ export function FineArtsLearnerWorksheetPanel({
                                             ) : null}
                                         </details>
 
-                                        <div className="mt-4 rounded-xl border p-4 theme-border theme-surface">
-                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <details
+                                            className="mt-4 rounded-xl border p-4 theme-border theme-surface"
+                                            open={attachmentsOpen}
+                                            onToggle={(event) => setAttachmentsOpen(event.currentTarget.open)}
+                                        >
+                                            <summary className="cursor-pointer list-none text-sm font-medium theme-text">
+                                                Attachments ({activeCell?.attachment_count ?? 0})
+                                            </summary>
+                                            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                                 <div>
-                                                    <p className="text-sm font-semibold theme-text">Attachments</p>
                                                     <p className="text-sm theme-muted">
                                                         Save evidence and upload files in one pass. Existing files remain attached to this category.
                                                     </p>
@@ -986,30 +973,54 @@ export function FineArtsLearnerWorksheetPanel({
                                                     ))
                                                 )}
                                             </div>
-                                        </div>
+                                        </details>
 
-                                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                disabled={!editable || recordMutation.isPending || uploadMutation.isPending}
-                                                onClick={() => {
-                                                    void handleSave();
-                                                }}
-                                            >
-                                                <Upload className="h-4 w-4" />
-                                                {recordMutation.isPending || uploadMutation.isPending ? 'Saving...' : 'Save'}
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                disabled={!editable || recordMutation.isPending || uploadMutation.isPending}
-                                                onClick={() => {
-                                                    void handleSaveAndNextMissing();
-                                                }}
-                                            >
-                                                <ArrowRight className="h-4 w-4" />
-                                                {recordMutation.isPending || uploadMutation.isPending ? 'Saving...' : 'Save & next missing'}
-                                            </Button>
+                                        <div className="mt-4 flex flex-col gap-3 border-t pt-4 theme-border">
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="flex flex-col gap-3 sm:flex-row">
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        disabled={!previousLearner}
+                                                        onClick={() => setSelectedLearnerId(previousLearner?.learner_id ?? null)}
+                                                    >
+                                                        <ArrowLeft className="h-4 w-4" />
+                                                        Previous learner
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        disabled={!nextLearner}
+                                                        onClick={() => setSelectedLearnerId(nextLearner?.learner_id ?? null)}
+                                                    >
+                                                        Next learner
+                                                        <ArrowRight className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        disabled={!editable || recordMutation.isPending || uploadMutation.isPending}
+                                                        onClick={() => {
+                                                            void handleSave();
+                                                        }}
+                                                    >
+                                                        <Upload className="h-4 w-4" />
+                                                        {recordMutation.isPending || uploadMutation.isPending ? 'Saving...' : 'Save'}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        disabled={!editable || recordMutation.isPending || uploadMutation.isPending}
+                                                        onClick={() => {
+                                                            void handleSaveAndNextMissing();
+                                                        }}
+                                                    >
+                                                        <ArrowRight className="h-4 w-4" />
+                                                        {recordMutation.isPending || uploadMutation.isPending ? 'Saving...' : 'Save & next missing'}
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : null}
