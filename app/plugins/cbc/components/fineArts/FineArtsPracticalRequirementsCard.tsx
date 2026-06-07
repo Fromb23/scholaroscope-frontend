@@ -34,6 +34,7 @@ import {
 interface FineArtsPracticalRequirementsCardProps {
     sessionId: number;
     editable?: boolean;
+    guidedMode?: boolean;
     title?: string;
     onStateChange?: () => Promise<void> | void;
     footer?: ReactNode;
@@ -74,12 +75,14 @@ function summaryText(contract: FineArtsPracticalContract | null | undefined) {
 export function FineArtsPracticalRequirementsCard({
     sessionId,
     editable = false,
+    guidedMode = false,
     title = 'Fine Arts Practical Requirements',
     onStateChange,
     footer,
 }: FineArtsPracticalRequirementsCardProps) {
     const queryClient = useQueryClient();
     const [activeSection, setActiveSection] = useState<'proof' | 'learner'>('proof');
+    const [fullReviewOpen, setFullReviewOpen] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState<string>('');
     const [teacherFeedbackDraft, setTeacherFeedbackDraft] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -99,6 +102,7 @@ export function FineArtsPracticalRequirementsCard({
     );
     const matrix = learnerMatrixQuery.data ?? null;
     const activeSectionInitialized = useRef(false);
+    const showGuidedMode = guidedMode && !fullReviewOpen;
 
     useEffect(() => {
         setTeacherFeedbackDraft(contract?.teacher_feedback ?? '');
@@ -122,6 +126,12 @@ export function FineArtsPracticalRequirementsCard({
             return;
         }
 
+        if (showGuidedMode) {
+            setActiveSection(contract?.session_proof_complete ? 'learner' : 'proof');
+            activeSectionInitialized.current = true;
+            return;
+        }
+
         let storedActiveSection: 'proof' | 'learner' | null = null;
         if (typeof window !== 'undefined') {
             const raw = window.sessionStorage.getItem(getFineArtsWorksheetStorageKey(sessionId));
@@ -142,7 +152,7 @@ export function FineArtsPracticalRequirementsCard({
         }
 
         activeSectionInitialized.current = true;
-    }, [contract?.session_proof_complete, sessionId]);
+    }, [contract?.session_proof_complete, sessionId, showGuidedMode]);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -165,6 +175,14 @@ export function FineArtsPracticalRequirementsCard({
             activeSection,
         }));
     }, [activeSection, sessionId]);
+
+    useEffect(() => {
+        if (!showGuidedMode) {
+            return;
+        }
+
+        setActiveSection(contract?.session_proof_complete ? 'learner' : 'proof');
+    }, [contract?.session_proof_complete, showGuidedMode]);
 
     useEffect(() => {
         const relevantReasons = new Set([
@@ -273,13 +291,25 @@ export function FineArtsPracticalRequirementsCard({
                         <h2 className="text-lg font-semibold theme-text">{title}</h2>
                         <p className="text-sm theme-muted">{summaryText(contract)}</p>
                     </div>
-                    {resolved && courseworkTask ? (
-                        <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2">
+                        {resolved && courseworkTask ? (
+                            <>
                             <Badge variant="default">{courseworkTask.task_code}</Badge>
                             <Badge variant="default">Term {courseworkTask.term_number}</Badge>
                             <Badge variant="default">{formatExhibitionLabel(courseworkTask.exhibition_type)}</Badge>
-                        </div>
-                    ) : null}
+                            </>
+                        ) : null}
+                        {guidedMode && fullReviewOpen ? (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setFullReviewOpen(false)}
+                            >
+                                Return to guided view
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
 
                 {error ? (
@@ -328,67 +358,199 @@ export function FineArtsPracticalRequirementsCard({
 
                 {resolved && courseworkTask ? (
                     <>
-                        <div className="grid gap-4 lg:grid-cols-2">
-                            <div className="rounded-xl border p-4 theme-border theme-surface-muted">
-                                <div className="flex items-center gap-2 text-sm font-semibold theme-text">
-                                    <Palette className="h-4 w-4 theme-muted" />
-                                    Coursework guidance
+                        {showGuidedMode ? (
+                            <>
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                    <div className="rounded-xl border px-4 py-3 theme-border theme-surface-muted">
+                                        <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Coursework task</p>
+                                        <p className="mt-1 text-sm font-semibold theme-text">{courseworkTask.task_code}</p>
+                                        <p className="mt-1 text-xs theme-muted">{courseworkTask.name}</p>
+                                    </div>
+                                    <div className="rounded-xl border px-4 py-3 theme-border theme-surface-muted">
+                                        <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Session proof</p>
+                                        <p className="mt-1 text-sm font-semibold theme-text">
+                                            {contract?.session_proof_complete ? 'Complete' : 'Pending'}
+                                        </p>
+                                        <p className="mt-1 text-xs theme-muted">
+                                            {contract?.session_proof_complete
+                                                ? 'Teacher proof-of-work is recorded.'
+                                                : 'Finish the session proof checklist first.'}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border px-4 py-3 theme-border theme-surface-muted">
+                                        <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Learner evidence</p>
+                                        <p className="mt-1 text-sm font-semibold theme-text">
+                                            {contract?.learner_evidence_ready ? 'Ready' : 'Pending'}
+                                        </p>
+                                        <p className="mt-1 text-xs theme-muted">
+                                            {contract?.learner_evidence_ready
+                                                ? 'Required learner evidence is complete.'
+                                                : 'Keep moving learner-by-learner until the required categories are covered.'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <dl className="mt-3 space-y-3 text-sm">
-                                    <div>
-                                        <dt className="theme-subtle">Annual theme</dt>
-                                        <dd className="font-medium theme-text">{courseworkTask.annual_theme}</dd>
-                                    </div>
-                                    <div>
-                                        <dt className="theme-subtle">Term sub-theme</dt>
-                                        <dd className="font-medium theme-text">{courseworkTask.term_sub_theme}</dd>
-                                    </div>
-                                    <div>
-                                        <dt className="theme-subtle">Strand</dt>
-                                        <dd className="font-medium theme-text">{courseworkTask.strand}</dd>
-                                    </div>
-                                    <div>
-                                        <dt className="theme-subtle">Sub-strand</dt>
-                                        <dd className="font-medium theme-text">{courseworkTask.sub_strand}</dd>
-                                    </div>
-                                </dl>
-                            </div>
 
-                            <div className="rounded-xl border p-4 theme-border theme-surface-muted">
-                                <div className="flex items-center gap-2 text-sm font-semibold theme-text">
-                                    <ClipboardList className="h-4 w-4 theme-muted" />
-                                    Scoring criteria
-                                </div>
-                                <div className="mt-3 space-y-2">
-                                    {contract?.assessment_criteria.map((criterion) => (
-                                        <div
-                                            key={criterion.key}
-                                            className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm theme-border theme-surface-elevated"
+                                <div className="flex flex-col gap-3 rounded-xl border p-4 theme-border theme-surface-muted sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-semibold theme-text">
+                                            {!contract?.session_proof_complete
+                                                ? 'Step 1: complete session proof'
+                                                : !contract?.learner_evidence_ready
+                                                    ? 'Step 2: record learner worksheet evidence'
+                                                    : 'Step 3: return to lesson closure'}
+                                        </p>
+                                        <p className="text-sm theme-muted">
+                                            {activeSection === 'proof'
+                                                ? 'Keep only the proof checklist in view until it is complete.'
+                                                : 'Focus on one learner at a time and save the required evidence categories.'}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {activeSection === 'learner' ? (
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => setActiveSection('proof')}
+                                            >
+                                                View session proof
+                                            </Button>
+                                        ) : contract?.session_proof_complete ? (
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => setActiveSection('learner')}
+                                            >
+                                                Go to learner evidence
+                                            </Button>
+                                        ) : null}
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => setFullReviewOpen(true)}
                                         >
-                                            <span className="theme-text">{criterion.label}</span>
-                                            <span className="font-semibold theme-text">{criterion.max_marks} marks</span>
-                                        </div>
-                                    ))}
+                                            Full review
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <div className="flex flex-wrap gap-2 rounded-xl border p-1 theme-border theme-surface-muted">
-                            <button
-                                type="button"
-                                className={`theme-focus-ring rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeSection === 'proof' ? 'theme-surface-elevated theme-text' : 'theme-muted hover:[color:var(--color-text)]'}`}
-                                onClick={() => setActiveSection('proof')}
-                            >
-                                Session proof
-                            </button>
-                            <button
-                                type="button"
-                                className={`theme-focus-ring rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeSection === 'learner' ? 'theme-surface-elevated theme-text' : 'theme-muted hover:[color:var(--color-text)]'}`}
-                                onClick={() => setActiveSection('learner')}
-                            >
-                                Learner worksheet evidence
-                            </button>
-                        </div>
+                                <details className="rounded-xl border p-4 theme-border theme-surface-muted">
+                                    <summary className="cursor-pointer list-none text-sm font-medium theme-text">
+                                        View task details
+                                    </summary>
+                                    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                                        <div className="rounded-xl border p-4 theme-border theme-surface">
+                                            <div className="flex items-center gap-2 text-sm font-semibold theme-text">
+                                                <Palette className="h-4 w-4 theme-muted" />
+                                                Coursework guidance
+                                            </div>
+                                            <dl className="mt-3 space-y-3 text-sm">
+                                                <div>
+                                                    <dt className="theme-subtle">Annual theme</dt>
+                                                    <dd className="font-medium theme-text">{courseworkTask.annual_theme}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="theme-subtle">Term sub-theme</dt>
+                                                    <dd className="font-medium theme-text">{courseworkTask.term_sub_theme}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="theme-subtle">Strand</dt>
+                                                    <dd className="font-medium theme-text">{courseworkTask.strand}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="theme-subtle">Sub-strand</dt>
+                                                    <dd className="font-medium theme-text">{courseworkTask.sub_strand}</dd>
+                                                </div>
+                                            </dl>
+                                        </div>
+
+                                        <div className="rounded-xl border p-4 theme-border theme-surface">
+                                            <div className="flex items-center gap-2 text-sm font-semibold theme-text">
+                                                <ClipboardList className="h-4 w-4 theme-muted" />
+                                                Scoring criteria
+                                            </div>
+                                            <div className="mt-3 space-y-2">
+                                                {contract?.assessment_criteria.map((criterion) => (
+                                                    <div
+                                                        key={criterion.key}
+                                                        className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm theme-border theme-surface-elevated"
+                                                    >
+                                                        <span className="theme-text">{criterion.label}</span>
+                                                        <span className="font-semibold theme-text">{criterion.max_marks} marks</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </details>
+                            </>
+                        ) : (
+                            <>
+                                <div className="grid gap-4 lg:grid-cols-2">
+                                    <div className="rounded-xl border p-4 theme-border theme-surface-muted">
+                                        <div className="flex items-center gap-2 text-sm font-semibold theme-text">
+                                            <Palette className="h-4 w-4 theme-muted" />
+                                            Coursework guidance
+                                        </div>
+                                        <dl className="mt-3 space-y-3 text-sm">
+                                            <div>
+                                                <dt className="theme-subtle">Annual theme</dt>
+                                                <dd className="font-medium theme-text">{courseworkTask.annual_theme}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="theme-subtle">Term sub-theme</dt>
+                                                <dd className="font-medium theme-text">{courseworkTask.term_sub_theme}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="theme-subtle">Strand</dt>
+                                                <dd className="font-medium theme-text">{courseworkTask.strand}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="theme-subtle">Sub-strand</dt>
+                                                <dd className="font-medium theme-text">{courseworkTask.sub_strand}</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+
+                                    <div className="rounded-xl border p-4 theme-border theme-surface-muted">
+                                        <div className="flex items-center gap-2 text-sm font-semibold theme-text">
+                                            <ClipboardList className="h-4 w-4 theme-muted" />
+                                            Scoring criteria
+                                        </div>
+                                        <div className="mt-3 space-y-2">
+                                            {contract?.assessment_criteria.map((criterion) => (
+                                                <div
+                                                    key={criterion.key}
+                                                    className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm theme-border theme-surface-elevated"
+                                                >
+                                                    <span className="theme-text">{criterion.label}</span>
+                                                    <span className="font-semibold theme-text">{criterion.max_marks} marks</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 rounded-xl border p-1 theme-border theme-surface-muted">
+                                    <button
+                                        type="button"
+                                        className={`theme-focus-ring rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeSection === 'proof' ? 'theme-surface-elevated theme-text' : 'theme-muted hover:[color:var(--color-text)]'}`}
+                                        onClick={() => setActiveSection('proof')}
+                                    >
+                                        Session proof
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`theme-focus-ring rounded-lg px-4 py-2 text-sm font-medium transition-colors ${activeSection === 'learner' ? 'theme-surface-elevated theme-text' : 'theme-muted hover:[color:var(--color-text)]'}`}
+                                        onClick={() => setActiveSection('learner')}
+                                    >
+                                        Learner worksheet evidence
+                                    </button>
+                                </div>
+                            </>
+                        )}
 
                         {activeSection === 'proof' ? (
                             <div className="space-y-4">
@@ -567,6 +729,7 @@ export function FineArtsPracticalRequirementsCard({
                                     contract={contract}
                                     matrix={matrix}
                                     editable={editable}
+                                    guidedMode={showGuidedMode}
                                     isLoading={learnerMatrixQuery.isLoading}
                                     loadError={(learnerMatrixQuery.error as ApiError) ?? null}
                                     onRetry={handleStateChange}

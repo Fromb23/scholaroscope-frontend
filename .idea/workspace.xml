@@ -6,15 +6,13 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/errors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/errors.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/session.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/session.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsLearnerWorksheetPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsLearnerWorksheetPanel.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useFineArtsPracticals.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useFineArtsPracticals.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/fineArtsPracticals.test.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/fineArtsPracticals.test.mjs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/fineArtsPracticals.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/fineArtsPracticals.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/lib/queryKeys.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCFineArtsPracticalPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCFineArtsPracticalPage.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -227,6 +225,8 @@
       <workItem from="1780649847696" duration="6799000" />
       <workItem from="1780680158497" duration="7291000" />
       <workItem from="1780708340709" duration="934000" />
+      <workItem from="1780827095550" duration="827000" />
+      <workItem from="1780862737903" duration="2639000" />
     </task>
     <servers />
   </component>

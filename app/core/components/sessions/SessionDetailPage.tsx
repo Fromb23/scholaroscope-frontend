@@ -249,8 +249,6 @@ export function SessionDetailPage() {
     const [transientWorkflowNotice, setTransientWorkflowNotice] = useState<SessionPageNotice | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
     const [taughtOutcomesValidationError, setTaughtOutcomesValidationError] = useState<string | null>(null);
-    const [showTaughtOutcomesReflection, setShowTaughtOutcomesReflection] = useState(false);
-    const [showClosureReflection, setShowClosureReflection] = useState(false);
     const [creatingAssignment, setCreatingAssignment] = useState(false);
     const [issuingPreparedTask, setIssuingPreparedTask] = useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
@@ -265,6 +263,7 @@ export function SessionDetailPage() {
     const [highlightedAssignmentId, setHighlightedAssignmentId] = useState<number | null>(null);
     const [resolvedClosureEvidenceWorkflowHref, setResolvedClosureEvidenceWorkflowHref] = useState<string | null>(null);
     const [closureEvidenceWorkflowPending, setClosureEvidenceWorkflowPending] = useState(false);
+    const closureIntentRef = useRef(false);
     const {
         session,
         attendanceRecords,
@@ -329,12 +328,10 @@ export function SessionDetailPage() {
         () => attendanceRecords.some((record) => record.status !== null),
         [attendanceRecords]
     );
-    const previousHasMarkedAttendance = useRef(hasMarkedAttendance);
 
     const hasLessonPlan = Boolean(session?.lesson_plan_id);
     const confirmedTaughtOutcomes = session?.taught_outcomes ?? [];
     const hasConfirmedTaughtOutcomes = confirmedTaughtOutcomes.length > 0;
-    const previousHasConfirmedTaughtOutcomes = useRef(hasConfirmedTaughtOutcomes);
     const taughtOutcomeCount = confirmedTaughtOutcomes.filter(
         (outcome) => outcome.status === 'TAUGHT' || outcome.status === 'PARTIALLY_TAUGHT'
     ).length;
@@ -345,7 +342,7 @@ export function SessionDetailPage() {
     const hasReflection = closureState?.has_reflection ?? false;
     const closureEvidenceMessage = closureState?.message?.trim()
         || 'Learner performance is required before this lesson can be closed.';
-    const requiresClosureReflection = showTaughtOutcomesReflection || showClosureReflection;
+    const requiresClosureReflection = isInProgress && closureNextStep === 'REFLECTION';
     const canRecordEvidence = Boolean(
         isInProgress &&
         teachingWorkflow &&
@@ -569,7 +566,7 @@ export function SessionDetailPage() {
 
         if (notice === 'evidence-recorded-next-close') {
             return {
-                message: 'Class performance has been recorded. Finish by closing the lesson record.',
+                message: 'Class performance has been recorded. Continue with the current closure step.',
                 variant: 'info',
             };
         }
@@ -622,7 +619,6 @@ export function SessionDetailPage() {
     }, [showTaughtOutcomesSection]);
 
     const revealReflectionSection = useCallback(() => {
-        setShowClosureReflection(true);
         setGuidedSection('reflection');
     }, []);
 
@@ -664,43 +660,26 @@ export function SessionDetailPage() {
         session,
     ]);
 
-    const guideToClosureNextStep = useCallback(async (
+    const routeClosureStateFromBackend = useCallback(async (
         latestClosureState: SessionClosureState,
         options?: {
+            explicitClosureIntent?: boolean;
             navigateForEvidence?: boolean;
-            participationRefresh?: boolean;
-            reflectionSaved?: boolean;
         },
-    ) => {
+    ): Promise<{ closureState: SessionClosureState; completed: boolean }> => {
+        const explicitClosureIntent = options?.explicitClosureIntent ?? false;
         const navigateForEvidence = options?.navigateForEvidence ?? false;
-        const participationRefresh = options?.participationRefresh ?? false;
-        const reflectionSaved = options?.reflectionSaved ?? false;
-
-        if (participationRefresh) {
-            setTransientWorkflowNotice({
-                message: 'Participating class updated. The lesson workspace has refreshed to the current required step.',
-                variant: 'info',
-            });
-        }
-
-        if (reflectionSaved) {
-            setTransientWorkflowNotice({
-                message: 'Reflection saved. Finish by closing the lesson record.',
-                variant: 'info',
-            });
-            openCompletionSection();
-        }
 
         if (latestClosureState.next_step === 'ATTENDANCE') {
             revealAttendanceSection();
             setWorkflowNotice('Take attendance before closing this lesson.');
-            return;
+            return { closureState: latestClosureState, completed: false };
         }
 
         if (latestClosureState.next_step === 'TAUGHT_OUTCOMES') {
             revealTaughtOutcomesSection();
             setWorkflowNotice('Confirm what was taught before closing this lesson.');
-            return;
+            return { closureState: latestClosureState, completed: false };
         }
 
         if (latestClosureState.next_step === 'EVIDENCE') {
@@ -709,12 +688,12 @@ export function SessionDetailPage() {
             if (!evidenceWorkflowHref) {
                 setWorkflowError('Learner performance is required, but no curriculum evidence workflow is available for this lesson.');
                 openCompletionSection();
-                return;
+                return { closureState: latestClosureState, completed: false };
             }
 
             if (navigateForEvidence) {
                 router.push(evidenceWorkflowHref);
-                return;
+                return { closureState: latestClosureState, completed: false };
             }
 
             setWorkflowNotice(
@@ -722,32 +701,89 @@ export function SessionDetailPage() {
                     || 'Learner performance is required before this lesson can be closed.',
             );
             openCompletionSection();
-            return;
+            return { closureState: latestClosureState, completed: false };
         }
 
         if (latestClosureState.next_step === 'REFLECTION') {
             revealReflectionSection();
-            setWorkflowNotice(
-                reflectionSaved
-                    ? 'Reflection saved. Review the completion section before closing this lesson.'
-                    : 'Add a lesson reflection before closing this lesson.'
-            );
-            return;
+            setWorkflowNotice('Add a lesson reflection before closing this lesson.');
+            return { closureState: latestClosureState, completed: false };
         }
 
-        if (reflectionSaved && isInProgress) {
-            setWorkflowNotice('Reflection saved. You can now close the lesson record.');
+        if (explicitClosureIntent && isInProgress) {
+            await completeSession();
+            await refetch();
+            const refreshedClosureState = await refetchClosureState();
+            closureIntentRef.current = false;
+            setGuidedSection('post-lesson');
+            setWorkflowSuccess(
+                isInstructor ? 'Lesson record closed. Post-lesson actions are ready below.' : 'Lesson record closed.'
+            );
+            return {
+                closureState: refreshedClosureState ?? latestClosureState,
+                completed: true,
+            };
         }
 
         openCompletionSection();
+        setWorkflowNotice('All required teaching records are complete. Close the lesson record.');
+        closureIntentRef.current = false;
+        return { closureState: latestClosureState, completed: false };
     }, [
+        completeSession,
         isInProgress,
+        isInstructor,
         openCompletionSection,
+        refetch,
+        refetchClosureState,
         revealAttendanceSection,
         revealReflectionSection,
         revealTaughtOutcomesSection,
         resolveClosureTeachingWorkflowHref,
         router,
+    ]);
+
+    const continueSessionClosureWorkflow = useCallback(async (
+        reason?: string,
+        options?: {
+            explicitClosureIntent?: boolean;
+            navigateForEvidence?: boolean;
+        },
+    ): Promise<{ closureState: SessionClosureState; completed: boolean } | null> => {
+        if (typeof options?.explicitClosureIntent === 'boolean') {
+            closureIntentRef.current = options.explicitClosureIntent;
+        }
+
+        if (reason === 'participation_changed') {
+            setTransientWorkflowNotice({
+                message: 'Participating class updated. The lesson workspace has refreshed to the current required step.',
+                variant: 'info',
+            });
+        }
+
+        if (reason === 'reflection_saved') {
+            setTransientWorkflowNotice({
+                message: 'Reflection saved. The lesson workspace has refreshed to the next required step.',
+                variant: 'info',
+            });
+        }
+
+        await refetch();
+        const latestClosureState = await refetchClosureState();
+
+        if (!latestClosureState) {
+            setWorkflowError('The lesson workspace could not refresh the latest closure state.');
+            return null;
+        }
+
+        return routeClosureStateFromBackend(latestClosureState, {
+            explicitClosureIntent: closureIntentRef.current,
+            navigateForEvidence: options?.navigateForEvidence ?? false,
+        });
+    }, [
+        refetch,
+        refetchClosureState,
+        routeClosureStateFromBackend,
     ]);
 
     const toggleChecklistOpen = useCallback(() => {
@@ -873,22 +909,6 @@ export function SessionDetailPage() {
         setTaughtSelections(nextSelections);
         setTaughtOutcomesValidationError(null);
     }, [session]);
-
-    useEffect(() => {
-        if (!previousHasMarkedAttendance.current && hasMarkedAttendance && !hasConfirmedTaughtOutcomes) {
-            setGuidedSection('taught-outcomes');
-        }
-
-        previousHasMarkedAttendance.current = hasMarkedAttendance;
-    }, [hasConfirmedTaughtOutcomes, hasMarkedAttendance]);
-
-    useEffect(() => {
-        if (!previousHasConfirmedTaughtOutcomes.current && hasConfirmedTaughtOutcomes && isInProgress) {
-            setGuidedSection('complete');
-        }
-
-        previousHasConfirmedTaughtOutcomes.current = hasConfirmedTaughtOutcomes;
-    }, [hasConfirmedTaughtOutcomes, isInProgress]);
 
     useEffect(() => {
         setSkipPreparedTaskPrompt(false);
@@ -1113,39 +1133,16 @@ export function SessionDetailPage() {
     const handleEndLessonIntent = useCallback(async () => {
         try {
             clearWorkflowFeedback();
-            const latestClosureState = await refetchClosureState();
-            if (!latestClosureState) {
-                setWorkflowError('We could not check what is still missing for this lesson.');
-                return;
-            }
-
-            if (latestClosureState.next_step === 'EVIDENCE') {
-                await guideToClosureNextStep(latestClosureState, {
-                    navigateForEvidence: true,
-                });
-                return;
-            }
-
-            if (latestClosureState.next_step !== 'READY') {
-                await guideToClosureNextStep(latestClosureState);
-                return;
-            }
-
-            await completeSession();
-            await refetchClosureState();
-            setGuidedSection('post-lesson');
-            setWorkflowSuccess(
-                isInstructor ? 'Lesson record closed. Post-lesson actions are ready below.' : 'Lesson record closed.'
-            );
+            await continueSessionClosureWorkflow('end_lesson_intent', {
+                explicitClosureIntent: true,
+                navigateForEvidence: true,
+            });
         } catch (error) {
             setWorkflowError(error instanceof Error ? error.message : 'We could not close this lesson record.');
         }
     }, [
         clearWorkflowFeedback,
-        completeSession,
-        guideToClosureNextStep,
-        isInstructor,
-        refetchClosureState,
+        continueSessionClosureWorkflow,
     ]);
 
     const nextSafeAssistantAction = useMemo(() => {
@@ -1326,6 +1323,7 @@ export function SessionDetailPage() {
     const handleStartLesson = async () => {
         try {
             clearWorkflowFeedback();
+            closureIntentRef.current = false;
             await startSession();
             setGuidedSection('attendance');
             setWorkflowSuccess(
@@ -1364,15 +1362,7 @@ export function SessionDetailPage() {
                 await refetch();
             }
 
-            const latestClosureState = await refetchClosureState();
-            if (!latestClosureState) {
-                setWorkflowError('Participating class updated, but the lesson workflow could not be refreshed.');
-                return;
-            }
-
-            await guideToClosureNextStep(latestClosureState, {
-                participationRefresh: true,
-            });
+            await continueSessionClosureWorkflow('participation_changed');
         } catch (error) {
             setWorkflowError(
                 error instanceof Error
@@ -1382,10 +1372,9 @@ export function SessionDetailPage() {
         }
     }, [
         clearWorkflowFeedback,
-        guideToClosureNextStep,
+        continueSessionClosureWorkflow,
         isHistorical,
         refetch,
-        refetchClosureState,
         reseedAttendance,
         session,
     ]);
@@ -1393,17 +1382,18 @@ export function SessionDetailPage() {
     const handleReflectionSaved = useCallback(async () => {
         try {
             clearWorkflowFeedback();
-            await refetch();
-
-            const latestClosureState = await refetchClosureState();
-            if (!latestClosureState) {
-                setWorkflowError('Reflection saved, but the latest lesson status could not be refreshed.');
+            const result = await continueSessionClosureWorkflow('reflection_saved');
+            if (!result) {
                 return;
             }
 
-            await guideToClosureNextStep(latestClosureState, {
-                reflectionSaved: true,
-            });
+            if (!result.completed && result.closureState.next_step === 'READY') {
+                setWorkflowSuccess(
+                    'Reflection saved. Close the lesson record when you are ready.'
+                );
+            } else if (!result.completed) {
+                setWorkflowSuccess('Reflection saved.');
+            }
         } catch (error) {
             setWorkflowError(
                 error instanceof Error
@@ -1413,9 +1403,7 @@ export function SessionDetailPage() {
         }
     }, [
         clearWorkflowFeedback,
-        guideToClosureNextStep,
-        refetch,
-        refetchClosureState,
+        continueSessionClosureWorkflow,
     ]);
 
     const handleConfirmWhatWasTaught = useCallback(async () => {
@@ -1450,11 +1438,23 @@ export function SessionDetailPage() {
                     status: taughtSelections[outcome.outcome_id] as TaughtStatus,
                 })),
             });
-            setShowTaughtOutcomesReflection(true);
-            setGuidedSection('complete');
+            const result = await continueSessionClosureWorkflow('taught_outcomes_confirmed', {
+                navigateForEvidence: true,
+            });
+            if (!result) {
+                return;
+            }
             setWorkflowSuccess(
                 isInstructor
-                    ? 'What was taught is confirmed. End the lesson when you are ready to finish the remaining record.'
+                    ? (
+                        result.closureState.next_step === 'EVIDENCE'
+                            ? 'What was taught is confirmed. Next step: record learner performance.'
+                            : result.closureState.next_step === 'REFLECTION'
+                                ? 'What was taught is confirmed. Next step: add the lesson reflection.'
+                                : result.closureState.next_step === 'READY'
+                                    ? 'What was taught is confirmed. Close the lesson record when you are ready.'
+                                    : 'What was taught is confirmed.'
+                    )
                     : 'What was taught has been confirmed.'
             );
         } catch (error) {
@@ -1466,6 +1466,7 @@ export function SessionDetailPage() {
         clearWorkflowFeedback,
         confirmTaughtOutcomes,
         confirmingTaughtOutcomes,
+        continueSessionClosureWorkflow,
         hasMarkedAttendance,
         isCompleted,
         isHistorical,
@@ -1561,7 +1562,17 @@ export function SessionDetailPage() {
             : currentWorkflowStep === 'confirm_taught'
                 ? 'Current action: confirm what was taught'
                 : currentWorkflowStep === 'complete'
-                    ? (closureReady ? 'Current action: close lesson record' : 'Current action: end lesson')
+                    ? (
+                        closureNextStep === 'ATTENDANCE'
+                            ? 'Current action: review attendance'
+                            : closureNextStep === 'TAUGHT_OUTCOMES'
+                                ? 'Current action: confirm what was taught'
+                                : closureNextStep === 'EVIDENCE'
+                                    ? 'Current action: record learner performance'
+                                    : closureNextStep === 'REFLECTION'
+                                        ? 'Current action: add lesson reflection'
+                                        : 'Current action: close lesson record'
+                    )
                     : 'Current action: record follow-up';
     const currentActionDescription = isScheduled
         ? (hasPreparedTaskForLesson
@@ -1570,18 +1581,18 @@ export function SessionDetailPage() {
         : currentWorkflowStep === 'attendance'
             ? 'Keep teaching time focused. Mark attendance first so the next class action becomes visible.'
         : currentWorkflowStep === 'confirm_taught'
-                ? 'Attendance is saved. Confirm the planned outcomes taught in class before you end the lesson.'
+                ? 'Attendance is saved. Confirm the planned outcomes taught in class before the lesson record can move forward.'
                 : currentWorkflowStep === 'complete'
                     ? (closureNextStep === 'ATTENDANCE'
-                        ? 'Take attendance before this lesson can be closed.'
+                        ? 'Attendance is still missing. Review attendance to continue lesson closure.'
                         : closureNextStep === 'TAUGHT_OUTCOMES'
-                            ? 'Confirm what was taught before this lesson can be closed.'
+                            ? 'What was taught is still missing. Confirm the taught outcomes to continue lesson closure.'
                             : closureNextStep === 'EVIDENCE'
                                 ? (closureTeachingWorkflowHref || isClosureEvidenceWorkflowPending
                                     ? closureEvidenceMessage
                                     : 'Learner performance is required, but no curriculum evidence workflow is available for this lesson.')
                                 : closureNextStep === 'REFLECTION'
-                                    ? 'Add a lesson reflection before closing this lesson record.'
+                                    ? 'Add the required lesson reflection. If you lose your place, re-check lesson closure to reopen the current step.'
                                     : 'All required teaching records are complete. Close the lesson record.')
                     : (preparedTaskDraft
                     ? 'The prepared learner task was not issued yet. Issue it now or leave it for later review.'
@@ -1625,14 +1636,55 @@ export function SessionDetailPage() {
                         disabled: false,
                     }
                     : currentWorkflowStep === 'complete'
-                        ? {
-                            label: closureReady ? 'Close lesson record' : 'End lesson',
-                            onClick: () => {
-                                void handleEndLessonIntent();
-                            },
-                            icon: <CheckCircle2 className="mr-1.5 h-4 w-4" />,
-                            disabled: false,
-                        }
+                        ? (
+                            closureNextStep === 'ATTENDANCE'
+                                ? {
+                                    label: 'Review attendance',
+                                    onClick: revealAttendanceSection,
+                                    icon: <ClipboardCheck className="mr-1.5 h-4 w-4" />,
+                                    disabled: false,
+                                }
+                                : closureNextStep === 'TAUGHT_OUTCOMES'
+                                    ? {
+                                        label: 'Review taught outcomes',
+                                        onClick: revealTaughtOutcomesSection,
+                                        icon: <Target className="mr-1.5 h-4 w-4" />,
+                                        disabled: false,
+                                    }
+                                    : closureNextStep === 'EVIDENCE'
+                                        ? (
+                                            canRecordEvidence && closureTeachingWorkflowHref
+                                                ? {
+                                                    label: 'Record learner performance',
+                                                    href: closureTeachingWorkflowHref,
+                                                    icon: <FileText className="mr-1.5 h-4 w-4" />,
+                                                    disabled: false,
+                                                }
+                                                : {
+                                                    label: 'Re-check lesson closure',
+                                                    onClick: () => {
+                                                        void handleEndLessonIntent();
+                                                    },
+                                                    icon: <CheckCircle2 className="mr-1.5 h-4 w-4" />,
+                                                    disabled: false,
+                                                }
+                                        )
+                                        : closureNextStep === 'REFLECTION'
+                                            ? {
+                                                label: 'Add lesson reflection',
+                                                onClick: revealReflectionSection,
+                                                icon: <MessageSquareText className="mr-1.5 h-4 w-4" />,
+                                                disabled: false,
+                                            }
+                                            : {
+                                                label: 'Close lesson record',
+                                                onClick: () => {
+                                                    void handleEndLessonIntent();
+                                                },
+                                                icon: <CheckCircle2 className="mr-1.5 h-4 w-4" />,
+                                                disabled: false,
+                                            }
+                        )
                         : currentWorkflowStep === 'post_lesson' && preparedTaskDraft
                                 ? {
                                     label: issuingPreparedTask ? 'Issuing...' : 'Issue prepared task',
@@ -1643,6 +1695,14 @@ export function SessionDetailPage() {
                                     disabled: issuingPreparedTask,
                                 }
                                 : null;
+    const currentActionSecondary = currentWorkflowStep === 'complete' && closureNextStep !== 'READY'
+        ? {
+            label: 'Re-check lesson closure',
+            onClick: () => {
+                void handleEndLessonIntent();
+            },
+        }
+        : null;
     const currentActionShowsLessonPreparation = currentActionPrimary?.label === 'View lesson preparation';
     const sessionDetailExtensionContext = {
         session,
@@ -1807,6 +1867,15 @@ export function SessionDetailPage() {
                                         {currentActionPrimary.label}
                                     </Button>
                                 )}
+                                {currentActionSecondary ? (
+                                    <Button
+                                        variant="secondary"
+                                        className="w-full"
+                                        onClick={currentActionSecondary.onClick}
+                                    >
+                                        {currentActionSecondary.label}
+                                    </Button>
+                                ) : null}
                             </div>
                         ) : null}
                     </div>
@@ -2030,21 +2099,51 @@ export function SessionDetailPage() {
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div className="space-y-2">
                                     <h2 className="text-lg font-semibold text-gray-900">
-                                        {closureReady ? 'Close lesson record' : 'End lesson'}
+                                        Lesson closure
                                     </h2>
                                     <p className="text-sm text-gray-600">
                                         {closureNextStep === 'ATTENDANCE'
-                                            ? 'Attendance is still missing. End lesson to open the attendance step.'
+                                            ? 'Attendance is still missing. Review attendance to continue.'
                                             : closureNextStep === 'TAUGHT_OUTCOMES'
-                                                ? 'What was taught is still missing. End lesson to open the taught outcomes step.'
+                                                ? 'What was taught is still missing. Confirm the taught outcomes to continue.'
                                                 : closureNextStep === 'EVIDENCE'
                                                     ? (closureTeachingWorkflowHref || isClosureEvidenceWorkflowPending
                                                         ? closureEvidenceMessage
                                                         : 'Learner performance is required, but no curriculum evidence workflow is available for this lesson.')
                                                     : closureNextStep === 'REFLECTION'
-                                                        ? 'Add the required lesson reflection, then end the lesson again to close the record.'
+                                                        ? 'Add the required lesson reflection. If you lose your place, re-check lesson closure to reopen the current step.'
                                                         : 'All required teaching records are complete. Close the lesson record now.'}
                                     </p>
+                                    {currentActionPrimary ? (
+                                        <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+                                            {'href' in currentActionPrimary && currentActionPrimary.href ? (
+                                                <Link href={currentActionPrimary.href}>
+                                                    <Button size="sm">
+                                                        {currentActionPrimary.icon}
+                                                        {currentActionPrimary.label}
+                                                    </Button>
+                                                </Link>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={currentActionPrimary.onClick}
+                                                    disabled={currentActionPrimary.disabled}
+                                                >
+                                                    {currentActionPrimary.icon}
+                                                    {currentActionPrimary.label}
+                                                </Button>
+                                            )}
+                                            {currentActionSecondary ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    onClick={currentActionSecondary.onClick}
+                                                >
+                                                    {currentActionSecondary.label}
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    ) : null}
                                 </div>
                                 {showPreparedTaskIssueAction ? (
                                     <ActionMenu
@@ -2074,15 +2173,13 @@ export function SessionDetailPage() {
                             <div id="lesson-reflection-section">
                                 <LessonReflectionCard
                                     sessionId={session.id}
-                                    source={showClosureReflection ? 'SESSION_COMPLETION' : 'TAUGHT_OUTCOMES'}
+                                    source="SESSION_COMPLETION"
                                     metadata={{
                                         confirmed_outcome_ids: confirmedTaughtOutcomes.map((outcome) => outcome.outcome_id),
                                         confirmed_outcome_count: confirmedTaughtOutcomes.length,
                                     }}
                                     title="Add lesson reflection"
-                                    description={showClosureReflection
-                                        ? 'Add the lesson reflection required before this lesson record can be closed.'
-                                        : 'Write a short reflection before moving on. It will update the linked lesson plan reflection.'}
+                                    description="Add the lesson reflection required before this lesson record can be closed."
                                     onSaved={() => {
                                         void handleReflectionSaved();
                                     }}
@@ -2193,9 +2290,8 @@ export function SessionDetailPage() {
                         readOnly={!canEditAttendance}
                         onSave={async () => {
                             await save();
-                            await refetch();
-                            const latestClosureState = await refetchClosureState();
-                            if (!latestClosureState) {
+                            const result = await continueSessionClosureWorkflow('attendance_saved');
+                            if (!result?.closureState) {
                                 setWorkflowSuccess(
                                     isInstructor
                                         ? 'Attendance saved. The lesson workspace refreshed, but the next required step could not be resolved automatically.'
@@ -2204,17 +2300,16 @@ export function SessionDetailPage() {
                                 return;
                             }
 
-                            await guideToClosureNextStep(latestClosureState);
                             setWorkflowSuccess(
                                 isInstructor
                                     ? (
-                                        latestClosureState.next_step === 'TAUGHT_OUTCOMES'
+                                        result.closureState.next_step === 'TAUGHT_OUTCOMES'
                                             ? 'Attendance saved. Next step: confirm what was taught.'
-                                            : latestClosureState.next_step === 'EVIDENCE'
+                                            : result.closureState.next_step === 'EVIDENCE'
                                                 ? 'Attendance saved. Continue with the current learner performance step.'
-                                                : latestClosureState.next_step === 'REFLECTION'
+                                                : result.closureState.next_step === 'REFLECTION'
                                                     ? 'Attendance saved. Continue with the lesson reflection.'
-                                                    : latestClosureState.next_step === 'READY'
+                                                    : result.closureState.next_step === 'READY'
                                                         ? 'Attendance saved. Continue with lesson completion.'
                                                         : 'Attendance saved.'
                                     )

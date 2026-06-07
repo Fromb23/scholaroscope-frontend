@@ -134,6 +134,7 @@ export interface LessonPlan {
     generated_by_ai: boolean;
     ai_provider: string | null;
     ai_model: string | null;
+    ai_fallback_reason: string | null;
     generated_at: string | null;
     reviewed_at: string | null;
     used_at: string | null;
