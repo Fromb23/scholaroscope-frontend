@@ -35,7 +35,7 @@ export type SessionScheduleState =
 export interface Session {
   linked_cohorts: SessionCohort[];
   id: number;
-  subject_source: 'kernel' | 'cambridge';
+  subject_source: 'kernel' | 'cbc' | 'cambridge';
   session_subject_id: number | null;
   cambridge_cohort_subject_id: number | null;
   offering_id: number | null;
