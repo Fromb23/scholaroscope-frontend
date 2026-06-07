@@ -171,16 +171,23 @@ export interface AvailableCohort {
 
 export interface SourceAwareSubjectReference {
     source?: string | null;
+    subject_source?: string | null;
     subject_id?: number | null;
     teaching_link_id?: number | null;
     cbc_cohort_subject_id?: number | null;
     cambridge_cohort_subject_id?: number | null;
     cohort_subject_id?: number | null;
     assigned?: boolean;
+    current_instructor_id?: number | null;
+    current_instructor_name?: string | null;
+    current_instructor_email?: string | null;
+    assigned_to_current_instructor?: boolean;
+    can_reassign?: boolean;
 }
 
 export interface AvailableCohortSubject extends SourceAwareSubjectReference {
     id?: number;
+    label?: string | null;
     cohort?: number;
     cohort_id?: number | null;
     cohort_name: string;
@@ -196,6 +203,7 @@ export interface AvailableCohortSubject extends SourceAwareSubjectReference {
     subject_level?: string | null;
     is_current_year?: boolean;
     offering_id?: number | null;
+    teaching_link_id?: number | null;
 }
 
 export interface CohortAssignModalProps {

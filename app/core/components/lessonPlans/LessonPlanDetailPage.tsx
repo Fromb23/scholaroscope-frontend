@@ -873,6 +873,7 @@ export function LessonPlanDetailPage() {
         : learnerTaskChoice === 'prepare'
             ? 'Draft in progress'
             : 'Not prepared';
+    const canEditLessonPlan = !['USED', 'ARCHIVED'].includes(lessonPlan.status);
     const postLessonReflection = lessonPlan.status === 'USED'
         ? lessonPlan.reflection?.trim() ?? ''
         : '';
@@ -906,11 +907,11 @@ export function LessonPlanDetailPage() {
                     <div className="print:hidden">
                         <ActionMenu
                             items={[
-                                {
+                                ...(canEditLessonPlan ? [{
                                     label: 'Edit',
                                     href: `/lesson-plans/${lessonPlan.id}/edit`,
                                     icon: <Edit className="h-4 w-4" />,
-                                },
+                                }] : []),
                                 {
                                     label: pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')
                                         ? 'Downloading...'

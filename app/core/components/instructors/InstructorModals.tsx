@@ -198,6 +198,11 @@ interface SourceNormalizationContext {
     allowSourceSubjectIdAsPluginId?: boolean;
 }
 
+interface PendingReassignment {
+    subject: AvailableCohortSubject;
+    currentInstructorLabel: string;
+}
+
 function inferSubjectSource(context: SourceNormalizationContext = {}): SubjectSource {
     if (isCambridgeCurriculumType(context.curriculumType)) {
         return 'cambridge';
@@ -450,6 +455,7 @@ function normalizeAssignableCohortSubject(
 
 function getCohortSubjectOptionLines(cohortSubject: AvailableCohortSubject) {
     const contextParts = [
+        cohortSubject.cohort_level,
         cohortSubject.academic_year_name ?? cohortSubject.academic_year,
         cohortSubject.curriculum_name ?? cohortSubject.curriculum_type,
     ].filter((value): value is string => Boolean(value && value.trim()));
@@ -591,18 +597,18 @@ function CohortSubjectDropdown({
                 aria-expanded={open}
                 aria-haspopup="listbox"
                 disabled={disabled}
-            className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
                 <div className="min-w-0 flex-1">
                     {selectedOptionLines ? (
                         <>
-                            <p className="truncate font-medium text-gray-900">{selectedOptionLines.primary}</p>
+                            <p className="break-words whitespace-normal font-medium text-gray-900">{selectedOptionLines.primary}</p>
                             {selectedOptionLines.secondary && (
-                                <p className="truncate text-xs text-gray-500">{selectedOptionLines.secondary}</p>
+                                <p className="break-words whitespace-normal text-xs text-gray-500">{selectedOptionLines.secondary}</p>
                             )}
                         </>
                     ) : (
-                        <p className="truncate text-gray-500">Select cohort subject...</p>
+                        <p className="break-words whitespace-normal text-gray-500">Select cohort subject...</p>
                     )}
                 </div>
                 <ChevronDown
@@ -640,11 +646,11 @@ function CohortSubjectDropdown({
                                     }`}
                                 >
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium text-gray-900">
+                                        <p className="break-words whitespace-normal text-sm font-medium text-gray-900">
                                             {primary}
                                         </p>
                                         {secondary && (
-                                            <p className="truncate text-xs text-gray-500">
+                                            <p className="break-words whitespace-normal text-xs text-gray-500">
                                                 {secondary}
                                             </p>
                                         )}
@@ -686,15 +692,16 @@ export function CohortAssignModal({
     const [error, setError] = useState<string | null>(null);
     const [unassignReason, setUnassignReason] = useState('MANUAL');
     const [unassignNotes, setUnassignNotes] = useState('');
+    const [pendingReassignment, setPendingReassignment] = useState<PendingReassignment | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
+    useEffect(() => {
+        if (!isOpen) return;
 
-    instructorsAPI
-      .getAssignableSubjects(instructorId)
-      .then(setAllCohortSubjects)
-      .catch(() => {});
-  }, [isOpen, instructorId]);
+        instructorsAPI
+            .getAssignableSubjects(instructorId)
+            .then(setAllCohortSubjects)
+            .catch(() => {});
+    }, [isOpen, instructorId]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -762,6 +769,16 @@ export function CohortAssignModal({
         };
     }, [detail?.cohort_assignments, isOpen]);
 
+    useEffect(() => {
+        if (isOpen) {
+            return;
+        }
+
+        setSelectedCohortSubject('');
+        setPendingReassignment(null);
+        setError(null);
+    }, [isOpen]);
+
     const normalizedCohortSubjects = allCohortSubjects.map((cohortSubject) =>
         normalizeAssignableCohortSubject(cohortSubject, subjectOptionIndex)
     );
@@ -774,6 +791,14 @@ export function CohortAssignModal({
             !cohortSubject.assigned &&
             !assignedTeachingKeys.has(getSourceAwareSubjectKey(cohortSubject)) &&
             typeof getSourceAwareSubjectId(cohortSubject) === 'number'
+    );
+    const assignedElsewhereCohortSubjects = normalizedCohortSubjects.filter(
+        (cohortSubject) => (
+            cohortSubject.assigned
+            && !cohortSubject.assigned_to_current_instructor
+            && !assignedTeachingKeys.has(getSourceAwareSubjectKey(cohortSubject))
+            && typeof getSourceAwareSubjectId(cohortSubject) === 'number'
+        )
     );
     const selectedCohortSubjectOption = availableCohortSubjects.find(
         (cohortSubject) => getSourceAwareSubjectKey(cohortSubject) === selectedCohortSubject
@@ -801,17 +826,43 @@ export function CohortAssignModal({
         }
     }, [availableCohortSubjects, initialCohortSubjectId, initialSubjectSource, isOpen, selectedCohortSubject]);
 
-    const handleAssign = async () => {
-        if (!selectedCohortSubjectOption) return;
-        setWorking(true); setError(null);
+    const assignSubject = async (subject: AvailableCohortSubject) => {
+        setWorking(true);
+        setError(null);
         try {
-            await instructorsAPI.assignToCohortSubject(instructorId, selectedCohortSubjectOption);
+            await instructorsAPI.assignToCohortSubject(instructorId, subject);
             setSelectedCohortSubject('');
+            setPendingReassignment(null);
             await refetch();
             await onAssignmentsChanged?.();
         } catch (err) {
             setError(extractErrorMessage(err as ApiError, 'Failed to assign cohort subject'));
-        } finally { setWorking(false); }
+        } finally {
+            setWorking(false);
+        }
+    };
+
+    const handleAssign = async () => {
+        if (!selectedCohortSubjectOption) return;
+        await assignSubject(selectedCohortSubjectOption);
+    };
+
+    const handleReassign = (subject: AvailableCohortSubject) => {
+        const currentInstructorLabel = subject.current_instructor_name?.trim()
+            || subject.current_instructor_email?.trim()
+            || 'another teacher';
+        setPendingReassignment({
+            subject,
+            currentInstructorLabel,
+        });
+    };
+
+    const handleConfirmReassign = async () => {
+        if (!pendingReassignment) {
+            return;
+        }
+
+        await assignSubject(pendingReassignment.subject);
     };
 
     const handleUnassign = async (assignment: ActiveTeachingAssignment) => {
@@ -922,12 +973,47 @@ export function CohortAssignModal({
                         </div>
                     </div>
 
-                    <p className="text-sm font-semibold text-gray-700 mb-2">Assign to Cohort Subject</p>
+                    {pendingReassignment ? (
+                        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            <p className="font-medium text-amber-900">Confirm reassignment</p>
+                            <p className="mt-1 break-words whitespace-normal">
+                                This cohort subject is currently assigned to {pendingReassignment.currentInstructorLabel}.
+                                Reassigning will remove {pendingReassignment.currentInstructorLabel} and assign it to {instructorName}.
+                            </p>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => setPendingReassignment(null)}
+                                    disabled={working}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => {
+                                        void handleConfirmReassign();
+                                    }}
+                                    disabled={working}
+                                >
+                                    {working ? 'Reassigning...' : 'Confirm Reassign'}
+                                </Button>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-700">Available Cohort Subjects</p>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Only unassigned cohort subjects appear here.
+                            </p>
+                        </div>
+                    </div>
                     {availableCohortSubjects.length === 0 ? (
                         <p className="text-sm text-gray-400 text-center py-2">
                             {allCohortSubjects.length === 0
                                 ? 'No cohort subjects available'
-                                : 'All cohort subjects are already assigned to this teacher'}
+                                : 'No unassigned cohort subjects are available right now.'}
                         </p>
                     ) : (
                         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
@@ -949,6 +1035,64 @@ export function CohortAssignModal({
                             </Button>
                         </div>
                     )}
+
+                    <div className="mt-6 space-y-3">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-700">Already Assigned Elsewhere</p>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Reassignment must be explicit. These cohort subjects are not available in the normal assign flow.
+                            </p>
+                        </div>
+
+                        {assignedElsewhereCohortSubjects.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-2">
+                                No cohort subjects are currently assigned to another teacher.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {assignedElsewhereCohortSubjects.map((cohortSubject) => (
+                                    <div
+                                        key={getSourceAwareSubjectKey(cohortSubject)}
+                                        className="rounded-lg border border-gray-200 bg-gray-50 p-3"
+                                    >
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="break-words whitespace-normal text-sm font-medium text-gray-900">
+                                                    {cohortSubject.cohort_name}
+                                                </p>
+                                                <p className="mt-0.5 break-words whitespace-normal text-sm text-gray-700">
+                                                    {cohortSubject.subject_name}
+                                                </p>
+                                                <p className="mt-1 break-words whitespace-normal text-xs text-gray-500">
+                                                    {[
+                                                        cohortSubject.cohort_level,
+                                                        cohortSubject.academic_year_name ?? cohortSubject.academic_year,
+                                                        cohortSubject.curriculum_name ?? cohortSubject.curriculum_type,
+                                                    ].filter(Boolean).join(' · ')}
+                                                </p>
+                                                <p className="mt-2 break-words whitespace-normal text-sm text-amber-700">
+                                                    Assigned to {cohortSubject.current_instructor_name ?? cohortSubject.current_instructor_email ?? 'another teacher'}
+                                                    {cohortSubject.current_instructor_email
+                                                        && cohortSubject.current_instructor_name
+                                                        && cohortSubject.current_instructor_email !== cohortSubject.current_instructor_name
+                                                        ? ` · ${cohortSubject.current_instructor_email}`
+                                                        : ''}
+                                                </p>
+                                            </div>
+                                            <Button
+                                                variant="secondary"
+                                                className="w-full sm:w-auto"
+                                                disabled={working || !cohortSubject.can_reassign}
+                                                onClick={() => handleReassign(cohortSubject)}
+                                            >
+                                                Reassign
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex justify-end pt-2 border-t border-gray-100">
