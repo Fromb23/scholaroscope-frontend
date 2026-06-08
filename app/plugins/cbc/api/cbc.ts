@@ -386,6 +386,7 @@ export const outcomeProgressAPI = {
   strandOutcomeDistribution: async (params: {
     strand_id: number;
     cohort_id: number;
+    subject_id?: number;
   }) => {
     const response = await apiClient.get<StrandOutcomeDistribution[]>(
       '/cbc/outcome-progress/strand_outcome_distribution/',
@@ -396,6 +397,7 @@ export const outcomeProgressAPI = {
   outcomeLearners: async (params: {
     learning_outcome_id: number;
     cohort_id: number;
+    subject_id?: number;
     levels?: string;
   }) => {
     const response = await apiClient.get<OutcomeLearner[]>(

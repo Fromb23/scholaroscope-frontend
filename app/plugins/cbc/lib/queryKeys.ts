@@ -81,8 +81,13 @@ export const cbcKeys = {
             ['cbc', 'outcome-progress', 'distribution', outcomeId, cohortId] as const,
         strandDistribution: (strandId: number, cohortId: number, subjectId?: number | null) =>
             ['cbc', 'outcome-progress', 'strand-distribution', strandId, cohortId, subjectId ?? null] as const,
-        outcomeLearners: (outcomeId: number, cohortId: number, levels?: string) =>
-            ['cbc', 'outcome-progress', 'learners', outcomeId, cohortId, levels] as const,
+        outcomeLearners: (
+            outcomeId: number,
+            cohortId: number,
+            subjectId?: number | null,
+            levels?: string,
+        ) =>
+            ['cbc', 'outcome-progress', 'learners', outcomeId, cohortId, subjectId ?? null, levels] as const,
     },
     rubricScale: {
         forSession: (sessionId: number) =>

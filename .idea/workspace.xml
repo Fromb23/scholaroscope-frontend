@@ -4,16 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/GenerateLessonPlanPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/lessonPlans/LessonPlanDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/lessonPlans.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsLearnerWorksheetPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsLearnerWorksheetPanel.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/fineArts/FineArtsPracticalRequirementsCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCFineArtsPracticalPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/teaching/CBCFineArtsPracticalPage.tsx" afterDir="false" />
-    </list>
+    <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -227,6 +218,7 @@
       <workItem from="1780708340709" duration="934000" />
       <workItem from="1780827095550" duration="827000" />
       <workItem from="1780862737903" duration="2639000" />
+      <workItem from="1780901080975" duration="622000" />
     </task>
     <servers />
   </component>
