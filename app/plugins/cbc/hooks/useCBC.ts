@@ -858,6 +858,7 @@ export const useStrandOutcomeDistribution = (params: {
       outcomeProgressAPI.strandOutcomeDistribution({
         strand_id: params.strand_id!,
         cohort_id: params.cohort_id!,
+        subject_id: params.subject_id ?? undefined,
       }),
     enabled: !!params.strand_id && !!params.cohort_id,
     staleTime: 2 * 60 * 1000,
@@ -866,18 +867,21 @@ export const useStrandOutcomeDistribution = (params: {
 export const useOutcomeLearners = (params: {
   learning_outcome_id: number | null;
   cohort_id: number | null;
+  subject_id?: number | null;
   levels?: string;
 }) =>
   useQuery<OutcomeLearner[]>({
     queryKey: cbcKeys.outcomeProgress.outcomeLearners(
       params.learning_outcome_id!,
       params.cohort_id!,
+      params.subject_id,
       params.levels,
     ),
     queryFn: () =>
       outcomeProgressAPI.outcomeLearners({
         learning_outcome_id: params.learning_outcome_id!,
         cohort_id: params.cohort_id!,
+        subject_id: params.subject_id ?? undefined,
         levels: params.levels,
       }),
     enabled: !!params.learning_outcome_id && !!params.cohort_id,

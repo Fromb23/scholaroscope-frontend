@@ -109,16 +109,25 @@ function DistributionBar({ dist }: { dist: CompetencyDistribution }) {
 interface LearnerDrillDownProps {
   outcome: StrandOutcomeDistribution;
   cohortId: number;
+  subjectId: number | null;
   levels: string;
   label: string;
   onClose: () => void;
 }
 
-function LearnerDrillDown({ outcome, cohortId, levels, label, onClose }: LearnerDrillDownProps) {
+function LearnerDrillDown({
+  outcome,
+  cohortId,
+  subjectId,
+  levels,
+  label,
+  onClose,
+}: LearnerDrillDownProps) {
   const router = useRouter();
   const { data: learners = [], isLoading } = useOutcomeLearners({
     learning_outcome_id: outcome.outcome_id,
     cohort_id: cohortId,
+    subject_id: subjectId,
     levels,
   });
 
@@ -621,6 +630,7 @@ export default function StrandCompetencyOverviewPage() {
         <LearnerDrillDown
           outcome={drillDown.outcome}
           cohortId={resolvedCohortId}
+          subjectId={subjectFromQuery}
           levels={drillDown.levels}
           label={drillDown.label}
           onClose={() => setDrillDown(null)}
