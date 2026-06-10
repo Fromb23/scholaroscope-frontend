@@ -171,6 +171,10 @@ export default function CohortAssignmentsPage() {
     const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
     const [resultMessage, setResultMessage] = useState<string | null>(null);
     const deferredSearch = useDeferredValue(search);
+    const highlightAssignmentId = useMemo(() => {
+        const value = Number(searchParams.get('highlightAssignment') ?? '');
+        return Number.isFinite(value) && value > 0 ? value : null;
+    }, [searchParams]);
 
     const {
         cohort,
@@ -231,6 +235,21 @@ export default function CohortAssignmentsPage() {
         setSearch(searchParams.get('search') ?? '');
     }, [searchParams]);
 
+    useEffect(() => {
+        if (!highlightAssignmentId || assignmentsLoading) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            document.getElementById(`assignment-${highlightAssignmentId}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+            });
+        }, 100);
+
+        return () => window.clearTimeout(timer);
+    }, [assignmentsLoading, highlightAssignmentId]);
+
     const canManageAssignments = Boolean(user) && (
         Boolean(user?.is_superadmin)
         || activeRole === 'ADMIN'
@@ -261,12 +280,15 @@ export default function CohortAssignmentsPage() {
         if (trimmedSearch) {
             nextSearchParams.set('search', trimmedSearch);
         }
+        if (highlightAssignmentId) {
+            nextSearchParams.set('highlightAssignment', String(highlightAssignmentId));
+        }
 
         const query = nextSearchParams.toString();
         return query
             ? `/academic/cohorts/${cohortId}/assignments?${query}`
             : `/academic/cohorts/${cohortId}/assignments`;
-    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, search, statusFilter]);
+    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, highlightAssignmentId, search, statusFilter]);
     const assignmentsHref = useMemo(
         () => buildAssignmentsHref(cohortSubjectFilter || null),
         [buildAssignmentsHref, cohortSubjectFilter]
@@ -627,6 +649,7 @@ export default function CohortAssignmentsPage() {
                                     key={assignment.id}
                                     assignment={assignment}
                                     detailHref={buildAssignmentDetailHref(assignment.id)}
+                                    highlighted={assignment.id === highlightAssignmentId}
                                     onEdit={(nextAssignment) => {
                                         setEditingAssignment(nextAssignment);
                                         setCreateOpen(true);

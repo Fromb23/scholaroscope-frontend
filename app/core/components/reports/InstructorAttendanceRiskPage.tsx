@@ -21,6 +21,30 @@ interface AttendanceRiskGroup {
     items: InstructorAttendanceRiskItem[];
 }
 
+function getRecommendedActions(item: InstructorAttendanceRiskItem): string[] {
+    if (item.risk_level === 'CRITICAL') {
+        return [
+            'Contact the parent or guardian today.',
+            'Refer the learner to the class teacher or school administrator.',
+            'Create a support or make-up plan before the next lesson.',
+        ];
+    }
+
+    if (item.risk_level === 'RISK') {
+        return [
+            'Acknowledge the attendance concern and record a follow-up note.',
+            'Contact the parent or guardian if the pattern is continuing.',
+            'Plan a catch-up or support step for missed work.',
+        ];
+    }
+
+    return [
+        'Acknowledge the learner for monitoring.',
+        'Record a follow-up note after the next lesson or contact point.',
+        'Watch the next few completed lessons before marking the concern resolved.',
+    ];
+}
+
 function formatPercent(value: number): string {
     return `${value.toFixed(1)}%`;
 }
@@ -233,6 +257,26 @@ export function InstructorAttendanceRiskPage() {
                                             )}
                                         </div>
                                     </div>
+
+                                    <div className="mt-4">
+                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Recommended next action</p>
+                                        <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                                            {getRecommendedActions(item).map((action) => (
+                                                <li key={action}>• {action}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                                        <Link href={`/learners/${item.student_id}`} className="w-full sm:w-auto">
+                                            <Button className="w-full sm:w-auto">Open learner profile</Button>
+                                        </Link>
+                                        <Link href={`/learners/${item.student_id}`} className="w-full sm:w-auto">
+                                            <Button variant="secondary" className="w-full sm:w-auto">
+                                                Record follow-up externally
+                                            </Button>
+                                        </Link>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -250,6 +294,7 @@ export function InstructorAttendanceRiskPage() {
                                         <TableHead>Unmarked</TableHead>
                                         <TableHead>Risk Level</TableHead>
                                         <TableHead>Reasons</TableHead>
+                                        <TableHead>Recommended next action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -291,6 +336,13 @@ export function InstructorAttendanceRiskPage() {
                                                     )}
                                                 </div>
                                             </TableCell>
+                                            <TableCell>
+                                                <div className="space-y-1 text-sm text-gray-600">
+                                                    {getRecommendedActions(item).map((action) => (
+                                                        <div key={action}>{action}</div>
+                                                    ))}
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -306,9 +358,12 @@ export function InstructorAttendanceRiskPage() {
                         <AlertCircle className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="font-medium text-gray-900">Reporting scope</p>
+                        <p className="font-medium text-gray-900">Action tracking</p>
                         <p className="mt-1 text-sm text-gray-500">
-                            This page only renders server-computed attendance risk for your assigned subject groups.
+                            Viewing this page does not reset attendance risk. Follow-up action tracking is not implemented yet, so use the learner profile, your class records, or your pastoral workflow to log what you did next.
+                        </p>
+                        <p className="mt-2 text-sm text-gray-500">
+                            Current policy counts PRESENT, ABSENT, LATE, EXCUSED, and SICK in the risk denominator. Only PRESENT counts as attended, and LATE is reported separately below.
                         </p>
                     </div>
                 </div>

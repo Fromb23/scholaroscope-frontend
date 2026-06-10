@@ -69,6 +69,10 @@ function buildInitialReferencePages(lessonPlan: LessonPlan): ReferencePageInput[
     return references.length > 0 ? references : [];
 }
 
+function serializeReferencePages(referencePages: ReferencePageInput[]): string {
+    return JSON.stringify(referencePages);
+}
+
 function RepeatableListField({
     label,
     description,
@@ -158,12 +162,17 @@ export function LessonPlanForm({
 }: LessonPlanFormProps) {
     const router = useRouter();
     const [formData, setFormData] = useState<LessonPlanFormState>(() => buildInitialState(lessonPlan));
-    const [referencePages, setReferencePages] = useState<ReferencePageInput[]>(() => (
-        buildInitialReferencePages(lessonPlan)
-    ));
+    const initialReferencePages = useMemo(() => buildInitialReferencePages(lessonPlan), [lessonPlan]);
+    const initialReferenceSignature = useMemo(
+        () => serializeReferencePages(initialReferencePages),
+        [initialReferencePages]
+    );
+    const [referencePages, setReferencePages] = useState<ReferencePageInput[]>(() => initialReferencePages);
+    const [referencesDirty, setReferencesDirty] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const formErrorRef = useScrollIntoViewOnMessage(formError);
+    const referencesLocked = lessonPlan.status === 'SCHEDULED';
     const plannedOutcomeMap = useMemo(
         () => new Map(lessonPlan.planned_outcomes.map((outcome) => [outcome.outcome_id, outcome])),
         [lessonPlan.planned_outcomes],
@@ -171,8 +180,9 @@ export function LessonPlanForm({
 
     useEffect(() => {
         setFormData(buildInitialState(lessonPlan));
-        setReferencePages(buildInitialReferencePages(lessonPlan));
-    }, [lessonPlan]);
+        setReferencePages(initialReferencePages);
+        setReferencesDirty(false);
+    }, [initialReferencePages, lessonPlan]);
 
     const updateField = (field: keyof LessonPlanFormState, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -229,7 +239,14 @@ export function LessonPlanForm({
             conclusion: formData.conclusion.trim(),
         };
 
-        if (curriculumContext?.supports_reference_alignment) {
+        if (curriculumContext?.supports_reference_alignment && referencesDirty) {
+            if (referencesLocked) {
+                setFormError(
+                    'Scheduled lesson plans lock reference scope. Reset the scheduled lesson chain before changing references.'
+                );
+                return;
+            }
+
             const validatedReferences = validateReferencePages(referencePages, plannedOutcomeMap);
             if (validatedReferences.error) {
                 setFormError(validatedReferences.error);
@@ -293,16 +310,32 @@ export function LessonPlanForm({
 
             {lessonPlan.cohort_subject ? (
                 curriculumContext ? (
-                    <LessonPlanReferenceEditorSlot
-                        cohortSubjectId={lessonPlan.cohort_subject}
-                        context={curriculumContext}
-                        plannedOutcomes={lessonPlan.planned_outcomes}
-                        referencePages={referencePages}
-                        onReferencePagesChange={(nextValue) => {
-                            setReferencePages(nextValue);
-                            setFormError(null);
-                        }}
-                    />
+                    referencesLocked ? (
+                        <Card>
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium text-amber-800">
+                                    Reference pages are locked for scheduled lesson plans.
+                                </p>
+                                <p className="text-sm text-amber-700">
+                                    You can still update lesson content below. Reset the scheduled lesson chain before changing planned outcomes, schedule, or reference scope.
+                                </p>
+                            </div>
+                        </Card>
+                    ) : (
+                        <LessonPlanReferenceEditorSlot
+                            cohortSubjectId={lessonPlan.cohort_subject}
+                            context={curriculumContext}
+                            plannedOutcomes={lessonPlan.planned_outcomes}
+                            referencePages={referencePages}
+                            onReferencePagesChange={(nextValue) => {
+                                setReferencePages(nextValue);
+                                setReferencesDirty(
+                                    serializeReferencePages(nextValue) !== initialReferenceSignature
+                                );
+                                setFormError(null);
+                            }}
+                        />
+                    )
                 ) : curriculumContextError ? null : (
                     <Card>
                         <p className="text-sm text-amber-700">

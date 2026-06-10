@@ -89,13 +89,34 @@ export function GenericReferencePagesEditor({
         )));
     };
 
+    const updateOutcomeReference = (
+        index: number | null,
+        reference: ReferencePageInput,
+        patch: Partial<ReferencePageInput>,
+        outcome: PlannedOutcome,
+    ) => {
+        const nextReference = applyOutcome(
+            {
+                ...reference,
+                ...patch,
+            },
+            outcome,
+        );
+
+        if (index == null) {
+            onChange([...value, nextReference]);
+            return;
+        }
+
+        updateReference(index, nextReference);
+    };
+
     const addReferenceForOutcome = (outcome: PlannedOutcome) => {
         onChange([...value, applyOutcome(emptyReference(), outcome)]);
     };
 
     const removeReference = (index: number) => {
-        const nextValue = value.filter((_, currentIndex) => currentIndex !== index);
-        onChange(nextValue.length > 0 ? nextValue : [emptyReference()]);
+        onChange(value.filter((_, currentIndex) => currentIndex !== index));
     };
 
     return (
@@ -128,6 +149,9 @@ export function GenericReferencePagesEditor({
                             const attachedCount = outcomeReferences.filter(({ reference }) => (
                                 isReferencePageComplete(reference)
                             )).length;
+                            const displayedReferences = outcomeReferences.length > 0
+                                ? outcomeReferences
+                                : [{ index: null, reference: applyOutcome(emptyReference(), outcome) }];
 
                             return (
                                 <div
@@ -152,71 +176,70 @@ export function GenericReferencePagesEditor({
                                             </p>
                                         </div>
 
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="w-full sm:w-auto"
-                                            onClick={() => addReferenceForOutcome(outcome)}
-                                        >
-                                            <Plus className="mr-1.5 h-4 w-4" />
-                                            Add reference for this outcome
-                                        </Button>
+                                        {outcomeReferences.length > 0 ? (
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="w-full sm:w-auto"
+                                                onClick={() => addReferenceForOutcome(outcome)}
+                                            >
+                                                <Plus className="mr-1.5 h-4 w-4" />
+                                                Add another reference
+                                            </Button>
+                                        ) : null}
                                     </div>
 
-                                    {outcomeReferences.length === 0 ? (
-                                        <div className="mt-4 rounded-lg border border-dashed theme-border px-4 py-3 text-sm theme-muted">
-                                            No reference attached yet for this outcome.
-                                        </div>
-                                    ) : (
-                                        <div className="mt-4 space-y-3">
-                                            {outcomeReferences.map(({ index, reference }, referencePosition) => (
+                                    <div className="mt-4 space-y-3">
+                                        {displayedReferences.map(({ index, reference }, referencePosition) => (
                                                 <div
-                                                    key={`generic-reference-${outcome.outcome_id}-${index}`}
+                                                    key={`generic-reference-${outcome.outcome_id}-${index ?? 'draft'}`}
                                                     className="theme-card space-y-4 rounded-lg p-4"
                                                 >
                                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                                         <p className="text-sm font-medium theme-text">
-                                                            Reference {referencePosition + 1}
+                                                            {outcomeReferences.length === 0 && index == null
+                                                                ? 'Reference ready for this outcome'
+                                                                : `Reference ${referencePosition + 1}`}
                                                         </p>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="w-full sm:w-auto"
-                                                            onClick={() => removeReference(index)}
-                                                        >
-                                                            <Trash2 className="mr-1.5 h-4 w-4" />
-                                                            Remove
-                                                        </Button>
+                                                        {index != null ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="w-full sm:w-auto"
+                                                                onClick={() => removeReference(index)}
+                                                            >
+                                                                <Trash2 className="mr-1.5 h-4 w-4" />
+                                                                Remove
+                                                            </Button>
+                                                        ) : null}
                                                     </div>
 
                                                     <div className="grid gap-3 md:grid-cols-2">
                                                         <Input
                                                             label={context.reference_language.resource_label}
                                                             value={reference.resource_title}
-                                                            onChange={(event) => updateReference(index, {
-                                                                ...reference,
-                                                                resource_title: event.target.value,
-                                                            })}
+                                                            onChange={(event) => updateOutcomeReference(
+                                                                index,
+                                                                reference,
+                                                                { resource_title: event.target.value },
+                                                                outcome,
+                                                            )}
                                                             placeholder="Resource title"
                                                         />
 
-                                                        <Select
-                                                            label={context.reference_language.outcome_label ?? 'Learning outcome'}
-                                                            value={reference.outcome_id ? String(reference.outcome_id) : ''}
-                                                            onChange={(event) => {
-                                                                const outcomeId = event.target.value ? Number(event.target.value) : null;
-                                                                updateReference(
-                                                                    index,
-                                                                    applyOutcome(reference, outcomeId ? outcomeMap.get(outcomeId) : undefined),
-                                                                );
-                                                            }}
-                                                            options={[
-                                                                { value: '', label: 'Choose learning outcome' },
-                                                                ...outcomeOptions,
-                                                            ]}
-                                                        />
+                                                        <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 md:col-span-1">
+                                                            <div className="text-xs font-medium uppercase tracking-wide theme-subtle">
+                                                                {context.reference_language.outcome_label ?? 'Learning outcome'}
+                                                            </div>
+                                                            <div className="mt-1 text-sm font-medium theme-text">
+                                                                {outcome.code} - {outcome.text}
+                                                            </div>
+                                                            <div className="mt-1 text-xs theme-muted">
+                                                                This reference stays attached to this outcome unless you move it from the unassigned section.
+                                                            </div>
+                                                        </div>
 
                                                         <Input
                                                             label={context.reference_language.pages_label === 'Pages' ? 'Page start' : context.reference_language.pages_label}
@@ -224,10 +247,12 @@ export function GenericReferencePagesEditor({
                                                             min={1}
                                                             step={1}
                                                             value={reference.page_start === '' ? '' : String(reference.page_start)}
-                                                            onChange={(event) => updateReference(index, {
-                                                                ...reference,
-                                                                page_start: parsePageInputValue(event.target.value),
-                                                            })}
+                                                            onChange={(event) => updateOutcomeReference(
+                                                                index,
+                                                                reference,
+                                                                { page_start: parsePageInputValue(event.target.value) },
+                                                                outcome,
+                                                            )}
                                                         />
 
                                                         <Input
@@ -236,36 +261,41 @@ export function GenericReferencePagesEditor({
                                                             min={1}
                                                             step={1}
                                                             value={reference.page_end === '' ? '' : String(reference.page_end)}
-                                                            onChange={(event) => updateReference(index, {
-                                                                ...reference,
-                                                                page_end: parsePageInputValue(event.target.value),
-                                                            })}
+                                                            onChange={(event) => updateOutcomeReference(
+                                                                index,
+                                                                reference,
+                                                                { page_end: parsePageInputValue(event.target.value) },
+                                                                outcome,
+                                                            )}
                                                         />
 
                                                         <Input
                                                             label={context.reference_language.chapter_label}
                                                             value={reference.chapter || ''}
-                                                            onChange={(event) => updateReference(index, {
-                                                                ...reference,
-                                                                chapter: event.target.value,
-                                                            })}
+                                                            onChange={(event) => updateOutcomeReference(
+                                                                index,
+                                                                reference,
+                                                                { chapter: event.target.value },
+                                                                outcome,
+                                                            )}
                                                             placeholder="Optional chapter"
                                                         />
 
                                                         <Input
                                                             label={context.reference_language.notes_label}
                                                             value={reference.notes || ''}
-                                                            onChange={(event) => updateReference(index, {
-                                                                ...reference,
-                                                                notes: event.target.value,
-                                                            })}
+                                                            onChange={(event) => updateOutcomeReference(
+                                                                index,
+                                                                reference,
+                                                                { notes: event.target.value },
+                                                                outcome,
+                                                            )}
                                                             placeholder="Optional notes"
                                                         />
                                                     </div>
                                                 </div>
                                             ))}
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             );
                         })}

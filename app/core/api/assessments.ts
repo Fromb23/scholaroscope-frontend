@@ -8,6 +8,7 @@ import {
   Assessment,
   AssessmentDetail,
   AssessmentScore,
+  AssessmentScoreStatus,
   RubricScale,
   RubricScaleDetail,
   RubricLevel,
@@ -205,6 +206,7 @@ export const assessmentScoreAPI = {
     student?: number;
     assessment__term?: number;
     assessment__subject?: number;
+    status?: AssessmentScoreStatus;
     search?: string;
     page?: number;
     page_size?: number;
@@ -220,6 +222,7 @@ export const assessmentScoreAPI = {
           page_size: params?.page_size,
           assessment__term: params?.assessment__term,
           assessment__subject: params?.assessment__subject,
+          status: params?.status,
         },
       }
     );

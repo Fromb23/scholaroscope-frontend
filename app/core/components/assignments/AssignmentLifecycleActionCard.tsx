@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import type {
@@ -12,12 +13,12 @@ const ACTION_LABELS: Record<AssignmentLifecycleAction, string> = {
     EDIT_ASSIGNMENT: 'Edit preparation',
     ISSUE_ASSIGNMENT: 'Issue assignment',
     DELETE_DRAFT: 'Delete draft',
-    MANAGE_GROUPS: 'Manage groups',
+    MANAGE_GROUPS: 'Set up groups',
     ADD_LEARNERS: 'Add learners',
-    RECORD_SUBMISSION: 'Record submission',
-    MARK_PARTICIPATION: 'Mark participation',
-    FINISH_LEARNER_WORK: 'Finish learner work',
-    REVIEW_WORK: 'Review work',
+    RECORD_SUBMISSION: 'Record learner response',
+    MARK_PARTICIPATION: 'Update participation',
+    FINISH_LEARNER_WORK: 'Close learner work',
+    REVIEW_WORK: 'Review learner work',
     RECORD_EVIDENCE: 'Record evidence',
     REOPEN_LEARNER_WORK: 'Reopen learner work',
     STORE_RECORD: 'Store assignment record',
@@ -26,7 +27,7 @@ const ACTION_LABELS: Record<AssignmentLifecycleAction, string> = {
 };
 
 const ACTION_PENDING_LABELS: Partial<Record<AssignmentLifecycleAction, string>> = {
-    FINISH_LEARNER_WORK: 'Finishing learner work...',
+    FINISH_LEARNER_WORK: 'Closing learner work...',
     STORE_RECORD: 'Storing record...',
     REOPEN_LEARNER_WORK: 'Reopening learner work...',
     RESTORE_TO_REVIEW: 'Restoring to review...',
@@ -49,6 +50,21 @@ const ACTION_ORDER: AssignmentLifecycleAction[] = [
     'VIEW_RECORD',
     'RESTORE_TO_REVIEW',
 ];
+
+function getActionLabel(
+    action: AssignmentLifecycleAction,
+    deliveryMode: AssignmentDeliveryMode,
+): string {
+    if (action === 'RECORD_SUBMISSION') {
+        return deliveryMode === 'GROUP' ? 'Record group response' : 'Record learner response';
+    }
+
+    if (action === 'REVIEW_WORK') {
+        return deliveryMode === 'GROUP' ? 'Review group work' : 'Review learner work';
+    }
+
+    return ACTION_LABELS[action];
+}
 
 function getActionButtonVariant(action: AssignmentLifecycleAction): 'primary' | 'secondary' | 'danger' | 'ghost' {
     if (action === 'DELETE_DRAFT') {
@@ -97,12 +113,18 @@ export function AssignmentLifecycleActionCard({
     onAction,
     pendingAction = null,
     disabled = false,
+    supplementaryActions = [],
 }: {
     lifecycleState: AssignmentLifecycleState;
     deliveryMode: AssignmentDeliveryMode;
     onAction: (action: AssignmentLifecycleAction) => void;
     pendingAction?: AssignmentLifecycleAction | null;
     disabled?: boolean;
+    supplementaryActions?: Array<{
+        key: string;
+        label: string;
+        href: string;
+    }>;
 }) {
     const stageCopy = getStageCopy(lifecycleState.stage, deliveryMode);
     const primaryAction = lifecycleState.next_action === 'NONE'
@@ -138,7 +160,7 @@ export function AssignmentLifecycleActionCard({
                         variant="primary"
                     >
                         {pendingAction === primaryAction
-                            ? ACTION_PENDING_LABELS[primaryAction] ?? ACTION_LABELS[primaryAction]
+                            ? ACTION_PENDING_LABELS[primaryAction] ?? getActionLabel(primaryAction, deliveryMode)
                             : lifecycleState.next_action_label}
                     </Button>
                 ) : null}
@@ -152,9 +174,17 @@ export function AssignmentLifecycleActionCard({
                         disabled={disabled}
                     >
                         {pendingAction === action
-                            ? ACTION_PENDING_LABELS[action] ?? ACTION_LABELS[action]
-                            : ACTION_LABELS[action]}
+                            ? ACTION_PENDING_LABELS[action] ?? getActionLabel(action, deliveryMode)
+                            : getActionLabel(action, deliveryMode)}
                     </Button>
+                ))}
+
+                {supplementaryActions.map((action) => (
+                    <Link key={action.key} href={action.href}>
+                        <Button type="button" variant="ghost">
+                            {action.label}
+                        </Button>
+                    </Link>
                 ))}
             </div>
 
