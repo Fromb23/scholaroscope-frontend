@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import type { AssessmentScore } from '@/app/core/types/assessment';
 import type { DashboardAlert } from '@/app/core/hooks/useAdminDashboard';
 import type { InstructorMetrics } from '@/app/core/hooks/useInstructorDashboard';
 import { themeClasses } from '@/app/core/theme/themeClasses';
@@ -45,6 +46,7 @@ interface TeacherNextActionPanelProps {
     currentTerm?: { name?: string | null } | null;
     currentYear?: { name?: string | null } | null;
     teachingLoad: TeachingAssignment[];
+    pendingReviewRows: AssessmentScore[];
 }
 
 function parseSessionTimestamp(session: Session): number {
@@ -112,7 +114,8 @@ function buildNextAction({
     sessions,
     metrics,
     teachingLoad,
-}: Pick<TeacherNextActionPanelProps, 'sessions' | 'metrics' | 'teachingLoad'>): NextAction {
+    pendingReviewRows,
+}: Pick<TeacherNextActionPanelProps, 'sessions' | 'metrics' | 'teachingLoad' | 'pendingReviewRows'>): NextAction {
     const orderedSessions = [...sessions].sort((left, right) => parseSessionTimestamp(left) - parseSessionTimestamp(right));
     const overdueLesson = orderedSessions.find((session) => (
         session.schedule_state === 'IN_PROGRESS_OVERDUE' || Boolean(session.needs_completion)
@@ -191,14 +194,17 @@ function buildNextAction({
 
     if (metrics.assessments.needsGrading > 0) {
         const reviewExemptCount = metrics.assessments.reviewExemptCount;
+        const firstPendingRow = pendingReviewRows[0] ?? null;
         return {
             key: 'grade-pending-work',
             title: 'Grade pending work',
             description: reviewExemptCount > 0
                 ? `${metrics.assessments.needsGrading} submission${metrics.assessments.needsGrading === 1 ? '' : 's'} need review · ${reviewExemptCount} absent/not eligible.`
                 : `${metrics.assessments.needsGrading} submission${metrics.assessments.needsGrading === 1 ? '' : 's'} need review.`,
-            primaryLabel: 'Grade work',
-            primaryPath: '/assessments?status=pending',
+            primaryLabel: firstPendingRow ? 'Review next learner' : 'Grade work',
+            primaryPath: firstPendingRow
+                ? `/assessments/${firstPendingRow.assessment}?focus=score-entry&student=${firstPendingRow.student}`
+                : '/assessments',
             secondaryLabel: 'Open assessments',
             secondaryPath: '/assessments',
             icon: Award,
@@ -258,11 +264,12 @@ export function TeacherNextActionPanel({
     currentTerm,
     currentYear,
     teachingLoad,
+    pendingReviewRows,
 }: TeacherNextActionPanelProps) {
     const router = useRouter();
     const action = useMemo(
-        () => buildNextAction({ sessions, metrics, teachingLoad }),
-        [metrics, sessions, teachingLoad]
+        () => buildNextAction({ sessions, metrics, teachingLoad, pendingReviewRows }),
+        [metrics, pendingReviewRows, sessions, teachingLoad]
     );
     const tone = toneStyles[action.tone];
     const supportCount = Math.max(metrics.performance.needsSupport, metrics.attendance.riskLearnerCount);

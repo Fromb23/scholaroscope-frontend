@@ -324,6 +324,7 @@ export interface AssignmentSubmission {
 export interface AssignmentSubmissionCreatePayload {
     assignment: number;
     student: number;
+    submitted_at?: string;
     text_response?: string;
     attachment_metadata?: unknown[];
 }

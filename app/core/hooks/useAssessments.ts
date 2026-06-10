@@ -13,6 +13,7 @@ import {
   Assessment,
   AssessmentDetail,
   AssessmentScore,
+  AssessmentScoreStatus,
   AssessmentStatus,
   RubricScale,
   RubricScaleDetail,
@@ -242,6 +243,8 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
 export const useAssessmentScores = (params?: {
   assessment?: number;
   student?: number;
+  assessment__term?: number;
+  status?: AssessmentScoreStatus;
   search?: string;
   page?: number;
   page_size?: number;
@@ -254,6 +257,8 @@ export const useAssessmentScores = (params?: {
     () => ({
       assessment: params?.assessment,
       student: params?.student,
+      assessment__term: params?.assessment__term,
+      status: params?.status,
       search: params?.search,
       page: params?.page,
       page_size: params?.page_size,
@@ -261,6 +266,8 @@ export const useAssessmentScores = (params?: {
     [
       params?.assessment,
       params?.student,
+      params?.assessment__term,
+      params?.status,
       params?.search,
       params?.page,
       params?.page_size,

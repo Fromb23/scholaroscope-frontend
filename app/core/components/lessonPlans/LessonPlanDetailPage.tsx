@@ -171,6 +171,7 @@ export function LessonPlanDetailPage() {
     } = useLessonPlanDetail(lessonPlanId);
     const prepareAssignmentMutation = usePrepareAssignmentFromLessonPlan();
     const {
+        assignments: preparedAssignments,
         draft: preparedAssignmentDraft,
         issued: issuedAssignments,
     } = usePreparedAssignmentsForLessonPlan(lessonPlanId, {
@@ -196,6 +197,7 @@ export function LessonPlanDetailPage() {
     const [learnerTaskError, setLearnerTaskError] = useState<string | null>(null);
     const [learnerTaskSuccess, setLearnerTaskSuccess] = useState<string | null>(null);
     const [highlightedAssignmentId, setHighlightedAssignmentId] = useState<number | null>(null);
+    const [preparedAssignmentPreviewId, setPreparedAssignmentPreviewId] = useState<number | null>(null);
     const [scheduleForm, setScheduleForm] = useState<ScheduleLessonFormData>({
         session_date: '',
         start_time: '',
@@ -347,7 +349,15 @@ export function LessonPlanDetailPage() {
     }, [pathname, router, searchParams]);
 
     const latestPreparedAssignment = preparedAssignmentDraft ?? issuedAssignments[0] ?? null;
-    const hasPreparedAssignment = Boolean(latestPreparedAssignment);
+    const activePreparedAssignment = useMemo(() => (
+        preparedAssignments.find((assignment) => assignment.id === preparedAssignmentPreviewId)
+        ?? latestPreparedAssignment
+    ), [latestPreparedAssignment, preparedAssignmentPreviewId, preparedAssignments]);
+    const hasPreparedAssignment = Boolean(activePreparedAssignment);
+
+    useEffect(() => {
+        setPreparedAssignmentPreviewId(latestPreparedAssignment?.id ?? null);
+    }, [latestPreparedAssignment?.id]);
 
     useEffect(() => {
         if (!lessonPlan) {
@@ -556,6 +566,7 @@ export function LessonPlanDetailPage() {
             });
             setLearnerTaskChoice('existing');
             setLearnerTaskOpen(false);
+            setPreparedAssignmentPreviewId(response.assignment.id);
             setLearnerTaskSuccess(
                 `${response.detail} It can be issued at the end of the lesson.`
             );
@@ -803,9 +814,21 @@ export function LessonPlanDetailPage() {
         );
     }
 
-    const learnerTaskReturnTo = latestPreparedAssignment
-        ? `/lesson-plans/${lessonPlan.id}?section=learner-task&highlightAssignment=${latestPreparedAssignment.id}`
+    const learnerTaskReturnTo = activePreparedAssignment
+        ? `/lesson-plans/${lessonPlan.id}?section=learner-task&highlightAssignment=${activePreparedAssignment.id}`
         : `/lesson-plans/${lessonPlan.id}?section=learner-task`;
+    const preparedAssignmentDetailHref = activePreparedAssignment
+        ? `/academic/cohorts/${activePreparedAssignment.cohort_id}/assignments/${activePreparedAssignment.id}?${new URLSearchParams({
+            returnTo: learnerTaskReturnTo,
+        }).toString()}`
+        : null;
+    const preparedAssignmentWorkspaceHref = activePreparedAssignment
+        ? `/academic/cohorts/${activePreparedAssignment.cohort_id}/assignments?${new URLSearchParams({
+            cohort_subject: String(activePreparedAssignment.cohort_subject),
+            status: activePreparedAssignment.status,
+            highlightAssignment: String(activePreparedAssignment.id),
+        }).toString()}`
+        : null;
     type NextActionButton = {
         key: string;
         label: string;
@@ -870,8 +893,8 @@ export function LessonPlanDetailPage() {
             : lessonPlan.status === 'USED'
                 ? 'This lesson preparation has already been used in class. Reopen the lesson or download the plan for follow-up work.'
                 : 'Review the plan, then continue with your next teaching action.';
-    const learnerTaskStatus = latestPreparedAssignment
-        ? latestPreparedAssignment.status === 'DRAFT'
+    const learnerTaskStatus = activePreparedAssignment
+        ? activePreparedAssignment.status === 'DRAFT'
             ? 'Prepared'
             : 'Issued'
         : learnerTaskChoice === 'prepare'
@@ -1048,7 +1071,7 @@ export function LessonPlanDetailPage() {
             </Card>
 
             <div ref={learnerTaskSectionRef} id="learner-task" className="scroll-mt-24">
-                <Card className={highlightedAssignmentId && latestPreparedAssignment?.id === highlightedAssignmentId ? 'border-blue-300 bg-blue-50/50' : undefined}>
+                <Card className={highlightedAssignmentId && activePreparedAssignment?.id === highlightedAssignmentId ? 'border-blue-300 bg-blue-50/50' : undefined}>
                     <div className="space-y-5">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-2">
@@ -1069,8 +1092,8 @@ export function LessonPlanDetailPage() {
                                     </Badge>
                                 </div>
                                 <p className="text-sm text-gray-600">
-                                    {latestPreparedAssignment
-                                        ? latestPreparedAssignment.status === 'DRAFT'
+                                    {activePreparedAssignment
+                                        ? activePreparedAssignment.status === 'DRAFT'
                                             ? 'Prepared now and ready to issue after the lesson.'
                                             : 'Already part of the learner follow-up flow.'
                                         : learnerTaskChoice === 'prepare'
@@ -1093,18 +1116,13 @@ export function LessonPlanDetailPage() {
                                         }
                                     }}
                                 >
-                                    {learnerTaskOpen ? 'Collapse' : latestPreparedAssignment ? 'Review' : 'Expand'}
+                                    {learnerTaskOpen ? 'Collapse' : activePreparedAssignment ? 'Review' : 'Expand'}
                                 </Button>
-                                {latestPreparedAssignment ? (
-                                    <Link
-                                        href={`/academic/cohorts/${latestPreparedAssignment.cohort_id}/assignments/${latestPreparedAssignment.id}?${new URLSearchParams({
-                                            returnTo: learnerTaskReturnTo,
-                                        }).toString()}`}
-                                        className="w-full sm:w-auto"
-                                    >
+                                {preparedAssignmentDetailHref ? (
+                                    <Link href={preparedAssignmentDetailHref} className="w-full sm:w-auto">
                                         <Button variant="ghost" size="sm" className="w-full sm:w-auto">
                                             <Link2 className="mr-1.5 h-4 w-4" />
-                                            Open learner task
+                                            Open assignment
                                         </Button>
                                     </Link>
                                 ) : null}
@@ -1128,22 +1146,72 @@ export function LessonPlanDetailPage() {
                             />
                         ) : null}
 
-                        {latestPreparedAssignment ? (
-                            <div className={`rounded-lg border px-4 py-3 text-sm ${
-                                latestPreparedAssignment.status === 'DRAFT'
-                                    ? 'border-blue-200 bg-blue-50 text-blue-800'
-                                    : 'border-green-200 bg-green-50 text-green-800'
+                        {activePreparedAssignment ? (
+                            <div className={`rounded-xl border px-4 py-4 sm:px-5 ${
+                                activePreparedAssignment.status === 'DRAFT'
+                                    ? 'border-blue-200 bg-blue-50/80'
+                                    : 'border-green-200 bg-green-50/80'
                             }`}>
-                                <div className="font-medium">
-                                    {latestPreparedAssignment.status === 'DRAFT'
-                                        ? 'Learner task prepared'
-                                        : 'Learner task already issued'}
-                                </div>
-                                <div className="mt-1">
-                                    {latestPreparedAssignment.title}
-                                    {latestPreparedAssignment.status === 'DRAFT'
-                                        ? ' can be issued at the end of the lesson.'
-                                        : ' is already part of the learner follow-up flow.'}
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                    <div className="space-y-3">
+                                        <div className="space-y-1">
+                                            <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                                Prepared assignment
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-gray-900">
+                                                {activePreparedAssignment.title}
+                                            </h3>
+                                            <p className="text-sm text-gray-600">
+                                                {activePreparedAssignment.status === 'DRAFT'
+                                                    ? 'This draft is now in the class assignment workspace and is ready for issue when the lesson is complete.'
+                                                    : 'This assignment is already part of the learner follow-up flow for this lesson.'}
+                                            </p>
+                                        </div>
+
+                                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                            <div className="rounded-lg border border-white/70 bg-white/70 px-3 py-3">
+                                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Status</div>
+                                                <div className="mt-1 text-sm font-semibold text-gray-900">
+                                                    {activePreparedAssignment.status === 'DRAFT' ? 'Preparing' : 'Issued'}
+                                                </div>
+                                            </div>
+                                            <div className="rounded-lg border border-white/70 bg-white/70 px-3 py-3">
+                                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Cohort</div>
+                                                <div className="mt-1 text-sm font-semibold text-gray-900">
+                                                    {activePreparedAssignment.cohort_name}
+                                                </div>
+                                            </div>
+                                            <div className="rounded-lg border border-white/70 bg-white/70 px-3 py-3">
+                                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Subject</div>
+                                                <div className="mt-1 text-sm font-semibold text-gray-900">
+                                                    {activePreparedAssignment.subject_name}
+                                                </div>
+                                            </div>
+                                            <div className="rounded-lg border border-white/70 bg-white/70 px-3 py-3">
+                                                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">Workspace</div>
+                                                <div className="mt-1 text-sm font-semibold text-gray-900">
+                                                    Class assignments
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex w-full flex-col gap-2 lg:w-auto">
+                                        {preparedAssignmentDetailHref ? (
+                                            <Link href={preparedAssignmentDetailHref} className="w-full lg:w-auto">
+                                                <Button className="w-full lg:w-auto">
+                                                    Open assignment
+                                                </Button>
+                                            </Link>
+                                        ) : null}
+                                        {preparedAssignmentWorkspaceHref ? (
+                                            <Link href={preparedAssignmentWorkspaceHref} className="w-full lg:w-auto">
+                                                <Button variant="secondary" className="w-full lg:w-auto">
+                                                    View in assignment workspace
+                                                </Button>
+                                            </Link>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
                         ) : null}

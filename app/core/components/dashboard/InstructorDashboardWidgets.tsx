@@ -22,6 +22,7 @@ import type {
     TeachingCohortSummary,
 } from '@/app/core/types/academic';
 import type { InstructorMetrics } from '@/app/core/hooks/useInstructorDashboard';
+import type { AssessmentScore } from '@/app/core/types/assessment';
 import type { DashboardAlert } from '@/app/core/hooks/useAdminDashboard';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 
@@ -556,13 +557,16 @@ export function InstructorQuickActions({ needsGrading, todayLessons }: Instructo
 interface AssessmentsSummaryCardProps {
     needsGrading: number;
     upcomingAssessments: number;
+    pendingReviewRows: AssessmentScore[];
 }
 
 export function AssessmentsSummaryCard({
     needsGrading,
     upcomingAssessments,
+    pendingReviewRows,
 }: AssessmentsSummaryCardProps) {
     const router = useRouter();
+    const previewRows = pendingReviewRows.slice(0, 4);
 
     return (
         <div className={dashboardCardClass}>
@@ -596,13 +600,65 @@ export function AssessmentsSummaryCard({
                     </p>
                 </button>
             </div>
+            <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold theme-text">Review queue</p>
+                    {needsGrading > previewRows.length ? (
+                        <span className="text-xs theme-muted">
+                            Showing {previewRows.length} of {needsGrading}
+                        </span>
+                    ) : null}
+                </div>
+                {previewRows.length > 0 ? (
+                    <div className="space-y-2">
+                        {previewRows.map((score) => (
+                            <button
+                                key={score.id}
+                                type="button"
+                                onClick={() => router.push(`/assessments/${score.assessment}?focus=score-entry&student=${score.student}`)}
+                                className="w-full rounded-xl border theme-border bg-white/70 px-4 py-3 text-left transition-all hover:scale-[1.01] hover:shadow-sm"
+                            >
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold theme-text">
+                                            {score.student_name}
+                                        </p>
+                                        <p className="truncate text-xs theme-muted">
+                                            {score.assessment_name}
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                                        {score.status_display || 'Pending review'}
+                                    </span>
+                                </div>
+                                <p className="mt-2 text-xs theme-muted">
+                                    {score.score == null && score.rubric_level == null
+                                        ? 'Score, rubric level, or review status still needs to be recorded.'
+                                        : 'Open this learner row to finish the review.'}
+                                </p>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="rounded-xl border theme-border bg-white/70 px-4 py-3 text-sm theme-muted">
+                        No learner rows are waiting for review right now.
+                    </div>
+                )}
+            </div>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <button
                     type="button"
-                    onClick={() => router.push('/assessments?status=pending')}
+                    onClick={() => {
+                        const firstPendingRow = previewRows[0];
+                        if (firstPendingRow) {
+                            router.push(`/assessments/${firstPendingRow.assessment}?focus=score-entry&student=${firstPendingRow.student}`);
+                            return;
+                        }
+                        router.push('/assessments');
+                    }}
                     className="theme-focus-ring theme-button-primary w-full rounded-lg px-4 py-2 text-sm font-semibold sm:w-auto"
                 >
-                    Grade work
+                    {previewRows.length > 0 ? 'Review now' : 'Open assessments'}
                 </button>
                 <button
                     type="button"

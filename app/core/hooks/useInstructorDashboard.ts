@@ -16,7 +16,11 @@ import {
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import { useInstructorAttendanceRisk } from '@/app/core/hooks/useInstructorAttendanceRisk';
 import type { Session } from '@/app/core/types/session';
-import type { AssessmentReviewSummary, AssessmentScoreStatus } from '@/app/core/types/assessment';
+import type {
+    AssessmentReviewSummary,
+    AssessmentScore,
+    AssessmentScoreStatus,
+} from '@/app/core/types/assessment';
 import type {
     TeachingAssignment,
     HistoryEntry,
@@ -243,7 +247,14 @@ export function useInstructorDashboard() {
     const { assessments, loading: assessmentsLoading, refetch: refetchAssessments } = useAssessments({
         term: currentTerm?.id,
     });
-    const { scores, loading: scoresLoading } = useAssessmentScores();
+    const {
+        scores,
+        loading: scoresLoading,
+        refetch: refetchScores,
+    } = useAssessmentScores({
+        assessment__term: currentTerm?.id,
+        page_size: 200,
+    });
     const {
         summary: reviewSummary,
         loading: reviewSummaryLoading,
@@ -291,6 +302,21 @@ export function useInstructorDashboard() {
         () => generateInstructorAlerts(metrics),
         [metrics]
     );
+    const pendingReviewRows = useMemo<AssessmentScore[]>(() => (
+        scores
+            .filter((score) => (
+                score.is_pending_review
+                || (
+                    score.score == null
+                    && score.rubric_level == null
+                    && score.status === 'PENDING_REVIEW'
+                )
+            ))
+            .sort((left, right) => (
+                left.assessment_name.localeCompare(right.assessment_name)
+                || left.student_name.localeCompare(right.student_name)
+            ))
+    ), [scores]);
 
     const loadTeachingLoad = useCallback(async (showLoadingState = false) => {
         if (showLoadingState) {
@@ -329,6 +355,7 @@ export function useInstructorDashboard() {
             refetchStudents(),
             refetchSessions(),
             refetchAssessments(),
+            refetchScores(),
             refetchReviewSummary(),
             refetchAttendanceRisk(),
             loadTeachingLoad(),
@@ -338,6 +365,7 @@ export function useInstructorDashboard() {
         refetchStudents,
         refetchSessions,
         refetchAssessments,
+        refetchScores,
         refetchReviewSummary,
         refetchAttendanceRisk,
         loadTeachingLoad,
@@ -362,5 +390,6 @@ export function useInstructorDashboard() {
         teachingHistory,
         attendanceRiskLoading,
         attendanceRiskError,
+        pendingReviewRows,
     };
 }

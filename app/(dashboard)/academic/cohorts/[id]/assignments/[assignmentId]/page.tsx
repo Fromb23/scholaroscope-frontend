@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -17,6 +17,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { Select } from '@/app/components/ui/Select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
@@ -27,6 +28,7 @@ import { AssignmentGroupsPanel } from '@/app/core/components/assignments/Assignm
 import { AssignmentPublishModal } from '@/app/core/components/assignments/AssignmentPublishModal';
 import { AssignmentReviewForm } from '@/app/core/components/assignments/AssignmentReviewForm';
 import { AssignmentGroupSubmissionsPanel } from '@/app/core/components/assignments/AssignmentGroupSubmissionsPanel';
+import { AssignmentRecordResponsePanel } from '@/app/core/components/assignments/AssignmentRecordResponsePanel';
 import {
     getAssignmentDeliveryBadgeVariant,
     getAssignmentDeliveryLabel,
@@ -139,6 +141,11 @@ export default function CohortAssignmentDetailPage() {
     const [confirmAction, setConfirmAction] = useState<AssignmentLifecycleAction | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [recordResponsePanelOpen, setRecordResponsePanelOpen] = useState(false);
+    const [selectedReviewSubmissionId, setSelectedReviewSubmissionId] = useState<number | null>(null);
+    const [reviewPanelManuallyHidden, setReviewPanelManuallyHidden] = useState(false);
+    const responseWorkflowRef = useRef<HTMLDivElement | null>(null);
+    const reviewWorkflowRef = useRef<HTMLDivElement | null>(null);
 
     const accessLoading = authLoading || (isInstructor && instructorAccess.isLoading);
     const allowed = !user
@@ -164,6 +171,7 @@ export default function CohortAssignmentDetailPage() {
         assignment,
         loading: assignmentLoading,
         error: assignmentError,
+        refetch: refetchAssignment,
     } = useAssignmentDetail(isValidRoute ? assignmentId : null, {
         enabled: isValidRoute,
     });
@@ -215,12 +223,44 @@ export default function CohortAssignmentDetailPage() {
     const evaluationBySubmissionId = useMemo(() => (
         new Map(evaluationsQuery.evaluations.map((evaluation) => [evaluation.submission, evaluation]))
     ), [evaluationsQuery.evaluations]);
+    const reviewableSubmissions = useMemo(() => (
+        [...submissionsQuery.submissions].sort((left, right) => (
+            new Date(right.submitted_at).getTime() - new Date(left.submitted_at).getTime()
+        ))
+    ), [submissionsQuery.submissions]);
+    const pendingReviewSubmissions = useMemo(() => (
+        reviewableSubmissions.filter((submission) => !evaluationBySubmissionId.has(submission.id))
+    ), [evaluationBySubmissionId, reviewableSubmissions]);
+    const selectedReviewSubmission = useMemo(() => (
+        reviewableSubmissions.find((submission) => submission.id === selectedReviewSubmissionId)
+        ?? pendingReviewSubmissions[0]
+        ?? reviewableSubmissions[0]
+        ?? null
+    ), [pendingReviewSubmissions, reviewableSubmissions, selectedReviewSubmissionId]);
+    const selectedReviewEvaluation = selectedReviewSubmission
+        ? evaluationBySubmissionId.get(selectedReviewSubmission.id) ?? null
+        : null;
     const isGroupAssignment = assignment?.delivery_mode === 'GROUP';
     const participatingCohortCount = useMemo(
         () => getAssignmentParticipatingCohortCount(assignment?.curriculum_context),
         [assignment?.curriculum_context]
     );
     const showSessionScopeNote = Boolean(assignment && usesExpandedSessionScope(assignment));
+    const lessonPlanReturnHref = !assignment?.lesson_plan
+        ? null
+        : assignmentsHref.startsWith('/lesson-plans/')
+            ? assignmentsHref
+            : `/lesson-plans/${assignment.lesson_plan}?${new URLSearchParams({
+                section: 'learner-task',
+                highlightAssignment: String(assignment.id),
+            }).toString()}`;
+    const lifecycleSupplementaryActions = lessonPlanReturnHref && assignment?.status === 'DRAFT'
+        ? [{
+            key: 'back-to-lesson-preparation',
+            label: 'Back to lesson preparation',
+            href: lessonPlanReturnHref,
+        }]
+        : [];
     const detailTabs = useMemo<Array<{ value: DetailTab; label: string }>>(() => (
         isGroupAssignment
             ? [
@@ -249,6 +289,35 @@ export default function CohortAssignmentDetailPage() {
 
         setActiveTab('overview');
     }, [activeTab, detailTabs]);
+
+    useEffect(() => {
+        if (isGroupAssignment) {
+            setSelectedReviewSubmissionId(null);
+            setRecordResponsePanelOpen(false);
+            setReviewPanelManuallyHidden(false);
+            return;
+        }
+
+        if (selectedReviewSubmissionId == null) {
+            if (!reviewPanelManuallyHidden && pendingReviewSubmissions.length > 0) {
+                setSelectedReviewSubmissionId(pendingReviewSubmissions[0].id);
+            }
+            return;
+        }
+
+        const submissionStillExists = reviewableSubmissions.some(
+            (submission) => submission.id === selectedReviewSubmissionId
+        );
+        if (!submissionStillExists) {
+            setSelectedReviewSubmissionId(pendingReviewSubmissions[0]?.id ?? null);
+        }
+    }, [
+        isGroupAssignment,
+        pendingReviewSubmissions,
+        reviewPanelManuallyHidden,
+        reviewableSubmissions,
+        selectedReviewSubmissionId,
+    ]);
 
     if (!isValidRoute) {
         return (
@@ -305,9 +374,9 @@ export default function CohortAssignmentDetailPage() {
         try {
             await closeMutation.mutateAsync(assignment.id);
             setConfirmAction(null);
-            setSuccessMessage('Learner work finished.');
+            setSuccessMessage('Learner work closed.');
         } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to finish learner work.');
+            setActionError(err instanceof Error ? err.message : 'Failed to close learner work.');
         }
     };
 
@@ -364,6 +433,94 @@ export default function CohortAssignmentDetailPage() {
         }
     };
 
+    const scrollWorkflowPanel = (panelRef: RefObject<HTMLDivElement | null>) => {
+        window.setTimeout(() => {
+            panelRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }, 80);
+    };
+
+    const openRecordResponsePanel = () => {
+        if (isGroupAssignment) {
+            setActiveTab('group-submissions');
+            return;
+        }
+
+        setActionError(null);
+        setSuccessMessage(null);
+        setActiveTab('submissions');
+        setRecordResponsePanelOpen(true);
+        setReviewPanelManuallyHidden(false);
+        scrollWorkflowPanel(responseWorkflowRef);
+    };
+
+    const openReviewWorkflow = (submissionId?: number | null) => {
+        if (isGroupAssignment) {
+            setActiveTab('group-evaluations');
+            return;
+        }
+
+        const nextSubmissionId = submissionId
+            ?? pendingReviewSubmissions[0]?.id
+            ?? reviewableSubmissions[0]?.id
+            ?? null;
+
+        setActionError(null);
+        setSuccessMessage(null);
+        setRecordResponsePanelOpen(false);
+        setReviewPanelManuallyHidden(false);
+        setSelectedReviewSubmissionId(nextSubmissionId);
+        setActiveTab('submissions');
+        scrollWorkflowPanel(reviewWorkflowRef);
+    };
+
+    const handleResponseSaved = async (submissionId: number) => {
+        await Promise.all([
+            refetchAssignment(),
+            lifecycleQuery.refetch(),
+            recipientsQuery.refetch(),
+            submissionsQuery.refetch(),
+            evaluationsQuery.refetch(),
+        ]);
+        setRecordResponsePanelOpen(false);
+        setReviewPanelManuallyHidden(false);
+        setSelectedReviewSubmissionId(submissionId);
+        setSuccessMessage('Learner response recorded. Review it below.');
+        setActiveTab('submissions');
+        scrollWorkflowPanel(reviewWorkflowRef);
+    };
+
+    const handleReviewSaved = async () => {
+        const [
+            ,
+            ,
+            ,
+            submissionsResult,
+            evaluationsResult,
+        ] = await Promise.all([
+            refetchAssignment(),
+            lifecycleQuery.refetch(),
+            recipientsQuery.refetch(),
+            submissionsQuery.refetch(),
+            evaluationsQuery.refetch(),
+        ]);
+
+        const refreshedSubmissions = submissionsResult.data ?? [];
+        const refreshedEvaluations = new Set(
+            (evaluationsResult.data ?? []).map((evaluation) => evaluation.submission)
+        );
+        const nextPendingSubmission = refreshedSubmissions.find(
+            (submission) => !refreshedEvaluations.has(submission.id)
+        ) ?? refreshedSubmissions.find((submission) => submission.id === selectedReviewSubmission?.id)
+            ?? refreshedSubmissions[0]
+            ?? null;
+
+        setSelectedReviewSubmissionId(nextPendingSubmission?.id ?? null);
+        setSuccessMessage('Learner response reviewed.');
+    };
+
     const lifecycleState = lifecycleQuery.lifecycleState;
     const pendingLifecycleAction: AssignmentLifecycleAction | null = deleteMutation.isPending
         ? 'DELETE_DRAFT'
@@ -404,10 +561,10 @@ export default function CohortAssignmentDetailPage() {
                 openPublishModal('add_learners');
                 break;
             case 'RECORD_SUBMISSION':
-                setActiveTab(isGroupAssignment ? 'group-submissions' : 'submissions');
+                openRecordResponsePanel();
                 break;
             case 'REVIEW_WORK':
-                setActiveTab(isGroupAssignment ? 'group-evaluations' : 'submissions');
+                openReviewWorkflow();
                 break;
             case 'RECORD_EVIDENCE':
                 setActiveTab(isGroupAssignment ? 'group-evaluations' : 'evaluations');
@@ -427,7 +584,7 @@ export default function CohortAssignmentDetailPage() {
     };
 
     const confirmTitle = confirmAction === 'FINISH_LEARNER_WORK'
-        ? 'Finish learner work?'
+        ? 'Close learner work?'
         : confirmAction === 'STORE_RECORD'
             ? 'Store assignment record?'
             : confirmAction === 'RESTORE_TO_REVIEW'
@@ -445,7 +602,7 @@ export default function CohortAssignmentDetailPage() {
                     ? 'Learners may continue submitting or participating. Use this only if the work period was closed too early.'
                     : '';
     const confirmLabel = confirmAction === 'FINISH_LEARNER_WORK'
-        ? 'Finish learner work'
+        ? 'Close learner work'
         : confirmAction === 'STORE_RECORD'
             ? 'Store assignment record'
             : confirmAction === 'RESTORE_TO_REVIEW'
@@ -454,7 +611,7 @@ export default function CohortAssignmentDetailPage() {
                     ? 'Reopen learner work'
                     : '';
     const confirmPendingLabel = confirmAction === 'FINISH_LEARNER_WORK'
-        ? 'Finishing learner work...'
+        ? 'Closing learner work...'
         : confirmAction === 'STORE_RECORD'
             ? 'Storing record...'
             : confirmAction === 'RESTORE_TO_REVIEW'
@@ -558,6 +715,7 @@ export default function CohortAssignmentDetailPage() {
                         onAction={handleLifecycleAction}
                         pendingAction={pendingLifecycleAction}
                         disabled={Boolean(pendingLifecycleAction)}
+                        supplementaryActions={lifecycleSupplementaryActions}
                     />
                 ) : null
             ) : null}
@@ -860,6 +1018,93 @@ export default function CohortAssignmentDetailPage() {
 
             {activeTab === 'submissions' && !isGroupAssignment ? (
                 <div className="space-y-4">
+                    {canManageAssignments && recordResponsePanelOpen ? (
+                        <div ref={responseWorkflowRef}>
+                            <AssignmentRecordResponsePanel
+                                assignment={assignment}
+                                recipients={recipientsQuery.recipients}
+                                submissions={submissionsQuery.submissions}
+                                onClose={() => setRecordResponsePanelOpen(false)}
+                                onSaved={async (submission) => {
+                                    await handleResponseSaved(submission.id);
+                                }}
+                            />
+                        </div>
+                    ) : null}
+
+                    {canManageAssignments && !recordResponsePanelOpen && selectedReviewSubmission ? (
+                        <div ref={reviewWorkflowRef}>
+                            <Card className="theme-info-surface space-y-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="space-y-1">
+                                        <h2 className="text-lg font-semibold theme-text">Review / mark response</h2>
+                                        <p className="text-sm theme-muted">
+                                            {selectedReviewEvaluation
+                                                ? 'Update the saved review or feedback for this learner response.'
+                                                : 'This is the next safe step after recording learner work.'}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full sm:w-auto"
+                                        onClick={() => {
+                                            setReviewPanelManuallyHidden(true);
+                                            setSelectedReviewSubmissionId(null);
+                                        }}
+                                    >
+                                        Hide review panel
+                                    </Button>
+                                </div>
+
+                                <div className="grid gap-4 lg:grid-cols-2">
+                                    <Select
+                                        label="Learner response"
+                                        value={selectedReviewSubmission ? String(selectedReviewSubmission.id) : ''}
+                                        onChange={(event) => {
+                                            setReviewPanelManuallyHidden(false);
+                                            setSelectedReviewSubmissionId(Number(event.target.value));
+                                        }}
+                                        options={reviewableSubmissions.map((submission) => ({
+                                            value: String(submission.id),
+                                            label: `${submission.student_name} · ${
+                                                evaluationBySubmissionId.has(submission.id) ? 'Reviewed' : 'Needs review'
+                                            } · ${formatDateTime(submission.submitted_at)}`,
+                                        }))}
+                                    />
+                                    <div className="rounded-lg border theme-border bg-white/80 px-4 py-3 text-sm">
+                                        <div className="font-medium theme-text">
+                                            {selectedReviewEvaluation ? 'Reviewed response' : 'Awaiting review'}
+                                        </div>
+                                        <div className="mt-1 theme-muted">
+                                            {selectedReviewSubmission.student_name}
+                                            {selectedReviewSubmission.is_late ? ' · Late response' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 rounded-lg border theme-border bg-white/80 p-4">
+                                    <div className="text-sm font-medium theme-text">Recorded response</div>
+                                    <p className="whitespace-pre-wrap text-sm leading-6 theme-muted">
+                                        {selectedReviewSubmission.text_response || 'No text response submitted.'}
+                                    </p>
+                                    <p className="text-xs theme-muted">
+                                        Submitted {formatDateTime(selectedReviewSubmission.submitted_at)} · Attachments {selectedReviewSubmission.attachment_metadata.length}
+                                    </p>
+                                </div>
+
+                                <AssignmentReviewForm
+                                    assignment={assignment}
+                                    submission={selectedReviewSubmission}
+                                    evaluation={selectedReviewEvaluation}
+                                    rubricLevels={rubricScaleQuery.scale?.levels ?? []}
+                                    onSaved={handleReviewSaved}
+                                />
+                            </Card>
+                        </div>
+                    ) : null}
+
                     {submissionsQuery.loading ? (
                         <Card>
                             <LoadingSpinner fullScreen={false} message="Loading submissions..." />
@@ -867,11 +1112,11 @@ export default function CohortAssignmentDetailPage() {
                     ) : submissionsQuery.submissions.length === 0 ? (
                         <Card>
                             <div className="py-10 text-center text-sm theme-muted">
-                                No learner submissions have been recorded yet.
+                                No learner responses have been recorded yet.
                             </div>
                         </Card>
                     ) : (
-                        submissionsQuery.submissions.map((submission) => {
+                        reviewableSubmissions.map((submission) => {
                             const recipient = recipientByStudentId.get(submission.student) ?? null;
                             const evaluation = evaluationBySubmissionId.get(submission.id) ?? null;
 
@@ -922,12 +1167,16 @@ export default function CohortAssignmentDetailPage() {
                                         </div>
 
                                         {canManageAssignments ? (
-                                            <AssignmentReviewForm
-                                                assignment={assignment}
-                                                submission={submission}
-                                                evaluation={evaluation}
-                                                rubricLevels={rubricScaleQuery.scale?.levels ?? []}
-                                            />
+                                            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                                <Button
+                                                    type="button"
+                                                    variant={evaluation ? 'secondary' : 'primary'}
+                                                    className="w-full sm:w-auto"
+                                                    onClick={() => openReviewWorkflow(submission.id)}
+                                                >
+                                                    {evaluation ? 'Update review' : 'Review / mark response'}
+                                                </Button>
+                                            </div>
                                         ) : null}
                                     </div>
                                 </Card>

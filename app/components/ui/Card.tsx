@@ -2,25 +2,25 @@
 // components/ui/Card.tsx - Reusable Card Component
 // ============================================================================
 
-import { ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
-interface CardProps {
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
 }
 
-export function Card({ children, className = '' }: CardProps) {
-  return <div className={`theme-card rounded-lg p-6 ${className}`}>{children}</div>;
+export function Card({ children, className = '', ...props }: CardProps) {
+  return <div className={`theme-card rounded-lg p-6 ${className}`} {...props}>{children}</div>;
 }
 
-export function CardHeader({ children, className = '' }: CardProps) {
-  return <div className={`mb-4 ${className}`}>{children}</div>;
+export function CardHeader({ children, className = '', ...props }: CardProps) {
+  return <div className={`mb-4 ${className}`} {...props}>{children}</div>;
 }
 
-export function CardTitle({ children, className = '' }: CardProps) {
-  return <h3 className={`text-lg font-semibold theme-text ${className}`}>{children}</h3>;
+export function CardTitle({ children, className = '', ...props }: CardProps) {
+  return <h3 className={`text-lg font-semibold theme-text ${className}`} {...props}>{children}</h3>;
 }
 
-export function CardContent({ children, className = '' }: CardProps) {
-  return <div className={className}>{children}</div>;
+export function CardContent({ children, className = '', ...props }: CardProps) {
+  return <div className={className} {...props}>{children}</div>;
 }

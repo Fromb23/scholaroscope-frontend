@@ -67,18 +67,23 @@ export function AssignmentCard({
     assignment,
     detailHref,
     onEdit,
+    highlighted = false,
 }: {
     assignment: Assignment;
     detailHref: string;
     onEdit: (assignment: Assignment) => void;
+    highlighted?: boolean;
 }) {
     const dueState = getDueState(assignment);
     const progressSummary = getProgressSummary(assignment);
 
     return (
         <Card
+            id={`assignment-${assignment.id}`}
             className={`p-4 sm:p-5 ${
-                assignment.status === 'ARCHIVED'
+                highlighted
+                    ? 'border-blue-300 bg-blue-50/50 shadow-sm'
+                    : assignment.status === 'ARCHIVED'
                     ? 'border-purple-200 bg-purple-50/40'
                     : assignment.status === 'DRAFT'
                         ? 'border-dashed'
@@ -88,6 +93,11 @@ export function AssignmentCard({
             <div className="space-y-4">
                 <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
+                        {highlighted ? (
+                            <Badge variant="blue" size="sm">
+                                Prepared from lesson
+                            </Badge>
+                        ) : null}
                         <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)} size="sm">
                             {getAssignmentStatusLabel(assignment.status)}
                         </Badge>

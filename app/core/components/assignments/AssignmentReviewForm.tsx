@@ -21,6 +21,7 @@ interface AssignmentReviewFormProps {
     submission: AssignmentSubmission;
     evaluation?: AssignmentEvaluation | null;
     rubricLevels?: RubricLevel[];
+    onSaved?: () => void | Promise<void>;
 }
 
 function buildRubricOptions(rubricLevels: RubricLevel[]) {
@@ -48,6 +49,7 @@ export function AssignmentReviewForm({
     submission,
     evaluation = null,
     rubricLevels = [],
+    onSaved,
 }: AssignmentReviewFormProps) {
     const createMutation = useCreateAssignmentEvaluation();
     const updateMutation = useUpdateAssignmentEvaluation();
@@ -140,6 +142,7 @@ export function AssignmentReviewForm({
                 await createMutation.mutateAsync(payload as AssignmentEvaluationCreatePayload);
                 setSuccessMessage('Review saved.');
             }
+            await onSaved?.();
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'Failed to save review.');
         }
@@ -149,9 +152,9 @@ export function AssignmentReviewForm({
         <div className="space-y-4 rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-900">Review</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">Review / mark response</h3>
                     <p className="text-sm text-gray-500">
-                        Save feedback using the assignment&apos;s evaluation mode.
+                        Save marks, rubric decisions, competency judgments, or feedback using the assignment&apos;s evaluation mode.
                     </p>
                 </div>
                 {evaluation?.evaluated_at ? (
@@ -222,7 +225,7 @@ export function AssignmentReviewForm({
                     disabled={saving}
                     className="w-full sm:w-auto"
                 >
-                    {saving ? 'Saving evaluation...' : 'Save evaluation'}
+                    {saving ? 'Saving review...' : 'Save review'}
                 </Button>
             </div>
         </div>
