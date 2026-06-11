@@ -257,7 +257,6 @@ export default function LearnerDetailPage() {
     );
     const currentCohortId = currentEnrollment?.cohort ?? null;
     const currentCohortName = currentEnrollment?.cohort_name ?? null;
-    const subjectRegistrationLocked = currentEnrollment?.subject_registration_status === 'LOCKED';
     const { subjects: cohortSubjects, loading: cohortSubjectsLoading } = useCohortSubjectsByCohort(currentCohortId);
     const currentSubjectIds = useMemo(
         () => new Set((student?.current_subjects ?? []).map(subject => subject.id)),
@@ -562,8 +561,8 @@ export default function LearnerDetailPage() {
         ? `${student.primary_cohort_name} · ${student.primary_curriculum ?? 'Curriculum not set'}`
         : 'No primary cohort assigned';
     const subjectParticipationSummary = currentCohortName
-        ? `${currentSubjectIds.size} current subject${currentSubjectIds.size === 1 ? '' : 's'} in ${currentCohortName}`
-        : 'No current cohort linked for subject participation';
+        ? `${currentSubjectIds.size} enrolled cohort subject${currentSubjectIds.size === 1 ? '' : 's'} in ${currentCohortName}`
+        : 'Assign this learner to a cohort before managing subject participation.';
     const attendanceSummary = attendanceData?.statistics
         ? `${attendanceData.statistics.attendance_percentage.toFixed(1)}% attendance rate`
         : 'No attendance summary recorded';
@@ -879,39 +878,41 @@ export default function LearnerDetailPage() {
 
             <LearnerSectionCard
                 sectionId="learner-section-subjectParticipation"
-                title="Subject Participation"
+                title="Cohort Subject Participation"
                 summary={subjectParticipationSummary}
                 open={sectionState.subjectParticipation}
                 onToggle={() => toggleSection('subjectParticipation')}
             >
                 <div className="space-y-4">
-                    {subjectRegistrationLocked ? (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                            Subject registration is locked.
-                            {currentEnrollment?.lock_reason ? ` ${currentEnrollment.lock_reason}` : ' Use pathway transfer/reclassification for non-core subject changes.'}
-                        </div>
-                    ) : null}
-
                     {!currentCohortId ? (
                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
-                            {canManageSubjectParticipation
-                                ? 'Assign this learner to a cohort before managing subject participation.'
-                                : 'This learner must be assigned to a cohort before subject participation can be shown.'}
+                            Assign this learner to a cohort before managing subject participation.
                         </div>
-                    ) : cohortSubjectsLoading ? (
+                    ) : (
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                            <p>
+                                This learner belongs to {currentCohortName ?? 'this cohort'}. These are the subjects offered by this cohort.
+                                The learner can only participate in these subjects.
+                            </p>
+                            <p className="mt-2">
+                                To assign another subject, move the learner to a cohort where that subject is offered, or add the subject to this cohort.
+                            </p>
+                        </div>
+                    )}
+
+                    {!currentCohortId ? null : cohortSubjectsLoading ? (
                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
-                            Loading subject offerings for {currentCohortName ?? 'the current cohort'}...
+                            Loading subjects offered by {currentCohortName ?? 'the current cohort'}...
                         </div>
                     ) : cohortSubjects.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">
-                            {canManageSubjectParticipation
-                                ? `No subjects are linked to ${currentCohortName ?? 'this cohort'} yet.`
-                                : `No subject offerings are linked to ${currentCohortName ?? 'this cohort'} yet.`}
+                            No subjects have been added to this cohort yet.
                         </div>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2">
                             {cohortSubjects.map((subject) => {
                                 const isParticipating = currentSubjectIds.has(subject.id);
+                                const isRequired = subject.is_compulsory || subject.subject_category === 'CORE' || subject.locked;
 
                                 return (
                                     <div key={subject.id} className="rounded-xl border border-gray-200 p-4">
@@ -923,23 +924,17 @@ export default function LearnerDetailPage() {
                                                     <Badge variant={isParticipating ? 'default' : 'warning'}>
                                                         {isParticipating ? 'Participating' : 'Not Participating'}
                                                     </Badge>
-                                                    {subject.subject_category === 'CORE' || subject.locked ? (
-                                                        <Badge variant="info">Core — global</Badge>
-                                                    ) : null}
-                                                    {subject.subject_category === 'PATHWAY_COMBINATION' ? (
-                                                        <Badge variant="success">Pathway</Badge>
-                                                    ) : null}
+                                                    <Badge variant="success">Offered in cohort</Badge>
+                                                    {isRequired ? <Badge variant="info">Required</Badge> : null}
                                                 </div>
                                                 <p className="text-sm text-gray-500">
                                                     {canManageSubjectParticipation
-                                                        ? subjectRegistrationLocked && !subject.locked
-                                                            ? 'Subject registration is locked. Use pathway transfer/reclassification.'
-                                                            : isParticipating
-                                                            ? 'This learner is currently enrolled in the cohort subject.'
-                                                            : 'Open the cohort subject learner page to add this learner to the subject offering.'
+                                                        ? isParticipating
+                                                            ? 'This learner is enrolled in this cohort subject.'
+                                                            : 'Add this learner to this cohort subject from the subject learner page.'
                                                         : isParticipating
-                                                            ? 'This learner is currently participating in this subject offering.'
-                                                            : 'This learner is not currently participating in this subject offering.'}
+                                                            ? 'This learner is enrolled in this cohort subject.'
+                                                            : 'This learner is not enrolled in this cohort subject.'}
                                                 </p>
                                             </div>
 
@@ -963,34 +958,34 @@ export default function LearnerDetailPage() {
 
                     {student.current_subjects && student.current_subjects.length > 0 ? (
                         <div className="space-y-3 border-t border-gray-200 pt-4">
-                            <h3 className="text-base font-semibold text-gray-900">Current Subjects</h3>
+                            <h3 className="text-base font-semibold text-gray-900">Enrolled Cohort Subjects</h3>
                             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                {student.current_subjects.map(subject => (
-                                    <div key={`${subject.cohort}-${subject.id}`} className="rounded-lg border border-gray-200 p-3">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <p className="font-medium text-gray-900">{subject.code} — {subject.name}</p>
-                                                <p className="mt-1 text-xs text-gray-500">{subject.cohort}</p>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-2">
-                                                {subject.subject_category === 'CORE' || subject.locked ? (
-                                                    <Badge variant="info" size="sm">Core — global</Badge>
-                                                ) : subject.subject_category === 'PATHWAY_COMBINATION' ? (
-                                                    <Badge variant="success" size="sm">Pathway</Badge>
-                                                ) : null}
-                                                {subject.locked ? <Badge variant="warning" size="sm">Locked</Badge> : null}
-                                                {canGenerateSubjectReport && reportableSubjectScopeIds.has(subject.id) ? (
-                                                    <Link href={buildLearnerSubjectReportHref(studentId, subject.id, { returnTo: reportReturnTo })}>
-                                                        <Button variant="ghost" size="sm">
-                                                            <FileBarChart className="h-4 w-4" />
-                                                            Subject Report
-                                                        </Button>
-                                                    </Link>
-                                                ) : null}
+                                {student.current_subjects.map(subject => {
+                                    const isRequired = subject.is_compulsory || subject.subject_category === 'CORE' || subject.locked;
+
+                                    return (
+                                        <div key={`${subject.cohort}-${subject.id}`} className="rounded-lg border border-gray-200 p-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="font-medium text-gray-900">{subject.code} — {subject.name}</p>
+                                                    <p className="mt-1 text-xs text-gray-500">{subject.cohort}</p>
+                                                </div>
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <Badge variant="success" size="sm">Offered in cohort</Badge>
+                                                    {isRequired ? <Badge variant="info" size="sm">Required</Badge> : null}
+                                                    {canGenerateSubjectReport && reportableSubjectScopeIds.has(subject.id) ? (
+                                                        <Link href={buildLearnerSubjectReportHref(studentId, subject.id, { returnTo: reportReturnTo })}>
+                                                            <Button variant="ghost" size="sm">
+                                                                <FileBarChart className="h-4 w-4" />
+                                                                Subject Report
+                                                            </Button>
+                                                        </Link>
+                                                    ) : null}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : null}
