@@ -261,7 +261,7 @@ function ReadOnlyLearnerTable({ learners }: { learners: StudentSummary[] }) {
 function buildEnrollResultMessage(result: BulkSubjectEnrollResponse) {
     const base = `Enroll processed: ${result.processed}. Created ${result.created}, reactivated ${result.reactivated}, already active ${result.already_active}, rejected ${result.rejected}.`;
     if (result.rejected > 0) {
-        return `${base} Rejected learners may be outside the active CBC combination or have locked subject registration.`;
+        return `${base} Rejected learners were not active in this cohort. Move them to this cohort first if they should participate here.`;
     }
     return base;
 }
@@ -608,7 +608,7 @@ export default function CohortSubjectLearnersPage() {
                             {instructorView
                                 ? 'This is a read-only learner list for your assigned cohort subject.'
                                 : coreLockedSubject
-                                    ? 'This screen shows a core CBC subject. Core learner participation is locked as a global curriculum requirement.'
+                                    ? 'This screen shows a required cohort subject. Learner participation in this subject cannot be removed here.'
                                     : 'This screen manages explicit subject participation. It does not add or remove learners from the parent cohort.'}
                         </p>
                     </div>
