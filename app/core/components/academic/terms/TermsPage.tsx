@@ -54,6 +54,8 @@ interface TermCalendarEventFormState {
     notes: string;
 }
 
+type ThemeBadgeTone = 'success' | 'warning' | 'danger' | 'info' | 'default';
+
 const TERM_CALENDAR_EVENT_TYPE_OPTIONS: Array<{ value: TermCalendarEventType; label: string }> = [
     { value: 'ENTRY_EXAM', label: 'Entry exam' },
     { value: 'MIDTERM_EXAM', label: 'Midterm exam' },
@@ -102,22 +104,37 @@ function getTermCalendarEventTypeLabel(eventType: TermCalendarEventType): string
     );
 }
 
-function getTermCalendarEventBadgeVariant(eventType: TermCalendarEventType) {
+function getThemeBadgeClass(tone: ThemeBadgeTone): string {
+    switch (tone) {
+        case 'success':
+            return 'theme-success-surface text-[color:var(--color-success)]';
+        case 'warning':
+            return 'theme-warning-surface text-[color:var(--color-warning)]';
+        case 'danger':
+            return 'theme-danger-surface text-[color:var(--color-danger)]';
+        case 'info':
+            return 'theme-info-surface text-[color:var(--color-primary)]';
+        default:
+            return 'theme-border theme-surface-muted theme-muted';
+    }
+}
+
+function getTermCalendarEventBadgeTone(eventType: TermCalendarEventType): ThemeBadgeTone {
     switch (eventType) {
         case 'HOLIDAY':
         case 'PUBLIC_HOLIDAY':
-            return 'warning' as const;
+            return 'warning';
         case 'MIDTERM_BREAK':
-            return 'orange' as const;
+            return 'warning';
         case 'MIDTERM_EXAM':
         case 'MAIN_EXAM':
         case 'EXIT_EXAM':
         case 'ENTRY_EXAM':
-            return 'info' as const;
+            return 'info';
         case 'SCHOOL_EVENT':
-            return 'purple' as const;
+            return 'info';
         default:
-            return 'default' as const;
+            return 'default';
     }
 }
 
@@ -126,25 +143,25 @@ function getCalendarSetupBadge(term: Term) {
         return {
             label: 'Calendar setup complete',
             helper: 'Schemes can now be generated for this term',
-            variant: 'success' as const,
+            tone: 'success' as const,
         };
     }
 
     return {
         label: 'Calendar setup incomplete',
         helper: 'Finish the term calendar before teachers generate schemes',
-        variant: 'warning' as const,
+        tone: 'warning' as const,
     };
 }
 
 function getTermLifecycleBadge(term: Term) {
     if (isTermActive(term)) {
-        return { label: 'Active', variant: 'green' as const };
+        return { label: 'Active', tone: 'success' as const };
     }
     if (isTermPast(term)) {
-        return { label: 'Ended', variant: 'default' as const };
+        return { label: 'Ended', tone: 'default' as const };
     }
-    return { label: 'Upcoming', variant: 'warning' as const };
+    return { label: 'Upcoming', tone: 'warning' as const };
 }
 
 interface TermCalendarEventModalProps {
@@ -261,7 +278,7 @@ function TermCalendarEventModal({
                     />
                 </div>
 
-                <label className="flex items-start gap-3 rounded-lg border theme-border bg-gray-50 px-4 py-3 text-sm theme-text">
+                <label className="flex items-start gap-3 rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-text">
                     <input
                         type="checkbox"
                         className="theme-checkbox theme-border mt-1 h-4 w-4 rounded"
@@ -282,12 +299,12 @@ function TermCalendarEventModal({
                         value={form.notes}
                         onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
                         rows={4}
-                        className="theme-input min-h-[120px] w-full rounded-lg px-4 py-2"
+                        className="theme-focus-ring theme-input theme-surface-elevated min-h-[120px] w-full rounded-lg px-4 py-2"
                         placeholder="Optional details for teachers"
                     />
                 </div>
 
-                <div className="flex justify-end gap-3 border-t border-gray-100 pt-2">
+                <div className="flex justify-end gap-3 border-t theme-border pt-2">
                     <Button variant="secondary" onClick={onClose} disabled={saving}>
                         Cancel
                     </Button>
@@ -523,8 +540,8 @@ export function TermsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Terms</h1>
-                    <p className="mt-1 text-gray-500">
+                    <h1 className="text-3xl font-bold theme-text">Terms</h1>
+                    <p className="mt-1 theme-muted">
                         {isHistoricalView
                             ? 'Viewing historical terms and their final calendar records.'
                             : 'Manage academic terms and the organization term calendar used for schemes of work.'}
@@ -554,8 +571,8 @@ export function TermsPage() {
                         ]}
                     />
                     {isHistoricalView ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 whitespace-nowrap">
-                            <History className="h-3.5 w-3.5 shrink-0" />
+                        <div className="theme-warning-surface flex items-center gap-2 rounded-lg px-3 py-2 text-xs whitespace-nowrap">
+                            <History className="h-3.5 w-3.5 shrink-0 text-[color:var(--color-warning)]" />
                             Historical view
                         </div>
                     ) : null}
@@ -567,9 +584,9 @@ export function TermsPage() {
                     <LoadingSpinner fullScreen={false} message="Loading terms..." />
                 ) : terms.length === 0 ? (
                     <div className="py-12 text-center">
-                        <Calendar className="mx-auto h-12 w-12 text-gray-300" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No terms found</h3>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <Calendar className="mx-auto h-12 w-12 theme-subtle" />
+                        <h3 className="mt-2 text-sm font-medium theme-text">No terms found</h3>
+                        <p className="mt-1 text-sm theme-muted">
                             {isHistoricalView
                                 ? 'No terms exist for this academic year.'
                                 : 'Create a term to set up the school calendar for schemes of work.'}
@@ -602,32 +619,36 @@ export function TermsPage() {
                                 return (
                                     <TableRow
                                         key={term.id}
-                                        className={selected ? 'bg-blue-50/60' : ''}
+                                        className={selected ? 'theme-info-surface-strong' : ''}
                                     >
                                         <TableCell>
                                             <button
                                                 type="button"
                                                 onClick={() => setSelectedTermId(term.id)}
-                                                className="text-left"
+                                                className="theme-focus-ring block w-full rounded-lg text-left"
                                             >
-                                                <div className="font-medium text-gray-900">{term.name}</div>
-                                                <div className="text-xs text-gray-500">{term.academic_year_name}</div>
+                                                <div className={selected ? 'border-l-4 border-[color:var(--color-primary)] pl-3' : ''}>
+                                                    <div className="font-medium theme-text">{term.name}</div>
+                                                    <div className={`text-xs ${selected ? 'theme-muted' : 'theme-subtle'}`}>
+                                                        {term.academic_year_name}
+                                                    </div>
+                                                </div>
                                             </button>
                                         </TableCell>
-                                        <TableCell className="text-gray-600">
+                                        <TableCell className={selected ? 'theme-text' : 'theme-muted'}>
                                             {formatDate(term.start_date)} to {formatDate(term.end_date)}
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="info">{term.week_count}</Badge>
+                                            <Badge className={getThemeBadgeClass('info')}>{term.week_count}</Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="space-y-1">
-                                                <Badge variant={setupBadge.variant}>{setupBadge.label}</Badge>
-                                                <p className="text-xs text-gray-500">{setupBadge.helper}</p>
+                                                <Badge className={getThemeBadgeClass(setupBadge.tone)}>{setupBadge.label}</Badge>
+                                                <p className={`text-xs ${selected ? 'theme-muted' : 'theme-subtle'}`}>{setupBadge.helper}</p>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={lifecycleBadge.variant}>{lifecycleBadge.label}</Badge>
+                                            <Badge className={getThemeBadgeClass(lifecycleBadge.tone)}>{lifecycleBadge.label}</Badge>
                                         </TableCell>
                                         <TableCell>
                                             {!isHistoricalView && isAdminLike ? (
@@ -636,7 +657,7 @@ export function TermsPage() {
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <Button size="sm" variant="ghost" onClick={() => handleDelete(term)}>
-                                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                                        <Trash2 className="h-4 w-4 text-[color:var(--color-danger)]" />
                                                     </Button>
                                                 </div>
                                             ) : null}
@@ -656,11 +677,11 @@ export function TermsPage() {
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-xl font-semibold theme-text">{selectedTerm.name}</h2>
                                 {selectedTermCalendarBadge ? (
-                                    <Badge variant={selectedTermCalendarBadge.variant}>
+                                    <Badge className={getThemeBadgeClass(selectedTermCalendarBadge.tone)}>
                                         {selectedTermCalendarBadge.label}
                                     </Badge>
                                 ) : null}
-                                <Badge variant={getTermLifecycleBadge(selectedTerm).variant}>
+                                <Badge className={getThemeBadgeClass(getTermLifecycleBadge(selectedTerm).tone)}>
                                     {getTermLifecycleBadge(selectedTerm).label}
                                 </Badge>
                             </div>
@@ -692,22 +713,22 @@ export function TermsPage() {
                     </div>
 
                     {selectedTermCalendarBadge ? (
-                        <div className={`rounded-xl border px-4 py-4 text-sm ${
-                            selectedTermCalendarBadge.variant === 'success'
-                                ? 'border-green-200 bg-green-50 text-green-900'
-                                : 'border-amber-200 bg-amber-50 text-amber-900'
+                        <div className={`rounded-xl px-4 py-4 text-sm ${
+                            selectedTermCalendarBadge.tone === 'success'
+                                ? 'theme-success-surface'
+                                : 'theme-warning-surface'
                         }`}>
                             <div className="flex items-start gap-3">
-                                {selectedTermCalendarBadge.variant === 'success' ? (
-                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                                {selectedTermCalendarBadge.tone === 'success' ? (
+                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-success)]" />
                                 ) : (
-                                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warning)]" />
                                 )}
                                 <div>
-                                    <p className="font-medium">{selectedTermCalendarBadge.label}</p>
-                                    <p className="mt-1">{selectedTermCalendarBadge.helper}</p>
+                                    <p className="font-medium theme-text">{selectedTermCalendarBadge.label}</p>
+                                    <p className="mt-1 theme-muted">{selectedTermCalendarBadge.helper}</p>
                                     {selectedTerm.is_calendar_setup_complete && selectedTerm.calendar_setup_completed_by_name ? (
-                                        <p className="mt-2 text-xs">
+                                        <p className="mt-2 text-xs theme-subtle">
                                             Completed by {selectedTerm.calendar_setup_completed_by_name}
                                             {selectedTerm.calendar_setup_completed_at
                                                 ? ` on ${formatDate(selectedTerm.calendar_setup_completed_at)}`
@@ -720,26 +741,26 @@ export function TermsPage() {
                     ) : null}
 
                     <div className="grid gap-3 md:grid-cols-3">
-                        <div className="rounded-lg bg-gray-50 px-4 py-3">
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Start Date</p>
+                        <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Start Date</p>
                             <p className="mt-1 text-base font-semibold theme-text">{formatDate(selectedTerm.start_date)}</p>
                         </div>
-                        <div className="rounded-lg bg-gray-50 px-4 py-3">
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">End Date</p>
+                        <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">End Date</p>
                             <p className="mt-1 text-base font-semibold theme-text">{formatDate(selectedTerm.end_date)}</p>
                         </div>
-                        <div className="rounded-lg bg-gray-50 px-4 py-3">
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Calculated Weeks</p>
+                        <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Calculated Weeks</p>
                             <p className="mt-1 text-base font-semibold theme-text">{selectedTerm.week_count}</p>
                         </div>
                     </div>
 
                     {!calendarEditable && !calendarReopenable && isAdminLike ? (
-                        <div className="flex items-start gap-3 rounded-xl border theme-border bg-gray-50 px-4 py-4 text-sm theme-text">
+                        <div className="flex items-start gap-3 rounded-xl border theme-border theme-surface-muted px-4 py-4 text-sm theme-text">
                             <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                             <div>
                                 <p className="font-medium">Term calendar locked</p>
-                                <p className="mt-1 theme-subtle">
+                                <p className="mt-1 theme-muted">
                                     {isHistoricalView || isTermPast(selectedTerm)
                                         ? 'Historical terms stay read-only.'
                                         : 'Reopen setup if you need to update the calendar before schemes move further into history.'}
@@ -756,17 +777,17 @@ export function TermsPage() {
                                     These events are used to derive scheme exceptional weeks for every teacher in the term.
                                 </p>
                             </div>
-                            <Badge variant="info">{events.length}</Badge>
+                            <Badge className={getThemeBadgeClass('info')}>{events.length}</Badge>
                         </div>
 
                         {eventsLoading ? (
                             <LoadingSpinner fullScreen={false} message="Loading term calendar..." />
                         ) : eventsError ? (
-                            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900">
+                            <div className="theme-danger-surface rounded-xl px-4 py-4 text-sm">
                                 {eventsError}
                             </div>
                         ) : events.length === 0 ? (
-                            <div className="rounded-xl border theme-border bg-gray-50 px-4 py-6 text-sm theme-subtle">
+                            <div className="rounded-xl border theme-border theme-surface-muted px-4 py-6 text-sm theme-muted">
                                 No calendar events added yet.
                             </div>
                         ) : (
@@ -774,20 +795,20 @@ export function TermsPage() {
                                 {events.map((event) => (
                                     <div
                                         key={event.id}
-                                        className="rounded-xl border theme-border px-4 py-4"
+                                        className="rounded-xl border theme-border theme-surface-elevated px-4 py-4"
                                     >
                                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                                             <div className="min-w-0 space-y-2">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <p className="text-sm font-semibold theme-text">{event.title}</p>
-                                                    <Badge variant={getTermCalendarEventBadgeVariant(event.event_type)}>
+                                                    <Badge className={getThemeBadgeClass(getTermCalendarEventBadgeTone(event.event_type))}>
                                                         {getTermCalendarEventTypeLabel(event.event_type)}
                                                     </Badge>
-                                                    <Badge variant={event.affects_learning ? 'warning' : 'default'}>
+                                                    <Badge className={getThemeBadgeClass(event.affects_learning ? 'warning' : 'default')}>
                                                         {event.affects_learning ? 'Affects learning' : 'Keeps learning active'}
                                                     </Badge>
                                                 </div>
-                                                <p className="text-sm theme-subtle">
+                                                <p className="text-sm theme-muted">
                                                     {formatDate(event.start_date)} to {formatDate(event.end_date)}
                                                     {' • '}
                                                     Week {event.start_week_number ?? '—'}
@@ -795,7 +816,7 @@ export function TermsPage() {
                                                         ? ` to Week ${event.end_week_number}`
                                                         : ''}
                                                 </p>
-                                                <p className="text-sm theme-text">
+                                                <p className={`text-sm ${event.notes ? 'theme-text' : 'theme-muted'}`}>
                                                     {event.notes || 'No notes added'}
                                                 </p>
                                             </div>
@@ -806,7 +827,7 @@ export function TermsPage() {
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <Button size="sm" variant="ghost" onClick={() => handleDeleteEvent(event)}>
-                                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                                        <Trash2 className="h-4 w-4 text-[color:var(--color-danger)]" />
                                                     </Button>
                                                 </div>
                                             ) : null}
