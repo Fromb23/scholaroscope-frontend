@@ -192,6 +192,10 @@ export const sessionAPI = {
     const res = await apiClient.post<SessionDetail>(`/sessions/${id}/complete/`);
     return res.data;
   },
+  cancel: async (id: number): Promise<SessionDetail> => {
+    const res = await apiClient.post<SessionDetail>(`/sessions/${id}/cancel/`);
+    return res.data;
+  },
   reschedule: async (
     id: number,
     data: RescheduleSessionPayload,

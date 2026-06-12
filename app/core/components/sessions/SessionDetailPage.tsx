@@ -278,6 +278,7 @@ export function SessionDetailPage() {
         reseedAttendance,
         startSession,
         completeSession,
+        cancelSession,
         rescheduleSession,
         confirmTaughtOutcomes,
         createAssignmentFromLesson,
@@ -299,6 +300,7 @@ export function SessionDetailPage() {
     const isCompleted = sessionStatus === 'COMPLETED';
     const isInProgress = sessionStatus === 'IN_PROGRESS';
     const isScheduled = sessionStatus === 'SCHEDULED';
+    const isCancelled = sessionStatus === 'CANCELLED';
     const isScheduledLocked = scheduleState === 'SCHEDULED_LOCKED';
     const isScheduledReady = scheduleState === 'SCHEDULED_READY';
     const isScheduledOverdue = scheduleState === 'SCHEDULED_OVERDUE';
@@ -339,6 +341,7 @@ export function SessionDetailPage() {
     ).length;
     const closureReady = closureState?.ready ?? false;
     const closureNextStep = closureState?.next_step ?? 'READY';
+    const isNotTaughtInterrupted = isInProgress && closureNextStep === 'INTERRUPTED';
     const requiresEvidence = closureState?.requires_evidence ?? taughtOutcomeCount > 0;
     const hasRequiredEvidence = closureState?.has_required_evidence ?? !requiresEvidence;
     const hasReflection = closureState?.has_reflection ?? false;
@@ -402,6 +405,9 @@ export function SessionDetailPage() {
         startAvailableTimeLabel,
     ]);
     const currentWorkflowStep = useMemo(() => {
+        if (isCancelled) {
+            return 'cancelled';
+        }
         if (isScheduled) {
             return 'scheduled';
         }
@@ -422,6 +428,7 @@ export function SessionDetailPage() {
         hasConfirmedTaughtOutcomes,
         hasMarkedAttendance,
         isCompleted,
+        isCancelled,
         isInProgress,
         isScheduled,
     ]);
@@ -681,6 +688,12 @@ export function SessionDetailPage() {
         if (latestClosureState.next_step === 'TAUGHT_OUTCOMES') {
             revealTaughtOutcomesSection();
             setWorkflowNotice('Confirm what was taught before closing this lesson.');
+            return { closureState: latestClosureState, completed: false };
+        }
+
+        if (latestClosureState.next_step === 'INTERRUPTED') {
+            openCompletionSection();
+            setWorkflowNotice('This lesson was not taught. Reschedule it to keep the lesson plan active.');
             return { closureState: latestClosureState, completed: false };
         }
 
@@ -1044,8 +1057,10 @@ export function SessionDetailPage() {
         {
             title: 'Record learner performance',
             icon: FileText,
-            complete: !requiresEvidence || hasRequiredEvidence,
-            description: !requiresEvidence
+            complete: isNotTaughtInterrupted || !requiresEvidence || hasRequiredEvidence,
+            description: isNotTaughtInterrupted
+                ? 'No evidence is required because the lesson was not taught.'
+                : !requiresEvidence
                 ? 'No taught outcomes need evidence for this lesson.'
                 : hasRequiredEvidence
                     ? 'Learner performance is recorded for the outcomes taught.'
@@ -1054,8 +1069,10 @@ export function SessionDetailPage() {
         {
             title: 'Add lesson reflection',
             icon: MessageSquareText,
-            complete: hasReflection,
-            description: hasReflection
+            complete: isNotTaughtInterrupted || hasReflection,
+            description: isNotTaughtInterrupted
+                ? 'Normal lesson reflection is skipped because the lesson was not taught.'
+                : hasReflection
                 ? 'Lesson reflection recorded.'
                 : 'Add a short lesson reflection before closing the lesson record.',
         },
@@ -1065,6 +1082,10 @@ export function SessionDetailPage() {
             complete: isCompleted,
             description: isCompleted
                 ? 'Lesson record closed.'
+                : isCancelled
+                    ? 'Lesson cancelled.'
+                    : isNotTaughtInterrupted
+                        ? 'This lesson cannot be completed. Reschedule or cancel it instead.'
                 : needsCompletion
                     ? 'Scheduled end passed. End the lesson and finish the missing record.'
                     : closureReady
@@ -1078,7 +1099,9 @@ export function SessionDetailPage() {
         hasRequiredEvidence,
         hasMarkedAttendance,
         isCompleted,
+        isCancelled,
         isInProgress,
+        isNotTaughtInterrupted,
         isScheduled,
         isScheduledOverdue,
         isScheduledReady,
@@ -1103,6 +1126,13 @@ export function SessionDetailPage() {
     const allPlannedOutcomesSelected = session?.planned_outcomes.every(
         (outcome) => Boolean(taughtSelections[outcome.outcome_id])
     ) ?? false;
+    const allPlannedOutcomesNotTaught = (
+        plannedOutcomeCount > 0
+        && allPlannedOutcomesSelected
+        && (session?.planned_outcomes.every(
+            (outcome) => taughtSelections[outcome.outcome_id] === 'NOT_TAUGHT'
+        ) ?? false)
+    );
     const canConfirmTaughtOutcomes = (
         isInProgress
         && hasMarkedAttendance
@@ -1112,6 +1142,9 @@ export function SessionDetailPage() {
         && allPlannedOutcomesSelected
         && !confirmingTaughtOutcomes
     );
+    const confirmTaughtOutcomesLabel = allPlannedOutcomesNotTaught
+        ? 'Mark lesson as not taught'
+        : 'Confirm what was taught';
     const taughtOutcomesSelectionMessage = (
         canEditTaughtOutcomes
         && plannedOutcomeCount > 0
@@ -1147,7 +1180,42 @@ export function SessionDetailPage() {
         continueSessionClosureWorkflow,
     ]);
 
+    const handleOpenRescheduleModal = useCallback(() => {
+        setShowRescheduleModal(true);
+    }, []);
+
+    const handleCancelLesson = useCallback(async () => {
+        if (!session || isHistorical || isCompleted || !window.confirm('Cancel this lesson?')) {
+            return;
+        }
+
+        try {
+            clearWorkflowFeedback();
+            await cancelSession();
+            setWorkflowSuccess('Lesson cancelled.');
+        } catch (error) {
+            setWorkflowError(error instanceof Error ? error.message : 'We could not cancel this lesson.');
+        }
+    }, [
+        cancelSession,
+        clearWorkflowFeedback,
+        isCompleted,
+        isHistorical,
+        session,
+    ]);
+
     const nextSafeAssistantAction = useMemo(() => {
+        if (isCancelled) {
+            if (hasLessonPlan && session?.lesson_plan_id) {
+                return {
+                    label: 'View lesson preparation',
+                    type: 'navigate' as const,
+                    href: `/lesson-plans/${session.lesson_plan_id}`,
+                };
+            }
+            return undefined;
+        }
+
         if (closureNextStep === 'ATTENDANCE') {
             return {
                 label: 'Review attendance section',
@@ -1163,6 +1231,15 @@ export function SessionDetailPage() {
                 type: 'page_action' as const,
                 target: 'review_taught_outcomes_section',
                 handler: revealTaughtOutcomesSection,
+            };
+        }
+
+        if (closureNextStep === 'INTERRUPTED') {
+            return {
+                label: 'Reschedule lesson',
+                type: 'page_action' as const,
+                target: 'reschedule_lesson',
+                handler: handleOpenRescheduleModal,
             };
         }
 
@@ -1214,10 +1291,12 @@ export function SessionDetailPage() {
         hasLessonPlan,
         canRecordEvidence,
         isCompleted,
+        isCancelled,
         isInProgress,
         closureNextStep,
         closureTeachingWorkflowHref,
         handleEndLessonIntent,
+        handleOpenRescheduleModal,
         revealAttendanceSection,
         revealReflectionSection,
         revealTaughtOutcomesSection,
@@ -1261,6 +1340,21 @@ export function SessionDetailPage() {
                 target: 'review_completion_section',
                 handler: () => scrollToSection('lesson-complete-section'),
             },
+            ...(isNotTaughtInterrupted
+                ? [{
+                    label: 'Reschedule lesson',
+                    type: 'page_action' as const,
+                    target: 'reschedule_lesson',
+                    handler: handleOpenRescheduleModal,
+                }, {
+                    label: 'Cancel lesson',
+                    type: 'page_action' as const,
+                    target: 'cancel_lesson',
+                    handler: () => {
+                        void handleCancelLesson();
+                    },
+                }]
+                : []),
             ...(canRecordEvidence && closureTeachingWorkflowHref
                 ? [{
                     label: 'Record learner performance',
@@ -1306,9 +1400,12 @@ export function SessionDetailPage() {
         hasConfirmedTaughtOutcomes,
         hasLessonPlan,
         hasMarkedAttendance,
+        handleCancelLesson,
         handleEndLessonIntent,
+        handleOpenRescheduleModal,
         isCompleted,
         isInProgress,
+        isNotTaughtInterrupted,
         loading,
         needsCompletion,
         nextSafeAssistantAction,
@@ -1451,6 +1548,8 @@ export function SessionDetailPage() {
                     ? (
                         result.closureState.next_step === 'EVIDENCE'
                             ? 'What was taught is confirmed. Next step: record learner performance.'
+                            : result.closureState.next_step === 'INTERRUPTED'
+                                ? 'This lesson was marked as not taught. Reschedule it to keep the lesson plan active.'
                             : result.closureState.next_step === 'REFLECTION'
                                 ? 'What was taught is confirmed. Next step: add the lesson reflection.'
                                 : result.closureState.next_step === 'READY'
@@ -1559,6 +1658,8 @@ export function SessionDetailPage() {
         : `/sessions/${session.id}?section=${lessonTaskReturnSection}`;
     const currentActionTitle = isScheduled
         ? 'Current action: get ready to teach'
+        : isCancelled
+            ? 'Current action: lesson cancelled'
         : currentWorkflowStep === 'attendance'
             ? 'Current action: take attendance'
             : currentWorkflowStep === 'confirm_taught'
@@ -1569,6 +1670,8 @@ export function SessionDetailPage() {
                             ? 'Current action: review attendance'
                             : closureNextStep === 'TAUGHT_OUTCOMES'
                                 ? 'Current action: confirm what was taught'
+                                : closureNextStep === 'INTERRUPTED'
+                                    ? 'Current action: reschedule or cancel lesson'
                                 : closureNextStep === 'EVIDENCE'
                                     ? 'Current action: record learner performance'
                                     : closureNextStep === 'REFLECTION'
@@ -1580,6 +1683,8 @@ export function SessionDetailPage() {
         ? (hasPreparedTaskForLesson
             ? 'Lesson preparation is linked and the learner task is ready. Start from the lesson window when class begins.'
             : 'Review lesson preparation, prepare the learner task if needed, and start from the lesson window when class begins.')
+        : isCancelled
+            ? 'This lesson was cancelled and will not continue through normal lesson closure.'
         : currentWorkflowStep === 'attendance'
             ? 'Keep teaching time focused. Mark attendance first so the next class action becomes visible.'
         : currentWorkflowStep === 'confirm_taught'
@@ -1589,6 +1694,8 @@ export function SessionDetailPage() {
                         ? 'Attendance is still missing. Review attendance to continue lesson closure.'
                         : closureNextStep === 'TAUGHT_OUTCOMES'
                             ? 'What was taught is still missing. Confirm the taught outcomes to continue lesson closure.'
+                            : closureNextStep === 'INTERRUPTED'
+                                ? 'This lesson was not taught. Reschedule it to keep the lesson plan active, or cancel it if it will not run.'
                             : closureNextStep === 'EVIDENCE'
                                 ? (closureTeachingWorkflowHref || isClosureEvidenceWorkflowPending
                                     ? closureEvidenceMessage
@@ -1606,7 +1713,9 @@ export function SessionDetailPage() {
                 ? 'learner task issued'
                 : 'no learner task prepared'
     }`;
-    const currentActionPrimary = isScheduled && (isScheduledReady || isScheduledOverdue)
+    const currentActionPrimary = isCancelled
+        ? null
+        : isScheduled && (isScheduledReady || isScheduledOverdue)
         ? {
             label: isScheduledOverdue ? 'Start late' : 'Start lesson',
             onClick: handleStartLesson,
@@ -1653,6 +1762,13 @@ export function SessionDetailPage() {
                                         icon: <Target className="mr-1.5 h-4 w-4" />,
                                         disabled: false,
                                     }
+                                    : closureNextStep === 'INTERRUPTED'
+                                        ? {
+                                            label: 'Reschedule lesson',
+                                            onClick: handleOpenRescheduleModal,
+                                            icon: <Calendar className="mr-1.5 h-4 w-4" />,
+                                            disabled: false,
+                                        }
                                     : closureNextStep === 'EVIDENCE'
                                         ? (
                                             canRecordEvidence && closureTeachingWorkflowHref
@@ -1685,7 +1801,7 @@ export function SessionDetailPage() {
                                                 },
                                                 icon: <CheckCircle2 className="mr-1.5 h-4 w-4" />,
                                                 disabled: false,
-                                            }
+                                }
                         )
                         : currentWorkflowStep === 'post_lesson' && preparedTaskDraft
                                 ? {
@@ -1697,13 +1813,24 @@ export function SessionDetailPage() {
                                     disabled: issuingPreparedTask,
                                 }
                                 : null;
-    const currentActionSecondary = currentWorkflowStep === 'complete' && closureNextStep !== 'READY'
-        ? {
-            label: 'Re-check lesson closure',
-            onClick: () => {
-                void handleEndLessonIntent();
-            },
-        }
+    const currentActionSecondary = currentWorkflowStep === 'complete'
+        ? (
+            closureNextStep === 'INTERRUPTED'
+                ? {
+                    label: 'Cancel lesson',
+                    onClick: () => {
+                        void handleCancelLesson();
+                    },
+                }
+                : closureNextStep !== 'READY'
+                    ? {
+                        label: 'Re-check lesson closure',
+                        onClick: () => {
+                            void handleEndLessonIntent();
+                        },
+                    }
+                    : null
+        )
         : null;
     const currentActionShowsLessonPreparation = currentActionPrimary?.label === 'View lesson preparation';
     const sessionDetailExtensionContext = {
@@ -1747,6 +1874,8 @@ export function SessionDetailPage() {
                             {isScheduledOverdue ? <Badge variant="orange">Overdue</Badge> : null}
                             {isInProgress && !isInProgressOverdue ? <Badge variant="yellow">In progress</Badge> : null}
                             {isInProgressOverdue ? <Badge variant="red">Needs completion</Badge> : null}
+                            {isNotTaughtInterrupted ? <Badge variant="orange">Not taught</Badge> : null}
+                            {isCancelled ? <Badge variant="red">Cancelled</Badge> : null}
                             {isCompleted ? <Badge variant="green">Completed</Badge> : null}
                         </div>
 
@@ -1769,7 +1898,19 @@ export function SessionDetailPage() {
                                                 onSelect: () => setShowRescheduleModal(true),
                                                 icon: <Calendar className="h-4 w-4" />,
                                             }] : []),
-                                            ...(!isCompleted ? [{
+                                            ...(isNotTaughtInterrupted ? [{
+                                                label: 'Reschedule lesson',
+                                                onSelect: handleOpenRescheduleModal,
+                                                icon: <Calendar className="h-4 w-4" />,
+                                            }, {
+                                                label: 'Cancel lesson',
+                                                onSelect: () => {
+                                                    void handleCancelLesson();
+                                                },
+                                                icon: <AlertCircle className="h-4 w-4" />,
+                                                destructive: true,
+                                            }] : []),
+                                            ...(!isCompleted && !isCancelled ? [{
                                                 label: 'Edit',
                                                 href: `/sessions/${session.id}/edit`,
                                                 icon: <Edit className="h-4 w-4" />,
@@ -1810,6 +1951,19 @@ export function SessionDetailPage() {
                         <p className="mt-1">
                             This lesson is still open. Finish the missing teaching record: attendance, taught outcomes, learner performance, and reflection. ScholaroScope will only close the lesson after the record is complete.
                         </p>
+                    </div>
+                ) : null}
+
+                {isNotTaughtInterrupted ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                        <p>This lesson was not taught.</p>
+                        <p className="mt-1">Reschedule it to keep the lesson plan active.</p>
+                    </div>
+                ) : null}
+
+                {isCancelled ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        This lesson was cancelled.
                     </div>
                 ) : null}
             </div>
@@ -2108,6 +2262,8 @@ export function SessionDetailPage() {
                                             ? 'Attendance is still missing. Review attendance to continue.'
                                             : closureNextStep === 'TAUGHT_OUTCOMES'
                                                 ? 'What was taught is still missing. Confirm the taught outcomes to continue.'
+                                                : closureNextStep === 'INTERRUPTED'
+                                                    ? 'This lesson was not taught. Reschedule it to keep the lesson plan active, or cancel it if it will not run.'
                                                 : closureNextStep === 'EVIDENCE'
                                                     ? (closureTeachingWorkflowHref || isClosureEvidenceWorkflowPending
                                                         ? closureEvidenceMessage
@@ -2267,7 +2423,7 @@ export function SessionDetailPage() {
                 </div>
             ) : null}
 
-            {!isScheduled ? (
+            {!isScheduled && !isCancelled ? (
                 <AttendanceStatsStrip stats={attendanceStats} />
             ) : null}
 
@@ -2349,7 +2505,7 @@ export function SessionDetailPage() {
                                         onClick={handleConfirmWhatWasTaught}
                                         disabled={!canConfirmTaughtOutcomes}
                                     >
-                                        {confirmingTaughtOutcomes ? 'Saving...' : 'Confirm what was taught'}
+                                        {confirmingTaughtOutcomes ? 'Saving...' : confirmTaughtOutcomesLabel}
                                     </Button>
                                 ) : null}
                             </div>
@@ -2361,9 +2517,17 @@ export function SessionDetailPage() {
                             </div>
                         ) : null}
 
+                        {allPlannedOutcomesNotTaught && !hasConfirmedTaughtOutcomes ? (
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                                All planned outcomes are marked as not taught. This lesson will move to reschedule or cancel instead of normal closure.
+                            </div>
+                        ) : null}
+
                         {confirmedTaughtOutcomes.length > 0 ? (
                             <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                                What was taught has been saved for this lesson.
+                                {isNotTaughtInterrupted
+                                    ? 'This lesson was marked as not taught.'
+                                    : 'What was taught has been saved for this lesson.'}
                             </div>
                         ) : null}
 
