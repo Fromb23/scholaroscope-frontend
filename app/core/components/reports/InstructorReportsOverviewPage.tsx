@@ -107,9 +107,9 @@ export function InstructorReportsOverviewPage() {
     },
     {
       title: 'Class Subject Reports',
-      description: 'Use the summary-first class report with support lists and interventions.',
+      description: 'Choose a cohort subject, then open its class report with support lists and interventions.',
       href: '/reports/instructor/cohort-subjects',
-      actionLabel: 'Open Class Reports',
+      actionLabel: 'Choose Class',
       icon: BookOpen,
     },
     {

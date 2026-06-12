@@ -36,12 +36,10 @@ import type {
   ReportExportFormat,
 } from '@/app/core/types/reporting';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
-
-function parsePositiveNumber(value: string | null): number | null {
-  if (!value) return null;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
+import {
+  buildInstructorCohortSubjectDetailHref,
+  parsePositiveReportParam,
+} from './reportNavigation';
 
 function LearnerRowsTable({
   title,
@@ -107,8 +105,10 @@ export function ClassSubjectReportPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const cohortSubjectId = Number(params.id);
-  const returnTo = searchParams.get('returnTo') || `/reports/instructor/cohort-subjects/${cohortSubjectId}`;
-  const selectedCohortId = parsePositiveNumber(searchParams.get('cohort_id'));
+  const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
+  const returnTo = searchParams.get('returnTo')
+    || buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTermId);
+  const selectedCohortId = parsePositiveReportParam(searchParams.get('cohort_id'));
 
   const {
     cohortSubjects,
@@ -128,6 +128,7 @@ export function ClassSubjectReportPage() {
     error,
   } = useClassSubjectReport(cohortId, cohortSubjectId, {
     enabled: Boolean(cohortId && cohortSubjectId),
+    termId: selectedTermId,
   });
 
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
@@ -144,6 +145,7 @@ export function ClassSubjectReportPage() {
       const file = await learnerReportingAPI.exportClassSubjectReport(cohortId, {
         format,
         cohortSubjectId,
+        termId: selectedTermId,
       });
       downloadBlob(file.blob, file.fileName);
     } catch (requestError) {
@@ -153,7 +155,7 @@ export function ClassSubjectReportPage() {
     } finally {
       setExporting(null);
     }
-  }, [cohortId, cohortSubjectId]);
+  }, [cohortId, cohortSubjectId, selectedTermId]);
 
   const visibleError = exportError ?? error ?? cohortSubjectsError ?? null;
 
