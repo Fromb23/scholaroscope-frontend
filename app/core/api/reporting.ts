@@ -27,6 +27,7 @@ import {
   LearnerOverviewReportPayload,
   LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
+  TeacherPerformanceReflectionItem,
   TeacherPerformanceReportPayload,
   ComputeResponse,
   ReportExportFormat,
@@ -150,6 +151,61 @@ function normalizeInstructorAttendanceRiskResponse(value: unknown): InstructorAt
     count: toNumber(rawCount, items.length),
     unique_learner_count: toNumber(rawUniqueLearnerCount, uniqueLearnerCount),
     items,
+  };
+}
+
+function toNullableString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
+function normalizeTeacherPerformanceReflectionItem(
+  value: unknown,
+): TeacherPerformanceReflectionItem | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const reflectionText = (
+    toNullableString(value.reflection_text)
+    ?? toNullableString(value.reflectionText)
+    ?? toNullableString(value.full_text)
+    ?? toNullableString(value.text)
+    ?? ''
+  ).trim();
+  const excerpt = toString(value.excerpt, reflectionText).trim();
+
+  return {
+    cohort_subject_id: toNullableNumber(value.cohort_subject_id),
+    subject_id: toNullableNumber(value.subject_id),
+    cohort_name: toString(value.cohort_name),
+    subject_name: toString(value.subject_name),
+    session_title: toString(value.session_title),
+    session_date: toNullableString(value.session_date),
+    created_at: toString(value.created_at),
+    excerpt,
+    reflection_text: reflectionText || null,
+  };
+}
+
+function normalizeTeacherPerformanceReportPayload(
+  value: TeacherPerformanceReportPayload,
+): TeacherPerformanceReportPayload {
+  if (!isRecord(value) || !isRecord(value.reflection_summary)) {
+    return value;
+  }
+
+  const rawLatestReflections = Array.isArray(value.reflection_summary.latest_reflections)
+    ? value.reflection_summary.latest_reflections
+    : [];
+
+  return {
+    ...value,
+    reflection_summary: {
+      ...value.reflection_summary,
+      latest_reflections: rawLatestReflections
+        .map((item) => normalizeTeacherPerformanceReflectionItem(item))
+        .filter((item): item is TeacherPerformanceReflectionItem => item !== null),
+    },
   };
 }
 
@@ -580,7 +636,7 @@ export const learnerReportingAPI = {
         },
       }
     );
-    return response.data;
+    return normalizeTeacherPerformanceReportPayload(response.data);
   },
 
   exportInstructorTeacherReport: async (
@@ -623,7 +679,7 @@ export const learnerReportingAPI = {
         },
       }
     );
-    return response.data;
+    return normalizeTeacherPerformanceReportPayload(response.data);
   },
 
   exportAdminInstructorTeacherReport: async (
