@@ -56,9 +56,10 @@ export function CBCCohortProgressPage() {
                 { label: 'Cohort Progress' },
             ]} />
 
-            <Link href="/cbc/progress">
+            <Link href={page.returnTo ?? '/cbc/progress'}>
                 <Button variant="ghost" size="md">
-                    <ArrowLeft className="mr-2 h-4 w-4" />Progress Overview
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    {page.returnTo ? 'Back' : 'Progress Overview'}
                 </Button>
             </Link>
 
@@ -140,7 +141,7 @@ export function CBCCohortProgressPage() {
                         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-5">
                             <Target className="h-5 w-5 text-purple-600" />
                             Competency Distribution
-                            <Badge variant="blue" size="sm">{page.totalLearners} learners</Badge>
+                            <Badge variant="blue" size="sm">{page.totalLearners} records</Badge>
                         </h2>
 
                         <div className="flex h-8 rounded-lg overflow-hidden mb-4">
@@ -199,7 +200,7 @@ export function CBCCohortProgressPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                        {summary.attention_needed} learner
+                                        {summary.attention_needed} record
                                         {summary.attention_needed !== 1 ? 's' : ''} need support
                                     </h3>
                                     <p className="text-sm text-gray-700">

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Search, Save } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -18,12 +19,16 @@ interface AssessmentScoreEntryCardProps {
     readOnly: boolean;
     canSave: boolean;
     saving: boolean;
+    saveError: string | null;
+    saveSuccess: string | null;
     searchQuery: string;
     visibleLearnerCount: number;
     totalLearnerCount: number;
     onSearchQueryChange: (value: string) => void;
     onSave: () => void;
     onScoreChange: (studentId: number, field: keyof AssessmentScoreDraft, value: number | string | null) => void;
+    onDismissSaveError: () => void;
+    onDismissSaveSuccess: () => void;
 }
 
 export function AssessmentScoreEntryCard({
@@ -34,13 +39,25 @@ export function AssessmentScoreEntryCard({
     readOnly,
     canSave,
     saving,
+    saveError,
+    saveSuccess,
     searchQuery,
     visibleLearnerCount,
     totalLearnerCount,
     onSearchQueryChange,
     onSave,
     onScoreChange,
+    onDismissSaveError,
+    onDismissSaveSuccess,
 }: AssessmentScoreEntryCardProps) {
+    const saveFeedbackRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (saveError) {
+            saveFeedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [saveError]);
+
     return (
         <Card>
             <div className="p-4">
@@ -59,6 +76,43 @@ export function AssessmentScoreEntryCard({
                         )}
                     </div>
                 </div>
+                {saveError && (
+                    <div
+                        ref={saveFeedbackRef}
+                        role="alert"
+                        className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <p>{saveError}</p>
+                            <button
+                                type="button"
+                                onClick={onDismissSaveError}
+                                className="shrink-0 text-red-500 hover:text-red-700"
+                                aria-label="Dismiss save error"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                )}
+                {saveSuccess && (
+                    <div
+                        role="status"
+                        className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <p>{saveSuccess}</p>
+                            <button
+                                type="button"
+                                onClick={onDismissSaveSuccess}
+                                className="shrink-0 text-green-500 hover:text-green-700"
+                                aria-label="Dismiss save success"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="w-full lg:max-w-md">
                         <label

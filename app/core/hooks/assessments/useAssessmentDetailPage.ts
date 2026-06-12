@@ -16,6 +16,7 @@ import {
     getAssessmentScoreDraftValue,
     sortAssessmentScores,
 } from '@/app/core/types/assessment';
+import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 function normalizeSearchValue(value: string | number | null | undefined): string {
     return String(value ?? '').trim().toLowerCase();
@@ -55,6 +56,7 @@ export function useAssessmentDetailPage() {
     const [draft, setDraft] = useState<Record<number, AssessmentScoreDraft>>({});
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -166,6 +168,7 @@ export function useAssessmentDetailPage() {
         field: keyof AssessmentScoreDraft,
         value: number | string | null
     ) => {
+        setSaveSuccess(null);
         setDraft((previous) => {
             const nextDraft = {
                 ...(previous[studentId] ?? {}),
@@ -206,56 +209,121 @@ export function useAssessmentDetailPage() {
 
         setSaving(true);
         setSaveError(null);
+        setSaveSuccess(null);
         try {
-            await bulkEntry({
-                assessment: assessmentId,
-                scores: sortedScores.map((score: AssessmentScore) => {
-                    const scoreDraft = draft[score.student];
-                    const resolvedScore = getAssessmentScoreDraftValue(
-                        scoreDraft,
-                        'score',
-                        score.score
-                    );
-                    const resolvedRubricLevel = getAssessmentScoreDraftValue(
-                        scoreDraft,
-                        'rubric_level',
-                        score.rubric_level
-                    );
+            const nonGradedStatuses = new Set<AssessmentScoreStatus>([
+                AssessmentScoreStatus.ABSENT,
+                AssessmentScoreStatus.EXCUSED,
+                AssessmentScoreStatus.NOT_ASSIGNED,
+                AssessmentScoreStatus.NOT_ADMITTED_YET,
+                AssessmentScoreStatus.LATE_ENROLLED,
+            ]);
+            const editedRows = sortedScores.flatMap((score: AssessmentScore) => {
+                const scoreDraft = draft[score.student];
+                if (!scoreDraft) {
+                    return [];
+                }
+
+                const scoreWasEdited = hasAssessmentScoreDraftField(scoreDraft, 'score');
+                const rubricWasEdited = hasAssessmentScoreDraftField(scoreDraft, 'rubric_level');
+                const statusWasEdited = hasAssessmentScoreDraftField(scoreDraft, 'status');
+                const commentsWasEdited = hasAssessmentScoreDraftField(scoreDraft, 'comments');
+                const statusNoteWasEdited = hasAssessmentScoreDraftField(scoreDraft, 'status_note');
+                if (
+                    !scoreWasEdited
+                    && !rubricWasEdited
+                    && !statusWasEdited
+                    && !commentsWasEdited
+                    && !statusNoteWasEdited
+                ) {
+                    return [];
+                }
+
+                const resolvedStatus = getAssessmentScoreDraftValue(
+                    scoreDraft,
+                    'status',
+                    score.status
+                );
+                const resolvedScore = getAssessmentScoreDraftValue(
+                    scoreDraft,
+                    'score',
+                    score.score
+                );
+                const resolvedRubricLevel = getAssessmentScoreDraftValue(
+                    scoreDraft,
+                    'rubric_level',
+                    score.rubric_level
+                );
+
+                const hasGradeForValidation = assessment.evaluation_type === 'NUMERIC'
+                    ? (scoreWasEdited ? resolvedScore : score.score) != null
+                    : (rubricWasEdited ? resolvedRubricLevel : score.rubric_level) != null;
+                if (statusWasEdited && resolvedStatus === AssessmentScoreStatus.GRADED && !hasGradeForValidation) {
+                    throw new Error(`Learner ${score.student_admission || score.student_name} needs a score or rubric level for GRADED status.`);
+                }
+
+                const row: {
+                    student_id: number;
+                    score?: number | null;
+                    rubric_level_id?: number | null;
+                    status?: AssessmentScoreStatus;
+                    comments?: string;
+                    status_note?: string;
+                } = {
+                    student_id: score.student,
+                };
+
+                if (assessment.evaluation_type === 'NUMERIC') {
+                    if (scoreWasEdited) {
+                        row.score = resolvedScore ?? null;
+                    } else if (statusWasEdited && resolvedStatus && nonGradedStatuses.has(resolvedStatus)) {
+                        row.score = null;
+                    }
+                } else if (assessment.evaluation_type === 'RUBRIC') {
+                    if (rubricWasEdited) {
+                        row.rubric_level_id = resolvedRubricLevel ?? null;
+                    } else if (statusWasEdited && resolvedStatus && nonGradedStatuses.has(resolvedStatus)) {
+                        row.rubric_level_id = null;
+                    }
+                }
+
+                if (statusWasEdited && resolvedStatus != null) {
+                    row.status = resolvedStatus;
+                }
+                if (commentsWasEdited) {
                     const resolvedComments = getAssessmentScoreDraftValue(
                         scoreDraft,
                         'comments',
                         score.comments ?? ''
                     );
-                    const resolvedStatus = getAssessmentScoreDraftValue(
+                    row.comments = resolvedComments ?? '';
+                }
+                if (statusNoteWasEdited) {
+                    const resolvedStatusNote = getAssessmentScoreDraftValue(
                         scoreDraft,
-                        'status',
-                        score.status
+                        'status_note',
+                        score.status_note ?? ''
                     );
-                    const statusWasEdited = hasAssessmentScoreDraftField(
-                        scoreDraft,
-                        'status'
-                    );
+                    row.status_note = resolvedStatusNote ?? '';
+                }
 
-                    return {
-                        student_id: score.student,
-                        score: assessment.evaluation_type === 'NUMERIC'
-                            ? (resolvedScore ?? undefined)
-                            : undefined,
-                        rubric_level_id: assessment.evaluation_type === 'RUBRIC'
-                            ? (resolvedRubricLevel ?? undefined)
-                            : undefined,
-                        ...(statusWasEdited && resolvedStatus != null
-                            ? { status: resolvedStatus }
-                            : {}),
-                        comments: resolvedComments ?? '',
-                    };
-                }),
+                return [row];
+            });
+
+            if (editedRows.length === 0) {
+                return;
+            }
+
+            await bulkEntry({
+                assessment: assessmentId,
+                scores: editedRows,
                 scored_by: scoredBy,
             });
             setDraft({});
+            setSaveSuccess('Scores updated successfully.');
             refetch();
         } catch (error) {
-            setSaveError(error instanceof Error ? error.message : 'Failed to save scores');
+            setSaveError(extractErrorMessage(error as ApiError, 'Failed to save scores'));
         } finally {
             setSaving(false);
         }
@@ -328,6 +396,7 @@ export function useAssessmentDetailPage() {
         draft,
         saving,
         saveError,
+        saveSuccess,
         deleteError,
         exportError,
         searchQuery,
@@ -347,6 +416,7 @@ export function useAssessmentDetailPage() {
         canScore,
         canExportPdf,
         setSaveError,
+        setSaveSuccess,
         setDeleteError,
         setExportError,
         setSearchQuery,
