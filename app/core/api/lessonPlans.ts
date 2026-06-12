@@ -64,11 +64,17 @@ export const lessonPlanAPI = {
         return response.data;
     },
 
-    getCurriculumContext: async (cohortSubjectId: number): Promise<LessonPlanCurriculumContext> => {
+    getCurriculumContext: async (
+        cohortSubjectId: number,
+        termId?: number | null,
+    ): Promise<LessonPlanCurriculumContext> => {
         const response = await apiClient.get<LessonPlanCurriculumContext>(
             `${LESSON_PLANS_BASE_PATH}/curriculum-context/`,
             {
-                params: { cohort_subject: cohortSubjectId },
+                params: {
+                    cohort_subject: cohortSubjectId,
+                    ...(typeof termId === 'number' ? { term: termId } : {}),
+                },
             }
         );
         return response.data;

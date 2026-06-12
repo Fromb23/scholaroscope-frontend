@@ -28,7 +28,7 @@ export default function Page() {
         curriculumContext,
         loading: curriculumLoading,
         error: curriculumError,
-    } = useLessonPlanCurriculumContext(lessonPlan?.cohort_subject ?? null);
+    } = useLessonPlanCurriculumContext(lessonPlan?.cohort_subject ?? null, lessonPlan?.term ?? null);
 
     if (loading && !lessonPlan) {
         return <LoadingSpinner message="Loading lesson plan..." fullScreen={false} />;

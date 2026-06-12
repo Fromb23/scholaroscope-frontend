@@ -12,6 +12,18 @@ export interface LessonPlanReferenceLanguage {
     topic_label?: string;
 }
 
+export interface SchemeRequirementStatus {
+    applies: boolean;
+    organization_enabled: boolean;
+    assignment_enabled: boolean;
+    required_teacher_id: number | null;
+    required_teacher_name: string;
+    scheme_exists: boolean;
+    scheme_id: number | null;
+    source: string | null;
+    message: string;
+}
+
 export interface LessonPlanCurriculumContext {
     cohort_subject: number;
     curriculum_type: string | null;
@@ -22,6 +34,7 @@ export interface LessonPlanCurriculumContext {
     manual_outcomes_allowed: boolean;
     outcome_source: string;
     reference_language: LessonPlanReferenceLanguage;
+    scheme_requirement: SchemeRequirementStatus;
 }
 
 export interface LessonPlanOutcomeSelectorProps {

@@ -83,11 +83,12 @@ export function GenerateLessonPlanPage() {
     } | null>(null);
 
     const selectedCohortSubjectId = cohortSubjectId ? Number(cohortSubjectId) : null;
+    const selectedTermId = termId ? Number(termId) : null;
     const {
         curriculumContext,
         loading: curriculumLoading,
         error: curriculumError,
-    } = useLessonPlanCurriculumContext(selectedCohortSubjectId);
+    } = useLessonPlanCurriculumContext(selectedCohortSubjectId, selectedTermId);
 
     const assignmentOptions = useMemo(
         () =>
@@ -140,6 +141,16 @@ export function GenerateLessonPlanPage() {
         ? null
         : curriculumContext?.ai_generation_available ?? null;
     const aiGenerationAvailable = aiGenerationAvailability === true;
+    const schemeRequirement = curriculumContext?.scheme_requirement ?? null;
+    const schemeFirstBlocked = Boolean(
+        selectedCohortSubjectId
+        && selectedTermId
+        && schemeRequirement?.applies
+        && !schemeRequirement.scheme_exists
+    );
+    const schemeGenerationHref = selectedCohortSubjectId && selectedTermId
+        ? `/schemes/new?cohort_subject=${selectedCohortSubjectId}&term=${selectedTermId}`
+        : '/schemes/new';
     const activeErrorMessage = submittingError || createError || generateError || null;
     const errorContainerRef = useScrollIntoViewOnMessage(
         activeErrorMessage || (showRetryWithoutAi ? '__retry__' : null)
@@ -216,6 +227,7 @@ export function GenerateLessonPlanPage() {
 
     const submitButtonDisabled = submitting
         || curriculumLoading
+        || schemeFirstBlocked
         || (selectedCurriculum ? !canCreateCurriculumWork(selectedCurriculum) : false);
 
     const clearVisibleErrors = () => {
@@ -270,6 +282,11 @@ export function GenerateLessonPlanPage() {
             return;
         }
 
+        if (schemeFirstBlocked) {
+            router.push(schemeGenerationHref);
+            return;
+        }
+
         if (!curriculumContext || !curriculumContext.supports_outcome_selection) {
             setSubmittingError('Lesson planning is not configured for this curriculum yet.');
             return;
@@ -311,15 +328,18 @@ export function GenerateLessonPlanPage() {
                 `/lesson-plans/${generated.lesson_plan.id}?notice=${generated.created ? 'generated' : 'existing'}&mode=${generationMode}&references=${generated.selected_references_count}`
             );
         } catch (submitError) {
+            const message = submitError instanceof Error
+                ? submitError.message
+                : 'We could not generate the lesson plan.';
             const status = (submitError as Error & { status?: number }).status;
             if (status === 503 && requestedUseAi) {
                 setShowRetryWithoutAi(true);
             }
-            setSubmittingError(
-                submitError instanceof Error
-                    ? submitError.message
-                    : 'We could not generate the lesson plan.'
-            );
+            if (message.includes('Generate a scheme of work for this class subject and term before preparing lesson plans.')) {
+                router.push(schemeGenerationHref);
+                return;
+            }
+            setSubmittingError(message);
         }
     };
 
@@ -526,10 +546,26 @@ export function GenerateLessonPlanPage() {
                             onChange={(event) => setTitle(event.target.value)}
                             placeholder="Optional title"
                         />
+
+                        {schemeFirstBlocked ? (
+                            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="space-y-1">
+                                        <p className="font-medium">First document required: Scheme of Work</p>
+                                        <p>{schemeRequirement?.message || 'Generate a scheme before preparing lesson plans for this class subject and term.'}</p>
+                                    </div>
+                                    <Link href={schemeGenerationHref}>
+                                        <Button type="button" variant="secondary">
+                                            Generate Scheme
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
                 </Card>
 
-                {selectedCohortSubjectId ? (
+                {selectedCohortSubjectId && !schemeFirstBlocked ? (
                     curriculumLoading ? (
                         <Card>
                             <LoadingSpinner message="Loading lesson planning setup..." fullScreen={false} />
@@ -550,52 +586,54 @@ export function GenerateLessonPlanPage() {
                     ) : null
                 ) : null}
 
-                <Card className="theme-card-muted">
-                    <div className="space-y-5">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 text-sm font-medium theme-text">
-                                <CalendarClock className="h-4 w-4 theme-subtle" />
-                                Generate draft
+                {!schemeFirstBlocked ? (
+                    <Card className="theme-card-muted">
+                        <div className="space-y-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 text-sm font-medium theme-text">
+                                    <CalendarClock className="h-4 w-4 theme-subtle" />
+                                    Generate draft
+                                </div>
+                                <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
+                                    {completedReferenceCount} reference{completedReferenceCount === 1 ? '' : 's'}
+                                </span>
                             </div>
-                            <span className="theme-surface-elevated rounded-full border px-2.5 py-1 text-xs font-medium theme-border theme-muted">
-                                {completedReferenceCount} reference{completedReferenceCount === 1 ? '' : 's'}
-                            </span>
-                        </div>
 
-                        <div className="theme-info-surface rounded-lg p-4 text-sm theme-muted">
-                            AI creates a draft, not a final lesson plan. The plan stays editable, and the outcomes and references you choose constrain what the draft may use.
-                        </div>
+                            <div className="theme-info-surface rounded-lg p-4 text-sm theme-muted">
+                                AI creates a draft, not a final lesson plan. The plan stays editable, and the outcomes and references you choose constrain what the draft may use.
+                            </div>
 
-                        <label className="theme-card flex items-start gap-3 rounded-lg p-4">
-                            <input
-                                type="checkbox"
-                                checked={useAi}
-                                onChange={(event) => setUseAi(event.target.checked)}
-                                disabled={
-                                    !selectedCohortSubjectId
-                                    || curriculumLoading
-                                    || !aiGenerationAvailable
-                                }
-                                className="theme-checkbox theme-border mt-1 h-4 w-4 rounded"
-                            />
-                            <span className="space-y-1 text-sm theme-text">
-                                <span className="flex items-center gap-2 font-medium theme-text">
-                                    <Bot className="h-4 w-4 theme-subtle" />
-                                    Use AI-assisted drafting
+                            <label className="theme-card flex items-start gap-3 rounded-lg p-4">
+                                <input
+                                    type="checkbox"
+                                    checked={useAi}
+                                    onChange={(event) => setUseAi(event.target.checked)}
+                                    disabled={
+                                        !selectedCohortSubjectId
+                                        || curriculumLoading
+                                        || !aiGenerationAvailable
+                                    }
+                                    className="theme-checkbox theme-border mt-1 h-4 w-4 rounded"
+                                />
+                                <span className="space-y-1 text-sm theme-text">
+                                    <span className="flex items-center gap-2 font-medium theme-text">
+                                        <Bot className="h-4 w-4 theme-subtle" />
+                                        Use AI-assisted drafting
+                                    </span>
+                                    <span className="block theme-muted">
+                                        {!selectedCohortSubjectId
+                                            ? 'Choose a class subject to check whether AI-assisted drafting is available.'
+                                            : curriculumLoading || aiGenerationAvailability === null
+                                                ? 'Checking AI-assisted drafting availability for this class subject.'
+                                                : aiGenerationAvailable
+                                            ? 'AI uses only the selected outcomes and reference pages you attached.'
+                                            : 'AI-assisted drafting is not configured right now. You can still generate a lesson plan without AI.'}
+                                    </span>
                                 </span>
-                                <span className="block theme-muted">
-                                    {!selectedCohortSubjectId
-                                        ? 'Choose a class subject to check whether AI-assisted drafting is available.'
-                                        : curriculumLoading || aiGenerationAvailability === null
-                                            ? 'Checking AI-assisted drafting availability for this class subject.'
-                                            : aiGenerationAvailable
-                                        ? 'AI uses only the selected outcomes and reference pages you attached.'
-                                        : 'AI-assisted drafting is not configured right now. You can still generate a lesson plan without AI.'}
-                                </span>
-                            </span>
-                        </label>
-                    </div>
-                </Card>
+                            </label>
+                        </div>
+                    </Card>
+                ) : null}
 
                 {activeErrorMessage ? (
                     <ErrorBanner
@@ -607,33 +645,37 @@ export function GenerateLessonPlanPage() {
                     />
                 ) : null}
 
-                <div className="hidden justify-end md:flex">
-                    <Button type="submit" disabled={submitButtonDisabled}>
-                        {submitting ? 'Generating...' : 'Generate lesson plan'}
-                    </Button>
-                </div>
+                {!schemeFirstBlocked ? (
+                    <div className="hidden justify-end md:flex">
+                        <Button type="submit" disabled={submitButtonDisabled}>
+                            {submitting ? 'Generating...' : 'Generate lesson plan'}
+                        </Button>
+                    </div>
+                ) : null}
             </form>
 
-            <div className="theme-surface-elevated fixed inset-x-0 bottom-0 z-30 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden theme-border">
-                <div className="mx-auto max-w-6xl space-y-3">
-                    {activeErrorMessage ? (
-                        <ErrorBanner
-                            message={activeErrorMessage}
-                            onDismiss={clearVisibleErrors}
-                            autoDismissMs={5000}
-                            compact
-                        />
-                    ) : null}
-                    <Button
-                        type="submit"
-                        form="generate-lesson-plan-form"
-                        className="w-full"
-                        disabled={submitButtonDisabled}
-                    >
-                        {submitting ? 'Generating...' : 'Generate lesson plan'}
-                    </Button>
+            {!schemeFirstBlocked ? (
+                <div className="theme-surface-elevated fixed inset-x-0 bottom-0 z-30 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden theme-border">
+                    <div className="mx-auto max-w-6xl space-y-3">
+                        {activeErrorMessage ? (
+                            <ErrorBanner
+                                message={activeErrorMessage}
+                                onDismiss={clearVisibleErrors}
+                                autoDismissMs={5000}
+                                compact
+                            />
+                        ) : null}
+                        <Button
+                            type="submit"
+                            form="generate-lesson-plan-form"
+                            className="w-full"
+                            disabled={submitButtonDisabled}
+                        >
+                            {submitting ? 'Generating...' : 'Generate lesson plan'}
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            ) : null}
         </div>
     );
 }

@@ -40,8 +40,6 @@ export interface GenerateSchemePayload {
     title?: string;
     lessons_per_week: number;
     lesson_duration_minutes?: number;
-    exceptional_weeks?: ExceptionalWeekInput[];
-    non_blocking_exam_notes?: SchemeNonBlockingExamNotes;
     curriculum_range: CurriculumRangeInput;
     generation_mode?: SchemeGenerationMode;
 }

@@ -39,7 +39,46 @@ export interface Term {
   sequence: number;
   start_date: string;
   end_date: string;
+  status: string;
+  is_frozen: boolean;
+  calendar_setup_completed_at: string | null;
+  calendar_setup_completed_by: number | null;
+  calendar_setup_completed_by_name: string;
+  is_calendar_setup_complete: boolean;
+  week_count: number;
   created_at: string;
+}
+
+export type TermCalendarEventType =
+  | 'ENTRY_EXAM'
+  | 'MIDTERM_EXAM'
+  | 'MIDTERM_BREAK'
+  | 'MAIN_EXAM'
+  | 'EXIT_EXAM'
+  | 'HOLIDAY'
+  | 'PUBLIC_HOLIDAY'
+  | 'SCHOOL_EVENT'
+  | 'OTHER';
+
+export interface TermCalendarEvent {
+  id: number;
+  organization: number;
+  academic_year: number;
+  academic_year_name: string;
+  term: number;
+  term_name: string;
+  title: string;
+  event_type: TermCalendarEventType;
+  start_date: string;
+  end_date: string;
+  start_week_number: number | null;
+  end_week_number: number | null;
+  affects_learning: boolean;
+  notes: string;
+  created_by: number | null;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export const CURRICULUM_TYPE_OPTIONS: { value: string; label: string }[] = [
@@ -529,6 +568,7 @@ export interface TeachingAssignment {
   total: number;
   start_date: string;
   percentage: number;
+  scheme_first_required?: boolean;
   offering_id?: number | null;
 }
 

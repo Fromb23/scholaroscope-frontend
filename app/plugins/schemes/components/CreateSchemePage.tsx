@@ -2,14 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Info,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
@@ -23,7 +21,7 @@ import { Select } from '@/app/components/ui/Select';
 import { cohortSubjectAPI } from '@/app/core/api/academic';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { instructorsAPI } from '@/app/core/api/instructors';
-import { useTerms, useCurricula, useSubjects } from '@/app/core/hooks/useAcademic';
+import { useTermCalendarEvents, useTerms, useCurricula, useSubjects } from '@/app/core/hooks/useAcademic';
 import { useGenerateScheme, useSchemeSubjectStrands } from '@/app/core/hooks/useSchemes';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import type { PaginatedResponse } from '@/app/core/types/api';
@@ -31,19 +29,16 @@ import type { CohortSubject, Curriculum, Subject, Term } from '@/app/core/types/
 import { useAuth } from '@/app/context/AuthContext';
 import type {
   CurriculumRangeInput,
-  ExceptionalWeekInput,
   GenerateSchemePayload,
-  SchemeNonBlockingExamNotes,
-  SchemeWeekType,
 } from '@/app/core/types/schemes';
 import {
+  buildSchemeWeeksFromTermCalendar,
   calculateTermWeekCount,
   flattenSubjectStrands,
   formatDateRange,
   getSchemeWeekTypeLabel,
-  summarizeLearningWeeks,
+  summarizeSchemeWeeks,
 } from '@/app/plugins/schemes/lib/workflow';
-import { TextAreaField } from '@/app/plugins/schemes/components/TextAreaField';
 
 interface TeachingContextOption {
   cohortSubjectId: number;
@@ -56,26 +51,14 @@ interface TeachingContextOption {
   levelLabel: string;
 }
 
-interface CreateSchemeWeekConfig {
-  week_number: number;
-  week_type: SchemeWeekType;
-  affects_learning: boolean;
-  notes: string;
-}
-
 const REFLECTION_NOTICE =
   'Lesson reflections will be auto-filled from lesson reflections recorded after taught outcomes or learner performance evidence.';
 const NO_REGISTERED_STRAND_RANGE_MESSAGE =
   "No strand range is registered for this class subject yet. Register the subject's sub-strands in curriculum setup before generating a scheme.";
-const CREATE_WEEK_TYPE_OPTIONS: Array<{ value: SchemeWeekType; label: string }> = [
-  { value: 'TEACHING', label: 'Teaching week' },
-  { value: 'MIDTERM_BREAK', label: 'Midterm break' },
-  { value: 'MIDTERM_EXAM', label: 'Midterm exams' },
-  { value: 'ENTRY_EXAM', label: 'Entry exams' },
-  { value: 'EXIT_EXAM', label: 'End term exams' },
-  { value: 'HOLIDAY', label: 'Holiday' },
-  { value: 'OTHER', label: 'Other' },
-];
+const TERM_SETUP_INCOMPLETE_MESSAGE =
+  'Your admin needs to complete the term calendar before schemes can be generated.';
+const ADMIN_TERM_SETUP_MESSAGE =
+  'Complete the term calendar in term setup before generating schemes of work.';
 
 function unwrapCohortSubjects(
   data: CohortSubject[] | PaginatedResponse<CohortSubject>,
@@ -116,15 +99,6 @@ function StepMarker({
   );
 }
 
-function buildLearningWeekConfigs(weekCount: number): CreateSchemeWeekConfig[] {
-  return Array.from({ length: weekCount }, (_, index) => ({
-    week_number: index + 1,
-    week_type: 'TEACHING',
-    affects_learning: false,
-    notes: '',
-  }));
-}
-
 function parseIntegerInput(value: string): number | null {
   if (!value.trim()) {
     return null;
@@ -136,6 +110,7 @@ function parseIntegerInput(value: string): number | null {
 
 export function CreateSchemePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeRole, user } = useAuth();
   const isInstructor = activeRole === 'INSTRUCTOR';
   const { curricula, loading: curriculaLoading } = useCurricula();
@@ -160,9 +135,6 @@ export function CreateSchemePage() {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
-  const [learningWeeks, setLearningWeeks] = useState<CreateSchemeWeekConfig[]>([]);
-  const [expandedLearningWeek, setExpandedLearningWeek] = useState<number | null>(1);
-  const [expandedWeekNotes, setExpandedWeekNotes] = useState<Record<number, boolean>>({});
   const [lessonsPerWeek, setLessonsPerWeek] = useState('1');
   const [lessonDurationMinutes, setLessonDurationMinutes] = useState('40');
   const [weeklyTeachingLoadConfirmed, setWeeklyTeachingLoadConfirmed] = useState(false);
@@ -239,6 +211,19 @@ export function CreateSchemePage() {
       active = false;
     };
   }, [isInstructor]);
+
+  useEffect(() => {
+    const requestedCohortSubjectId = searchParams.get('cohort_subject');
+    const requestedTermId = searchParams.get('term');
+
+    if (requestedCohortSubjectId && !selectedCohortSubjectId) {
+      setSelectedCohortSubjectId(requestedCohortSubjectId);
+    }
+
+    if (requestedTermId && !selectedTermId) {
+      setSelectedTermId(requestedTermId);
+    }
+  }, [searchParams, selectedCohortSubjectId, selectedTermId]);
 
   const activeCurricula = useMemo(
     () => curricula.filter((curriculum) => curriculum.is_active),
@@ -409,6 +394,12 @@ export function CreateSchemePage() {
     [selectedTermId, terms],
   );
 
+  const {
+    events: termCalendarEvents,
+    loading: termCalendarLoading,
+    error: termCalendarError,
+  } = useTermCalendarEvents(selectedTerm ? selectedTerm.id : null);
+
   useEffect(() => {
     if (titleTouched) {
       return;
@@ -515,71 +506,33 @@ export function CreateSchemePage() {
   );
 
   const termWeekCount = selectedTerm
-    ? calculateTermWeekCount(selectedTerm.start_date, selectedTerm.end_date)
+    ? selectedTerm.week_count || calculateTermWeekCount(selectedTerm.start_date, selectedTerm.end_date)
     : 0;
 
-  useEffect(() => {
-    if (termWeekCount <= 0) {
-      setLearningWeeks([]);
-      setExpandedLearningWeek(null);
-      setExpandedWeekNotes({});
-      return;
-    }
+  const derivedWeeks = useMemo(
+    () => (selectedTerm ? buildSchemeWeeksFromTermCalendar(selectedTerm, termCalendarEvents) : []),
+    [selectedTerm, termCalendarEvents],
+  );
 
-    setLearningWeeks(buildLearningWeekConfigs(termWeekCount));
-    setExpandedLearningWeek(1);
-    setExpandedWeekNotes({});
-  }, [selectedTermId, termWeekCount]);
-
-  const updateLearningWeek = (
-    weekNumber: number,
-    updater: (current: CreateSchemeWeekConfig) => CreateSchemeWeekConfig,
-  ) => {
-    setExpandedLearningWeek(weekNumber);
-    setLearningWeeks((current) =>
-      current.map((week) => (week.week_number === weekNumber ? updater(week) : week)),
-    );
-  };
-
-  const exceptionalWeekPreview = useMemo(() => {
-    if (!selectedTerm) {
-      return {
-        exceptionalWeeks: [] as ExceptionalWeekInput[],
-        notes: {} as SchemeNonBlockingExamNotes,
-        error: null as string | null,
-      };
-    }
-
-    const exceptionalWeeks: ExceptionalWeekInput[] = learningWeeks
-      .filter((week) => week.week_type !== 'TEACHING')
-      .map((week) => ({
-        week_number: week.week_number,
-        week_type: week.week_type,
-        affects_learning: week.affects_learning,
-        label: getSchemeWeekTypeLabel(week.week_type),
-        notes: week.notes.trim(),
-      }));
-
-    return {
-      exceptionalWeeks,
-      notes: {
-        entry_exam_available: learningWeeks.some((week) => week.week_type === 'ENTRY_EXAM'),
-        entry_exam_affects_learning: learningWeeks.some(
-          (week) => week.week_type === 'ENTRY_EXAM' && week.affects_learning,
-        ),
-        exit_exam_available: learningWeeks.some((week) => week.week_type === 'EXIT_EXAM'),
-        exit_exam_affects_learning: learningWeeks.some(
-          (week) => week.week_type === 'EXIT_EXAM' && week.affects_learning,
-        ),
-      },
-      error: null,
-    };
-  }, [learningWeeks, selectedTerm]);
+  const exceptionalWeeks = useMemo(
+    () => derivedWeeks.filter((week) => week.week_type !== 'TEACHING'),
+    [derivedWeeks],
+  );
 
   const learningWeekSummary = useMemo(
-    () => summarizeLearningWeeks(termWeekCount, exceptionalWeekPreview.exceptionalWeeks),
-    [exceptionalWeekPreview.exceptionalWeeks, termWeekCount],
+    () => summarizeSchemeWeeks(derivedWeeks),
+    [derivedWeeks],
   );
+
+  const termCalendarSetupMessage = useMemo(() => {
+    if (!selectedTerm) {
+      return null;
+    }
+    if (selectedTerm.is_calendar_setup_complete) {
+      return null;
+    }
+    return isInstructor ? TERM_SETUP_INCOMPLETE_MESSAGE : ADMIN_TERM_SETUP_MESSAGE;
+  }, [isInstructor, selectedTerm]);
 
   const lessonsPerWeekValue = useMemo(
     () => parseIntegerInput(lessonsPerWeek),
@@ -641,7 +594,6 @@ export function CreateSchemePage() {
         selectedTermId,
         selectedTeacherId,
         title,
-        learningWeeks,
         lessonsPerWeek,
         lessonDurationMinutes,
         weeklyTeachingLoadConfirmed,
@@ -653,7 +605,6 @@ export function CreateSchemePage() {
     [
       endStrandId,
       endSubStrandId,
-      learningWeeks,
       lessonDurationMinutes,
       lessonsPerWeek,
       selectedCohortSubjectId,
@@ -713,8 +664,8 @@ export function CreateSchemePage() {
       if (!selectedTerm) {
         return 'Choose the teaching term first.';
       }
-      if (exceptionalWeekPreview.error) {
-        return exceptionalWeekPreview.error;
+      if (!selectedTerm.is_calendar_setup_complete) {
+        return termCalendarSetupMessage;
       }
       if (learningWeekSummary.activeLearningWeekCount <= 0) {
         return 'There must be at least one active learning week.';
@@ -754,6 +705,7 @@ export function CreateSchemePage() {
     subjectsLoading ||
     adminContextLoading ||
     adminTeachersLoading ||
+    (currentStep === 2 && termCalendarLoading) ||
     (currentStep === 3 && strandsLoading);
 
   const handleNext = () => {
@@ -799,8 +751,6 @@ export function CreateSchemePage() {
         title: title.trim(),
         lessons_per_week: lessonsPerWeekValue ?? 1,
         lesson_duration_minutes: lessonDurationMinutesValue ?? 40,
-        exceptional_weeks: exceptionalWeekPreview.exceptionalWeeks,
-        non_blocking_exam_notes: exceptionalWeekPreview.notes,
         curriculum_range: rangeValidation.curriculumRange,
         generation_mode: 'AI_ASSISTED_DRAFT' as const,
         ...(selectedTeacherId && !isInstructor && user && Number(selectedTeacherId) !== user.id
@@ -844,7 +794,7 @@ export function CreateSchemePage() {
         currentStep === 1
           ? 'teaching-context'
           : currentStep === 2
-            ? 'learning-weeks'
+            ? 'term-calendar'
             : currentStep === 3
               ? 'strand-range'
               : 'review-and-generate',
@@ -886,13 +836,13 @@ export function CreateSchemePage() {
       <div>
         <h1 className="text-2xl font-bold theme-text">Create Draft Scheme</h1>
         <p className="mt-1 text-sm theme-subtle">
-          Set the teaching context, learning weeks, and strand range before generating the draft.
+          Set the teaching context, review the term calendar, and choose the strand range before generating the draft.
         </p>
       </div>
 
       <div className="grid gap-3 xl:grid-cols-4">
         <StepMarker currentStep={currentStep} step={1} title="Teaching Context" />
-        <StepMarker currentStep={currentStep} step={2} title="Weeks & Load" />
+        <StepMarker currentStep={currentStep} step={2} title="Calendar & Load" />
         <StepMarker currentStep={currentStep} step={3} title="Strand Range" />
         <StepMarker currentStep={currentStep} step={4} title="Review & Generate" />
       </div>
@@ -1043,11 +993,11 @@ export function CreateSchemePage() {
         <Card className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold theme-text">
-              Step 2: Set learning weeks and teaching load
+              Step 2: Review term calendar and teaching load
             </h2>
             <p className="mt-1 text-sm theme-subtle">
-              Mark only the weeks that break the normal teaching flow, then confirm how many times
-              this subject meets each active week.
+              The organization term calendar defines breaks, exams, and holidays for every scheme
+              in this term. Set only the subject-specific teaching load here.
             </p>
           </div>
 
@@ -1084,13 +1034,73 @@ export function CreateSchemePage() {
                 </div>
                 <div className="rounded-lg bg-gray-50 px-4 py-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Exceptional weeks
+                    Calendar weeks
                   </p>
                   <p className="mt-1 text-base font-semibold theme-text">
-                    {exceptionalWeekPreview.exceptionalWeeks.length}
+                    {exceptionalWeeks.length}
                   </p>
                 </div>
               </div>
+
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="font-medium">Admin-managed term calendar</p>
+                      <p className="mt-1">
+                        {isInstructor
+                          ? 'Calendar weeks are locked during scheme generation so every teacher in the term uses the same break and exam weeks.'
+                          : 'Edit term calendar events in academic term setup before generating schemes for this term.'}
+                      </p>
+                    </div>
+                  </div>
+                  {!isInstructor ? (
+                    <Link href="/academic/terms">
+                      <Button type="button" variant="secondary" size="sm">
+                        Edit term calendar
+                      </Button>
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+
+              {termCalendarSetupMessage ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div>
+                        <p className="font-medium">Term calendar setup incomplete</p>
+                        <p className="mt-1">{termCalendarSetupMessage}</p>
+                      </div>
+                    </div>
+                    {!isInstructor ? (
+                      <Link href="/academic/terms">
+                        <Button type="button" variant="secondary" size="sm">
+                          Open term setup
+                        </Button>
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-900">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="font-medium">Term calendar setup complete</p>
+                      <p className="mt-1">Schemes can now be generated for this term.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {termCalendarError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900">
+                  {termCalendarError}
+                </div>
+              ) : null}
 
               <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900">
                 <div className="flex items-start gap-3">
@@ -1155,30 +1165,18 @@ export function CreateSchemePage() {
               </label>
 
               <div className="space-y-3">
-                {learningWeeks.map((week) => {
-                  const expanded = expandedLearningWeek === week.week_number;
-                  const noteOpen = expandedWeekNotes[week.week_number] ?? false;
+                {derivedWeeks.map((week) => {
                   const exceptional = week.week_type !== 'TEACHING';
 
                   return (
                     <div
                       key={week.week_number}
-                      className="overflow-hidden rounded-xl border theme-border"
+                      className="rounded-xl border theme-border px-4 py-4"
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedLearningWeek((current) =>
-                            current === week.week_number ? null : week.week_number,
-                          )
-                        }
-                        className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
-                      >
-                        <div className="min-w-0">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold theme-text">
-                              Week {week.week_number}
-                            </p>
+                            <p className="text-sm font-semibold theme-text">Week {week.week_number}</p>
                             <Badge variant={exceptional ? 'warning' : 'success'} size="sm">
                               {getSchemeWeekTypeLabel(week.week_type)}
                             </Badge>
@@ -1186,87 +1184,20 @@ export function CreateSchemePage() {
                               variant={week.affects_learning ? 'warning' : 'default'}
                               size="sm"
                             >
-                              {week.affects_learning ? 'Affects learning' : 'Keeps learning active'}
+                              {week.affects_learning ? 'Affects learning' : 'Active learning'}
                             </Badge>
                           </div>
-                          <p className="mt-1 text-sm theme-subtle">
-                            {week.notes.trim() ? week.notes : 'No note added'}
+                          <p className="text-sm theme-text">
+                            {week.label}
+                          </p>
+                          <p className="text-sm theme-subtle">
+                            {week.notes.trim() || 'No additional calendar note'}
                           </p>
                         </div>
-                        {expanded ? (
-                          <ChevronUp className="h-5 w-5 theme-subtle" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 theme-subtle" />
-                        )}
-                      </button>
-
-                      {expanded ? (
-                        <div className="space-y-4 border-t theme-border px-4 py-4">
-                          <div className="grid gap-4 xl:grid-cols-2">
-                            <Select
-                              label="Week type"
-                              value={week.week_type}
-                              onChange={(event) =>
-                                updateLearningWeek(week.week_number, (current) => ({
-                                  ...current,
-                                  week_type: event.target.value as SchemeWeekType,
-                                  affects_learning:
-                                    event.target.value === 'TEACHING'
-                                      ? false
-                                      : current.affects_learning,
-                                }))
-                              }
-                              options={CREATE_WEEK_TYPE_OPTIONS}
-                            />
-
-                            <Select
-                              label="Affects learning"
-                              value={String(week.affects_learning)}
-                              onChange={(event) =>
-                                updateLearningWeek(week.week_number, (current) => ({
-                                  ...current,
-                                  affects_learning: event.target.value === 'true',
-                                }))
-                              }
-                              disabled={week.week_type === 'TEACHING'}
-                              options={[
-                                { value: 'false', label: 'No, keep active learning' },
-                                { value: 'true', label: 'Yes, reduce active learning' },
-                              ]}
-                            />
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-3">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                setExpandedWeekNotes((current) => ({
-                                  ...current,
-                                  [week.week_number]: !noteOpen,
-                                }))
-                              }
-                            >
-                              {noteOpen ? 'Hide note' : 'Add note'}
-                            </Button>
-                          </div>
-
-                          {noteOpen ? (
-                            <TextAreaField
-                              label="Week note"
-                              value={week.notes}
-                              onChange={(event) =>
-                                updateLearningWeek(week.week_number, (current) => ({
-                                  ...current,
-                                  notes: event.target.value,
-                                }))
-                              }
-                              rows={3}
-                            />
-                          ) : null}
+                        <div className="text-xs theme-subtle">
+                          {exceptional ? 'Locked from term setup' : 'Teaching week'}
                         </div>
-                      ) : null}
+                      </div>
                     </div>
                   );
                 })}
@@ -1474,12 +1405,12 @@ export function CreateSchemePage() {
             </div>
             <div className="rounded-lg bg-gray-50 px-3 py-2">
               <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                Exceptional weeks
+                Calendar event weeks
               </dt>
               <dd className="mt-1 text-sm theme-text">
-                {exceptionalWeekPreview.exceptionalWeeks.length === 0
+                {exceptionalWeeks.length === 0
                   ? 'None'
-                  : exceptionalWeekPreview.exceptionalWeeks
+                  : exceptionalWeeks
                       .map(
                         (week) =>
                           `Week ${week.week_number} (${getSchemeWeekTypeLabel(week.week_type)})`,
