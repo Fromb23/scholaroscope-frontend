@@ -96,7 +96,9 @@ export function CBCCohortProgressPage() {
                 </Card>
             )}
 
-            {!page.selectedSubjectId ? (
+            {page.instructorScopeLoading ? (
+                <CBCLoading message="Loading instructor subject scope…" />
+            ) : !page.selectedSubjectId ? (
                 <Card className="py-12 text-center">
                     <BookOpen className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                     <p className="text-gray-500">Select a subject to view progress</p>
@@ -125,8 +127,8 @@ export function CBCCohortProgressPage() {
                                 color: 'text-emerald-600',
                             },
                             {
-                                label: 'Need Attention',
-                                value: summary.attention_needed,
+                                label: 'Learners Needing Support',
+                                value: summary.learners_needing_support,
                                 color: 'text-red-500',
                             },
                         ].map(stat => (
@@ -141,14 +143,17 @@ export function CBCCohortProgressPage() {
                         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-5">
                             <Target className="h-5 w-5 text-purple-600" />
                             Competency Distribution
-                            <Badge variant="blue" size="sm">{page.totalLearners} records</Badge>
+                            <Badge variant="blue" size="sm">
+                                {page.totalOutcomeRecords} outcome record
+                                {page.totalOutcomeRecords !== 1 ? 's' : ''}
+                            </Badge>
                         </h2>
 
                         <div className="flex h-8 rounded-lg overflow-hidden mb-4">
                             {MASTERY_LEVELS.map(level => {
                                 const count = summary.competency[level];
-                                const percentage = page.totalLearners > 0
-                                    ? (count / page.totalLearners) * 100
+                                const percentage = page.totalOutcomeRecords > 0
+                                    ? (count / page.totalOutcomeRecords) * 100
                                     : 0;
                                 if (percentage === 0) return null;
 
@@ -166,10 +171,11 @@ export function CBCCohortProgressPage() {
                         <div className="space-y-3">
                             {MASTERY_LEVELS.map(level => {
                                 const count = summary.competency[level];
-                                const percentage = page.totalLearners > 0
-                                    ? Math.round((count / page.totalLearners) * 100)
+                                const percentage = page.totalOutcomeRecords > 0
+                                    ? Math.round((count / page.totalOutcomeRecords) * 100)
                                     : 0;
                                 const config = MASTERY_CONFIG[level];
+                                const recordLabel = count === 1 ? 'record' : 'records';
 
                                 return (
                                     <div key={level} className="flex items-center gap-4">
@@ -182,8 +188,10 @@ export function CBCCohortProgressPage() {
                                                 style={{ width: `${percentage}%` }}
                                             />
                                         </div>
-                                        <div className="w-24 text-right shrink-0">
-                                            <span className="font-semibold text-gray-900">{count}</span>
+                                        <div className="w-40 text-right shrink-0">
+                                            <span className="font-semibold text-gray-900">
+                                                {count} {recordLabel}
+                                            </span>
                                             <span className="text-gray-400 text-sm ml-1">({percentage}%)</span>
                                         </div>
                                     </div>
@@ -192,7 +200,7 @@ export function CBCCohortProgressPage() {
                         </div>
                     </Card>
 
-                    {summary.attention_needed > 0 && (
+                    {summary.learners_needing_support > 0 && (
                         <Card className="border-amber-200 bg-amber-50">
                             <div className="flex items-start gap-4">
                                 <div className="p-3 bg-amber-100 rounded-xl shrink-0">
@@ -200,12 +208,13 @@ export function CBCCohortProgressPage() {
                                 </div>
                                 <div>
                                     <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                                        {summary.attention_needed} record
-                                        {summary.attention_needed !== 1 ? 's' : ''} need support
+                                        {summary.learners_needing_support} learner
+                                        {summary.learners_needing_support !== 1 ? 's' : ''} need support
                                     </h3>
                                     <p className="text-sm text-gray-700">
-                                        Below Expectation or Not Started —
-                                        consider targeted intervention.
+                                        {summary.records_needing_evidence} outcome record
+                                        {summary.records_needing_evidence !== 1 ? 's are' : ' is'} Not Started
+                                        {' '}or Below Expectation. Consider targeted intervention.
                                     </p>
                                 </div>
                             </div>
