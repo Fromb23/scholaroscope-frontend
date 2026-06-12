@@ -94,6 +94,11 @@ export function CBCProvider({ children }: { children: ReactNode }) {
         parseParam(searchParams.get('subject')),
         parseParam(searchParams.get('cohort'))
     ), [searchParams]);
+    const hasExplicitScopedContext = useMemo(
+        () => ['subject', 'cohort', 'cohort_subject_id', 'instructor_id']
+            .some((param) => searchParams.has(param)),
+        [searchParams]
+    );
     const isCBCRoute = pathname.startsWith('/cbc');
     const isCBCBrowserRoute = pathname.startsWith('/cbc/browser');
     const selectedSubjectId = filterState.selectedSubjectId;
@@ -102,14 +107,16 @@ export function CBCProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (hasInitializedRef.current) return;
 
-        const saved = loadFromStorage();
+        const saved = hasExplicitScopedContext
+            ? buildFilterState(null, null)
+            : loadFromStorage();
         setFilterState(buildFilterState(
             urlFilterState.selectedSubjectId ?? saved.selectedSubjectId,
             urlFilterState.selectedCohortId ?? saved.selectedCohortId
         ));
         hasInitializedRef.current = true;
         setHydrated(true);
-    }, [urlFilterState]);
+    }, [hasExplicitScopedContext, urlFilterState]);
 
     useEffect(() => {
         if (!hydrated || !isCBCRoute) return;
@@ -146,11 +153,11 @@ export function CBCProvider({ children }: { children: ReactNode }) {
     ]);
 
     useEffect(() => {
-        if (!hydrated) return;
+        if (!hydrated || hasExplicitScopedContext) return;
         if (teachingLoading && (selectedSubjectId === null || selectedCohortId === null)) return;
 
         saveToStorage(filterState);
-    }, [filterState, hydrated, selectedCohortId, selectedSubjectId, teachingLoading]);
+    }, [filterState, hasExplicitScopedContext, hydrated, selectedCohortId, selectedSubjectId, teachingLoading]);
 
     const syncUrl = useCallback((nextSubjectId: number | null, nextCohortId: number | null) => {
         if (!hydrated || !isCBCRoute) return;

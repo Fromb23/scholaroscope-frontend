@@ -242,6 +242,8 @@ export function SessionDetailPage() {
     const sessionId = Number(params.id);
     const { activeRole } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const returnTo = searchParams.get('returnTo');
+    const backHref = returnTo?.startsWith('/') ? returnTo : '/sessions';
 
     const [workflowError, setWorkflowError] = useState<string | null>(null);
     const [workflowNotice, setWorkflowNotice] = useState<string | null>(null);
@@ -1716,7 +1718,7 @@ export function SessionDetailPage() {
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
             <div className="space-y-3">
-                <Link href="/sessions">
+                <Link href={backHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         {isInstructor ? 'Back to My Lessons' : 'Back'}

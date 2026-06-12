@@ -165,6 +165,7 @@ export interface AssessmentScoreDraft {
   rubric_level?: number | null;
   status?: AssessmentScoreStatus | null;
   comments?: string;
+  status_note?: string;
 }
 
 export interface AssessmentReviewSummary {
@@ -217,10 +218,11 @@ export interface BulkScoreData {
   assessment: number;
   scores: {
     student_id: number;
-    score?: number;
-    rubric_level_id?: number;
+    score?: number | null;
+    rubric_level_id?: number | null;
     status?: AssessmentScoreStatus;
     comments?: string;
+    status_note?: string;
     narrative?: string;
   }[];
   scored_by: string;

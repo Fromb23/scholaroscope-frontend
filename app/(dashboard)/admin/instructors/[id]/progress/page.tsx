@@ -275,7 +275,11 @@ export default function InstructorProgressPage() {
                             <Award className="h-5 w-5 text-purple-500" />
                             <h2 className="text-lg font-semibold text-gray-900">CBC Outcome Progress</h2>
                         </div>
-                        <CbcProgressAssignments assignments={cbcTeachingAssignments} />
+                        <CbcProgressAssignments
+                            assignments={cbcTeachingAssignments}
+                            instructorId={instructorId}
+                            returnTo={`/admin/instructors/${instructorId}/progress`}
+                        />
                     </div>
                 </Card>
             )}
@@ -288,7 +292,10 @@ export default function InstructorProgressPage() {
                         <h2 className="text-lg font-semibold text-gray-900">Sessions</h2>
                         <Badge variant="info" size="sm">{sessions.length} total</Badge>
                     </div>
-                    <GroupedSessions sessions={sessions} />
+                    <GroupedSessions
+                        sessions={sessions}
+                        returnTo={`/admin/instructors/${instructorId}/progress`}
+                    />
                 </div>
             </Card>
 

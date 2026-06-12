@@ -29,6 +29,37 @@ interface SessionGroup {
     sessions: Session[];
 }
 
+function buildSessionDetailHref(sessionId: number, returnTo?: string) {
+    if (!returnTo?.startsWith('/')) {
+        return `/sessions/${sessionId}`;
+    }
+
+    const params = new URLSearchParams({ returnTo });
+    return `/sessions/${sessionId}?${params.toString()}`;
+}
+
+function buildCbcProgressHref(assignment: TeachingAssignment, instructorId: number, returnTo?: string) {
+    const params = new URLSearchParams({
+        subject: String(assignment.subject_id),
+        instructor_id: String(instructorId),
+    });
+
+    const cohortSubjectId =
+        assignment.cohort_subject_id
+        ?? assignment.cbc_cohort_subject_id
+        ?? assignment.teaching_link_id
+        ?? null;
+    if (typeof cohortSubjectId === 'number' && Number.isFinite(cohortSubjectId)) {
+        params.set('cohort_subject_id', String(cohortSubjectId));
+    }
+
+    if (returnTo?.startsWith('/')) {
+        params.set('returnTo', returnTo);
+    }
+
+    return `/cbc/progress/cohort/${assignment.cohort_id}?${params.toString()}`;
+}
+
 function attendanceVariant(rate: number): 'success' | 'blue' | 'yellow' | 'default' {
     if (rate >= 80) return 'success';
     if (rate >= 60) return 'blue';
@@ -48,7 +79,7 @@ function teachingSourceLabel(assignment: TeachingAssignment) {
     return assignment.curriculum_name ?? assignment.curriculum_type;
 }
 
-function SessionCohortGroup({ group }: { group: SessionGroup }) {
+function SessionCohortGroup({ group, returnTo }: { group: SessionGroup; returnTo?: string }) {
     const [open, setOpen] = useState(false);
     const [page, setPage] = useState(1);
     const pageSize = 10;
@@ -102,7 +133,7 @@ function SessionCohortGroup({ group }: { group: SessionGroup }) {
                                             <Badge variant={attendanceVariant(rate)} size="sm">
                                                 {total > 0 ? `${rate}%` : 'Unmarked'}
                                             </Badge>
-                                            <Link href={`/sessions/${session.id}`}>
+                                            <Link href={buildSessionDetailHref(session.id, returnTo)}>
                                                 <Button size="sm" variant="ghost">View</Button>
                                             </Link>
                                         </div>
@@ -139,9 +170,10 @@ function SessionCohortGroup({ group }: { group: SessionGroup }) {
 
 interface GroupedSessionsProps {
     sessions: Session[];
+    returnTo?: string;
 }
 
-export function GroupedSessions({ sessions }: GroupedSessionsProps) {
+export function GroupedSessions({ sessions, returnTo }: GroupedSessionsProps) {
     const groups = useMemo<SessionGroup[]>(() => {
         const map = new Map<number, SessionGroup>();
         sessions.forEach(s => {
@@ -168,7 +200,7 @@ export function GroupedSessions({ sessions }: GroupedSessionsProps) {
     return (
         <div className="space-y-3">
             {groups.map(group => (
-                <SessionCohortGroup key={group.cohortId} group={group} />
+                <SessionCohortGroup key={group.cohortId} group={group} returnTo={returnTo} />
             ))}
         </div>
     );
@@ -232,9 +264,15 @@ export function TeachingAssignmentsList({ assignments }: TeachingAssignmentsList
 
 interface CbcProgressAssignmentsProps {
     assignments: TeachingAssignment[];
+    instructorId: number;
+    returnTo?: string;
 }
 
-export function CbcProgressAssignments({ assignments }: CbcProgressAssignmentsProps) {
+export function CbcProgressAssignments({
+    assignments,
+    instructorId,
+    returnTo,
+}: CbcProgressAssignmentsProps) {
     return (
         <div className="grid gap-3 xl:grid-cols-2">
             {assignments.map((assignment) => (
@@ -272,7 +310,10 @@ export function CbcProgressAssignments({ assignments }: CbcProgressAssignmentsPr
                                 </div>
                             </div>
                         </div>
-                        <Link href={`/cbc/progress/cohort/${assignment.cohort_id}`} className="w-full lg:w-auto">
+                        <Link
+                            href={buildCbcProgressHref(assignment, instructorId, returnTo)}
+                            className="w-full lg:w-auto"
+                        >
                             <Button size="sm" variant="ghost" className="w-full lg:w-auto">
                                 <TrendingUp className="mr-1 h-3.5 w-3.5" />
                                 View Progress

@@ -30,7 +30,7 @@ const kernelRouteRules: RouteRule[] = [
     { pattern: /^\/reports\/instructor/, allowedRoles: ['INSTRUCTOR'] },
     { pattern: /^\/reports\/learners\/[^/]+\/subject$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/reports\/learners\/[^/]+\/overview$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/reports$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/reports$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports\/(students|cohorts|subjects|assessments|attendance|policies|compute)(\/.*)?$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports\/grade-policies(\/.*)?$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports/, allowedRoles: ['ADMIN'] },

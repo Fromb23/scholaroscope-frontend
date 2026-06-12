@@ -194,7 +194,7 @@ export function getInstructorNav(pluginContext: PluginNavigationContext): Naviga
       },
       ...getPluginNavigationItems('instructor.primary.afterAssessments', pluginContext),
       {
-        name: 'Class Progress',
+        name: 'My Reports',
         href: '/reports/instructor',
         icon: FileBarChart,
         children: [

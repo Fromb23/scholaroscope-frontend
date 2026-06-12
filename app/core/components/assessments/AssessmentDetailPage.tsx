@@ -35,6 +35,7 @@ export function AssessmentDetailPage() {
         draft,
         saving,
         saveError,
+        saveSuccess,
         deleteError,
         exportError,
         searchQuery,
@@ -53,6 +54,7 @@ export function AssessmentDetailPage() {
         canScore,
         canExportPdf,
         setSaveError,
+        setSaveSuccess,
         setDeleteError,
         setExportError,
         setSearchQuery,
@@ -199,7 +201,6 @@ export function AssessmentDetailPage() {
             />
 
             {/* Error banners */}
-            {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
             {deleteError && <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />}
             {exportError && <ErrorBanner message={exportError} onDismiss={() => setExportError(null)} />}
 
@@ -245,12 +246,16 @@ export function AssessmentDetailPage() {
                     readOnly={isFinalized || !canScore}
                     canSave={Boolean(canScore)}
                     saving={saving}
+                    saveError={saveError}
+                    saveSuccess={saveSuccess}
                     searchQuery={searchQuery}
                     visibleLearnerCount={visibleLearnerCount}
                     totalLearnerCount={totalLearnerCount}
                     onSearchQueryChange={setSearchQuery}
                     onSave={handleSaveScores}
                     onScoreChange={handleScoreChange}
+                    onDismissSaveError={() => setSaveError(null)}
+                    onDismissSaveSuccess={() => setSaveSuccess(null)}
                 />
             </div>
         </div>
