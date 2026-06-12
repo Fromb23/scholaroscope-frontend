@@ -467,7 +467,14 @@ export interface CoverageSummary {
 
 export interface CBCProgressSummary {
   coverage: CoverageSummary;
+  // Legacy field name kept for compatibility. Counts learner-outcome records,
+  // not distinct learners.
   competency: CompetencyDistribution;
+  total_learners: number;
+  total_outcomes: number;
+  total_outcome_records: number;
+  records_needing_evidence: number;
+  learners_needing_support: number;
   attention_needed: number;
   avg_score: number;
 }
