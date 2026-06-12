@@ -54,7 +54,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
             <h2 className="min-w-0 flex-1 text-xl font-semibold theme-text">{title}</h2>
             <button
               onClick={onClose}
-              className="theme-focus-ring shrink-0 text-gray-400 transition-colors hover:text-gray-600"
+              className="theme-focus-ring shrink-0 theme-muted transition-colors hover:text-[color:var(--color-text)]"
             >
               <X className="w-5 h-5" />
             </button>

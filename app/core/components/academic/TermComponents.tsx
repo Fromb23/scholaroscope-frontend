@@ -115,8 +115,8 @@ export function TermFormModal({
                 {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
                 {formYearIsHistorical && (
-                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div className="theme-warning-surface flex items-start gap-2 rounded-xl p-3 text-sm">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warning)]" />
                         This academic year is no longer active. The system will reject creating terms in past
                         academic years.
                     </div>
@@ -170,7 +170,7 @@ export function TermFormModal({
                     required
                 />
 
-                <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                <div className="flex justify-end gap-3 border-t pt-2 theme-border">
                     <Button variant="secondary" onClick={handleClose} disabled={saving}>
                         Cancel
                     </Button>
