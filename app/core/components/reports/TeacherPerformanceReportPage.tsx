@@ -111,8 +111,9 @@ function prepareTeacherReflectionItem(
   const explicitFullText = typeof item.reflection_text === 'string'
     ? item.reflection_text.trim()
     : '';
-  const fullText = explicitFullText || trimTrailingEllipsis(item.excerpt);
-  const { canExpand, previewText } = explicitFullText
+  const hasExplicitFullText = explicitFullText.length > 0;
+  const fullText = hasExplicitFullText ? explicitFullText : trimTrailingEllipsis(item.excerpt);
+  const { canExpand, previewText } = hasExplicitFullText
     ? buildReflectionPreviewText(explicitFullText)
     : {
         canExpand: false,
