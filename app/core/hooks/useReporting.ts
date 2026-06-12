@@ -26,6 +26,7 @@ import {
   LearnerOverviewReportPayload,
   LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
+  TeacherPerformanceReportPayload,
   LongitudinalStudentData,
   InstructorOverview,
   InstructorCohortSubjectOverview,
@@ -392,13 +393,21 @@ export const useInstructorOverview = () => {
   return { overview, loading, error, errorStatus, refetch: fetchOverview };
 };
 
-export const useInstructorCohortSubjects = () => {
+export const useInstructorCohortSubjects = (options?: { enabled?: boolean }) => {
+  const enabled = options?.enabled ?? true;
   const [cohortSubjects, setCohortSubjects] = useState<InstructorCohortSubjectOverview[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const fetchCohortSubjects = useCallback(async () => {
+    if (!enabled) {
+      setLoading(false);
+      setCohortSubjects([]);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
     try {
       setLoading(true);
       setCohortSubjects(await instructorReportsAPI.getCohortSubjects());
@@ -412,7 +421,7 @@ export const useInstructorCohortSubjects = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => { fetchCohortSubjects(); }, [fetchCohortSubjects]);
   return { cohortSubjects, loading, error, errorStatus, refetch: fetchCohortSubjects };
@@ -731,6 +740,97 @@ export const useClassSubjectReport = (
       setLoading(false);
     }
   }, [cohortId, cohortSubjectId, enabled]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useInstructorTeacherReport = (
+  params?: {
+    termId?: number | null;
+    cohortSubjectId?: number | null;
+  },
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<TeacherPerformanceReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getInstructorTeacherReport({
+        termId: params?.termId ?? undefined,
+        cohortSubjectId: params?.cohortSubjectId ?? undefined,
+      }));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(extractErrorMessage(apiError, 'Failed to fetch teacher report'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, params?.cohortSubjectId, params?.termId]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useAdminInstructorTeacherReport = (
+  instructorId: number | null,
+  params?: {
+    termId?: number | null;
+    cohortSubjectId?: number | null;
+  },
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<TeacherPerformanceReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    if (!instructorId) {
+      setReport(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getAdminInstructorTeacherReport(
+        instructorId,
+        {
+          termId: params?.termId ?? undefined,
+          cohortSubjectId: params?.cohortSubjectId ?? undefined,
+        },
+      ));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(extractErrorMessage(apiError, 'Failed to fetch teacher report'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, instructorId, params?.cohortSubjectId, params?.termId]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };

@@ -449,7 +449,7 @@ export function LearnerSubjectReportPage() {
           <div className="mt-3">
             <h1 className="text-2xl font-semibold theme-text">Learner Subject Report</h1>
             <p className="mt-1 text-sm theme-muted">
-              Backend-owned learner reporting preview for a single subject scope.
+              A summary-first subject report focused on status, strengths, support needs, and next teaching action.
             </p>
           </div>
         </div>
@@ -600,7 +600,7 @@ export function LearnerSubjectReportPage() {
                       {report.subject.name}
                     </h2>
                     <p className="text-sm theme-muted">
-                      Generated {formatDate(report.generated_at)} for {report.cohort.name}
+                      {report.period?.label ? `${report.period.label} · ` : ''}Generated {formatDate(report.generated_at)} for {report.cohort.name}
                     </p>
                   </div>
                   <p className="text-sm theme-text">{report.teacher_summary}</p>
@@ -725,6 +725,38 @@ export function LearnerSubjectReportPage() {
                     emptyMessage="No support areas are currently flagged."
                   />
                 </div>
+
+                <Card>
+                  <h2 className="text-lg font-semibold theme-text">Latest Evidence</h2>
+                  {report.progress.latest_evidence.length === 0 ? (
+                    <p className="mt-4 text-sm theme-muted">No evidence rows are available yet.</p>
+                  ) : (
+                    <div className="mt-4 overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="border-b theme-border text-left text-xs uppercase tracking-wide theme-subtle">
+                            <th className="px-3 py-2">Observed</th>
+                            <th className="px-3 py-2">Outcome</th>
+                            <th className="px-3 py-2">Description</th>
+                            <th className="px-3 py-2">Evaluation</th>
+                            <th className="px-3 py-2">Source</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {report.progress.latest_evidence.map((row) => (
+                            <tr key={`${row.observed_at}-${row.learning_outcome_code}`} className="border-b theme-border">
+                              <td className="px-3 py-3 theme-muted">{formatDate(row.observed_at)}</td>
+                              <td className="px-3 py-3 theme-text">{row.learning_outcome_code}</td>
+                              <td className="px-3 py-3 theme-muted">{row.learning_outcome_description}</td>
+                              <td className="px-3 py-3 theme-muted">{row.evaluation_type}</td>
+                              <td className="px-3 py-3 theme-muted">{row.source_type}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </Card>
               </>
             ) : (
               <>

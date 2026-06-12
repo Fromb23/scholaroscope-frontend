@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft, Calendar, Users, CheckCircle,
     AlertCircle, Award, GraduationCap, Pencil,
-    KeyRound, Power, PowerOff, Trash2, BookOpen,
+    KeyRound, Power, PowerOff, Trash2, BookOpen, ClipboardList,
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -196,6 +196,14 @@ export default function InstructorProgressPage() {
                     <Button size="sm" variant="secondary" onClick={() => setCohortOpen(true)}>
                         <BookOpen className="h-3.5 w-3.5 md:mr-1" />
                         <span className="hidden md:inline">Teaching</span>
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => router.push(`/admin/instructors/${instructorId}/teacher-report`)}
+                    >
+                        <ClipboardList className="h-3.5 w-3.5 md:mr-1" />
+                        <span className="hidden md:inline">Teacher Report</span>
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => setResetOpen(true)}>
                         <KeyRound className="h-3.5 w-3.5 md:mr-1" />

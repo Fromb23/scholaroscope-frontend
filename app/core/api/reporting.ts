@@ -27,6 +27,7 @@ import {
   LearnerOverviewReportPayload,
   LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
+  TeacherPerformanceReportPayload,
   ComputeResponse,
   ReportExportFormat,
   ReportFilters,
@@ -559,6 +560,92 @@ export const learnerReportingAPI = {
     },
     `class-subject-report-${cohortId}.${params.format}`,
   ),
+
+  getInstructorTeacherReport: async (
+    params?: {
+      termId?: number | null;
+      cohortSubjectId?: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    },
+  ) => {
+    const response = await apiClient.get<TeacherPerformanceReportPayload>(
+      '/reporting/instructor/me/teacher-report/',
+      {
+        params: {
+          term_id: params?.termId ?? undefined,
+          cohort_subject_id: params?.cohortSubjectId ?? undefined,
+          start_date: params?.startDate ?? undefined,
+          end_date: params?.endDate ?? undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  exportInstructorTeacherReport: async (
+    format: ReportExportFormat,
+    params?: {
+      termId?: number | null;
+      cohortSubjectId?: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    },
+  ) => fetchReportDownload(
+    '/reporting/instructor/me/teacher-report/',
+    {
+      format,
+      term_id: params?.termId ?? undefined,
+      cohort_subject_id: params?.cohortSubjectId ?? undefined,
+      start_date: params?.startDate ?? undefined,
+      end_date: params?.endDate ?? undefined,
+    },
+    `teacher-performance-report.${format}`,
+  ),
+
+  getAdminInstructorTeacherReport: async (
+    instructorId: number,
+    params?: {
+      termId?: number | null;
+      cohortSubjectId?: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    },
+  ) => {
+    const response = await apiClient.get<TeacherPerformanceReportPayload>(
+      `/reporting/admin/instructors/${instructorId}/teacher-report/`,
+      {
+        params: {
+          term_id: params?.termId ?? undefined,
+          cohort_subject_id: params?.cohortSubjectId ?? undefined,
+          start_date: params?.startDate ?? undefined,
+          end_date: params?.endDate ?? undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  exportAdminInstructorTeacherReport: async (
+    instructorId: number,
+    format: ReportExportFormat,
+    params?: {
+      termId?: number | null;
+      cohortSubjectId?: number | null;
+      startDate?: string | null;
+      endDate?: string | null;
+    },
+  ) => fetchReportDownload(
+    `/reporting/admin/instructors/${instructorId}/teacher-report/`,
+    {
+      format,
+      term_id: params?.termId ?? undefined,
+      cohort_subject_id: params?.cohortSubjectId ?? undefined,
+      start_date: params?.startDate ?? undefined,
+      end_date: params?.endDate ?? undefined,
+    },
+    `teacher-performance-report-${instructorId}.${format}`,
+  ),
 };
 
 export const reportsAPI = {
@@ -578,6 +665,10 @@ export const reportsAPI = {
   exportLearnerOverviewReport: learnerReportingAPI.exportLearnerOverviewReport,
   getClassSubjectReport: learnerReportingAPI.getClassSubjectReport,
   exportClassSubjectReport: learnerReportingAPI.exportClassSubjectReport,
+  getInstructorTeacherReport: learnerReportingAPI.getInstructorTeacherReport,
+  exportInstructorTeacherReport: learnerReportingAPI.exportInstructorTeacherReport,
+  getAdminInstructorTeacherReport: learnerReportingAPI.getAdminInstructorTeacherReport,
+  exportAdminInstructorTeacherReport: learnerReportingAPI.exportAdminInstructorTeacherReport,
   getDashboardOverview: async () => {
     return adminReportsAPI.getOverview();
   },

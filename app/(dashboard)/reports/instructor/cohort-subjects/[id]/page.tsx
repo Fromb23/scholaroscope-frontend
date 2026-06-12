@@ -428,6 +428,16 @@ export default function InstructorCohortSubjectDetailReportPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {cohortSubjectMeta ? (
+              <Link
+                href={`/reports/instructor/cohort-subjects/${cohortSubjectId}/class-report?cohort_id=${cohortSubjectMeta.cohort_id}&returnTo=${encodeURIComponent(`/reports/instructor/cohort-subjects/${cohortSubjectId}`)}`}
+              >
+                <Button variant="secondary" size="sm">
+                  <Users className="mr-1.5 h-4 w-4" />
+                  Class Report
+                </Button>
+              </Link>
+            ) : null}
             {exportPayload && (
               <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
                 <Download className="mr-1.5 h-4 w-4" />
