@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -36,8 +36,23 @@ import { useTerms } from '@/app/core/hooks/useAcademic';
 import type {
   ReportExportFormat,
   TeacherPerformanceAssignedSubject,
+  TeacherPerformanceReflectionItem,
 } from '@/app/core/types/reporting';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+
+const ALL_REFLECTION_SUBJECTS = 'all-subjects';
+const INITIAL_REFLECTION_BATCH_SIZE = 10;
+const REFLECTION_BATCH_INCREMENT = 20;
+const REFLECTION_PREVIEW_CHAR_LIMIT = 200;
+
+type PreparedTeacherReflectionItem = TeacherPerformanceReflectionItem & {
+  canExpand: boolean;
+  fullText: string;
+  matchKey: string;
+  previewText: string;
+  rowKey: string;
+  sortTimestamp: number;
+};
 
 function parsePositiveNumber(value: string | null): number | null {
   if (!value) return null;
@@ -47,6 +62,78 @@ function parsePositiveNumber(value: string | null): number | null {
 
 function stringValue(value: string | number): string {
   return typeof value === 'number' ? String(value) : value;
+}
+
+function buildReflectionSubjectKey(cohortName: string, subjectName: string): string {
+  return `${cohortName.trim().toLowerCase()}::${subjectName.trim().toLowerCase()}`;
+}
+
+function normalizeReflectionPreviewText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function trimTrailingEllipsis(value: string): string {
+  return value.replace(/\s*(?:\.\.\.|…)\s*$/, '').trim();
+}
+
+function buildReflectionPreviewText(value: string): {
+  canExpand: boolean;
+  previewText: string;
+} {
+  const normalizedValue = normalizeReflectionPreviewText(value);
+
+  if (normalizedValue.length <= REFLECTION_PREVIEW_CHAR_LIMIT) {
+    return {
+      canExpand: false,
+      previewText: normalizedValue,
+    };
+  }
+
+  const lastWhitespaceIndex = normalizedValue.lastIndexOf(' ', REFLECTION_PREVIEW_CHAR_LIMIT);
+  const previewEndIndex = lastWhitespaceIndex >= Math.floor(REFLECTION_PREVIEW_CHAR_LIMIT * 0.6)
+    ? lastWhitespaceIndex
+    : REFLECTION_PREVIEW_CHAR_LIMIT;
+
+  return {
+    canExpand: true,
+    previewText: `${normalizedValue.slice(0, previewEndIndex).trimEnd()}...`,
+  };
+}
+
+function getReflectionSortTimestamp(item: TeacherPerformanceReflectionItem): number {
+  const parsedTimestamp = Date.parse(item.session_date || item.created_at);
+  return Number.isFinite(parsedTimestamp) ? parsedTimestamp : 0;
+}
+
+function prepareTeacherReflectionItem(
+  item: TeacherPerformanceReflectionItem,
+): PreparedTeacherReflectionItem {
+  const explicitFullText = typeof item.reflection_text === 'string'
+    ? item.reflection_text.trim()
+    : '';
+  const fullText = explicitFullText || trimTrailingEllipsis(item.excerpt);
+  const { canExpand, previewText } = explicitFullText
+    ? buildReflectionPreviewText(explicitFullText)
+    : {
+        canExpand: false,
+        previewText: normalizeReflectionPreviewText(fullText),
+      };
+  const matchKey = buildReflectionSubjectKey(item.cohort_name, item.subject_name);
+
+  return {
+    ...item,
+    canExpand,
+    fullText,
+    matchKey,
+    previewText,
+    rowKey: [
+      item.cohort_subject_id ?? matchKey,
+      item.session_title,
+      item.session_date ?? 'no-session-date',
+      item.created_at,
+    ].join('::'),
+    sortTimestamp: getReflectionSortTimestamp(item),
+  };
 }
 
 export function TeacherPerformanceReportPage({
@@ -90,6 +177,15 @@ export function TeacherPerformanceReportPage({
 
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [selectedReflectionSubject, setSelectedReflectionSubject] = useState(
+    ALL_REFLECTION_SUBJECTS,
+  );
+  const [visibleReflectionCount, setVisibleReflectionCount] = useState(
+    INITIAL_REFLECTION_BATCH_SIZE,
+  );
+  const [expandedReflectionKeys, setExpandedReflectionKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const updateQuery = useCallback((updates: {
     term?: number | null;
@@ -133,6 +229,82 @@ export function TeacherPerformanceReportPage({
     }));
   }, [mode, report?.assigned_subjects, selfCohortSubjectsQuery.cohortSubjects]);
 
+  const reflectionSubjectOptions = useMemo(() => ([
+    { value: ALL_REFLECTION_SUBJECTS, label: 'All subjects' },
+    ...(report?.assigned_subjects ?? []).map((item) => ({
+      value: String(item.cohort_subject_id),
+      label: `${item.cohort_name} · ${item.subject_name}`,
+    })),
+  ]), [report?.assigned_subjects]);
+
+  const assignedReflectionSubjectsById = useMemo(
+    () => new Map(
+      (report?.assigned_subjects ?? []).map((item) => [String(item.cohort_subject_id), item]),
+    ),
+    [report?.assigned_subjects],
+  );
+
+  const selectedReflectionSubjectMatchKey = useMemo(() => {
+    if (selectedReflectionSubject === ALL_REFLECTION_SUBJECTS) {
+      return null;
+    }
+
+    const selectedSubject = assignedReflectionSubjectsById.get(selectedReflectionSubject);
+    return selectedSubject
+      ? buildReflectionSubjectKey(selectedSubject.cohort_name, selectedSubject.subject_name)
+      : null;
+  }, [assignedReflectionSubjectsById, selectedReflectionSubject]);
+
+  const reflectionItems = useMemo(
+    () => (report?.reflection_summary.latest_reflections ?? []).map(prepareTeacherReflectionItem),
+    [report?.reflection_summary.latest_reflections],
+  );
+
+  const filteredReflections = useMemo(() => {
+    const selectedCohortSubjectId = selectedReflectionSubject === ALL_REFLECTION_SUBJECTS
+      ? null
+      : Number(selectedReflectionSubject);
+    const matchingReflections = reflectionItems.filter((item) => {
+      if (selectedCohortSubjectId == null) {
+        return true;
+      }
+
+      if (typeof item.cohort_subject_id === 'number') {
+        return item.cohort_subject_id === selectedCohortSubjectId;
+      }
+
+      return item.matchKey === selectedReflectionSubjectMatchKey;
+    });
+
+    return [...matchingReflections].sort((left, right) => right.sortTimestamp - left.sortTimestamp);
+  }, [reflectionItems, selectedReflectionSubject, selectedReflectionSubjectMatchKey]);
+
+  const visibleReflections = useMemo(
+    () => filteredReflections.slice(0, visibleReflectionCount),
+    [filteredReflections, visibleReflectionCount],
+  );
+
+  const hasMoreReflections = visibleReflectionCount < filteredReflections.length;
+
+  useEffect(() => {
+    if (selectedReflectionSubject === ALL_REFLECTION_SUBJECTS) {
+      return;
+    }
+
+    const hasSelectedOption = reflectionSubjectOptions.some(
+      (option) => String(option.value) === selectedReflectionSubject,
+    );
+
+    if (!hasSelectedOption) {
+      setSelectedReflectionSubject(ALL_REFLECTION_SUBJECTS);
+    }
+  }, [reflectionSubjectOptions, selectedReflectionSubject]);
+
+  useEffect(() => {
+    setVisibleReflectionCount(INITIAL_REFLECTION_BATCH_SIZE);
+    setExpandedReflectionKeys(new Set());
+  }, [report?.reflection_summary.latest_reflections, selectedReflectionSubject]);
+
   const handleExport = useCallback(async (format: ReportExportFormat) => {
     try {
       setExportError(null);
@@ -157,6 +329,18 @@ export function TeacherPerformanceReportPage({
       setExporting(null);
     }
   }, [instructorId, mode, selectedCohortSubjectId, selectedTermId]);
+
+  const toggleReflectionExpanded = useCallback((reflectionKey: string) => {
+    setExpandedReflectionKeys((current) => {
+      const next = new Set(current);
+      if (next.has(reflectionKey)) {
+        next.delete(reflectionKey);
+      } else {
+        next.add(reflectionKey);
+      }
+      return next;
+    });
+  }, []);
 
   const headlineMetrics = report?.headline
     ? [
@@ -493,26 +677,94 @@ export function TeacherPerformanceReportPage({
 
           <div className="grid gap-4 xl:grid-cols-2">
             <Card>
-              <h2 className="text-lg font-semibold theme-text">Latest Reflections</h2>
-              {report.reflection_summary.latest_reflections.length === 0 ? (
-                <p className="mt-4 text-sm theme-muted">No reflection entries are available yet.</p>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  {report.reflection_summary.latest_reflections.map((item) => (
-                    <div
-                      key={`${item.created_at}-${item.session_title}`}
-                      className="rounded-lg border theme-border theme-surface-muted px-4 py-3"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-medium theme-text">{item.session_title}</p>
-                        <span className="text-xs theme-subtle">{formatReportDate(item.session_date)}</span>
-                      </div>
-                      <p className="mt-1 text-xs theme-subtle">{item.cohort_name} · {item.subject_name}</p>
-                      <p className="mt-3 text-sm theme-muted">{item.excerpt}</p>
-                    </div>
-                  ))}
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold theme-text">Latest Reflections</h2>
+                    {reflectionItems.length > 0 ? (
+                      <p className="mt-1 text-sm theme-muted">
+                        Showing {visibleReflections.length} of {filteredReflections.length} reflections
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="w-full sm:max-w-md">
+                    <Select
+                      label="Filter reflections by subject"
+                      value={selectedReflectionSubject}
+                      onChange={(event) => setSelectedReflectionSubject(
+                        event.target.value || ALL_REFLECTION_SUBJECTS,
+                      )}
+                      options={reflectionSubjectOptions}
+                    />
+                  </div>
                 </div>
-              )}
+
+                {reflectionItems.length === 0 ? (
+                  <p className="text-sm theme-muted">No reflections recorded yet.</p>
+                ) : filteredReflections.length === 0 ? (
+                  <p className="text-sm theme-muted">No reflections recorded for this subject yet.</p>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {visibleReflections.map((item) => {
+                        const isExpanded = expandedReflectionKeys.has(item.rowKey);
+                        const reflectionText = isExpanded || !item.canExpand
+                          ? item.fullText
+                          : item.previewText;
+
+                        return (
+                          <div
+                            key={item.rowKey}
+                            className="rounded-lg border theme-border theme-surface-muted px-4 py-3"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <p className="text-sm font-medium theme-text">{item.session_title}</p>
+                              <span className="text-xs theme-subtle">
+                                {formatReportDate(item.session_date || item.created_at)}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs theme-subtle">
+                              {item.cohort_name} · {item.subject_name}
+                            </p>
+                            <p
+                              className={`mt-3 text-sm theme-muted ${
+                                isExpanded || !item.canExpand ? 'whitespace-pre-line break-words' : ''
+                              }`}
+                            >
+                              {reflectionText}
+                            </p>
+                            {item.canExpand ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-2 px-0"
+                                onClick={() => toggleReflectionExpanded(item.rowKey)}
+                              >
+                                {isExpanded ? 'View less' : 'View more'}
+                              </Button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {hasMoreReflections ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="self-start"
+                        onClick={() => setVisibleReflectionCount(
+                          (current) => current + REFLECTION_BATCH_INCREMENT,
+                        )}
+                      >
+                        Show more reflections
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </Card>
 
             <Card>
