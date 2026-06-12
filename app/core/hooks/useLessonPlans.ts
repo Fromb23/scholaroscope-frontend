@@ -509,7 +509,10 @@ export const useCreateLessonPlan = () => {
     };
 };
 
-export const useLessonPlanCurriculumContext = (cohortSubjectId: number | null) => {
+export const useLessonPlanCurriculumContext = (
+    cohortSubjectId: number | null,
+    termId?: number | null,
+) => {
     const [curriculumContext, setCurriculumContext] = useState<LessonPlanCurriculumContext | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -529,7 +532,7 @@ export const useLessonPlanCurriculumContext = (cohortSubjectId: number | null) =
             setCurriculumContext(null);
             setError(null);
             setErrorStatus(null);
-            const data = await lessonPlanAPI.getCurriculumContext(cohortSubjectId);
+            const data = await lessonPlanAPI.getCurriculumContext(cohortSubjectId, termId);
             setCurriculumContext(data);
             return data;
         } catch (err) {
@@ -546,7 +549,7 @@ export const useLessonPlanCurriculumContext = (cohortSubjectId: number | null) =
         } finally {
             setLoading(false);
         }
-    }, [cohortSubjectId]);
+    }, [cohortSubjectId, termId]);
 
     useEffect(() => {
         void fetchCurriculumContext();

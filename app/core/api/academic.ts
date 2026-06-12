@@ -7,6 +7,7 @@ import {
 import {
   AcademicYear,
   Term,
+  TermCalendarEvent,
   Curriculum,
   CurriculumDisableImpactResponse,
   CurriculumDisableRequest,
@@ -161,9 +162,40 @@ export const termAPI = {
     return response.data;
   },
 
+  completeCalendarSetup: async (id: number) => {
+    const response = await apiClient.post<Term>(`/terms/${id}/calendar/complete/`);
+    return response.data;
+  },
+
+  reopenCalendarSetup: async (id: number) => {
+    const response = await apiClient.post<Term>(`/terms/${id}/calendar/reopen/`);
+    return response.data;
+  },
+
   delete: async (id: number) => {
     await apiClient.delete(`/terms/${id}/`);
   }
+};
+
+export const termCalendarEventAPI = {
+  getAll: async (params?: { term?: number; organization?: number }) => {
+    const response = await apiClient.get<TermCalendarEvent[]>('/term-calendar-events/', { params });
+    return response.data;
+  },
+
+  create: async (data: Partial<TermCalendarEvent>) => {
+    const response = await apiClient.post<TermCalendarEvent>('/term-calendar-events/', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: Partial<TermCalendarEvent>) => {
+    const response = await apiClient.patch<TermCalendarEvent>(`/term-calendar-events/${id}/`, data);
+    return response.data;
+  },
+
+  delete: async (id: number) => {
+    await apiClient.delete(`/term-calendar-events/${id}/`);
+  },
 };
 
 // Curricula

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   academicYearAPI,
   termAPI,
+  termCalendarEventAPI,
   curriculumAPI,
   subjectAPI,
   cohortAPI,
@@ -11,6 +12,7 @@ import {
 import {
   AcademicYear,
   Term,
+  TermCalendarEvent,
   Curriculum,
   Subject,
   SubjectDetail,
@@ -221,7 +223,126 @@ export const useTerms = (academicYearId?: number) => {
     }
   };
 
-  return { terms, loading, error, refetch: fetchTerms, createTerm, updateTerm, deleteTerm };
+  const completeCalendarSetup = async (id: number) => {
+    try {
+      const updated = await termAPI.completeCalendarSetup(id);
+      setTerms(prev => prev.map(t => t.id === id ? updated : t));
+      return updated;
+    } catch (err) {
+      throw new Error(extractErrorMessage(err as ApiError, 'Failed to complete term calendar setup'));
+    }
+  };
+
+  const reopenCalendarSetup = async (id: number) => {
+    try {
+      const updated = await termAPI.reopenCalendarSetup(id);
+      setTerms(prev => prev.map(t => t.id === id ? updated : t));
+      return updated;
+    } catch (err) {
+      throw new Error(extractErrorMessage(err as ApiError, 'Failed to reopen term calendar setup'));
+    }
+  };
+
+  return {
+    terms,
+    loading,
+    error,
+    refetch: fetchTerms,
+    createTerm,
+    updateTerm,
+    deleteTerm,
+    completeCalendarSetup,
+    reopenCalendarSetup,
+  };
+};
+
+export const useTermCalendarEvents = (termId: number | null) => {
+  const [events, setEvents] = useState<TermCalendarEvent[]>([]);
+  const [loading, setLoading] = useState(Boolean(termId));
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchEvents = useCallback(async () => {
+    if (!termId) {
+      setEvents([]);
+      setLoading(false);
+      setError(null);
+      return [];
+    }
+
+    try {
+      setLoading(true);
+      const data = await termCalendarEventAPI.getAll({ term: termId });
+      const nextEvents = Array.isArray(data)
+        ? [...data].sort((left, right) => (
+          left.start_date.localeCompare(right.start_date)
+          || left.end_date.localeCompare(right.end_date)
+          || left.title.localeCompare(right.title)
+        ))
+        : [];
+      setEvents(nextEvents);
+      setError(null);
+      return nextEvents;
+    } catch (err) {
+      setEvents([]);
+      setError(extractErrorMessage(err as ApiError, 'Failed to load term calendar events'));
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [termId]);
+
+  useEffect(() => {
+    void fetchEvents();
+  }, [fetchEvents]);
+
+  const createEvent = async (data: Partial<TermCalendarEvent>) => {
+    try {
+      const created = await termCalendarEventAPI.create(data);
+      setEvents(prev => [...prev, created].sort((left, right) => (
+        left.start_date.localeCompare(right.start_date)
+        || left.end_date.localeCompare(right.end_date)
+        || left.title.localeCompare(right.title)
+      )));
+      return created;
+    } catch (err) {
+      throw new Error(extractErrorMessage(err as ApiError, 'Failed to create term calendar event'));
+    }
+  };
+
+  const updateEvent = async (id: number, data: Partial<TermCalendarEvent>) => {
+    try {
+      const updated = await termCalendarEventAPI.update(id, data);
+      setEvents(prev => prev
+        .map(event => event.id === id ? updated : event)
+        .sort((left, right) => (
+          left.start_date.localeCompare(right.start_date)
+          || left.end_date.localeCompare(right.end_date)
+          || left.title.localeCompare(right.title)
+        )));
+      return updated;
+    } catch (err) {
+      throw new Error(extractErrorMessage(err as ApiError, 'Failed to update term calendar event'));
+    }
+  };
+
+  const deleteEvent = async (id: number) => {
+    try {
+      await termCalendarEventAPI.delete(id);
+      setEvents(prev => prev.filter(event => event.id !== id));
+    } catch (err) {
+      throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete term calendar event'));
+    }
+  };
+
+  return {
+    events,
+    loading,
+    error,
+    refetch: fetchEvents,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+  };
 };
 
 // ── useCurricula ──────────────────────────────────────────────────────────

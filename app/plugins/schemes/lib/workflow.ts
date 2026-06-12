@@ -1,8 +1,5 @@
-import type {
-    ExceptionalWeekInput,
-    SchemeSubjectStrandOption,
-    SchemeWeekType,
-} from '@/app/core/types/schemes';
+import type { Term, TermCalendarEvent, TermCalendarEventType } from '@/app/core/types/academic';
+import type { SchemeSubjectStrandOption, SchemeWeekType } from '@/app/core/types/schemes';
 
 export interface FlattenedSubStrandOption {
     strandId: number;
@@ -11,6 +8,40 @@ export interface FlattenedSubStrandOption {
     subStrandName: string;
     order: number;
 }
+
+export interface DerivedSchemeWeek {
+    week_number: number;
+    week_type: SchemeWeekType;
+    affects_learning: boolean;
+    label: string;
+    notes: string;
+    event_titles: string[];
+    priority: number;
+}
+
+const TERM_CALENDAR_EVENT_PRIORITY: Record<TermCalendarEventType, number> = {
+    HOLIDAY: 6,
+    PUBLIC_HOLIDAY: 6,
+    MIDTERM_BREAK: 5,
+    EXIT_EXAM: 4,
+    MAIN_EXAM: 4,
+    MIDTERM_EXAM: 3,
+    ENTRY_EXAM: 2,
+    SCHOOL_EVENT: 1,
+    OTHER: 1,
+};
+
+const TERM_CALENDAR_EVENT_TO_SCHEME_WEEK_TYPE: Record<TermCalendarEventType, SchemeWeekType> = {
+    ENTRY_EXAM: 'ENTRY_EXAM',
+    MIDTERM_EXAM: 'MIDTERM_EXAM',
+    MIDTERM_BREAK: 'MIDTERM_BREAK',
+    MAIN_EXAM: 'EXIT_EXAM',
+    EXIT_EXAM: 'EXIT_EXAM',
+    HOLIDAY: 'HOLIDAY',
+    PUBLIC_HOLIDAY: 'HOLIDAY',
+    SCHOOL_EVENT: 'OTHER',
+    OTHER: 'OTHER',
+};
 
 export function calculateTermWeekCount(startDate: string, endDate: string): number {
     const start = new Date(startDate);
@@ -74,6 +105,76 @@ export function getSchemeWeekTypeLabel(weekType: SchemeWeekType): string {
         default:
             return weekType;
     }
+}
+
+function uniqueStrings(values: string[]): string[] {
+    return Array.from(
+        new Set(
+            values
+                .map((value) => value.trim())
+                .filter(Boolean)
+        ),
+    );
+}
+
+function resolveEventWeekNumber(termStartDate: string, date: string): number {
+    const termStart = new Date(termStartDate);
+    const current = new Date(date);
+
+    if (Number.isNaN(termStart.getTime()) || Number.isNaN(current.getTime())) {
+        return 1;
+    }
+
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const elapsedDays = Math.floor((current.getTime() - termStart.getTime()) / millisecondsPerDay);
+    return Math.max(Math.floor(elapsedDays / 7) + 1, 1);
+}
+
+function eventPriority(eventType: TermCalendarEventType): number {
+    return TERM_CALENDAR_EVENT_PRIORITY[eventType] ?? 0;
+}
+
+export function buildSchemeWeeksFromTermCalendar(
+    term: Pick<Term, 'start_date' | 'end_date' | 'week_count'>,
+    events: TermCalendarEvent[],
+): DerivedSchemeWeek[] {
+    const weekCount = term.week_count || calculateTermWeekCount(term.start_date, term.end_date);
+    const weeks: DerivedSchemeWeek[] = Array.from({ length: weekCount }, (_, index) => ({
+        week_number: index + 1,
+        week_type: 'TEACHING',
+        affects_learning: false,
+        label: 'Teaching',
+        notes: '',
+        event_titles: [],
+        priority: 0,
+    }));
+
+    for (const event of events) {
+        const startWeek = event.start_week_number ?? resolveEventWeekNumber(term.start_date, event.start_date);
+        const endWeek = event.end_week_number ?? resolveEventWeekNumber(term.start_date, event.end_date);
+        const normalizedStart = Math.max(Math.min(startWeek, endWeek), 1);
+        const normalizedEnd = Math.min(Math.max(startWeek, endWeek), weekCount);
+        const mappedWeekType = TERM_CALENDAR_EVENT_TO_SCHEME_WEEK_TYPE[event.event_type];
+        const nextPriority = eventPriority(event.event_type);
+
+        for (let weekNumber = normalizedStart; weekNumber <= normalizedEnd; weekNumber += 1) {
+            const week = weeks[weekNumber - 1];
+
+            week.affects_learning = week.affects_learning || event.affects_learning;
+            week.event_titles = uniqueStrings([...week.event_titles, event.title]);
+            week.notes = uniqueStrings([week.notes, event.notes]).join('\n');
+
+            if (nextPriority >= week.priority) {
+                week.week_type = mappedWeekType;
+                week.priority = nextPriority;
+            }
+        }
+    }
+
+    return weeks.map((week) => ({
+        ...week,
+        label: week.event_titles.length > 0 ? week.event_titles.join(' / ') : getSchemeWeekTypeLabel(week.week_type),
+    }));
 }
 
 export function parseWeekInput(
@@ -148,18 +249,17 @@ export function parseWeekInput(
     };
 }
 
-export function summarizeLearningWeeks(
-    termWeekCount: number,
-    exceptionalWeeks: ExceptionalWeekInput[],
+export function summarizeSchemeWeeks(
+    weeks: Array<Pick<DerivedSchemeWeek, 'week_type' | 'affects_learning'>>,
 ): {
     nonTeachingWeekCount: number;
     activeLearningWeekCount: number;
 } {
-    const nonTeachingWeekCount = exceptionalWeeks.filter((week) => week.affects_learning).length;
+    const nonTeachingWeekCount = weeks.filter((week) => week.affects_learning).length;
 
     return {
         nonTeachingWeekCount,
-        activeLearningWeekCount: Math.max(termWeekCount - nonTeachingWeekCount, 0),
+        activeLearningWeekCount: Math.max(weeks.length - nonTeachingWeekCount, 0),
     };
 }
 
