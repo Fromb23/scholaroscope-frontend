@@ -61,6 +61,10 @@ import type {
   ReportingSource,
 } from '@/app/core/types/reporting';
 import type { ExportPayload } from '@/app/types/export';
+import {
+  buildInstructorClassReportHref,
+  parsePositiveReportParam,
+} from '@/app/core/components/reports/reportNavigation';
 
 type DetailTab = 'learners' | 'performance' | 'teaching-activity';
 
@@ -73,12 +77,6 @@ const EMPTY_LEARNERS: InstructorLearnerReportRow[] = [];
 
 function isDetailTab(value: string | null): value is DetailTab {
   return value === 'learners' || value === 'performance' || value === 'teaching-activity';
-}
-
-function parsePositiveNumber(value: string | null): number | null {
-  if (!value) return null;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function resolveInstructorGenericStudent(item: InstructorLearnerReportRow): GenericStudentSection | null {
@@ -148,7 +146,8 @@ export default function InstructorCohortSubjectDetailReportPage() {
   const cohortSubjectId = Number(params.id);
   const isValidCohortSubjectId = Number.isFinite(cohortSubjectId) && cohortSubjectId > 0;
   const activeTab: DetailTab = isDetailTab(tabParam) ? tabParam : 'learners';
-  const selectedTerm = parsePositiveNumber(searchParams.get('term'));
+  const selectedTerm = parsePositiveReportParam(searchParams.get('term'));
+  const classReportHref = buildInstructorClassReportHref(cohortSubjectId, selectedTerm);
 
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -428,16 +427,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {cohortSubjectMeta ? (
-              <Link
-                href={`/reports/instructor/cohort-subjects/${cohortSubjectId}/class-report?cohort_id=${cohortSubjectMeta.cohort_id}&returnTo=${encodeURIComponent(`/reports/instructor/cohort-subjects/${cohortSubjectId}`)}`}
-              >
-                <Button variant="secondary" size="sm">
-                  <Users className="mr-1.5 h-4 w-4" />
-                  Class Report
-                </Button>
-              </Link>
-            ) : null}
             {exportPayload && (
               <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
                 <Download className="mr-1.5 h-4 w-4" />
@@ -501,6 +490,13 @@ export default function InstructorCohortSubjectDetailReportPage() {
             </button>
           );
         })}
+        <Link
+          href={classReportHref}
+          className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors hover:border-emerald-300 hover:bg-emerald-100"
+        >
+          <BookOpen className="h-4 w-4" />
+          Class Report
+        </Link>
       </div>
 
       {activeQuery.loading && <LoadingSpinner />}

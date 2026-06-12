@@ -706,7 +706,10 @@ export const useLearnerOverviewReport = (
 export const useClassSubjectReport = (
   cohortId: number | null,
   cohortSubjectId: number | null,
-  options?: { enabled?: boolean },
+  options?: {
+    enabled?: boolean;
+    termId?: number | null;
+  },
 ) => {
   const enabled = options?.enabled ?? true;
   const [report, setReport] = useState<ClassSubjectReportPayload | null>(null);
@@ -728,7 +731,10 @@ export const useClassSubjectReport = (
     }
     try {
       setLoading(true);
-      setReport(await learnerReportingAPI.getClassSubjectReport(cohortId, { cohortSubjectId }));
+      setReport(await learnerReportingAPI.getClassSubjectReport(cohortId, {
+        cohortSubjectId,
+        termId: options?.termId ?? undefined,
+      }));
       setError(null);
       setErrorStatus(null);
     } catch (err) {
@@ -739,7 +745,7 @@ export const useClassSubjectReport = (
     } finally {
       setLoading(false);
     }
-  }, [cohortId, cohortSubjectId, enabled]);
+  }, [cohortId, cohortSubjectId, enabled, options?.termId]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };

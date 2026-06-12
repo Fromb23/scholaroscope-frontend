@@ -588,6 +588,7 @@ export const learnerReportingAPI = {
     params: {
       cohortSubjectId?: number | null;
       subjectId?: number | null;
+      termId?: number | null;
     },
   ) => {
     const response = await apiClient.get<ClassSubjectReportPayload>(
@@ -596,6 +597,7 @@ export const learnerReportingAPI = {
         params: {
           cohort_subject_id: params.cohortSubjectId ?? undefined,
           subject_id: params.subjectId ?? undefined,
+          term_id: params.termId ?? undefined,
         },
       }
     );
@@ -608,6 +610,7 @@ export const learnerReportingAPI = {
       format: ReportExportFormat;
       cohortSubjectId?: number | null;
       subjectId?: number | null;
+      termId?: number | null;
     },
   ) => fetchReportDownload(
     `/reporting/classes/${cohortId}/subject-report/export/`,
@@ -615,6 +618,7 @@ export const learnerReportingAPI = {
       format: params.format,
       cohort_subject_id: params.cohortSubjectId ?? undefined,
       subject_id: params.subjectId ?? undefined,
+      term_id: params.termId ?? undefined,
     },
     `class-subject-report-${cohortId}.${params.format}`,
   ),
