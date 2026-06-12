@@ -431,6 +431,17 @@ export const useSessionDetail = (
     });
   };
 
+  const cancelSession = async (): Promise<void> => {
+    if (!sessionId) return;
+    const updated = await sessionAPI.cancel(sessionId);
+    setSession(updated);
+    await fetchSession();
+    emitSessionDataChanged({
+      reason: 'session_cancelled',
+      sessionId,
+    });
+  };
+
   const rescheduleSession = async (
     data: RescheduleSessionPayload,
   ): Promise<void> => {
@@ -474,6 +485,7 @@ export const useSessionDetail = (
     markAttendance,
     reseedAttendance,
     completeSession,
+    cancelSession,
     rescheduleSession,
     startSession,
     confirmTaughtOutcomes,

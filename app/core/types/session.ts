@@ -108,6 +108,7 @@ export interface SessionLifecycleReminder {
 export type SessionClosureNextStep =
   | 'ATTENDANCE'
   | 'TAUGHT_OUTCOMES'
+  | 'INTERRUPTED'
   | 'EVIDENCE'
   | 'REFLECTION'
   | 'READY';
@@ -120,8 +121,10 @@ export interface SessionClosureState {
   requires_evidence: boolean;
   has_attendance: boolean;
   has_taught_outcomes: boolean;
+  has_delivered_outcomes: boolean;
   has_required_evidence: boolean;
   has_reflection: boolean;
+  is_interrupted: boolean;
   missing_keys?: string[];
   missing_labels?: string[];
   session_proof_complete?: boolean;
