@@ -2,7 +2,14 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { BookOpen, Download, FileBarChart, Calendar, Users } from 'lucide-react';
+import {
+  BookOpen,
+  ClipboardList,
+  Download,
+  FileBarChart,
+  Calendar,
+  Users,
+} from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -83,13 +90,44 @@ export function InstructorReportsOverviewPage() {
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
 
+  const reportCards = [
+    {
+      title: 'Learner Reports',
+      description: 'Open learner subject and learner overall reports from your assigned classes.',
+      href: '/reports/instructor/cohort-subjects',
+      actionLabel: 'Open Classes',
+      icon: Users,
+    },
+    {
+      title: 'Subject Reports',
+      description: 'Review subject-level performance and teaching activity by cohort subject.',
+      href: '/reports/instructor/cohort-subjects',
+      actionLabel: 'Open Subject Reports',
+      icon: FileBarChart,
+    },
+    {
+      title: 'Class Subject Reports',
+      description: 'Use the summary-first class report with support lists and interventions.',
+      href: '/reports/instructor/cohort-subjects',
+      actionLabel: 'Open Class Reports',
+      icon: BookOpen,
+    },
+    {
+      title: 'Teacher Report',
+      description: 'View teaching visibility, coverage, evidence, and reflection discipline in one report.',
+      href: '/reports/instructor/teacher-report',
+      actionLabel: 'Open Teacher Report',
+      icon: ClipboardList,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Class Progress</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">My Reports</h1>
           <p className="mt-1 text-gray-500">
-            Review attendance, teaching coverage, and learner progress across your assigned classes.
+            Open summary-first reports for learners, classes, subjects, and your own teaching visibility.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -101,6 +139,30 @@ export function InstructorReportsOverviewPage() {
           )}
           <FileBarChart className="h-7 w-7 text-green-600" />
         </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {reportCards.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card key={item.title} className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <h2 className="text-base font-semibold text-gray-900">{item.title}</h2>
+                  <p className="text-sm text-gray-500">{item.description}</p>
+                </div>
+                <div className="rounded-xl bg-blue-100 p-2 text-blue-700">
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <Link href={item.href}>
+                  <Button variant="secondary" size="sm">{item.actionLabel}</Button>
+                </Link>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -121,7 +183,7 @@ export function InstructorReportsOverviewPage() {
         <Card>
           <div className="py-16 text-center">
             <BookOpen className="mx-auto h-12 w-12 text-gray-300" />
-            <p className="mt-3 text-sm font-medium text-gray-900">No class progress available yet</p>
+            <p className="mt-3 text-sm font-medium text-gray-900">No reportable classes are available yet</p>
             <p className="mt-1 text-xs text-gray-500">
               Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, progress tools will appear here.
             </p>

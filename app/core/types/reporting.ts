@@ -698,6 +698,17 @@ export interface InstructorAttendanceRiskResponse {
 export type ReportRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export type ReportExportFormat = 'pdf' | 'xlsx' | 'csv';
 export type LearnerReportIndicatorTone = 'success' | 'warning' | 'danger';
+export type ReportCardTone = 'success' | 'warning' | 'danger' | 'neutral';
+export type SubjectSummaryStatus = 'ON_TRACK' | 'WATCH' | 'NEEDS_SUPPORT';
+export type TeacherVisibilityStatus = 'STRONG' | 'WATCH' | 'NEEDS_ACTION' | 'NO_DATA';
+
+export interface ReportPeriod {
+  term_id: number | null;
+  term_name: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  label: string;
+}
 
 export interface LearnerReportLearnerRef {
   id: number;
@@ -913,6 +924,7 @@ export interface LearnerSubjectReportCharts {
 export interface LearnerSubjectReportPayload {
   report_type: 'learner_subject';
   generated_at: string;
+  period?: ReportPeriod;
   learner: LearnerReportLearnerRef;
   cohort: LearnerReportCohortRef;
   subject: LearnerReportSubjectRef;
@@ -959,6 +971,8 @@ export interface LearnerOverviewSubjectSummary {
   computed_grade: LearnerReportComputedGrade | null;
   cbc_result: LearnerReportCbcResult | null;
   risk_level: ReportRiskLevel;
+  summary_status?: SubjectSummaryStatus | null;
+  summary_note?: string | null;
   strengths: LearnerReportMetricItem[];
   weak_areas: LearnerReportMetricItem[];
   note: string | null;
@@ -967,6 +981,7 @@ export interface LearnerOverviewSubjectSummary {
 export interface LearnerOverviewReportPayload {
   report_type: 'learner_overview';
   generated_at: string;
+  period?: ReportPeriod;
   learner: LearnerReportLearnerRef;
   organization: ReportOrganization;
   overall_attendance_rate: number | null;
@@ -989,6 +1004,7 @@ export interface ClassSubjectLearnerRow extends LearnerOverviewSubjectSummary {
 export interface ClassSubjectReportPayload {
   report_type: 'class_subject';
   generated_at: string;
+  period?: ReportPeriod;
   cohort: LearnerReportCohortRef;
   subject: LearnerReportSubjectRef;
   cohort_subject: {
@@ -996,7 +1012,9 @@ export interface ClassSubjectReportPayload {
     cohort_id: number;
     subject_id: number;
   };
+  instructor?: ReportAssignedInstructor | null;
   learner_count: number;
+  class_response_summary?: string;
   attendance_trend: {
     attendance_rate: number | null;
     sessions_total: number;
@@ -1008,14 +1026,114 @@ export interface ClassSubjectReportPayload {
     assignment_completion_rate: number | null;
   };
   progress: {
-    outcomes_selected: number;
+    outcomes_selected: number | null;
+    outcomes_taught?: number | null;
     outcomes_mastered: number;
     mastery_percentage: number | null;
+    coverage_percentage?: number | null;
     evidence_count: number;
+    outcomes_taught_not_evidenced?: number | null;
   };
   learner_rows: ClassSubjectLearnerRow[];
   learners_needing_support: ClassSubjectLearnerRow[];
   learners_on_track: ClassSubjectLearnerRow[];
   learners_exceeding_expectation: ClassSubjectLearnerRow[];
   recommended_teaching_interventions: string[];
+}
+
+export interface TeacherPerformanceMetric {
+  key: string;
+  label: string;
+  value: string | number;
+  note: string;
+  tone: ReportCardTone;
+}
+
+export interface TeacherPerformanceInsight {
+  label: string;
+  metric: string;
+  note: string;
+}
+
+export interface TeacherPerformanceAlignmentItem {
+  label: string;
+  status: TeacherVisibilityStatus;
+  note: string;
+  tone: ReportCardTone;
+}
+
+export interface TeacherPerformanceReflectionItem {
+  cohort_name: string;
+  subject_name: string;
+  session_title: string;
+  session_date: string | null;
+  created_at: string;
+  excerpt: string;
+}
+
+export interface TeacherPerformanceReflectionSummary {
+  total_reflections: number;
+  completed_sessions: number;
+  reflected_sessions: number;
+  reflection_completion_rate: number | null;
+  missing_reflection_count: number;
+  latest_reflections: TeacherPerformanceReflectionItem[];
+  repeated_themes: string[];
+  repeated_gaps: string[];
+}
+
+export interface TeacherPerformanceAssignedSubject {
+  cohort_subject_id: number;
+  cohort_name: string;
+  subject_name: string;
+  curriculum_type: string | null;
+  learners_total: number;
+  sessions_created: number;
+  sessions_completed: number;
+  session_completion_rate: number | null;
+  attendance_marked: number;
+  attendance_expected: number;
+  attendance_completeness: number | null;
+  attendance_present: number;
+  attendance_recorded: number;
+  average_attendance: number | null;
+  assignments_total: number;
+  assignments_submitted: number;
+  assignment_completion_rate: number | null;
+  coverage_percentage: number | null;
+  outcomes_selected: number | null;
+  outcomes_taught: number | null;
+  outcomes_taught_not_evidenced: number | null;
+  evidence_count: number;
+  learners_with_evidence: number;
+  learners_needing_support: number;
+  assessment_visibility: number;
+  mastery_percentage: number | null;
+  risk_level: TeacherVisibilityStatus;
+  reflection_count: number;
+  reflected_sessions: number;
+}
+
+export interface TeacherPerformanceReportPayload {
+  report_type: 'teacher_performance';
+  generated_at: string;
+  instructor: ReportAssignedInstructor;
+  organization: ReportOrganization;
+  period: ReportPeriod;
+  headline: {
+    teaching_delivery_status: TeacherVisibilityStatus;
+    curriculum_coverage_status: TeacherVisibilityStatus;
+    learner_evidence_status: TeacherVisibilityStatus;
+    learner_response_status: TeacherVisibilityStatus;
+    reflection_status: TeacherVisibilityStatus;
+    overall_visibility_status: TeacherVisibilityStatus;
+  };
+  key_metrics: TeacherPerformanceMetric[];
+  summary: string;
+  assigned_subjects: TeacherPerformanceAssignedSubject[];
+  strengths: TeacherPerformanceInsight[];
+  gaps: TeacherPerformanceInsight[];
+  evidence_alignment: TeacherPerformanceAlignmentItem[];
+  reflection_summary: TeacherPerformanceReflectionSummary;
+  recommended_actions: string[];
 }
