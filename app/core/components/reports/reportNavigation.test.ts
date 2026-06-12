@@ -19,6 +19,15 @@ describe('report navigation helpers', () => {
     );
   });
 
+  it('adds class report context params when they are available', () => {
+    expect(buildInstructorClassReportHref(3, 7, {
+      cohortId: 5,
+      returnTo: '/reports/instructor/cohort-subjects/3',
+    })).toBe(
+      '/reports/instructor/cohort-subjects/3/class-report?term=7&cohort_id=5&returnTo=%2Freports%2Finstructor%2Fcohort-subjects%2F3',
+    );
+  });
+
   it('preserves the selected term on the cohort-subject detail route', () => {
     expect(buildInstructorCohortSubjectDetailHref(3, 7)).toBe(
       '/reports/instructor/cohort-subjects/3?term=7',

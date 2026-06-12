@@ -63,6 +63,7 @@ import type {
 import type { ExportPayload } from '@/app/types/export';
 import {
   buildInstructorClassReportHref,
+  buildInstructorCohortSubjectDetailHref,
   parsePositiveReportParam,
 } from '@/app/core/components/reports/reportNavigation';
 
@@ -147,7 +148,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
   const isValidCohortSubjectId = Number.isFinite(cohortSubjectId) && cohortSubjectId > 0;
   const activeTab: DetailTab = isDetailTab(tabParam) ? tabParam : 'learners';
   const selectedTerm = parsePositiveReportParam(searchParams.get('term'));
-  const classReportHref = buildInstructorClassReportHref(cohortSubjectId, selectedTerm);
+  const workspaceReturnTo = buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTerm);
 
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -211,6 +212,10 @@ export default function InstructorCohortSubjectDetailReportPage() {
     ?? performanceQuery.report
     ?? teachingActivityQuery.report
     ?? null;
+  const classReportHref = buildInstructorClassReportHref(cohortSubjectId, selectedTerm, {
+    cohortId: cohortSubjectMeta?.cohort_id ?? null,
+    returnTo: workspaceReturnTo,
+  });
 
   const learners = learnersQuery.report?.learners ?? EMPTY_LEARNERS;
   const termLabel = selectedTerm
@@ -438,6 +443,27 @@ export default function InstructorCohortSubjectDetailReportPage() {
         </div>
       </div>
 
+      <Card className="border border-emerald-200 bg-emerald-50 p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+              <FileBarChart className="h-4 w-4" />
+              <span>Class Subject Report</span>
+            </div>
+            <p className="text-sm text-emerald-900/80">
+              Printable class summary with learner support needs, response trends, and teaching interventions.
+            </p>
+          </div>
+          <Link
+            href={classReportHref}
+            className="theme-focus-ring theme-button-primary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors lg:w-auto"
+          >
+            <BookOpen className="h-4 w-4" />
+            Open Class Report
+          </Link>
+        </div>
+      </Card>
+
       <Card>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap gap-2">
@@ -490,13 +516,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
             </button>
           );
         })}
-        <Link
-          href={classReportHref}
-          className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 transition-colors hover:border-emerald-300 hover:bg-emerald-100"
-        >
-          <BookOpen className="h-4 w-4" />
-          Class Report
-        </Link>
       </div>
 
       {activeQuery.loading && <LoadingSpinner />}

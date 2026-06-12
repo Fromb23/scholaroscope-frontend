@@ -5,26 +5,53 @@ export function parsePositiveReportParam(value: string | null): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function appendTermParam(href: string, termId?: number | null): string {
-  if (!termId || !Number.isInteger(termId) || termId <= 0) {
-    return href;
+function appendReportParams(
+  href: string,
+  options?: {
+    termId?: number | null;
+    cohortId?: number | null;
+    returnTo?: string | null;
+  },
+): string {
+  const params = new URLSearchParams();
+
+  if (options?.termId && Number.isInteger(options.termId) && options.termId > 0) {
+    params.set('term', String(options.termId));
   }
 
-  const params = new URLSearchParams();
-  params.set('term', String(termId));
-  return `${href}?${params.toString()}`;
+  if (options?.cohortId && Number.isInteger(options.cohortId) && options.cohortId > 0) {
+    params.set('cohort_id', String(options.cohortId));
+  }
+
+  if (options?.returnTo) {
+    params.set('returnTo', options.returnTo);
+  }
+
+  const queryString = params.toString();
+  return queryString ? `${href}?${queryString}` : href;
 }
 
 export function buildInstructorCohortSubjectDetailHref(
   cohortSubjectId: number,
   termId?: number | null,
 ): string {
-  return appendTermParam(`/reports/instructor/cohort-subjects/${cohortSubjectId}`, termId);
+  return appendReportParams(`/reports/instructor/cohort-subjects/${cohortSubjectId}`, { termId });
 }
 
 export function buildInstructorClassReportHref(
   cohortSubjectId: number,
   termId?: number | null,
+  options?: {
+    cohortId?: number | null;
+    returnTo?: string | null;
+  },
 ): string {
-  return appendTermParam(`/reports/instructor/cohort-subjects/${cohortSubjectId}/class-report`, termId);
+  return appendReportParams(
+    `/reports/instructor/cohort-subjects/${cohortSubjectId}/class-report`,
+    {
+      termId,
+      cohortId: options?.cohortId,
+      returnTo: options?.returnTo,
+    },
+  );
 }
