@@ -1063,6 +1063,8 @@ export interface TeacherPerformanceAlignmentItem {
 }
 
 export interface TeacherPerformanceReflectionItem {
+  id?: number | null;
+  session_id?: number | null;
   cohort_subject_id?: number | null;
   subject_id?: number | null;
   cohort_name: string;

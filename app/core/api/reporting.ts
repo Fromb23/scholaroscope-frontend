@@ -175,6 +175,8 @@ function normalizeTeacherPerformanceReflectionItem(
   const excerpt = toString(value.excerpt, reflectionText).trim();
 
   return {
+    id: toNullableNumber(value.id),
+    session_id: toNullableNumber(value.session_id),
     cohort_subject_id: toNullableNumber(value.cohort_subject_id),
     subject_id: toNullableNumber(value.subject_id),
     cohort_name: toString(value.cohort_name),

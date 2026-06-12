@@ -36,23 +36,18 @@ import { useTerms } from '@/app/core/hooks/useAcademic';
 import type {
   ReportExportFormat,
   TeacherPerformanceAssignedSubject,
-  TeacherPerformanceReflectionItem,
 } from '@/app/core/types/reporting';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import {
+  buildReflectionSubjectKey,
+  getReflectionCardBodyText,
+  MISSING_REFLECTION_TEXT_WARNING,
+  prepareTeacherReflectionItem,
+} from '@/app/core/components/reports/teacherPerformanceReflection';
 
 const ALL_REFLECTION_SUBJECTS = 'all-subjects';
 const INITIAL_REFLECTION_BATCH_SIZE = 10;
 const REFLECTION_BATCH_INCREMENT = 20;
-const REFLECTION_PREVIEW_CHAR_LIMIT = 200;
-
-type PreparedTeacherReflectionItem = TeacherPerformanceReflectionItem & {
-  canExpand: boolean;
-  fullText: string;
-  matchKey: string;
-  previewText: string;
-  rowKey: string;
-  sortTimestamp: number;
-};
 
 function parsePositiveNumber(value: string | null): number | null {
   if (!value) return null;
@@ -62,79 +57,6 @@ function parsePositiveNumber(value: string | null): number | null {
 
 function stringValue(value: string | number): string {
   return typeof value === 'number' ? String(value) : value;
-}
-
-function buildReflectionSubjectKey(cohortName: string, subjectName: string): string {
-  return `${cohortName.trim().toLowerCase()}::${subjectName.trim().toLowerCase()}`;
-}
-
-function normalizeReflectionPreviewText(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
-}
-
-function trimTrailingEllipsis(value: string): string {
-  return value.replace(/\s*(?:\.\.\.|…)\s*$/, '').trim();
-}
-
-function buildReflectionPreviewText(value: string): {
-  canExpand: boolean;
-  previewText: string;
-} {
-  const normalizedValue = normalizeReflectionPreviewText(value);
-
-  if (normalizedValue.length <= REFLECTION_PREVIEW_CHAR_LIMIT) {
-    return {
-      canExpand: false,
-      previewText: normalizedValue,
-    };
-  }
-
-  const lastWhitespaceIndex = normalizedValue.lastIndexOf(' ', REFLECTION_PREVIEW_CHAR_LIMIT);
-  const previewEndIndex = lastWhitespaceIndex >= Math.floor(REFLECTION_PREVIEW_CHAR_LIMIT * 0.6)
-    ? lastWhitespaceIndex
-    : REFLECTION_PREVIEW_CHAR_LIMIT;
-
-  return {
-    canExpand: true,
-    previewText: `${normalizedValue.slice(0, previewEndIndex).trimEnd()}...`,
-  };
-}
-
-function getReflectionSortTimestamp(item: TeacherPerformanceReflectionItem): number {
-  const parsedTimestamp = Date.parse(item.session_date || item.created_at);
-  return Number.isFinite(parsedTimestamp) ? parsedTimestamp : 0;
-}
-
-function prepareTeacherReflectionItem(
-  item: TeacherPerformanceReflectionItem,
-): PreparedTeacherReflectionItem {
-  const explicitFullText = typeof item.reflection_text === 'string'
-    ? item.reflection_text.trim()
-    : '';
-  const hasExplicitFullText = explicitFullText.length > 0;
-  const fullText = hasExplicitFullText ? explicitFullText : trimTrailingEllipsis(item.excerpt);
-  const { canExpand, previewText } = hasExplicitFullText
-    ? buildReflectionPreviewText(explicitFullText)
-    : {
-        canExpand: false,
-        previewText: normalizeReflectionPreviewText(fullText),
-      };
-  const matchKey = buildReflectionSubjectKey(item.cohort_name, item.subject_name);
-
-  return {
-    ...item,
-    canExpand,
-    fullText,
-    matchKey,
-    previewText,
-    rowKey: [
-      item.cohort_subject_id ?? matchKey,
-      item.session_title,
-      item.session_date ?? 'no-session-date',
-      item.created_at,
-    ].join('::'),
-    sortTimestamp: getReflectionSortTimestamp(item),
-  };
 }
 
 export function TeacherPerformanceReportPage({
@@ -709,9 +631,7 @@ export function TeacherPerformanceReportPage({
                     <div className="space-y-3">
                       {visibleReflections.map((item) => {
                         const isExpanded = expandedReflectionKeys.has(item.rowKey);
-                        const reflectionText = isExpanded || !item.canExpand
-                          ? item.fullText
-                          : item.previewText;
+                        const reflectionText = getReflectionCardBodyText(item, isExpanded);
 
                         return (
                           <div
@@ -732,8 +652,13 @@ export function TeacherPerformanceReportPage({
                                 isExpanded || !item.canExpand ? 'whitespace-pre-line break-words' : ''
                               }`}
                             >
-                              {reflectionText}
+                              {reflectionText || 'No reflection text is available in this report payload.'}
                             </p>
+                            {item.hasPayloadWarning ? (
+                              <p className="mt-2 text-xs font-medium text-amber-700">
+                                {MISSING_REFLECTION_TEXT_WARNING}
+                              </p>
+                            ) : null}
                             {item.canExpand ? (
                               <Button
                                 type="button"
