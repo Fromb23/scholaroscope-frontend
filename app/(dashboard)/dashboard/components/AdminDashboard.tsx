@@ -5,7 +5,9 @@ import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { AcademicSetupDashboard } from '@/app/core/components/academic/setup/AcademicSetupDashboard';
 import { useAdminDashboard } from '@/app/core/hooks/useAdminDashboard';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useRequests, useRequestStats } from '@/app/plugins/requests/hooks/useRequests';
 import {
     DashboardHeader,
@@ -23,7 +25,10 @@ import { useAssistantPageContext } from '@/app/core/components/assistant/useAssi
 
 export function AdminDashboard() {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { user, activeOrg, activeRole } = useAuth();
+    const academicSetupQuery = useAcademicSetupStatus({
+        enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
+    });
 
     const {
         metrics, alerts, sessions, cohorts,
@@ -32,25 +37,44 @@ export function AdminDashboard() {
     } = useAdminDashboard();
     const { requests, loading: requestsLoading } = useRequests({ status: 'PENDING' });
     const { stats: requestStats } = useRequestStats();
+    const setupStatus = academicSetupQuery.data ?? null;
+    const setupIncomplete = Boolean(setupStatus && !setupStatus.complete);
     const assistantContext = useMemo(() => ({
         pageKey: 'admin_dashboard',
         pageTitle: 'Admin Dashboard',
         state: {
             is_loading: isLoading,
+            setup_incomplete: setupIncomplete,
             has_current_term: Boolean(currentTerm),
             pending_requests: requestStats?.pending ?? 0,
             sessions_today: sessions.length,
         },
-        visibleActions: [
-            { label: 'Open Academic Setup', type: 'navigate' as const, href: '/academic' },
-            { label: 'Review Requests', type: 'navigate' as const, href: '/requests' },
-        ],
-        nextSafeAction: { label: 'Open Academic Setup', type: 'navigate' as const, href: '/academic' },
-        workflowStep: 'school_overview',
-        emptyStateReason: !isLoading && !currentTerm
-            ? 'No current term is active yet.'
-            : undefined,
-    }), [currentTerm, isLoading, requestStats?.pending, sessions.length]);
+        visibleActions: setupIncomplete
+            ? [
+                {
+                    label: setupStatus?.next_action.label ?? 'Open Academic Setup',
+                    type: 'navigate' as const,
+                    href: setupStatus?.next_action.href ?? '/academic',
+                },
+            ]
+            : [
+                { label: 'Open Academic Setup', type: 'navigate' as const, href: '/academic' },
+                { label: 'Review Requests', type: 'navigate' as const, href: '/requests' },
+            ],
+        nextSafeAction: setupIncomplete
+            ? {
+                label: setupStatus?.next_action.label ?? 'Open Academic Setup',
+                type: 'navigate' as const,
+                href: setupStatus?.next_action.href ?? '/academic',
+            }
+            : { label: 'Open Academic Setup', type: 'navigate' as const, href: '/academic' },
+        workflowStep: setupIncomplete ? 'academic_setup' : 'school_overview',
+        emptyStateReason: setupIncomplete
+            ? 'Complete academic setup before operational dashboards unlock.'
+            : (!isLoading && !currentTerm
+                ? 'No current term is active yet.'
+                : undefined),
+    }), [currentTerm, isLoading, requestStats?.pending, sessions.length, setupIncomplete, setupStatus]);
 
     useAssistantPageContext(assistantContext);
 
@@ -62,6 +86,12 @@ export function AdminDashboard() {
 
     if (!user || activeRole === null) return null;
     if (activeRole !== 'ADMIN') return null;
+    if (academicSetupQuery.isLoading && !setupStatus) {
+        return <LoadingSpinner message="Loading your workspace setup..." />;
+    }
+    if (setupStatus && !setupStatus.complete) {
+        return <AcademicSetupDashboard status={setupStatus} title="Complete Academic Setup" />;
+    }
     if (isLoading) return <LoadingSpinner message="Loading your dashboard..." />;
 
     return (

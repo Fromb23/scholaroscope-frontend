@@ -21,14 +21,20 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useAcademicYears, useCohorts, useCurricula } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
 import { canCreateCurriculumWork, canEditCurriculumWork, getCurriculumActionBlockReason } from '@/app/core/lib/curriculumLifecycle';
+import {
+    getAcademicSetupPageState,
+    withAcademicSetupMode,
+} from '@/app/core/lib/academicSetup';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort } from '@/app/core/types/academic';
@@ -42,6 +48,9 @@ type CohortWithIndex = Record<string, unknown> & Cohort;
 export function AdminCohortsPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const setupMode = searchParams.get('setup') === '1';
+    const blockedNotice = searchParams.get('blocked') === '1';
+    const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const { academicYears } = useAcademicYears();
     const { curricula, createCurriculum } = useCurricula();
     const [filters, updateFilters] = usePersistedFilters('/academic/cohorts', {
@@ -58,6 +67,8 @@ export function AdminCohortsPageContent() {
         () => academicYears.find((academicYear) => academicYear.is_current),
         [academicYears]
     );
+    const setupStatus = setupStatusQuery.data ?? null;
+    const setupPageState = getAcademicSetupPageState(setupStatus, 'COHORTS');
     const selectedYearId = parseOptionalNumber(filters.academic_year);
     const selectedCurriculumId = parseOptionalNumber(filters.curriculum);
     const shouldOpenCreate = searchParams.get('create') === '1';
@@ -197,6 +208,16 @@ export function AdminCohortsPageContent() {
             await cbcPathwayAPI.configureCohortProfile(created.id, offered.id);
         }
         await refetch();
+        if (setupMode) {
+            const refreshedStatus = (await setupStatusQuery.refetch()).data;
+            router.push(
+                refreshedStatus?.complete
+                    ? '/dashboard/admin'
+                    : withAcademicSetupMode(
+                        refreshedStatus?.next_action.href ?? '/dashboard/admin',
+                    ),
+            );
+        }
     };
 
     const handleDelete = async (cohort: Cohort) => {
@@ -395,8 +416,31 @@ export function AdminCohortsPageContent() {
 
     useAssistantPageContext(assistantContext);
 
+    if (setupMode && setupStatusQuery.isLoading && !setupStatus) {
+        return <LoadingSpinner fullScreen={false} message="Loading academic setup..." />;
+    }
+
+    if (setupMode && setupPageState === 'blocked') {
+        return (
+            <div className="space-y-6">
+                <AcademicSetupGate
+                    status={setupStatus}
+                    stepKey="COHORTS"
+                    setupMode={setupMode}
+                    blockedNotice={blockedNotice}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            <AcademicSetupGate
+                status={setupStatus}
+                stepKey="COHORTS"
+                setupMode={setupMode}
+                blockedNotice={blockedNotice}
+            />
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Cohorts</h1>

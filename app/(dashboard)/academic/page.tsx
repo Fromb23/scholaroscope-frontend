@@ -11,13 +11,16 @@ import {
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { AcademicSetupDashboard } from '@/app/core/components/academic/setup/AcademicSetupDashboard';
 import { useAcademicYears, useCurricula, useCohorts, useTerms } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { Badge } from '@/app/components/ui/Badge';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 export default function AcademicOverview() {
+    const academicSetupQuery = useAcademicSetupStatus();
     const { academicYears, loading: yearsLoading } = useAcademicYears();
     const { curricula, loading: curriculaLoading } = useCurricula();
     const { cohorts, loading: cohortsLoading } = useCohorts();
@@ -25,30 +28,47 @@ export default function AcademicOverview() {
 
     const currentYear = academicYears.find(y => y.is_current);
     const activeCurricula = curricula.filter(c => c.is_active);
+    const setupStatus = academicSetupQuery.data ?? null;
+    const setupIncomplete = Boolean(setupStatus && !setupStatus.complete);
 
-    const loading = yearsLoading || curriculaLoading || cohortsLoading || termsLoading;
+    const loading = yearsLoading || curriculaLoading || cohortsLoading || termsLoading || academicSetupQuery.isLoading;
     const assistantContext = useMemo(() => ({
         pageKey: 'academic_overview',
         pageTitle: 'Academic Management',
         state: {
             is_loading: loading,
+            setup_incomplete: setupIncomplete,
             has_current_year: Boolean(currentYear),
             has_current_term: terms.length > 0,
             active_curricula_count: activeCurricula.length,
             cohort_count: cohorts.length,
         },
-        visibleActions: [
-            { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' },
-            { label: 'Open Academic Years', type: 'navigate' as const, href: '/academic/years' },
-        ],
-        nextSafeAction: !terms.length
-            ? { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' }
-            : { label: 'Open Academic Years', type: 'navigate' as const, href: '/academic/years' },
+        visibleActions: setupIncomplete
+            ? [{
+                label: setupStatus?.next_action.label ?? 'Open Academic Setup',
+                type: 'navigate' as const,
+                href: setupStatus?.next_action.href ?? '/academic/curricula?setup=1',
+            }]
+            : [
+                { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' },
+                { label: 'Open Academic Years', type: 'navigate' as const, href: '/academic/years' },
+            ],
+        nextSafeAction: setupIncomplete
+            ? {
+                label: setupStatus?.next_action.label ?? 'Open Academic Setup',
+                type: 'navigate' as const,
+                href: setupStatus?.next_action.href ?? '/academic/curricula?setup=1',
+            }
+            : (!terms.length
+                ? { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' }
+                : { label: 'Open Academic Years', type: 'navigate' as const, href: '/academic/years' }),
         workflowStep: 'academic_setup',
-        emptyStateReason: !loading && !currentYear
+        emptyStateReason: setupIncomplete
+            ? 'Complete academic setup before operational academic management unlocks.'
+            : (!loading && !currentYear
             ? 'No current academic year is active yet.'
-            : undefined,
-    }), [activeCurricula.length, cohorts.length, currentYear, loading, terms.length]);
+            : undefined),
+    }), [activeCurricula.length, cohorts.length, currentYear, loading, terms.length, setupIncomplete, setupStatus]);
 
     useAssistantPageContext(assistantContext);
 
@@ -110,6 +130,10 @@ export default function AcademicOverview() {
                 <div className="text-gray-500">Loading academic data...</div>
             </div>
         );
+    }
+
+    if (setupStatus && !setupStatus.complete) {
+        return <AcademicSetupDashboard status={setupStatus} title="Academic Setup" />;
     }
 
     return (

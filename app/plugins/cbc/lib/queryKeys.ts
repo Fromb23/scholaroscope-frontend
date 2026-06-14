@@ -117,6 +117,20 @@ export const cbcKeys = {
             ['cbc', 'fine-arts-practicals', 'learner-matrix', sessionId, scope] as const,
     },
 
+    practicals: {
+        all: ['cbc', 'practicals'] as const,
+        profile: (sessionId: number) =>
+            ['cbc', 'practicals', 'profile', sessionId] as const,
+    },
+
+    musicPracticals: {
+        all: ['cbc', 'music-practicals'] as const,
+        detail: (sessionId: number) =>
+            ['cbc', 'music-practicals', 'detail', sessionId] as const,
+        learnerMatrix: (sessionId: number) =>
+            ['cbc', 'music-practicals', 'learner-matrix', sessionId] as const,
+    },
+
     // Teaching sessions
     teachingSessions: {
         all: ['cbc', 'teaching-sessions'] as const,

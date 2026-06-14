@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, Plus, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
@@ -9,6 +11,11 @@ import { Badge } from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import { Input } from '@/app/components/ui/Input';
 import { useAcademicYears } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import {
+    getAcademicSetupPageState,
+    withAcademicSetupMode,
+} from '@/app/core/lib/academicSetup';
 import { AcademicYear, AcademicYearFormData } from '@/app/core/types/academic';
 
 function getErrorMessage(error: unknown): string {
@@ -16,6 +23,11 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function AcademicYearsPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const setupMode = searchParams.get('setup') === '1';
+    const blockedNotice = searchParams.get('blocked') === '1';
+    const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const { academicYears, loading, createAcademicYear, updateAcademicYear, deleteAcademicYear, setCurrentYear } = useAcademicYears();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
@@ -26,15 +38,29 @@ export function AcademicYearsPage() {
         is_current: false
     });
     const [saving, setSaving] = useState(false);
+    const setupStatus = setupStatusQuery.data ?? null;
+    const setupPageState = getAcademicSetupPageState(setupStatus, 'ACADEMIC_YEAR');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         try {
+            let savedYear: AcademicYear;
             if (editingYear) {
-                await updateAcademicYear(editingYear.id, formData);
+                savedYear = await updateAcademicYear(editingYear.id, formData);
             } else {
-                await createAcademicYear(formData);
+                savedYear = await createAcademicYear(formData);
+            }
+            if (setupMode && !savedYear.is_current) {
+                savedYear = await setCurrentYear(savedYear.id);
+            }
+            if (setupMode && savedYear.is_current) {
+                const refreshedStatus = (await setupStatusQuery.refetch()).data;
+                router.push(
+                    withAcademicSetupMode(
+                        refreshedStatus?.next_action.href ?? '/academic/terms',
+                    ),
+                );
             }
             setIsModalOpen(false);
             resetForm();
@@ -69,6 +95,14 @@ export function AcademicYearsPage() {
     const handleSetCurrent = async (id: number) => {
         try {
             await setCurrentYear(id);
+            if (setupMode) {
+                const refreshedStatus = (await setupStatusQuery.refetch()).data;
+                router.push(
+                    withAcademicSetupMode(
+                        refreshedStatus?.next_action.href ?? '/academic/terms',
+                    ),
+                );
+            }
         } catch (error: unknown) {
             alert(getErrorMessage(error));
         }
@@ -84,8 +118,36 @@ export function AcademicYearsPage() {
         setEditingYear(null);
     };
 
+    if (setupMode && setupStatusQuery.isLoading && !setupStatus) {
+        return (
+            <div className="py-12 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                <p className="mt-2 text-gray-600">Loading academic setup...</p>
+            </div>
+        );
+    }
+
+    if (setupMode && setupPageState === 'blocked') {
+        return (
+            <div className="space-y-6">
+                <AcademicSetupGate
+                    status={setupStatus}
+                    stepKey="ACADEMIC_YEAR"
+                    setupMode={setupMode}
+                    blockedNotice={blockedNotice}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            <AcademicSetupGate
+                status={setupStatus}
+                stepKey="ACADEMIC_YEAR"
+                setupMode={setupMode}
+                blockedNotice={blockedNotice}
+            />
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>

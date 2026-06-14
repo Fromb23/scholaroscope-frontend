@@ -234,7 +234,7 @@ export function buildFineArtsPracticalWorkflowHref(
         searchParams.set('returnTo', returnTo);
     }
 
-    return `/cbc/teaching/sessions/${sessionId}/fine-arts-practical?${searchParams.toString()}`;
+    return `/cbc/teaching/sessions/${sessionId}/practical?${searchParams.toString()}`;
 }
 
 export function hasResolvedFineArtsPracticalContract(

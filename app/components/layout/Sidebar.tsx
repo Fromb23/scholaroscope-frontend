@@ -15,6 +15,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
@@ -40,6 +41,9 @@ export default function Sidebar() {
 
   const { plugins, hasPlugin } = usePlugins();
   const { curricula } = useCurricula();
+  const academicSetupQuery = useAcademicSetupStatus({
+    enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
+  });
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
 
@@ -77,12 +81,24 @@ export default function Sidebar() {
   const navConfig = useMemo<NavigationConfig>(() => {
     if (!user) return { primary: [] };
     if (user.is_superadmin) return getSuperadminNav(pluginNavigationContext);
-    if (activeRole === 'ADMIN') return getAdminNav(pluginNavigationContext, activeOrg?.org_type);
+    if (activeRole === 'ADMIN') {
+      return getAdminNav(
+        pluginNavigationContext,
+        activeOrg?.org_type,
+        academicSetupQuery.data ?? null,
+      );
+    }
     if (activeRole === 'INSTRUCTOR') {
       return getInstructorNav(pluginNavigationContext);
     }
     return { primary: [] };
-  }, [user, activeOrg?.org_type, activeRole, pluginNavigationContext]);
+  }, [
+    user,
+    activeOrg?.org_type,
+    activeRole,
+    pluginNavigationContext,
+    academicSetupQuery.data,
+  ]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
   const colors = ROLE_COLORS[resolvedRole] ?? ROLE_COLORS.ADMIN;

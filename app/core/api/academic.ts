@@ -23,7 +23,8 @@ import {
   SubjectDetail,
   ListQueryParams,
   CohortDetail,
-  TermQueryParams
+  TermQueryParams,
+  AcademicSetupStatus,
 } from '@/app/core/types/academic';
 import { CohortSubjectOption } from '@/app/core/types/session';
 import { PaginatedResponse } from './sessions';
@@ -34,6 +35,13 @@ interface CurriculumQuery {
 }
 
 const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';
+
+export const academicSetupAPI = {
+  getStatus: async (): Promise<AcademicSetupStatus> => {
+    const response = await apiClient.get<AcademicSetupStatus>('/academic/setup-status/');
+    return response.data;
+  },
+};
 
 export async function listCohortSubjects(cohortId: number): Promise<CohortSubject[]> {
   const response = await apiClient.get<CohortSubject[] | PaginatedResponse<CohortSubject>>(

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Calendar,
     CheckCircle2,
@@ -28,6 +29,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/app/components/ui/Table';
+import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import {
     TermFormModal,
     formatDate,
@@ -36,6 +38,11 @@ import {
 } from '@/app/core/components/academic/TermComponents';
 import type { TermFormState } from '@/app/core/components/academic/TermComponents';
 import { useAcademicYears, useTermCalendarEvents, useTerms } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import {
+    getAcademicSetupPageState,
+    withAcademicSetupMode,
+} from '@/app/core/lib/academicSetup';
 import type {
     Term,
     TermCalendarEvent,
@@ -318,10 +325,17 @@ function TermCalendarEventModal({
 }
 
 export function TermsPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const setupMode = searchParams.get('setup') === '1';
+    const blockedNotice = searchParams.get('blocked') === '1';
+    const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const { academicYears } = useAcademicYears();
     const { user, activeRole } = useAuth();
     const currentYear = useMemo(() => academicYears.find((year) => year.is_current), [academicYears]);
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const setupStatus = setupStatusQuery.data ?? null;
+    const setupPageState = getAcademicSetupPageState(setupStatus, 'TERMS');
 
     const [selectedYearId, setSelectedYearId] = useState<number | undefined>(undefined);
     const [selectedTermId, setSelectedTermId] = useState<number | null>(null);
@@ -456,6 +470,14 @@ export function TermsPage() {
 
         const created = await createTerm(payload);
         setSelectedTermId(created.id);
+        if (setupMode) {
+            const refreshedStatus = (await setupStatusQuery.refetch()).data;
+            router.push(
+                withAcademicSetupMode(
+                    refreshedStatus?.next_action.href ?? '/academic/subjects',
+                ),
+            );
+        }
     };
 
     const handleDelete = async (term: Term) => {
@@ -536,8 +558,31 @@ export function TermsPage() {
         }
     };
 
+    if (setupMode && setupStatusQuery.isLoading && !setupStatus) {
+        return <LoadingSpinner fullScreen={false} message="Loading academic setup..." />;
+    }
+
+    if (setupMode && setupPageState === 'blocked') {
+        return (
+            <div className="space-y-6">
+                <AcademicSetupGate
+                    status={setupStatus}
+                    stepKey="TERMS"
+                    setupMode={setupMode}
+                    blockedNotice={blockedNotice}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            <AcademicSetupGate
+                status={setupStatus}
+                stepKey="TERMS"
+                setupMode={setupMode}
+                blockedNotice={blockedNotice}
+            />
             <div className="flex items-center justify-between gap-3">
                 <div>
                     <h1 className="text-3xl font-bold theme-text">Terms</h1>

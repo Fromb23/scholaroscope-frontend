@@ -3,6 +3,12 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import {
+  buildAcademicSetupRedirectHref,
+  isAcademicSetupIncomplete,
+  isAcademicSetupOperationalAdminPath,
+} from '@/app/core/lib/academicSetup';
 import {
   getUnauthorizedRouteFallback,
   getRouteRules,
@@ -54,6 +60,9 @@ function DashboardContent({
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, activeOrg, activeRole, loading, accessNotices, clearAccessNotices } = useAuth();
+  const academicSetupQuery = useAcademicSetupStatus({
+    enabled: activeRole === 'ADMIN' && Boolean(activeOrg) && !user?.is_superadmin,
+  });
   const router = useRouter();
   const pathname = usePathname();
 
@@ -90,10 +99,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!matchedRule) return;
     if (!matchedRule.allowedRoles.includes(activeRole)) {
       router.replace(getUnauthorizedRouteFallback(activeRole, pathname));
+      return;
     }
-  }, [activeOrg, activeRole, loading, pathname, router, user]);
 
-  if (loading || !user) {
+    if (
+      activeRole === 'ADMIN'
+      && activeOrg
+      && academicSetupQuery.data
+      && isAcademicSetupIncomplete(academicSetupQuery.data)
+      && isAcademicSetupOperationalAdminPath(pathname)
+    ) {
+      router.replace(buildAcademicSetupRedirectHref(academicSetupQuery.data, pathname));
+    }
+  }, [
+    academicSetupQuery.data,
+    activeOrg,
+    activeRole,
+    loading,
+    pathname,
+    router,
+    user,
+  ]);
+
+  if (
+    loading
+    || !user
+    || (
+      activeRole === 'ADMIN'
+      && Boolean(activeOrg)
+      && isAcademicSetupOperationalAdminPath(pathname)
+      && academicSetupQuery.isLoading
+    )
+  ) {
     return (
       <div className="theme-app-bg flex h-dvh items-center justify-center">
         <div className="text-center">

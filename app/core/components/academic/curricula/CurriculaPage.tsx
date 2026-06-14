@@ -11,7 +11,13 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Plus, Edit, Trash2, CheckCircle, Puzzle } from 'lucide-react';
+import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import {
+    getAcademicSetupPageState,
+    withAcademicSetupMode,
+} from '@/app/core/lib/academicSetup';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -45,6 +51,9 @@ export function CurriculaPage() {
     const { curricula, loading, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const setupStatusQuery = useAcademicSetupStatus({
+        enabled: searchParams.get('setup') === '1',
+    });
 
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Curriculum | null>(null);
@@ -54,7 +63,11 @@ export function CurriculaPage() {
     const inactiveCurricula = curricula.filter(c => !c.is_active);
     const lifecycleCurricula = curricula.filter((curriculum) => curriculum.offering_status !== 'ACTIVE');
     const shouldOpenCreate = searchParams.get('create') === '1';
+    const setupMode = searchParams.get('setup') === '1';
+    const blockedNotice = searchParams.get('blocked') === '1';
     const returnTo = searchParams.get('returnTo');
+    const setupStatus = setupStatusQuery.data ?? null;
+    const setupPageState = getAcademicSetupPageState(setupStatus, 'CURRICULUM');
     const pageErrorRef = useScrollIntoViewOnMessage(pageError);
     const createInitialData = useMemo<CurriculumFormData>(() => ({
         name: isCambridgeCurriculumType(searchParams.get('curriculum_type')) ? CAMBRIDGE_BRIDGE_NAME : (searchParams.get('name') ?? ''),
@@ -147,6 +160,14 @@ export function CurriculaPage() {
             await updateCurriculum(editingId, data);
         } else {
             await createCurriculum(data);
+            if (setupMode) {
+                const refreshedStatus = (await setupStatusQuery.refetch()).data;
+                router.push(
+                    withAcademicSetupMode(
+                        refreshedStatus?.next_action.href ?? '/academic/years?create=1',
+                    ),
+                );
+            }
         }
     };
 
@@ -187,8 +208,31 @@ export function CurriculaPage() {
 
     // ── Render ────────────────────────────────────────────────────────────
 
+    if (setupMode && setupStatusQuery.isLoading && !setupStatus) {
+        return <LoadingSpinner fullScreen={false} message="Loading academic setup..." />;
+    }
+
+    if (setupMode && setupPageState === 'blocked') {
+        return (
+            <div className="space-y-6">
+                <AcademicSetupGate
+                    status={setupStatus}
+                    stepKey="CURRICULUM"
+                    setupMode={setupMode}
+                    blockedNotice={blockedNotice}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            <AcademicSetupGate
+                status={setupStatus}
+                stepKey="CURRICULUM"
+                setupMode={setupMode}
+                blockedNotice={blockedNotice}
+            />
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Curricula</h1>
