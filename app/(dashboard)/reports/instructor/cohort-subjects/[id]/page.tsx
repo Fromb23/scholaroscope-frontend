@@ -65,6 +65,7 @@ import {
   buildInstructorClassReportHref,
   buildInstructorCohortSubjectDetailHref,
   parsePositiveReportParam,
+  resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
 
 type DetailTab = 'learners' | 'performance' | 'teaching-activity';
@@ -149,6 +150,11 @@ export default function InstructorCohortSubjectDetailReportPage() {
   const activeTab: DetailTab = isDetailTab(tabParam) ? tabParam : 'learners';
   const selectedTerm = parsePositiveReportParam(searchParams.get('term'));
   const workspaceReturnTo = buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTerm);
+  const backHref = resolveReportBackHref({
+    returnTo: searchParams.get('returnTo'),
+    fallbackHref: '/reports/instructor/cohort-subjects',
+    fallbackState: { term: selectedTerm },
+  });
 
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -417,7 +423,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <Link href="/reports/instructor/cohort-subjects">
+        <Link href={backHref}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back

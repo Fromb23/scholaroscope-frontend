@@ -1,118 +1,206 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { BookOpen, Calendar, Download, Users } from 'lucide-react';
-import { Card } from '@/app/components/ui/Card';
-import { Select } from '@/app/components/ui/Select';
+import Link from 'next/link';
+import { useCallback, useEffect } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import {
+  ArrowLeft,
+  BookOpen,
+  Calendar,
+  Download,
+  GraduationCap,
+  Users,
+} from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { ExportModal } from '@/app/components/export/ExportModal';
-import { useClassSummary } from '@/app/core/hooks/useReporting';
-import { useTerms } from '@/app/core/hooks/useAcademic';
-import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { Select } from '@/app/components/ui/Select';
+import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { downloadBlob } from '@/app/core/api/downloads';
+import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
 import {
-  formatNumber,
-  formatPercent,
-} from '@/app/core/lib/reportingPresentation';
-import type { ExportPayload } from '@/app/types/export';
+  buildAttendanceReportHref,
+  buildCohortReportHref,
+  buildCohortSubjectReportHref,
+  buildInstructorReportHref,
+  buildReportReturnTo,
+  buildSubjectReportHref,
+  parsePositiveReportParam,
+  resolveReportBackHref,
+} from '@/app/core/components/reports/reportNavigation';
+import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
+import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useClassSummary } from '@/app/core/hooks/useReporting';
+import { formatPercent } from '@/app/core/lib/reportingPresentation';
+import type { ReportAssignedInstructor, ReportExportFormat } from '@/app/core/types/reporting';
+import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
-export function CohortsReportPage() {
-  const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
-  const [selectedCohort, setSelectedCohort] = useState<number | null>(null);
-  const [exportOpen, setExportOpen] = useState(false);
+function InstructorsLine({
+  instructors,
+  termId,
+  returnTo,
+}: {
+  instructors: ReportAssignedInstructor[];
+  termId: number | null;
+  returnTo: string;
+}) {
+  if (instructors.length === 0) {
+    return <span className="text-sm text-gray-500">Unassigned instructor</span>;
+  }
 
+  return (
+    <div className="flex flex-wrap gap-2">
+      {instructors.map((instructor) => (
+        <Link
+          key={instructor.id}
+          href={buildInstructorReportHref(instructor.id, {
+            term: termId,
+            returnTo,
+          })}
+        >
+          <Badge variant="blue">{instructor.name}</Badge>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export function CohortsReportPage({
+  cohortIdFromRoute = null,
+}: {
+  cohortIdFromRoute?: number | null;
+} = {}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
+  const selectedCohortId = cohortIdFromRoute
+    ?? parsePositiveReportParam(searchParams.get('cohort'));
+  const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
+  const backHref = resolveReportBackHref({
+    returnTo: searchParams.get('returnTo'),
+    fallbackHref: cohortIdFromRoute ? '/reports/cohorts' : '/reports',
+    fallbackState: { term: selectedTermId },
+  });
+
+  const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
   const { terms, loading: termsLoading } = useTerms();
   const { cohorts, loading: cohortsLoading } = useCohorts();
-  const { summary, loading, error } = useClassSummary(selectedTerm, selectedCohort);
+  const reportEnabled = Boolean(selectedCohortId) && Boolean(selectedTermId || currentTerm?.id);
+  const { summary, loading, error } = useClassSummary(selectedTermId, selectedCohortId, {
+    enabled: reportEnabled,
+  });
 
-  const reportingCounts = useMemo(() => {
-    return (summary?.cohort_subjects ?? []).reduce<Record<string, number>>((acc, item) => {
-      acc[item.reporting_source] = (acc[item.reporting_source] ?? 0) + 1;
-      return acc;
-    }, {});
-  }, [summary]);
+  const updateQuery = useCallback((updates: Record<string, string | number | null>) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === '') {
+        nextParams.delete(key);
+      } else {
+        nextParams.set(key, String(value));
+      }
+    });
 
-  const exportPayload = useMemo<ExportPayload | null>(() => {
-    if (!summary) return null;
+    const nextUrl = nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [pathname, router, searchParams]);
 
-    return {
-      title: `${summary.cohort.name} Cohort Report`,
-      subtitle: summary.term
-        ? `${summary.cohort.level} · ${summary.term.name}`
-        : summary.cohort.level,
-      metadata: {
-        cohort: summary.cohort.name,
-        academicYear: summary.cohort.academic_year,
-        term: summary.term?.name ?? 'All terms',
-        genericAverage: formatPercent(summary.average_grade),
-        averageAttendance: formatPercent(summary.average_attendance),
-        generatedAt: new Date().toLocaleString(),
-      },
-      columns: [
-        { key: 'subject', label: 'Subject', width: 24 },
-        { key: 'subject_code', label: 'Code', width: 10 },
-        { key: 'reporting_source', label: 'Reporting Source', width: 18 },
-        { key: 'status', label: 'Status', width: 16 },
-        { key: 'learners', label: 'Learners', format: 'number', width: 12, align: 'right' as const },
-        { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'cbc_weighted_score', label: 'CBC Weighted Score', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
-      ],
-      rows: summary.cohort_subjects.map((item) => ({
-        subject: item.cohort_subject.subject_name,
-        subject_code: item.cohort_subject.subject_code,
-        reporting_source: item.reporting_source,
-        status: item.status ?? '—',
-        learners: item.active_learner_count,
-        generic_average: item.generic_performance?.average_score ?? item.average_grade,
-        cbc_weighted_score: item.cbc_performance?.average_weighted_score ?? null,
-        attendance: item.average_attendance,
-      })),
-      fileName: `cohort-report-${summary.cohort.name.toLowerCase().replace(/\s+/g, '-')}`,
-      includeMetadata: true,
-      includeTimestamp: true,
-      sheetName: 'Cohort Report',
-      freezeHeader: true,
-      autoFilter: true,
-      orientation: 'landscape' as const,
-    };
-  }, [summary]);
+  useEffect(() => {
+    if (selectedTermId || currentTermLoading) {
+      return;
+    }
+    if (currentTerm?.id) {
+      updateQuery({ term: currentTerm.id });
+    }
+  }, [currentTerm?.id, currentTermLoading, selectedTermId, updateQuery]);
+
+  useEffect(() => {
+    if (selectedTermId || summary?.term?.id == null) {
+      return;
+    }
+    updateQuery({ term: summary.term.id });
+  }, [selectedTermId, summary?.term?.id, updateQuery]);
+
+  const handleCohortChange = useCallback((value: string) => {
+    if (!value) {
+      router.push(selectedTermId ? `/reports/cohorts?term=${selectedTermId}` : '/reports/cohorts');
+      return;
+    }
+    router.push(buildCohortReportHref(Number(value), { term: selectedTermId ?? currentTerm?.id ?? null }));
+  }, [currentTerm?.id, router, selectedTermId]);
+
+  const handleExport = useCallback(async (format: ReportExportFormat) => {
+    if (!selectedCohortId) {
+      return;
+    }
+
+    try {
+      const file = await adminReportsAPI.exportCohortSummary(
+        selectedCohortId,
+        format,
+        selectedTermId,
+      );
+      downloadBlob(file.blob, file.fileName);
+    } catch (requestError) {
+      window.alert(extractErrorMessage(requestError as ApiError, 'Failed to export cohort report.'));
+    }
+  }, [selectedCohortId, selectedTermId]);
+
+  const noActiveTerm = !selectedTermId && !currentTermLoading && !currentTerm;
+  const waitingForTerm = Boolean(selectedCohortId) && !selectedTermId && currentTermLoading;
 
   return (
     <AdminReportAccessGate>
-      <div className="space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Cohort Reports</h1>
-            <p className="mt-1 text-gray-500">
-              Cohort subject reporting driven by backend reporting source.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {exportPayload && (
-              <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
-                <Download className="mr-1.5 h-4 w-4" />
-                Export
+      <div className="space-y-6 max-w-full">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <Link href={backHref}>
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4" />
+                Back
               </Button>
-            )}
-            <BookOpen className="h-7 w-7 text-purple-600" />
+            </Link>
+            <div className="mt-3">
+              <h1 className="text-2xl font-semibold text-gray-900">Class Reports</h1>
+              <p className="mt-1 max-w-3xl text-sm text-gray-500">
+                Start with a class, then follow subject, instructor, attendance, session, and
+                assessment context from that class without reconstructing the data map yourself.
+              </p>
+            </div>
           </div>
+
+          {selectedCohortId ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => void handleExport('pdf')}>
+                <Download className="h-4 w-4" />
+                Export PDF
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => void handleExport('xlsx')}>
+                <Download className="h-4 w-4" />
+                Export Excel
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => void handleExport('csv')}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Button>
+            </div>
+          ) : null}
         </div>
 
-        <Card>
-          <div className="grid gap-4 md:grid-cols-2">
+        <Card className="max-w-full">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Select
               label="Term"
-              value={selectedTerm?.toString() ?? ''}
-              onChange={(e) => setSelectedTerm(e.target.value ? Number(e.target.value) : null)}
+              value={selectedTermId ? String(selectedTermId) : ''}
+              onChange={(event) => updateQuery({ term: event.target.value ? Number(event.target.value) : null })}
               disabled={termsLoading}
               options={[
-                { value: '', label: 'Select term…' },
+                { value: '', label: currentTermLoading ? 'Loading active term...' : 'Choose term' },
                 ...terms.map((term) => ({
                   value: String(term.id),
                   label: `${term.academic_year_name} — ${term.name}`,
@@ -120,12 +208,12 @@ export function CohortsReportPage() {
               ]}
             />
             <Select
-              label="Cohort"
-              value={selectedCohort?.toString() ?? ''}
-              onChange={(e) => setSelectedCohort(e.target.value ? Number(e.target.value) : null)}
+              label="Class"
+              value={selectedCohortId ? String(selectedCohortId) : ''}
+              onChange={(event) => handleCohortChange(event.target.value)}
               disabled={cohortsLoading}
               options={[
-                { value: '', label: 'Select cohort…' },
+                { value: '', label: 'Choose class' },
                 ...cohorts.map((cohort) => ({
                   value: String(cohort.id),
                   label: `${cohort.name} — ${cohort.level}`,
@@ -135,147 +223,213 @@ export function CohortsReportPage() {
           </div>
         </Card>
 
-        {error && <ErrorBanner message={error} onDismiss={() => {}} />}
-        {loading && <LoadingSpinner />}
-
-        {!loading && (!selectedTerm || !selectedCohort) && (
+        {noActiveTerm ? (
           <Card>
-            <div className="py-16 text-center">
-              <BookOpen className="mx-auto h-12 w-12 text-gray-300" />
-              <p className="mt-3 text-sm text-gray-500">
-                Select a term and cohort to view the report.
+            <div className="py-12 text-center">
+              <Calendar className="mx-auto h-10 w-10 text-gray-300" />
+              <p className="mt-3 text-sm font-medium text-gray-900">No active term is configured</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Choose a term above before opening a class report.
               </p>
             </div>
           </Card>
-        )}
+        ) : null}
 
-        {!loading && summary && (
-          <div className="space-y-6">
-            <Card>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">{summary.cohort.name}</h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {summary.cohort.level} · {summary.cohort.curriculum}
+        {error ? <ErrorBanner message={error} onDismiss={() => {}} /> : null}
+
+        {!selectedCohortId ? (
+          <Card className="max-w-full">
+            <div className="py-16 text-center">
+              <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
+              <p className="mt-3 text-sm font-medium text-gray-900">Open one class report</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Pick a class to see subject ownership, teaching activity, attendance, and
+                assessment context together.
+              </p>
+            </div>
+          </Card>
+        ) : waitingForTerm || (loading && !summary) ? (
+          <LoadingSpinner message="Loading class report..." />
+        ) : summary ? (
+          <div className="space-y-6 min-w-0 max-w-full">
+            <Card className="max-w-full">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="truncate text-xl font-semibold text-gray-900">{summary.cohort.name}</h2>
+                    <Badge variant="blue">{summary.cohort.level}</Badge>
+                    <Badge variant="default">{summary.cohort.curriculum}</Badge>
+                  </div>
+                  <p className="mt-2 break-words text-sm text-gray-500">
+                    {summary.cohort.academic_year}
+                    {summary.term ? ` · ${summary.term.name}` : ''}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2 justify-end">
+                <div className="flex flex-wrap gap-2">
                   <Badge variant="purple">{summary.learner_count} learners</Badge>
-                  {summary.term?.name && <Badge variant="blue">{summary.term.name}</Badge>}
+                  <Badge variant="indigo">{summary.cohort_subjects.length} class subjects</Badge>
                 </div>
               </div>
             </Card>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <StatsCard title="Total Learners" value={summary.learner_count} icon={Users} color="blue" />
-              <StatsCard title="Average Attendance" value={formatPercent(summary.average_attendance)} icon={Calendar} color="indigo" />
-              <StatsCard title="Generic Subjects" value={reportingCounts.generic ?? 0} icon={BookOpen} color="green" />
-              <StatsCard title="CBC Subjects" value={reportingCounts.cbc ?? 0} icon={BookOpen} color="purple" />
+              <StatsCard title="Learners" value={summary.learner_count} icon={Users} color="blue" />
+              <StatsCard
+                title="Average Attendance"
+                value={formatPercent(summary.average_attendance)}
+                icon={Calendar}
+                color="indigo"
+              />
+              <StatsCard
+                title="Average Score"
+                value={formatPercent(summary.average_grade)}
+                icon={BookOpen}
+                color="green"
+              />
+              <StatsCard
+                title="Subjects"
+                value={summary.cohort_subjects.length}
+                icon={BookOpen}
+                color="purple"
+              />
             </div>
-
-            {summary.average_grade != null && (
-              <Card>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-900">Generic Numeric Average</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {summary.average_grade_note ?? 'This value reflects generic numeric reporting only.'}
-                    </p>
-                  </div>
-                  <Badge variant="blue">{formatPercent(summary.average_grade)}</Badge>
-                </div>
-              </Card>
-            )}
 
             {summary.cohort_subjects.length === 0 ? (
               <Card>
                 <div className="py-12 text-center">
                   <BookOpen className="mx-auto h-10 w-10 text-gray-300" />
                   <p className="mt-2 text-sm text-gray-500">
-                    No cohort subject reporting is available for this selection.
+                    No class-subject reporting is available for this class in the selected term.
                   </p>
                 </div>
               </Card>
             ) : (
               <div className="grid gap-4">
-                {summary.cohort_subjects.map((item) => (
-                  <CurriculumSubjectReportCard
-                    key={item.cohort_subject.id}
-                    heading={item.cohort_subject.subject_name}
-                    subheading={`${item.cohort_subject.subject_code} · ${item.assigned_instructor?.name ?? 'Unassigned instructor'}`}
-                    reportingSource={item.reporting_source}
-                    performanceSource={item.performance_source}
-                    curriculumType={item.curriculum_type}
-                    status={item.status}
-                    note={item.note}
-                    learnerCount={item.active_learner_count}
-                    averageAttendance={item.average_attendance}
-                    coverage={item.coverage}
-                    assessmentCompletion={item.assessment_completion}
-                    genericPerformance={item.generic_performance}
-                    cbcPerformance={item.cbc_performance}
-                    averageGrade={item.average_grade}
-                    averageGradeNote={item.average_grade_note}
-                  />
-                ))}
+                {summary.cohort_subjects.map((item) => {
+                  const assignedInstructors = item.assigned_instructors ?? (
+                    item.assigned_instructor ? [item.assigned_instructor] : []
+                  );
+
+                  return (
+                    <CurriculumSubjectReportCard
+                      key={item.cohort_subject.id}
+                      heading={item.cohort_subject.subject_name}
+                      subheading={(
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>{item.cohort_subject.subject_code}</span>
+                          <span className="text-gray-300">•</span>
+                          <InstructorsLine
+                            instructors={assignedInstructors}
+                            termId={selectedTermId ?? summary.term?.id ?? null}
+                            returnTo={currentReturnTo}
+                          />
+                        </div>
+                      )}
+                      reportingSource={item.reporting_source}
+                      performanceSource={item.performance_source}
+                      curriculumType={item.curriculum_type}
+                      status={item.status}
+                      note={item.note}
+                      learnerCount={item.active_learner_count}
+                      averageAttendance={item.average_attendance}
+                      coverage={item.coverage}
+                      assessmentCompletion={item.assessment_completion}
+                      genericPerformance={item.generic_performance}
+                      cbcPerformance={item.cbc_performance}
+                      averageGrade={item.average_grade}
+                      averageGradeNote={item.average_grade_note}
+                      footer={(
+                        <div className="space-y-4">
+                          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <MetricTile
+                              label="Sessions"
+                              value={`${item.session_summary?.completed_sessions ?? 0}/${item.session_summary?.total_sessions ?? 0} completed`}
+                            />
+                            <MetricTile
+                              label="Pending Sessions"
+                              value={String(item.session_summary?.pending_sessions ?? 0)}
+                            />
+                            <MetricTile
+                              label="Assignments"
+                              value={String(item.assignment_summary?.total_assignments ?? 0)}
+                            />
+                            <MetricTile
+                              label="Attendance Complete"
+                              value={formatPercent(item.session_summary?.attendance_completeness ?? null)}
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={buildSubjectReportHref(item.cohort_subject.subject_id, {
+                                term: selectedTermId ?? summary.term?.id ?? null,
+                                cohort: summary.cohort.id,
+                                cohortSubject: item.cohort_subject.id,
+                                returnTo: currentReturnTo,
+                              })}
+                            >
+                              <Button variant="secondary" size="sm">Subject</Button>
+                            </Link>
+                            <Link
+                              href={buildCohortSubjectReportHref(item.cohort_subject.id, {
+                                term: selectedTermId ?? summary.term?.id ?? null,
+                                cohort: summary.cohort.id,
+                                subject: item.cohort_subject.subject_id,
+                                returnTo: currentReturnTo,
+                              })}
+                            >
+                              <Button variant="secondary" size="sm">Class Subject</Button>
+                            </Link>
+                            <Link
+                              href={buildAttendanceReportHref({
+                                term: selectedTermId ?? summary.term?.id ?? null,
+                                cohort: summary.cohort.id,
+                                cohortSubject: item.cohort_subject.id,
+                                subject: item.cohort_subject.subject_id,
+                                returnTo: currentReturnTo,
+                              })}
+                            >
+                              <Button variant="secondary" size="sm">Attendance</Button>
+                            </Link>
+                            {assignedInstructors[0] ? (
+                              <Link
+                                href={buildInstructorReportHref(assignedInstructors[0].id, {
+                                  term: selectedTermId ?? summary.term?.id ?? null,
+                                  cohort: summary.cohort.id,
+                                  cohortSubject: item.cohort_subject.id,
+                                  returnTo: currentReturnTo,
+                                })}
+                              >
+                                <Button variant="ghost" size="sm">Instructor</Button>
+                              </Link>
+                            ) : null}
+                          </div>
+                        </div>
+                      )}
+                    />
+                  );
+                })}
               </div>
             )}
-
-            {summary.cohort_summary && (reportingCounts.generic ?? 0) > 0 && (
-              <Card>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-900">Generic Numeric Distribution</h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Generic compatibility snapshot only. CBC results are not folded into A/B/C/D/E bands.
-                    </p>
-                  </div>
-                  <Badge variant="default">
-                    {formatNumber(summary.cohort_summary.total_students, 0)} records
-                  </Badge>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                  <DistributionMetric label="A" value={summary.cohort_summary.grade_a_count} />
-                  <DistributionMetric label="B" value={summary.cohort_summary.grade_b_count} />
-                  <DistributionMetric label="C" value={summary.cohort_summary.grade_c_count} />
-                  <DistributionMetric label="D" value={summary.cohort_summary.grade_d_count} />
-                  <DistributionMetric label="E" value={summary.cohort_summary.grade_e_count} />
-                </div>
-              </Card>
-            )}
           </div>
-        )}
-
-        {!loading && selectedTerm && selectedCohort && !summary && (
+        ) : (
           <Card>
             <div className="py-12 text-center">
               <BookOpen className="mx-auto h-10 w-10 text-gray-300" />
-              <p className="mt-2 text-sm text-gray-500">
-                No data available for this cohort and term.
-              </p>
+              <p className="mt-2 text-sm text-gray-500">No class data is available for this selection.</p>
             </div>
           </Card>
-        )}
-
-        {exportPayload && (
-          <ExportModal
-            open={exportOpen}
-            onClose={() => setExportOpen(false)}
-            payload={exportPayload}
-            defaultFormat="excel"
-            title="Export Cohort Report"
-          />
         )}
       </div>
     </AdminReportAccessGate>
   );
 }
 
-function DistributionMetric({ label, value }: { label: string; value: number }) {
+function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 px-4 py-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-gray-900">{value}</p>
+    <div className="min-w-0 rounded-lg border border-gray-200 px-3 py-2">
+      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-semibold text-gray-900">{value}</p>
     </div>
   );
 }

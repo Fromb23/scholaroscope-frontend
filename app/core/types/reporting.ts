@@ -46,7 +46,9 @@ export interface AttendanceSummary {
   student_admission: string;
   term: number;
   term_name: string;
+  cohort_id?: number | null;
   cohort_subject: number;
+  subject_id?: number | null;
   cohort_name: string;
   subject_name: string;
   subject_code: string;
@@ -204,6 +206,52 @@ export interface AssessmentCompletion {
 
 export type ReportAssessmentCompletion = AssessmentCompletion;
 
+export interface ReportAssessmentItem {
+  id: number;
+  name: string;
+  assessment_type: string;
+  status: string;
+  assessment_date: string | null;
+}
+
+export interface ReportSessionItem {
+  id: number;
+  title: string;
+  session_date: string | null;
+  status: string;
+}
+
+export interface ReportSessionSummary {
+  total_sessions: number;
+  completed_sessions?: number;
+  scheduled_sessions?: number;
+  in_progress_sessions?: number;
+  pending_sessions?: number;
+  cancelled_sessions?: number;
+  attendance_marked?: number;
+  attendance_expected?: number;
+  attendance_completeness?: number | null;
+  taught_outcomes_confirmed_sessions?: number;
+  sessions_attended?: number;
+  present_count?: number;
+  absent_count?: number;
+  late_count?: number;
+  excused_count?: number;
+}
+
+export interface ReportAssignmentSummary {
+  total_assignments: number;
+  draft_assignments: number;
+  published_assignments: number;
+  closed_assignments: number;
+  archived_assignments: number;
+  assigned_recipients: number;
+  submitted_recipients: number;
+  reviewed_recipients: number;
+  missing_recipients: number;
+  excused_recipients: number;
+}
+
 export interface ReportAverageSummary {
   average: number | null;
   records: number;
@@ -272,6 +320,8 @@ export interface CurriculumAwareSubjectSection {
   note: string | null;
   assessment_completion: AssessmentCompletion | null;
   attendance: AttendanceSummary | ReportAverageSummary | null;
+  session_summary?: ReportSessionSummary | null;
+  assignment_summary?: ReportAssignmentSummary | null;
   generic: GenericStudentSection | null;
   cbc: CbcStudentSection | null;
 }
@@ -405,6 +455,7 @@ export interface SubjectSummary {
 export interface CurriculumAwareCohortSubjectSummary {
   cohort_subject: ReportCohortSubjectRef;
   assigned_instructor: ReportAssignedInstructor | null;
+  assigned_instructors?: ReportAssignedInstructor[];
   active_learner_count: number;
   curriculum_type: string | null;
   reporting_source: ReportingSource;
@@ -419,6 +470,10 @@ export interface CurriculumAwareCohortSubjectSummary {
   average_grade_note?: string | null;
   average_attendance: number | null;
   coverage: ReportCoverage | null;
+  session_summary?: ReportSessionSummary | null;
+  assignment_summary?: ReportAssignmentSummary | null;
+  assessment_items?: ReportAssessmentItem[];
+  session_items?: ReportSessionItem[];
 }
 
 export interface ClassSummary {
@@ -439,6 +494,7 @@ export interface SubjectCohortOverview {
   cohort: ReportCohortInfo;
   active_learner_count: number;
   assigned_instructor: ReportAssignedInstructor | null;
+  assigned_instructors?: ReportAssignedInstructor[];
   curriculum_type: string | null;
   reporting_source: ReportingSource;
   performance_source: PerformanceSource;
@@ -455,6 +511,30 @@ export interface SubjectCohortOverview {
   cbc_performance: CbcPerformance | null;
   average_attendance: number | null;
   coverage: ReportCoverage | null;
+  session_summary?: ReportSessionSummary | null;
+  assignment_summary?: ReportAssignmentSummary | null;
+  assessment_items?: ReportAssessmentItem[];
+  session_items?: ReportSessionItem[];
+}
+
+export interface AttendanceScopeReportPayload {
+  report_type: 'attendance_scope';
+  term: TermInfo | null;
+  scope: {
+    student: StudentInfo | null;
+    cohort: ReportCohortInfo | null;
+    subject: ReportSubjectInfo | null;
+    cohort_subject: ReportCohortSubjectRef | null;
+  };
+  summary: {
+    record_count: number;
+    average_attendance: number | null;
+    total_sessions: number;
+    present_count: number;
+    absent_count: number;
+    late_count: number;
+  };
+  rows: AttendanceSummary[];
 }
 
 export interface SubjectAnalysis {

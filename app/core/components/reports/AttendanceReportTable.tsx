@@ -3,9 +3,9 @@
 import { Card } from '@/app/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { AttendanceBar } from '@/app/core/components/reports/AttendanceBar';
-import type { AttendanceReportRow } from '@/app/core/hooks/reports/useAttendanceReportPage';
+import type { AttendanceSummary } from '@/app/core/types/reporting';
 
-export function AttendanceReportTable({ summaries }: { summaries: AttendanceReportRow[] }) {
+export function AttendanceReportTable({ summaries }: { summaries: AttendanceSummary[] }) {
     return (
         <Card>
             <div className="mb-4 flex items-center justify-between">

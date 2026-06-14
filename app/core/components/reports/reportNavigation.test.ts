@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildCohortReportHref,
+  buildCohortSubjectReportHref,
+  buildInstructorReportHref,
   buildInstructorClassReportHref,
   buildInstructorCohortSubjectDetailHref,
+  buildLearnerReportHref,
+  buildReportReturnTo,
+  buildSubjectReportHref,
   parsePositiveReportParam,
+  resolveReportBackHref,
 } from './reportNavigation';
 
 describe('report navigation helpers', () => {
@@ -24,7 +31,7 @@ describe('report navigation helpers', () => {
       cohortId: 5,
       returnTo: '/reports/instructor/cohort-subjects/3',
     })).toBe(
-      '/reports/instructor/cohort-subjects/3/class-report?term=7&cohort_id=5&returnTo=%2Freports%2Finstructor%2Fcohort-subjects%2F3',
+      '/reports/instructor/cohort-subjects/3/class-report?term=7&cohort=5&returnTo=%2Freports%2Finstructor%2Fcohort-subjects%2F3',
     );
   });
 
@@ -40,5 +47,46 @@ describe('report navigation helpers', () => {
     expect(parsePositiveReportParam('-2')).toBeNull();
     expect(parsePositiveReportParam('abc')).toBeNull();
     expect(parsePositiveReportParam(null)).toBeNull();
+  });
+
+  it('builds canonical admin report hrefs with shared query state', () => {
+    expect(buildLearnerReportHref(9, { term: 7, returnTo: '/reports/students' })).toBe(
+      '/reports/students/9?term=7&returnTo=%2Freports%2Fstudents',
+    );
+    expect(buildCohortReportHref(4, { term: 7, tab: 'subjects' })).toBe(
+      '/reports/cohorts/4?term=7&tab=subjects',
+    );
+    expect(buildSubjectReportHref(8, { term: 7, cohort: 4 })).toBe(
+      '/reports/subjects/8?term=7&cohort=4',
+    );
+    expect(buildCohortSubjectReportHref(6, { term: 7, cohort: 4, subject: 8 })).toBe(
+      '/reports/cohort-subjects/6?term=7&cohort=4&subject=8',
+    );
+    expect(buildInstructorReportHref(12, { term: 7, cohort: 4 })).toBe(
+      '/reports/instructors/12?term=7&cohort=4',
+    );
+  });
+
+  it('builds returnTo paths without nesting previous returnTo values', () => {
+    expect(buildReportReturnTo('/reports/cohorts/4', {
+      term: 7,
+      tab: 'subjects',
+      returnTo: '/reports',
+    })).toBe('/reports/cohorts/4?term=7&tab=subjects');
+  });
+
+  it('prefers returnTo when resolving back navigation', () => {
+    expect(resolveReportBackHref({
+      returnTo: '/reports/cohorts/4?term=7&tab=subjects',
+      fallbackHref: '/reports/cohorts/4',
+      fallbackState: { term: 7 },
+    })).toBe('/reports/cohorts/4?term=7&tab=subjects');
+  });
+
+  it('falls back to the parent href with preserved state when returnTo is missing', () => {
+    expect(resolveReportBackHref({
+      fallbackHref: '/reports/cohorts/4',
+      fallbackState: { term: 7, tab: 'subjects' },
+    })).toBe('/reports/cohorts/4?term=7&tab=subjects');
   });
 });

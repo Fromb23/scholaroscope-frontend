@@ -23,6 +23,7 @@ import {
   StudentReportCard,
   ClassSummary,
   SubjectAnalysis,
+  AttendanceScopeReportPayload,
   LearnerOverviewReportPayload,
   LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
@@ -274,13 +275,15 @@ export const useAssessmentTypeSummaries = ({
 export const useStudentReportCard = (
   studentId: number | null,
   termId: number | null,
+  options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled ?? true;
   const [reportCard, setReportCard] = useState<StudentReportCard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReportCard = useCallback(async () => {
-    if (!studentId || !termId) {
+    if (!studentId || !enabled) {
       setReportCard(null);
       setLoading(false);
       return;
@@ -295,7 +298,7 @@ export const useStudentReportCard = (
     } finally {
       setLoading(false);
     }
-  }, [studentId, termId]);
+  }, [enabled, studentId, termId]);
 
   useEffect(() => { fetchReportCard(); }, [fetchReportCard]);
   return { reportCard, loading, error, refetch: fetchReportCard };
@@ -306,13 +309,15 @@ export const useStudentReportCard = (
 export const useClassSummary = (
   termId: number | null,
   cohortId: number | null,
+  options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled ?? true;
   const [summary, setSummary] = useState<ClassSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSummary = useCallback(async () => {
-    if (!termId || !cohortId) {
+    if (!cohortId || !enabled) {
       setSummary(null);
       setLoading(false);
       return;
@@ -327,7 +332,7 @@ export const useClassSummary = (
     } finally {
       setLoading(false);
     }
-  }, [cohortId, termId]);
+  }, [cohortId, enabled, termId]);
 
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
   return { summary, loading, error, refetch: fetchSummary };
@@ -338,13 +343,15 @@ export const useClassSummary = (
 export const useSubjectAnalysis = (
   termId: number | null,
   subjectId: number | null,
+  options?: { enabled?: boolean },
 ) => {
+  const enabled = options?.enabled ?? true;
   const [analysis, setAnalysis] = useState<SubjectAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAnalysis = useCallback(async () => {
-    if (!termId || !subjectId) {
+    if (!subjectId || !enabled) {
       setAnalysis(null);
       setLoading(false);
       return;
@@ -359,10 +366,60 @@ export const useSubjectAnalysis = (
     } finally {
       setLoading(false);
     }
-  }, [subjectId, termId]);
+  }, [enabled, subjectId, termId]);
 
   useEffect(() => { fetchAnalysis(); }, [fetchAnalysis]);
   return { analysis, loading, error, refetch: fetchAnalysis };
+};
+
+export const useAdminAttendanceScopeReport = (params?: {
+  termId?: number | null;
+  studentId?: number | null;
+  cohortId?: number | null;
+  subjectId?: number | null;
+  cohortSubjectId?: number | null;
+  enabled?: boolean;
+}) => {
+  const [report, setReport] = useState<AttendanceScopeReportPayload | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    if (params?.enabled === false) {
+      setReport(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const nextReport = await adminReportsAPI.getAttendanceScope({
+        termId: params?.termId,
+        studentId: params?.studentId,
+        cohortId: params?.cohortId,
+        subjectId: params?.subjectId,
+        cohortSubjectId: params?.cohortSubjectId,
+      });
+      setReport(nextReport);
+      setError(null);
+    } catch (err) {
+      setReport(null);
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch attendance report'));
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    params?.cohortId,
+    params?.cohortSubjectId,
+    params?.enabled,
+    params?.studentId,
+    params?.subjectId,
+    params?.termId,
+  ]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+
+  return { report, loading, error, refetch: fetchReport };
 };
 
 // ── Instructor reporting ──────────────────────────────────────────────────
