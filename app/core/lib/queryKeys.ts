@@ -1,4 +1,8 @@
 export const academicKeys = {
+    setupStatus: {
+        detail: (organizationId: number | null) =>
+            ['academic', 'setup-status', organizationId] as const,
+    },
     curricula: {
         all: ['academic', 'curricula'] as const,
         list: (organizationId: number | null) =>

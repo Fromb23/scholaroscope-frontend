@@ -17,6 +17,56 @@ export interface ListQueryParams {
   page_size?: number;
 }
 
+export type AcademicSetupStepKey =
+  | 'CURRICULUM'
+  | 'ACADEMIC_YEAR'
+  | 'TERMS'
+  | 'SUBJECTS'
+  | 'COHORTS';
+
+export type AcademicSetupStepStatus =
+  | 'complete'
+  | 'current'
+  | 'locked'
+  | 'pending';
+
+export interface AcademicSetupAction {
+  label: string;
+  href: string;
+}
+
+export interface AcademicSetupStep {
+  key: AcademicSetupStepKey;
+  label: string;
+  status: AcademicSetupStepStatus;
+  href: string;
+  description: string;
+}
+
+export interface AcademicSetupStatus {
+  complete: boolean;
+  current_step: AcademicSetupStepKey | null;
+  current_step_label: string | null;
+  current_step_description: string | null;
+  next_action: AcademicSetupAction;
+  steps: AcademicSetupStep[];
+  locked_until_complete: string[];
+  has_active_curriculum: boolean;
+  has_current_academic_year: boolean;
+  has_terms_for_current_academic_year: boolean;
+  has_active_or_configured_term: boolean;
+  has_subjects: boolean;
+  has_cohorts_for_current_academic_year: boolean;
+  current_academic_year_id: number | null;
+  counts: {
+    curricula: number;
+    academic_years: number;
+    terms: number;
+    subjects: number;
+    cohorts: number;
+  };
+}
+
 // Academic Year
 export interface AcademicYear {
   id: number;

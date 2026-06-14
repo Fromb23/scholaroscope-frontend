@@ -8,18 +8,30 @@
 // ============================================================================
 
 import { BookOpen, Plus, Search } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { AssignSubjectToCohortModal } from '@/app/core/components/academic/AssignSubjectToCohortModal';
 import {
     CurriculumGroup,
     SubjectFormModal,
 } from '@/app/core/components/academic/SubjectComponents';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useSubjectsPage } from '@/app/core/hooks/academic/useSubjectsPage';
+import {
+    getAcademicSetupPageState,
+    withAcademicSetupMode,
+} from '@/app/core/lib/academicSetup';
 
 export function SubjectsPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const setupMode = searchParams.get('setup') === '1';
+    const blockedNotice = searchParams.get('blocked') === '1';
+    const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const {
         subjects,
         loading,
@@ -43,12 +55,51 @@ export function SubjectsPage() {
         toggleCurriculum,
         toggleSubject,
         closeModal,
-        handleSave,
+        handleSave: saveSubject,
         handleDelete,
     } = useSubjectsPage();
+    const setupStatus = setupStatusQuery.data ?? null;
+    const setupPageState = getAcademicSetupPageState(setupStatus, 'SUBJECTS');
+
+    const handleSave = async (...args: Parameters<typeof saveSubject>) => {
+        await saveSubject(...args);
+        if (!setupMode || args[1]) {
+            return;
+        }
+
+        const refreshedStatus = (await setupStatusQuery.refetch()).data;
+        router.push(
+            withAcademicSetupMode(
+                refreshedStatus?.next_action.href ?? '/academic/cohorts?create=1',
+            ),
+        );
+    };
+
+    if (setupMode && setupStatusQuery.isLoading && !setupStatus) {
+        return <LoadingSpinner fullScreen={false} message="Loading academic setup..." />;
+    }
+
+    if (setupMode && setupPageState === 'blocked') {
+        return (
+            <div className="space-y-6">
+                <AcademicSetupGate
+                    status={setupStatus}
+                    stepKey="SUBJECTS"
+                    setupMode={setupMode}
+                    blockedNotice={blockedNotice}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
+            <AcademicSetupGate
+                status={setupStatus}
+                stepKey="SUBJECTS"
+                setupMode={setupMode}
+                blockedNotice={blockedNotice}
+            />
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-semibold theme-text">Subjects</h1>

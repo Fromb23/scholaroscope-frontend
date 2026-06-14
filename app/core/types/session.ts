@@ -428,9 +428,229 @@ export interface FineArtsLearnerEvidenceMatrix {
 }
 
 export interface SessionPracticalContext {
-  family: 'FINE_ARTS';
+  family: 'FINE_ARTS' | 'MUSIC';
   coursework_task_id?: number;
   task_code?: string;
+  task_title?: string;
+  task_context?: string;
+}
+
+export type PracticalProfileKey = 'FINE_ARTS' | 'MUSIC';
+export type PracticalProfileFamily = 'FINE_ARTS' | 'MUSIC';
+
+export interface PracticalProfileSummary {
+  key: PracticalProfileKey;
+  family: PracticalProfileFamily;
+  label: string;
+  workflow_href: string;
+  contract_href: string;
+  resolve_href: string;
+  learner_evidence_href: string;
+  attachment_href_template: string;
+  actor_can_record: boolean;
+  read_only_message: string | null;
+}
+
+export interface PracticalProfileResponse {
+  session_id: number;
+  is_cbc_practical: boolean;
+  profile: PracticalProfileSummary | null;
+  contract: FineArtsPracticalContract | MusicPracticalContract | null;
+}
+
+export type MusicEvidenceType =
+  | 'REHEARSAL_LOG'
+  | 'PERFORMANCE_RECORDING'
+  | 'VOCAL_TECHNIQUE'
+  | 'INSTRUMENTAL_TECHNIQUE'
+  | 'RHYTHM_ACCURACY'
+  | 'PITCH_ACCURACY'
+  | 'EXPRESSION_INTERPRETATION'
+  | 'ENSEMBLE_PARTICIPATION'
+  | 'COMPOSITION_OR_ARRANGEMENT'
+  | 'NOTATION_OR_SCORE'
+  | 'LISTENING_RESPONSE'
+  | 'SELF_ASSESSMENT'
+  | 'PEER_FEEDBACK'
+  | 'TEACHER_OBSERVATION'
+  | 'PORTFOLIO_ENTRY';
+
+export type MusicEvidenceCategory =
+  | 'performance'
+  | 'technique'
+  | 'rhythm_pitch'
+  | 'expression'
+  | 'notation'
+  | 'reflection';
+
+export type MusicPracticalEvidenceStatus =
+  | 'SUBMITTED'
+  | 'REVIEWED'
+  | 'NEEDS_IMPROVEMENT'
+  | 'ACCEPTED'
+  | 'MISSING';
+
+export interface MusicMatrixColumn {
+  key: MusicEvidenceCategory;
+  label: string;
+}
+
+export interface MusicPracticalAttachmentSupport {
+  accepted_extensions: string[];
+  accepted_labels: string[];
+}
+
+export interface MusicPracticalEvidenceOutcomeLink {
+  id: number;
+  code: string;
+  description: string;
+}
+
+export interface MusicPracticalEvidenceAttachment {
+  id: number;
+  original_name: string;
+  original_size: number;
+  mime_type: string;
+  stored_format: string;
+  file_hash: string;
+  processing_status: 'PROCESSING' | 'READY' | 'FAILED';
+  caption: string;
+  file_url: string | null;
+  uploaded_at: string | null;
+}
+
+export interface MusicTaughtOutcomeLink {
+  outcome_id: number;
+  code: string;
+  text: string;
+  strand: string;
+  sub_strand: string;
+  status: string;
+}
+
+export interface MusicPracticalEvidenceEntry {
+  id: number;
+  learner_id: number;
+  evidence_type: MusicEvidenceType;
+  category: MusicEvidenceCategory;
+  recorded: boolean;
+  status: MusicPracticalEvidenceStatus;
+  notes: string;
+  outcome_ids: number[];
+  outcomes: MusicPracticalEvidenceOutcomeLink[];
+  attachments: MusicPracticalEvidenceAttachment[];
+  attachment_count: number;
+  artifact_metadata: Record<string, unknown>;
+  recorded_at: string | null;
+  updated_at: string | null;
+}
+
+export interface MusicPracticalLearnerCoverage {
+  performance: boolean;
+  technique: boolean;
+  rhythm_pitch: boolean;
+  expression: boolean;
+  notation: boolean;
+  reflection: boolean;
+}
+
+export interface MusicPracticalLearnerRow {
+  learner_id: number;
+  name: string;
+  admission_number: string;
+  attendance_status: string | null;
+  total_recorded_entries: number;
+  has_linked_evidence: boolean;
+  coverage: MusicPracticalLearnerCoverage;
+  evidence_entries: MusicPracticalEvidenceEntry[];
+}
+
+export interface MusicPracticalGap {
+  learner_id: number;
+  name: string;
+  admission_number: string;
+  evidence_type?: MusicEvidenceType;
+}
+
+export interface MusicPracticalLearnerSummary {
+  policy?: string;
+  ready?: boolean;
+  message?: string | null;
+  present_learners_total: number;
+  present_learners_with_evidence: number;
+  missing_required_evidence_types: MusicEvidenceType[];
+  missing_learners: MusicPracticalGap[];
+  entries_missing_outcome_links: MusicPracticalGap[];
+  missing_attendance?: MusicPracticalGap[];
+  missing_keys?: string[];
+  missing_labels?: string[];
+}
+
+export interface MusicPracticalContract {
+  id: number | null;
+  session_id: number;
+  profile_key: 'MUSIC';
+  family: 'MUSIC';
+  resolved: boolean;
+  message: string | null;
+  practical_task_title: string;
+  practical_task_context: string;
+  session_proof_complete: boolean;
+  session_proof_message: string | null;
+  learner_evidence_ready: boolean;
+  learner_evidence_summary: MusicPracticalLearnerSummary;
+  has_required_evidence: boolean;
+  missing_keys: string[];
+  missing_labels: string[];
+  allowed_evidence_types: MusicEvidenceType[];
+  matrix_columns: MusicMatrixColumn[];
+  attachment_support: MusicPracticalAttachmentSupport;
+}
+
+export type MusicWorksheetNextAction =
+  | 'mark_attendance'
+  | 'resolve_practical'
+  | 'retry';
+
+export interface MusicWorksheetError {
+  code:
+    | 'attendance_required'
+    | 'no_present_learners'
+    | 'workflow_not_resolved'
+    | 'permission_denied';
+  message: string;
+  next_action: MusicWorksheetNextAction;
+}
+
+export interface MusicPracticalLearnerEvidenceMatrix {
+  session_id: number;
+  resolved: boolean;
+  requires_attendance: boolean;
+  scope: FineArtsWorksheetScope;
+  message: string | null;
+  practical_task_title: string;
+  practical_task_context: string;
+  taught_outcomes: MusicTaughtOutcomeLink[];
+  evidence_types: MusicEvidenceType[];
+  matrix_columns: MusicMatrixColumn[];
+  learners: MusicPracticalLearnerRow[];
+  summary: MusicPracticalLearnerSummary;
+  error: MusicWorksheetError | null;
+}
+
+export interface MusicPracticalResolvePayload {
+  task_title?: string;
+  task_context?: string;
+}
+
+export interface MusicPracticalLearnerEvidencePayload {
+  learner_id: number;
+  evidence_type: MusicEvidenceType;
+  recorded?: boolean;
+  status?: MusicPracticalEvidenceStatus;
+  notes?: string;
+  outcome_ids?: number[];
+  artifact_metadata?: Record<string, unknown>;
 }
 
 export interface SessionFormData {

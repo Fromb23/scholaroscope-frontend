@@ -36,6 +36,7 @@ import {
   type NavItem as RegistryNavItem,
   type PluginNavigationContext,
 } from '@/app/core/registry/pluginNavigation';
+import type { AcademicSetupStatus } from '@/app/core/types/academic';
 import {
   getWorkspaceManagementLabel,
   isLearnerCenteredWorkspace,
@@ -119,7 +120,23 @@ export const SUPERADMIN_NAV: NavigationConfig = {
 export function getAdminNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
+  academicSetup?: Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'> | null,
 ): NavigationConfig {
+  if (academicSetup && !academicSetup.complete) {
+    const currentStepLabel = academicSetup.current_step_label ?? 'Continue setup';
+
+    return {
+      primary: [
+        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Academic Setup', href: '/academic', icon: GraduationCap },
+        { name: currentStepLabel, href: academicSetup.next_action.href, icon: CalendarDays },
+      ],
+      secondary: [
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ],
+    };
+  }
+
   const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
     ? [{ name: 'Report Policies', href: '/reports/policies', icon: Award }]
     : [];

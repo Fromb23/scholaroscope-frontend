@@ -52,4 +52,22 @@ describe('admin navigation config', () => {
     expect(assessmentItem?.name).toBe('Assessment Overview');
     expect(assessmentItem?.children?.some((item) => item.href === '/assessments/new')).toBe(false);
   });
+
+  it('reduces admin navigation to setup surfaces while academic setup is incomplete', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION', {
+      complete: false,
+      current_step_label: 'Create current academic year',
+      next_action: {
+        label: 'Create current academic year',
+        href: '/academic/years?setup=1&create=1',
+      },
+    });
+
+    expect(nav.primary.map((item) => item.name)).toEqual([
+      'Dashboard',
+      'Academic Setup',
+      'Create current academic year',
+    ]);
+    expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
+  });
 });

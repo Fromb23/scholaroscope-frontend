@@ -102,7 +102,7 @@ test('builds the dedicated Fine Arts practical workflow href for closure evidenc
 
     assert.equal(
         buildFineArtsPracticalWorkflowHref(42, '/sessions/42?section=complete'),
-        '/cbc/teaching/sessions/42/fine-arts-practical?action=record-evidence&notice=closure-evidence-required&returnTo=%2Fsessions%2F42%3Fsection%3Dcomplete',
+        '/cbc/teaching/sessions/42/practical?action=record-evidence&notice=closure-evidence-required&returnTo=%2Fsessions%2F42%3Fsection%3Dcomplete',
     );
 });
 
