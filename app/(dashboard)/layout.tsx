@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import {
+  getUnauthorizedRouteFallback,
   getRouteRules,
   isPlatformSuperadminBlockedPath,
   roleHomeRoute,
@@ -88,11 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const matchedRule = getRouteRules().find((rule) => rule.pattern.test(pathname));
     if (!matchedRule) return;
     if (!matchedRule.allowedRoles.includes(activeRole)) {
-      if (activeRole === 'INSTRUCTOR' && pathname.startsWith('/reports')) {
-        router.replace('/reports/instructor');
-        return;
-      }
-      router.replace(roleHomeRoute[activeRole]);
+      router.replace(getUnauthorizedRouteFallback(activeRole, pathname));
     }
   }, [activeOrg, activeRole, loading, pathname, router, user]);
 

@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { authAPI } from '@/app/core/api/auth';
 import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvites';
+import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
 
 export interface RegisterForm {
     first_name: string;
@@ -10,7 +11,7 @@ export interface RegisterForm {
     email: string;
     password: string;
     workspace_name: string;
-    org_type: 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
+    org_type: WorkspaceMode;
 }
 
 export interface RegisterFieldErrors {
@@ -25,7 +26,7 @@ export interface SuspendedOrg {
     id: number;
     name: string;
     slug: string;
-    org_type: string;
+    org_type: OrgType;
 }
 
 export function useRegister() {
@@ -40,7 +41,7 @@ export function useRegister() {
     const isNewWorkspaceFlow = mode === 'new_workspace';
     const isInviteFlow = !!inviteToken;
     const isSuspendedRecovery = reason === 'suspended';
-    const isPersonalFlow = !isInviteFlow && !isNewWorkspaceFlow;
+    const isDirectSignupFlow = !isInviteFlow && !isNewWorkspaceFlow;
 
     const [invite, setInvite] = useState<ValidatedInvite | null>(null);
     const [inviteError, setInviteError] = useState<string | null>(null);
@@ -118,7 +119,7 @@ export function useRegister() {
             if (!form.last_name.trim()) e.last_name = 'Last name is required';
         }
 
-        if (isPersonalFlow && !form.workspace_name.trim()) {
+        if (isDirectSignupFlow && !form.workspace_name.trim()) {
             e.workspace_name = 'Workspace name is required';
         }
 
@@ -247,12 +248,14 @@ export function useRegister() {
     };
 
     return {
-        isPersonalFlow, isInviteFlow, isNewWorkspaceFlow, isSuspendedRecovery,
+        isInviteFlow, isNewWorkspaceFlow, isSuspendedRecovery,
         isExistingUser: !!invite?.user_exists,
         invite, inviteError, inviteLoading,
         suspendedOrgs, restoring,
         form, fieldErrors, setField,
         submitting, apiError, setApiError, success,
         handleSubmit, handleRestore, handleLogout, isPending,
+        isDirectSignupFlow,
+        isPersonalFlow: isDirectSignupFlow,
     };
 }

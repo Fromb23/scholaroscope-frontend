@@ -25,6 +25,7 @@ import {
     ORG_STATUS_COLORS, ORG_STATUS_LABELS,
     SUSPENSION_REASON_LABELS,
 } from '@/app/core/types/organization';
+import { ORG_TYPE_BADGE_VARIANTS, ORG_TYPE_LABELS } from '@/app/core/lib/workspaces';
 
 type OrgRow = Organization & Record<string, unknown>;
 
@@ -148,8 +149,8 @@ function OrganizationsPageInner() {
             key: 'org_type',
             header: 'Type',
             render: org => (
-                <Badge variant={org.org_type === 'INSTITUTION' ? 'blue' : 'purple'}>
-                    {org.org_type === 'INSTITUTION' ? 'Institution' : 'Personal'}
+                <Badge variant={ORG_TYPE_BADGE_VARIANTS[org.org_type]}>
+                    {ORG_TYPE_LABELS[org.org_type]}
                 </Badge>
             ),
         },

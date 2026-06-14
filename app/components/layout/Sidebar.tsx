@@ -24,9 +24,9 @@ import {
   getSuperadminNav,
   getAdminNav,
   getInstructorNav,
+  getRoleFooterLabel,
   ROLE_COLORS,
   ROLE_ICONS,
-  ROLE_FOOTER_LABEL,
   AppLogoIcon,
   type NavigationConfig,
 } from './navConfig';
@@ -77,12 +77,12 @@ export default function Sidebar() {
   const navConfig = useMemo<NavigationConfig>(() => {
     if (!user) return { primary: [] };
     if (user.is_superadmin) return getSuperadminNav(pluginNavigationContext);
-    if (activeRole === 'ADMIN') return getAdminNav(pluginNavigationContext);
+    if (activeRole === 'ADMIN') return getAdminNav(pluginNavigationContext, activeOrg?.org_type);
     if (activeRole === 'INSTRUCTOR') {
       return getInstructorNav(pluginNavigationContext);
     }
     return { primary: [] };
-  }, [user, activeRole, pluginNavigationContext]);
+  }, [user, activeOrg?.org_type, activeRole, pluginNavigationContext]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
   const colors = ROLE_COLORS[resolvedRole] ?? ROLE_COLORS.ADMIN;
@@ -219,7 +219,7 @@ export default function Sidebar() {
             <div className="theme-subtle flex items-center justify-between text-xs">
               <div>
                 <p className="font-semibold theme-muted">ScholaroScope v0.5.4</p>
-                <p className="mt-0.5">{ROLE_FOOTER_LABEL[resolvedRole]}</p>
+                <p className="mt-0.5">{getRoleFooterLabel(resolvedRole, activeOrg?.org_type)}</p>
               </div>
               <Activity className="h-4 w-4 text-green-500" />
             </div>

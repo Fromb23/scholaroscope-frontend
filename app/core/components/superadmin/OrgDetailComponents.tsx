@@ -18,6 +18,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/Ca
 import type { Organization, OrgUser, OrganizationStats, OrgFormData, OrganizationUpdatePayload, SuspensionReason } from '@/app/core/types/organization';
 import { PLAN_LABELS as PlanLabels, PLAN_COLORS as PlanColors, SUSPENSION_REASON_LABELS } from '@/app/core/types/organization';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { ORG_TYPE_OPTIONS } from '@/app/core/lib/workspaces';
 import {
     GlobalUser,
     globalStatusLabel,
@@ -339,10 +340,7 @@ export function EditModal({ isOpen, onClose, onSubmit, org, submitting }: EditMo
                 />
                 <Select label="Organization Type" value={form.org_type}
                     onChange={e => handleChange('org_type', e.target.value)}
-                    options={[
-                        { value: 'INSTITUTION', label: 'Institution' },
-                        { value: 'PERSONAL', label: 'Personal Workspace' },
-                    ]}
+                    options={ORG_TYPE_OPTIONS}
                 />
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                     <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
