@@ -30,12 +30,17 @@ import {
   CalendarDays,
   Puzzle,
 } from 'lucide-react';
-import type { Role } from '@/app/core/types/auth';
+import type { OrgType, Role } from '@/app/core/types/auth';
 import {
   getPluginNavigationItems,
   type NavItem as RegistryNavItem,
   type PluginNavigationContext,
 } from '@/app/core/registry/pluginNavigation';
+import {
+  getWorkspaceManagementLabel,
+  isLearnerCenteredWorkspace,
+  isSelfManagedWorkspace,
+} from '@/app/core/lib/workspaces';
 
 export type { NavItem } from '@/app/core/registry/pluginNavigation';
 
@@ -111,10 +116,86 @@ export const SUPERADMIN_NAV: NavigationConfig = {
   ],
 };
 
-export function getAdminNav(pluginContext: PluginNavigationContext): NavigationConfig {
+export function getAdminNav(
+  pluginContext: PluginNavigationContext,
+  orgType?: OrgType | null,
+): NavigationConfig {
   const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
     ? [{ name: 'Report Policies', href: '/reports/policies', icon: Award }]
     : [];
+
+  if (isSelfManagedWorkspace(orgType)) {
+    return {
+      primary: [
+        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
+        { name: 'Learners', href: '/learners', icon: Users },
+        { name: 'Teaching Sessions', href: '/sessions', icon: Calendar },
+        { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+        {
+          name: 'Assessments',
+          href: '/assessments',
+          icon: ClipboardCheck,
+          children: [
+            { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
+            ...reportPoliciesChild,
+          ],
+        },
+        { name: 'Reports', href: '/reports', icon: FileBarChart },
+        { name: 'Collaborators', href: '/admin/instructors', icon: UserCog },
+      ],
+      secondary: [
+        ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ],
+    };
+  }
+
+  if (orgType === 'TUITION_CENTER') {
+    return {
+      primary: [
+        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
+        { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
+        { name: 'Learners', href: '/learners', icon: Users },
+        { name: 'Scheduled Lessons', href: '/sessions', icon: Calendar },
+        { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+        {
+          name: 'Assessments',
+          href: '/assessments',
+          icon: ClipboardCheck,
+          children: [
+            { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
+            ...reportPoliciesChild,
+          ],
+        },
+        { name: 'Reports', href: '/reports', icon: FileBarChart },
+      ],
+      secondary: [
+        { name: 'Tutor Activity', href: '/admin/instructors', icon: Activity },
+        ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ],
+    };
+  }
+
+  if (isLearnerCenteredWorkspace(orgType)) {
+    return {
+      primary: [
+        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
+        { name: 'Learners', href: '/learners', icon: Users },
+        { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
+        { name: 'Sessions', href: '/sessions', icon: Calendar },
+        { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+        { name: 'Reports', href: '/reports', icon: FileBarChart },
+      ],
+      secondary: [
+        ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ],
+    };
+  }
 
   return {
     primary: [
@@ -235,11 +316,15 @@ export function getSuperadminNav(pluginContext: PluginNavigationContext): Naviga
 
 // ── Footer label ──────────────────────────────────────────────────────────
 
-export const ROLE_FOOTER_LABEL: Record<Role, string> = {
-  SUPERADMIN: 'System Governance',
-  ADMIN: 'Institution Management',
-  INSTRUCTOR: 'Teaching Operations',
-};
+export function getRoleFooterLabel(role: Role, orgType?: OrgType | null): string {
+  if (role === 'SUPERADMIN') {
+    return 'System Governance';
+  }
+  if (role === 'ADMIN') {
+    return getWorkspaceManagementLabel(orgType);
+  }
+  return 'Teaching Operations';
+}
 
 // ── App logo icon ─────────────────────────────────────────────────────────
 

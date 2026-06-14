@@ -1,7 +1,21 @@
 // app/core/types/auth.ts
 
 export type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
-export type OrgType = 'INSTITUTION' | 'PERSONAL' | 'SCHOOL' | 'BUSINESS';
+export type OrgType =
+  | 'INSTITUTION'
+  | 'PERSONAL'
+  | 'INDEPENDENT_TEACHER'
+  | 'LEARNER_WORKSPACE'
+  | 'TUITION_CENTER'
+  | 'HOMESCHOOL';
+export type WorkspaceMode =
+  | 'SCHOOL'
+  | 'INDEPENDENT_TEACHER'
+  | 'HOME_TUITION'
+  | 'TUITION_CENTER'
+  | 'HOMESCHOOL'
+  | 'PERSONAL';
+export type RegisterOrgType = WorkspaceMode | 'INSTITUTION' | 'LEARNER_WORKSPACE';
 export type MembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
 
 export interface AccessNotice {
@@ -97,7 +111,7 @@ export interface RegisterPayload {
   password?: string;
   workspace_name?: string;
   invite_code?: string;
-  org_type?: OrgType;
+  org_type?: RegisterOrgType;
 }
 
 export interface RegisterResponse {

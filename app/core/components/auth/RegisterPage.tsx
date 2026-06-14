@@ -1,29 +1,34 @@
 // app/(auth)/register/page.tsx
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, User, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  Building2,
+  CheckCircle,
+  GraduationCap,
+  Home,
+  House,
+  Loader2,
+  School,
+  User,
+} from 'lucide-react';
 import { useRegister } from '@/app/core/hooks/useRegister';
 import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AuthFrame } from './AuthFrame';
+import { ORG_TYPE_LABELS, WORKSPACE_MODE_COPY } from '@/app/core/lib/workspaces';
 import { themeClasses } from '@/app/core/theme/themeClasses';
+import type { WorkspaceMode } from '@/app/core/types/auth';
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Administrator',
   INSTRUCTOR: 'Instructor',
-};
-
-type RegisterFormData = {
-  org_type: string;
-  workspace_name: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
 };
 
 function AuthBrand() {
@@ -35,10 +40,22 @@ function AuthBrand() {
   );
 }
 
+const WORKSPACE_MODE_OPTIONS: Array<{
+  value: WorkspaceMode;
+  icon: LucideIcon;
+}> = [
+  { value: 'SCHOOL', icon: Building2 },
+  { value: 'INDEPENDENT_TEACHER', icon: GraduationCap },
+  { value: 'HOME_TUITION', icon: Home },
+  { value: 'TUITION_CENTER', icon: School },
+  { value: 'HOMESCHOOL', icon: House },
+  { value: 'PERSONAL', icon: User },
+];
+
 function RegisterForm() {
   const router = useRouter();
   const {
-    isPersonalFlow,
+    isDirectSignupFlow,
     isInviteFlow,
     isNewWorkspaceFlow,
     isSuspendedRecovery,
@@ -60,6 +77,9 @@ function RegisterForm() {
     handleLogout,
     isPending,
   } = useRegister();
+  const [workspaceStep, setWorkspaceStep] = useState<'mode' | 'details'>('mode');
+  const isWorkspaceSetupFlow = isDirectSignupFlow || isNewWorkspaceFlow;
+  const selectedWorkspace = WORKSPACE_MODE_COPY[form.org_type];
 
   if (inviteLoading) {
     return (
@@ -175,8 +195,8 @@ function RegisterForm() {
                         </div>
                         <div>
                           <p className="text-sm font-medium theme-text">{org.name}</p>
-                          <p className="theme-subtle text-xs capitalize">
-                            {org.org_type.toLowerCase()}
+                          <p className="theme-subtle text-xs">
+                            {ORG_TYPE_LABELS[org.org_type as keyof typeof ORG_TYPE_LABELS] ?? org.org_type}
                           </p>
                         </div>
                       </div>
@@ -247,21 +267,25 @@ function RegisterForm() {
     );
   }
 
-  const title = isNewWorkspaceFlow
-    ? 'Request New Workspace'
-    : isInviteFlow
-      ? isExistingUser
-        ? 'Accept Invitation'
-        : 'Create Your Account'
-      : 'Create Your Account';
+  const title = isWorkspaceSetupFlow && workspaceStep === 'mode'
+    ? 'How will you use Scholaroscope?'
+    : isNewWorkspaceFlow
+      ? selectedWorkspace.label
+      : isInviteFlow
+        ? isExistingUser
+          ? 'Accept Invitation'
+          : 'Create Your Account'
+        : 'Create Your Account';
 
-  const subtitle = isNewWorkspaceFlow
-    ? 'Submit a new workspace request for platform approval'
-    : isInviteFlow
-      ? isExistingUser
-        ? 'Sign in to accept this invitation'
-        : 'Fill in your details to join'
-      : 'Register yourself and your organization on ScholaroScope';
+  const subtitle = isWorkspaceSetupFlow && workspaceStep === 'mode'
+    ? 'Choose the workspace mode that matches how this academic record should be owned and managed.'
+    : isNewWorkspaceFlow
+      ? selectedWorkspace.description
+      : isInviteFlow
+        ? isExistingUser
+          ? 'Sign in to accept this invitation'
+          : 'Fill in your details to join'
+        : selectedWorkspace.description;
 
   const submitLabel = isNewWorkspaceFlow
     ? 'Request Workspace'
@@ -314,113 +338,119 @@ function RegisterForm() {
           )}
 
           <div className="space-y-4">
-            {isNewWorkspaceFlow && (
+            {isWorkspaceSetupFlow && workspaceStep === 'mode' ? (
+              <div className="space-y-3">
+                {WORKSPACE_MODE_OPTIONS.map(({ value, icon: Icon }) => {
+                  const option = WORKSPACE_MODE_COPY[value];
+                  const selected = form.org_type === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setField('org_type', value);
+                        setWorkspaceStep('details');
+                      }}
+                      className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
+                        selected
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'theme-border theme-surface hover:bg-[color:var(--color-surface-muted)]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-lg bg-blue-100 p-2 text-blue-700">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold theme-text">{option.label}</p>
+                          <p className="mt-1 text-sm theme-muted">{option.description}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
               <>
-                <Input
-                  label="Workspace Name"
-                  id="workspace_name"
-                  value={form.workspace_name}
-                  onChange={(e) => setField('workspace_name', e.target.value)}
-                  placeholder="e.g. Sunrise Academy"
-                  error={fieldErrors.workspace_name}
-                />
-                <div>
-                  <label className="mb-1 block text-sm font-medium theme-text">
-                    Workspace Type
-                  </label>
-                  <select
-                    value={form.org_type}
-                    onChange={(e) =>
-                      setField('org_type', e.target.value as RegisterFormData['org_type'])
-                    }
-                    className="theme-input w-full rounded-lg px-4 py-2 text-sm"
-                  >
-                    <option value="PERSONAL">Personal</option>
-                    <option value="SCHOOL">School / Institution</option>
-                    <option value="BUSINESS">Business</option>
-                  </select>
-                </div>
-                <p className="theme-subtle -mt-2 text-xs">
-                  This becomes your new organization name
-                </p>
-              </>
-            )}
-
-            {!isNewWorkspaceFlow && (
-              <>
-                {!isExistingUser && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="First Name"
-                      id="first_name"
-                      value={form.first_name}
-                      onChange={(e) => setField('first_name', e.target.value)}
-                      placeholder="Ada"
-                      error={fieldErrors.first_name}
-                    />
-                    <Input
-                      label="Last Name"
-                      id="last_name"
-                      value={form.last_name}
-                      onChange={(e) => setField('last_name', e.target.value)}
-                      placeholder="Lovelace"
-                      error={fieldErrors.last_name}
-                    />
+                {isWorkspaceSetupFlow && (
+                  <div className="theme-card-muted rounded-lg border px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold theme-text">{selectedWorkspace.label}</p>
+                        <p className="mt-1 text-sm theme-muted">{selectedWorkspace.description}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setWorkspaceStep('mode')}
+                        className="theme-link text-sm font-medium"
+                      >
+                        Change
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                <Input
-                  label="Email Address"
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setField('email', e.target.value)}
-                  placeholder="ada@example.com"
-                  disabled={isInviteFlow && !!invite?.email}
-                  error={fieldErrors.email}
-                />
-                {isInviteFlow && !!invite?.email && (
-                  <p className="theme-subtle -mt-2 text-xs">Email is fixed by the invite</p>
+                {!isNewWorkspaceFlow && (
+                  <>
+                    {!isExistingUser && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          label="First Name"
+                          id="first_name"
+                          value={form.first_name}
+                          onChange={(e) => setField('first_name', e.target.value)}
+                          placeholder="Ada"
+                          error={fieldErrors.first_name}
+                        />
+                        <Input
+                          label="Last Name"
+                          id="last_name"
+                          value={form.last_name}
+                          onChange={(e) => setField('last_name', e.target.value)}
+                          placeholder="Lovelace"
+                          error={fieldErrors.last_name}
+                        />
+                      </div>
+                    )}
+
+                    <Input
+                      label="Email Address"
+                      id="email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setField('email', e.target.value)}
+                      placeholder="ada@example.com"
+                      disabled={isInviteFlow && !!invite?.email}
+                      error={fieldErrors.email}
+                    />
+                    {isInviteFlow && !!invite?.email && (
+                      <p className="theme-subtle -mt-2 text-xs">Email is fixed by the invite</p>
+                    )}
+
+                    <Input
+                      label="Password"
+                      id="password"
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => setField('password', e.target.value)}
+                      placeholder="Min. 8 characters"
+                      error={fieldErrors.password}
+                    />
+                  </>
                 )}
 
-                <Input
-                  label="Password"
-                  id="password"
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => setField('password', e.target.value)}
-                  placeholder="Min. 8 characters"
-                  error={fieldErrors.password}
-                />
-
-                {isPersonalFlow && (
+                {(isWorkspaceSetupFlow || isSuspendedRecovery) && (
                   <>
                     <Input
                       label="Workspace Name"
                       id="workspace_name"
                       value={form.workspace_name}
                       onChange={(e) => setField('workspace_name', e.target.value)}
-                      placeholder="e.g. Sunrise Academy"
+                      placeholder={selectedWorkspace.placeholder}
                       error={fieldErrors.workspace_name}
                     />
-                    <div>
-                      <label className="mb-1 block text-sm font-medium theme-text">
-                        Organization Type
-                      </label>
-                      <select
-                        value={form.org_type}
-                        onChange={(e) =>
-                          setField('org_type', e.target.value as RegisterFormData['org_type'])
-                        }
-                        className="theme-input w-full rounded-lg px-4 py-2 text-sm"
-                      >
-                        <option value="SCHOOL">School / Institution</option>
-                        <option value="BUSINESS">Business</option>
-                        <option value="PERSONAL">Personal</option>
-                      </select>
-                    </div>
                     <p className="theme-subtle -mt-2 text-xs">
-                      This becomes your organization name on ScholaroScope
+                      This becomes your workspace name on ScholaroScope.
                     </p>
                   </>
                 )}
@@ -436,30 +466,40 @@ function RegisterForm() {
                     </span>
                   </div>
                 )}
+
+                <Button onClick={handleSubmit} disabled={submitting} className="mt-2 w-full">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    submitLabel
+                  )}
+                </Button>
               </>
             )}
-
-            <Button onClick={handleSubmit} disabled={submitting} className="mt-2 w-full">
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                submitLabel
-              )}
-            </Button>
           </div>
 
           <div className="mt-6 flex items-center justify-between text-sm">
             <button
-              onClick={() => router.back()}
+              onClick={() => {
+                if (isWorkspaceSetupFlow && workspaceStep === 'details') {
+                  setWorkspaceStep('mode');
+                  return;
+                }
+                router.back();
+              }}
               className="theme-link flex items-center gap-1 font-medium"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              {isNewWorkspaceFlow ? 'Cancel' : 'Back to login'}
+              {isWorkspaceSetupFlow && workspaceStep === 'details'
+                ? 'Back'
+                : isNewWorkspaceFlow
+                  ? 'Cancel'
+                  : 'Back to login'}
             </button>
-            {isPersonalFlow && (
+            {isDirectSignupFlow && (
               <span className="theme-subtle text-xs">
                 Have an invite? Use the invite link directly
               </span>

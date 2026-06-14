@@ -19,6 +19,11 @@ import {
     ORG_STATUS_COLORS, ORG_STATUS_LABELS,
     SUSPENSION_REASON_LABELS,
 } from '@/app/core/types/organization';
+import {
+    ORG_TYPE_BADGE_VARIANTS,
+    ORG_TYPE_LABELS,
+    ORG_TYPE_OPTIONS,
+} from '@/app/core/lib/workspaces';
 
 // ── StatsBar ──────────────────────────────────────────────────────────────
 
@@ -127,15 +132,12 @@ export function OrgFormModal({
                     {mode === 'create' ? (
                         <Select label="Organization Type" value={form.org_type}
                             onChange={e => set('org_type', e.target.value)}
-                            options={[
-                                { value: 'INSTITUTION', label: 'Institution (School / Business)' },
-                                { value: 'PERSONAL', label: 'Personal Workspace' },
-                            ]} />
+                            options={ORG_TYPE_OPTIONS} />
                     ) : (
                         <div>
                             <p className="text-sm font-medium text-gray-700 mb-1">Organization Type</p>
                             <div className="px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500">
-                                {form.org_type === 'INSTITUTION' ? 'Institution' : 'Personal Workspace'}
+                                {ORG_TYPE_LABELS[form.org_type]}
                                 <span className="ml-2 text-xs text-gray-400">(cannot be changed)</span>
                             </div>
                         </div>
@@ -284,8 +286,8 @@ export function OrgTableRow({ org, onView, onEdit, onSuspend, onUnsuspend, onDel
                 <Badge variant={PLAN_COLORS[org.plan_type]}>{PLAN_LABELS[org.plan_type]}</Badge>
             </td>
             <td className="px-6 py-4">
-                <Badge variant={org.org_type === 'INSTITUTION' ? 'blue' : 'purple'}>
-                    {org.org_type === 'INSTITUTION' ? 'Institution' : 'Personal'}
+                <Badge variant={ORG_TYPE_BADGE_VARIANTS[org.org_type]}>
+                    {ORG_TYPE_LABELS[org.org_type]}
                 </Badge>
             </td>
             <td className="px-6 py-4">

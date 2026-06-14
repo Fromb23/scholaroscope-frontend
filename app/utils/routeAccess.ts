@@ -78,3 +78,16 @@ export const roleHomeRoute: Record<Role, string> = {
     ADMIN: '/dashboard/admin',
     INSTRUCTOR: '/dashboard/instructor',
 };
+
+export function getUnauthorizedRouteFallback(
+    role: Role,
+    path: string,
+): string {
+    if (role === 'INSTRUCTOR' && path.startsWith('/reports')) {
+        return '/reports/instructor';
+    }
+    if (role === 'ADMIN' && path.startsWith('/reports/instructor')) {
+        return '/reports';
+    }
+    return roleHomeRoute[role];
+}

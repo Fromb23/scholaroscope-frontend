@@ -1,4 +1,5 @@
 import type { GlobalUser } from './globalUsers';
+import type { OrgType } from './auth';
 
 // ============================================================================
 // app/core/types/organization.ts
@@ -6,7 +7,6 @@ import type { GlobalUser } from './globalUsers';
 // ============================================================================
 
 export type PlanType = 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
-export type OrgType = 'INSTITUTION' | 'PERSONAL';
 export type OrgStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING' | 'REJECTED';
 export type SuspensionReason = 'USER_REQUESTED' | 'POLICY_VIOLATION' | 'PAYMENT_ISSUE' | 'ADMIN_ACTION';
 
