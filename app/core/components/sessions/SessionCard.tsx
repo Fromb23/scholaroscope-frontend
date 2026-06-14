@@ -19,6 +19,7 @@ interface SessionCardProps {
     session: Session;
     variant: CardVariant;
     currentMinutes: number;
+    readOnly?: boolean;
 }
 
 const variantStyles: Record<CardVariant, string> = {
@@ -27,7 +28,7 @@ const variantStyles: Record<CardVariant, string> = {
     completed: 'theme-card-muted opacity-80',
 };
 
-export function SessionCard({ session, variant, currentMinutes }: SessionCardProps) {
+export function SessionCard({ session, variant, currentMinutes, readOnly = false }: SessionCardProps) {
     const router = useRouter();
     const showStateBadge = (
         variant === 'upcoming'
@@ -85,10 +86,11 @@ export function SessionCard({ session, variant, currentMinutes }: SessionCardPro
                             size="sm"
                             onClick={(e) => { e.stopPropagation(); handleClick(); }}
                         >
-                            {variant === 'ongoing' || session.attendance_count.unmarked > 0
+                            {readOnly
+                                ? 'View Details'
+                                : variant === 'ongoing' || session.attendance_count.unmarked > 0
                                 ? 'Mark Attendance'
-                                : 'View Details'
-                            }
+                                : 'View Details'}
                         </Button>
                     </div>
                 ) : variant === 'upcoming' ? (
@@ -99,10 +101,11 @@ export function SessionCard({ session, variant, currentMinutes }: SessionCardPro
                         size="sm"
                         onClick={(e) => { e.stopPropagation(); handleClick(); }}
                     >
-                        {variant === 'ongoing' || session.attendance_count.unmarked > 0
+                        {readOnly
+                            ? 'View Details'
+                            : variant === 'ongoing' || session.attendance_count.unmarked > 0
                             ? 'Mark Attendance'
-                            : 'View Details'
-                        }
+                            : 'View Details'}
                     </Button>
                 )}
             </div>

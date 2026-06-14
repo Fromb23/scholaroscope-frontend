@@ -49,6 +49,7 @@ import {
     getSessionTeachingWorkflow,
     resolveSessionClosureEvidenceWorkflowHref,
 } from '@/app/core/registry/pluginRoutes';
+import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { getSessionDetailExtensions } from '@/app/core/registry/sessionDetailExtensions';
 import {
     useIssuePreparedAssignment,
@@ -240,8 +241,13 @@ export function SessionDetailPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionId = Number(params.id);
-    const { activeRole } = useAuth();
+    const { activeOrg, activeRole, user } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const canCreateTeachingRecords = canCreateTeachingRecord({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
     const returnTo = searchParams.get('returnTo');
     const backHref = returnTo?.startsWith('/') ? returnTo : '/sessions';
 
@@ -307,7 +313,7 @@ export function SessionDetailPage() {
     const isInProgressOverdue = scheduleState === 'IN_PROGRESS_OVERDUE';
     const needsCompletion = Boolean(session?.needs_completion || isInProgressOverdue);
     const canReschedule = Boolean(session?.can_reschedule && !isHistorical);
-    const canEditAttendance = isInProgress && !isHistorical;
+    const canEditAttendance = canCreateTeachingRecords && isInProgress && !isHistorical;
     const teachingWorkflow = getSessionTeachingWorkflow(session);
     const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
     const activeParticipationCount = useMemo(() => {
@@ -349,6 +355,7 @@ export function SessionDetailPage() {
         || 'Learner performance is required before this lesson can be closed.';
     const requiresClosureReflection = isInProgress && closureNextStep === 'REFLECTION';
     const canRecordEvidence = Boolean(
+        canCreateTeachingRecords &&
         isInProgress &&
         teachingWorkflow &&
         hasMarkedAttendance &&
@@ -356,6 +363,7 @@ export function SessionDetailPage() {
         taughtOutcomeCount > 0
     );
     const canCreateAssignmentFromLesson = Boolean(
+        canCreateTeachingRecords &&
         isCompleted &&
         hasLessonPlan &&
         hasConfirmedTaughtOutcomes
@@ -1243,7 +1251,7 @@ export function SessionDetailPage() {
             };
         }
 
-        if (closureNextStep === 'EVIDENCE' && !isCompleted) {
+        if (closureNextStep === 'EVIDENCE' && !isCompleted && canCreateTeachingRecords) {
             return {
                 label: 'Record learner performance',
                 type: canRecordEvidence && closureTeachingWorkflowHref ? 'navigate' as const : 'page_action' as const,
@@ -1258,7 +1266,7 @@ export function SessionDetailPage() {
             };
         }
 
-        if (closureNextStep === 'REFLECTION') {
+        if (closureNextStep === 'REFLECTION' && canCreateTeachingRecords) {
             return {
                 label: 'Add lesson reflection',
                 type: 'page_action' as const,
@@ -1267,7 +1275,7 @@ export function SessionDetailPage() {
             };
         }
 
-        if (closureNextStep === 'READY' && isInProgress) {
+        if (closureNextStep === 'READY' && isInProgress && canCreateTeachingRecords) {
             return {
                 label: 'Close lesson record',
                 type: 'page_action' as const,
@@ -1289,6 +1297,7 @@ export function SessionDetailPage() {
         return undefined;
     }, [
         hasLessonPlan,
+        canCreateTeachingRecords,
         canRecordEvidence,
         isCompleted,
         isCancelled,
@@ -1362,20 +1371,21 @@ export function SessionDetailPage() {
                     href: closureTeachingWorkflowHref,
                 }]
                 : []),
-            {
-                label: 'Add lesson reflection',
-                type: 'page_action' as const,
-                target: 'review_reflection_section',
-                handler: revealReflectionSection,
-            },
-            {
-                label: 'Close lesson record',
-                type: 'page_action' as const,
-                target: 'close_lesson_record',
-                handler: () => {
-                    void handleEndLessonIntent();
-                },
-            },
+            ...(canCreateTeachingRecords
+                ? [{
+                    label: 'Add lesson reflection',
+                    type: 'page_action' as const,
+                    target: 'review_reflection_section',
+                    handler: revealReflectionSection,
+                }, {
+                    label: 'Close lesson record',
+                    type: 'page_action' as const,
+                    target: 'close_lesson_record',
+                    handler: () => {
+                        void handleEndLessonIntent();
+                    },
+                }]
+                : []),
             ...(hasLessonPlan && session?.lesson_plan_id
                 ? [{
                     label: 'View lesson preparation',
@@ -1391,6 +1401,7 @@ export function SessionDetailPage() {
             : undefined,
     }), [
         currentWorkflowStep,
+        canCreateTeachingRecords,
         canRecordEvidence,
         closureNextStep,
         closureReady,
@@ -1715,6 +1726,18 @@ export function SessionDetailPage() {
     }`;
     const currentActionPrimary = isCancelled
         ? null
+        : !canCreateTeachingRecords
+            ? (hasLessonPlan
+                ? {
+                    label: 'View lesson preparation',
+                    onClick: () => {
+                        setLessonPreparationOpen(true);
+                        scrollToSection('lesson-preparation-section');
+                    },
+                    icon: <BookOpen className="mr-1.5 h-4 w-4" />,
+                    disabled: false,
+                }
+                : null)
         : isScheduled && (isScheduledReady || isScheduledOverdue)
         ? {
             label: isScheduledOverdue ? 'Start late' : 'Start lesson',
@@ -1813,7 +1836,9 @@ export function SessionDetailPage() {
                                     disabled: issuingPreparedTask,
                                 }
                                 : null;
-    const currentActionSecondary = currentWorkflowStep === 'complete'
+    const currentActionSecondary = !canCreateTeachingRecords
+        ? null
+        : currentWorkflowStep === 'complete'
         ? (
             closureNextStep === 'INTERRUPTED'
                 ? {
@@ -2314,7 +2339,7 @@ export function SessionDetailPage() {
                                                 disabled: issuingPreparedTask,
                                                 icon: <FilePlus2 className="h-4 w-4" />,
                                             },
-                                            ...(preparedTaskDraft ? [{
+                                            ...(canCreateTeachingRecords && preparedTaskDraft ? [{
                                                 label: 'Open learner task',
                                                 href: `/academic/cohorts/${preparedTaskDraft.cohort_id}/assignments/${preparedTaskDraft.id}?${new URLSearchParams({
                                                     returnTo: lessonTaskReturnTo,
@@ -2327,7 +2352,7 @@ export function SessionDetailPage() {
                             </div>
                         </Card>
 
-                        {requiresClosureReflection ? (
+                        {requiresClosureReflection && canCreateTeachingRecords ? (
                             <div id="lesson-reflection-section">
                                 <LessonReflectionCard
                                     sessionId={session.id}
@@ -2393,7 +2418,7 @@ export function SessionDetailPage() {
                                         }).toString()}`,
                                         icon: <FilePlus2 className="h-4 w-4" />,
                                     }] : []),
-                                    ...(preparedTaskDraft && !preparedTaskWasIssued && !skipPreparedTaskPrompt ? [{
+                                    ...(canCreateTeachingRecords && preparedTaskDraft && !preparedTaskWasIssued && !skipPreparedTaskPrompt ? [{
                                         label: issuingPreparedTask ? 'Issuing...' : 'Issue prepared task',
                                         onSelect: () => {
                                             void handleIssuePreparedTask();
@@ -2404,7 +2429,7 @@ export function SessionDetailPage() {
                                         label: 'Skip for this lesson',
                                         onSelect: () => setSkipPreparedTaskPrompt(true),
                                     }] : []),
-                                    ...(showQuickFollowUpAction ? [{
+                                    ...(canCreateTeachingRecords && showQuickFollowUpAction ? [{
                                         label: creatingAssignment ? 'Preparing...' : 'Prepare quick follow-up task',
                                         onSelect: handleCreateAssignmentFromLesson,
                                         disabled: creatingAssignment,

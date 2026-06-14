@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent, ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, FileText, Plus, RotateCcw } from 'lucide-react';
@@ -20,6 +20,11 @@ import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
+import {
+    canCreateTeachingRecord,
+    canShowAdminMyTeaching,
+    isSupervisionOnlyAdmin,
+} from '@/app/core/lib/workspaces';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useModalState } from '@/app/core/hooks/useModalState';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
@@ -124,6 +129,7 @@ function LessonPlanMetaItem({ label, value }: { label: string; value: ReactNode 
 
 interface LessonPlanActionsProps {
     lessonPlan: LessonPlan;
+    canCreateTeachingRecord: boolean;
     pendingActionKey: string | null;
     onView: (lessonPlan: LessonPlan) => void;
     onMarkReviewed: (lessonPlan: LessonPlan) => void;
@@ -258,6 +264,7 @@ function buildLessonPlanGroups(
 
 function LessonPlanActions({
     lessonPlan,
+    canCreateTeachingRecord,
     pendingActionKey,
     onView,
     onMarkReviewed,
@@ -294,7 +301,7 @@ function LessonPlanActions({
                 </Button>
             ) : null}
 
-            {canMarkLessonPlanUsed(lessonPlan.status) ? (
+            {canCreateTeachingRecord && canMarkLessonPlanUsed(lessonPlan.status) ? (
                 <Button
                     type="button"
                     size="sm"
@@ -338,9 +345,24 @@ function LessonPlanActions({
 
 export function LessonPlansPage() {
     const router = useRouter();
-    const { activeRole, user } = useAuth();
+    const { activeOrg, activeRole, user } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
+    const canCreateTeachingRecords = canCreateTeachingRecord({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
+    const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
     const { curricula } = useCurricula();
     const { terms } = useTerms();
     const { subjects } = useSubjects();
@@ -385,17 +407,23 @@ export function LessonPlansPage() {
         close: closeMarkUsed,
     } = useModalState<LessonPlan>();
 
+    useEffect(() => {
+        if (!canUseMyTeaching && viewMode === 'my_teaching') {
+            setViewMode('admin_supervision');
+        }
+    }, [canUseMyTeaching, viewMode]);
+
+    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && viewMode === 'my_teaching');
+
     const subtitle =
         isInstructor
             ? 'Prepare lessons, review what is ready for class, and schedule the next one.'
-            : viewMode === 'my_teaching'
+            : viewMode === 'my_teaching' && canUseMyTeaching
                 ? 'Use My Teaching to view only lesson plans tied to your own teaching work.'
                 : 'Admin supervision shows organization work by class, instructor, and subject.';
-    const createButtonLabel = isInstructor
+    const createButtonLabel = effectiveMyTeachingMode
         ? 'Prepare a lesson'
-        : viewMode === 'my_teaching'
-            ? 'Plan my lesson'
-            : 'Create lesson plan';
+        : 'Create lesson plan';
 
     const instructorOptions = useMemo<LessonPlanInstructorOption[]>(() => {
         const options = new Map<string, LessonPlanInstructorOption>();
@@ -457,7 +485,7 @@ export function LessonPlansPage() {
                     return false;
                 }
 
-                if (isAdminLike && viewMode === 'my_teaching') {
+                if (isAdminLike && effectiveMyTeachingMode) {
                     const matchesTeacherId = typeof lessonPlan.teacher === 'number' && lessonPlan.teacher === user?.id;
                     const matchesTeacherName = normalizeText(lessonPlan.teacher_name) === normalizeText(user?.full_name);
 
@@ -500,6 +528,7 @@ export function LessonPlansPage() {
         );
     }, [
         cohortFilter,
+        effectiveMyTeachingMode,
         instructorFilter,
         isAdminLike,
         lessonPlans,
@@ -514,11 +543,11 @@ export function LessonPlansPage() {
 
     const groupedLessonPlans = useMemo(
         () => (
-            isAdminLike && viewMode === 'admin_supervision'
+            isAdminLike && !effectiveMyTeachingMode
                 ? buildLessonPlanGroups(filteredLessonPlans, groupingMode)
                 : []
         ),
-        [filteredLessonPlans, groupingMode, isAdminLike, viewMode]
+        [effectiveMyTeachingMode, filteredLessonPlans, groupingMode, isAdminLike]
     );
     const hasServerFilters = Boolean(statusFilter || termFilter || subjectFilter || cohortFilter);
 
@@ -680,6 +709,7 @@ export function LessonPlansPage() {
                     <div className="space-y-3 xl:min-w-[12rem]">
                         <LessonPlanActions
                             lessonPlan={lessonPlan}
+                            canCreateTeachingRecord={canCreateTeachingRecords}
                             pendingActionKey={pendingActionKey}
                             onView={(plan) => router.push(`/lesson-plans/${plan.id}`)}
                             onMarkReviewed={(plan) => {
@@ -736,11 +766,17 @@ export function LessonPlansPage() {
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
 
-                {canCreateLessonPlan ? (
+                {canCreateLessonPlan && canCreateTeachingRecords ? (
                     <Link href="/lesson-plans/new">
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             {createButtonLabel}
+                        </Button>
+                    </Link>
+                ) : supervisionOnlyAdmin ? (
+                    <Link href="/admin/instructors">
+                        <Button variant="secondary">
+                            View instructor activity
                         </Button>
                     </Link>
                 ) : (
@@ -779,27 +815,31 @@ export function LessonPlansPage() {
                                 >
                                     Admin supervision
                                 </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
-                                    onClick={() => setViewMode('my_teaching')}
-                                >
-                                    My Teaching
-                                </Button>
+                                {canUseMyTeaching ? (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                                        onClick={() => setViewMode('my_teaching')}
+                                    >
+                                        My Teaching
+                                    </Button>
+                                ) : null}
                             </div>
                         </div>
 
-                        <div className="grid gap-3 lg:grid-cols-2">
+                        <div className={`grid gap-3 ${canUseMyTeaching ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
                             <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                                 Admin supervision shows organization work by class, instructor, and subject.
                             </div>
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                                Use My Teaching to view only your own teaching work.
-                            </div>
+                            {canUseMyTeaching ? (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                                    Use My Teaching to view only your own teaching work.
+                                </div>
+                            ) : null}
                         </div>
 
-                        {viewMode === 'admin_supervision' ? (
+                        {!effectiveMyTeachingMode ? (
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                 <div className="space-y-1">
                                     <h3 className="text-sm font-semibold text-gray-900">Grouping</h3>
@@ -910,20 +950,30 @@ export function LessonPlansPage() {
                     <div className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <h2 className="mt-3 text-base font-semibold text-gray-900">
-                            {isInstructor ? 'No lesson preparations yet' : 'No lesson plans yet'}
+                            {isInstructor
+                                ? 'No lesson preparations yet'
+                                : supervisionOnlyAdmin
+                                    ? 'No lesson plans have been prepared yet.'
+                                    : 'No lesson plans yet'}
                         </h2>
                         <p className="mt-2 text-sm text-gray-500">
                             {isInstructor
                                 ? 'Start by choosing one of your assigned class subjects and the outcomes you want to teach.'
-                                : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
+                                : supervisionOnlyAdmin
+                                    ? 'Lesson plans will appear here after instructors prepare them.'
+                                    : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
-                        {canCreateLessonPlan ? (
+                        {canCreateLessonPlan && canCreateTeachingRecords ? (
                             <Link href="/lesson-plans/new">
                                 <Button className="mt-4">
                                     <Plus className="mr-2 h-4 w-4" />
                                     {createButtonLabel}
                                 </Button>
                             </Link>
+                        ) : supervisionOnlyAdmin ? (
+                            <p className="mt-4 text-sm text-gray-500">
+                                Lesson plans will appear here after instructors prepare them.
+                            </p>
                         ) : (
                             <Button className="mt-4" disabled>
                                 <Plus className="mr-2 h-4 w-4" />
@@ -940,13 +990,13 @@ export function LessonPlansPage() {
                             {isInstructor ? 'No matching lesson preparations' : 'No matching lesson plans'}
                         </h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            {viewMode === 'my_teaching'
+                            {effectiveMyTeachingMode
                                 ? 'No lesson plans match your My Teaching view yet.'
                                 : 'Adjust the search or filters to find a different lesson plan.'}
                         </p>
                     </div>
                 </Card>
-            ) : isAdminLike && viewMode === 'admin_supervision' ? (
+            ) : isAdminLike && !effectiveMyTeachingMode ? (
                 <div className="space-y-6 pb-24">
                     {groupedLessonPlans.map((group) => (
                         <section key={group.key} className="space-y-4">

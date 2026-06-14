@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Award, ClipboardList, FileText, Filter, Plus, TrendingUp } from 'lucide-react';
@@ -17,6 +17,11 @@ import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
+import {
+    canCreateTeachingRecord,
+    canShowAdminMyTeaching,
+    isSupervisionOnlyAdmin,
+} from '@/app/core/lib/workspaces';
 import { ASSESSMENT_TYPE_OPTIONS, type Assessment } from '@/app/core/types/assessment';
 import type { AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import { useAuth } from '@/app/context/AuthContext';
@@ -45,9 +50,24 @@ function normalizeText(value: string | null | undefined): string {
 
 export function AssessmentsOverview() {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { activeOrg, user, activeRole } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
+    const canCreateTeachingRecords = canCreateTeachingRecord({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
+    const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedCohort, setSelectedCohort] = useState<number | undefined>();
@@ -76,11 +96,18 @@ export function AssessmentsOverview() {
         });
     }, [curricula, instructorAccess.assignments, isAdminLike]);
     const canCreateAssessment = hasWritableAssessmentCurriculum && (
-        isAdminLike || (activeRole === 'INSTRUCTOR' && instructorAccess.hasAssignedCohortSubjects)
+        canCreateTeachingRecords || (activeRole === 'INSTRUCTOR' && instructorAccess.hasAssignedCohortSubjects)
     );
-    const createButtonLabel = isInstructor || viewMode === 'my_teaching'
+    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && viewMode === 'my_teaching');
+    const createButtonLabel = effectiveMyTeachingMode
         ? 'Create my assessment'
         : 'Create assessment';
+
+    useEffect(() => {
+        if (!canUseMyTeaching && viewMode === 'my_teaching') {
+            setViewMode('admin_supervision');
+        }
+    }, [canUseMyTeaching, viewMode]);
 
     const { assessments, loading } = useAssessments({
         term: selectedTerm,
@@ -164,11 +191,11 @@ export function AssessmentsOverview() {
             return false;
         }
 
-        if (isAdminLike && viewMode === 'my_teaching') {
+        if (isAdminLike && effectiveMyTeachingMode) {
             return assessment.created_by === user?.id;
         }
 
-        if (isAdminLike && viewMode === 'admin_supervision' && selectedInstructorFilter) {
+        if (isAdminLike && !effectiveMyTeachingMode && selectedInstructorFilter) {
             if (selectedInstructorFilter.startsWith('id:')) {
                 return String(assessment.created_by ?? '') === selectedInstructorFilter.slice(3);
             }
@@ -179,7 +206,7 @@ export function AssessmentsOverview() {
         }
 
         return true;
-    }), [assessments, getCreatorLabel, isAdminLike, selectedCohort, selectedInstructorFilter, user?.id, viewMode]);
+    }), [assessments, effectiveMyTeachingMode, getCreatorLabel, isAdminLike, selectedCohort, selectedInstructorFilter, user?.id]);
 
     const assessmentTypes = [
         { value: '', label: 'All Types' },
@@ -291,7 +318,7 @@ export function AssessmentsOverview() {
 
     const assistantContext = useMemo(() => ({
         pageKey: 'assessments_overview',
-        pageTitle: isInstructor || viewMode === 'my_teaching' ? 'Assessments & Grading' : 'Assessments',
+        pageTitle: effectiveMyTeachingMode ? 'Assessments & Grading' : 'Assessment Overview',
         state: {
             is_loading: loading,
             total_assessments: totalAssessments,
@@ -303,9 +330,17 @@ export function AssessmentsOverview() {
             ...(canCreateAssessment
                 ? [{ label: createButtonLabel, type: 'navigate' as const, href: '/assessments/new' }]
                 : []),
+            ...(supervisionOnlyAdmin
+                ? [
+                    { label: 'View instructor activity', type: 'navigate' as const, href: '/admin/instructors' },
+                    { label: 'Open reports', type: 'navigate' as const, href: '/reports' },
+                ]
+                : []),
         ],
         nextSafeAction: canCreateAssessment
             ? { label: createButtonLabel, type: 'navigate' as const, href: '/assessments/new' }
+            : supervisionOnlyAdmin
+                ? { label: 'View instructor activity', type: 'navigate' as const, href: '/admin/instructors' }
             : undefined,
         workflowStep: 'assessment_overview',
         emptyStateReason: !loading && visibleAssessments.length === 0
@@ -315,10 +350,10 @@ export function AssessmentsOverview() {
         canCreateAssessment,
         createButtonLabel,
         instructorAccess.hasAssignedCohortSubjects,
-        isInstructor,
+        effectiveMyTeachingMode,
         loading,
+        supervisionOnlyAdmin,
         totalAssessments,
-        viewMode,
         visibleAssessments.length,
     ]);
 
@@ -329,24 +364,28 @@ export function AssessmentsOverview() {
             <div className="flex justify-between items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        {isInstructor ? 'Assessments & Grading' : viewMode === 'my_teaching' ? 'My Assessments' : 'Assessments'}
+                        {isInstructor ? 'Assessments & Grading' : effectiveMyTeachingMode ? 'My Assessments' : 'Assessment Overview'}
                     </h1>
                     <p className="text-gray-600 mt-1">
                         {isInstructor
                             ? 'Create, review, and grade class work.'
-                            : viewMode === 'my_teaching'
+                            : effectiveMyTeachingMode
                                 ? 'Use My Teaching to view only your own assessment work.'
                                 : 'Admin supervision shows organization work by class, instructor, and subject.'}
                     </p>
                 </div>
-                {canCreateAssessment && (
+                {canCreateAssessment ? (
                     <Link href="/assessments/new">
                         <Button>
                             <Plus className="w-4 h-4 mr-2" />
                             {createButtonLabel}
                         </Button>
                     </Link>
-                )}
+                ) : supervisionOnlyAdmin ? (
+                    <Link href="/admin/instructors">
+                        <Button variant="secondary">View instructor activity</Button>
+                    </Link>
+                ) : null}
             </div>
 
             {isAdminLike ? (
@@ -368,24 +407,28 @@ export function AssessmentsOverview() {
                                 >
                                     Admin supervision
                                 </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
-                                    onClick={() => setViewMode('my_teaching')}
-                                >
-                                    My Teaching
-                                </Button>
+                                {canUseMyTeaching ? (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                                        onClick={() => setViewMode('my_teaching')}
+                                    >
+                                        My Teaching
+                                    </Button>
+                                ) : null}
                             </div>
                         </div>
 
-                        <div className="grid gap-3 lg:grid-cols-2">
+                        <div className={`grid gap-3 ${canUseMyTeaching ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
                             <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                                 Admin supervision shows organization work by class, instructor, and subject.
                             </div>
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                                Use My Teaching to view only your own teaching work.
-                            </div>
+                            {canUseMyTeaching ? (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                                    Use My Teaching to view only your own teaching work.
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 </Card>
@@ -424,7 +467,7 @@ export function AssessmentsOverview() {
                         <Filter className="w-5 h-5 text-gray-400" />
                         <span>Class view starts from learners&apos; classroom context.</span>
                     </div>
-                    <div className={`grid grid-cols-1 gap-4 ${isAdminLike && viewMode === 'admin_supervision' ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
+                    <div className={`grid grid-cols-1 gap-4 ${isAdminLike && !effectiveMyTeachingMode ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
                         <Select
                             label="Term"
                             value={selectedTerm?.toString() || ''}
@@ -455,7 +498,7 @@ export function AssessmentsOverview() {
                                 })),
                             ]}
                         />
-                        {isAdminLike && viewMode === 'admin_supervision' ? (
+                        {isAdminLike && !effectiveMyTeachingMode ? (
                             <Select
                                 label="Instructor"
                                 value={selectedInstructorFilter}
@@ -492,14 +535,14 @@ export function AssessmentsOverview() {
                     <div className="py-12 text-center">
                         <ClipboardList className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">
-                            {isInstructor || viewMode === 'my_teaching' ? 'No assessments yet' : 'No assessments found'}
+                            {effectiveMyTeachingMode ? 'No assessments yet' : 'No assessments found'}
                         </h3>
                         <p className="mt-1 text-sm text-gray-500">
                             {isInstructor && !instructorAccess.hasAssignedCohortSubjects
                                 ? 'Your teaching load is not assigned yet. Assessments will appear once your classes and subjects are assigned.'
                                 : selectedTerm || selectedCohort || selectedCohortSubject || selectedType || selectedEvalType || selectedInstructorFilter
                                     ? 'Try adjusting your filters.'
-                                    : isInstructor || viewMode === 'my_teaching'
+                                    : effectiveMyTeachingMode
                                         ? 'Create or review assessments once learners have started class work.'
                                         : 'No assessments are visible in this supervision view yet.'}
                         </p>

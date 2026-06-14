@@ -18,14 +18,20 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { useAuth } from '@/app/context/AuthContext';
+import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { SessionCard } from '@/app/core/components/sessions/SessionCard';
 import { useTodaySessions } from '@/app/core/hooks/useSessions';
 import { categorizeSessions, calcAvgAttendance } from '@/app/utils/sessionUtils';
 
 export function TodaySessionsPage() {
     const router = useRouter();
-    const { activeRole, loading: authLoading } = useAuth();
+    const { activeOrg, activeRole, loading: authLoading, user } = useAuth();
     const { sessions, loading, error } = useTodaySessions();
+    const canCreateTeachingRecords = canCreateTeachingRecord({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
 
     useEffect(() => {
         if (authLoading || activeRole !== 'INSTRUCTOR') return;
@@ -93,7 +99,13 @@ export function TodaySessionsPage() {
                         </div>
                         <div className="space-y-3">
                             {ongoing.map(s => (
-                                <SessionCard key={s.id} session={s} variant="ongoing" currentMinutes={currentMinutes} />
+                                <SessionCard
+                                    key={s.id}
+                                    session={s}
+                                    variant="ongoing"
+                                    currentMinutes={currentMinutes}
+                                    readOnly={!canCreateTeachingRecords}
+                                />
                             ))}
                         </div>
                     </div>
@@ -110,7 +122,13 @@ export function TodaySessionsPage() {
                         </div>
                         <div className="space-y-3">
                             {upcoming.map(s => (
-                                <SessionCard key={s.id} session={s} variant="upcoming" currentMinutes={currentMinutes} />
+                                <SessionCard
+                                    key={s.id}
+                                    session={s}
+                                    variant="upcoming"
+                                    currentMinutes={currentMinutes}
+                                    readOnly={!canCreateTeachingRecords}
+                                />
                             ))}
                         </div>
                     </div>
@@ -127,7 +145,13 @@ export function TodaySessionsPage() {
                         </div>
                         <div className="space-y-3">
                             {completed.map(s => (
-                                <SessionCard key={s.id} session={s} variant="completed" currentMinutes={currentMinutes} />
+                                <SessionCard
+                                    key={s.id}
+                                    session={s}
+                                    variant="completed"
+                                    currentMinutes={currentMinutes}
+                                    readOnly={!canCreateTeachingRecords}
+                                />
                             ))}
                         </div>
                     </div>

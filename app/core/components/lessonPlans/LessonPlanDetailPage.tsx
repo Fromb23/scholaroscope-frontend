@@ -51,6 +51,7 @@ import {
     type LessonPlan,
     type ScheduleLessonSessionType,
 } from '@/app/core/types/lessonPlans';
+import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
@@ -154,8 +155,13 @@ export function LessonPlanDetailPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole } = useAuth();
+    const { activeOrg, activeRole, user } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const canCreateTeachingRecords = canCreateTeachingRecord({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
     const lessonPlanId = getLessonPlanId(params);
     const {
         lessonPlan,
@@ -699,7 +705,7 @@ export function LessonPlanDetailPage() {
         });
     };
     const canShowLearnerTaskAction = Boolean(
-        lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
+        canCreateTeachingRecords && lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
     );
     const canShowScheduleLessonAction = Boolean(
         lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
@@ -900,7 +906,7 @@ export function LessonPlanDetailPage() {
         : learnerTaskChoice === 'prepare'
             ? 'Draft in progress'
             : 'Not prepared';
-    const canEditLessonPlan = !['USED', 'ARCHIVED'].includes(lessonPlan.status);
+    const canEditLessonPlan = canCreateTeachingRecords && !['USED', 'ARCHIVED'].includes(lessonPlan.status);
     const postLessonReflection = lessonPlan.status === 'USED'
         ? lessonPlan.reflection?.trim() ?? ''
         : '';
@@ -979,7 +985,7 @@ export function LessonPlanDetailPage() {
                                     },
                                     disabled: pendingActionKey === actionKey(lessonPlan.id, 'reviewed'),
                                 }] : []),
-                                ...(canMarkLessonPlanUsed(lessonPlan.status) ? [{
+                                ...(canCreateTeachingRecords && canMarkLessonPlanUsed(lessonPlan.status) ? [{
                                     label: 'Close lesson and record reflection',
                                     onSelect: handleOpenMarkUsed,
                                     disabled: pendingActionKey === actionKey(lessonPlan.id, 'used'),

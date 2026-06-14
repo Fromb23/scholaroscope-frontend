@@ -1,4 +1,4 @@
-import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
+import type { OrgType, Role, WorkspaceMode } from '@/app/core/types/auth';
 
 export type WorkspaceBadgeVariant = 'blue' | 'purple' | 'green' | 'orange' | 'indigo';
 
@@ -78,11 +78,57 @@ export function getWorkspaceManagementLabel(orgType?: OrgType | null): string {
 }
 
 export function isSelfManagedWorkspace(orgType?: OrgType | null): boolean {
-  return orgType === 'PERSONAL' || orgType === 'INDEPENDENT_TEACHER' || orgType === 'HOMESCHOOL';
+  return workspaceAllowsSelfManagedTeaching(orgType);
 }
 
 export function isLearnerCenteredWorkspace(orgType?: OrgType | null): boolean {
   return orgType === 'LEARNER_WORKSPACE' || orgType === 'HOMESCHOOL';
+}
+
+export function workspaceAllowsSelfManagedTeaching(orgType?: OrgType | null): boolean {
+  return orgType === 'PERSONAL'
+    || orgType === 'INDEPENDENT_TEACHER'
+    || orgType === 'HOMESCHOOL';
+}
+
+export interface TeachingCapabilityParams {
+  role?: Role | null;
+  orgType?: OrgType | null;
+  isSuperadmin?: boolean;
+  isWorkspaceOwner?: boolean;
+}
+
+export function canUseTeachingMode({
+  role,
+  orgType,
+  isSuperadmin,
+}: TeachingCapabilityParams): boolean {
+  if (isSuperadmin || role === 'SUPERADMIN') {
+    return false;
+  }
+
+  if (role === 'INSTRUCTOR') {
+    return true;
+  }
+
+  if (role === 'ADMIN') {
+    // TODO: Replace this workspace-mode approximation with backend capability flags.
+    return workspaceAllowsSelfManagedTeaching(orgType);
+  }
+
+  return false;
+}
+
+export function canShowAdminMyTeaching(params: TeachingCapabilityParams): boolean {
+  return params.role === 'ADMIN' && canUseTeachingMode(params);
+}
+
+export function canCreateTeachingRecord(params: TeachingCapabilityParams): boolean {
+  return canUseTeachingMode(params);
+}
+
+export function isSupervisionOnlyAdmin(params: TeachingCapabilityParams): boolean {
+  return params.role === 'ADMIN' && !canUseTeachingMode(params);
 }
 
 export const ORG_TYPE_OPTIONS: Array<{ value: OrgType; label: string }> = [

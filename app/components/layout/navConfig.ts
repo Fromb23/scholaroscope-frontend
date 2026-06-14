@@ -158,10 +158,10 @@ export function getAdminNav(
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
         { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
         { name: 'Learners', href: '/learners', icon: Users },
-        { name: 'Scheduled Lessons', href: '/sessions', icon: Calendar },
-        { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+        { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
+        { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
         {
-          name: 'Assessments',
+          name: 'Assessment Overview',
           href: '/assessments',
           icon: ClipboardCheck,
           children: [
@@ -186,8 +186,8 @@ export function getAdminNav(
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
         { name: 'Learners', href: '/learners', icon: Users },
         { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
-        { name: 'Sessions', href: '/sessions', icon: Calendar },
-        { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+        { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
+        { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
         { name: 'Reports', href: '/reports', icon: FileBarChart },
       ],
       secondary: [
@@ -216,15 +216,14 @@ export function getAdminNav(
       },
       { name: 'Instructors', href: '/admin/instructors', icon: UserCog },
       { name: 'Learners', href: '/learners', icon: Users },
-      { name: 'Scheduled Lessons', href: '/sessions', icon: Calendar },
-      { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+      { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
+      { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
       {
-        name: 'Assessments',
+        name: 'Assessment Overview',
         href: '/assessments',
         icon: ClipboardCheck,
         children: [
           { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
-          { name: 'Create New', href: '/assessments/new', icon: FileText },
           ...reportPoliciesChild,
         ],
       },
