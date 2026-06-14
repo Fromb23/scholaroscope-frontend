@@ -16,6 +16,7 @@ import {
   StudentReportCard,
   ClassSummary,
   SubjectAnalysis,
+  AttendanceScopeReportPayload,
   LongitudinalStudentData,
   InstructorOverview,
   InstructorCohortSubjectOverview,
@@ -426,12 +427,24 @@ export const reportingAPI = {
 // Reports API (Comprehensive Reports)
 // ============================================================================
 export const adminReportsAPI = {
-  getOverview: async () => {
+  getOverview: async (termId?: number | null) => {
     const response = await apiClient.get<DashboardOverview>(
-      '/reports/admin/overview/'
+      '/reports/admin/overview/',
+      {
+        params: termId ? { term_id: termId } : undefined,
+      }
     );
     return response.data;
   },
+
+  exportOverview: async (format: ReportExportFormat, termId?: number | null) => fetchReportDownload(
+    '/reports/admin/overview/',
+    {
+      format,
+      term_id: termId ?? undefined,
+    },
+    `admin-reporting-overview.${format}`,
+  ),
 
   getCohortSummary: async (cohortId: number, termId?: number | null) => {
     const response = await apiClient.get<ClassSummary>(
@@ -443,6 +456,19 @@ export const adminReportsAPI = {
     return response.data;
   },
 
+  exportCohortSummary: async (
+    cohortId: number,
+    format: ReportExportFormat,
+    termId?: number | null,
+  ) => fetchReportDownload(
+    `/reports/admin/cohorts/${cohortId}/`,
+    {
+      format,
+      term_id: termId ?? undefined,
+    },
+    `cohort-report-${cohortId}.${format}`,
+  ),
+
   getSubjectOverview: async (subjectId: number, termId?: number | null) => {
     const response = await apiClient.get<SubjectAnalysis>(
       `/reports/admin/subjects/${subjectId}/`,
@@ -453,6 +479,19 @@ export const adminReportsAPI = {
     return response.data;
   },
 
+  exportSubjectOverview: async (
+    subjectId: number,
+    format: ReportExportFormat,
+    termId?: number | null,
+  ) => fetchReportDownload(
+    `/reports/admin/subjects/${subjectId}/`,
+    {
+      format,
+      term_id: termId ?? undefined,
+    },
+    `subject-report-${subjectId}.${format}`,
+  ),
+
   getStudentReportCard: async (studentId: number, termId?: number | null) => {
     const response = await apiClient.get<StudentReportCard>(
       `/reports/admin/students/${studentId}/report-card/`,
@@ -462,6 +501,63 @@ export const adminReportsAPI = {
     );
     return response.data;
   },
+
+  exportStudentReportCard: async (
+    studentId: number,
+    format: ReportExportFormat,
+    termId?: number | null,
+  ) => fetchReportDownload(
+    `/reports/admin/students/${studentId}/report-card/`,
+    {
+      format,
+      term_id: termId ?? undefined,
+    },
+    `student-report-${studentId}.${format}`,
+  ),
+
+  getAttendanceScope: async (params?: {
+    termId?: number | null;
+    studentId?: number | null;
+    cohortId?: number | null;
+    subjectId?: number | null;
+    cohortSubjectId?: number | null;
+  }) => {
+    const response = await apiClient.get<AttendanceScopeReportPayload>(
+      '/reports/admin/attendance/',
+      {
+        params: {
+          term_id: params?.termId ?? undefined,
+          student_id: params?.studentId ?? undefined,
+          cohort_id: params?.cohortId ?? undefined,
+          subject_id: params?.subjectId ?? undefined,
+          cohort_subject_id: params?.cohortSubjectId ?? undefined,
+        },
+      },
+    );
+    return response.data;
+  },
+
+  exportAttendanceScope: async (
+    format: ReportExportFormat,
+    params?: {
+      termId?: number | null;
+      studentId?: number | null;
+      cohortId?: number | null;
+      subjectId?: number | null;
+      cohortSubjectId?: number | null;
+    },
+  ) => fetchReportDownload(
+    '/reports/admin/attendance/',
+    {
+      format,
+      term_id: params?.termId ?? undefined,
+      student_id: params?.studentId ?? undefined,
+      cohort_id: params?.cohortId ?? undefined,
+      subject_id: params?.subjectId ?? undefined,
+      cohort_subject_id: params?.cohortSubjectId ?? undefined,
+    },
+    `attendance-report.${format}`,
+  ),
 };
 
 export const instructorReportsAPI = {

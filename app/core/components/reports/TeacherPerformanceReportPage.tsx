@@ -72,7 +72,9 @@ export function TeacherPerformanceReportPage({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedTermId = parsePositiveNumber(searchParams.get('term'));
-  const selectedCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject_id'));
+  const selectedCohortSubjectId = parsePositiveNumber(
+    searchParams.get('cohortSubject') ?? searchParams.get('cohort_subject_id'),
+  );
 
   const { terms, loading: termsLoading } = useTerms();
   const selfCohortSubjectsQuery = useInstructorCohortSubjects({ enabled: mode === 'self' });
@@ -126,8 +128,10 @@ export function TeacherPerformanceReportPage({
 
     if (updates.cohortSubjectId !== undefined) {
       if (updates.cohortSubjectId) {
-        nextParams.set('cohort_subject_id', String(updates.cohortSubjectId));
+        nextParams.set('cohortSubject', String(updates.cohortSubjectId));
+        nextParams.delete('cohort_subject_id');
       } else {
+        nextParams.delete('cohortSubject');
         nextParams.delete('cohort_subject_id');
       }
     }

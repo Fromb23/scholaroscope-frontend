@@ -42,6 +42,7 @@ import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 import {
   buildInstructorCohortSubjectDetailHref,
   parsePositiveReportParam,
+  resolveReportBackHref,
 } from './reportNavigation';
 
 function getLearnerSummaryNote(row: ClassSubjectLearnerRow): string {
@@ -266,26 +267,37 @@ function FullLearnerSummaryContent({ rows }: { rows: ClassSubjectLearnerRow[] })
   );
 }
 
-export function ClassSubjectReportPage() {
+export function ClassSubjectReportPage({
+  cohortIdOverride = null,
+  fallbackReturnTo,
+}: {
+  cohortIdOverride?: number | null;
+  fallbackReturnTo?: string;
+} = {}) {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const cohortSubjectId = Number(params.id);
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
-  const returnTo = searchParams.get('returnTo')
-    || buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTermId);
-  const selectedCohortId = parsePositiveReportParam(searchParams.get('cohort_id'));
+  const returnTo = resolveReportBackHref({
+    returnTo: searchParams.get('returnTo'),
+    fallbackHref: fallbackReturnTo
+      ?? buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTermId),
+  });
+  const selectedCohortId = parsePositiveReportParam(
+    searchParams.get('cohort') ?? searchParams.get('cohort_id'),
+  );
 
   const {
     cohortSubjects,
     loading: cohortSubjectsLoading,
     error: cohortSubjectsError,
-  } = useInstructorCohortSubjects();
+  } = useInstructorCohortSubjects({ enabled: cohortIdOverride == null });
 
   const cohortSubjectMeta = useMemo(
     () => cohortSubjects.find((item) => item.id === cohortSubjectId) ?? null,
     [cohortSubjectId, cohortSubjects],
   );
-  const cohortId = selectedCohortId ?? cohortSubjectMeta?.cohort_id ?? null;
+  const cohortId = selectedCohortId ?? cohortIdOverride ?? cohortSubjectMeta?.cohort_id ?? null;
 
   const {
     report,
@@ -323,12 +335,12 @@ export function ClassSubjectReportPage() {
     }
   }, [cohortId, cohortSubjectId, selectedTermId]);
 
-  const visibleError = exportError ?? error ?? cohortSubjectsError ?? null;
+  const visibleError = exportError ?? error ?? (cohortIdOverride == null ? cohortSubjectsError : null) ?? null;
   const reportSubjectName = report?.subject.name ?? cohortSubjectMeta?.subject_name ?? 'Class subject';
   const reportSubjectCode = report?.subject.code ?? cohortSubjectMeta?.subject_code ?? null;
   const reportCohortName = report?.cohort.name ?? cohortSubjectMeta?.cohort_name ?? null;
 
-  if (cohortSubjectsLoading && !cohortSubjectMeta) {
+  if (cohortSubjectsLoading && cohortIdOverride == null && !cohortSubjectMeta) {
     return <LoadingSpinner message="Loading class subject report context..." />;
   }
 
