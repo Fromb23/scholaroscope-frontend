@@ -27,6 +27,11 @@ import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useCohortSessions, useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
+import {
+    canCreateTeachingRecord,
+    canShowAdminMyTeaching,
+    isSupervisionOnlyAdmin,
+} from '@/app/core/lib/workspaces';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
@@ -366,17 +371,32 @@ function CohortSessionsCards({
 
 function SessionWorkspaceView() {
     const router = useRouter();
-    const { activeRole, user } = useAuth();
+    const { activeOrg, activeRole, user } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
+    const canCreateTeachingRecords = canCreateTeachingRecord({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
+    const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
     const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const [selectedCohortId, setSelectedCohortId] = useState<number | undefined>();
     const [selectedInstructorFilter, setSelectedInstructorFilter] = useState('');
-    const effectiveMyTeachingMode = isInstructor || viewMode === 'my_teaching';
+    const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || viewMode === 'my_teaching');
     const selectedInstructorId = useMemo(() => {
         if (!selectedInstructorFilter.startsWith('id:')) {
             return undefined;
@@ -402,7 +422,7 @@ function SessionWorkspaceView() {
         [curricula]
     );
     const workspaceBackHref = isInstructor ? '/dashboard/instructor' : '/dashboard/admin';
-    const actionLabel = isInstructor || viewMode === 'my_teaching'
+    const actionLabel = effectiveMyTeachingMode
         ? 'Prepare a lesson'
         : 'Create lesson plan';
 
@@ -411,6 +431,12 @@ function SessionWorkspaceView() {
             setSelectedInstructorFilter('');
         }
     }, [viewMode]);
+
+    useEffect(() => {
+        if (!canUseMyTeaching && viewMode === 'my_teaching') {
+            setViewMode('admin_supervision');
+        }
+    }, [canUseMyTeaching, viewMode]);
 
     const instructorOptions = useMemo(() => {
         const options = new Map<string, { value: string; label: string }>();
@@ -671,19 +697,31 @@ function SessionWorkspaceView() {
             has_priority_lesson: Boolean(priorityTodayAction),
         },
         visibleActions: [
-            ...(canPlanLesson
+            ...(canPlanLesson && canCreateTeachingRecords
                 ? [{ label: actionLabel, type: 'navigate' as const, href: '/lesson-plans/new' }]
+                : []),
+            ...(supervisionOnlyAdmin
+                ? [
+                    { label: 'View instructor activity', type: 'navigate' as const, href: '/admin/instructors' },
+                    { label: 'Open reports', type: 'navigate' as const, href: '/reports' },
+                ]
                 : []),
             ...(isInstructor
                 ? [{ label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' }]
                 : []),
         ],
-        nextSafeAction: canPlanLesson
+        nextSafeAction: canPlanLesson && canCreateTeachingRecords
             ? {
                 label: actionLabel,
                 type: 'navigate' as const,
                 href: '/lesson-plans/new',
             }
+            : supervisionOnlyAdmin
+                ? {
+                    label: 'View instructor activity',
+                    type: 'navigate' as const,
+                    href: '/admin/instructors',
+                }
             : undefined,
         workflowStep: todayCount > 0 ? 'scheduled_lessons' : 'plan_then_schedule',
         emptyStateReason: !loading && !error && visibleSessions.length === 0
@@ -693,6 +731,7 @@ function SessionWorkspaceView() {
                 : undefined),
     }), [
         actionLabel,
+        canCreateTeachingRecords,
         canPlanLesson,
         effectiveMyTeachingMode,
         error,
@@ -703,6 +742,7 @@ function SessionWorkspaceView() {
         selectedInstructorFilter,
         selectedTerm,
         selectedType,
+        supervisionOnlyAdmin,
         todayCount,
         visibleSessions.length,
     ]);
@@ -981,11 +1021,18 @@ function SessionWorkspaceView() {
                             </Button>
                         </Link>
                     ) : null}
-                    {canPlanLesson ? (
+                    {canPlanLesson && canCreateTeachingRecords ? (
                         <Link href="/lesson-plans/new">
                             <Button size="sm">
                                 <Plus className="w-4 h-4 sm:mr-1" />
                                 <span className="hidden sm:inline">{actionLabel}</span>
+                            </Button>
+                        </Link>
+                    ) : supervisionOnlyAdmin ? (
+                        <Link href="/admin/instructors">
+                            <Button variant="secondary" size="sm">
+                                <Users className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">View instructor activity</span>
                             </Button>
                         </Link>
                     ) : (
@@ -1016,24 +1063,28 @@ function SessionWorkspaceView() {
                                 >
                                     Admin supervision
                                 </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
-                                    onClick={() => setViewMode('my_teaching')}
-                                >
-                                    My Teaching
-                                </Button>
+                                {canUseMyTeaching ? (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                                        onClick={() => setViewMode('my_teaching')}
+                                    >
+                                        My Teaching
+                                    </Button>
+                                ) : null}
                             </div>
                         </div>
 
-                        <div className="grid gap-3 lg:grid-cols-2">
+                        <div className={`grid gap-3 ${canUseMyTeaching ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
                             <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                                 Admin supervision shows organization work by class, instructor, and subject.
                             </div>
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                                Use My Teaching to view only your own teaching work.
-                            </div>
+                            {canUseMyTeaching ? (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                                    Use My Teaching to view only your own teaching work.
+                                </div>
+                            ) : null}
                         </div>
 
                         {viewMode === 'admin_supervision' ? (
@@ -1162,7 +1213,9 @@ function SessionWorkspaceView() {
                                         </div>
                                         <Link href={`/sessions/${session.id}`} className="shrink-0">
                                             <Button variant="primary" size="sm">
-                                                <span className="hidden sm:inline">{getTodayLessonActionLabel(session)}</span>
+                                                <span className="hidden sm:inline">
+                                                    {canCreateTeachingRecords ? getTodayLessonActionLabel(session) : 'View'}
+                                                </span>
                                                 <span className="sm:hidden">Open</span>
                                             </Button>
                                         </Link>
@@ -1181,7 +1234,7 @@ function SessionWorkspaceView() {
                             Prepare a lesson or review your assigned classes before your next teaching slot.
                         </p>
                         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                            {canPlanLesson ? (
+                            {canPlanLesson && canCreateTeachingRecords ? (
                                 <Link href="/lesson-plans/new" className="w-full sm:w-auto">
                                     <Button className="w-full sm:w-auto">
                                         {actionLabel}
@@ -1204,7 +1257,10 @@ function SessionWorkspaceView() {
 
             <Card>
                 <div className="p-4 space-y-4">
-                    <div className={`grid grid-cols-1 gap-3 ${isAdminLike ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}>
+                    <div
+                        id="session-filters"
+                        className={`grid grid-cols-1 gap-3 ${isAdminLike ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}
+                    >
                         <Select
                             label="Term"
                             value={selectedTerm?.toString() || ''}
@@ -1283,15 +1339,24 @@ function SessionWorkspaceView() {
                                 ? 'Try adjusting your filters'
                                 : effectiveMyTeachingMode
                                     ? 'No lessons scheduled yet. Prepare a lesson plan or check your assigned classes.'
-                                    : 'No scheduled sessions match the current supervision view.'}
+                                    : supervisionOnlyAdmin
+                                        ? 'No scheduled sessions match the current supervision view. Filter by instructor or open reports to review teaching activity.'
+                                        : 'No scheduled sessions match the current supervision view.'}
                         </p>
                         {!selectedTerm && !selectedType && !selectedCohortId && !selectedInstructorFilter ? (
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                                {canPlanLesson ? (
+                                {canPlanLesson && canCreateTeachingRecords ? (
                                     <Link href="/lesson-plans/new" className="w-full sm:w-auto">
                                         <Button className="w-full sm:w-auto">
                                             <Plus className="mr-2 h-4 w-4" />
                                             {actionLabel}
+                                        </Button>
+                                    </Link>
+                                ) : supervisionOnlyAdmin ? (
+                                    <Link href="/admin/instructors" className="w-full sm:w-auto">
+                                        <Button className="w-full sm:w-auto">
+                                            <Users className="mr-2 h-4 w-4" />
+                                            View instructor activity
                                         </Button>
                                     </Link>
                                 ) : (
@@ -1355,9 +1420,14 @@ function CohortSessionsView({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole } = useAuth();
+    const { activeOrg, activeRole, user } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const canCreateTeachingRecords = canCreateTeachingRecord({
+        role: activeRole,
+        orgType: activeOrg?.org_type,
+        isSuperadmin: user?.is_superadmin,
+    });
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const { sessions, loading, error, refetch } = useCohortSessions(cohortId);
@@ -1439,7 +1509,7 @@ function CohortSessionsView({
                 {isInstructor ? 'Back to My Lessons' : 'Back to Workspace'}
               </Button>
             </Link>
-            {canPlanLesson ? (
+            {canPlanLesson && canCreateTeachingRecords ? (
               <Link href="/lesson-plans/new">
                 <Button size="sm">
                   <Plus className="w-4 h-4 sm:mr-1" />
