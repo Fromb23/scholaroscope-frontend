@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import { shouldRefreshForOrganizationChange } from '@/app/core/lib/organizationScope';
 import {
   buildAcademicSetupRedirectHref,
   isAcademicSetupIncomplete,
@@ -65,6 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
   const router = useRouter();
   const pathname = usePathname();
+  const previousOrganizationIdRef = useRef<number | null | undefined>(undefined);
 
   useEffect(() => {
     document.documentElement.classList.add('dashboard-shell-lock');
@@ -75,6 +77,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       document.body.classList.remove('dashboard-shell-lock');
     };
   }, []);
+
+  useEffect(() => {
+    const nextOrganizationId = activeOrg?.id ?? null;
+
+    if (shouldRefreshForOrganizationChange(previousOrganizationIdRef.current, nextOrganizationId)) {
+      router.refresh();
+    }
+
+    previousOrganizationIdRef.current = nextOrganizationId;
+  }, [activeOrg?.id, router]);
 
   useEffect(() => {
     const currentPath = getCurrentPath();

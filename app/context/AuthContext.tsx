@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { authAPI } from '@/app/core/api/auth';
 import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
+import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
 import type {
   ActiveOrg,
   AccessNotice,
@@ -22,6 +23,7 @@ import type {
   RegisterPayload,
   RegisterResponse,
   Role,
+  SwitchOrgResponse,
   User,
 } from '@/app/core/types/auth';
 
@@ -34,8 +36,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
-  switchOrg: (organizationId: number) => Promise<void>;
-  restoreWorkspace: (organizationId: number) => Promise<void>;
+  switchOrg: (organizationId: number) => Promise<SwitchOrgResponse>;
+  restoreWorkspace: (organizationId: number) => Promise<SwitchOrgResponse>;
   register: (payload: RegisterPayload) => Promise<RegisterResponse>;
   acceptInvite: (inviteToken: string, email: string, password: string) => Promise<void>;
   accessNotices: AccessNotice[];
@@ -88,17 +90,7 @@ function resolveActiveRole(
   activeOrg: ActiveOrg | null,
   memberships: OrgMembership[]
 ): Role | null {
-  if (!user) {
-    return null;
-  }
-  if (user.is_superadmin) {
-    return 'SUPERADMIN';
-  }
-  if (!activeOrg) {
-    return null;
-  }
-  const membership = memberships.find((item) => item.organization.id === activeOrg.id && item.status);
-  return membership?.role ?? null;
+  return resolveMembershipRoleForOrganization(user, activeOrg, memberships);
 }
 
 function buildAccessNotices(...noticeGroups: Array<AccessNotice[] | undefined>): AccessNotice[] {
@@ -283,12 +275,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await authAPI.switchOrg(organizationId);
     applyAuthState(response);
     queryClient.clear();
+    return response;
   }, [applyAuthState, queryClient]);
 
   const restoreWorkspace = useCallback(async (organizationId: number) => {
     const response = await authAPI.restoreWorkspace(organizationId);
     applyAuthState(response);
     queryClient.clear();
+    return response;
   }, [applyAuthState, queryClient]);
 
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResponse> => {

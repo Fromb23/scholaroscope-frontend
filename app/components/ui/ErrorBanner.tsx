@@ -72,7 +72,7 @@ export const ErrorBanner = forwardRef<HTMLDivElement, ErrorBannerProps>(function
       <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${styles.icon}`} />
       <div className="min-w-0 flex-1 space-y-1">
         {title ? <p className="font-semibold theme-text">{title}</p> : null}
-        <p className="whitespace-pre-wrap theme-text">{message}</p>
+        <p className="whitespace-pre-wrap break-words theme-text">{message}</p>
       </div>
       <button
         onClick={onDismiss}

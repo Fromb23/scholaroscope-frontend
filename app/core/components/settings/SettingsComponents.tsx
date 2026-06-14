@@ -234,12 +234,12 @@ export function CreateInviteModal({ isOpen, onClose, onCreate }: CreateInviteMod
                             <span className="font-medium">{ROLE_LABEL[createdInvite.role]}</span>.
                         </p>
                     </div>
-                    <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex flex-col items-stretch gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 sm:flex-row sm:items-center">
                         <Link className="h-4 w-4 text-gray-400 shrink-0" />
-                        <p className="text-xs text-gray-600 flex-1 truncate font-mono">{createdInvite.link}</p>
+                        <p className="min-w-0 flex-1 break-all text-xs text-gray-600 font-mono">{createdInvite.link}</p>
                         <button
                             onClick={handleCopy}
-                            className={`shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${copied
+                            className={`flex shrink-0 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors sm:w-auto ${copied
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                                 }`}
@@ -252,8 +252,8 @@ export function CreateInviteModal({ isOpen, onClose, onCreate }: CreateInviteMod
                         <Clock className="h-4 w-4 text-yellow-600 shrink-0" />
                         <p className="text-xs text-yellow-700">{formatExpiry(createdInvite.expires_at)}</p>
                     </div>
-                    <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                        <Button variant="secondary" onClick={onClose}>Done</Button>
+                    <div className="flex flex-col gap-3 border-t border-gray-100 pt-2 sm:flex-row sm:justify-end">
+                        <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">Done</Button>
                     </div>
                 </div>
             ) : (
@@ -302,9 +302,9 @@ export function CreateInviteModal({ isOpen, onClose, onCreate }: CreateInviteMod
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                        <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
-                        <Button variant="primary" onClick={handleCreate} disabled={submitting}>
+                    <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+                        <Button variant="secondary" onClick={onClose} disabled={submitting} className="w-full sm:w-auto">Cancel</Button>
+                        <Button variant="primary" onClick={handleCreate} disabled={submitting} className="w-full sm:w-auto">
                             {submitting ? 'Creating...' : 'Generate Invite Link'}
                         </Button>
                     </div>
@@ -334,14 +334,14 @@ export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
     };
 
     return (
-        <div className="flex items-start justify-between gap-4 py-4 border-b border-gray-100 last:border-0">
-            <div className="flex items-start gap-3 min-w-0">
+        <div className="flex flex-col gap-3 border-b border-gray-100 py-4 last:border-0 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
                 <div className={`mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border ${STATUS_STYLES[invite.status]}`}>
                     <StatusIcon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="break-words text-sm font-medium text-gray-900">
                             {invite.email || <span className="text-gray-400 italic">No email specified</span>}
                         </span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[invite.status]}`}>
@@ -366,7 +366,7 @@ export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
                 </div>
             </div>
             {invite.status === 'PENDING' && invite.is_valid && (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:shrink-0">
                     <button
                         onClick={handleCopy}
                         className={`p-2 rounded-lg text-sm transition-colors flex items-center gap-1.5 ${copied ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
@@ -417,14 +417,14 @@ export function MembersTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-900">Invite Members</p>
                     <p className="text-xs text-gray-500 mt-0.5">
                         Generate invite links to share manually via email, WhatsApp, or Slack.
                     </p>
                 </div>
-                <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)} className="gap-2">
+                <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)} className="w-full gap-2 sm:w-auto">
                     <Plus className="h-4 w-4" />New Invite
                 </Button>
             </div>
@@ -579,7 +579,7 @@ export function InstalledPluginCard({
             <div
                 ref={containerRef}
                 tabIndex={-1}
-                className={`flex items-start justify-between rounded-xl border p-4 transition-[background-color,border-color,box-shadow] outline-none ${
+                className={`flex w-full min-w-0 max-w-full flex-col gap-4 rounded-xl border p-4 outline-none transition-[background-color,border-color,box-shadow] sm:flex-row sm:items-start sm:justify-between ${
                     highlighted
                         ? 'theme-info-surface'
                         : isActive
@@ -590,14 +590,14 @@ export function InstalledPluginCard({
                     boxShadow: '0 0 0 3px color-mix(in srgb, var(--color-primary) 26%, transparent)',
                 } : undefined}
             >
-                <div className="flex items-start gap-4">
+                <div className="flex min-w-0 flex-1 items-start gap-4">
                     <div className={`p-2.5 rounded-xl shrink-0 ${isActive ? 'bg-blue-100' : 'bg-gray-100'}`}>
                         <Puzzle className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-400'}`} />
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-sm font-semibold text-gray-900">{plugin.name}</h3>
-                            <Badge variant="default" size="sm" className="font-mono">{plugin.version}</Badge>
+                    <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <h3 className="break-words text-sm font-semibold text-gray-900">{plugin.name}</h3>
+                            <Badge variant="default" size="sm" className="max-w-full break-all font-mono">{plugin.version}</Badge>
                             {plugin.is_core && <Badge variant="info" size="sm">Core</Badge>}
                             {showLifecycleStatus ? (
                                 <CurriculumLifecycleBadge status={curriculum?.offering_status} />
@@ -607,14 +607,14 @@ export function InstalledPluginCard({
                                     : <Badge variant="default" size="sm">Inactive</Badge>
                             )}
                         </div>
-                        <p className="text-xs text-gray-500 max-w-md">{plugin.description}</p>
-                        <p className="text-xs text-gray-400 mt-1 font-mono">key: {plugin.key}</p>
+                        <p className="max-w-md break-words text-xs text-gray-500">{plugin.description}</p>
+                        <p className="mt-1 break-all text-xs text-gray-400 font-mono">key: {plugin.key}</p>
                         {curriculum ? (
                             <div className="mt-2 space-y-1">
-                                <p className="text-xs text-gray-600">
+                                <p className="break-words text-xs text-gray-600">
                                     Curriculum: <span className="font-medium text-gray-900">{getCurriculumBridgeName(curriculum)}</span>
                                 </p>
-                                <p className="text-xs text-gray-500">
+                                <p className="break-words text-xs text-gray-500">
                                     {getWorkflowSummaryText(curriculum, latestDisableRequest, activeDisableRequest)}
                                 </p>
                             </div>
@@ -640,11 +640,12 @@ export function InstalledPluginCard({
                 </div>
                 {!plugin.is_core ? (
                     isCurriculumManagedPlugin ? (
-                        <div className="ml-4 flex shrink-0 items-center gap-2">
+                        <div className="flex w-full shrink-0 items-center gap-2 sm:ml-4 sm:w-auto">
                             <Button
                                 size="sm"
                                 variant={curriculum?.offering_status === 'DISABLED' ? 'secondary' : 'primary'}
                                 onClick={() => setDisableWorkflowOpen(true)}
+                                className="w-full sm:w-auto"
                             >
                                 {workflowButtonLabel}
                             </Button>
@@ -653,7 +654,7 @@ export function InstalledPluginCard({
                         <button
                             onClick={() => onToggle(plugin.id)}
                             disabled={toggling}
-                            className={`p-2 rounded-lg transition-colors shrink-0 ml-4 ${isActive
+                            className={`ml-auto shrink-0 rounded-lg p-2 transition-colors ${isActive
                                 ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
                                 : 'text-gray-400 hover:bg-green-50 hover:text-green-600'
                                 }`}
@@ -1160,7 +1161,7 @@ export function CurriculumSelectionModal({
                                 )}
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+                        <div className="flex flex-col gap-3 border-t border-gray-100 pt-2 sm:flex-row sm:justify-end">
                             <Button variant="secondary" onClick={() => {
                                 setResult(null);
                                 setLoading(true);
@@ -1168,10 +1169,10 @@ export function CurriculumSelectionModal({
                                     .then(applyData)
                                     .catch(() => setError('Could not reload.'))
                                     .finally(() => setLoading(false));
-                            }}>
+                            }} className="w-full sm:w-auto">
                                 Continue Editing
                             </Button>
-                            <Button variant="primary" onClick={onClose}>Done</Button>
+                            <Button variant="primary" onClick={onClose} className="w-full sm:w-auto">Done</Button>
                         </div>
                     </div>
                 )}
@@ -1189,7 +1190,7 @@ export function CurriculumSelectionModal({
                 {/* Tree */}
                 {!result && !loading && catalog && (
                     <>
-                        <div className="flex items-center gap-4 text-xs">
+                        <div className="flex flex-wrap items-center gap-3 text-xs">
                             <span className="flex items-center gap-1 text-gray-500">
                                 <span className="h-3 w-3 rounded border-2 border-blue-600 bg-blue-600 inline-block" />
                                 Registered
@@ -1199,7 +1200,7 @@ export function CurriculumSelectionModal({
                                 Not registered
                             </span>
                             {hasChanges && (
-                                <span className="ml-auto text-amber-600 font-medium text-xs">
+                                <span className="text-xs font-medium text-amber-600 sm:ml-auto">
                                     {diff.addCount > 0 && `+${diff.addCount} to add`}
                                     {diff.addCount > 0 && diff.removeCount > 0 && ' · '}
                                     {diff.removeCount > 0 && `−${diff.removeCount} to remove`}
@@ -1207,7 +1208,7 @@ export function CurriculumSelectionModal({
                             )}
                         </div>
 
-                        <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                        <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
                             {catalog.subjects.map(group => {
                                 const gExp = expandedSubjects.has(group.name);
                                 return (
@@ -1224,10 +1225,10 @@ export function CurriculumSelectionModal({
                                                 }
                                                 return n;
                                             })}
-                                            className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 text-left"
+                                            className="flex w-full items-center justify-between gap-3 bg-gray-50 p-3 text-left hover:bg-gray-100"
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-semibold text-gray-900">{group.name}</span>
+                                            <div className="min-w-0 flex flex-wrap items-center gap-2">
+                                                <span className="break-words text-sm font-semibold text-gray-900">{group.name}</span>
                                                 <span className="text-xs text-gray-400">
                                                     {group.levels.length} level{group.levels.length !== 1 ? 's' : ''}
                                                 </span>
@@ -1258,7 +1259,7 @@ export function CurriculumSelectionModal({
 
                                                     return (
                                                         <div key={lk}>
-                                                            <div className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50">
+                                                            <div className="flex items-center gap-3 bg-white px-4 py-3 hover:bg-gray-50">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={lChk}
@@ -1276,11 +1277,11 @@ export function CurriculumSelectionModal({
                                                                         }
                                                                         return n;
                                                                     })}
-                                                                    className="flex-1 flex items-center justify-between text-left"
+                                                                    className="flex flex-1 items-center justify-between gap-3 text-left"
                                                                 >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-sm font-medium text-gray-800">{level.level}</span>
-                                                                        <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{level.code}</span>
+                                                                    <div className="min-w-0 flex flex-wrap items-center gap-2">
+                                                                        <span className="break-words text-sm font-medium text-gray-800">{level.level}</span>
+                                                                        <span className="break-all rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono text-gray-400">{level.code}</span>
                                                                         {level.registered && (
                                                                             <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">
                                                                                 Registered
@@ -1331,10 +1332,10 @@ export function CurriculumSelectionModal({
                                                                                             }
                                                                                             return n;
                                                                                         })}
-                                                                                        className="flex-1 flex items-center justify-between text-left"
+                                                                                        className="flex flex-1 items-center justify-between gap-3 text-left"
                                                                                     >
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <span className="text-sm text-gray-700">{topic.name}</span>
+                                                                                        <div className="min-w-0 flex flex-wrap items-center gap-2">
+                                                                                            <span className="break-words text-sm text-gray-700">{topic.name}</span>
                                                                                             {topic.registered && !isRemoved && (
                                                                                                 <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">Added</span>
                                                                                             )}
@@ -1373,8 +1374,8 @@ export function CurriculumSelectionModal({
                                                                                                         onChange={() => toggleSubtopic(lk, tc, sc)}
                                                                                                         className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
                                                                                                     />
-                                                                                                    <span className="text-xs text-gray-700">{sub.name}</span>
-                                                                                                    <span className="ml-auto flex items-center gap-1">
+                                                                                                    <span className="min-w-0 break-words text-xs text-gray-700">{sub.name}</span>
+                                                                                                    <span className="ml-auto flex shrink-0 items-center gap-1">
                                                                                                         {sub.registered && !sRemoved && <span className="text-xs text-green-500">✓ Added</span>}
                                                                                                         {sNew && <span className="text-xs text-blue-500">+ New</span>}
                                                                                                         {sRemoved && <span className="text-xs text-red-500">− Remove</span>}
@@ -1399,19 +1400,20 @@ export function CurriculumSelectionModal({
                             })}
                         </div>
 
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                            <p className="text-xs text-gray-400">
+                        <div className="flex flex-col gap-3 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="break-words text-xs text-gray-400">
                                 {hasChanges
                                     ? `${diff.addCount > 0 ? `+${diff.addCount} to add` : ''}${diff.addCount > 0 && diff.removeCount > 0 ? ' · ' : ''}${diff.removeCount > 0 ? `−${diff.removeCount} to remove` : ''}`
                                     : 'No changes'
                                 }
                             </p>
-                            <div className="flex gap-3">
-                                <Button variant="secondary" onClick={onClose} disabled={seeding}>Cancel</Button>
+                            <div className="flex flex-col gap-3 sm:flex-row">
+                                <Button variant="secondary" onClick={onClose} disabled={seeding} className="w-full sm:w-auto">Cancel</Button>
                                 <Button
                                     variant="primary"
                                     onClick={handleSave}
                                     disabled={seeding || !hasChanges}
+                                    className="w-full sm:w-auto"
                                 >
                                     {seeding ? 'Saving...' : 'Save Changes'}
                                 </Button>

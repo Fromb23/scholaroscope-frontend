@@ -340,7 +340,10 @@ export interface CurriculumDisableFinalizationLearnerSnapshot {
 }
 
 export interface CurriculumDisableFinalizationNotificationSnapshot {
+  admin_errors?: Array<{ email: string; error: string }>;
   admins_sent?: string[];
+  delivery_status?: 'SENT' | 'PARTIAL_FAILED' | 'FAILED' | 'SKIPPED';
+  instructor_errors?: Array<{ email: string; error: string }>;
   instructors_sent?: string[];
 }
 

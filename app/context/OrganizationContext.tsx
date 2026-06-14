@@ -7,6 +7,8 @@
 'use client';
 
 import { createContext, useContext, ReactNode } from 'react';
+import { useAuth } from '@/app/context/AuthContext';
+import { resolveScopedOrganizationId } from '@/app/core/lib/organizationScope';
 
 interface OrganizationContextType {
     organizationId: number | null;
@@ -31,11 +33,11 @@ export function OrganizationProvider({
 
 export function useOrganizationContext() {
     const context = useContext(OrganizationContext);
+    const { activeOrg } = useAuth();
+    const organizationId = resolveScopedOrganizationId(
+        context?.organizationId,
+        activeOrg?.id ?? null,
+    );
 
-    // If no provider exists (normal admin pages), return null organizationId
-    if (context === undefined) {
-        return { organizationId: null };
-    }
-
-    return context;
+    return { organizationId };
 }

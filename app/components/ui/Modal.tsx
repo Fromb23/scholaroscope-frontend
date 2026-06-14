@@ -44,14 +44,14 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
       />
 
       {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
         <div
-          className={`theme-dropdown relative flex max-h-[calc(100vh-2rem)] w-full min-w-0 flex-col overflow-hidden rounded-lg ${sizeClasses[size]} transform transition-all`}
+          className={`theme-dropdown relative flex max-h-[calc(100vh-1.5rem)] w-full min-w-0 flex-col overflow-hidden rounded-lg ${sizeClasses[size]} transform transition-all sm:max-h-[calc(100vh-2rem)]`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between gap-4 border-b theme-border p-6">
-            <h2 className="min-w-0 flex-1 text-xl font-semibold theme-text">{title}</h2>
+          <div className="flex items-center justify-between gap-3 border-b theme-border p-4 sm:gap-4 sm:p-6">
+            <h2 className="min-w-0 flex-1 break-words text-lg font-semibold theme-text sm:text-xl">{title}</h2>
             <button
               onClick={onClose}
               className="theme-focus-ring shrink-0 theme-muted transition-colors hover:text-[color:var(--color-text)]"
@@ -61,7 +61,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
           </div>
 
           {/* Content */}
-          <div className="min-w-0 overflow-y-auto p-6">{children}</div>
+          <div className="min-w-0 overflow-y-auto p-4 sm:p-6">{children}</div>
         </div>
       </div>
     </div>
