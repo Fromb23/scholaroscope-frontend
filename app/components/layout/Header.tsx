@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2, Plus } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { GlobalPeopleSearch } from '@/app/components/layout/GlobalPeopleSearch';
@@ -31,9 +32,14 @@ export default function Header() {
     }
     setSwitching(orgId);
     try {
-      await switchOrg(orgId);
+      const response = await switchOrg(orgId);
+      const nextRole = resolveMembershipRoleForOrganization(
+        response.user,
+        response.active_org,
+        response.memberships,
+      );
       setOrgDropdownOpen(false);
-      router.replace(activeRole ? (roleHomeRoute[activeRole] ?? '/dashboard') : '/dashboard');
+      router.replace(nextRole ? (roleHomeRoute[nextRole] ?? '/dashboard') : '/dashboard');
     } catch (err) {
       console.error('Failed to switch org:', err);
     } finally {

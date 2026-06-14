@@ -18,7 +18,7 @@ function ImpactMetric({
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-gray-900">{valueOrZero(value)}</p>
+      <p className="mt-1 break-words text-lg font-semibold text-gray-900">{valueOrZero(value)}</p>
     </div>
   );
 }
@@ -32,12 +32,12 @@ export function CurriculumDisableImpactSummary({
     <div className="space-y-4">
       <Card className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Curriculum
             </p>
-            <h3 className="mt-1 text-lg font-semibold text-gray-900">{impact.curriculum_name}</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className="mt-1 break-words text-lg font-semibold text-gray-900">{impact.curriculum_name}</h3>
+            <p className="mt-1 break-words text-sm text-gray-500">
               {impact.curriculum_type}
             </p>
           </div>

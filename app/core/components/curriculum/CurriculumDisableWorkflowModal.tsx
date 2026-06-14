@@ -117,6 +117,45 @@ function getRequestPanelMessage(
   }
 }
 
+function getRecipientNotificationStatus(
+  sent: string[] | undefined,
+  errors: Array<{ email: string; error: string }> | undefined,
+  attemptedAt?: string | null,
+): string {
+  const sentCount = sent?.length ?? 0;
+  const errorCount = errors?.length ?? 0;
+
+  if (errorCount && sentCount) {
+    return 'Partial failure';
+  }
+
+  if (errorCount) {
+    return 'Failed';
+  }
+
+  if (sentCount || attemptedAt) {
+    return 'Sent';
+  }
+
+  return 'Skipped';
+}
+
+function getNotificationWarningTone(status?: 'SENT' | 'PARTIAL_FAILED' | 'FAILED' | 'SKIPPED') {
+  if (status === 'FAILED') {
+    return {
+      className: 'border-amber-200 bg-amber-50 text-amber-800',
+      iconClassName: 'text-amber-600',
+      title: 'Notification delivery failed',
+    };
+  }
+
+  return {
+    className: 'border-amber-200 bg-amber-50 text-amber-800',
+    iconClassName: 'text-amber-600',
+    title: 'Notification delivery partially failed',
+  };
+}
+
 export function CurriculumDisableWorkflowModal({
   isOpen,
   onClose,
@@ -199,6 +238,8 @@ export function CurriculumDisableWorkflowModal({
       return [];
     }
 
+    const notifications = disableRequest.finalization_snapshot?.notifications;
+
     return [
       { label: 'Status', value: getDisableRequestStatusLabel(disableRequest.status) },
       { label: 'Mode', value: disableRequest.mode },
@@ -212,11 +253,19 @@ export function CurriculumDisableWorkflowModal({
       { label: 'Failed at', value: formatDateTime(disableRequest.failed_at) },
       {
         label: 'Admin notifications',
-        value: disableRequest.admin_notification_sent_at ? 'Sent' : 'Pending',
+        value: getRecipientNotificationStatus(
+          notifications?.admins_sent,
+          notifications?.admin_errors,
+          disableRequest.admin_notification_sent_at,
+        ),
       },
       {
         label: 'Instructor notifications',
-        value: disableRequest.instructor_notifications_sent_at ? 'Sent' : 'Pending',
+        value: getRecipientNotificationStatus(
+          notifications?.instructors_sent,
+          notifications?.instructor_errors,
+          disableRequest.instructor_notifications_sent_at,
+        ),
       },
     ];
   }, [disableRequest]);
@@ -274,18 +323,27 @@ export function CurriculumDisableWorkflowModal({
     const panelTitle = getRequestPanelTitle(disableRequest, resolvedCanStartWorkflow);
     const panelMessage = getRequestPanelMessage(disableRequest, curriculum, resolvedCanStartWorkflow);
     const showHistoricalImpact = requestIsActive || !resolvedCanStartWorkflow;
+    const notifications = disableRequest.finalization_snapshot?.notifications;
+    const notificationErrors = [
+      ...(notifications?.admin_errors ?? []),
+      ...(notifications?.instructor_errors ?? []),
+    ];
+    const notificationStatus = notifications?.delivery_status;
+    const notificationWarning = notificationStatus === 'FAILED' || notificationStatus === 'PARTIAL_FAILED'
+      ? getNotificationWarningTone(notificationStatus)
+      : null;
 
     return (
       <div className="space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div className="space-y-1">
+        <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-900">{panelTitle}</p>
               <CurriculumDisableRequestStatusBadge status={disableRequest.status} />
             </div>
-            <p className="text-sm text-gray-600">{panelMessage}</p>
+            <p className="break-words text-sm text-gray-600">{panelMessage}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button
               type="button"
               variant="secondary"
@@ -293,18 +351,19 @@ export function CurriculumDisableWorkflowModal({
               onClick={() => {
                 void refreshView();
               }}
+              className="w-full sm:w-auto"
             >
               <RefreshCcw className="mr-1.5 h-4 w-4" />
               Refresh
             </Button>
             {requestIsActive && canCancel(disableRequest.status) ? (
-              <Button type="button" variant="secondary" size="sm" onClick={handleCancel} disabled={busy}>
+              <Button type="button" variant="secondary" size="sm" onClick={handleCancel} disabled={busy} className="w-full sm:w-auto">
                 <XCircle className="mr-1.5 h-4 w-4" />
                 Cancel disable
               </Button>
             ) : null}
             {!resolvedCanStartWorkflow && canReactivate(curriculum) ? (
-              <Button type="button" size="sm" onClick={handleReactivate} disabled={busy}>
+              <Button type="button" size="sm" onClick={handleReactivate} disabled={busy} className="w-full sm:w-auto">
                 <RotateCcw className="mr-1.5 h-4 w-4" />
                 Reactivate
               </Button>
@@ -318,7 +377,30 @@ export function CurriculumDisableWorkflowModal({
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
                 <p className="font-medium">Failure reason</p>
-                <p className="mt-1">{disableRequest.failure_reason}</p>
+                <p className="mt-1 break-words">{disableRequest.failure_reason}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {notificationWarning ? (
+          <div className={`rounded-lg border p-3 text-sm ${notificationWarning.className}`}>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${notificationWarning.iconClassName}`} />
+              <div className="min-w-0 space-y-2">
+                <div>
+                  <p className="font-medium">{notificationWarning.title}</p>
+                  <p className="mt-1 break-words">
+                    Curriculum disable still completed. Review the affected recipients below.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  {notificationErrors.map((entry) => (
+                    <p key={`${entry.email}:${entry.error}`} className="break-words text-xs">
+                      <span className="font-medium">{entry.email}</span>: {entry.error}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -328,7 +410,7 @@ export function CurriculumDisableWorkflowModal({
           {requestDetails.map((item) => (
             <div key={item.label} className="rounded-lg border border-gray-200 px-3 py-2">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{item.label}</p>
-              <p className="mt-1 text-sm text-gray-900">{item.value}</p>
+              <p className="mt-1 break-words text-sm text-gray-900">{item.value}</p>
             </div>
           ))}
         </div>
@@ -346,7 +428,7 @@ export function CurriculumDisableWorkflowModal({
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Closure</p>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 break-words text-sm text-gray-900">
                   {disableRequest.finalization_snapshot?.closure_summary?.historical_read_only
                     ? 'Historical records remain read-only.'
                     : 'Pending'}
@@ -354,12 +436,20 @@ export function CurriculumDisableWorkflowModal({
               </div>
               <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Reports</p>
-                <p className="mt-1 text-sm text-gray-900">
+                <p className="mt-1 break-words text-sm text-gray-900">
                   {disableRequest.finalization_snapshot?.reporting?.grade_summary_count ?? 0} grade summaries,
                   {' '}
                   {disableRequest.finalization_snapshot?.reporting?.attendance_summary_count ?? 0} attendance summaries
                 </p>
               </div>
+              {notifications ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 md:col-span-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Notifications</p>
+                  <p className="mt-1 break-words text-sm text-gray-900">
+                    Delivery status: {notifications.delivery_status ?? 'SKIPPED'}
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -407,11 +497,11 @@ export function CurriculumDisableWorkflowModal({
 
         <CurriculumDisableImpactSummary impact={startImpact} />
 
-        <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
+        <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={busy} className="w-full sm:w-auto">
             Close
           </Button>
-          <Button type="button" onClick={handleStartWorkflow} disabled={busy}>
+          <Button type="button" onClick={handleStartWorkflow} disabled={busy} className="w-full sm:w-auto">
             {requestDisable.isPending
               ? 'Starting...'
               : disableRequest
@@ -430,12 +520,12 @@ export function CurriculumDisableWorkflowModal({
         role="ADMIN"
       />
 
-      <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
-        <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
+      <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+        <Button type="button" variant="secondary" onClick={onClose} disabled={busy} className="w-full sm:w-auto">
           Close
         </Button>
         {canReactivate(curriculum) ? (
-          <Button type="button" onClick={handleReactivate} disabled={busy}>
+          <Button type="button" onClick={handleReactivate} disabled={busy} className="w-full sm:w-auto">
             <RotateCcw className="mr-1.5 h-4 w-4" />
             Reactivate
           </Button>

@@ -48,7 +48,7 @@ function SettingsContent() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-3xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold theme-text">Settings</h1>
@@ -65,14 +65,14 @@ function SettingsContent() {
         ) : null}
       </div>
 
-      <div className="theme-card-muted flex gap-1 rounded-xl p-1.5">
+      <div className="theme-card-muted flex min-w-0 gap-1 overflow-x-auto rounded-xl p-1.5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex min-w-[4.5rem] flex-none items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors sm:min-w-0 sm:flex-1 ${
                 activeTab === tab.key
                   ? 'theme-surface theme-text shadow-sm'
                   : 'theme-muted hover:text-gray-700'
@@ -88,7 +88,7 @@ function SettingsContent() {
       {activeTab === 'general' ? (
         <GeneralTab />
       ) : (
-        <Card>
+        <Card className="min-w-0 overflow-hidden p-4 sm:p-6">
           {activeTab === 'members' && <MembersTab />}
           {activeTab === 'plugins' && <PluginsTab />}
         </Card>
