@@ -30,6 +30,7 @@ import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
+import { isCbcSeniorSchoolEntity } from '@/app/core/lib/cbcSeniorSchool';
 import { canCreateCurriculumWork, canEditCurriculumWork, getCurriculumActionBlockReason } from '@/app/core/lib/curriculumLifecycle';
 import {
     getAcademicSetupPageState,
@@ -182,13 +183,14 @@ export function AdminCohortsPageContent() {
             level: data.level,
             stream: data.stream || undefined,
         };
-        const normalizedLevel = data.level.replace(/\s+/g, '').toLowerCase();
         const selectedPayloadCurriculum = curricula.find(
             (curriculum) => curriculum.id === Number(data.curriculum)
         ) ?? selectedCurriculum ?? null;
         const requiresCbcProfile = (
-            selectedPayloadCurriculum?.curriculum_type === 'CBE'
-            && (normalizedLevel === 'grade10' || normalizedLevel === 'grade11' || normalizedLevel === 'grade12')
+            isCbcSeniorSchoolEntity({
+                curriculum_type: selectedPayloadCurriculum?.curriculum_type,
+                level: data.level,
+            })
             && Boolean(data.combination_id)
         );
 
