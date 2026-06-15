@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildCbcCohortProgressHref,
+  buildCbcLearnerProgressHref,
   buildCohortReportHref,
   buildCohortSubjectReportHref,
   buildInstructorReportHref,
   buildInstructorClassReportHref,
   buildInstructorCohortSubjectDetailHref,
   buildLearnerReportHref,
+  buildLearnerSubjectReportHref,
   buildReportReturnTo,
   buildSubjectReportHref,
   parsePositiveReportParam,
@@ -53,6 +56,11 @@ describe('report navigation helpers', () => {
     expect(buildLearnerReportHref(9, { term: 7, returnTo: '/reports/students' })).toBe(
       '/reports/students/9?term=7&returnTo=%2Freports%2Fstudents',
     );
+    expect(buildLearnerSubjectReportHref(9, 6, {
+      returnTo: '/reports/students/9?term=7',
+    })).toBe(
+      '/reports/learners/9/subject?cohort_subject=6&returnTo=%2Freports%2Fstudents%2F9%3Fterm%3D7',
+    );
     expect(buildCohortReportHref(4, { term: 7, tab: 'subjects' })).toBe(
       '/reports/cohorts/4?term=7&tab=subjects',
     );
@@ -64,6 +72,24 @@ describe('report navigation helpers', () => {
     );
     expect(buildInstructorReportHref(12, { term: 7, cohort: 4 })).toBe(
       '/reports/instructors/12?term=7&cohort=4',
+    );
+  });
+
+  it('builds CBC progress routes with preserved report context', () => {
+    expect(buildCbcLearnerProgressHref(9, {
+      subject: 8,
+      cohortSubject: 6,
+      returnTo: '/reports/students/9?term=7',
+    })).toBe(
+      '/cbc/progress/learner/9?subject=8&cohort_subject=6&returnTo=%2Freports%2Fstudents%2F9%3Fterm%3D7',
+    );
+    expect(buildCbcCohortProgressHref(4, {
+      subject: 8,
+      cohortSubject: 6,
+      instructor: 12,
+      returnTo: '/reports/cohorts/4?term=7',
+    })).toBe(
+      '/cbc/progress/cohort/4?subject=8&cohort_subject_id=6&instructor_id=12&returnTo=%2Freports%2Fcohorts%2F4%3Fterm%3D7',
     );
   });
 

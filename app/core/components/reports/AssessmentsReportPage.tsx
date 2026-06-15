@@ -80,7 +80,8 @@ export function AssessmentsReportPage() {
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Assessment Reports</h1>
             <p className="mt-1 text-gray-500">
-              Assessment facts and completion rendered separately from curriculum-specific results.
+              Compatibility view for flat assessment breakdowns. For guided investigation,
+              start from the learner, class, subject, or instructor report path first.
             </p>
           </div>
           <div className="flex items-center gap-2">

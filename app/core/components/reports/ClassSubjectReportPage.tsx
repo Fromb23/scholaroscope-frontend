@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ChevronDown,
@@ -40,6 +40,14 @@ import type {
 } from '@/app/core/types/reporting';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 import {
+  buildAttendanceReportHref,
+  buildCbcCohortProgressHref,
+  buildCbcLearnerProgressHref,
+  buildCohortReportHref,
+  buildInstructorReportHref,
+  buildLearnerReportHref,
+  buildLearnerSubjectReportHref,
+  buildReportReturnTo,
   buildInstructorCohortSubjectDetailHref,
   parsePositiveReportParam,
   resolveReportBackHref,
@@ -67,18 +75,48 @@ function formatLearnerCount(count: number): string {
   return `${count} learner${count === 1 ? '' : 's'}`;
 }
 
+function LearnerReportLinks({
+  learnerSubjectHref,
+  learnerReportHref,
+  cbcProgressHref,
+}: {
+  learnerSubjectHref: string;
+  learnerReportHref?: string | null;
+  cbcProgressHref?: string | null;
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      <Link href={learnerSubjectHref}>
+        <Button variant="secondary" size="sm">Learner Subject</Button>
+      </Link>
+      {learnerReportHref ? (
+        <Link href={learnerReportHref}>
+          <Button variant="ghost" size="sm">Learner Report</Button>
+        </Link>
+      ) : null}
+      {cbcProgressHref ? (
+        <Link href={cbcProgressHref}>
+          <Button variant="ghost" size="sm">CBC Progress</Button>
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
 function LearnerRowsList({
   title,
   description,
   rows,
   emptyMessage,
   tone,
+  renderLinks,
 }: {
   title: string;
   description: string;
   rows: ClassSubjectLearnerRow[];
   emptyMessage: string;
   tone: 'support' | 'track';
+  renderLinks?: (row: ClassSubjectLearnerRow) => ReactNode;
 }) {
   const countVariant = tone === 'support' ? 'warning' : 'success';
   const cardClassName = tone === 'support'
@@ -147,6 +185,8 @@ function LearnerRowsList({
                     {getLearnerSummaryNote(row)}
                   </p>
                 </div>
+
+                {renderLinks ? renderLinks(row) : null}
               </Card>
             );
           })}
@@ -275,9 +315,12 @@ export function ClassSubjectReportPage({
   fallbackReturnTo?: string;
 } = {}) {
   const params = useParams<{ id: string }>();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const cohortSubjectId = Number(params.id);
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
+  const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
+  const isInstructorRoute = pathname.startsWith('/reports/instructor/');
   const returnTo = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
     fallbackHref: fallbackReturnTo
@@ -339,6 +382,44 @@ export function ClassSubjectReportPage({
   const reportSubjectName = report?.subject.name ?? cohortSubjectMeta?.subject_name ?? 'Class subject';
   const reportSubjectCode = report?.subject.code ?? cohortSubjectMeta?.subject_code ?? null;
   const reportCohortName = report?.cohort.name ?? cohortSubjectMeta?.cohort_name ?? null;
+  const hasCbcProgress = Boolean(
+    report?.reporting_source === 'cbc'
+    || report?.composition?.available_sections?.includes('cbc_progress'),
+  );
+  const renderLearnerLinks = useCallback((row: ClassSubjectLearnerRow) => {
+    if (!report) {
+      return null;
+    }
+
+    const learnerSubjectHref = buildLearnerSubjectReportHref(
+      row.learner.id,
+      report.cohort_subject.id,
+      { returnTo: currentReturnTo },
+    );
+    const learnerReportHref = isInstructorRoute
+      ? null
+      : buildLearnerReportHref(row.learner.id, {
+          cohort: report.cohort.id,
+          subject: report.subject.id,
+          cohortSubject: report.cohort_subject.id,
+          returnTo: currentReturnTo,
+        });
+    const cbcProgressHref = hasCbcProgress
+      ? buildCbcLearnerProgressHref(row.learner.id, {
+          subject: report.subject.id,
+          cohortSubject: report.cohort_subject.id,
+          returnTo: currentReturnTo,
+        })
+      : null;
+
+    return (
+      <LearnerReportLinks
+        learnerSubjectHref={learnerSubjectHref}
+        learnerReportHref={learnerReportHref}
+        cbcProgressHref={cbcProgressHref}
+      />
+    );
+  }, [currentReturnTo, hasCbcProgress, isInstructorRoute, report]);
 
   if (cohortSubjectsLoading && cohortIdOverride == null && !cohortSubjectMeta) {
     return <LoadingSpinner message="Loading class subject report context..." />;
@@ -462,12 +543,76 @@ export function ClassSubjectReportPage({
             />
           </div>
 
+          <Card className="border theme-border p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold theme-text">Context Drill-Down</h2>
+                <p className="mt-1 text-sm theme-muted">
+                  Keep moving from this class subject into the surrounding class, instructor,
+                  learner, attendance, and CBC progress context without losing the path you followed.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {!isInstructorRoute ? (
+                  <Link
+                    href={buildCohortReportHref(report.cohort.id, {
+                      term: selectedTermId ?? report.period?.term_id ?? null,
+                      subject: report.subject.id,
+                      cohortSubject: report.cohort_subject.id,
+                      returnTo: currentReturnTo,
+                    })}
+                  >
+                    <Button variant="secondary" size="sm">Class</Button>
+                  </Link>
+                ) : null}
+                {!isInstructorRoute ? (
+                  <Link
+                    href={buildAttendanceReportHref({
+                      term: selectedTermId ?? report.period?.term_id ?? null,
+                      cohort: report.cohort.id,
+                      subject: report.subject.id,
+                      cohortSubject: report.cohort_subject.id,
+                      returnTo: currentReturnTo,
+                    })}
+                  >
+                    <Button variant="secondary" size="sm">Attendance</Button>
+                  </Link>
+                ) : null}
+                {!isInstructorRoute && report.instructor?.id ? (
+                  <Link
+                    href={buildInstructorReportHref(report.instructor.id, {
+                      term: selectedTermId ?? report.period?.term_id ?? null,
+                      cohort: report.cohort.id,
+                      subject: report.subject.id,
+                      cohortSubject: report.cohort_subject.id,
+                      returnTo: currentReturnTo,
+                    })}
+                  >
+                    <Button variant="ghost" size="sm">Instructor</Button>
+                  </Link>
+                ) : null}
+                {hasCbcProgress ? (
+                  <Link
+                    href={buildCbcCohortProgressHref(report.cohort.id, {
+                      subject: report.subject.id,
+                      cohortSubject: report.cohort_subject.id,
+                      returnTo: currentReturnTo,
+                    })}
+                  >
+                    <Button variant="ghost" size="sm">CBC Progress</Button>
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          </Card>
+
           <LearnerRowsList
             title="Learners Needing Support"
             description="Prioritize these learners first when planning follow-up support."
             rows={report.learners_needing_support}
             emptyMessage="No learners are currently flagged for support in this subject."
             tone="support"
+            renderLinks={renderLearnerLinks}
           />
 
           <section className="space-y-4">
@@ -524,6 +669,7 @@ export function ClassSubjectReportPage({
               rows={report.learners_on_track}
               emptyMessage="No learners are currently on track in this subject yet."
               tone="track"
+              renderLinks={renderLearnerLinks}
             />
 
             {report.learners_exceeding_expectation.length > 0 ? (
@@ -557,6 +703,7 @@ export function ClassSubjectReportPage({
                       <p className="mt-3 text-sm theme-muted line-clamp-2">
                         {getLearnerSummaryNote(row)}
                       </p>
+                      {renderLearnerLinks(row)}
                     </div>
                   ))}
                 </div>

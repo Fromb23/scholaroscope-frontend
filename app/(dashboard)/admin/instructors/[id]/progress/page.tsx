@@ -28,6 +28,7 @@ import {
     GroupedSessions,
     TeachingAssignmentsList,
 } from '@/app/core/components/instructors/InstructorProgressComponents';
+import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
 import type { UserUpdatePayload } from '@/app/core/types/globalUsers';
 import {
     globalStatusLabel,
@@ -200,7 +201,9 @@ export default function InstructorProgressPage() {
                     <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => router.push(`/admin/instructors/${instructorId}/teacher-report`)}
+                        onClick={() => router.push(buildInstructorReportHref(instructorId, {
+                            returnTo: `/admin/instructors/${instructorId}/progress`,
+                        }))}
                     >
                         <ClipboardList className="h-3.5 w-3.5 md:mr-1" />
                         <span className="hidden md:inline">Teacher Report</span>
