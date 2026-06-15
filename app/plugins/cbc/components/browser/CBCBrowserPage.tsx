@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
-import { BookOpen, ChevronRight, Layers, Search } from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { ArrowLeft, BookOpen, ChevronRight, Layers, Search } from 'lucide-react';
 import { useCBCBrowserPage } from '@/app/plugins/cbc/hooks/useCBCBrowserPage';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import {
@@ -16,6 +17,13 @@ import { GuidedCohortSetupModal } from '@/app/plugins/cbc/components/GuidedCohor
 import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import { Badge } from '@/app/components/ui/Badge';
+import { Button } from '@/app/components/ui/Button';
+import {
+    buildCbcPath,
+    buildCurrentCbcWorkspaceHref,
+    getCbcBackLabel,
+    sanitizeInternalReturnTo,
+} from '@/app/plugins/cbc/lib/navigation';
 
 function formatLevelLabel(level: string | null | undefined) {
     return (level ?? '')
@@ -27,17 +35,18 @@ function formatLevelLabel(level: string | null | undefined) {
 
 export function CBCBrowserPage() {
     const page = useCBCBrowserPage();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const firstVisibleStrand = page.visible[0];
     const firstVisibleStrandId = firstVisibleStrand?.id;
-    const contextParams = new URLSearchParams();
-    if (page.effectiveCohortId) {
-        contextParams.set('cohort', String(page.effectiveCohortId));
-    }
-    if (page.resolvedSubject?.id) {
-        contextParams.set('subject', String(page.resolvedSubject.id));
-    }
-    const contextQuery = contextParams.toString();
-    const cbcProgressHref = contextQuery ? `/cbc/progress?${contextQuery}` : '/cbc/progress';
+    const currentWorkspaceHref = buildCurrentCbcWorkspaceHref(pathname, searchParams);
+    const safeReturnTo = sanitizeInternalReturnTo(searchParams.get('returnTo'));
+    const backLabel = getCbcBackLabel(safeReturnTo, 'Back');
+    const cbcProgressHref = buildCbcPath('/cbc/progress', {
+        cohort: page.effectiveCohortId,
+        subject: page.resolvedSubject?.id ?? null,
+        returnTo: safeReturnTo,
+    });
     const selectedSubjectName = page.resolvedSubject?.name ?? '';
     const selectedCohortName = page.effectiveCohort?.name ?? '';
     const hasSubjectFilter = page.subjectsForCurriculum.length > 0;
@@ -78,7 +87,11 @@ export function CBCBrowserPage() {
                 ? [{
                     label: 'Open strand',
                     type: 'navigate' as const,
-                    href: `/cbc/browser/strands/${firstVisibleStrandId}`,
+                    href: buildCbcPath(`/cbc/browser/strands/${firstVisibleStrandId}`, {
+                        cohort: page.effectiveCohortId,
+                        subject: page.resolvedSubject?.id ?? null,
+                        returnTo: currentWorkspaceHref,
+                    }),
                 }]
                 : []),
         ],
@@ -86,7 +99,11 @@ export function CBCBrowserPage() {
             ? {
                 label: 'Open strand',
                 type: 'navigate' as const,
-                href: `/cbc/browser/strands/${firstVisibleStrandId}`,
+                href: buildCbcPath(`/cbc/browser/strands/${firstVisibleStrandId}`, {
+                    cohort: page.effectiveCohortId,
+                    subject: page.resolvedSubject?.id ?? null,
+                    returnTo: currentWorkspaceHref,
+                }),
             }
             : undefined,
         workflowStep: firstVisibleStrandId ? 'browse_strands' : 'resolve_cbc_context',
@@ -98,9 +115,12 @@ export function CBCBrowserPage() {
         firstVisibleStrandId,
         hasSubjectFilter,
         isEmpty,
+        currentWorkspaceHref,
         page.isLoading,
         selectedCohortName,
         selectedSubjectName,
+        page.effectiveCohortId,
+        page.resolvedSubject?.id,
     ]);
 
     useAssistantPageContext(assistantContext);
@@ -112,6 +132,17 @@ export function CBCBrowserPage() {
     return (
         <div className="space-y-6">
             <CBCNav />
+
+            {safeReturnTo ? (
+                <div>
+                    <Link href={safeReturnTo}>
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            {backLabel}
+                        </Button>
+                    </Link>
+                </div>
+            ) : null}
 
             <div className="flex items-center gap-4">
                 <div className="theme-info-surface rounded-xl p-3">
@@ -229,7 +260,11 @@ export function CBCBrowserPage() {
                             {page.visible.map(strand => (
                                 <Link
                                     key={strand.id}
-                                    href={`/cbc/browser/strands/${strand.id}`}
+                                    href={buildCbcPath(`/cbc/browser/strands/${strand.id}`, {
+                                        cohort: page.effectiveCohortId,
+                                        subject: page.resolvedSubject?.id ?? null,
+                                        returnTo: currentWorkspaceHref,
+                                    })}
                                     className="block group"
                                 >
                                     <Card className="theme-hover-border-strong h-full transition-all duration-200 hover:shadow-md">

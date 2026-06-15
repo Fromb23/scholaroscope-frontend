@@ -1,3 +1,5 @@
+import { isSafeNextPath } from '@/app/core/auth/navigation';
+
 export interface ReportNavigationState {
   term?: number | null;
   tab?: string | null;
@@ -87,7 +89,7 @@ function withQuery(
 }
 
 function isSafeReturnTo(value: string | null | undefined): value is string {
-  return Boolean(value && value.startsWith('/'));
+  return isSafeNextPath(value);
 }
 
 export function parsePositiveReportParam(value: string | null): number | null {

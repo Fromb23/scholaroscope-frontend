@@ -5,6 +5,7 @@ import { useCohort, useSubjects } from '@/app/core/hooks/useAcademic';
 import { instructorsAPI } from '@/app/core/api/instructors';
 import { useAuth } from '@/app/context/AuthContext';
 import { isCBCTeachingAssignment } from '@/app/core/hooks/useInstructorProgress';
+import { sanitizeInternalReturnTo } from '@/app/plugins/cbc/lib/navigation';
 
 function parsePositiveNumber(value: string | null): number | null {
     if (!value) return null;
@@ -213,7 +214,7 @@ export function useCBCCohortProgressPage(cohortId: number) {
         error,
         refetch,
         totalOutcomeRecords,
-        returnTo: returnTo?.startsWith('/') ? returnTo : null,
+        returnTo: sanitizeInternalReturnTo(returnTo),
         instructorContextEnabled,
     };
 }

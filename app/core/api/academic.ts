@@ -365,10 +365,24 @@ export const cohortAPI = {
     await apiClient.delete(`/cohorts/${id}/`);
   },
 
-  assignSubject: async (cohortId: number, subjectId: number, isCompulsory: boolean = true) => {
+  assignSubject: async (
+    cohortId: number,
+    subjectId: number | null,
+    isCompulsory: boolean = true,
+    options?: { subjectProfileId?: number | null }
+  ) => {
+    const payload: Record<string, number | boolean> = {
+      is_compulsory: isCompulsory,
+    };
+    if (subjectId && Number.isInteger(subjectId) && subjectId > 0) {
+      payload.subject_id = subjectId;
+    }
+    if (options?.subjectProfileId && Number.isInteger(options.subjectProfileId) && options.subjectProfileId > 0) {
+      payload.subject_profile_id = options.subjectProfileId;
+    }
     const response = await apiClient.post<CohortSubject>(
       `/cohorts/${cohortId}/assign_subject/`,
-      { subject_id: subjectId, is_compulsory: isCompulsory }
+      payload
     );
     return response.data;
   },

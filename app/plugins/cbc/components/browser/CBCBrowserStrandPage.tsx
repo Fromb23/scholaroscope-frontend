@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
     BookOpen,
@@ -22,6 +22,11 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import {
+    buildCbcPath,
+    getCbcBackLabel,
+    sanitizeInternalReturnTo,
+} from '@/app/plugins/cbc/lib/navigation';
 import type { SubStrand } from '@/app/plugins/cbc/types/cbc';
 
 function learningGoalsLabel(count: number) {
@@ -86,8 +91,15 @@ function SubStrandOutcomes({ subStrand }: { subStrand: SubStrand }) {
 
 export function CBCBrowserStrandPage() {
     const { strandId: raw } = useParams<{ strandId: string }>();
+    const searchParams = useSearchParams();
     const strandId = Number(raw);
     const page = useCBCBrowserStrandPage(strandId);
+    const safeReturnTo = sanitizeInternalReturnTo(searchParams.get('returnTo'));
+    const backHref = safeReturnTo ?? buildCbcPath('/cbc/browser', {
+        cohort: searchParams.get('cohort'),
+        subject: searchParams.get('subject'),
+    });
+    const backLabel = getCbcBackLabel(safeReturnTo, 'Back to CBC Subjects & Outcomes');
 
     if (page.isLoading) {
         return (
@@ -111,13 +123,14 @@ export function CBCBrowserStrandPage() {
         <div className="w-full max-w-full space-y-6 overflow-x-hidden">
             <CBCNav />
             <CBCBreadcrumb segments={[
-                { label: 'CBC', href: '/cbc/browser' },
+                { label: 'CBC', href: backHref },
                 { label: page.strand.name },
             ]} />
 
-            <Link href="/cbc/browser">
+            <Link href={backHref}>
                 <Button variant="ghost" size="md">
-                    <ArrowLeft className="mr-2 h-4 w-4" />Back to CBC
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    {backLabel}
                 </Button>
             </Link>
 

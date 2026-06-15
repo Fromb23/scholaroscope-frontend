@@ -10,10 +10,15 @@ import type {
 import type {
   CbcAllowedSubject,
   CbcCohortAllowedSubjects,
+  CbcPathwayAllowedSubjectsCatalogue,
 } from '@/app/core/types/cbcPathways';
 
 export type { CbcCohortProfileSummary, CbcRegistrationStatus, CbcSubjectCategory };
-export type { CbcAllowedSubject, CbcCohortAllowedSubjects };
+export type {
+  CbcAllowedSubject,
+  CbcCohortAllowedSubjects,
+  CbcPathwayAllowedSubjectsCatalogue,
+};
 
 export type CbcPathway = OfficialPathway;
 export type CbcTrack = OfficialTrack;

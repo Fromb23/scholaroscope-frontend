@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
+    ArrowLeft,
     BookOpen,
     ChevronRight,
     Filter,
@@ -22,7 +24,14 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
+import {
+    buildCbcPath,
+    buildCurrentCbcWorkspaceHref,
+    getCbcBackLabel,
+    sanitizeInternalReturnTo,
+} from '@/app/plugins/cbc/lib/navigation';
 import type { Cohort } from '@/app/core/types/academic';
 
 function formatLevelLabel(level: string | null | undefined) {
@@ -53,28 +62,22 @@ function getOutcomeCount(strand: {
 
 export function CBCProgressPage() {
     const page = useCBCProgressPage();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const firstVisibleStrand = page.visibleStrands[0];
-    const contextParams = new URLSearchParams();
-    if (page.effectiveCohortId) {
-        contextParams.set('cohort', String(page.effectiveCohortId));
-    }
-    if (page.resolvedSubject?.id) {
-        contextParams.set('subject', String(page.resolvedSubject.id));
-    }
-    const contextQuery = contextParams.toString();
-    const cbcBrowserHref = contextQuery ? `/cbc/browser?${contextQuery}` : '/cbc/browser';
-    const firstStrandProgressHref = firstVisibleStrand
-        ? `/cbc/progress/strand/${firstVisibleStrand.id}?cohort=${page.effectiveCohortId ?? ''}&subject=${
-            page.isAdmin
-                ? (firstVisibleStrand.subject_org_id ?? '')
-                : (
-                    page.resolvedInstructorSubjectSelection?.subject_ids[0]
-                    ?? firstVisibleStrand.subject_org_id
-                    ?? firstVisibleStrand.subject
-                    ?? ''
-                )
-        }`
-        : null;
+    const firstVisibleStrandId = firstVisibleStrand?.id ?? null;
+    const firstVisibleStrandSubjectId = firstVisibleStrand?.subject_org_id
+        ?? firstVisibleStrand?.subject
+        ?? null;
+    const resolvedInstructorSubjectId = page.resolvedInstructorSubjectSelection?.subject_ids[0] ?? null;
+    const currentWorkspaceHref = buildCurrentCbcWorkspaceHref(pathname, searchParams);
+    const safeReturnTo = sanitizeInternalReturnTo(searchParams.get('returnTo'));
+    const backLabel = getCbcBackLabel(safeReturnTo, 'Back');
+    const cbcBrowserHref = buildCbcPath('/cbc/browser', {
+        cohort: page.effectiveCohortId,
+        subject: page.resolvedSubject?.id ?? null,
+        returnTo: safeReturnTo,
+    });
     const assistantContext = useMemo(() => ({
         pageKey: 'cbc_progress',
         pageTitle: 'Learning Progress',
@@ -108,33 +111,55 @@ export function CBCProgressPage() {
                 type: 'navigate' as const,
                 href: '/cbc/assessment-results',
             },
-            ...(firstStrandProgressHref
+            ...(firstVisibleStrandId
                 ? [{
                     label: 'Open progress strand',
                     type: 'navigate' as const,
-                    href: firstStrandProgressHref,
+                    href: buildCbcPath(`/cbc/progress/strand/${firstVisibleStrandId}`, {
+                        cohort: page.effectiveCohortId,
+                        subject: page.isAdmin
+                            ? firstVisibleStrandSubjectId
+                            : (
+                                resolvedInstructorSubjectId
+                                ?? firstVisibleStrandSubjectId
+                            ),
+                        returnTo: currentWorkspaceHref,
+                    }),
                 }]
                 : []),
         ],
-        nextSafeAction: firstStrandProgressHref
+        nextSafeAction: firstVisibleStrandId
             ? {
                 label: 'Open progress strand',
                 type: 'navigate' as const,
-                href: firstStrandProgressHref,
+                href: buildCbcPath(`/cbc/progress/strand/${firstVisibleStrandId}`, {
+                    cohort: page.effectiveCohortId,
+                    subject: page.isAdmin
+                        ? firstVisibleStrandSubjectId
+                        : (
+                            resolvedInstructorSubjectId
+                            ?? firstVisibleStrandSubjectId
+                        ),
+                    returnTo: currentWorkspaceHref,
+                }),
             }
             : undefined,
-        workflowStep: firstStrandProgressHref ? 'review_cbc_progress' : 'resolve_progress_context',
+        workflowStep: firstVisibleStrandId ? 'review_cbc_progress' : 'resolve_progress_context',
         emptyStateReason: !page.isLoading && page.visibleStrands.length === 0
             ? 'No CBC progress strands match the current context.'
             : undefined,
     }), [
         cbcBrowserHref,
-        firstStrandProgressHref,
+        currentWorkspaceHref,
+        firstVisibleStrandId,
+        firstVisibleStrandSubjectId,
         page.assignedCohorts.length,
         page.cohorts.length,
+        page.effectiveCohortId,
         page.effectiveCohort?.name,
         page.isAdmin,
         page.isLoading,
+        resolvedInstructorSubjectId,
         page.resolvedSubject?.name,
         page.selectedCurriculumId,
         page.stats,
@@ -151,6 +176,17 @@ export function CBCProgressPage() {
     return (
         <div className="space-y-6">
             <CBCNav />
+
+            {safeReturnTo ? (
+                <div>
+                    <Link href={safeReturnTo}>
+                        <Button variant="ghost" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            {backLabel}
+                        </Button>
+                    </Link>
+                </div>
+            ) : null}
 
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl">
@@ -300,7 +336,11 @@ export function CBCProgressPage() {
                                     return (
                                         <Link
                                             key={strand.id}
-                                            href={`/cbc/progress/strand/${strand.id}?cohort=${page.effectiveCohortId ?? ''}&subject=${subjectParam}`}
+                                            href={buildCbcPath(`/cbc/progress/strand/${strand.id}`, {
+                                                cohort: page.effectiveCohortId,
+                                                subject: subjectParam,
+                                                returnTo: currentWorkspaceHref,
+                                            })}
                                             className="flex items-center justify-between hover:bg-gray-50 -mx-2 px-2 py-3 rounded-lg transition-colors group"
                                         >
                                             <div className="flex items-center gap-3 min-w-0">

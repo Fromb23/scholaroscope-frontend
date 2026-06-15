@@ -33,6 +33,12 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import {
+  buildCbcPath,
+  buildCurrentCbcWorkspaceHref,
+  getCbcBackLabel,
+  sanitizeInternalReturnTo,
+} from '@/app/plugins/cbc/lib/navigation';
 import type {
   MasteryLevel,
   StrandOutcomeDistribution,
@@ -112,6 +118,7 @@ interface LearnerDrillDownProps {
   subjectId: number | null;
   levels: string;
   label: string;
+  returnTo: string;
   onClose: () => void;
 }
 
@@ -121,6 +128,7 @@ function LearnerDrillDown({
   subjectId,
   levels,
   label,
+  returnTo,
   onClose,
 }: LearnerDrillDownProps) {
   const router = useRouter();
@@ -192,7 +200,9 @@ function LearnerDrillDown({
                     <button
                       onClick={() => {
                         onClose();
-                        router.push(`/cbc/progress/learner/${l.student_id}`);
+                        router.push(`/cbc/progress/learner/${l.student_id}?${new URLSearchParams({
+                          returnTo,
+                        }).toString()}`);
                       }}
                       className="theme-focus-ring rounded-lg p-1.5 transition-colors theme-hover-surface"
                       aria-label={`View progress for ${l.student_name}`}
@@ -231,6 +241,11 @@ export default function StrandCompetencyOverviewPage() {
   const strandId = Number(raw);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const safeReturnTo = sanitizeInternalReturnTo(searchParams.get('returnTo'));
+  const currentReturnTo = buildCurrentCbcWorkspaceHref(
+    `/cbc/progress/strand/${strandId}`,
+    searchParams,
+  );
   const cohortFromUrl = searchParams.get('cohort');
   const cohortFromQuery = cohortFromUrl ? Number(cohortFromUrl) : null;
   const subjectFromUrl = searchParams.get('subject');
@@ -292,6 +307,11 @@ export default function StrandCompetencyOverviewPage() {
     () => outcomes.filter((o) => o.distribution.BELOW > 0 || o.distribution.APPROACHING > 0),
     [outcomes],
   );
+  const backHref = safeReturnTo ?? buildCbcPath('/cbc/progress', {
+    cohort: resolvedCohortId,
+    subject: subjectFromQuery,
+  });
+  const backLabel = getCbcBackLabel(safeReturnTo, 'Back to Learning Progress');
 
   if (strandLoading || (!isAdmin && instructorContextLoading))
     return (
@@ -315,15 +335,15 @@ export default function StrandCompetencyOverviewPage() {
       <CBCNav />
       <CBCBreadcrumb
         segments={[
-          { label: 'Learning Progress', href: '/cbc/progress' },
+          { label: 'Learning Progress', href: backHref },
           { label: strand?.name ?? `Strand ${strandId}` },
         ]}
       />
 
-      <Link href="/cbc/progress">
+      <Link href={backHref}>
         <Button variant="ghost" size="md">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Learning Progress
+          {backLabel}
         </Button>
       </Link>
 
@@ -354,9 +374,9 @@ export default function StrandCompetencyOverviewPage() {
         <Card className="py-12 text-center">
           <Users className="mx-auto mb-3 h-12 w-12 theme-subtle" />
           <p className="mb-4 theme-muted">No class selected - go back and choose a class first</p>
-          <Link href="/cbc/progress">
+          <Link href={backHref}>
             <Button variant="secondary" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Learning Progress
+              <ArrowLeft className="mr-2 h-4 w-4" /> {backLabel}
             </Button>
           </Link>
         </Card>
@@ -633,6 +653,7 @@ export default function StrandCompetencyOverviewPage() {
           subjectId={subjectFromQuery}
           levels={drillDown.levels}
           label={drillDown.label}
+          returnTo={currentReturnTo}
           onClose={() => setDrillDown(null)}
         />
       )}

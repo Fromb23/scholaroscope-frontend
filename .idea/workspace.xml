@@ -6,6 +6,26 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/assignments/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/assignments/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/academic/cohorts/[id]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/strand/[strandId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/cbc/progress/strand/[strandId]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/academic.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/AssignSubjectToCohortModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/AssignSubjectToCohortModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/cohorts/CbcPathwayConfigurationFields.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/cohorts/CbcPathwayConfigurationFields.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/reportNavigation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/reportNavigation.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/cbcPathways.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/cbcPathways.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/curriculumExtensions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/curriculumExtensions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/api/pathways.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/api/pathways.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/CBCCohortSubjectPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/CBCCohortSubjectPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/CBCComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/CBCComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/CbcPathwayConfigurationModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/CbcPathwayConfigurationModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/browser/CBCBrowserPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/browser/CBCBrowserPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/browser/CBCBrowserStrandPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/browser/CBCBrowserStrandPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/practicals/PracticalLearnerEvidencePanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/practicals/PracticalLearnerEvidencePanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCCohortProgressPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCCohortProgressPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCProgressPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCProgressPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBCCohortProgressPage.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/hooks/useCBCCohortProgressPage.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/types/pathways.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/types/pathways.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,7 +33,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="702" />
+    <option name="cachedIndexableFilesCount" value="709" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -230,6 +250,8 @@
       <workItem from="1781436810954" duration="8143000" />
       <workItem from="1781452186720" duration="8138000" />
       <workItem from="1781503496715" duration="3918000" />
+      <workItem from="1781516980578" duration="625000" />
+      <workItem from="1781545677937" duration="3019000" />
     </task>
     <servers />
   </component>
