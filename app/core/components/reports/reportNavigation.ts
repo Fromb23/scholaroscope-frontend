@@ -37,6 +37,10 @@ function setStringParam(
   }
 }
 
+function normalizePositiveId(value: number | null | undefined): number | null {
+  return Number.isInteger(value) && Number(value) > 0 ? Number(value) : null;
+}
+
 function normalizeState(state?: ReportNavigationState | URLSearchParams | string | null): URLSearchParams {
   if (!state) {
     return new URLSearchParams();
@@ -165,9 +169,13 @@ export function buildCohortSubjectReportHref(
 
 export function buildInstructorReportHref(
   instructorId: number,
-  state?: ReportNavigationState,
+  state?: ReportNavigationState | URLSearchParams | string | null,
 ): string {
-  return withQuery(`/reports/instructors/${instructorId}`, state);
+  const normalizedInstructorId = normalizePositiveId(instructorId);
+  const href = normalizedInstructorId
+    ? `/reports/instructors/${normalizedInstructorId}`
+    : '/reports/instructors';
+  return withQuery(href, state);
 }
 
 export function buildAssessmentReportHref(
