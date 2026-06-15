@@ -27,9 +27,10 @@ const kernelRouteRules: RouteRule[] = [
     { pattern: /^\/learners\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/assessments\/new$/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/reports\/instructor/, allowedRoles: ['INSTRUCTOR'] },
+    { pattern: /^\/reports\/instructor(?:\/|$)/, allowedRoles: ['INSTRUCTOR'] },
     { pattern: /^\/reports\/learners\/[^/]+\/subject$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/reports\/learners\/[^/]+\/overview$/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/reports\/instructors(?:\/|$)/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports\/(students|cohorts|subjects|assessments|attendance|policies|compute)(\/.*)?$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports\/grade-policies(\/.*)?$/, allowedRoles: ['ADMIN'] },
@@ -86,7 +87,7 @@ export function getUnauthorizedRouteFallback(
     if (role === 'INSTRUCTOR' && path.startsWith('/reports')) {
         return '/reports/instructor';
     }
-    if (role === 'ADMIN' && path.startsWith('/reports/instructor')) {
+    if (role === 'ADMIN' && /^\/reports\/instructor(?:\/|$)/.test(path)) {
         return '/reports';
     }
     return roleHomeRoute[role];
