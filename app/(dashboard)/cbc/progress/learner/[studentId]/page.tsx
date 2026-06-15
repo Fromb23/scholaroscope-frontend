@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ArrowLeft,
@@ -27,6 +27,10 @@ import {
     StrandProgressRow,
 } from '@/app/plugins/cbc/components/CBCComponents';
 import { useAuth } from '@/app/context/AuthContext';
+import {
+    buildReportReturnTo,
+    resolveReportBackHref,
+} from '@/app/core/components/reports/reportNavigation';
 import {
     buildLearnerOverviewReportHref,
     buildLearnerSubjectReportHref,
@@ -127,17 +131,20 @@ function focusCardTone(type: 'teaching' | 'remediation' | 'track') {
 function resolveSubjectReportHref(
     learnerId: number,
     subject: StudentProgressSubjectSummary,
+    returnTo: string,
 ): string {
     const cohortSubjectId = subject.cohort_subject_id
         ?? subject.cohort_subject_ids?.[0]
         ?? subject.cbc_cohort_subject_id
         ?? subject.cbc_cohort_subject_ids?.[0]
         ?? null;
-    return buildLearnerSubjectReportHref(learnerId, cohortSubjectId);
+    return buildLearnerSubjectReportHref(learnerId, cohortSubjectId, { returnTo });
 }
 
 export default function StudentProgressPage() {
     const { studentId: raw } = useParams<{ studentId: string }>();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const studentId = Number(raw);
     const { user, activeRole } = useAuth();
     const { data: summary, isLoading: summaryLoading, error: summaryError, refetch } =
@@ -177,6 +184,11 @@ export default function StudentProgressPage() {
     );
     const canGenerateOverviewReport = !!user && (user.is_superadmin || activeRole === 'ADMIN');
     const canGenerateSubjectReport = !!user && (user.is_superadmin || activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
+    const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
+    const backHref = resolveReportBackHref({
+        returnTo: searchParams.get('returnTo'),
+        fallbackHref: `/learners/${studentId}`,
+    });
 
     const toggleStrand = useCallback((key: string) => {
         setExpandedStrands((prev) => {
@@ -218,10 +230,10 @@ export default function StudentProgressPage() {
                 ]}
             />
 
-            <Link href={`/learners/${studentId}`}>
+            <Link href={backHref}>
                 <Button variant="ghost" size="md">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Learner Profile
+                    Back
                 </Button>
             </Link>
 
@@ -255,7 +267,7 @@ export default function StudentProgressPage() {
                 {canGenerateSubjectReport ? (
                     <div className="mt-4 flex flex-wrap gap-2 border-t pt-4 theme-border">
                         {subjectGroups.length > 0 ? (
-                            <Link href={resolveSubjectReportHref(studentId, subjectGroups[0])}>
+                            <Link href={resolveSubjectReportHref(studentId, subjectGroups[0], currentReturnTo)}>
                                 <Button variant="secondary" size="md">
                                     <FileBarChart className="h-4 w-4" />
                                     Generate Subject Report
@@ -263,7 +275,7 @@ export default function StudentProgressPage() {
                             </Link>
                         ) : null}
                         {canGenerateOverviewReport ? (
-                            <Link href={buildLearnerOverviewReportHref(studentId)}>
+                            <Link href={buildLearnerOverviewReportHref(studentId, { returnTo: currentReturnTo })}>
                                 <Button size="md">
                                     <FileBarChart className="h-4 w-4" />
                                     Generate Overall Report
@@ -394,7 +406,7 @@ export default function StudentProgressPage() {
                                     </div>
 
                                     {canGenerateSubjectReport ? (
-                                        <Link href={resolveSubjectReportHref(studentId, subject)}>
+                                        <Link href={resolveSubjectReportHref(studentId, subject, currentReturnTo)}>
                                             <Button variant="ghost" size="sm">
                                                 <FileBarChart className="h-4 w-4" />
                                                 Subject Report

@@ -1,3 +1,8 @@
+import {
+  buildLearnerOverviewReportHref as buildLearnerOverviewReportHrefFromNavigation,
+  buildLearnerSubjectReportHref as buildLearnerSubjectReportHrefFromNavigation,
+} from '@/app/core/components/reports/reportNavigation';
+
 export function buildLearnerSubjectReportHref(
   learnerId: number,
   cohortSubjectId?: number | null,
@@ -5,17 +10,11 @@ export function buildLearnerSubjectReportHref(
     returnTo?: string | null;
   },
 ): string {
-  const params = new URLSearchParams();
-  if (cohortSubjectId) {
-    params.set('cohort_subject', String(cohortSubjectId));
-  }
-  if (options?.returnTo) {
-    params.set('returnTo', options.returnTo);
-  }
-  const query = params.toString();
-  return query
-    ? `/reports/learners/${learnerId}/subject?${query}`
-    : `/reports/learners/${learnerId}/subject`;
+  return buildLearnerSubjectReportHrefFromNavigation(
+    learnerId,
+    cohortSubjectId,
+    { returnTo: options?.returnTo ?? null },
+  );
 }
 
 export function buildLearnerOverviewReportHref(
@@ -24,12 +23,8 @@ export function buildLearnerOverviewReportHref(
     returnTo?: string | null;
   },
 ): string {
-  const params = new URLSearchParams();
-  if (options?.returnTo) {
-    params.set('returnTo', options.returnTo);
-  }
-  const query = params.toString();
-  return query
-    ? `/reports/learners/${learnerId}/overview?${query}`
-    : `/reports/learners/${learnerId}/overview`;
+  return buildLearnerOverviewReportHrefFromNavigation(
+    learnerId,
+    { returnTo: options?.returnTo ?? null },
+  );
 }

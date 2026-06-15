@@ -261,6 +261,28 @@ export interface ReportCoverage {
   [key: string]: unknown;
 }
 
+export interface ReportPluginSectionSummary {
+  [key: string]: unknown;
+}
+
+export interface ReportPluginSectionMeta {
+  key: string;
+  label: string;
+  scope: string;
+  reporting_source: ReportingSource;
+  curriculum_type: string | null;
+  available: boolean;
+  summary?: ReportPluginSectionSummary | null;
+}
+
+export interface ReportCompositionMeta {
+  hierarchy_level: string;
+  reporting_source: string;
+  available_sections: string[];
+  plugin_sections: ReportPluginSectionMeta[];
+  curriculum_types?: string[];
+}
+
 export interface GenericStudentSection {
   final_score?: number | null;
   average_score?: number | null;
@@ -324,6 +346,8 @@ export interface CurriculumAwareSubjectSection {
   assignment_summary?: ReportAssignmentSummary | null;
   generic: GenericStudentSection | null;
   cbc: CbcStudentSection | null;
+  available_sections?: string[];
+  plugin_sections?: ReportPluginSectionMeta[];
 }
 
 export interface AdminOverviewGenericSummary {
@@ -369,6 +393,7 @@ export interface DashboardOverview {
     cbc: AdminOverviewCbcSummary | null;
     cambridge: AdminOverviewCambridgeSummary | null;
   };
+  composition?: ReportCompositionMeta | null;
 }
 
 export interface OverallStats {
@@ -389,6 +414,7 @@ export interface StudentReportCard {
   grades: (ComputedGradeDTO & { position: number; total_in_class: number })[];
   legacy_grades?: GradeSummary[];
   attendance: AttendanceSummary[];
+  composition?: ReportCompositionMeta | null;
 }
 
 export interface CohortSummarySnapshot {
@@ -474,6 +500,8 @@ export interface CurriculumAwareCohortSubjectSummary {
   assignment_summary?: ReportAssignmentSummary | null;
   assessment_items?: ReportAssessmentItem[];
   session_items?: ReportSessionItem[];
+  available_sections?: string[];
+  plugin_sections?: ReportPluginSectionMeta[];
 }
 
 export interface ClassSummary {
@@ -487,6 +515,7 @@ export interface ClassSummary {
   // Compatibility snapshot for generic-only subject aggregates.
   subject_summaries: SubjectSummary[];
   cohort_subjects: CurriculumAwareCohortSubjectSummary[];
+  composition?: ReportCompositionMeta | null;
 }
 
 export interface SubjectCohortOverview {
@@ -515,6 +544,8 @@ export interface SubjectCohortOverview {
   assignment_summary?: ReportAssignmentSummary | null;
   assessment_items?: ReportAssessmentItem[];
   session_items?: ReportSessionItem[];
+  available_sections?: string[];
+  plugin_sections?: ReportPluginSectionMeta[];
 }
 
 export interface AttendanceScopeReportPayload {
@@ -546,6 +577,7 @@ export interface SubjectAnalysis {
   // Compatibility snapshot for generic-only views.
   subject_summaries: SubjectSummary[];
   assessment_type_breakdown: ReportAssessmentTypeBreakdown[];
+  composition?: ReportCompositionMeta | null;
 }
 
 export interface AssessmentTypeSummary {
@@ -1087,6 +1119,8 @@ export interface ClassSubjectReportPayload {
   period?: ReportPeriod;
   cohort: LearnerReportCohortRef;
   subject: LearnerReportSubjectRef;
+  curriculum_type?: string | null;
+  reporting_source?: ReportingSource;
   cohort_subject: {
     id: number;
     cohort_id: number;
@@ -1119,6 +1153,7 @@ export interface ClassSubjectReportPayload {
   learners_on_track: ClassSubjectLearnerRow[];
   learners_exceeding_expectation: ClassSubjectLearnerRow[];
   recommended_teaching_interventions: string[];
+  composition?: ReportCompositionMeta | null;
 }
 
 export interface TeacherPerformanceMetric {

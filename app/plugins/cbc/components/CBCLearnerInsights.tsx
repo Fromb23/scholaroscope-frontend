@@ -6,6 +6,7 @@ import { useStudentConfidence } from '@/app/plugins/cbc/hooks/useCBC';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { MasteryBadge } from '@/app/plugins/cbc/components/CBCComponents';
+import { buildCbcLearnerProgressHref } from '@/app/core/components/reports/reportNavigation';
 import type { OutcomeConfidence, ConfidenceLevel } from '@/app/plugins/cbc/types/cbc';
 
 
@@ -75,8 +76,15 @@ function overallConfidence(records: OutcomeConfidence[]): ConfidenceLevel {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CBCLearnerInsights({ studentId }: { studentId: number }) {
+export function CBCLearnerInsights({
+    studentId,
+    returnTo,
+}: {
+    studentId: number;
+    returnTo?: string | null;
+}) {
     const { data: rawRecords = [], isLoading } = useStudentConfidence(studentId);
+    const progressHref = buildCbcLearnerProgressHref(studentId, { returnTo });
 
     // Deduplicate by outcome_id — keep highest confidence per outcome
     const records: OutcomeConfidence[] = Object.values(
@@ -122,7 +130,7 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                         </p>
                     </div>
                 </div>
-                <Link href={`/cbc/progress/learner/${studentId}`} className="self-start">
+                <Link href={progressHref} className="self-start">
                     <Button variant="ghost" size="sm">
                         Full Report
                         <ChevronRight className="ml-1 h-4 w-4" />
@@ -209,7 +217,7 @@ export function CBCLearnerInsights({ studentId }: { studentId: number }) {
                         ))}
                         {records.length > 5 && (
                             <Link
-                                href={`/cbc/progress/learner/${studentId}`}
+                                href={progressHref}
                                 className="theme-link block py-1.5 text-center text-xs transition-colors"
                             >
                                 +{records.length - 5} more outcomes → view full report

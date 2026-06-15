@@ -28,7 +28,9 @@ import { CurriculumSubjectReportCard } from '@/app/core/components/reports/Curri
 import {
   buildAssessmentReportHref,
   buildAttendanceReportHref,
+  buildCbcLearnerProgressHref,
   buildCohortSubjectReportHref,
+  buildLearnerSubjectReportHref,
   buildLearnerReportHref,
   buildReportReturnTo,
   parsePositiveReportParam,
@@ -37,12 +39,12 @@ import {
 import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import { useStudentReportCard } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
-import { buildLearnerSubjectReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import {
   formatPercent,
   resolveCbcStudentResult,
   resolveGenericStudentResult,
 } from '@/app/core/lib/reportingPresentation';
+import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
 import type { ReportExportFormat } from '@/app/core/types/reporting';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
@@ -150,6 +152,28 @@ export function StudentsReportPage({
   const noActiveTerm = !selectedTermId && !currentTermLoading && !currentTerm;
   const visibleError = reportError ?? searchError;
   const waitingForTerm = Boolean(selectedStudentId) && !selectedTermId && currentTermLoading;
+  const hasCbcProgress = Boolean(reportCard?.subjects.some((subject) => (
+    subject.reporting_source === 'cbc'
+    && (subject.cbc?.readiness?.has_result
+      || subject.cbc?.progress_summary
+      || subject.cbc?.cbc_result)
+  )));
+  const learnerProfileExtensions = selectedStudentId == null
+    ? []
+    : getLearnerProfileExtensions({
+      studentId: selectedStudentId,
+      curricula: Array.from(
+        new Set(
+          (reportCard?.subjects ?? []).flatMap((subject) => {
+            const curriculumType = String(subject.curriculum_type ?? '').toUpperCase();
+            if (!curriculumType) {
+              return [];
+            }
+            return curriculumType === 'CBC' ? ['CBC', 'CBE'] : [curriculumType];
+          }),
+        ),
+      ),
+    });
 
   return (
     <AdminReportAccessGate>
@@ -340,6 +364,24 @@ export function StudentsReportPage({
                 />
               </div>
 
+              {selectedStudentId && hasCbcProgress && learnerProfileExtensions.length > 0 ? (
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">CBC Competency Progress</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      CBC competency meaning stays inside the CBC reporting surface and returns back here when you finish drilling down.
+                    </p>
+                  </div>
+                  {learnerProfileExtensions.map((extension) => (
+                    <extension.component
+                      key={extension.key}
+                      studentId={selectedStudentId}
+                      returnTo={currentReturnTo}
+                    />
+                  ))}
+                </div>
+              ) : null}
+
               {reportCard.subjects.length === 0 ? (
                 <Card>
                   <div className="py-12 text-center">
@@ -438,6 +480,17 @@ export function StudentsReportPage({
                                   })}
                                 >
                                   <Button variant="ghost" size="sm">Assessments</Button>
+                                </Link>
+                              ) : null}
+                              {subject.reporting_source === 'cbc' ? (
+                                <Link
+                                  href={buildCbcLearnerProgressHref(selectedStudentId, {
+                                    subject: subject.cohort_subject.subject_id,
+                                    cohortSubject: subject.cohort_subject.id,
+                                    returnTo: currentReturnTo,
+                                  })}
+                                >
+                                  <Button variant="ghost" size="sm">CBC Progress</Button>
                                 </Link>
                               ) : null}
                             </div>

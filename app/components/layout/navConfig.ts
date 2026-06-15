@@ -26,7 +26,6 @@ import {
   UserCog,
   TrendingUp,
   Database,
-  Clock,
   CalendarDays,
   Puzzle,
 } from 'lucide-react';
@@ -42,6 +41,7 @@ import {
   isLearnerCenteredWorkspace,
   isSelfManagedWorkspace,
 } from '@/app/core/lib/workspaces';
+import { getAdminReportNavigationItems } from '../../core/components/reports/reportHierarchy';
 
 export type { NavItem } from '@/app/core/registry/pluginNavigation';
 
@@ -140,6 +140,7 @@ export function getAdminNav(
   const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
     ? [{ name: 'Report Policies', href: '/reports/policies', icon: Award }]
     : [];
+  const reportNavigationChildren = getAdminReportNavigationItems();
 
   if (isSelfManagedWorkspace(orgType)) {
     return {
@@ -158,7 +159,12 @@ export function getAdminNav(
             ...reportPoliciesChild,
           ],
         },
-        { name: 'Reports', href: '/reports', icon: FileBarChart },
+        {
+          name: 'Reports',
+          href: '/reports',
+          icon: FileBarChart,
+          children: reportNavigationChildren,
+        },
         { name: 'Collaborators', href: '/admin/instructors', icon: UserCog },
       ],
       secondary: [
@@ -186,7 +192,12 @@ export function getAdminNav(
             ...reportPoliciesChild,
           ],
         },
-        { name: 'Reports', href: '/reports', icon: FileBarChart },
+        {
+          name: 'Reports',
+          href: '/reports',
+          icon: FileBarChart,
+          children: reportNavigationChildren,
+        },
       ],
       secondary: [
         { name: 'Tutor Activity', href: '/admin/instructors', icon: Activity },
@@ -205,7 +216,12 @@ export function getAdminNav(
         { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
-        { name: 'Reports', href: '/reports', icon: FileBarChart },
+        {
+          name: 'Reports',
+          href: '/reports',
+          icon: FileBarChart,
+          children: reportNavigationChildren,
+        },
       ],
       secondary: [
         ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
@@ -249,16 +265,7 @@ export function getAdminNav(
         name: 'Reports',
         href: '/reports',
         icon: FileBarChart,
-        children: [
-          { name: 'Overview', href: '/reports', icon: FileBarChart },
-          { name: 'Students', href: '/reports/students', icon: Users },
-          { name: 'Cohorts', href: '/reports/cohorts', icon: Users },
-          { name: 'Subjects', href: '/reports/subjects', icon: BookOpen },
-          { name: 'Assessments', href: '/reports/assessments', icon: ClipboardCheck },
-          { name: 'Attendance', href: '/reports/attendance', icon: Clock },
-          ...reportPoliciesChild,
-          { name: 'Compute', href: '/reports/compute', icon: FileBarChart },
-        ],
+        children: reportNavigationChildren,
       },
     ],
     secondary: [

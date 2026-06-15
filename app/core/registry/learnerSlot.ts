@@ -8,7 +8,7 @@ export interface LearnerSlotContext {
 export interface LearnerProfileExtension {
     key: string;
     supports: (ctx: LearnerSlotContext) => boolean;
-    component: ComponentType<{ studentId: number }>;
+    component: ComponentType<{ studentId: number; returnTo?: string | null }>;
     priority?: number;
 }
 

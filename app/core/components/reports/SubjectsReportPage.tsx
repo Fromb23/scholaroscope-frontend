@@ -25,6 +25,7 @@ import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReport
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
 import {
   buildAttendanceReportHref,
+  buildCbcCohortProgressHref,
   buildCohortSubjectReportHref,
   buildInstructorReportHref,
   buildReportReturnTo,
@@ -391,6 +392,17 @@ export function SubjectsReportPage({
                                 })}
                               >
                                 <Button variant="ghost" size="sm">Instructor</Button>
+                              </Link>
+                            ) : null}
+                            {item.reporting_source === 'cbc' ? (
+                              <Link
+                                href={buildCbcCohortProgressHref(item.cohort.id, {
+                                  subject: analysis.subject.id,
+                                  cohortSubject: item.cohort_subject.id,
+                                  returnTo: currentReturnTo,
+                                })}
+                              >
+                                <Button variant="ghost" size="sm">CBC Progress</Button>
                               </Link>
                             ) : null}
                           </div>

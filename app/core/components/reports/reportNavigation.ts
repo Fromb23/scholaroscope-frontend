@@ -110,6 +110,38 @@ export function buildLearnerReportHref(
   return withQuery(`/reports/students/${studentId}`, state);
 }
 
+export function buildLearnerOverviewReportHref(
+  learnerId: number,
+  state?: ReportNavigationState,
+): string {
+  const params = new URLSearchParams();
+  if (state?.returnTo) {
+    params.set('returnTo', state.returnTo);
+  }
+  const query = params.toString();
+  return query
+    ? `/reports/learners/${learnerId}/overview?${query}`
+    : `/reports/learners/${learnerId}/overview`;
+}
+
+export function buildLearnerSubjectReportHref(
+  learnerId: number,
+  cohortSubjectId?: number | null,
+  state?: ReportNavigationState,
+): string {
+  const params = new URLSearchParams();
+  if (cohortSubjectId && Number.isInteger(cohortSubjectId) && cohortSubjectId > 0) {
+    params.set('cohort_subject', String(cohortSubjectId));
+  }
+  if (state?.returnTo) {
+    params.set('returnTo', state.returnTo);
+  }
+  const query = params.toString();
+  return query
+    ? `/reports/learners/${learnerId}/subject?${query}`
+    : `/reports/learners/${learnerId}/subject`;
+}
+
 export function buildCohortReportHref(
   cohortId: number,
   state?: ReportNavigationState,
@@ -154,6 +186,43 @@ export function buildAttendanceReportHref(
   return withQuery('/reports/attendance', state);
 }
 
+export function buildCbcLearnerProgressHref(
+  studentId: number,
+  state?: ReportNavigationState,
+): string {
+  const params = new URLSearchParams();
+  setPositiveParam(params, 'subject', state?.subject ?? state?.subjectId ?? null);
+  setPositiveParam(
+    params,
+    'cohort_subject',
+    state?.cohortSubject ?? state?.cohortSubjectId ?? null,
+  );
+  setStringParam(params, 'returnTo', state?.returnTo ?? null);
+  const query = params.toString();
+  return query ? `/cbc/progress/learner/${studentId}?${query}` : `/cbc/progress/learner/${studentId}`;
+}
+
+export function buildCbcCohortProgressHref(
+  cohortId: number,
+  state?: ReportNavigationState,
+): string {
+  const params = new URLSearchParams();
+  setPositiveParam(params, 'subject', state?.subject ?? state?.subjectId ?? null);
+  setPositiveParam(
+    params,
+    'cohort_subject_id',
+    state?.cohortSubject ?? state?.cohortSubjectId ?? null,
+  );
+  setPositiveParam(
+    params,
+    'instructor_id',
+    state?.instructor ?? state?.instructorId ?? null,
+  );
+  setStringParam(params, 'returnTo', state?.returnTo ?? null);
+  const query = params.toString();
+  return query ? `/cbc/progress/cohort/${cohortId}?${query}` : `/cbc/progress/cohort/${cohortId}`;
+}
+
 export function buildSessionReportHref(
   sessionId: number,
   state?: ReportNavigationState,
@@ -194,6 +263,10 @@ export function buildInstructorClassReportHref(
   termId?: number | null,
   options?: {
     cohortId?: number | null;
+    subjectId?: number | null;
+    studentId?: number | null;
+    instructorId?: number | null;
+    tab?: string | null;
     returnTo?: string | null;
   },
 ): string {
@@ -202,6 +275,10 @@ export function buildInstructorClassReportHref(
     {
       term: termId,
       cohort: options?.cohortId,
+      subject: options?.subjectId,
+      student: options?.studentId,
+      instructor: options?.instructorId,
+      tab: options?.tab,
       returnTo: options?.returnTo,
     },
   );

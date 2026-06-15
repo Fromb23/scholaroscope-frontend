@@ -31,11 +31,22 @@ describe('admin navigation config', () => {
   it('renames institutional admin teaching surfaces to supervision labels', () => {
     const nav = getAdminNav(pluginContext, 'INSTITUTION');
     const assessmentItem = nav.primary.find((item) => item.href === '/assessments');
+    const reportsItem = nav.primary.find((item) => item.href === '/reports');
 
     expect(nav.primary.some((item) => item.name === 'Lesson Supervision')).toBe(true);
     expect(nav.primary.some((item) => item.name === 'Lesson Plan Review')).toBe(true);
     expect(assessmentItem?.name).toBe('Assessment Overview');
     expect(assessmentItem?.children?.some((item) => item.href === '/assessments/new')).toBe(false);
+    expect(reportsItem?.children?.map((item) => item.name)).toEqual([
+      'Overview',
+      'Learners',
+      'Classes',
+      'Subjects',
+      'Instructors',
+      'Scoped Attendance Explorer',
+      'Report Policies',
+      'Compute / Maintenance',
+    ]);
   });
 
   it('keeps self-managed admin teaching labels intact', () => {

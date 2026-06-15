@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useCallback } from 'react';
 import {
   ArrowRight,
-  BookOpen,
   Briefcase,
   Calendar,
   ClipboardCheck,
@@ -22,59 +21,28 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { downloadBlob } from '@/app/core/api/downloads';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
+import {
+  getAdminReportLandingSections,
+  REPORT_HIERARCHY_STEPS,
+} from '@/app/core/components/reports/reportHierarchy';
 import { useDashboardOverview } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import type { ReportExportFormat } from '@/app/core/types/reporting';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
-const START_WITH_CARDS = [
-  {
-    title: 'Find a learner',
-    description: 'Search by learner name, admission number, or class and open one learner report at a time.',
-    href: '/reports/students',
-    icon: Users,
-    accent: 'bg-blue-50 text-blue-600',
-  },
-  {
-    title: 'Open a class report',
-    description: 'Investigate a class through subjects, instructors, attendance, sessions, and assessments.',
-    href: '/reports/cohorts',
-    icon: GraduationCap,
-    accent: 'bg-emerald-50 text-emerald-600',
-  },
-  {
-    title: 'Open a subject report',
-    description: 'Compare the same subject across classes without losing the surrounding teaching context.',
-    href: '/reports/subjects',
-    icon: BookOpen,
-    accent: 'bg-amber-50 text-amber-600',
-  },
-  {
-    title: 'Open an instructor report',
-    description: 'Follow teaching delivery, attendance capture, reflections, and assigned class subjects.',
-    href: '/reports/instructors',
-    icon: Briefcase,
-    accent: 'bg-indigo-50 text-indigo-600',
-  },
-];
-
-const SECONDARY_CARDS = [
-  {
-    title: 'Assessment reports',
-    description: 'Review assessment completion and current assessment context.',
-    href: '/reports/assessments',
-    icon: ClipboardCheck,
-  },
-  {
-    title: 'Scoped attendance explorer',
-    description: 'Open attendance from learner, class, subject, or class-subject context.',
-    href: '/reports/attendance',
-    icon: Calendar,
-  },
-];
+const REPORT_CARD_ACCENTS: Record<string, string> = {
+  learners: 'bg-blue-50 text-blue-600',
+  classes: 'bg-emerald-50 text-emerald-600',
+  subjects: 'bg-amber-50 text-amber-600',
+  instructors: 'bg-indigo-50 text-indigo-600',
+  attendance: 'bg-slate-100 text-slate-600',
+  policies: 'bg-cyan-50 text-cyan-700',
+  maintenance: 'bg-rose-50 text-rose-700',
+};
 
 export function ReportsPage() {
   const { overview, loading, error } = useDashboardOverview();
+  const hierarchy = getAdminReportLandingSections();
 
   const handleExport = useCallback(async (format: ReportExportFormat) => {
     try {
@@ -91,10 +59,11 @@ export function ReportsPage() {
         <div className="space-y-8 max-w-full">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-gray-900">Reporting Overview</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">Workspace Reporting Overview</h1>
               <p className="mt-1 max-w-3xl text-sm text-gray-500">
-                Start from the reporting question you have, then move down into the learner,
-                class, subject, or instructor evidence without having to remember where each fact lives.
+                Start from the reporting question you have, then move down the reporting hierarchy
+                without having to remember where attendance, sessions, assessments, assignments,
+                CBC progress, or evidence are owned.
               </p>
               <p className="mt-2 text-sm text-gray-500">
                 {overview?.organization.name ?? '—'}
@@ -130,25 +99,26 @@ export function ReportsPage() {
             <Card className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900">Start With</h2>
+                  <h2 className="text-base font-semibold text-gray-900">Start With a Reporting Lens</h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    Choose the primary investigation path instead of browsing unrelated reports first.
+                    Choose the primary investigation path first. Attendance, sessions, assessments,
+                    assignments, CBC progress, and evidence belong underneath these report contexts.
                   </p>
                 </div>
                 {overview?.current_term ? <Badge variant="blue">{overview.current_term.name}</Badge> : null}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {START_WITH_CARDS.map((card) => (
-                  <Link key={card.title} href={card.href} className="group block">
+                {hierarchy.primary.map((card) => (
+                  <Link key={card.key} href={card.href} className="group block">
                     <div className="rounded-2xl border border-gray-200 p-5 transition hover:border-blue-300 hover:shadow-sm">
                       <div className="flex items-start justify-between gap-3">
-                        <div className={`rounded-xl p-3 ${card.accent}`}>
+                        <div className={`rounded-xl p-3 ${REPORT_CARD_ACCENTS[card.key] ?? 'bg-gray-100 text-gray-600'}`}>
                           <card.icon className="h-5 w-5" />
                         </div>
                         <ArrowRight className="h-4 w-4 text-gray-300 transition group-hover:text-gray-500" />
                       </div>
-                      <h3 className="mt-4 text-base font-semibold text-gray-900">{card.title}</h3>
+                      <h3 className="mt-4 text-base font-semibold text-gray-900">{card.name}</h3>
                       <p className="mt-1 text-sm leading-relaxed text-gray-500">{card.description}</p>
                     </div>
                   </Link>
@@ -158,35 +128,36 @@ export function ReportsPage() {
 
             <Card className="space-y-4">
               <div>
-                <h2 className="text-base font-semibold text-gray-900">Current Snapshot</h2>
+                <h2 className="text-base font-semibold text-gray-900">Investigation Map</h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  High-level context for the active reporting term.
+                  The reporting shell should guide the next question at each level.
                 </p>
               </div>
 
               <div className="grid gap-3">
-                <SnapshotRow label="Cohort subjects" value={String(overview?.total_cohort_subjects ?? 0)} />
-                <SnapshotRow label="Sessions" value={String(overview?.total_sessions ?? 0)} />
-                <SnapshotRow label="Assessments" value={String(overview?.total_assessments ?? 0)} />
-                <SnapshotRow
-                  label="Generic average"
-                  value={formatPercent(overview?.performance_summary.generic?.average_score ?? overview?.average_grade)}
-                />
+                {REPORT_HIERARCHY_STEPS.map((step) => (
+                  <SnapshotRow
+                    key={step.level}
+                    label={step.level}
+                    value={step.question}
+                    alignTop
+                  />
+                ))}
               </div>
             </Card>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            {SECONDARY_CARDS.map((card) => (
-              <Link key={card.title} href={card.href} className="group block">
+          <div className="grid gap-4 lg:grid-cols-3">
+            {[...hierarchy.secondary, ...hierarchy.maintenance].map((card) => (
+              <Link key={card.key} href={card.href} className="group block">
                 <Card className="h-full">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
-                      <div className="rounded-xl bg-gray-100 p-3 text-gray-600">
+                      <div className={`rounded-xl p-3 ${REPORT_CARD_ACCENTS[card.key] ?? 'bg-gray-100 text-gray-600'}`}>
                         <card.icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <h3 className="text-base font-semibold text-gray-900">{card.title}</h3>
+                        <h3 className="text-base font-semibold text-gray-900">{card.name}</h3>
                         <p className="mt-1 text-sm text-gray-500">{card.description}</p>
                       </div>
                     </div>
@@ -208,6 +179,20 @@ export function ReportsPage() {
                   Reporting should reduce cognitive load. Overview pages should guide the next question,
                   not make administrators remember which module owns attendance, sessions, scores, or evidence.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {hierarchy.compatibility.map((item) => (
+                    <Link key={item.href} href={item.href}>
+                      <Button variant="ghost" size="sm">
+                        <ClipboardCheck className="h-4 w-4" />
+                        {item.name}
+                      </Button>
+                    </Link>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Use the assessment compatibility view after you have chosen the learner, class,
+                  subject, or instructor path you are investigating.
+                </p>
               </div>
             </div>
           </Card>
@@ -217,9 +202,17 @@ export function ReportsPage() {
   );
 }
 
-function SnapshotRow({ label, value }: { label: string; value: string }) {
+function SnapshotRow({
+  label,
+  value,
+  alignTop = false,
+}: {
+  label: string;
+  value: string;
+  alignTop?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 px-3 py-2">
+    <div className={`flex gap-4 rounded-lg border border-gray-200 px-3 py-2 ${alignTop ? 'items-start' : 'items-center justify-between'}`}>
       <span className="text-sm text-gray-500">{label}</span>
       <span className="text-sm font-semibold text-gray-900">{value}</span>
     </div>
