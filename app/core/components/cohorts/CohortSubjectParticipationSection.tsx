@@ -16,6 +16,8 @@ interface CohortSubjectParticipationSectionProps {
     emptyMessage?: string;
     canManageInstructors?: boolean;
     canLinkSubjects?: boolean;
+    linkSubjectsLabel?: string;
+    linkSubjectsDisabledReason?: string | null;
     onLinkSubjects?: () => void;
     buildInstructorHref?: (subject: CohortSubject) => string;
 }
@@ -56,9 +58,13 @@ export function CohortSubjectParticipationSection({
     emptyMessage = 'No cohort subjects have been configured for this cohort yet. Add cohort subjects before managing subject participation.',
     canManageInstructors = false,
     canLinkSubjects = false,
+    linkSubjectsLabel = 'Link Subject to Cohort',
+    linkSubjectsDisabledReason = null,
     onLinkSubjects,
     buildInstructorHref,
 }: CohortSubjectParticipationSectionProps) {
+    const linkSubjectsDisabled = Boolean(linkSubjectsDisabledReason);
+
     return (
         <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -69,8 +75,15 @@ export function CohortSubjectParticipationSection({
                     </p>
                 </div>
                 {canLinkSubjects && onLinkSubjects ? (
-                    <Button type="button" variant="secondary" onClick={onLinkSubjects} className="w-full sm:w-auto">
-                        Link Subject to Cohort
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={onLinkSubjects}
+                        disabled={linkSubjectsDisabled}
+                        title={linkSubjectsDisabledReason ?? undefined}
+                        className="w-full sm:w-auto"
+                    >
+                        {linkSubjectsLabel}
                     </Button>
                 ) : null}
             </div>
@@ -79,6 +92,12 @@ export function CohortSubjectParticipationSection({
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
                     Cohort placement manages class membership only. Subject participation is managed per cohort subject below.
                 </div>
+
+                {linkSubjectsDisabledReason ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                        {linkSubjectsDisabledReason}
+                    </div>
+                ) : null}
 
                 {error ? (
                     <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -97,10 +116,10 @@ export function CohortSubjectParticipationSection({
                         <p className="text-sm text-gray-500">
                             {emptyMessage}
                         </p>
-                        {canLinkSubjects && onLinkSubjects ? (
+                        {canLinkSubjects && onLinkSubjects && !linkSubjectsDisabled ? (
                             <div className="mt-4 flex justify-center">
                                 <Button type="button" onClick={onLinkSubjects}>
-                                    Link Subject to Cohort
+                                    {linkSubjectsLabel}
                                 </Button>
                             </div>
                         ) : null}

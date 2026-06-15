@@ -7,8 +7,13 @@ import type {
   OfficialSubjectCombinationSubject,
   OfficialTrack,
 } from '@/app/core/types/curriculumExtensions';
+import type {
+  CbcAllowedSubject,
+  CbcCohortAllowedSubjects,
+} from '@/app/core/types/cbcPathways';
 
 export type { CbcCohortProfileSummary, CbcRegistrationStatus, CbcSubjectCategory };
+export type { CbcAllowedSubject, CbcCohortAllowedSubjects };
 
 export type CbcPathway = OfficialPathway;
 export type CbcTrack = OfficialTrack;
@@ -21,39 +26,6 @@ export interface CbcSchoolOfferedCombination {
   combination: CbcSubjectCombination;
   is_active: boolean;
   created_at: string;
-}
-
-export interface CbcAllowedSubject {
-  subject_id: number | null;
-  subject_name: string;
-  subject_code: string;
-  locked?: boolean;
-  reason?: string;
-}
-
-export interface CbcCohortAllowedSubjects {
-  cohort_id: number;
-  pathway: {
-    id: number;
-    code: string;
-    name: string;
-  } | null;
-  track: {
-    id: number;
-    code: string;
-    name: string;
-  } | null;
-  combination: {
-    id: number;
-    official_code: string;
-    name: string;
-  } | null;
-  core: CbcAllowedSubject[];
-  pathway_subjects: CbcAllowedSubject[];
-  blocked: Array<Required<Pick<CbcAllowedSubject, 'subject_name' | 'subject_code'>> & {
-    subject_id: number | null;
-    reason: string;
-  }>;
 }
 
 export interface CbcStudentSubjectSwitchOptions extends CbcCohortAllowedSubjects {

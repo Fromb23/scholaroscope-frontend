@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
     ArrowLeft,
+    AlertCircle,
     BookOpen,
     ChevronRight,
     ClipboardList,
     GraduationCap,
     LineChart,
+    Settings2,
     Users,
     Calendar,
 } from 'lucide-react';
@@ -28,9 +30,11 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
 import { CohortSubjectParticipationSection } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
+import { hasCbcPathwayProfile, isCbcSeniorSchoolEntity } from '@/app/core/lib/cbcSeniorSchool';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { CbcPathwayConfigurationModal } from '@/app/plugins/cbc/components/CbcPathwayConfigurationModal';
 import { useCambridgeCohortSubjects } from '@/app/plugins/cambridge/hooks';
 
 interface MetadataItemProps {
@@ -178,6 +182,108 @@ function CambridgeCurriculumCards({
     );
 }
 
+function CbcSeniorSetupSection({
+    pathwayConfigured,
+    hasCBCPlugin,
+    canConfigure,
+    pathwayName,
+    trackName,
+    combinationCode,
+    combinationName,
+    onConfigure,
+    onViewAllowedSubjects,
+}: {
+    pathwayConfigured: boolean;
+    hasCBCPlugin: boolean;
+    canConfigure: boolean;
+    pathwayName?: string;
+    trackName?: string;
+    combinationCode?: string;
+    combinationName?: string;
+    onConfigure: () => void;
+    onViewAllowedSubjects: () => void;
+}) {
+    return (
+        <section className="space-y-4">
+            <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-gray-900">CBC Senior School Setup</h2>
+                <p className="text-sm text-gray-500">
+                    Pathway configuration determines which senior school subjects this cohort can offer.
+                </p>
+            </div>
+
+            <Card>
+                <div className="space-y-5">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                            <Settings2 className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-base font-semibold text-gray-900">
+                                    {pathwayConfigured ? 'Pathway configured' : 'Pathway not configured'}
+                                </h3>
+                                <Badge variant={pathwayConfigured ? 'green' : 'warning'}>
+                                    {pathwayConfigured ? 'Configured' : 'Setup required'}
+                                </Badge>
+                            </div>
+
+                            {!pathwayConfigured ? (
+                                <p className="text-sm text-gray-600">
+                                    Configure pathway, track, and subject combination before linking pathway subjects.
+                                </p>
+                            ) : (
+                                <div className="grid gap-3 text-sm text-gray-700 sm:grid-cols-3">
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Pathway</p>
+                                        <p className="mt-1 font-semibold text-gray-900">{pathwayName}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Track</p>
+                                        <p className="mt-1 font-semibold text-gray-900">{trackName}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Subject Combination</p>
+                                        <p className="mt-1 font-semibold text-gray-900">
+                                            #{combinationCode} {combinationName ? `· ${combinationName}` : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!hasCBCPlugin ? (
+                                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <p>CBC tools are not available for this organization yet.</p>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    {canConfigure && hasCBCPlugin ? (
+                        <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+                            {pathwayConfigured ? (
+                                <>
+                                    <Button onClick={onViewAllowedSubjects}>
+                                        View Allowed Subjects
+                                    </Button>
+                                    <Button variant="secondary" onClick={onConfigure}>
+                                        Change Configuration
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button onClick={onConfigure}>
+                                    Configure CBC Pathway
+                                </Button>
+                            )}
+                        </div>
+                    ) : null}
+                </div>
+            </Card>
+        </section>
+    );
+}
+
 export default function CohortHubPage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
@@ -185,6 +291,7 @@ export default function CohortHubPage() {
     const { hasPlugin, loading: pluginsLoading } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
     const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
+    const [cbcSetupOpen, setCbcSetupOpen] = useState(false);
 
     const cohortId = Number(params.id);
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
@@ -227,6 +334,8 @@ export default function CohortHubPage() {
 
     const isCambridge = cohort ? isCambridgeCurriculumType(cohort.curriculum_type) : false;
     const isCBC = cohort?.curriculum_type === 'CBE';
+    const isCbcSeniorCohort = isCbcSeniorSchoolEntity(cohort);
+    const hasCbcProfile = hasCbcPathwayProfile(cohort);
     const canViewCohortLearners = isAdminOrAbove(user, activeRole);
     const hasCBCPlugin = hasPlugin('cbc');
     const hasCambridgePlugin = hasPlugin('cambridge');
@@ -236,6 +345,10 @@ export default function CohortHubPage() {
         .filter((summary) => summary.instructorState === 'assigned')
         .length;
     const sessionsHref = isValidCohortId ? `/sessions?cohort=${cohortId}` : '/sessions';
+    const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
+        ? 'CBC tools are not available for this organization yet.'
+        : (isCbcSeniorCohort && !hasCbcProfile ? 'Configure CBC pathway first.' : null);
+    const linkSubjectsLabel = isCbcSeniorCohort ? 'Link Allowed Subjects' : 'Link Subject to Cohort';
     const assistantContext = useMemo(() => ({
         pageKey: 'cohort_detail',
         pageTitle: cohort?.name ?? 'Cohort',
@@ -254,6 +367,20 @@ export default function CohortHubPage() {
                 type: 'navigate' as const,
                 href: '/academic/cohorts',
             },
+            ...(cohort && isCbcSeniorCohort && !hasCbcProfile && canLinkSubjects && hasCBCPlugin
+                ? [{
+                    label: 'Configure CBC Pathway',
+                    type: 'page_action' as const,
+                    handler: () => setCbcSetupOpen(true),
+                }]
+                : []),
+            ...(cohort && canLinkSubjects && !linkSubjectsDisabledReason
+                ? [{
+                    label: linkSubjectsLabel,
+                    type: 'page_action' as const,
+                    handler: () => setAssignSubjectsOpen(true),
+                }]
+                : []),
             {
                 label: 'Open Sessions',
                 type: 'navigate' as const,
@@ -274,17 +401,29 @@ export default function CohortHubPage() {
                 ]
                 : []),
         ],
-        nextSafeAction: cohort && isCBC && hasCBCPlugin && subjectCount > 0
+        nextSafeAction: cohort && isCbcSeniorCohort && !hasCbcProfile && canLinkSubjects && hasCBCPlugin
             ? {
-                label: 'Browse CBC',
-                type: 'navigate' as const,
-                href: `/cbc/browser?cohort=${cohort.id}`,
+                label: 'Configure CBC Pathway',
+                type: 'page_action' as const,
+                handler: () => setCbcSetupOpen(true),
             }
-            : {
-                label: 'Open Sessions',
-                type: 'navigate' as const,
-                href: sessionsHref,
-            },
+            : cohort && canLinkSubjects && !linkSubjectsDisabledReason
+                ? {
+                    label: linkSubjectsLabel,
+                    type: 'page_action' as const,
+                    handler: () => setAssignSubjectsOpen(true),
+                }
+                : cohort && isCBC && hasCBCPlugin && subjectCount > 0
+                    ? {
+                        label: 'Browse CBC',
+                        type: 'navigate' as const,
+                        href: `/cbc/browser?cohort=${cohort.id}`,
+                    }
+                    : {
+                        label: 'Open Sessions',
+                        type: 'navigate' as const,
+                        href: sessionsHref,
+                    },
         workflowStep: cohort && isCBC ? 'cohort_cbc_tools' : 'cohort_actions',
         emptyStateReason: !cohort && !cohortLoading
             ? 'This cohort could not be loaded.'
@@ -292,11 +431,16 @@ export default function CohortHubPage() {
     }), [
         activeRole,
         assignedInstructorCount,
+        canLinkSubjects,
         cohort,
         cohortLoading,
+        hasCbcProfile,
         hasCBCPlugin,
         isCBC,
+        isCbcSeniorCohort,
         learnerCount,
+        linkSubjectsDisabledReason,
+        linkSubjectsLabel,
         sessionsHref,
         subjectCount,
         visibleCohortSubjects.length,
@@ -327,6 +471,17 @@ export default function CohortHubPage() {
     const learnerCountLabel = String(learnerCount);
     const cohortLearnersHref = `/academic/cohorts/${cohort.id}/students`;
     const unknownCurriculumReason = `No workflow is configured yet for ${curriculumName}.`;
+    const cbcWorkflowDisabledReason = !hasCBCPlugin
+        ? 'CBC tools are not available for this organization yet.'
+        : subjectCount === 0
+            ? 'No CBC subjects assigned to this cohort yet.'
+            : undefined;
+    const openAssignSubjects = () => setAssignSubjectsOpen(true);
+    const openCbcSetup = () => setCbcSetupOpen(true);
+    const handleCohortSubjectsChanged = async () => {
+        await refetchCohort();
+        await refetchCohortSubjects();
+    };
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
@@ -365,112 +520,148 @@ export default function CohortHubPage() {
                 </dl>
             </Card>
 
+            {isCbcSeniorCohort ? (
+                <CbcSeniorSetupSection
+                    pathwayConfigured={hasCbcProfile}
+                    hasCBCPlugin={hasCBCPlugin}
+                    canConfigure={canLinkSubjects}
+                    pathwayName={cohort.cbc_profile?.pathway_name}
+                    trackName={cohort.cbc_profile?.track_name}
+                    combinationCode={cohort.cbc_profile?.combination_code}
+                    combinationName={cohort.cbc_profile?.combination_name}
+                    onConfigure={openCbcSetup}
+                    onViewAllowedSubjects={openAssignSubjects}
+                />
+            ) : null}
+
             <section className="space-y-4">
                 <div className="space-y-1">
                     <h2 className="text-xl font-semibold text-gray-900">Cohort Actions</h2>
                     <p className="text-sm text-gray-500">
-                        Choose the workflow you want to open for this cohort.
+                        {isCbcSeniorCohort
+                            ? 'Start with allowed-subject linking and learner access for this CBC senior cohort.'
+                            : 'Choose the workflow you want to open for this cohort.'}
                     </p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {canViewCohortLearners ? (
-                        <ActionCard
-                            title="Class List"
-                            description="Open cohort learners to view enrolled learners and manage cohort placement. Subject participation stays scoped to each cohort subject."
-                            icon={Users}
-                            href={cohortLearnersHref}
-                            footerLabel="View class list"
-                        />
-                    ) : null}
-                    {canLinkSubjects ? (
-                        <ActionCard
-                            title="Link Subject to Cohort"
-                            description="Create or update cohort subject offerings for this cohort."
-                            icon={BookOpen}
-                            onClick={() => setAssignSubjectsOpen(true)}
-                            footerLabel={subjectCount > 0 ? `${subjectCount} linked` : 'Assign subject'}
-                        />
-                    ) : null}
-                    <ActionCard
-                        title="Sessions"
-                        description="Open sessions filtered to this cohort."
-                        icon={Calendar}
-                        href={sessionsHref}
-                        footerLabel="Open sessions"
-                    />
-                    <ActionCard
-                        title="Assignments"
-                        description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
-                        icon={ClipboardList}
-                        href={`/academic/cohorts/${cohort.id}/assignments`}
-                        footerLabel="Manage assignments"
-                    />
-
-                    {isCBC ? (
+                    {isCbcSeniorCohort ? (
                         <>
-                            <ActionCard
-                                title="CBC Subjects & Outcomes"
-                                description="Browse strands, sub-strands, and outcomes taught in this cohort."
-                                icon={BookOpen}
-                                href={hasCBCPlugin && subjectCount > 0 ? `/cbc/browser?cohort=${cohort.id}` : undefined}
-                                disabledReason={
-                                    !hasCBCPlugin
-                                        ? 'CBC tools are not available for this organization yet.'
-                                        : subjectCount === 0
-                                            ? 'No CBC subjects assigned to this cohort yet.'
-                                            : undefined
-                                }
-                                footerLabel={subjectCount > 0 ? `${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : undefined}
-                            />
-                            <ActionCard
-                                title="CBC Progress"
-                                description="Track CBC progress and coverage for this cohort."
-                                icon={LineChart}
-                                href={hasCBCPlugin && subjectCount > 0 ? `/cbc/progress?cohort=${cohort.id}` : undefined}
-                                disabledReason={
-                                    !hasCBCPlugin
-                                        ? 'CBC tools are not available for this organization yet.'
-                                        : subjectCount === 0
-                                            ? 'No CBC subjects assigned to this cohort yet.'
-                                            : undefined
-                                }
-                                footerLabel={subjectCount > 0 ? 'View progress' : undefined}
-                            />
-                        </>
-                    ) : isCambridge ? (
-                        hasCambridgePlugin ? (
-                            <CambridgeCurriculumCards cohortId={cohort.id} />
-                        ) : (
-                            <>
+                            {canLinkSubjects ? (
                                 <ActionCard
-                                    title="Cambridge Subjects"
-                                    description="Open Cambridge subject offerings and cohort delivery for this cohort."
+                                    title="Link Allowed Subjects"
+                                    description="Create or update the CBC subject offerings allowed by this cohort pathway configuration."
                                     icon={BookOpen}
-                                    disabledReason="Cambridge tools are not available for this organization yet."
+                                    onClick={!linkSubjectsDisabledReason ? openAssignSubjects : undefined}
+                                    disabledReason={linkSubjectsDisabledReason ?? undefined}
+                                    footerLabel={
+                                        subjectCount > 0
+                                            ? `${subjectCount} linked`
+                                            : linkSubjectsDisabledReason
+                                                ? 'Setup required'
+                                                : 'Link allowed subjects'
+                                    }
                                 />
+                            ) : null}
+                            {canViewCohortLearners ? (
                                 <ActionCard
-                                    title="Cambridge Progress"
-                                    description="Review Cambridge subject progress available to this cohort."
-                                    icon={LineChart}
-                                    disabledReason="Cambridge tools are not available for this organization yet."
+                                    title="Class List"
+                                    description="Open cohort learners to view enrolled learners and manage cohort placement. Subject participation stays scoped to each cohort subject."
+                                    icon={Users}
+                                    href={cohortLearnersHref}
+                                    footerLabel="View class list"
                                 />
-                            </>
-                        )
+                            ) : null}
+                        </>
                     ) : (
                         <>
+                            {canViewCohortLearners ? (
+                                <ActionCard
+                                    title="Class List"
+                                    description="Open cohort learners to view enrolled learners and manage cohort placement. Subject participation stays scoped to each cohort subject."
+                                    icon={Users}
+                                    href={cohortLearnersHref}
+                                    footerLabel="View class list"
+                                />
+                            ) : null}
+                            {canLinkSubjects ? (
+                                <ActionCard
+                                    title="Link Subject to Cohort"
+                                    description="Create or update cohort subject offerings for this cohort."
+                                    icon={BookOpen}
+                                    onClick={openAssignSubjects}
+                                    footerLabel={subjectCount > 0 ? `${subjectCount} linked` : 'Assign subject'}
+                                />
+                            ) : null}
                             <ActionCard
-                                title={`${curriculumName} Content`}
-                                description="Curriculum content routes are not configured for this cohort yet."
-                                icon={BookOpen}
-                                disabledReason={unknownCurriculumReason}
+                                title="Sessions"
+                                description="Open sessions filtered to this cohort."
+                                icon={Calendar}
+                                href={sessionsHref}
+                                footerLabel="Open sessions"
                             />
                             <ActionCard
-                                title={`${curriculumName} Progress`}
-                                description="Curriculum progress routes are not configured for this cohort yet."
-                                icon={LineChart}
-                                disabledReason={unknownCurriculumReason}
+                                title="Assignments"
+                                description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
+                                icon={ClipboardList}
+                                href={`/academic/cohorts/${cohort.id}/assignments`}
+                                footerLabel="Manage assignments"
                             />
+
+                            {isCBC ? (
+                                <>
+                                    <ActionCard
+                                        title="CBC Subjects & Outcomes"
+                                        description="Browse strands, sub-strands, and outcomes taught in this cohort."
+                                        icon={BookOpen}
+                                        href={hasCBCPlugin && subjectCount > 0 ? `/cbc/browser?cohort=${cohort.id}` : undefined}
+                                        disabledReason={cbcWorkflowDisabledReason}
+                                        footerLabel={subjectCount > 0 ? `${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : undefined}
+                                    />
+                                    <ActionCard
+                                        title="CBC Progress"
+                                        description="Track CBC progress and coverage for this cohort."
+                                        icon={LineChart}
+                                        href={hasCBCPlugin && subjectCount > 0 ? `/cbc/progress?cohort=${cohort.id}` : undefined}
+                                        disabledReason={cbcWorkflowDisabledReason}
+                                        footerLabel={subjectCount > 0 ? 'View progress' : undefined}
+                                    />
+                                </>
+                            ) : isCambridge ? (
+                                hasCambridgePlugin ? (
+                                    <CambridgeCurriculumCards cohortId={cohort.id} />
+                                ) : (
+                                    <>
+                                        <ActionCard
+                                            title="Cambridge Subjects"
+                                            description="Open Cambridge subject offerings and cohort delivery for this cohort."
+                                            icon={BookOpen}
+                                            disabledReason="Cambridge tools are not available for this organization yet."
+                                        />
+                                        <ActionCard
+                                            title="Cambridge Progress"
+                                            description="Review Cambridge subject progress available to this cohort."
+                                            icon={LineChart}
+                                            disabledReason="Cambridge tools are not available for this organization yet."
+                                        />
+                                    </>
+                                )
+                            ) : (
+                                <>
+                                    <ActionCard
+                                        title={`${curriculumName} Content`}
+                                        description="Curriculum content routes are not configured for this cohort yet."
+                                        icon={BookOpen}
+                                        disabledReason={unknownCurriculumReason}
+                                    />
+                                    <ActionCard
+                                        title={`${curriculumName} Progress`}
+                                        description="Curriculum progress routes are not configured for this cohort yet."
+                                        icon={LineChart}
+                                        disabledReason={unknownCurriculumReason}
+                                    />
+                                </>
+                            )}
                         </>
                     )}
                 </div>
@@ -486,9 +677,55 @@ export default function CohortHubPage() {
                     : undefined}
                 canManageInstructors={canManageInstructors}
                 canLinkSubjects={canLinkSubjects}
-                onLinkSubjects={() => setAssignSubjectsOpen(true)}
+                linkSubjectsLabel={linkSubjectsLabel}
+                linkSubjectsDisabledReason={linkSubjectsDisabledReason}
+                onLinkSubjects={openAssignSubjects}
                 buildInstructorHref={(subject) => buildInstructorManagementHref(cohort.id, cohort.name, subject)}
             />
+
+            {isCbcSeniorCohort ? (
+                <section className="space-y-4">
+                    <div className="space-y-1">
+                        <h2 className="text-xl font-semibold text-gray-900">Delivery Workflows</h2>
+                        <p className="text-sm text-gray-500">
+                            Open teaching, assignments, and CBC tracking after cohort setup and subject linking.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <ActionCard
+                            title="Sessions"
+                            description="Open sessions filtered to this cohort."
+                            icon={Calendar}
+                            href={sessionsHref}
+                            footerLabel="Open sessions"
+                        />
+                        <ActionCard
+                            title="Assignments"
+                            description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
+                            icon={ClipboardList}
+                            href={`/academic/cohorts/${cohort.id}/assignments`}
+                            footerLabel="Manage assignments"
+                        />
+                        <ActionCard
+                            title="CBC Subjects & Outcomes"
+                            description="Browse strands, sub-strands, and outcomes taught in this cohort."
+                            icon={BookOpen}
+                            href={hasCBCPlugin && subjectCount > 0 ? `/cbc/browser?cohort=${cohort.id}` : undefined}
+                            disabledReason={cbcWorkflowDisabledReason}
+                            footerLabel={subjectCount > 0 ? `${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : undefined}
+                        />
+                        <ActionCard
+                            title="CBC Progress"
+                            description="Track CBC progress and coverage for this cohort."
+                            icon={LineChart}
+                            href={hasCBCPlugin && subjectCount > 0 ? `/cbc/progress?cohort=${cohort.id}` : undefined}
+                            disabledReason={cbcWorkflowDisabledReason}
+                            footerLabel={subjectCount > 0 ? 'View progress' : undefined}
+                        />
+                    </div>
+                </section>
+            ) : null}
 
             <Card>
                 <div className="flex items-start gap-3">
@@ -509,10 +746,16 @@ export default function CohortHubPage() {
                     isOpen={assignSubjectsOpen}
                     onClose={() => setAssignSubjectsOpen(false)}
                     cohort={cohort}
-                    onSubjectsChanged={async () => {
-                        await refetchCohort();
-                        await refetchCohortSubjects();
-                    }}
+                    onSubjectsChanged={handleCohortSubjectsChanged}
+                />
+            ) : null}
+
+            {isCbcSeniorCohort ? (
+                <CbcPathwayConfigurationModal
+                    isOpen={cbcSetupOpen}
+                    cohort={cohort}
+                    onClose={() => setCbcSetupOpen(false)}
+                    onConfigured={handleCohortSubjectsChanged}
                 />
             ) : null}
         </div>
