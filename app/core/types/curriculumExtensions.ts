@@ -1,4 +1,6 @@
-export type CbcSubjectCategory = 'CORE' | 'PATHWAY_COMBINATION' | 'OTHER';
+import type { CbcPathwayAllowedSubjectsCatalogue } from '@/app/core/types/cbcPathways';
+
+export type CbcSubjectCategory = 'CORE' | 'PATHWAY' | 'PATHWAY_COMBINATION' | 'OTHER';
 export type CbcRegistrationStatus = 'OPEN' | 'LOCKED';
 
 export interface OfficialPathway {
@@ -56,4 +58,8 @@ export interface OfficialPathwayCatalog {
   listPathways(): Promise<OfficialPathway[]>;
   listTracks(pathwayId: number): Promise<OfficialTrack[]>;
   listCombinations(trackId: number, level: string): Promise<OfficialSubjectCombination[]>;
+  listPathwayAllowedSubjects(
+    pathwayId: number,
+    level: string
+  ): Promise<CbcPathwayAllowedSubjectsCatalogue>;
 }

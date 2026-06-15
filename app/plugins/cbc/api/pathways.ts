@@ -4,6 +4,7 @@ import type {
   CbcCohortAllowedSubjects,
   CbcCohortProfileSummary,
   CbcPathway,
+  CbcPathwayAllowedSubjectsCatalogue,
   CbcSchoolOfferedCombination,
   CbcStudentSubjectSwitchOptions,
   CbcSubjectCombination,
@@ -149,6 +150,20 @@ export const cbcPathwayAPI = {
       return toArray(response.data);
     } catch (error) {
       throw decorateCatalogueError(error, `/cbc/pathways/${pathwayId}/tracks/`);
+    }
+  },
+
+  listPathwayAllowedSubjects: async (pathwayId: number, level: string) => {
+    const params = level ? { level } : undefined;
+
+    try {
+      const response = await apiClient.get<CbcPathwayAllowedSubjectsCatalogue>(
+        `/cbc/pathways/${pathwayId}/allowed-subjects/`,
+        { params }
+      );
+      return response.data;
+    } catch (error) {
+      throw decorateCatalogueError(error, `/cbc/pathways/${pathwayId}/allowed-subjects/`, params);
     }
   },
 

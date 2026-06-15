@@ -22,7 +22,6 @@ import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 import type {
     MusicEvidenceType,
     MusicPracticalContract,
-    MusicPracticalEvidenceEntry,
     MusicPracticalEvidenceStatus,
     MusicPracticalLearnerEvidenceMatrix,
     MusicWorksheetError,
@@ -162,7 +161,10 @@ export function PracticalLearnerEvidencePanel({
         })),
         [contract?.allowed_evidence_types, matrix?.evidence_types],
     );
-    const taughtOutcomeOptions = matrix?.taught_outcomes ?? [];
+    const taughtOutcomeOptions = useMemo(
+        () => matrix?.taught_outcomes ?? [],
+        [matrix?.taught_outcomes],
+    );
     const canRecord = editable && actorCanRecord;
 
     useEffect(() => {

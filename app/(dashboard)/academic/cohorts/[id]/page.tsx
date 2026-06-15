@@ -230,7 +230,7 @@ function CbcSeniorSetupSection({
 
                             {!pathwayConfigured ? (
                                 <p className="text-sm text-gray-600">
-                                    Configure pathway, track, and subject combination before linking pathway subjects.
+                                    Configure CBC pathway before linking pathway subjects.
                                 </p>
                             ) : (
                                 <div className="grid gap-3 text-sm text-gray-700 sm:grid-cols-3">
@@ -345,9 +345,18 @@ export default function CohortHubPage() {
         .filter((summary) => summary.instructorState === 'assigned')
         .length;
     const sessionsHref = isValidCohortId ? `/sessions?cohort=${cohortId}` : '/sessions';
+    const cohortReturnTo = cohort ? `/academic/cohorts/${cohort.id}` : `/academic/cohorts/${cohortId}`;
+    const cbcBrowserHref = `${'/cbc/browser'}?${new URLSearchParams({
+        cohort: String(cohortId),
+        returnTo: cohortReturnTo,
+    }).toString()}`;
+    const cbcProgressHref = `${'/cbc/progress'}?${new URLSearchParams({
+        cohort: String(cohortId),
+        returnTo: cohortReturnTo,
+    }).toString()}`;
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
         ? 'CBC tools are not available for this organization yet.'
-        : (isCbcSeniorCohort && !hasCbcProfile ? 'Configure CBC pathway first.' : null);
+        : (isCbcSeniorCohort && !hasCbcProfile ? 'Configure CBC pathway before linking pathway subjects.' : null);
     const linkSubjectsLabel = isCbcSeniorCohort ? 'Link Allowed Subjects' : 'Link Subject to Cohort';
     const assistantContext = useMemo(() => ({
         pageKey: 'cohort_detail',
@@ -391,12 +400,12 @@ export default function CohortHubPage() {
                     {
                         label: 'Browse CBC',
                         type: 'navigate' as const,
-                        href: `/cbc/browser?cohort=${cohort.id}`,
+                        href: cbcBrowserHref,
                     },
                     {
                         label: 'Open CBC Progress',
                         type: 'navigate' as const,
-                        href: `/cbc/progress?cohort=${cohort.id}`,
+                        href: cbcProgressHref,
                     },
                 ]
                 : []),
@@ -417,7 +426,7 @@ export default function CohortHubPage() {
                     ? {
                         label: 'Browse CBC',
                         type: 'navigate' as const,
-                        href: `/cbc/browser?cohort=${cohort.id}`,
+                        href: cbcBrowserHref,
                     }
                     : {
                         label: 'Open Sessions',
@@ -441,6 +450,8 @@ export default function CohortHubPage() {
         learnerCount,
         linkSubjectsDisabledReason,
         linkSubjectsLabel,
+        cbcBrowserHref,
+        cbcProgressHref,
         sessionsHref,
         subjectCount,
         visibleCohortSubjects.length,
@@ -614,7 +625,7 @@ export default function CohortHubPage() {
                                         title="CBC Subjects & Outcomes"
                                         description="Browse strands, sub-strands, and outcomes taught in this cohort."
                                         icon={BookOpen}
-                                        href={hasCBCPlugin && subjectCount > 0 ? `/cbc/browser?cohort=${cohort.id}` : undefined}
+                                        href={hasCBCPlugin && subjectCount > 0 ? cbcBrowserHref : undefined}
                                         disabledReason={cbcWorkflowDisabledReason}
                                         footerLabel={subjectCount > 0 ? `${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : undefined}
                                     />
@@ -622,7 +633,7 @@ export default function CohortHubPage() {
                                         title="CBC Progress"
                                         description="Track CBC progress and coverage for this cohort."
                                         icon={LineChart}
-                                        href={hasCBCPlugin && subjectCount > 0 ? `/cbc/progress?cohort=${cohort.id}` : undefined}
+                                        href={hasCBCPlugin && subjectCount > 0 ? cbcProgressHref : undefined}
                                         disabledReason={cbcWorkflowDisabledReason}
                                         footerLabel={subjectCount > 0 ? 'View progress' : undefined}
                                     />
@@ -711,7 +722,7 @@ export default function CohortHubPage() {
                             title="CBC Subjects & Outcomes"
                             description="Browse strands, sub-strands, and outcomes taught in this cohort."
                             icon={BookOpen}
-                            href={hasCBCPlugin && subjectCount > 0 ? `/cbc/browser?cohort=${cohort.id}` : undefined}
+                            href={hasCBCPlugin && subjectCount > 0 ? cbcBrowserHref : undefined}
                             disabledReason={cbcWorkflowDisabledReason}
                             footerLabel={subjectCount > 0 ? `${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : undefined}
                         />
@@ -719,7 +730,7 @@ export default function CohortHubPage() {
                             title="CBC Progress"
                             description="Track CBC progress and coverage for this cohort."
                             icon={LineChart}
-                            href={hasCBCPlugin && subjectCount > 0 ? `/cbc/progress?cohort=${cohort.id}` : undefined}
+                            href={hasCBCPlugin && subjectCount > 0 ? cbcProgressHref : undefined}
                             disabledReason={cbcWorkflowDisabledReason}
                             footerLabel={subjectCount > 0 ? 'View progress' : undefined}
                         />

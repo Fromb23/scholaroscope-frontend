@@ -22,6 +22,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { Select } from '@/app/components/ui/Select';
+import { getCbcBackLabel } from '@/app/plugins/cbc/lib/navigation';
 import type { MasteryLevel } from '@/app/plugins/cbc/types/cbc';
 import type { Subject } from '@/app/core/types/academic';
 
@@ -38,6 +39,7 @@ export function CBCCohortProgressPage() {
     const cohortId = Number(raw);
     const page = useCBCCohortProgressPage(cohortId);
     const summary = page.summary;
+    const backLabel = getCbcBackLabel(page.returnTo, 'Progress Overview');
 
     if (page.cohortLoading) {
         return (
@@ -59,7 +61,7 @@ export function CBCCohortProgressPage() {
             <Link href={page.returnTo ?? '/cbc/progress'}>
                 <Button variant="ghost" size="md">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    {page.returnTo ? 'Back' : 'Progress Overview'}
+                    {backLabel}
                 </Button>
             </Link>
 

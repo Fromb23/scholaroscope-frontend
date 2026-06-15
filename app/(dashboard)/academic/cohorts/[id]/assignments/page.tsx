@@ -329,6 +329,10 @@ export default function CohortAssignmentsPage() {
         visibleCohortSubjects.find((subject) => String(subject.id) === cohortSubjectFilter) ?? null
     ), [cohortSubjectFilter, visibleCohortSubjects]);
     const showingWorkspaceSelection = !cohortSubjectFilter;
+    const contextualBackHref = cohortSubjectFilter
+        ? `/academic/cohorts/${cohortId}/assignments`
+        : `/academic/cohorts/${cohortId}`;
+    const contextualBackLabel = cohortSubjectFilter ? 'Back to Assignments' : 'Back to Cohort';
     const assignmentFiltersActive = Boolean(
         search.trim() || statusFilter || deliveryModeFilter || evaluationTypeFilter
     );
@@ -373,10 +377,10 @@ export default function CohortAssignmentsPage() {
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="space-y-3">
                 <div>
-                    <Link href={`/academic/cohorts/${cohortId}`}>
+                    <Link href={contextualBackHref}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Cohort
+                            {contextualBackLabel}
                         </Button>
                     </Link>
                 </div>

@@ -19,6 +19,7 @@ import {
 import type { Subject } from '@/app/core/types/academic';
 import type { MasteryLevel, MasteryDistribution } from '@/app/plugins/cbc/types/cbc';
 import type { CBCInstructorSubjectSelection } from '@/app/plugins/cbc/lib/visibility';
+import { sanitizeInternalReturnTo } from '@/app/plugins/cbc/lib/navigation';
 import { Select } from '@/app/components/ui/Select';
 
 // ============================================================================
@@ -41,9 +42,11 @@ export function CBCNav() {
     const next = new URLSearchParams();
     const subject = searchParams.get('subject');
     const cohort = searchParams.get('cohort');
+    const returnTo = sanitizeInternalReturnTo(searchParams.get('returnTo'));
 
     if (subject) next.set('subject', subject);
     if (cohort) next.set('cohort', cohort);
+    if (returnTo) next.set('returnTo', returnTo);
 
     return next.toString();
   }, [searchParams]);

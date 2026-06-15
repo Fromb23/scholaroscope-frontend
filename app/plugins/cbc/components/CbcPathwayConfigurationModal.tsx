@@ -53,7 +53,7 @@ export function CbcPathwayConfigurationModal({
         }
 
         if (!value.pathwayId || !value.trackId || !value.combinationId) {
-            setError('Select pathway, track, and subject combination before saving.');
+            setError('Select the pathway first, then choose the track and official combination before saving.');
             return;
         }
 
@@ -87,7 +87,7 @@ export function CbcPathwayConfigurationModal({
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
                     <p className="text-sm font-semibold text-gray-900">CBC Senior School Configuration</p>
                     <p className="mt-1 text-sm text-gray-600">
-                        Set the pathway, track, and subject combination that controls which pathway subjects can be linked to this cohort.
+                        Select the pathway first, review the ministry subject catalogue, then store the track and official combination needed for the cohort profile.
                     </p>
                 </div>
 

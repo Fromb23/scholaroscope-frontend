@@ -63,7 +63,9 @@ function resolveCbcSubjectEligibility(
 
     const blockedSubject = snapshot.blocked.find((candidate) => matchesAllowedSubject(subject, candidate));
     if (blockedSubject) {
-        return blockedSubject.reason;
+        return blockedSubject.blocked_reason
+            ?? blockedSubject.reason
+            ?? 'This subject is not allowed for the cohort pathway configuration.';
     }
 
     const allowedSubject = [...snapshot.core, ...snapshot.pathway_subjects]
@@ -74,11 +76,11 @@ function resolveCbcSubjectEligibility(
     }
 
     if (allowedSubject.locked) {
-        return allowedSubject.reason ?? 'This CBC subject is locked for the cohort.';
+        return allowedSubject.blocked_reason ?? allowedSubject.reason ?? 'This CBC subject is locked for the cohort.';
     }
 
     if (allowedSubject.subject_id === null) {
-        return allowedSubject.reason ?? 'Subject mirror is not available yet.';
+        return allowedSubject.blocked_reason ?? allowedSubject.reason ?? 'Subject mirror is not available yet.';
     }
 
     return null;
@@ -160,7 +162,7 @@ export function AssignSubjectToCohortModal({
                     if (alreadyLinked) {
                         disabledReason = 'Subject already linked.';
                     } else if (setupRequired) {
-                        disabledReason = 'Configure CBC pathway first.';
+                        disabledReason = 'Configure CBC pathway before linking pathway subjects.';
                     } else if (isCbcSeniorSubject) {
                         disabledReason = resolveCbcSubjectEligibility(subject, allowedSubjects);
                     }
@@ -309,7 +311,7 @@ export function AssignSubjectToCohortModal({
                                 <div key={target.cohort.id} className="flex items-start justify-between gap-3">
                                     <div className="space-y-1">
                                         <p className="text-sm font-medium text-amber-900">{target.cohort.name}</p>
-                                        <p className="text-xs text-amber-800">Configure CBC pathway first.</p>
+                                        <p className="text-xs text-amber-800">Configure CBC pathway before linking pathway subjects.</p>
                                     </div>
                                     <Link href={`/academic/cohorts/${target.cohort.id}`} className="shrink-0">
                                         <Button type="button" variant="secondary" size="sm">
