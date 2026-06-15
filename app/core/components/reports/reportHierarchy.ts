@@ -105,12 +105,12 @@ export const REPORT_HIERARCHY_STEPS: ReportHierarchyStep[] = [
 export function getAdminReportNavigationItems() {
   return [
     {
-      name: 'Overview',
+      name: 'Reports Overview',
       href: '/reports',
       icon: FileBarChart,
     },
     ...REPORT_HIERARCHY_ITEMS.map((item) => ({
-      name: item.name,
+      name: item.key === 'instructors' ? 'Instructor Reports' : item.name,
       href: item.href,
       icon: item.icon,
     })),

@@ -304,6 +304,11 @@ export function getInstructorNav(pluginContext: PluginNavigationContext): Naviga
         children: [
           { name: 'Overview', href: '/reports/instructor', icon: LayoutDashboard },
           {
+            name: 'Teacher Report',
+            href: '/reports/instructor/teacher-report',
+            icon: ClipboardCheck,
+          },
+          {
             name: 'Class Subjects',
             href: '/reports/instructor/cohort-subjects',
             icon: BookOpen,

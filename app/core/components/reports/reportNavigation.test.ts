@@ -75,6 +75,13 @@ describe('report navigation helpers', () => {
     );
   });
 
+  it('falls back to the instructor reports index when the instructor id is invalid', () => {
+    expect(buildInstructorReportHref(Number.NaN, {
+      term: 7,
+      returnTo: '/admin/instructors/13/progress',
+    })).toBe('/reports/instructors?term=7&returnTo=%2Fadmin%2Finstructors%2F13%2Fprogress');
+  });
+
   it('builds CBC progress routes with preserved report context', () => {
     expect(buildCbcLearnerProgressHref(9, {
       subject: 8,

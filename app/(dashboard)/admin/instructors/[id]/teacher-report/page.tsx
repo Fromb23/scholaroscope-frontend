@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
 
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) {
@@ -38,9 +39,7 @@ export default async function LegacyAdminTeacherReportRedirect({
   const returnTo = firstQueryValue(query.returnTo) ?? `/admin/instructors/${id}/progress`;
   nextParams.set('returnTo', returnTo);
 
-  const href = nextParams.toString()
-    ? `/reports/instructors/${id}?${nextParams.toString()}`
-    : `/reports/instructors/${id}`;
+  const href = buildInstructorReportHref(Number(id), nextParams);
 
   redirect(href);
 }
