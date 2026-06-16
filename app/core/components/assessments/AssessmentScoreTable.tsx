@@ -6,6 +6,7 @@ import type { Column } from '@/app/components/ui/Table';
 import {
     AssessmentScore,
     AssessmentDetail,
+    AssessmentParticipationRecord,
     AssessmentScoreStatus,
     type AssessmentScoreDraft,
     getAssessmentScoreDraftValue,
@@ -17,6 +18,7 @@ interface Props {
     draft: Record<number, AssessmentScoreDraft>;
     loading: boolean;
     readOnly: boolean;
+    participationByStudentId?: Map<number, AssessmentParticipationRecord>;
     onScoreChange: (studentId: number, field: keyof AssessmentScoreDraft, value: number | string | null) => void;
 }
 
@@ -43,7 +45,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function AssessmentScoreTable({
-    assessment, scores, draft, loading, readOnly, onScoreChange,
+    assessment, scores, draft, loading, readOnly, participationByStudentId, onScoreChange,
 }: Props) {
     const resolveRowValues = (row: AssessmentScore) => {
         const scoreDraft = draft[row.student];
@@ -138,6 +140,36 @@ export function AssessmentScoreTable({
     const renderStatusSelect = (row: AssessmentScore) => {
         const { currentStatus, hasRecordedGrade } = resolveRowValues(row);
         const statusLabel = STATUS_LABELS[currentStatus] ?? row.status_display ?? 'Needs review';
+        const participationRecord = participationByStudentId?.get(row.student);
+
+        if (assessment.participation_mode === 'TRACKED') {
+            if (hasRecordedGrade) {
+                return (
+                    <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                        {STATUS_LABELS.GRADED}
+                    </span>
+                );
+            }
+
+            if (currentStatus === AssessmentScoreStatus.ABSENT) {
+                return (
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        {statusLabel}
+                    </span>
+                );
+            }
+
+            return (
+                <span className={[
+                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                    participationRecord?.makeup_completed_at
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-amber-100 text-amber-700',
+                ].join(' ')}>
+                    {participationRecord?.makeup_completed_at ? 'Makeup completed' : 'Ready for grading'}
+                </span>
+            );
+        }
 
         if (hasRecordedGrade) {
             return (
@@ -183,10 +215,19 @@ export function AssessmentScoreTable({
         {
             key: 'student_name', header: 'Student', sortable: true,
             render: row => (
-                <Link href={`/learners/${row.student}`}
-                    className="font-medium text-blue-600 hover:underline">
-                    {row.student_name}
-                </Link>
+                <div>
+                    <Link href={`/learners/${row.student}`}
+                        className="font-medium text-blue-600 hover:underline">
+                        {row.student_name}
+                    </Link>
+                    {participationByStudentId?.get(row.student)?.makeup_completed_at ? (
+                        <div className="mt-1">
+                            <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                Makeup completed
+                            </span>
+                        </div>
+                    ) : null}
+                </div>
             ),
         },
         {
@@ -229,7 +270,9 @@ export function AssessmentScoreTable({
                     </div>
                 ) : scores.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-                        No students enrolled in this assessment
+                        {assessment.participation_mode === 'TRACKED'
+                            ? 'No learners are ready for grading yet'
+                            : 'No students enrolled in this assessment'}
                     </div>
                 ) : (
                     scores.map((row) => (
@@ -247,6 +290,13 @@ export function AssessmentScoreTable({
                                 <p className="mt-1 text-sm text-gray-500">
                                     Admission No. {row.student_admission || '—'}
                                 </p>
+                                {participationByStudentId?.get(row.student)?.makeup_completed_at ? (
+                                    <div className="mt-2">
+                                        <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                            Makeup completed
+                                        </span>
+                                    </div>
+                                ) : null}
                             </div>
 
                             <div className="mt-4 space-y-4">
@@ -287,7 +337,11 @@ export function AssessmentScoreTable({
                         loading={loading}
                         enableSearch={false}
                         enableSort={false}
-                        emptyMessage="No students enrolled in this assessment"
+                        emptyMessage={
+                            assessment.participation_mode === 'TRACKED'
+                                ? 'No learners are ready for grading yet'
+                                : 'No students enrolled in this assessment'
+                        }
                     />
                 </div>
             </div>

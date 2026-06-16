@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ClipboardList, Save } from 'lucide-react';
+import { ArrowLeft, CheckSquare, ClipboardList, Save, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
@@ -17,8 +17,9 @@ import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
+import { tracksAssessmentParticipation } from '@/app/core/lib/assessmentParticipation';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
-import { ASSESSMENT_TYPE_OPTIONS } from '@/app/core/types/assessment';
+import { ASSESSMENT_TYPE_OPTIONS, AssessmentParticipationMode } from '@/app/core/types/assessment';
 import { useAuth } from '@/app/context/AuthContext';
 
 const EVALUATION_TYPES = [
@@ -193,7 +194,13 @@ export function CreateAssessmentPage() {
             return;
         }
         const result = await submit();
-        if (result) router.push(`/assessments/${result.id}`);
+        if (!result) {
+            return;
+        }
+        const nextSection = tracksAssessmentParticipation(form.participation_mode)
+            ? '?section=participation'
+            : '';
+        router.push(`/assessments/${result.id}${nextSection}`);
     };
 
     if (isInstructor && !instructorAccess.hasAssignedCohortSubjects) {
@@ -348,6 +355,55 @@ export function CreateAssessmentPage() {
                                 onChange={e => setField('assessment_date', e.target.value)}
                             />
                         </div>
+                    </div>
+                </Card>
+
+                <Card>
+                    <div className="p-6">
+                        <div className="mb-4 flex items-center gap-2">
+                            <Users className="h-5 w-5 text-gray-400" />
+                            <h2 className="text-lg font-semibold text-gray-900">Who Sat</h2>
+                        </div>
+                        <fieldset className="space-y-3">
+                            <legend className="text-sm font-medium text-gray-700">
+                                Track who sat for this assessment?
+                            </legend>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setField('participation_mode', AssessmentParticipationMode.NONE)}
+                                    className={[
+                                        'rounded-lg border px-4 py-4 text-left transition-colors',
+                                        form.participation_mode === AssessmentParticipationMode.NONE
+                                            ? 'border-blue-300 bg-blue-50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300',
+                                    ].join(' ')}
+                                >
+                                    <p className="text-sm font-medium text-gray-900">No, just enter scores</p>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        Use the normal grading list from active learners.
+                                    </p>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setField('participation_mode', AssessmentParticipationMode.TRACKED)}
+                                    className={[
+                                        'rounded-lg border px-4 py-4 text-left transition-colors',
+                                        form.participation_mode === AssessmentParticipationMode.TRACKED
+                                            ? 'border-blue-300 bg-blue-50'
+                                            : 'border-gray-200 bg-white hover:border-gray-300',
+                                    ].join(' ')}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <CheckSquare className="h-4 w-4 text-gray-500" />
+                                        <p className="text-sm font-medium text-gray-900">Yes, mark who sat before grading</p>
+                                    </div>
+                                    <p className="mt-1 text-sm text-gray-500">
+                                        Teachers mark sat or missed, then only ready learners enter grading.
+                                    </p>
+                                </button>
+                            </div>
+                        </fieldset>
                     </div>
                 </Card>
 

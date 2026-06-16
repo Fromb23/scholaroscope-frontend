@@ -7,6 +7,9 @@ import {
 import {
   Assessment,
   AssessmentDetail,
+  AssessmentMakeupCompletionData,
+  AssessmentParticipationBulkUpdateData,
+  AssessmentParticipationRosterResponse,
   AssessmentScore,
   AssessmentScoreStatus,
   RubricScale,
@@ -148,8 +151,53 @@ export const assessmentAPI = {
     const response = await apiClient.post<Assessment>(`/assessments/${id}/activate/`);
     return response.data;
   },
-  finalize: async (id: number): Promise<Assessment> => {
-    const response = await apiClient.post<Assessment>(`/assessments/${id}/finalize/`);
+  finalize: async (
+    id: number,
+    data?: { finalize_unresolved_absent?: boolean }
+  ): Promise<Assessment> => {
+    const response = await apiClient.post<Assessment>(`/assessments/${id}/finalize/`, data ?? {});
+    return response.data;
+  },
+
+  getParticipationRoster: async (
+    id: number,
+    bucket?: 'expected' | 'missed' | 'late_or_not_part' | 'ready_for_grading'
+  ): Promise<AssessmentParticipationRosterResponse> => {
+    const response = await apiClient.get<AssessmentParticipationRosterResponse>(
+      `/assessments/${id}/participation/roster/`,
+      {
+        params: {
+          bucket,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  markParticipation: async (
+    id: number,
+    data: AssessmentParticipationBulkUpdateData
+  ): Promise<{ detail: string; summary: AssessmentParticipationRosterResponse['summary']; records: AssessmentParticipationRosterResponse['records'] }> => {
+    const response = await apiClient.post<{
+      detail: string;
+      summary: AssessmentParticipationRosterResponse['summary'];
+      records: AssessmentParticipationRosterResponse['records'];
+    }>(
+      `/assessments/${id}/participation/mark/`,
+      data
+    );
+    return response.data;
+  },
+
+  markMakeupCompleted: async (
+    id: number,
+    data: AssessmentMakeupCompletionData
+  ): Promise<{ detail: string; summary: AssessmentParticipationRosterResponse['summary']; record: AssessmentParticipationRosterResponse['records'][number] }> => {
+    const response = await apiClient.post<{
+      detail: string;
+      summary: AssessmentParticipationRosterResponse['summary'];
+      record: AssessmentParticipationRosterResponse['records'][number];
+    }>(`/assessments/${id}/participation/makeup/`, data);
     return response.data;
   },
 

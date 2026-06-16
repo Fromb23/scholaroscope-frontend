@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import { useAssessmentDetail, useAssessmentScores } from '@/app/core/hooks/useAssessments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { tracksAssessmentParticipation } from '@/app/core/lib/assessmentParticipation';
 import { useAuth } from '@/app/context/AuthContext';
 import {
+    AssessmentParticipationRecord,
+    AssessmentParticipationStatus,
+    AssessmentParticipationSummary,
     AssessmentScoreStatus,
     AssessmentStatus,
     calculateScoreStats,
@@ -48,7 +52,7 @@ export function useAssessmentDetailPage() {
         deleteAssessment,
     } = useAssessmentDetail(assessmentId);
 
-    const { scores, loading: scoresLoading, bulkEntry } = useAssessmentScores({
+    const { scores, loading: scoresLoading, bulkEntry, refetch: refetchScores } = useAssessmentScores({
         assessment: assessmentId,
         page_size: 1000,
     });
@@ -61,11 +65,19 @@ export function useAssessmentDetailPage() {
     const [exportError, setExportError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [participationSummary, setParticipationSummary] = useState<AssessmentParticipationSummary | null>(null);
+    const [participationRecords, setParticipationRecords] = useState<AssessmentParticipationRecord[]>([]);
+    const [participationLoaded, setParticipationLoaded] = useState(false);
+    const [participationLoading, setParticipationLoading] = useState(false);
+    const [participationSaving, setParticipationSaving] = useState(false);
+    const [participationError, setParticipationError] = useState<string | null>(null);
+    const [makeupSavingStudentId, setMakeupSavingStudentId] = useState<number | null>(null);
     const seededStudentFilterRef = useRef<string | null>(null);
 
     const isFinalized = assessment?.status === AssessmentStatus.FINALIZED;
     const isDraft = assessment?.status === AssessmentStatus.DRAFT;
     const isActive = assessment?.status === AssessmentStatus.ACTIVE;
+    const isTrackedParticipation = tracksAssessmentParticipation(assessment?.participation_mode);
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
     const isAssignedInstructor = Boolean(
         activeRole === 'INSTRUCTOR'
@@ -80,6 +92,10 @@ export function useAssessmentDetailPage() {
     const canScore = assessment?.can_score ?? (Boolean(assessment) && canManageAssessment && !isFinalized);
     const canExportPdf = canManageAssessment;
     const sortedScores = useMemo(() => sortAssessmentScores(scores), [scores]);
+    const participationByStudentId = useMemo(
+        () => new Map(participationRecords.map((record) => [record.student, record])),
+        [participationRecords]
+    );
     const rubricLevelById = useMemo(() => new Map(
         (assessment?.rubric_levels ?? []).map((level) => [level.id, level])
     ), [assessment?.rubric_levels]);
@@ -138,6 +154,23 @@ export function useAssessmentDetailPage() {
     const scoreEntryFocusRequest = focusTarget === 'score-entry'
         ? `${assessmentId}:${focusedStudentId ?? 'all'}`
         : null;
+
+    useEffect(() => {
+        if (!assessment) {
+            setParticipationSummary(null);
+            setParticipationRecords([]);
+            setParticipationLoaded(false);
+            setParticipationError(null);
+            return;
+        }
+
+        setParticipationSummary(assessment.participation_summary ?? null);
+        if (!tracksAssessmentParticipation(assessment.participation_mode)) {
+            setParticipationRecords([]);
+            setParticipationLoaded(false);
+            setParticipationError(null);
+        }
+    }, [assessment]);
 
     useEffect(() => {
         if (!focusedStudentId || scoresLoading) {
@@ -199,6 +232,103 @@ export function useAssessmentDetailPage() {
                 [studentId]: nextDraft,
             };
         });
+    };
+
+    const loadParticipationRoster = useCallback(async (force = false) => {
+        if (!assessmentId || !isTrackedParticipation) {
+            return;
+        }
+        if (!force && participationLoaded) {
+            return;
+        }
+
+        setParticipationLoading(true);
+        setParticipationError(null);
+        try {
+            const data = await assessmentAPI.getParticipationRoster(assessmentId);
+            setParticipationRecords(data.records);
+            setParticipationSummary(data.summary);
+            setParticipationLoaded(true);
+        } catch (error) {
+            setParticipationError(
+                extractErrorMessage(error as ApiError, 'Failed to load assessment participation')
+            );
+        } finally {
+            setParticipationLoading(false);
+        }
+    }, [assessmentId, isTrackedParticipation, participationLoaded]);
+
+    useEffect(() => {
+        if (
+            searchParams.get('section') === 'participation'
+            && isTrackedParticipation
+            && !participationLoaded
+            && !participationLoading
+        ) {
+            void loadParticipationRoster();
+        }
+    }, [
+        isTrackedParticipation,
+        loadParticipationRoster,
+        participationLoaded,
+        participationLoading,
+        searchParams,
+    ]);
+
+    const handleSaveParticipation = async (
+        records: {
+            student_id: number;
+            participation_status: AssessmentParticipationStatus;
+        }[]
+    ) => {
+        if (!assessmentId) {
+            return;
+        }
+        setParticipationSaving(true);
+        setParticipationError(null);
+        try {
+            await assessmentAPI.markParticipation(assessmentId, { records });
+            await Promise.all([
+                loadParticipationRoster(true),
+                refetch(),
+                refetchScores(),
+            ]);
+        } catch (error) {
+            setParticipationError(
+                extractErrorMessage(error as ApiError, 'Failed to update assessment participation')
+            );
+        } finally {
+            setParticipationSaving(false);
+        }
+    };
+
+    const handleMarkMakeupCompleted = async (
+        studentId: number,
+        completed = true,
+    ) => {
+        if (!assessmentId) {
+            return;
+        }
+        setMakeupSavingStudentId(studentId);
+        setParticipationError(null);
+        try {
+            await assessmentAPI.markMakeupCompleted(assessmentId, {
+                student_id: studentId,
+                completed,
+                makeup_note: completed ? 'Completed during supervised makeup.' : '',
+            });
+            await Promise.all([
+                loadParticipationRoster(true),
+                refetch(),
+                refetchScores(),
+            ]);
+        } catch (error) {
+            setParticipationError(
+                extractErrorMessage(error as ApiError, 'Failed to update makeup completion')
+            );
+        } finally {
+            setMakeupSavingStudentId(null);
+        }
     };
 
     const handleSaveScores = async () => {
@@ -378,7 +508,20 @@ export function useAssessmentDetailPage() {
             return;
         }
         try {
-            await finalizeAssessment();
+            if (
+                isTrackedParticipation
+                && (participationSummary?.pending_makeup_count ?? 0) > 0
+            ) {
+                const confirmFinalize = window.confirm(
+                    `${participationSummary?.pending_makeup_count ?? 0} learners missed this assessment and have not completed makeup. Finalize them as absent?`
+                );
+                if (!confirmFinalize) {
+                    return;
+                }
+                await finalizeAssessment({ finalize_unresolved_absent: true });
+            } else {
+                await finalizeAssessment();
+            }
         } catch (error) {
             setSaveError(error instanceof Error ? error.message : 'Failed to finalize');
         }
@@ -393,6 +536,14 @@ export function useAssessmentDetailPage() {
         deleting,
         scores: filteredScores,
         scoresLoading,
+        participationSummary,
+        participationRecords,
+        participationByStudentId,
+        participationLoaded,
+        participationLoading,
+        participationSaving,
+        participationError,
+        makeupSavingStudentId,
         draft,
         saving,
         saveError,
@@ -420,11 +571,15 @@ export function useAssessmentDetailPage() {
         setDeleteError,
         setExportError,
         setSearchQuery,
+        loadParticipationRoster,
+        handleSaveParticipation,
+        handleMarkMakeupCompleted,
         handleScoreChange,
         handleSaveScores,
         handleDownloadPdf,
         handleDelete,
         handleActivate,
         handleFinalize,
+        isTrackedParticipation,
     };
 }
