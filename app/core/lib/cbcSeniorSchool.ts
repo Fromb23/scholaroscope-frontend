@@ -1,3 +1,5 @@
+import { normalizeAcademicLevel } from '@/app/core/lib/curriculumLevels';
+
 interface CurriculumLevelLike {
     curriculum_type?: string | null;
     level?: string | null;
@@ -7,9 +9,7 @@ interface CbcProfileLike {
     cbc_profile?: unknown | null;
 }
 
-export function normalizeAcademicLevel(level: string | null | undefined): string {
-    return (level ?? '').replace(/\s+/g, '').toLowerCase();
-}
+export { normalizeAcademicLevel } from '@/app/core/lib/curriculumLevels';
 
 export function isCbcSeniorLevel(level: string | null | undefined): boolean {
     const normalized = normalizeAcademicLevel(level);

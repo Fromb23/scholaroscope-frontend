@@ -19,16 +19,16 @@ import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/Curr
 import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { cohortAPI } from '@/app/core/api/academic';
-import {
-    CbcPathwayConfigurationFields,
-    type CbcPathwayConfigurationValue,
-} from '@/app/core/components/cohorts/CbcPathwayConfigurationFields';
 import { useSubjects } from '@/app/core/hooks/useAcademic';
 import { isCbcSeniorSchoolEntity } from '@/app/core/lib/cbcSeniorSchool';
+import {
+    getCurriculumLevelOptions,
+    isStructuredCurriculumLevel,
+    normalizeAcademicLevel,
+} from '@/app/core/lib/curriculumLevels';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort, CohortDetail, AcademicYear, Curriculum } from '@/app/core/types/academic';
-import type { OfficialPathwayCatalog } from '@/app/core/types/curriculumExtensions';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import { renderCohortSubjectPanelExtension } from '@/app/core/registry/cohortSubjectPanels';
 
@@ -153,8 +153,8 @@ function KernelSubjectPanel({
 
   const unlinked = allSubjects.filter((s) => {
       if (linkedIds.has(s.id)) return false;
-      const cohortNorm = cohortLevel.toLowerCase().replace(/\s+/g, '');
-      const subjectNorm = s.level.toLowerCase().replace(/\s+/g, '');
+      const cohortNorm = normalizeAcademicLevel(cohortLevel);
+      const subjectNorm = normalizeAcademicLevel(s.level);
       return cohortNorm === subjectNorm;
     });
 
@@ -297,12 +297,14 @@ export function ManageCohortSubjectsModal({
     onSubjectsChanged,
 }: ManageCohortSubjectsModalProps) {
     const isCbcSeniorCohort = isCbcSeniorSchoolEntity(cohort);
+    const hasSubjects = (cohort.subjects?.length ?? 0) > 0;
+    const modalActionLabel = hasSubjects ? 'Manage Class Subjects' : 'Set Up Class Subjects';
 
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`${isCbcSeniorCohort ? 'Set Up Subjects for' : 'Link Subjects for'} ${cohort.name}`}
+            title={`${modalActionLabel} for ${cohort.name}`}
             size="lg"
         >
             <div className="space-y-4">
@@ -345,9 +347,11 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
     const [copySubjects, setCopySubjects] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const structuredLevelMode = isStructuredCurriculumLevel(cohort.curriculum_type);
+    const structuredLevelOptions = getCurriculumLevelOptions(cohort.curriculum_type);
 
     const handleRollover = async () => {
-        if (!newLevel.trim()) { setError('New grade level is required.'); return; }
+        if (!newLevel.trim()) { setError('New level is required.'); return; }
         setSaving(true); setError(null);
         try {
             await cohortAPI.rollover(cohort.id, {
@@ -385,13 +389,26 @@ export function RolloverModal({ cohort, onClose, onSuccess }: RolloverModalProps
                     Source: <span className="font-medium text-gray-700">{cohort.name}</span>
                 </p>
 
-                <Input
-                    label="New Grade Level"
-                    value={newLevel}
-                    onChange={e => setNewLevel(e.target.value)}
-                    placeholder="e.g. Form 4, Grade 8"
-                    required
-                />
+                {structuredLevelMode ? (
+                    <Select
+                        label="New Level"
+                        value={newLevel}
+                        onChange={e => setNewLevel(e.target.value)}
+                        required
+                        options={[
+                            { value: '', label: 'Select level' },
+                            ...structuredLevelOptions,
+                        ]}
+                    />
+                ) : (
+                    <Input
+                        label="New Level"
+                        value={newLevel}
+                        onChange={e => setNewLevel(e.target.value)}
+                        placeholder="e.g. Form 4, Grade 8"
+                        required
+                    />
+                )}
 
                 <Input
                     label="Stream (optional)"
@@ -431,9 +448,6 @@ interface CohortFormState {
     curriculum: string;
     level: string;
     stream: string;
-    pathway_id: string;
-    track_id: string;
-    combination_id: string;
 }
 
 interface CohortFormModalProps {
@@ -443,14 +457,13 @@ interface CohortFormModalProps {
     academicYears: AcademicYear[];
     curricula: Curriculum[];
     lockedCurriculum?: Curriculum | null;
-    officialPathwayCatalog?: OfficialPathwayCatalog | null;
     onSave: (data: CohortFormState, isEdit: boolean, cohortId?: number) => Promise<void>;
     initialData: CohortFormState;
 }
 
 export function CohortFormModal({
     isOpen, onClose, editingCohort,
-    academicYears, curricula, lockedCurriculum, officialPathwayCatalog, onSave, initialData,
+    academicYears, curricula, lockedCurriculum, onSave, initialData,
 }: CohortFormModalProps) {
     const [formData, setFormData] = useState<CohortFormState>(initialData);
     const [formError, setFormError] = useState<string | null>(null);
@@ -484,10 +497,8 @@ export function CohortFormModal({
         ?? null;
     const effectiveCurriculumType = effectiveCurriculum?.curriculum_type
         ?? (editingCohort?.curriculum === selectedCurriculumId ? editingCohort.curriculum_type : null);
-    const seniorCbcMode = isCbcSeniorSchoolEntity({
-        curriculum_type: effectiveCurriculumType,
-        level: formData.level || editingCohort?.level || '',
-    });
+    const structuredLevelMode = isStructuredCurriculumLevel(effectiveCurriculumType);
+    const structuredLevelOptions = getCurriculumLevelOptions(effectiveCurriculumType);
     const lifecycle = useCurriculumLifecycleGuard({
         curriculumId: effectiveCurriculum?.id ?? editingCohort?.curriculum ?? null,
         curriculumType: effectiveCurriculumType ?? null,
@@ -496,22 +507,23 @@ export function CohortFormModal({
     });
 
     useEffect(() => {
-        if (!seniorCbcMode) {
-            setFormData((prev) => (
-                prev.pathway_id || prev.track_id || prev.combination_id
-                    ? { ...prev, pathway_id: '', track_id: '', combination_id: '' }
-                    : prev
-            ));
+        if (!structuredLevelMode || !formData.level) {
+            return;
         }
-    }, [seniorCbcMode]);
+
+        const normalizedLevel = normalizeAcademicLevel(formData.level);
+        const hasMatchingStructuredOption = structuredLevelOptions.some(
+            (option) => option.value === normalizedLevel,
+        );
+
+        if (hasMatchingStructuredOption && normalizedLevel !== formData.level) {
+            setFormData((prev) => ({ ...prev, level: normalizedLevel }));
+        }
+    }, [formData.level, structuredLevelMode, structuredLevelOptions]);
 
     const handleSubmit = async () => {
         if (!formData.academic_year || !formData.curriculum || !formData.level) {
-            setFormError('Academic year, curriculum, and grade level are required.');
-            return;
-        }
-        if (seniorCbcMode && (!formData.pathway_id || !formData.track_id || !formData.combination_id)) {
-            setFormError('CBC senior cohorts require pathway, track, and official subject combination selection.');
+            setFormError('Academic year, curriculum, and level are required.');
             return;
         }
         if (!lifecycle.allowed) {
@@ -521,7 +533,9 @@ export function CohortFormModal({
         setSaving(true); setFormError(null);
         try {
             await onSave(formData, !!editingCohort, editingCohort?.id);
-            onClose();
+            if (editingCohort) {
+                onClose();
+            }
         } catch (err) {
             setFormError(extractErrorMessage(err as ApiError, 'Failed to save cohort.'));
         } finally { setSaving(false); }
@@ -586,14 +600,28 @@ export function CohortFormModal({
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <Input
-                        label="Grade Level"
-                        value={formData.level}
-                        onChange={e => setFormData(prev => ({ ...prev, level: e.target.value }))}
-                        disabled={!lifecycle.allowed}
-                        placeholder="e.g. Form 3, Grade 10"
-                        required
-                    />
+                    {structuredLevelMode ? (
+                        <Select
+                            label="Level"
+                            value={formData.level}
+                            onChange={e => setFormData(prev => ({ ...prev, level: e.target.value }))}
+                            disabled={!lifecycle.allowed}
+                            required
+                            options={[
+                                { value: '', label: 'Select level' },
+                                ...structuredLevelOptions,
+                            ]}
+                        />
+                    ) : (
+                        <Input
+                            label="Level"
+                            value={formData.level}
+                            onChange={e => setFormData(prev => ({ ...prev, level: e.target.value }))}
+                            disabled={!lifecycle.allowed}
+                            placeholder="e.g. Form 3, Grade 10"
+                            required
+                        />
+                    )}
                     <Input
                         label="Stream (optional)"
                         value={formData.stream}
@@ -602,40 +630,6 @@ export function CohortFormModal({
                         placeholder="e.g. Blue, East, A"
                     />
                 </div>
-
-                {seniorCbcMode ? (
-                    <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-                        <div>
-                            <p className="text-sm font-semibold text-gray-900">Class pathway</p>
-                            <p className="mt-1 text-xs text-gray-600">
-                                Choose the pathway for this class. Advanced details stay inside the section below.
-                            </p>
-                        </div>
-
-                        {officialPathwayCatalog ? (
-                            <CbcPathwayConfigurationFields
-                                catalog={officialPathwayCatalog}
-                                level={formData.level}
-                                value={{
-                                    pathwayId: formData.pathway_id,
-                                    trackId: formData.track_id,
-                                    combinationId: formData.combination_id,
-                                }}
-                                disabled={!lifecycle.allowed}
-                                onChange={(value: CbcPathwayConfigurationValue) => setFormData((prev) => ({
-                                    ...prev,
-                                    pathway_id: value.pathwayId,
-                                    track_id: value.trackId,
-                                    combination_id: value.combinationId,
-                                }))}
-                            />
-                        ) : (
-                            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                                CBC pathway tools are unavailable right now.
-                            </div>
-                        )}
-                    </div>
-                ) : null}
 
                 <p className="text-xs text-gray-400">
                     Cohort name is auto-generated from level, stream, and academic year.
@@ -690,9 +684,7 @@ export function CohortFormModal({
 
                 {!editingCohort && (
                     <p className="text-xs text-gray-400 text-center">
-                        {seniorCbcMode
-                            ? 'After creation, the cohort keeps the selected CBC combination as structured metadata. Subject linking stays constrained by that backend profile.'
-                            : 'You can link subjects after creating the cohort by editing it.'}
+                        Open the cohort page after creation to complete class subject setup.
                     </p>
                 )}
             </div>
