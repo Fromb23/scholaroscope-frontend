@@ -237,7 +237,6 @@ export function AssessmentDetailPage() {
             {isTrackedParticipation && (
                 <div id="assessment-participation">
                     <AssessmentParticipationSection
-                        assessment={assessment}
                         summary={participationSummary}
                         records={participationRecords}
                         loaded={participationLoaded}
