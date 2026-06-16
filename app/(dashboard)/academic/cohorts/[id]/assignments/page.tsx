@@ -261,7 +261,10 @@ export default function CohortAssignmentsPage() {
         [assignments]
     );
 
-    const buildAssignmentsHref = useCallback((nextCohortSubjectId?: string | null) => {
+    const buildAssignmentsHref = useCallback((
+        nextCohortSubjectId?: string | null,
+        options?: { includeHighlightAssignment?: boolean },
+    ) => {
         const nextSearchParams = new URLSearchParams();
         const trimmedSearch = search.trim();
 
@@ -280,7 +283,7 @@ export default function CohortAssignmentsPage() {
         if (trimmedSearch) {
             nextSearchParams.set('search', trimmedSearch);
         }
-        if (highlightAssignmentId) {
+        if (options?.includeHighlightAssignment !== false && highlightAssignmentId) {
             nextSearchParams.set('highlightAssignment', String(highlightAssignmentId));
         }
 
@@ -292,6 +295,10 @@ export default function CohortAssignmentsPage() {
     const assignmentsHref = useMemo(
         () => buildAssignmentsHref(cohortSubjectFilter || null),
         [buildAssignmentsHref, cohortSubjectFilter]
+    );
+    const assignmentPickerHref = useMemo(
+        () => buildAssignmentsHref(null, { includeHighlightAssignment: false }),
+        [buildAssignmentsHref]
     );
     const buildAssignmentDetailHref = (nextAssignmentId: number) =>
         `/academic/cohorts/${cohortId}/assignments/${nextAssignmentId}?${new URLSearchParams({
@@ -330,7 +337,7 @@ export default function CohortAssignmentsPage() {
     ), [cohortSubjectFilter, visibleCohortSubjects]);
     const showingWorkspaceSelection = !cohortSubjectFilter;
     const contextualBackHref = cohortSubjectFilter
-        ? `/academic/cohorts/${cohortId}/assignments`
+        ? assignmentPickerHref
         : `/academic/cohorts/${cohortId}`;
     const contextualBackLabel = cohortSubjectFilter ? 'Back to Assignments' : 'Back to Cohort';
     const assignmentFiltersActive = Boolean(

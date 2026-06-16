@@ -212,10 +212,23 @@ export const cbcPathwayAPI = {
     return response.data;
   },
 
-  configureCohortProfile: async (cohortId: number, offeredCombinationId: number) => {
+  configureCohortProfile: async (
+    cohortId: number,
+    payload: {
+      pathwayId: number;
+      trackId?: number | null;
+      combinationId?: number | null;
+      offeredCombinationId?: number | null;
+    }
+  ) => {
     const response = await apiClient.post<CbcCohortProfileSummary>(
       `/cbc/cohorts/${cohortId}/profile/`,
-      { offered_combination_id: offeredCombinationId }
+      {
+        pathway_id: payload.pathwayId,
+        track_id: payload.trackId ?? null,
+        combination_id: payload.combinationId ?? null,
+        offered_combination_id: payload.offeredCombinationId ?? null,
+      }
     );
     return response.data;
   },

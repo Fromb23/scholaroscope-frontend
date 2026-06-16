@@ -34,7 +34,6 @@ import { hasCbcPathwayProfile, isCbcSeniorSchoolEntity } from '@/app/core/lib/cb
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
-import { CbcPathwayConfigurationModal } from '@/app/plugins/cbc/components/CbcPathwayConfigurationModal';
 import { useCambridgeCohortSubjects } from '@/app/plugins/cambridge/hooks';
 
 interface MetadataItemProps {
@@ -183,33 +182,31 @@ function CambridgeCurriculumCards({
 }
 
 function CbcSeniorSetupSection({
-    pathwayConfigured,
+    ready,
     hasCBCPlugin,
     canConfigure,
     pathwayName,
     trackName,
     combinationCode,
     combinationName,
-    onConfigure,
-    onViewAllowedSubjects,
+    subjectCount,
+    onManageSubjects,
 }: {
-    pathwayConfigured: boolean;
+    ready: boolean;
     hasCBCPlugin: boolean;
     canConfigure: boolean;
     pathwayName?: string;
     trackName?: string;
     combinationCode?: string;
     combinationName?: string;
-    onConfigure: () => void;
-    onViewAllowedSubjects: () => void;
+    subjectCount: number;
+    onManageSubjects: () => void;
 }) {
     return (
         <section className="space-y-4">
             <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-gray-900">CBC Senior School Setup</h2>
-                <p className="text-sm text-gray-500">
-                    Pathway configuration determines which senior school subjects this cohort can offer.
-                </p>
+                <h2 className="text-xl font-semibold text-gray-900">Class Subject Setup</h2>
+                <p className="text-sm text-gray-500">Choose the subjects this class will offer.</p>
             </div>
 
             <Card>
@@ -221,35 +218,60 @@ function CbcSeniorSetupSection({
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="text-base font-semibold text-gray-900">
-                                    {pathwayConfigured ? 'Pathway configured' : 'Pathway not configured'}
+                                    Status: {ready ? 'Ready' : 'Needs setup'}
                                 </h3>
-                                <Badge variant={pathwayConfigured ? 'green' : 'warning'}>
-                                    {pathwayConfigured ? 'Configured' : 'Setup required'}
+                                <Badge variant={ready ? 'green' : 'warning'}>
+                                    {ready ? 'Ready' : 'Needs setup'}
                                 </Badge>
                             </div>
 
-                            {!pathwayConfigured ? (
+                            {!pathwayName ? (
                                 <p className="text-sm text-gray-600">
-                                    Configure CBC pathway before linking pathway subjects.
+                                    Choose the class pathway and the subjects this class will offer.
+                                </p>
+                            ) : !ready ? (
+                                <p className="text-sm text-gray-600">
+                                    This class belongs to {pathwayName}. Add the subjects this class will learn.
                                 </p>
                             ) : (
-                                <div className="grid gap-3 text-sm text-gray-700 sm:grid-cols-3">
-                                    <div>
-                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Pathway</p>
-                                        <p className="mt-1 font-semibold text-gray-900">{pathwayName}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Track</p>
-                                        <p className="mt-1 font-semibold text-gray-900">{trackName}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Subject Combination</p>
-                                        <p className="mt-1 font-semibold text-gray-900">
-                                            #{combinationCode} {combinationName ? `· ${combinationName}` : ''}
-                                        </p>
-                                    </div>
-                                </div>
+                                <p className="text-sm text-gray-600">
+                                    Required subjects are added. {subjectCount} subjects are available for teaching.
+                                </p>
                             )}
+
+                            {pathwayName ? (
+                                <p className="text-sm font-medium text-gray-900">This class follows {pathwayName}.</p>
+                            ) : null}
+
+                            {pathwayName || trackName || combinationCode || combinationName ? (
+                                <details className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                    <summary className="cursor-pointer list-none text-sm font-medium text-gray-800">
+                                        Advanced details
+                                    </summary>
+                                    <div className="mt-3 grid gap-3 text-sm text-gray-700 sm:grid-cols-3">
+                                        {pathwayName ? (
+                                            <div>
+                                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Pathway</p>
+                                                <p className="mt-1 font-semibold text-gray-900">{pathwayName}</p>
+                                            </div>
+                                        ) : null}
+                                        {trackName ? (
+                                            <div>
+                                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Track</p>
+                                                <p className="mt-1 font-semibold text-gray-900">{trackName}</p>
+                                            </div>
+                                        ) : null}
+                                        {combinationCode || combinationName ? (
+                                            <div>
+                                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Official grouping</p>
+                                                <p className="mt-1 font-semibold text-gray-900">
+                                                    {combinationName || combinationCode}
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </details>
+                            ) : null}
 
                             {!hasCBCPlugin ? (
                                 <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -262,20 +284,9 @@ function CbcSeniorSetupSection({
 
                     {canConfigure && hasCBCPlugin ? (
                         <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
-                            {pathwayConfigured ? (
-                                <>
-                                    <Button onClick={onViewAllowedSubjects}>
-                                        View Allowed Subjects
-                                    </Button>
-                                    <Button variant="secondary" onClick={onConfigure}>
-                                        Change Configuration
-                                    </Button>
-                                </>
-                            ) : (
-                                <Button onClick={onConfigure}>
-                                    Configure CBC Pathway
-                                </Button>
-                            )}
+                            <Button onClick={onManageSubjects}>
+                                {ready ? 'Manage Class Subjects' : 'Set Up Class Subjects'}
+                            </Button>
                         </div>
                     ) : null}
                 </div>
@@ -291,7 +302,6 @@ export default function CohortHubPage() {
     const { hasPlugin, loading: pluginsLoading } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
     const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
-    const [cbcSetupOpen, setCbcSetupOpen] = useState(false);
 
     const cohortId = Number(params.id);
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
@@ -341,6 +351,7 @@ export default function CohortHubPage() {
     const hasCambridgePlugin = hasPlugin('cambridge');
     const learnerCount = enrolledStudentsQuery.data?.students.length ?? 0;
     const subjectCount = cohortSubjects.length;
+    const isCbcSetupReady = isCbcSeniorCohort && hasCbcProfile && subjectCount > 0;
     const assignedInstructorCount = Object.values(subjectParticipationQuery.summaries)
         .filter((summary) => summary.instructorState === 'assigned')
         .length;
@@ -356,8 +367,10 @@ export default function CohortHubPage() {
     }).toString()}`;
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
         ? 'CBC tools are not available for this organization yet.'
-        : (isCbcSeniorCohort && !hasCbcProfile ? 'Configure CBC pathway before linking pathway subjects.' : null);
-    const linkSubjectsLabel = isCbcSeniorCohort ? 'Link Allowed Subjects' : 'Link Subject to Cohort';
+        : null;
+    const linkSubjectsLabel = isCbcSeniorCohort
+        ? (isCbcSetupReady ? 'Manage Class Subjects' : 'Set Up Class Subjects')
+        : 'Link Subject to Cohort';
     const assistantContext = useMemo(() => ({
         pageKey: 'cohort_detail',
         pageTitle: cohort?.name ?? 'Cohort',
@@ -376,13 +389,6 @@ export default function CohortHubPage() {
                 type: 'navigate' as const,
                 href: '/academic/cohorts',
             },
-            ...(cohort && isCbcSeniorCohort && !hasCbcProfile && canLinkSubjects && hasCBCPlugin
-                ? [{
-                    label: 'Configure CBC Pathway',
-                    type: 'page_action' as const,
-                    handler: () => setCbcSetupOpen(true),
-                }]
-                : []),
             ...(cohort && canLinkSubjects && !linkSubjectsDisabledReason
                 ? [{
                     label: linkSubjectsLabel,
@@ -410,29 +416,23 @@ export default function CohortHubPage() {
                 ]
                 : []),
         ],
-        nextSafeAction: cohort && isCbcSeniorCohort && !hasCbcProfile && canLinkSubjects && hasCBCPlugin
+        nextSafeAction: cohort && canLinkSubjects && !linkSubjectsDisabledReason
             ? {
-                label: 'Configure CBC Pathway',
+                label: linkSubjectsLabel,
                 type: 'page_action' as const,
-                handler: () => setCbcSetupOpen(true),
+                handler: () => setAssignSubjectsOpen(true),
             }
-            : cohort && canLinkSubjects && !linkSubjectsDisabledReason
+            : cohort && isCBC && hasCBCPlugin && subjectCount > 0
                 ? {
-                    label: linkSubjectsLabel,
-                    type: 'page_action' as const,
-                    handler: () => setAssignSubjectsOpen(true),
+                    label: 'Browse CBC',
+                    type: 'navigate' as const,
+                    href: cbcBrowserHref,
                 }
-                : cohort && isCBC && hasCBCPlugin && subjectCount > 0
-                    ? {
-                        label: 'Browse CBC',
-                        type: 'navigate' as const,
-                        href: cbcBrowserHref,
-                    }
-                    : {
-                        label: 'Open Sessions',
-                        type: 'navigate' as const,
-                        href: sessionsHref,
-                    },
+                : {
+                    label: 'Open Sessions',
+                    type: 'navigate' as const,
+                    href: sessionsHref,
+                },
         workflowStep: cohort && isCBC ? 'cohort_cbc_tools' : 'cohort_actions',
         emptyStateReason: !cohort && !cohortLoading
             ? 'This cohort could not be loaded.'
@@ -443,10 +443,8 @@ export default function CohortHubPage() {
         canLinkSubjects,
         cohort,
         cohortLoading,
-        hasCbcProfile,
         hasCBCPlugin,
         isCBC,
-        isCbcSeniorCohort,
         learnerCount,
         linkSubjectsDisabledReason,
         linkSubjectsLabel,
@@ -488,7 +486,6 @@ export default function CohortHubPage() {
             ? 'No CBC subjects assigned to this cohort yet.'
             : undefined;
     const openAssignSubjects = () => setAssignSubjectsOpen(true);
-    const openCbcSetup = () => setCbcSetupOpen(true);
     const handleCohortSubjectsChanged = async () => {
         await refetchCohort();
         await refetchCohortSubjects();
@@ -533,15 +530,15 @@ export default function CohortHubPage() {
 
             {isCbcSeniorCohort ? (
                 <CbcSeniorSetupSection
-                    pathwayConfigured={hasCbcProfile}
+                    ready={isCbcSetupReady}
                     hasCBCPlugin={hasCBCPlugin}
                     canConfigure={canLinkSubjects}
                     pathwayName={cohort.cbc_profile?.pathway_name}
-                    trackName={cohort.cbc_profile?.track_name}
-                    combinationCode={cohort.cbc_profile?.combination_code}
-                    combinationName={cohort.cbc_profile?.combination_name}
-                    onConfigure={openCbcSetup}
-                    onViewAllowedSubjects={openAssignSubjects}
+                    trackName={cohort.cbc_profile?.track_name ?? undefined}
+                    combinationCode={cohort.cbc_profile?.combination_code ?? undefined}
+                    combinationName={cohort.cbc_profile?.combination_name ?? undefined}
+                    subjectCount={subjectCount}
+                    onManageSubjects={openAssignSubjects}
                 />
             ) : null}
 
@@ -550,7 +547,7 @@ export default function CohortHubPage() {
                     <h2 className="text-xl font-semibold text-gray-900">Cohort Actions</h2>
                     <p className="text-sm text-gray-500">
                         {isCbcSeniorCohort
-                            ? 'Start with allowed-subject linking and learner access for this CBC senior cohort.'
+                            ? 'Use the class list and delivery tools after class subject setup.'
                             : 'Choose the workflow you want to open for this cohort.'}
                     </p>
                 </div>
@@ -558,22 +555,6 @@ export default function CohortHubPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                     {isCbcSeniorCohort ? (
                         <>
-                            {canLinkSubjects ? (
-                                <ActionCard
-                                    title="Link Allowed Subjects"
-                                    description="Create or update the CBC subject offerings allowed by this cohort pathway configuration."
-                                    icon={BookOpen}
-                                    onClick={!linkSubjectsDisabledReason ? openAssignSubjects : undefined}
-                                    disabledReason={linkSubjectsDisabledReason ?? undefined}
-                                    footerLabel={
-                                        subjectCount > 0
-                                            ? `${subjectCount} linked`
-                                            : linkSubjectsDisabledReason
-                                                ? 'Setup required'
-                                                : 'Link allowed subjects'
-                                    }
-                                />
-                            ) : null}
                             {canViewCohortLearners ? (
                                 <ActionCard
                                     title="Class List"
@@ -685,7 +666,9 @@ export default function CohortHubPage() {
                 error={cohortSubjectsError ?? subjectParticipationQuery.error}
                 emptyMessage={isInstructor
                     ? 'No cohort subjects are assigned to you yet.'
-                    : undefined}
+                    : isCbcSeniorCohort
+                        ? 'No class subjects have been added yet. Start with class subject setup.'
+                        : undefined}
                 canManageInstructors={canManageInstructors}
                 canLinkSubjects={canLinkSubjects}
                 linkSubjectsLabel={linkSubjectsLabel}
@@ -699,7 +682,7 @@ export default function CohortHubPage() {
                     <div className="space-y-1">
                         <h2 className="text-xl font-semibold text-gray-900">Delivery Workflows</h2>
                         <p className="text-sm text-gray-500">
-                            Open teaching, assignments, and CBC tracking after cohort setup and subject linking.
+                            Open teaching, assignments, and CBC tracking after class subject setup.
                         </p>
                     </div>
 
@@ -758,15 +741,6 @@ export default function CohortHubPage() {
                     onClose={() => setAssignSubjectsOpen(false)}
                     cohort={cohort}
                     onSubjectsChanged={handleCohortSubjectsChanged}
-                />
-            ) : null}
-
-            {isCbcSeniorCohort ? (
-                <CbcPathwayConfigurationModal
-                    isOpen={cbcSetupOpen}
-                    cohort={cohort}
-                    onClose={() => setCbcSetupOpen(false)}
-                    onConfigured={handleCohortSubjectsChanged}
                 />
             ) : null}
         </div>

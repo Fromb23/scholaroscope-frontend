@@ -45,13 +45,19 @@ export interface CbcCohortProfileSummary {
   pathway_id: number;
   pathway_code: string;
   pathway_name: string;
-  track_id: number;
-  track_code: string;
-  track_name: string;
-  combination_id: number;
-  combination_code: string;
-  combination_name: string;
-  offered_combination_id: number;
+  track_id: number | null;
+  track_code: string | null;
+  track_name: string | null;
+  combination_id: number | null;
+  combination_code: string | null;
+  combination_name: string | null;
+  offered_combination_id: number | null;
+  sync_summary?: {
+    core_subjects_linked: number;
+    learners_synced: number;
+    enrollments_created_or_active: number;
+  };
+  message?: string;
 }
 
 export interface OfficialPathwayCatalog {

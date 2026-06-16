@@ -477,6 +477,12 @@ export interface CohortSubject {
   subject_category?: CbcSubjectCategory;
   locked?: boolean;
   blocked_reason?: string | null;
+  message?: string;
+  sync_summary?: {
+    core_subjects_linked: number;
+    learners_synced: number;
+    enrollments_created_or_active: number;
+  };
 
   has_active_instructor?: boolean;
   active_instructor?: {

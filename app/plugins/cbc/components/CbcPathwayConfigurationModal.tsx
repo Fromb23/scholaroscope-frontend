@@ -52,8 +52,8 @@ export function CbcPathwayConfigurationModal({
             return;
         }
 
-        if (!value.pathwayId || !value.trackId || !value.combinationId) {
-            setError('Select the pathway first, then choose the track and official combination before saving.');
+        if (!value.pathwayId) {
+            setError('Choose the class pathway first.');
             return;
         }
 
@@ -61,8 +61,11 @@ export function CbcPathwayConfigurationModal({
         setError(null);
 
         try {
-            const offeredCombination = await cbcPathwayAPI.offerCombination(Number(value.combinationId));
-            const profile = await cbcPathwayAPI.configureCohortProfile(cohort.id, offeredCombination.id);
+            const profile = await cbcPathwayAPI.configureCohortProfile(cohort.id, {
+                pathwayId: Number(value.pathwayId),
+                trackId: value.trackId ? Number(value.trackId) : null,
+                combinationId: value.combinationId ? Number(value.combinationId) : null,
+            });
             await onConfigured?.(profile);
             onClose();
         } catch (err) {
@@ -80,14 +83,14 @@ export function CbcPathwayConfigurationModal({
                     onClose();
                 }
             }}
-            title={cohort ? `CBC Pathway Setup — ${cohort.name}` : 'CBC Pathway Setup'}
+            title={cohort ? `Set Up Subjects for ${cohort.name}` : 'Set Up Subjects'}
             size="lg"
         >
             <div className="space-y-5">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                    <p className="text-sm font-semibold text-gray-900">CBC Senior School Configuration</p>
+                    <p className="text-sm font-semibold text-gray-900">Class Subject Setup</p>
                     <p className="mt-1 text-sm text-gray-600">
-                        Select the pathway first, review the ministry subject catalogue, then store the track and official combination needed for the cohort profile.
+                        Choose the class pathway first, then review the subjects this class can offer.
                     </p>
                 </div>
 
@@ -111,7 +114,7 @@ export function CbcPathwayConfigurationModal({
                         Cancel
                     </Button>
                     <Button onClick={handleSave} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Configuration'}
+                        {saving ? 'Saving...' : 'Save class setup'}
                     </Button>
                 </div>
             </div>
