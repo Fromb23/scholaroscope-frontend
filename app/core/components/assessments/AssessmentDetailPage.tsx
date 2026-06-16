@@ -18,6 +18,7 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { AssessmentDetailHeader } from '@/app/core/components/assessments/AssessmentDetailHeader';
 import { AssessmentInfoCard } from '@/app/core/components/assessments/AssessmentInfoCard';
+import { AssessmentParticipationSection } from '@/app/core/components/assessments/AssessmentParticipationSection';
 import { AssessmentScoreEntryCard } from '@/app/core/components/assessments/AssessmentScoreEntryCard';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { useAssessmentDetailPage } from '@/app/core/hooks/assessments/useAssessmentDetailPage';
@@ -32,6 +33,14 @@ export function AssessmentDetailPage() {
         deleting,
         scores,
         scoresLoading,
+        participationSummary,
+        participationRecords,
+        participationByStudentId,
+        participationLoaded,
+        participationLoading,
+        participationSaving,
+        participationError,
+        makeupSavingStudentId,
         draft,
         saving,
         saveError,
@@ -58,15 +67,20 @@ export function AssessmentDetailPage() {
         setDeleteError,
         setExportError,
         setSearchQuery,
+        loadParticipationRoster,
+        handleSaveParticipation,
+        handleMarkMakeupCompleted,
         handleScoreChange,
         handleSaveScores,
         handleDownloadPdf,
         handleDelete,
         handleActivate,
         handleFinalize,
+        isTrackedParticipation,
     } = useAssessmentDetailPage();
     const focusedScoreEntryRef = useRef<string | null>(null);
     const unscoredCount = Math.max(totalLearnerCount - stats.scored, 0);
+    const pendingMakeupCount = participationSummary?.pending_makeup_count ?? 0;
     const scrollToScoreEntry = useCallback(() => {
         document.getElementById('assessment-score-entry')?.scrollIntoView({
             behavior: 'smooth',
@@ -220,6 +234,25 @@ export function AssessmentDetailPage() {
 
             <AssessmentInfoCard assessment={assessment} />
 
+            {isTrackedParticipation && (
+                <div id="assessment-participation">
+                    <AssessmentParticipationSection
+                        assessment={assessment}
+                        summary={participationSummary}
+                        records={participationRecords}
+                        loaded={participationLoaded}
+                        loading={participationLoading}
+                        saving={participationSaving}
+                        error={participationError}
+                        makeupSavingStudentId={makeupSavingStudentId}
+                        readOnly={isFinalized || !canScore}
+                        onLoad={() => { void loadParticipationRoster(); }}
+                        onSave={(records) => { void handleSaveParticipation(records); }}
+                        onMarkMakeup={(studentId, completed) => { void handleMarkMakeupCompleted(studentId, completed); }}
+                    />
+                </div>
+            )}
+
             {/* Stats — desktop only */}
             {assessment.evaluation_type === 'NUMERIC' && (
                 <DesktopOnly>
@@ -237,10 +270,17 @@ export function AssessmentDetailPage() {
                 <div id="assessment-results-summary" />
             )}
 
+            {isTrackedParticipation && pendingMakeupCount > 0 && !isFinalized && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    {pendingMakeupCount} learners missed this assessment and have not completed makeup.
+                </div>
+            )}
+
             <div id="assessment-score-entry">
                 <AssessmentScoreEntryCard
                     assessment={assessment}
                     scores={scores}
+                    participationByStudentId={participationByStudentId}
                     draft={draft}
                     loading={scoresLoading}
                     readOnly={isFinalized || !canScore}

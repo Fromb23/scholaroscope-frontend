@@ -7,6 +7,7 @@ import { Card } from '@/app/components/ui/Card';
 import { AssessmentScoreTable } from '@/app/core/components/assessments/AssessmentScoreTable';
 import type {
     AssessmentDetail,
+    AssessmentParticipationRecord,
     AssessmentScore,
     AssessmentScoreDraft,
 } from '@/app/core/types/assessment';
@@ -17,6 +18,7 @@ interface AssessmentScoreEntryCardProps {
     draft: Record<number, AssessmentScoreDraft>;
     loading: boolean;
     readOnly: boolean;
+    participationByStudentId?: Map<number, AssessmentParticipationRecord>;
     canSave: boolean;
     saving: boolean;
     saveError: string | null;
@@ -37,6 +39,7 @@ export function AssessmentScoreEntryCard({
     draft,
     loading,
     readOnly,
+    participationByStudentId,
     canSave,
     saving,
     saveError,
@@ -63,7 +66,9 @@ export function AssessmentScoreEntryCard({
             <div className="p-4">
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-base font-semibold text-gray-900">
-                        {readOnly ? 'Scores' : 'Enter Scores'}
+                        {assessment.participation_mode === 'TRACKED'
+                            ? (readOnly ? 'Grading' : 'Ready for grading')
+                            : (readOnly ? 'Scores' : 'Enter Scores')}
                     </h2>
                     <div className="flex shrink-0 flex-wrap gap-2">
                         {!readOnly && canSave && (
@@ -143,6 +148,7 @@ export function AssessmentScoreEntryCard({
                     draft={draft}
                     loading={loading}
                     readOnly={readOnly}
+                    participationByStudentId={participationByStudentId}
                     onScoreChange={onScoreChange}
                 />
             </div>

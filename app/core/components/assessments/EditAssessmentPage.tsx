@@ -22,6 +22,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import {
     ASSESSMENT_TYPE_OPTIONS,
     AssessmentFormData,
+    AssessmentParticipationMode,
     AssessmentStatus,
 } from '@/app/core/types/assessment';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
@@ -100,6 +101,7 @@ export function EditAssessmentPage() {
         rubric_scale: null,
         assessment_date: new Date().toISOString().split('T')[0],
         description: '',
+        participation_mode: AssessmentParticipationMode.NONE,
     });
 
     useEffect(() => {
@@ -116,6 +118,7 @@ export function EditAssessmentPage() {
             rubric_scale: assessment.rubric_scale,
             assessment_date: assessment.assessment_date,
             description: assessment.description,
+            participation_mode: assessment.participation_mode,
         });
     }, [assessment]);
 

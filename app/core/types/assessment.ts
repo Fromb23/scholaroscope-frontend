@@ -44,6 +44,18 @@ export enum AssessmentStatus {
   FINALIZED = 'FINALIZED',
 }
 
+export enum AssessmentParticipationMode {
+  NONE = 'NONE',
+  TRACKED = 'TRACKED',
+}
+
+export enum AssessmentParticipationStatus {
+  PRESENT = 'PRESENT',
+  ABSENT = 'ABSENT',
+  NOT_PART_OF_ASSESSMENT = 'NOT_PART_OF_ASSESSMENT',
+  LATE_ENROLLED = 'LATE_ENROLLED',
+}
+
 export enum AssessmentScoreStatus {
   PENDING_REVIEW = 'PENDING_REVIEW',
   GRADED = 'GRADED',
@@ -108,6 +120,7 @@ export interface Assessment {
   rubric_scale_name: string | null;
   assessment_date: string | null;
   description: string;
+  participation_mode: AssessmentParticipationMode;
   status: AssessmentStatus;
   status_display: string;
   scores_count: number;
@@ -178,6 +191,46 @@ export interface AssessmentReviewSummary {
   not_admitted_yet_count: number;
 }
 
+export interface AssessmentParticipationSummary {
+  tracking_enabled: boolean;
+  sat_count: number;
+  missed_count: number;
+  makeup_completed_count: number;
+  pending_makeup_count: number;
+  graded_count: number;
+  sat_not_graded_count: number;
+  makeup_ready_for_grading_count: number;
+  late_enrolled_count: number;
+  not_part_of_assessment_count: number;
+  eligible_for_grading_count: number;
+}
+
+export interface AssessmentParticipationRecord {
+  id: number;
+  student: number;
+  student_name: string;
+  student_admission: string;
+  expected_at_assessment_time: boolean;
+  participation_status: AssessmentParticipationStatus | null;
+  participation_status_display: string;
+  original_participation_status: AssessmentParticipationStatus | null;
+  makeup_completed_at: string | null;
+  makeup_note: string;
+  marked_by: number | null;
+  marked_at: string | null;
+  created_at: string;
+  updated_at: string;
+  grading_eligible: boolean;
+  grading_state: string;
+  score_status: AssessmentScoreStatus | null;
+  has_score: boolean;
+}
+
+export interface AssessmentParticipationRosterResponse {
+  summary: AssessmentParticipationSummary;
+  records: AssessmentParticipationRecord[];
+}
+
 export interface AssessmentStatistics {
   average?: number;
   highest?: number;
@@ -209,6 +262,7 @@ export interface AssessmentStatistics {
 
 export interface AssessmentDetail extends Assessment {
   statistics: AssessmentStatistics;
+  participation_summary: AssessmentParticipationSummary;
   rubric_scale_details: RubricScaleDetail | null;
   scores: AssessmentScore[];
   rubric_levels: RubricLevel[];
@@ -238,6 +292,20 @@ export interface AssessmentFormData {
   rubric_scale: number | null;
   assessment_date: string | null;
   description: string;
+  participation_mode: AssessmentParticipationMode;
+}
+
+export interface AssessmentParticipationBulkUpdateData {
+  records: {
+    student_id: number;
+    participation_status: AssessmentParticipationStatus;
+  }[];
+}
+
+export interface AssessmentMakeupCompletionData {
+  student_id: number;
+  completed?: boolean;
+  makeup_note?: string;
 }
 
 export interface StudentScoresResponse {

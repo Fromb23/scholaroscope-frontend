@@ -9,9 +9,11 @@ import {
   assessmentScoreAPI,
   rubricScaleAPI,
 } from '../api/assessments';
+import { getDefaultAssessmentParticipationMode } from '@/app/core/lib/assessmentParticipation';
 import {
   Assessment,
   AssessmentDetail,
+  AssessmentParticipationMode,
   AssessmentScore,
   AssessmentScoreStatus,
   AssessmentStatus,
@@ -207,11 +209,13 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
     setAssessment(prev => prev ? { ...prev, ...updated } : null);
   };
 
-  const finalizeAssessment = async (): Promise<void> => {
+  const finalizeAssessment = async (
+    options?: { finalize_unresolved_absent?: boolean }
+  ): Promise<void> => {
     if (!assessmentId) return;
     setFinalizing(true);
     try {
-      const updated = await assessmentAPI.finalize(assessmentId);
+      const updated = await assessmentAPI.finalize(assessmentId, options);
       setAssessment(prev => prev ? { ...prev, ...updated } : null);
     } finally {
       setFinalizing(false);
@@ -473,6 +477,7 @@ interface AssessmentFormState {
   rubric_scale: number | null;
   assessment_date: string;
   description: string;
+  participation_mode: AssessmentParticipationMode;
 }
 
 interface FormErrors {
@@ -500,6 +505,7 @@ export const useCreateAssessmentForm = (options?: {
     rubric_scale: null,
     assessment_date: new Date().toISOString().split('T')[0],
     description: '',
+    participation_mode: getDefaultAssessmentParticipationMode(),
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
