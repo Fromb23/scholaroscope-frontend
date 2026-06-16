@@ -302,13 +302,13 @@ export function ManageCohortSubjectsModal({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={`${isCbcSeniorCohort ? 'Link Allowed Subjects' : 'Link Subjects'} — ${cohort.name}`}
+            title={`${isCbcSeniorCohort ? 'Set Up Subjects for' : 'Link Subjects for'} ${cohort.name}`}
             size="lg"
         >
             <div className="space-y-4">
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
                     {isCbcSeniorCohort
-                        ? 'Link or remove the CBC subjects allowed by this cohort pathway configuration. Learner participation stays under each cohort subject learner page.'
+                        ? 'Choose the subjects this class will offer. Required subjects are handled automatically.'
                         : 'Create or remove cohort subject offerings for this cohort. Learner participation stays under each cohort subject learner page.'}
                 </div>
 
@@ -606,9 +606,9 @@ export function CohortFormModal({
                 {seniorCbcMode ? (
                     <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
                         <div>
-                            <p className="text-sm font-semibold text-gray-900">CBC Senior School Configuration</p>
+                            <p className="text-sm font-semibold text-gray-900">Class pathway</p>
                             <p className="mt-1 text-xs text-gray-600">
-                                Pathway, track, and subject combination are stored as structured CBC data, not in the cohort name.
+                                Choose the pathway for this class. Advanced details stay inside the section below.
                             </p>
                         </div>
 

@@ -257,7 +257,7 @@ export function CbcPathwayConfigurationFields({
 
             <div className="grid grid-cols-1 gap-4">
                 <Select
-                    label="Pathway"
+                    label="Class pathway"
                     value={value.pathwayId}
                     onChange={(event) => {
                         setError(null);
@@ -284,9 +284,9 @@ export function CbcPathwayConfigurationFields({
             {value.pathwayId ? (
                 <div className="space-y-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
                     <div className="space-y-1">
-                        <p className="text-sm font-semibold text-gray-900">Ministry Subject Catalogue</p>
+                        <p className="text-sm font-semibold text-gray-900">Subjects for This Class</p>
                         <p className="text-xs text-gray-600">
-                            Review the subject universe for this pathway before choosing the deeper track and official combination details.
+                            Review the required subjects and the extra subjects this class can offer.
                         </p>
                     </div>
 
@@ -297,13 +297,13 @@ export function CbcPathwayConfigurationFields({
                     ) : pathwayCatalogue ? (
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                             <AllowedSubjectGroup
-                                title="Core Subjects"
-                                description="Global CBC senior school requirements for this level."
+                                title="Required Subjects"
+                                description="These subjects are compulsory for all learners in this class."
                                 subjects={pathwayCatalogue.core}
                             />
                             <AllowedSubjectGroup
-                                title={`${selectedPathway?.name ?? 'Pathway'} Subjects`}
-                                description="Ministry-defined subjects that can be offered under this pathway."
+                                title="Subjects This Class Can Offer"
+                                description={`${selectedPathway?.name ?? 'This pathway'} allows these extra subjects for the class.`}
                                 subjects={pathwayCatalogue.pathway_subjects}
                             />
                         </div>
@@ -315,63 +315,66 @@ export function CbcPathwayConfigurationFields({
                 </div>
             ) : null}
 
-            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                <div className="space-y-1">
-                    <p className="text-sm font-semibold text-gray-900">Track and Official Combination</p>
-                    <p className="text-xs text-gray-600">
-                        These remain available for detailed ministry mapping, but subject eligibility is driven by the pathway catalogue above.
-                    </p>
-                </div>
+            <details className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-gray-900">
+                    Advanced details
+                </summary>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <Select
-                        label="Track"
-                        value={value.trackId}
-                        onChange={(event) => {
-                            setError(null);
-                            onChange({
-                                pathwayId: value.pathwayId,
-                                trackId: event.target.value,
-                                combinationId: '',
-                            });
-                        }}
-                        disabled={disabled || !value.pathwayId || tracksLoading}
-                        options={[
-                            {
-                                value: '',
-                                label: tracksLoading ? 'Loading tracks...' : 'Select track',
-                            },
-                            ...tracks.map((track) => ({
-                                value: String(track.id),
-                                label: track.name,
-                            })),
-                        ]}
-                    />
-                    <Select
-                        label="Official Combination"
-                        value={value.combinationId}
-                        onChange={(event) => {
-                            setError(null);
-                            onChange({
-                                pathwayId: value.pathwayId,
-                                trackId: value.trackId,
-                                combinationId: event.target.value,
-                            });
-                        }}
-                        disabled={disabled || !value.trackId || combinationsLoading}
-                        options={[
-                            {
-                                value: '',
-                                label: combinationsLoading ? 'Loading combinations...' : 'Select combination',
-                            },
-                            ...combinations.map((combination) => ({
-                                value: String(combination.id),
-                                label: getCombinationLabel(combination),
-                            })),
-                        ]}
-                    />
+                <div className="mt-4 space-y-3">
+                    <p className="text-xs text-gray-600">
+                        Use these only when you need to match the official ministry grouping for this class.
+                    </p>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <Select
+                            label="Track"
+                            value={value.trackId}
+                            onChange={(event) => {
+                                setError(null);
+                                onChange({
+                                    pathwayId: value.pathwayId,
+                                    trackId: event.target.value,
+                                    combinationId: '',
+                                });
+                            }}
+                            disabled={disabled || !value.pathwayId || tracksLoading}
+                            options={[
+                                {
+                                    value: '',
+                                    label: tracksLoading ? 'Loading tracks...' : 'Select track',
+                                },
+                                ...tracks.map((track) => ({
+                                    value: String(track.id),
+                                    label: track.name,
+                                })),
+                            ]}
+                        />
+                        <Select
+                            label="Official grouping"
+                            value={value.combinationId}
+                            onChange={(event) => {
+                                setError(null);
+                                onChange({
+                                    pathwayId: value.pathwayId,
+                                    trackId: value.trackId,
+                                    combinationId: event.target.value,
+                                });
+                            }}
+                            disabled={disabled || !value.trackId || combinationsLoading}
+                            options={[
+                                {
+                                    value: '',
+                                    label: combinationsLoading ? 'Loading groupings...' : 'Select official grouping',
+                                },
+                                ...combinations.map((combination) => ({
+                                    value: String(combination.id),
+                                    label: getCombinationLabel(combination),
+                                })),
+                            ]}
+                        />
+                    </div>
                 </div>
-            </div>
+            </details>
         </div>
     );
 }

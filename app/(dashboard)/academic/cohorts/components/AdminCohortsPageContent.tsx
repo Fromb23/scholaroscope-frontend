@@ -191,14 +191,17 @@ export function AdminCohortsPageContent() {
                 curriculum_type: selectedPayloadCurriculum?.curriculum_type,
                 level: data.level,
             })
-            && Boolean(data.combination_id)
+            && Boolean(data.pathway_id)
         );
 
         if (isEdit && cohortId) {
             const updated = await updateCohort(cohortId, payload);
             if (requiresCbcProfile) {
-                const offered = await cbcPathwayAPI.offerCombination(Number(data.combination_id));
-                await cbcPathwayAPI.configureCohortProfile(updated.id, offered.id);
+                await cbcPathwayAPI.configureCohortProfile(updated.id, {
+                    pathwayId: Number(data.pathway_id),
+                    trackId: data.track_id ? Number(data.track_id) : null,
+                    combinationId: data.combination_id ? Number(data.combination_id) : null,
+                });
             }
             await refetch();
             return;
@@ -206,8 +209,11 @@ export function AdminCohortsPageContent() {
 
         const created = await createCohort(payload);
         if (requiresCbcProfile) {
-            const offered = await cbcPathwayAPI.offerCombination(Number(data.combination_id));
-            await cbcPathwayAPI.configureCohortProfile(created.id, offered.id);
+            await cbcPathwayAPI.configureCohortProfile(created.id, {
+                pathwayId: Number(data.pathway_id),
+                trackId: data.track_id ? Number(data.track_id) : null,
+                combinationId: data.combination_id ? Number(data.combination_id) : null,
+            });
         }
         await refetch();
         if (setupMode) {

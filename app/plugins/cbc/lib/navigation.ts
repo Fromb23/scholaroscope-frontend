@@ -72,6 +72,9 @@ export function getCbcBackLabel(returnTo: string | null | undefined, fallbackLab
         return fallbackLabel;
     }
 
+    if (/^\/academic\/cohorts\/\d+\/assignments(?:\/|$|\?)/.test(safeReturnTo)) {
+        return 'Back to Assignments';
+    }
     if (safeReturnTo.startsWith('/academic/cohorts/')) {
         return 'Back to Cohort';
     }
