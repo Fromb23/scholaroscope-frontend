@@ -248,6 +248,7 @@ export function AssessmentDetailPage() {
                         onLoad={() => { void loadParticipationRoster(); }}
                         onSave={(records) => { void handleSaveParticipation(records); }}
                         onMarkMakeup={(studentId, completed) => { void handleMarkMakeupCompleted(studentId, completed); }}
+                        onJumpToScoreEntry={scrollToScoreEntry}
                     />
                 </div>
             )}
