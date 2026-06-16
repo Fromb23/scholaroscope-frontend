@@ -12,8 +12,8 @@ export const ACADEMIC_SETUP_STEP_ORDER: AcademicSetupStepKey[] = [
     'COHORTS',
 ];
 
-// TODO: Extend backend AcademicSetupStatus so CBC senior cohorts without `cbc_profile`
-// are reflected as incomplete setup globally, not only on the cohort detail page.
+// TODO: Extend backend AcademicSetupStatus so current-year CBC senior cohorts without
+// `cbc_profile` or linked class subjects remain globally incomplete, not just on the cohort page.
 
 const ACADEMIC_SETUP_OPERATIONAL_PATHS: RegExp[] = [
     /^\/learners(\/.*)?$/,

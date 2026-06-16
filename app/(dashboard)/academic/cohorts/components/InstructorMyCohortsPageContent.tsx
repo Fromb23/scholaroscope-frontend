@@ -21,6 +21,7 @@ import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { useAcademicYears } from '@/app/core/hooks/useAcademic';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
+import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
 import {
     type InstructorTeachingLoadGroup,
     useInstructorMyCohorts,
@@ -288,7 +289,9 @@ export function InstructorMyCohortsPageContent() {
                                                 {group.cohort_name}
                                             </Link>
                                             <p className="mt-1 text-sm text-gray-500">
-                                                {group.level ?? 'Level not set'}
+                                                {group.level
+                                                    ? getAcademicLevelLabel(group.level, group.curriculum_type)
+                                                    : 'Level not set'}
                                                 {group.stream ? ` · Stream ${group.stream}` : ''}
                                             </p>
                                         </div>

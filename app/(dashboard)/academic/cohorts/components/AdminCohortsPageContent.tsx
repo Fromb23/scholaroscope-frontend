@@ -30,17 +30,18 @@ import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
-import { isCbcSeniorSchoolEntity } from '@/app/core/lib/cbcSeniorSchool';
-import { canCreateCurriculumWork, canEditCurriculumWork, getCurriculumActionBlockReason } from '@/app/core/lib/curriculumLifecycle';
 import {
-    getAcademicSetupPageState,
-    withAcademicSetupMode,
-} from '@/app/core/lib/academicSetup';
+    getAcademicLevelLabel,
+    getCurriculumLevelOptions,
+    isStructuredCurriculumLevel,
+    normalizeAcademicLevel,
+} from '@/app/core/lib/curriculumLevels';
+import { canCreateCurriculumWork, canEditCurriculumWork, getCurriculumActionBlockReason } from '@/app/core/lib/curriculumLifecycle';
+import { getAcademicSetupPageState } from '@/app/core/lib/academicSetup';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort } from '@/app/core/types/academic';
 import { getCurriculumBridgeName, getCurriculumOptionLabel } from '@/app/core/lib/curriculumBridge';
-import { cbcPathwayAPI } from '@/app/plugins/cbc/api/pathways';
 import { useCambridgeCohortQuickAction } from '@/app/plugins/cambridge/lib/cohortQuickAction';
 import { buildAcademicYearOptions, parseOptionalNumber } from '@/app/(dashboard)/academic/cohorts/components/cohortsPageShared';
 
@@ -170,9 +171,6 @@ export function AdminCohortsPageContent() {
             curriculum: string;
             level: string;
             stream: string;
-            pathway_id: string;
-            track_id: string;
-            combination_id: string;
         },
         isEdit: boolean,
         cohortId?: number
@@ -183,49 +181,27 @@ export function AdminCohortsPageContent() {
             level: data.level,
             stream: data.stream || undefined,
         };
-        const selectedPayloadCurriculum = curricula.find(
-            (curriculum) => curriculum.id === Number(data.curriculum)
-        ) ?? selectedCurriculum ?? null;
-        const requiresCbcProfile = (
-            isCbcSeniorSchoolEntity({
-                curriculum_type: selectedPayloadCurriculum?.curriculum_type,
-                level: data.level,
-            })
-            && Boolean(data.pathway_id)
-        );
 
         if (isEdit && cohortId) {
-            const updated = await updateCohort(cohortId, payload);
-            if (requiresCbcProfile) {
-                await cbcPathwayAPI.configureCohortProfile(updated.id, {
-                    pathwayId: Number(data.pathway_id),
-                    trackId: data.track_id ? Number(data.track_id) : null,
-                    combinationId: data.combination_id ? Number(data.combination_id) : null,
-                });
-            }
+            await updateCohort(cohortId, payload);
             await refetch();
             return;
         }
 
         const created = await createCohort(payload);
-        if (requiresCbcProfile) {
-            await cbcPathwayAPI.configureCohortProfile(created.id, {
-                pathwayId: Number(data.pathway_id),
-                trackId: data.track_id ? Number(data.track_id) : null,
-                combinationId: data.combination_id ? Number(data.combination_id) : null,
-            });
-        }
-        await refetch();
+        const nextParams = new URLSearchParams();
         if (setupMode) {
-            const refreshedStatus = (await setupStatusQuery.refetch()).data;
-            router.push(
-                refreshedStatus?.complete
-                    ? '/dashboard/admin'
-                    : withAcademicSetupMode(
-                        refreshedStatus?.next_action.href ?? '/dashboard/admin',
-                    ),
-            );
+            nextParams.set('setup', '1');
         }
+        if (quickAction.returnTo) {
+            nextParams.set('returnTo', quickAction.returnTo);
+        }
+
+        router.push(
+            nextParams.toString()
+                ? `/academic/cohorts/${created.id}?${nextParams.toString()}`
+                : `/academic/cohorts/${created.id}`,
+        );
     };
 
     const handleDelete = async (cohort: Cohort) => {
@@ -241,7 +217,22 @@ export function AdminCohortsPageContent() {
         }
     };
 
-    const editingCbcProfile = editingCohort?.cbc_profile ?? null;
+    const normalizeLevelForForm = (level: string | null | undefined, curriculumType?: string | null) => {
+        if (!level) {
+            return '';
+        }
+        if (!isStructuredCurriculumLevel(curriculumType)) {
+            return level;
+        }
+
+        const normalized = normalizeAcademicLevel(level);
+        const hasMatchingStructuredOption = getCurriculumLevelOptions(curriculumType).some(
+            (option) => option.value === normalized,
+        );
+
+        return hasMatchingStructuredOption ? normalized : level;
+    };
+
     const initialFormData = {
         academic_year: editingCohort
             ? String(editingCohort.academic_year)
@@ -255,11 +246,10 @@ export function AdminCohortsPageContent() {
                 : quickAction.curriculum
                     ? String(quickAction.curriculum.id)
                     : '',
-        level: editingCohort?.level ?? '',
+        level: editingCohort
+            ? normalizeLevelForForm(editingCohort.level, editingCohort.curriculum_type)
+            : '',
         stream: editingCohort?.stream ?? '',
-        pathway_id: editingCbcProfile?.pathway_id ? String(editingCbcProfile.pathway_id) : '',
-        track_id: editingCbcProfile?.track_id ? String(editingCbcProfile.track_id) : '',
-        combination_id: editingCbcProfile?.combination_id ? String(editingCbcProfile.combination_id) : '',
     };
 
     const columns: Column<Cohort>[] = [
@@ -306,7 +296,12 @@ export function AdminCohortsPageContent() {
             header: 'Curriculum',
             render: (cohort) => <Badge variant="info">{getCurriculumBridgeName(cohort)}</Badge>,
         },
-        { key: 'level', header: 'Level', sortable: true },
+        {
+            key: 'level',
+            header: 'Level',
+            sortable: true,
+            render: (cohort) => getAcademicLevelLabel(cohort.level, cohort.curriculum_type),
+        },
         {
             key: 'stream',
             header: 'Stream',
@@ -589,7 +584,6 @@ export function AdminCohortsPageContent() {
                 academicYears={academicYears}
                 curricula={curricula}
                 lockedCurriculum={quickAction.isActive ? quickAction.curriculum : null}
-                officialPathwayCatalog={cbcPathwayAPI}
                 onSave={handleSave}
                 initialData={initialFormData}
             />

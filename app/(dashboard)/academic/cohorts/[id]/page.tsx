@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
     AlertCircle,
@@ -19,9 +19,11 @@ import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { useCohortSubjectParticipation } from '@/app/core/hooks/useCohortSubjectParticipation';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -31,6 +33,8 @@ import { useAssistantPageContext } from '@/app/core/components/assistant/useAssi
 import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
 import { CohortSubjectParticipationSection } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
 import { hasCbcPathwayProfile, isCbcSeniorSchoolEntity } from '@/app/core/lib/cbcSeniorSchool';
+import { withAcademicSetupMode } from '@/app/core/lib/academicSetup';
+import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
@@ -295,13 +299,134 @@ function CbcSeniorSetupSection({
     );
 }
 
+function StandardClassSetupSection({
+    ready,
+    isCbcLowerLevel,
+    canConfigure,
+    subjectCount,
+    onManageSubjects,
+}: {
+    ready: boolean;
+    isCbcLowerLevel: boolean;
+    canConfigure: boolean;
+    subjectCount: number;
+    onManageSubjects: () => void;
+}) {
+    return (
+        <section className="space-y-4">
+            <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-gray-900">Class Subject Setup</h2>
+                <p className="text-sm text-gray-500">Link the subjects this class will offer.</p>
+            </div>
+
+            <Card>
+                <div className="space-y-5">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                            <Settings2 className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-base font-semibold text-gray-900">
+                                    Status: {ready ? 'Ready' : 'Needs setup'}
+                                </h3>
+                                <Badge variant={ready ? 'green' : 'warning'}>
+                                    {ready ? 'Ready' : 'Needs setup'}
+                                </Badge>
+                            </div>
+
+                            <p className="text-sm text-gray-600">
+                                {ready
+                                    ? `This class has ${subjectCount} linked subject${subjectCount === 1 ? '' : 's'} and is ready for delivery workflows.`
+                                    : 'Choose the subjects this class will offer before moving into delivery workflows.'}
+                            </p>
+
+                            {isCbcLowerLevel ? (
+                                <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 text-sm text-blue-800">
+                                    Pathway setup only applies to Grade 10, Grade 11, and Grade 12.
+                                </div>
+                            ) : null}
+                            {/* TODO: Enforce lower CBC class subjects against the grade-level catalogue once that workflow is finalized. */}
+                        </div>
+                    </div>
+
+                    {canConfigure ? (
+                        <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+                            <Button onClick={onManageSubjects}>
+                                {ready ? 'Manage Class Subjects' : 'Set Up Class Subjects'}
+                            </Button>
+                        </div>
+                    ) : null}
+                </div>
+            </Card>
+        </section>
+    );
+}
+
+function CohortSetupModeCard({
+    ready,
+    isCbcSeniorCohort,
+    hasCbcProfile,
+    isCbcLowerLevel,
+    continueHref,
+    continueLabel,
+    onManageSubjects,
+}: {
+    ready: boolean;
+    isCbcSeniorCohort: boolean;
+    hasCbcProfile: boolean;
+    isCbcLowerLevel: boolean;
+    continueHref: string;
+    continueLabel: string;
+    onManageSubjects: () => void;
+}) {
+    const setupDescription = ready
+        ? 'This cohort is ready. Continue with the next safe setup action.'
+        : isCbcSeniorCohort && !hasCbcProfile
+            ? 'Finish class subject setup for this CBC senior cohort. Choose the class pathway first, then confirm the class subjects.'
+            : isCbcLowerLevel
+                ? 'Finish class subject setup for this lower CBC cohort. Lower CBC levels do not need pathway selection.'
+                : 'Finish class subject setup for this cohort before moving on.';
+
+    return (
+        <Card>
+            <div className="space-y-4 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg font-semibold theme-text">Academic setup</h2>
+                    <Badge variant={ready ? 'green' : 'blue'}>
+                        {ready ? 'Ready' : 'Current'}
+                    </Badge>
+                </div>
+                <p className="text-sm theme-muted">{setupDescription}</p>
+                <div className="flex flex-wrap gap-3">
+                    {ready ? (
+                        <Link href={continueHref}>
+                            <Button>{continueLabel}</Button>
+                        </Link>
+                    ) : (
+                        <Button onClick={onManageSubjects}>Set Up Class Subjects</Button>
+                    )}
+                </div>
+            </div>
+        </Card>
+    );
+}
+
 export default function CohortHubPage() {
     const params = useParams<{ id: string }>();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, activeRole, loading: authLoading } = useAuth();
     const { hasPlugin, loading: pluginsLoading } = usePlugins();
     const instructorAccess = useInstructorCohortAccess();
     const [assignSubjectsOpen, setAssignSubjectsOpen] = useState(false);
+    const setupMode = searchParams.get('setup') === '1';
+    const safeReturnTo = isSafeNextPath(searchParams.get('returnTo'))
+        ? searchParams.get('returnTo')
+        : null;
+    const setupStatusQuery = useAcademicSetupStatus({
+        enabled: setupMode && isAdminOrAbove(user, activeRole),
+    });
 
     const cohortId = Number(params.id);
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
@@ -345,18 +470,36 @@ export default function CohortHubPage() {
     const isCambridge = cohort ? isCambridgeCurriculumType(cohort.curriculum_type) : false;
     const isCBC = cohort?.curriculum_type === 'CBE';
     const isCbcSeniorCohort = isCbcSeniorSchoolEntity(cohort);
+    const isCbcLowerLevel = Boolean(isCBC && !isCbcSeniorCohort);
     const hasCbcProfile = hasCbcPathwayProfile(cohort);
     const canViewCohortLearners = isAdminOrAbove(user, activeRole);
     const hasCBCPlugin = hasPlugin('cbc');
     const hasCambridgePlugin = hasPlugin('cambridge');
     const learnerCount = enrolledStudentsQuery.data?.students.length ?? 0;
     const subjectCount = cohortSubjects.length;
+    const isClassSetupReady = subjectCount > 0;
     const isCbcSetupReady = isCbcSeniorCohort && hasCbcProfile && subjectCount > 0;
+    const cohortSetupReady = isCbcSeniorCohort ? isCbcSetupReady : isClassSetupReady;
     const assignedInstructorCount = Object.values(subjectParticipationQuery.summaries)
         .filter((summary) => summary.instructorState === 'assigned')
         .length;
     const sessionsHref = isValidCohortId ? `/sessions?cohort=${cohortId}` : '/sessions';
-    const cohortReturnTo = cohort ? `/academic/cohorts/${cohort.id}` : `/academic/cohorts/${cohortId}`;
+    const defaultCohortHref = cohort ? `/academic/cohorts/${cohort.id}` : `/academic/cohorts/${cohortId}`;
+    const cohortReturnParams = new URLSearchParams();
+    if (setupMode) {
+        cohortReturnParams.set('setup', '1');
+    }
+    if (safeReturnTo) {
+        cohortReturnParams.set('returnTo', safeReturnTo);
+    }
+    const cohortReturnTo = cohortReturnParams.toString()
+        ? `${defaultCohortHref}?${cohortReturnParams.toString()}`
+        : defaultCohortHref;
+    const backHref = safeReturnTo
+        ?? (setupMode ? withAcademicSetupMode('/academic/cohorts') : '/academic/cohorts');
+    const backLabel = safeReturnTo
+        ? 'Back'
+        : (isInstructor ? 'Back to My Teaching Load' : 'Back to Cohorts');
     const cbcBrowserHref = `${'/cbc/browser'}?${new URLSearchParams({
         cohort: String(cohortId),
         returnTo: cohortReturnTo,
@@ -368,9 +511,13 @@ export default function CohortHubPage() {
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
         ? 'CBC tools are not available for this organization yet.'
         : null;
-    const linkSubjectsLabel = isCbcSeniorCohort
-        ? (isCbcSetupReady ? 'Manage Class Subjects' : 'Set Up Class Subjects')
-        : 'Link Subject to Cohort';
+    const linkSubjectsLabel = cohortSetupReady ? 'Manage Class Subjects' : 'Set Up Class Subjects';
+    const setupContinueHref = setupStatusQuery.data?.complete
+        ? '/dashboard/admin'
+        : withAcademicSetupMode(setupStatusQuery.data?.next_action.href ?? '/dashboard/admin');
+    const setupContinueLabel = setupStatusQuery.data?.complete
+        ? 'Open admin dashboard'
+        : (setupStatusQuery.data?.next_action.label ?? 'Continue setup');
     const assistantContext = useMemo(() => ({
         pageKey: 'cohort_detail',
         pageTitle: cohort?.name ?? 'Cohort',
@@ -385,15 +532,22 @@ export default function CohortHubPage() {
         },
         visibleActions: [
             {
-                label: 'Back to Cohorts',
+                label: safeReturnTo ? 'Back' : 'Back to Cohorts',
                 type: 'navigate' as const,
-                href: '/academic/cohorts',
+                href: backHref,
             },
-            ...(cohort && canLinkSubjects && !linkSubjectsDisabledReason
+            ...(cohort && canLinkSubjects && !linkSubjectsDisabledReason && (!setupMode || !cohortSetupReady)
                 ? [{
                     label: linkSubjectsLabel,
                     type: 'page_action' as const,
                     handler: () => setAssignSubjectsOpen(true),
+                }]
+                : []),
+            ...(setupMode && cohortSetupReady
+                ? [{
+                    label: setupContinueLabel,
+                    type: 'navigate' as const,
+                    href: setupContinueHref,
                 }]
                 : []),
             {
@@ -416,7 +570,13 @@ export default function CohortHubPage() {
                 ]
                 : []),
         ],
-        nextSafeAction: cohort && canLinkSubjects && !linkSubjectsDisabledReason
+        nextSafeAction: setupMode && cohortSetupReady
+            ? {
+                label: setupContinueLabel,
+                type: 'navigate' as const,
+                href: setupContinueHref,
+            }
+            : cohort && canLinkSubjects && !linkSubjectsDisabledReason
             ? {
                 label: linkSubjectsLabel,
                 type: 'page_action' as const,
@@ -450,6 +610,12 @@ export default function CohortHubPage() {
         linkSubjectsLabel,
         cbcBrowserHref,
         cbcProgressHref,
+        backHref,
+        cohortSetupReady,
+        safeReturnTo,
+        setupContinueHref,
+        setupContinueLabel,
+        setupMode,
         sessionsHref,
         subjectCount,
         visibleCohortSubjects.length,
@@ -494,10 +660,10 @@ export default function CohortHubPage() {
     return (
         <div className="mx-auto max-w-6xl space-y-6">
             <div>
-                <Link href="/academic/cohorts">
+                <Link href={backHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        {isInstructor ? 'Back to My Teaching Load' : 'Back to Cohorts'}
+                        {backLabel}
                     </Button>
                 </Link>
             </div>
@@ -522,11 +688,23 @@ export default function CohortHubPage() {
                     <MetadataItem label="Cohort" value={cohort.name} />
                     <MetadataItem label="Academic Year" value={cohort.academic_year_name} />
                     <MetadataItem label="Curriculum" value={curriculumName} />
-                    <MetadataItem label="Level" value={cohort.level} />
+                    <MetadataItem label="Level" value={getAcademicLevelLabel(cohort.level, cohort.curriculum_type)} />
                     <MetadataItem label="Stream" value={cohort.stream || '—'} />
                     <MetadataItem label="Learners" value={learnerCountLabel} />
                 </dl>
             </Card>
+
+            {setupMode ? (
+                <CohortSetupModeCard
+                    ready={cohortSetupReady}
+                    isCbcSeniorCohort={isCbcSeniorCohort}
+                    hasCbcProfile={hasCbcProfile}
+                    isCbcLowerLevel={isCbcLowerLevel}
+                    continueHref={setupContinueHref}
+                    continueLabel={setupContinueLabel}
+                    onManageSubjects={openAssignSubjects}
+                />
+            ) : null}
 
             {isCbcSeniorCohort ? (
                 <CbcSeniorSetupSection
@@ -540,7 +718,15 @@ export default function CohortHubPage() {
                     subjectCount={subjectCount}
                     onManageSubjects={openAssignSubjects}
                 />
-            ) : null}
+            ) : (
+                <StandardClassSetupSection
+                    ready={isClassSetupReady}
+                    isCbcLowerLevel={isCbcLowerLevel}
+                    canConfigure={canLinkSubjects}
+                    subjectCount={subjectCount}
+                    onManageSubjects={openAssignSubjects}
+                />
+            )}
 
             <section className="space-y-4">
                 <div className="space-y-1">
@@ -574,15 +760,6 @@ export default function CohortHubPage() {
                                     icon={Users}
                                     href={cohortLearnersHref}
                                     footerLabel="View class list"
-                                />
-                            ) : null}
-                            {canLinkSubjects ? (
-                                <ActionCard
-                                    title="Link Subject to Cohort"
-                                    description="Create or update cohort subject offerings for this cohort."
-                                    icon={BookOpen}
-                                    onClick={openAssignSubjects}
-                                    footerLabel={subjectCount > 0 ? `${subjectCount} linked` : 'Assign subject'}
                                 />
                             ) : null}
                             <ActionCard
@@ -666,7 +843,7 @@ export default function CohortHubPage() {
                 error={cohortSubjectsError ?? subjectParticipationQuery.error}
                 emptyMessage={isInstructor
                     ? 'No cohort subjects are assigned to you yet.'
-                    : isCbcSeniorCohort
+                    : subjectCount === 0
                         ? 'No class subjects have been added yet. Start with class subject setup.'
                         : undefined}
                 canManageInstructors={canManageInstructors}
