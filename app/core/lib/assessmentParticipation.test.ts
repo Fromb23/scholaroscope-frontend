@@ -4,6 +4,8 @@ import {
   AssessmentParticipationStatus,
 } from '../types/assessment';
 import {
+  getDefaultAssessmentParticipationDetailSection,
+  getParticipationReadyForGradingCount,
   getDefaultAssessmentParticipationMode,
   getReadyForGradingRecordIds,
   isParticipationRecordReadyForGrading,
@@ -56,5 +58,76 @@ describe('assessmentParticipation', () => {
     ]);
 
     expect(readyIds).toEqual([1]);
+  });
+
+  it('adds sat and makeup-ready learners into the ready-for-grading summary total', () => {
+    expect(getParticipationReadyForGradingCount({
+      sat_not_graded_count: 5,
+      makeup_ready_for_grading_count: 2,
+    })).toBe(7);
+  });
+
+  it('opens mark participation first when expected learners are still unmarked', () => {
+    expect(getDefaultAssessmentParticipationDetailSection(
+      {
+        pending_makeup_count: 0,
+        makeup_ready_for_grading_count: 0,
+      },
+      [
+        {
+          expected_at_assessment_time: true,
+          participation_status: null,
+        },
+        {
+          expected_at_assessment_time: true,
+          participation_status: null,
+        },
+      ]
+    )).toBe('markParticipation');
+  });
+
+  it('prioritizes missed assessment when makeup is still pending', () => {
+    expect(getDefaultAssessmentParticipationDetailSection(
+      {
+        pending_makeup_count: 3,
+        makeup_ready_for_grading_count: 1,
+      },
+      [
+        {
+          expected_at_assessment_time: true,
+          participation_status: AssessmentParticipationStatus.PRESENT,
+        },
+      ]
+    )).toBe('missedAssessment');
+  });
+
+  it('opens ready for grading when makeup completion is waiting on grading', () => {
+    expect(getDefaultAssessmentParticipationDetailSection(
+      {
+        pending_makeup_count: 0,
+        makeup_ready_for_grading_count: 2,
+      },
+      [
+        {
+          expected_at_assessment_time: true,
+          participation_status: AssessmentParticipationStatus.ABSENT,
+        },
+      ]
+    )).toBe('readyForGrading');
+  });
+
+  it('keeps detailed learner groups collapsed when there is no priority workflow', () => {
+    expect(getDefaultAssessmentParticipationDetailSection(
+      {
+        pending_makeup_count: 0,
+        makeup_ready_for_grading_count: 0,
+      },
+      [
+        {
+          expected_at_assessment_time: true,
+          participation_status: AssessmentParticipationStatus.PRESENT,
+        },
+      ]
+    )).toBeNull();
   });
 });
