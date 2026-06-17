@@ -25,12 +25,13 @@ import { categorizeSessions, calcAvgAttendance } from '@/app/utils/sessionUtils'
 
 export function TodaySessionsPage() {
     const router = useRouter();
-    const { activeOrg, activeRole, loading: authLoading, user } = useAuth();
+    const { activeOrg, activeRole, loading: authLoading, user, capabilities } = useAuth();
     const { sessions, loading, error } = useTodaySessions();
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
 
     useEffect(() => {

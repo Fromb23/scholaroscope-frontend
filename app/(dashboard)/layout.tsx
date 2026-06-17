@@ -28,6 +28,25 @@ import { AlertTriangle } from 'lucide-react';
 import { AccessNotice } from '../core/types/auth';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
+function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<typeof useAuth>['capabilities']): boolean {
+  if (/^\/admin\/(instructors|alerts)/.test(pathname)) {
+    return capabilities.can_manage_staff;
+  }
+  if (/^\/learners\/(new|[^/]+\/edit)$/.test(pathname)) {
+    return capabilities.can_manage_learners;
+  }
+  if (/^\/academic\/(curricula|years|terms|subjects|topics|progress)/.test(pathname)) {
+    return capabilities.can_manage_academic_setup;
+  }
+  if (/^\/assessments\/(new|[^/]+\/edit)$/.test(pathname)) {
+    return capabilities.can_manage_assessments;
+  }
+  if (/^\/reports/.test(pathname)) {
+    return capabilities.can_view_reports;
+  }
+  return true;
+}
+
 function DashboardContent({
   children,
   notices,
@@ -60,9 +79,14 @@ function DashboardContent({
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, activeOrg, activeRole, loading, accessNotices, clearAccessNotices } = useAuth();
+  const { user, activeOrg, activeRole, loading, accessNotices, clearAccessNotices, capabilities } = useAuth();
   const academicSetupQuery = useAcademicSetupStatus({
-    enabled: activeRole === 'ADMIN' && Boolean(activeOrg) && !user?.is_superadmin,
+    enabled: (
+      capabilities.can_manage_academic_setup
+      && capabilities.workspace_behavior !== 'FREELANCE_TEACHER'
+      && Boolean(activeOrg)
+      && !user?.is_superadmin
+    ),
   });
   const router = useRouter();
   const pathname = usePathname();
@@ -114,6 +138,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
+    if (!routeAllowedByCapabilities(pathname, capabilities)) {
+      router.replace(getUnauthorizedRouteFallback(activeRole, pathname));
+      return;
+    }
+
     if (
       activeRole === 'ADMIN'
       && activeOrg
@@ -127,6 +156,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     academicSetupQuery.data,
     activeOrg,
     activeRole,
+    capabilities,
     loading,
     pathname,
     router,

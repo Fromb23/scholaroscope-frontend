@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { authAPI } from '@/app/core/api/auth';
+import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
 import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
@@ -25,12 +25,14 @@ import type {
   Role,
   SwitchOrgResponse,
   User,
+  WorkspaceCapabilities,
 } from '@/app/core/types/auth';
 
 interface AuthContextType {
   user: User | null;
   activeOrg: ActiveOrg | null;
   memberships: OrgMembership[];
+  capabilities: WorkspaceCapabilities;
   activeRole: Role | null;
   loading: boolean;
   isAuthenticated: boolean;
@@ -48,6 +50,7 @@ type AuthStatePayload = {
   access: string;
   user: User;
   active_org: ActiveOrg | null;
+  capabilities: WorkspaceCapabilities;
   memberships: OrgMembership[];
   membership_version: number;
   restricted_orgs?: AccessNotice[];
@@ -73,6 +76,7 @@ function clearStoredAuthState() {
     'user',
     'active_org',
     'memberships',
+    'workspace_capabilities',
     'suspended_notices',
     'membership_version',
   ].forEach((key) => window.localStorage.removeItem(key));
@@ -129,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [activeOrg, setActiveOrg] = useState<ActiveOrg | null>(null);
   const [memberships, setMemberships] = useState<OrgMembership[]>([]);
+  const [capabilities, setCapabilities] = useState<WorkspaceCapabilities>(DEFAULT_WORKSPACE_CAPABILITIES);
   const [membershipVersion, setMembershipVersion] = useState<number>(0);
   const [accessNotices, setAccessNotices] = useState<AccessNotice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setActiveOrg(null);
     setMemberships([]);
+    setCapabilities(DEFAULT_WORKSPACE_CAPABILITIES);
     setMembershipVersion(0);
     setAccessNotices([]);
     queryClient.clear();
@@ -154,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(payload.user);
     setActiveOrg(payload.active_org);
     setMemberships(payload.memberships ?? []);
+    setCapabilities(payload.capabilities ?? DEFAULT_WORKSPACE_CAPABILITIES);
     setMembershipVersion(payload.membership_version ?? 0);
     setAccessNotices(
       buildAccessNotices(
@@ -168,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyMembershipContext = useCallback((payload: {
     active_org: ActiveOrg | null;
     memberships: OrgMembership[];
+    capabilities: WorkspaceCapabilities;
     membership_version: number;
     restricted_orgs?: AccessNotice[];
     org_suspended_orgs?: AccessNotice[];
@@ -175,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }) => {
     setActiveOrg(payload.active_org);
     setMemberships(payload.memberships ?? []);
+    setCapabilities(payload.capabilities ?? DEFAULT_WORKSPACE_CAPABILITIES);
     setMembershipVersion(payload.membership_version ?? 0);
     setAccessNotices(
       buildAccessNotices(
@@ -300,6 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       access: response.access,
       user: response.user,
       active_org: registerResponseActiveOrg(response),
+      capabilities: response.capabilities ?? DEFAULT_WORKSPACE_CAPABILITIES,
       memberships: response.memberships ?? [],
       membership_version: response.membership_version ?? membershipVersion,
     });
@@ -325,6 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       activeOrg,
       memberships,
+      capabilities,
       activeRole,
       loading,
       isAuthenticated: !!user,

@@ -241,12 +241,13 @@ export function SessionDetailPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionId = Number(params.id);
-    const { activeOrg, activeRole, user } = useAuth();
+    const { activeOrg, activeRole, user, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const returnTo = searchParams.get('returnTo');
     const backHref = returnTo?.startsWith('/') ? returnTo : '/sessions';

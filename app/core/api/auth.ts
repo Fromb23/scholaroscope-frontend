@@ -13,6 +13,7 @@ import type {
   SuspendedOrg,
   SwitchOrgResponse,
   User,
+  WorkspaceCapabilities,
 } from '@/app/core/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
@@ -45,10 +46,32 @@ function normalizeNotices(notices?: AccessNotice[]): AccessNotice[] {
   return notices ?? [];
 }
 
+export const DEFAULT_WORKSPACE_CAPABILITIES: WorkspaceCapabilities = {
+  can_teach: false,
+  can_manage_academic_setup: false,
+  can_manage_learners: false,
+  can_manage_cohorts: false,
+  can_manage_subjects: false,
+  can_manage_assessments: false,
+  can_view_reports: false,
+  can_manage_staff: false,
+  is_workspace_owner: false,
+  workspace_mode: null,
+  workspace_behavior: null,
+};
+
+function normalizeCapabilities(capabilities?: Partial<WorkspaceCapabilities>): WorkspaceCapabilities {
+  return {
+    ...DEFAULT_WORKSPACE_CAPABILITIES,
+    ...(capabilities ?? {}),
+  };
+}
+
 function normalizeLoginResponse(payload: LoginResponse): LoginResponse {
   return {
     ...payload,
     active_org: normalizeActiveOrg(payload.active_org as RawActiveOrg),
+    capabilities: normalizeCapabilities(payload.capabilities),
     memberships: normalizeMemberships(payload.memberships),
     restricted_orgs: normalizeNotices(payload.restricted_orgs),
     org_suspended_orgs: normalizeNotices(payload.org_suspended_orgs),
@@ -61,6 +84,7 @@ function normalizeRefreshResponse(payload: RefreshResponse): RefreshResponse {
   return {
     ...payload,
     active_org: normalizeActiveOrg(payload.active_org as RawActiveOrg),
+    capabilities: normalizeCapabilities(payload.capabilities),
     memberships: normalizeMemberships(payload.memberships),
     restricted_orgs: normalizeNotices(payload.restricted_orgs),
     org_suspended_orgs: normalizeNotices(payload.org_suspended_orgs),
@@ -72,6 +96,7 @@ function normalizeSwitchOrgResponse(payload: SwitchOrgResponse): SwitchOrgRespon
   return {
     ...payload,
     active_org: normalizeActiveOrg(payload.active_org as RawActiveOrg) as ActiveOrg,
+    capabilities: normalizeCapabilities(payload.capabilities),
     memberships: normalizeMemberships(payload.memberships),
   };
 }
@@ -80,6 +105,7 @@ function normalizeRegisterResponse(payload: RegisterResponse): RegisterResponse 
   return {
     ...payload,
     active_org: normalizeActiveOrg((payload.active_org ?? null) as RawActiveOrg),
+    capabilities: payload.capabilities ? normalizeCapabilities(payload.capabilities) : undefined,
     memberships: normalizeMemberships(payload.memberships),
   };
 }
@@ -185,6 +211,7 @@ export const authAPI = {
     return {
       ...response.data,
       active_org: normalizeActiveOrg((response.data.active_org ?? null) as RawActiveOrg),
+      capabilities: normalizeCapabilities(response.data.capabilities),
       memberships: normalizeMemberships(response.data.memberships),
       restricted_orgs: normalizeNotices(response.data.restricted_orgs),
       org_suspended_orgs: normalizeNotices(response.data.org_suspended_orgs),

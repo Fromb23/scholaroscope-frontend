@@ -371,7 +371,7 @@ function CohortSessionsCards({
 
 function SessionWorkspaceView() {
     const router = useRouter();
-    const { activeOrg, activeRole, user } = useAuth();
+    const { activeOrg, activeRole, user, capabilities } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
@@ -379,16 +379,19 @@ function SessionWorkspaceView() {
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
     const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
@@ -1420,13 +1423,14 @@ function CohortSessionsView({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, user } = useAuth();
+    const { activeOrg, activeRole, user, capabilities } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();

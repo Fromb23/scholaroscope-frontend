@@ -29,11 +29,11 @@ describe('report hierarchy configuration', () => {
     const items = getAdminReportNavigationItems();
 
     expect(items.map((item) => item.name)).toEqual([
-      'Overview',
+      'Reports Overview',
       'Learners',
       'Classes',
       'Subjects',
-      'Instructors',
+      'Instructor Reports',
       'Scoped Attendance Explorer',
       'Report Policies',
       'Compute / Maintenance',

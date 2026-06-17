@@ -184,7 +184,7 @@ export default function LearnerDetailPage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole } = useAuth();
+    const { user, activeRole, capabilities } = useAuth();
     const studentId = Number(params.id);
     const backHref = useMemo(
         () => buildLearnersBackHref(searchParams.get('back')),
@@ -216,12 +216,12 @@ export default function LearnerDetailPage() {
     );
     const scrollRestoredRef = useRef(false);
 
-    const canEdit = !!user && hasCapability(activeRole, 'EDIT_LEARNER');
-    const canManage = !!user && hasCapability(activeRole, 'MANAGE_ENROLLMENT');
-    const canManageSubjectParticipation = isAdminOrAbove(user, activeRole);
-    const canGenerateOverviewReport = !!user && (user.is_superadmin || activeRole === 'ADMIN');
-    const canGenerateSubjectReport = !!user && (user.is_superadmin || activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
-    const canRecordAssessment = activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR';
+    const canEdit = !!user && hasCapability(activeRole, 'EDIT_LEARNER', capabilities);
+    const canManage = !!user && hasCapability(activeRole, 'MANAGE_ENROLLMENT', capabilities);
+    const canManageSubjectParticipation = capabilities.can_manage_learners ?? isAdminOrAbove(user, activeRole);
+    const canGenerateOverviewReport = !!user && capabilities.can_view_reports;
+    const canGenerateSubjectReport = !!user && capabilities.can_view_reports;
+    const canRecordAssessment = capabilities.can_manage_assessments;
     const {
         scopes: reportScopes,
         loading: reportScopesLoading,

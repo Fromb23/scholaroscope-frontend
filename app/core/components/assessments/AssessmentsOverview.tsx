@@ -50,23 +50,26 @@ function normalizeText(value: string | null | undefined): string {
 
 export function AssessmentsOverview() {
     const router = useRouter();
-    const { activeOrg, user, activeRole } = useAuth();
+    const { activeOrg, user, activeRole, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();

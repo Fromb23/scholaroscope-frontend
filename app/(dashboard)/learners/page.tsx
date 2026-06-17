@@ -135,10 +135,10 @@ function compareLearners(left: Student, right: Student, sort: LearnerSort): numb
 function LearnersPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole } = useAuth();
+    const { activeRole, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdmin = activeRole === 'ADMIN';
-    const canCreate = hasCapability(activeRole, 'CREATE_LEARNER');
+    const canCreate = hasCapability(activeRole, 'CREATE_LEARNER', capabilities);
     const legacyQuery = useMemo(() => {
         const directQuery = (searchParams.get('q') ?? '').trim();
         if (directQuery) {
