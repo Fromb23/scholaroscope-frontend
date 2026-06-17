@@ -10,7 +10,6 @@ export type OrgType =
   | 'HOMESCHOOL';
 export type WorkspaceMode =
   | 'SCHOOL'
-  | 'INDEPENDENT_TEACHER'
   | 'HOME_TUITION'
   | 'TUITION_CENTER'
   | 'HOMESCHOOL'

@@ -4,6 +4,7 @@ import {
     buildAcademicSetupRedirectHref,
     getAcademicSetupPageState,
     isAcademicSetupOperationalAdminPath,
+    resolveAcademicSetupOrigin,
     withAcademicSetupMode,
 } from './academicSetup';
 import type { AcademicSetupStatus } from '@/app/core/types/academic';
@@ -61,5 +62,41 @@ describe('academic setup helpers', () => {
     it('flags operational admin paths that should be gated during setup', () => {
         expect(isAcademicSetupOperationalAdminPath('/sessions/12')).toBe(true);
         expect(isAcademicSetupOperationalAdminPath('/academic/subjects')).toBe(false);
+    });
+
+    it('keeps generic setup return targets generic', () => {
+        expect(resolveAcademicSetupOrigin({
+            setup: '1',
+            blocked: '1',
+            returnTo: '/lesson-plans',
+        })).toEqual({
+            kind: 'generic',
+            title: 'Complete curriculum setup to continue.',
+            message: 'After setup, return to the page you were working on.',
+            returnLabel: 'Return to previous page',
+        });
+    });
+
+    it('uses Cambridge setup copy only for explicit Cambridge setup origins', () => {
+        expect(resolveAcademicSetupOrigin({
+            setup: '1',
+            blocked: '1',
+            origin: 'cambridge',
+            returnTo: '/cambridge/offerings/12',
+        })).toEqual({
+            kind: 'cambridge',
+            title: 'Cambridge Setup Flow',
+            message: 'Create the curriculum here, then return to the Cambridge offering to assign cohorts.',
+            returnLabel: 'Return to Cambridge offering',
+        });
+    });
+
+    it('does not infer Cambridge from origin alone without a Cambridge return target', () => {
+        expect(resolveAcademicSetupOrigin({
+            setup: '1',
+            blocked: '1',
+            origin: 'cambridge',
+            returnTo: '/lesson-plans',
+        }).kind).toBe('generic');
     });
 });

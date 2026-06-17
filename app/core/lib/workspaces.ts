@@ -1,11 +1,11 @@
-import type { OrgType, Role, WorkspaceCapabilities, WorkspaceMode } from '@/app/core/types/auth';
+import type { OrgType, RegisterOrgType, Role, WorkspaceCapabilities, WorkspaceMode } from '@/app/core/types/auth';
 
 export type WorkspaceBadgeVariant = 'blue' | 'purple' | 'green' | 'orange' | 'indigo' | 'maroon';
 
 export const ORG_TYPE_LABELS: Record<OrgType, string> = {
   INSTITUTION: 'Institution',
   PERSONAL: 'Freelance Teacher Workspace',
-  INDEPENDENT_TEACHER: 'Independent Teacher Workspace',
+  INDEPENDENT_TEACHER: 'Freelance Teacher Workspace (legacy)',
   LEARNER_WORKSPACE: 'Learner Workspace',
   TUITION_CENTER: 'Tuition Center',
   HOMESCHOOL: 'Homeschool',
@@ -34,12 +34,6 @@ export const WORKSPACE_MODE_COPY: Record<
       'Set up an institution workspace for administrators, instructors, learners, cohorts, and reports.',
     placeholder: 'e.g. Sunrise Academy',
   },
-  INDEPENDENT_TEACHER: {
-    label: 'Independent Teacher',
-    description:
-      'Set up a teacher-owned workspace. You manage academic setup, learners, cohorts, lessons, and assessment evidence yourself.',
-    placeholder: 'e.g. Achieng Tutoring',
-  },
   HOME_TUITION: {
     label: 'Home Tuition for one learner',
     description:
@@ -58,9 +52,8 @@ export const WORKSPACE_MODE_COPY: Record<
     placeholder: 'e.g. Njeri Homeschool',
   },
   PERSONAL: {
-    label: 'Freelance Teacher',
-    description:
-      'Set up a one-person teaching workspace where you manage your own academic setup, learners, cohorts, lessons, assessments, and reports.',
+    label: 'Freelance Teacher Workspace',
+    description: 'Set up your learners, cohorts, lessons, assessments, and reports.',
     placeholder: 'e.g. Rombo Freelance Teaching',
   },
 };
@@ -72,7 +65,7 @@ export function getWorkspaceManagementLabel(orgType?: OrgType | null): string {
     case 'PERSONAL':
       return 'Freelance Teaching Workspace';
     case 'INDEPENDENT_TEACHER':
-      return 'Independent Teaching Workspace';
+      return 'Freelance Teaching Workspace';
     case 'LEARNER_WORKSPACE':
       return 'Learner Workspace Management';
     case 'TUITION_CENTER':
@@ -98,6 +91,13 @@ export function workspaceAllowsSelfManagedTeaching(orgType?: OrgType | null): bo
   return orgType === 'PERSONAL'
     || orgType === 'INDEPENDENT_TEACHER'
     || orgType === 'HOMESCHOOL';
+}
+
+export function normalizeRegisterOrgType(orgType?: RegisterOrgType | OrgType | string): RegisterOrgType {
+  if (orgType === 'INDEPENDENT_TEACHER' || orgType === 'FREELANCE_TEACHER') {
+    return 'PERSONAL';
+  }
+  return (orgType ?? 'PERSONAL') as RegisterOrgType;
 }
 
 export interface TeachingCapabilityParams {
@@ -149,7 +149,6 @@ export function isSupervisionOnlyAdmin(params: TeachingCapabilityParams): boolea
 export const ORG_TYPE_OPTIONS: Array<{ value: OrgType; label: string }> = [
   { value: 'INSTITUTION', label: ORG_TYPE_LABELS.INSTITUTION },
   { value: 'PERSONAL', label: ORG_TYPE_LABELS.PERSONAL },
-  { value: 'INDEPENDENT_TEACHER', label: ORG_TYPE_LABELS.INDEPENDENT_TEACHER },
   { value: 'LEARNER_WORKSPACE', label: ORG_TYPE_LABELS.LEARNER_WORKSPACE },
   { value: 'TUITION_CENTER', label: ORG_TYPE_LABELS.TUITION_CENTER },
   { value: 'HOMESCHOOL', label: ORG_TYPE_LABELS.HOMESCHOOL },

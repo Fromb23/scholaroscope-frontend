@@ -1,5 +1,6 @@
 import { apiClient, refreshClient } from './client';
 import { getAccessToken } from '@/app/core/auth/tokenStore';
+import { normalizeRegisterOrgType } from '@/app/core/lib/workspaces';
 import type {
   ActiveOrg,
   AccessNotice,
@@ -110,6 +111,16 @@ function normalizeRegisterResponse(payload: RegisterResponse): RegisterResponse 
   };
 }
 
+function normalizeRegisterPayload(payload: RegisterPayload): RegisterPayload {
+  if (!payload.org_type) {
+    return payload;
+  }
+  return {
+    ...payload,
+    org_type: normalizeRegisterOrgType(payload.org_type),
+  };
+}
+
 async function parseError(response: Response, fallbackMessage: string) {
   const data = await response.json().catch(() => ({}));
   const resolvedMessage = (
@@ -146,9 +157,10 @@ export const authAPI = {
   },
 
   register: async (payload: RegisterPayload): Promise<RegisterResponse> => {
+    const normalizedPayload = normalizeRegisterPayload(payload);
     const accessToken = getAccessToken();
     if (accessToken) {
-      const response = await apiClient.post<RegisterResponse>('/users/register/', payload);
+      const response = await apiClient.post<RegisterResponse>('/users/register/', normalizedPayload);
       return normalizeRegisterResponse(response.data);
     }
 
@@ -156,7 +168,7 @@ export const authAPI = {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(normalizedPayload),
     });
     if (!response.ok) {
       await parseError(response, 'Registration failed');

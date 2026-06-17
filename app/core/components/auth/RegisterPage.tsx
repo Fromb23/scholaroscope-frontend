@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle,
-  GraduationCap,
   Home,
   House,
   Loader2,
@@ -45,11 +44,10 @@ const WORKSPACE_MODE_OPTIONS: Array<{
   icon: LucideIcon;
 }> = [
   { value: 'SCHOOL', icon: Building2 },
-  { value: 'INDEPENDENT_TEACHER', icon: GraduationCap },
+  { value: 'PERSONAL', icon: User },
   { value: 'HOME_TUITION', icon: Home },
   { value: 'TUITION_CENTER', icon: School },
   { value: 'HOMESCHOOL', icon: House },
-  { value: 'PERSONAL', icon: User },
 ];
 
 function RegisterForm() {
@@ -135,7 +133,7 @@ function RegisterForm() {
                 : isInviteFlow
                   ? "You're in!"
                   : isFreelanceTeacherWorkspace
-                    ? 'My Teaching Workspace is ready'
+                    ? 'Freelance Teacher Workspace is ready'
                     : 'Workspace created'}
           </h2>
           <p className="theme-muted mt-2 text-sm">
@@ -293,7 +291,7 @@ function RegisterForm() {
         : selectedWorkspace.description;
 
   const submitLabel = isFreelanceTeacherWorkspace
-    ? 'Create Teaching Workspace'
+    ? 'Create Freelance Teacher Workspace'
     : isNewWorkspaceFlow
       ? 'Request Workspace'
     : isInviteFlow
