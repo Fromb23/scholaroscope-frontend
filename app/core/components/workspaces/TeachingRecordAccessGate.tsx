@@ -22,16 +22,18 @@ export function TeachingRecordAccessGate({
   backLabel,
   title,
 }: TeachingRecordAccessGateProps) {
-  const { activeOrg, activeRole, user } = useAuth();
+  const { activeOrg, activeRole, user, capabilities } = useAuth();
   const teachingAccess = canCreateTeachingRecord({
     role: activeRole,
     orgType: activeOrg?.org_type,
     isSuperadmin: user?.is_superadmin,
+    capabilities,
   });
   const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
     role: activeRole,
     orgType: activeOrg?.org_type,
     isSuperadmin: user?.is_superadmin,
+    capabilities,
   });
 
   if (!supervisionOnlyAdmin || teachingAccess) {

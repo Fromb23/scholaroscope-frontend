@@ -18,9 +18,46 @@ describe('workspace teaching capabilities', () => {
   });
 
   it('allows self-managed workspace admins into teaching mode', () => {
-    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'INDEPENDENT_TEACHER' })).toBe(true);
-    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'HOMESCHOOL' })).toBe(true);
-    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'PERSONAL' })).toBe(true);
+    expect(canUseTeachingMode({
+      role: 'ADMIN',
+      orgType: 'INDEPENDENT_TEACHER',
+      isWorkspaceOwner: true,
+    })).toBe(true);
+    expect(canUseTeachingMode({
+      role: 'ADMIN',
+      orgType: 'HOMESCHOOL',
+      isWorkspaceOwner: true,
+    })).toBe(true);
+    expect(canUseTeachingMode({
+      role: 'ADMIN',
+      orgType: 'PERSONAL',
+      isWorkspaceOwner: true,
+    })).toBe(true);
+    expect(canUseTeachingMode({
+      role: 'ADMIN',
+      orgType: 'PERSONAL',
+      isWorkspaceOwner: false,
+    })).toBe(false);
+  });
+
+  it('prefers backend capability flags over workspace-role guesses', () => {
+    expect(canUseTeachingMode({
+      role: 'ADMIN',
+      orgType: 'INSTITUTION',
+      capabilities: {
+        can_teach: true,
+        can_manage_academic_setup: true,
+        can_manage_learners: true,
+        can_manage_cohorts: true,
+        can_manage_subjects: true,
+        can_manage_assessments: true,
+        can_view_reports: true,
+        can_manage_staff: false,
+        is_workspace_owner: true,
+        workspace_mode: 'FREELANCE_TEACHER',
+        workspace_behavior: 'FREELANCE_TEACHER',
+      },
+    })).toBe(true);
   });
 
   it('keeps learner-workspace and tuition-center admins out of teaching mode', () => {

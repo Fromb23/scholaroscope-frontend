@@ -155,12 +155,13 @@ export function LessonPlanDetailPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, user } = useAuth();
+    const { activeOrg, activeRole, user, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const lessonPlanId = getLessonPlanId(params);
     const {

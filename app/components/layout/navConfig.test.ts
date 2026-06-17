@@ -7,6 +7,7 @@ vi.mock('@/app/core/registry/pluginNavigation', () => ({
 vi.mock('@/app/core/lib/workspaces', () => ({
   getWorkspaceManagementLabel: () => 'Workspace',
   isLearnerCenteredWorkspace: (orgType?: string | null) => orgType === 'LEARNER_WORKSPACE',
+  isPersonalFreelancerWorkspace: (orgType?: string | null) => orgType === 'PERSONAL',
   isSelfManagedWorkspace: (orgType?: string | null) => (
     orgType === 'PERSONAL' || orgType === 'INDEPENDENT_TEACHER' || orgType === 'HOMESCHOOL'
   ),
@@ -38,11 +39,11 @@ describe('admin navigation config', () => {
     expect(assessmentItem?.name).toBe('Assessment Overview');
     expect(assessmentItem?.children?.some((item) => item.href === '/assessments/new')).toBe(false);
     expect(reportsItem?.children?.map((item) => item.name)).toEqual([
-      'Overview',
+      'Reports Overview',
       'Learners',
       'Classes',
       'Subjects',
-      'Instructors',
+      'Instructor Reports',
       'Scoped Attendance Explorer',
       'Report Policies',
       'Compute / Maintenance',
@@ -54,6 +55,42 @@ describe('admin navigation config', () => {
 
     expect(nav.primary.some((item) => item.name === 'Teaching Sessions')).toBe(true);
     expect(nav.primary.some((item) => item.name === 'Lesson Plans')).toBe(true);
+  });
+
+  it('shows freelance teacher navigation for personal workspaces', () => {
+    const nav = getAdminNav(pluginContext, 'PERSONAL', {
+      complete: false,
+      current_step_label: 'Create current academic year',
+      next_action: {
+        label: 'Create current academic year',
+        href: '/academic/years?setup=1&create=1',
+      },
+    }, {
+      can_teach: true,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: false,
+      is_workspace_owner: true,
+      workspace_mode: 'FREELANCE_TEACHER',
+      workspace_behavior: 'FREELANCE_TEACHER',
+    });
+
+    expect(nav.primary.map((item) => item.name)).toEqual([
+      'Dashboard',
+      'Academic Setup',
+      'Learners',
+      'Teaching Sessions',
+      'Lesson Plans',
+      'Assessments',
+      'Reports',
+    ]);
+    expect(nav.primary.some((item) => item.name === 'Instructors')).toBe(false);
+    expect(nav.primary.some((item) => item.name === 'System Alerts')).toBe(false);
+    expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
   });
 
   it('removes create-new assessment child for tuition-center admins', () => {

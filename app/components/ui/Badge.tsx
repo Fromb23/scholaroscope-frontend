@@ -10,6 +10,7 @@ interface BadgeProps {
     | 'green'
     | 'yellow'
     | 'red'
+    | 'maroon'
     | 'purple'
     | 'indigo'
     | 'orange';
@@ -35,6 +36,7 @@ export function Badge({
     green: 'border border-green-200 bg-green-100 text-green-800',
     yellow: 'border border-yellow-200 bg-yellow-100 text-yellow-800',
     red: 'border border-red-200 bg-red-100 text-red-800',
+    maroon: 'border border-[#facc15]/40 bg-[#7f1d1d]/10 text-[#7f1d1d]',
     purple: 'border border-purple-200 bg-purple-100 text-purple-800',
     indigo: 'border border-blue-200 bg-indigo-100 text-indigo-800',
     orange: 'border border-yellow-200 bg-orange-100 text-orange-800',

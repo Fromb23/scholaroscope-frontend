@@ -1,4 +1,4 @@
-import type { OrgType, Role, WorkspaceMode } from '@/app/core/types/auth';
+import type { OrgType, Role, WorkspaceCapabilities, WorkspaceMode } from '@/app/core/types/auth';
 
 export type WorkspaceBadgeVariant = 'blue' | 'purple' | 'green' | 'orange' | 'indigo' | 'maroon';
 
@@ -105,13 +105,20 @@ export interface TeachingCapabilityParams {
   orgType?: OrgType | null;
   isSuperadmin?: boolean;
   isWorkspaceOwner?: boolean;
+  capabilities?: WorkspaceCapabilities | null;
 }
 
 export function canUseTeachingMode({
   role,
   orgType,
   isSuperadmin,
+  isWorkspaceOwner,
+  capabilities,
 }: TeachingCapabilityParams): boolean {
+  if (capabilities) {
+    return capabilities.can_teach;
+  }
+
   if (isSuperadmin || role === 'SUPERADMIN') {
     return false;
   }
@@ -121,8 +128,7 @@ export function canUseTeachingMode({
   }
 
   if (role === 'ADMIN') {
-    // TODO: Replace this workspace-mode approximation with backend capability flags.
-    return workspaceAllowsSelfManagedTeaching(orgType);
+    return workspaceAllowsSelfManagedTeaching(orgType) && Boolean(isWorkspaceOwner);
   }
 
   return false;

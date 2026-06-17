@@ -80,6 +80,7 @@ function RegisterForm() {
   const [workspaceStep, setWorkspaceStep] = useState<'mode' | 'details'>('mode');
   const isWorkspaceSetupFlow = isDirectSignupFlow || isNewWorkspaceFlow;
   const selectedWorkspace = WORKSPACE_MODE_COPY[form.org_type];
+  const isFreelanceTeacherWorkspace = form.org_type === 'PERSONAL';
 
   if (inviteLoading) {
     return (
@@ -133,14 +134,18 @@ function RegisterForm() {
                 ? 'Workspace restored!'
                 : isInviteFlow
                   ? "You're in!"
-                  : 'Workspace request submitted'}
+                  : isFreelanceTeacherWorkspace
+                    ? 'My Teaching Workspace is ready'
+                    : 'Workspace created'}
           </h2>
           <p className="theme-muted mt-2 text-sm">
             {isPending
               ? 'Platform approval is required before this workspace becomes active.'
               : isInviteFlow
                 ? `Welcome to ${invite?.organization}. Redirecting...`
-                : 'Redirecting to your dashboard...'}
+                : isFreelanceTeacherWorkspace
+                  ? 'Set up your learners, cohorts, lessons, assessments, and reports. Redirecting...'
+                  : 'Redirecting to your dashboard...'}
           </p>
           {isPending && (
             <button
@@ -287,8 +292,10 @@ function RegisterForm() {
           : 'Fill in your details to join'
         : selectedWorkspace.description;
 
-  const submitLabel = isNewWorkspaceFlow
-    ? 'Request Workspace'
+  const submitLabel = isFreelanceTeacherWorkspace
+    ? 'Create Teaching Workspace'
+    : isNewWorkspaceFlow
+      ? 'Request Workspace'
     : isInviteFlow
       ? isExistingUser
         ? 'Accept & Sign In'
@@ -352,13 +359,19 @@ function RegisterForm() {
                         setWorkspaceStep('details');
                       }}
                       className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
-                        selected
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'theme-border theme-surface hover:bg-[color:var(--color-surface-muted)]'
+                        selected && value === 'PERSONAL'
+                          ? 'border-[#7f1d1d] bg-[#7f1d1d]/10'
+                          : selected
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'theme-border theme-surface hover:bg-[color:var(--color-surface-muted)]'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="rounded-lg bg-blue-100 p-2 text-blue-700">
+                        <div className={`rounded-lg p-2 ${
+                          value === 'PERSONAL'
+                            ? 'bg-[#7f1d1d]/10 text-[#7f1d1d]'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">

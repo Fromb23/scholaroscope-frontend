@@ -18,6 +18,20 @@ export type WorkspaceMode =
 export type RegisterOrgType = WorkspaceMode | 'INSTITUTION' | 'LEARNER_WORKSPACE';
 export type MembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
 
+export interface WorkspaceCapabilities {
+  can_teach: boolean;
+  can_manage_academic_setup: boolean;
+  can_manage_learners: boolean;
+  can_manage_cohorts: boolean;
+  can_manage_subjects: boolean;
+  can_manage_assessments: boolean;
+  can_view_reports: boolean;
+  can_manage_staff: boolean;
+  is_workspace_owner: boolean;
+  workspace_mode: string | null;
+  workspace_behavior: string | null;
+}
+
 export interface AccessNotice {
   org: string;
   organization_id?: number;
@@ -67,6 +81,7 @@ export interface LoginResponse {
   user: User;
   message: string;
   active_org: ActiveOrg | null;
+  capabilities: WorkspaceCapabilities;
   memberships: OrgMembership[];
   membership_version: number;
   state?: string;
@@ -86,6 +101,7 @@ export interface SwitchOrgResponse {
   access: string;
   user: User;
   active_org: ActiveOrg;
+  capabilities: WorkspaceCapabilities;
   memberships: OrgMembership[];
   membership_version: number;
   message: string;
@@ -95,6 +111,7 @@ export interface RefreshResponse {
   access: string;
   user: User;
   active_org: ActiveOrg | null;
+  capabilities: WorkspaceCapabilities;
   memberships: OrgMembership[];
   membership_version: number;
   state?: string;
@@ -120,6 +137,7 @@ export interface RegisterResponse {
   access?: string;
   user?: User;
   active_org?: ActiveOrg | null;
+  capabilities?: WorkspaceCapabilities;
   membership_version?: number;
   state?: string;
   organization?: {
@@ -142,6 +160,7 @@ export interface MeContextResponse {
   membership_version: number;
   state: string;
   active_org: ActiveOrg | null;
+  capabilities: WorkspaceCapabilities;
   memberships: OrgMembership[];
   restricted_orgs: AccessNotice[];
   org_suspended_orgs: AccessNotice[];

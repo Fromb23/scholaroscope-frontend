@@ -29,7 +29,7 @@ import {
   CalendarDays,
   Puzzle,
 } from 'lucide-react';
-import type { OrgType, Role } from '@/app/core/types/auth';
+import type { OrgType, Role, WorkspaceCapabilities } from '@/app/core/types/auth';
 import {
   getPluginNavigationItems,
   type NavItem as RegistryNavItem,
@@ -152,28 +152,14 @@ export function getAdminNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
   academicSetup?: Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'> | null,
+  capabilities?: WorkspaceCapabilities | null,
 ): NavigationConfig {
-  if (academicSetup && !academicSetup.complete) {
-    const currentStepLabel = academicSetup.current_step_label ?? 'Continue setup';
-
-    return {
-      primary: [
-        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
-        { name: 'Academic Setup', href: '/academic', icon: GraduationCap },
-        { name: currentStepLabel, href: academicSetup.next_action.href, icon: CalendarDays },
-      ],
-      secondary: [
-        { name: 'Settings', href: '/admin/settings', icon: Settings },
-      ],
-    };
-  }
-
   const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
     ? [{ name: 'Report Policies', href: '/reports/policies', icon: Award }]
     : [];
   const reportNavigationChildren = getAdminReportNavigationItems();
 
-  if (isPersonalFreelancerWorkspace(orgType)) {
+  if (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType)) {
     return {
       primary: [
         { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
@@ -201,6 +187,21 @@ export function getAdminNav(
       ],
       secondary: [
         ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ],
+    };
+  }
+
+  if (academicSetup && !academicSetup.complete) {
+    const currentStepLabel = academicSetup.current_step_label ?? 'Continue setup';
+
+    return {
+      primary: [
+        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Academic Setup', href: '/academic', icon: GraduationCap },
+        { name: currentStepLabel, href: academicSetup.next_action.href, icon: CalendarDays },
+      ],
+      secondary: [
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ],
     };

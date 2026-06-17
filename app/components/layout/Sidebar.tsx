@@ -36,13 +36,13 @@ import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigati
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, activeOrg, activeRole } = useAuth();
+  const { user, activeOrg, activeRole, capabilities } = useAuth();
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
   const { plugins, hasPlugin } = usePlugins();
   const { curricula } = useCurricula();
   const academicSetupQuery = useAcademicSetupStatus({
-    enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
+    enabled: capabilities.can_manage_academic_setup && Boolean(activeOrg),
   });
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
@@ -86,6 +86,7 @@ export default function Sidebar() {
         pluginNavigationContext,
         activeOrg?.org_type,
         academicSetupQuery.data ?? null,
+        capabilities,
       );
     }
     if (activeRole === 'INSTRUCTOR') {
@@ -98,12 +99,16 @@ export default function Sidebar() {
     activeRole,
     pluginNavigationContext,
     academicSetupQuery.data,
+    capabilities,
   ]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
   const colors = getRoleColorScheme(resolvedRole, activeOrg?.org_type);
   const RoleIcon = ROLE_ICONS[resolvedRole] ?? ROLE_ICONS.ADMIN;
   const Logo = AppLogoIcon;
+  const roleLabel = capabilities.workspace_behavior === 'FREELANCE_TEACHER'
+    ? 'Freelance Teacher'
+    : (activeRole ?? '—');
 
   // ── Active path helpers ───────────────────────────────────────────────
 
@@ -170,7 +175,7 @@ export default function Sidebar() {
               </div>
               <div>
                 <p className="theme-subtle text-xs font-semibold uppercase tracking-wide">
-                  {activeRole ?? '—'}
+                  {roleLabel}
                 </p>
                 <p className="text-sm font-bold theme-text">
                   {user.first_name} {user.last_name}

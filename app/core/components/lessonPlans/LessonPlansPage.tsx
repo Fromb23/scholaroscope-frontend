@@ -345,23 +345,26 @@ function LessonPlanActions({
 
 export function LessonPlansPage() {
     const router = useRouter();
-    const { activeOrg, activeRole, user } = useAuth();
+    const { activeOrg, activeRole, user, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
         isSuperadmin: user?.is_superadmin,
+        capabilities,
     });
     const { curricula } = useCurricula();
     const { terms } = useTerms();
