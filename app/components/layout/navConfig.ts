@@ -39,6 +39,7 @@ import type { AcademicSetupStatus } from '@/app/core/types/academic';
 import {
   getWorkspaceManagementLabel,
   isLearnerCenteredWorkspace,
+  isPersonalFreelancerWorkspace,
   isSelfManagedWorkspace,
 } from '@/app/core/lib/workspaces';
 import { getAdminReportNavigationItems } from '../../core/components/reports/reportHierarchy';
@@ -90,6 +91,22 @@ export const ROLE_COLORS: Record<Role, RoleColorScheme> = {
   },
 };
 
+export const FREELANCER_WORKSPACE_COLORS: RoleColorScheme = {
+  active: 'bg-[#7f1d1d] text-white shadow-sm',
+  hover: 'hover:bg-[#7f1d1d]/10 hover:text-[color:var(--color-text)]',
+  childActive: 'border-l-4 border-[#7f1d1d] bg-[#7f1d1d]/10 text-[color:var(--color-text)]',
+  badge: 'border border-[#facc15]/40 bg-[#7f1d1d]/10 text-[#7f1d1d]',
+  header: 'bg-[#7f1d1d]/10 border-[#facc15]/30',
+  iconBg: 'bg-[#7f1d1d]',
+};
+
+export function getRoleColorScheme(role: Role, orgType?: OrgType | null): RoleColorScheme {
+  if (role === 'ADMIN' && isPersonalFreelancerWorkspace(orgType)) {
+    return FREELANCER_WORKSPACE_COLORS;
+  }
+  return ROLE_COLORS[role] ?? ROLE_COLORS.ADMIN;
+}
+
 // ── Role icon lookup ──────────────────────────────────────────────────────
 
 export const ROLE_ICONS: Record<Role, LucideIcon> = {
@@ -117,6 +134,20 @@ export const SUPERADMIN_NAV: NavigationConfig = {
   ],
 };
 
+const ACADEMIC_SETUP_NAV: RegistryNavItem = {
+  name: 'Academic Setup',
+  href: '/academic',
+  icon: GraduationCap,
+  children: [
+    { name: 'Overview', href: '/academic', icon: GraduationCap },
+    { name: 'Curricula', href: '/academic/curricula', icon: BookOpen },
+    { name: 'Years', href: '/academic/years', icon: Calendar },
+    { name: 'Terms', href: '/academic/terms', icon: CalendarDays },
+    { name: 'Subjects', href: '/academic/subjects', icon: BookOpen },
+    { name: 'Cohorts', href: '/academic/cohorts', icon: Users },
+  ],
+};
+
 export function getAdminNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
@@ -141,6 +172,39 @@ export function getAdminNav(
     ? [{ name: 'Report Policies', href: '/reports/policies', icon: Award }]
     : [];
   const reportNavigationChildren = getAdminReportNavigationItems();
+
+  if (isPersonalFreelancerWorkspace(orgType)) {
+    return {
+      primary: [
+        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
+        ACADEMIC_SETUP_NAV,
+        { name: 'Learners', href: '/learners', icon: Users },
+        { name: 'Teaching Sessions', href: '/sessions', icon: Calendar },
+        { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+        {
+          name: 'Assessments',
+          href: '/assessments',
+          icon: ClipboardCheck,
+          children: [
+            { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
+            ...reportPoliciesChild,
+          ],
+        },
+        ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
+        {
+          name: 'Reports',
+          href: '/reports',
+          icon: FileBarChart,
+          children: reportNavigationChildren,
+        },
+      ],
+      secondary: [
+        ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ],
+    };
+  }
 
   if (isSelfManagedWorkspace(orgType)) {
     return {
@@ -234,19 +298,7 @@ export function getAdminNav(
     primary: [
       { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
       ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
-      {
-        name: 'Academic Setup',
-        href: '/academic',
-        icon: GraduationCap,
-        children: [
-          { name: 'Overview', href: '/academic', icon: GraduationCap },
-          { name: 'Curricula', href: '/academic/curricula', icon: BookOpen },
-          { name: 'Years', href: '/academic/years', icon: Calendar },
-          { name: 'Terms', href: '/academic/terms', icon: CalendarDays },
-          { name: 'Subjects', href: '/academic/subjects', icon: BookOpen },
-          { name: 'Cohorts', href: '/academic/cohorts', icon: Users },
-        ],
-      },
+      ACADEMIC_SETUP_NAV,
       { name: 'Instructors', href: '/admin/instructors', icon: UserCog },
       { name: 'Learners', href: '/learners', icon: Users },
       { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
