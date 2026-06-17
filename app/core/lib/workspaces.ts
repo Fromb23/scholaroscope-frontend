@@ -1,10 +1,10 @@
 import type { OrgType, Role, WorkspaceMode } from '@/app/core/types/auth';
 
-export type WorkspaceBadgeVariant = 'blue' | 'purple' | 'green' | 'orange' | 'indigo';
+export type WorkspaceBadgeVariant = 'blue' | 'purple' | 'green' | 'orange' | 'indigo' | 'maroon';
 
 export const ORG_TYPE_LABELS: Record<OrgType, string> = {
   INSTITUTION: 'Institution',
-  PERSONAL: 'Personal Workspace',
+  PERSONAL: 'Freelance Teacher Workspace',
   INDEPENDENT_TEACHER: 'Independent Teacher Workspace',
   LEARNER_WORKSPACE: 'Learner Workspace',
   TUITION_CENTER: 'Tuition Center',
@@ -13,7 +13,7 @@ export const ORG_TYPE_LABELS: Record<OrgType, string> = {
 
 export const ORG_TYPE_BADGE_VARIANTS: Record<OrgType, WorkspaceBadgeVariant> = {
   INSTITUTION: 'blue',
-  PERSONAL: 'purple',
+  PERSONAL: 'maroon',
   INDEPENDENT_TEACHER: 'green',
   LEARNER_WORKSPACE: 'orange',
   TUITION_CENTER: 'indigo',
@@ -37,7 +37,7 @@ export const WORKSPACE_MODE_COPY: Record<
   INDEPENDENT_TEACHER: {
     label: 'Independent Teacher',
     description:
-      'Set up a teacher-owned workspace. You manage your setup but teach as an instructor.',
+      'Set up a teacher-owned workspace. You manage academic setup, learners, cohorts, lessons, and assessment evidence yourself.',
     placeholder: 'e.g. Achieng Tutoring',
   },
   HOME_TUITION: {
@@ -58,9 +58,10 @@ export const WORKSPACE_MODE_COPY: Record<
     placeholder: 'e.g. Njeri Homeschool',
   },
   PERSONAL: {
-    label: 'Personal Workspace',
-    description: 'Private workspace for personal use only.',
-    placeholder: 'e.g. Personal Study Space',
+    label: 'Freelance Teacher',
+    description:
+      'Set up a one-person teaching workspace where you manage your own academic setup, learners, cohorts, lessons, assessments, and reports.',
+    placeholder: 'e.g. Rombo Freelance Teaching',
   },
 };
 
@@ -68,6 +69,10 @@ export function getWorkspaceManagementLabel(orgType?: OrgType | null): string {
   switch (orgType) {
     case 'INSTITUTION':
       return 'Institution Management';
+    case 'PERSONAL':
+      return 'Freelance Teaching Workspace';
+    case 'INDEPENDENT_TEACHER':
+      return 'Independent Teaching Workspace';
     case 'LEARNER_WORKSPACE':
       return 'Learner Workspace Management';
     case 'TUITION_CENTER':
@@ -75,6 +80,10 @@ export function getWorkspaceManagementLabel(orgType?: OrgType | null): string {
     default:
       return 'Workspace Management';
   }
+}
+
+export function isPersonalFreelancerWorkspace(orgType?: OrgType | null): boolean {
+  return orgType === 'PERSONAL';
 }
 
 export function isSelfManagedWorkspace(orgType?: OrgType | null): boolean {
