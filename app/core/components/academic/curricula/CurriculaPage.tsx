@@ -16,6 +16,7 @@ import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import {
     getAcademicSetupPageState,
+    resolveAcademicSetupOrigin,
     withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
 import { Card } from '@/app/components/ui/Card';
@@ -66,6 +67,14 @@ export function CurriculaPage() {
     const setupMode = searchParams.get('setup') === '1';
     const blockedNotice = searchParams.get('blocked') === '1';
     const returnTo = searchParams.get('returnTo');
+    const setupOriginContext = resolveAcademicSetupOrigin({
+        setup: searchParams.get('setup'),
+        blocked: searchParams.get('blocked'),
+        returnTo,
+        origin: searchParams.get('origin'),
+        flow: searchParams.get('flow'),
+        pluginKey: searchParams.get('pluginKey'),
+    });
     const setupStatus = setupStatusQuery.data ?? null;
     const setupPageState = getAcademicSetupPageState(setupStatus, 'CURRICULUM');
     const pageErrorRef = useScrollIntoViewOnMessage(pageError);
@@ -275,13 +284,13 @@ export function CurriculaPage() {
                 <Card>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <h2 className="text-sm font-semibold text-gray-900">Cambridge Setup Flow</h2>
+                            <h2 className="text-sm font-semibold text-gray-900">{setupOriginContext.title}</h2>
                             <p className="mt-1 text-sm text-gray-600">
-                                Create the curriculum here, then return to the Cambridge offering to assign cohorts.
+                                {setupOriginContext.message}
                             </p>
                         </div>
                         <Link href={returnTo} className="text-sm text-blue-600 hover:text-blue-700">
-                            Return to Cambridge offering
+                            {setupOriginContext.returnLabel}
                         </Link>
                     </div>
                 </Card>

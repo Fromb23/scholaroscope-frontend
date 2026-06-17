@@ -28,6 +28,23 @@ const ACADEMIC_SETUP_OPERATIONAL_PATHS: RegExp[] = [
 ];
 
 export type AcademicSetupPageState = 'current' | 'blocked' | 'completed' | 'done';
+export type AcademicSetupOriginKind = 'generic' | 'cambridge';
+
+export interface AcademicSetupOriginInput {
+    setup?: string | null;
+    blocked?: string | null;
+    returnTo?: string | null;
+    origin?: string | null;
+    flow?: string | null;
+    pluginKey?: string | null;
+}
+
+export interface AcademicSetupOriginContext {
+    kind: AcademicSetupOriginKind;
+    title: string;
+    message: string;
+    returnLabel: string;
+}
 
 export function isAcademicSetupIncomplete(status: AcademicSetupStatus | null | undefined): boolean {
     return Boolean(status && !status.complete);
@@ -100,6 +117,37 @@ export function withAcademicSetupMode(
 
     const query = searchParams.toString();
     return query ? `${basePath}?${query}` : basePath;
+}
+
+function isCambridgeReturnTarget(returnTo?: string | null): boolean {
+    return Boolean(returnTo?.startsWith('/cambridge') || returnTo?.startsWith('/admin/settings?tab=plugins&plugin=cambridge'));
+}
+
+function explicitlyRequestsCambridge(input: AcademicSetupOriginInput): boolean {
+    const explicitValues = [input.origin, input.flow, input.pluginKey]
+        .map((value) => value?.trim().toLowerCase())
+        .filter(Boolean);
+    return explicitValues.some((value) => value === 'cambridge');
+}
+
+export function resolveAcademicSetupOrigin(
+    input: AcademicSetupOriginInput,
+): AcademicSetupOriginContext {
+    if (explicitlyRequestsCambridge(input) && isCambridgeReturnTarget(input.returnTo)) {
+        return {
+            kind: 'cambridge',
+            title: 'Cambridge Setup Flow',
+            message: 'Create the curriculum here, then return to the Cambridge offering to assign cohorts.',
+            returnLabel: 'Return to Cambridge offering',
+        };
+    }
+
+    return {
+        kind: 'generic',
+        title: 'Complete curriculum setup to continue.',
+        message: 'After setup, return to the page you were working on.',
+        returnLabel: 'Return to previous page',
+    };
 }
 
 export function getAcademicSetupCurrentStepNavItem(

@@ -5,6 +5,9 @@ import {
   canShowAdminMyTeaching,
   canUseTeachingMode,
   isSupervisionOnlyAdmin,
+  normalizeRegisterOrgType,
+  ORG_TYPE_OPTIONS,
+  WORKSPACE_MODE_COPY,
   workspaceAllowsSelfManagedTeaching,
 } from './workspaces';
 
@@ -68,5 +71,23 @@ describe('workspace teaching capabilities', () => {
   it('always allows instructors and never allows superadmins', () => {
     expect(canUseTeachingMode({ role: 'INSTRUCTOR', orgType: 'INSTITUTION' })).toBe(true);
     expect(canUseTeachingMode({ role: 'SUPERADMIN', orgType: 'HOMESCHOOL', isSuperadmin: true })).toBe(false);
+  });
+
+  it('does not expose independent teacher as a distinct registration workspace type', () => {
+    expect(Object.keys(WORKSPACE_MODE_COPY)).not.toContain('INDEPENDENT_TEACHER');
+    expect(WORKSPACE_MODE_COPY.PERSONAL.label).toBe('Freelance Teacher Workspace');
+    expect(WORKSPACE_MODE_COPY.PERSONAL.description).toBe(
+      'Set up your learners, cohorts, lessons, assessments, and reports.',
+    );
+  });
+
+  it('submits stale independent teacher registration choices as personal', () => {
+    expect(normalizeRegisterOrgType('INDEPENDENT_TEACHER')).toBe('PERSONAL');
+    expect(normalizeRegisterOrgType('FREELANCE_TEACHER')).toBe('PERSONAL');
+    expect(normalizeRegisterOrgType('PERSONAL')).toBe('PERSONAL');
+  });
+
+  it('does not offer independent teacher as a new organization type option', () => {
+    expect(ORG_TYPE_OPTIONS.map((option) => option.value)).not.toContain('INDEPENDENT_TEACHER');
   });
 });
