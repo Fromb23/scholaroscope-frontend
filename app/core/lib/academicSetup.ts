@@ -10,6 +10,7 @@ export const ACADEMIC_SETUP_STEP_ORDER: AcademicSetupStepKey[] = [
     'TERMS',
     'SUBJECTS',
     'COHORTS',
+    'SCHEMES_OF_WORK',
 ];
 
 // TODO: Extend backend AcademicSetupStatus so current-year CBC senior cohorts without

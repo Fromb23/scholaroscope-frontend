@@ -64,6 +64,31 @@ describe('academic setup helpers', () => {
         expect(isAcademicSetupOperationalAdminPath('/academic/subjects')).toBe(false);
     });
 
+    it('treats schemes of work as the guided step after cohorts', () => {
+        const schemeStatus: AcademicSetupStatus = {
+            ...incompleteStatus,
+            current_step: 'SCHEMES_OF_WORK',
+            current_step_label: 'Set up schemes of work',
+            next_action: {
+                label: 'Set up schemes of work',
+                href: '/schemes?setup=1',
+            },
+            steps: [
+                ...incompleteStatus.steps.map((step) => ({ ...step, status: 'complete' as const })),
+                {
+                    key: 'SCHEMES_OF_WORK',
+                    label: 'Set up schemes of work',
+                    status: 'current',
+                    href: '/schemes?setup=1',
+                    description: 'Create or generate schemes of work before lesson plans.',
+                },
+            ],
+        };
+
+        expect(getAcademicSetupPageState(schemeStatus, 'COHORTS')).toBe('completed');
+        expect(getAcademicSetupPageState(schemeStatus, 'SCHEMES_OF_WORK')).toBe('current');
+    });
+
     it('keeps generic setup return targets generic', () => {
         expect(resolveAcademicSetupOrigin({
             setup: '1',

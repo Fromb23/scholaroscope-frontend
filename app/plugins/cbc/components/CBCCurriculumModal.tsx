@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Check, ChevronDown } from 'lucide-react';
+import { BookOpen, Check, ChevronDown, Search } from 'lucide-react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -14,6 +14,7 @@ import { resolveCBCCatalogBadge } from '@/app/plugins/cbc/lib/catalogStatus';
 import type {
     CBCCatalog,
     CBCCatalogLevel,
+    CBCCatalogSubject,
     CBCStrandCatalogEntry,
     CBCSubStrandCatalogEntry,
 } from '@/app/plugins/cbc/types/cbc';
@@ -81,6 +82,32 @@ function computeDiff(current: SelectionState, snap: SelectionState): DiffResult 
         addCount: addSubStrands.length,
         removeCount: removeSubStrands.length,
     };
+}
+
+function normalizeSearchValue(value: string): string {
+    return value.trim().toLowerCase();
+}
+
+function filterCatalogSubjects(
+    subjects: CBCCatalogSubject[],
+    query: string,
+): CBCCatalogSubject[] {
+    const normalized = normalizeSearchValue(query);
+    if (!normalized) {
+        return subjects;
+    }
+
+    return subjects.flatMap((subject) => {
+        const subjectMatches = subject.name.toLowerCase().includes(normalized);
+        const levels = subjectMatches
+            ? subject.levels
+            : subject.levels.filter((level) => (
+                level.level.toLowerCase().includes(normalized)
+                || level.code.toLowerCase().includes(normalized)
+            ));
+
+        return levels.length > 0 ? [{ ...subject, levels }] : [];
+    });
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -267,6 +294,7 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
 
     const [selection, setSelection] = useState<SelectionState>({ strands: {} });
     const [snap, setSnap] = useState<SelectionState>({ strands: {} });
+    const [search, setSearch] = useState('');
 
     const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
 
@@ -275,6 +303,7 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
             setCatalog(null);
             setSelection({ strands: {} });
             setSnap({ strands: {} });
+            setSearch('');
             setExpandedSubjects(new Set());
             setError(null);
             setResult(null);
@@ -294,6 +323,11 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
 
     const diff = useMemo(() => computeDiff(selection, snap), [selection, snap]);
     const hasChanges = diff.addCount > 0 || diff.removeCount > 0;
+    const visibleSubjects = useMemo(
+        () => catalog ? filterCatalogSubjects(catalog.subjects, search) : [],
+        [catalog, search],
+    );
+    const isSearching = normalizeSearchValue(search).length > 0;
 
     const toggleSubStrand = (strandId: number, ssId: number) => {
         setSelection(prev => {
@@ -419,9 +453,24 @@ export function CBCCurriculumModal({ isOpen, onClose }: CBCCurriculumModalProps)
                             )}
                         </div>
 
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder="Search subject, level, or level code"
+                                className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                            />
+                        </div>
+
                         <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                            {catalog.subjects.map(subject => {
-                                const expanded = expandedSubjects.has(subject.code);
+                            {visibleSubjects.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-gray-200 py-8 text-center">
+                                    <p className="text-sm text-gray-500">No matching curriculum entries.</p>
+                                </div>
+                            ) : visibleSubjects.map(subject => {
+                                const expanded = isSearching || expandedSubjects.has(subject.code);
                                 return (
                                     <div key={subject.code} className="border border-gray-200 rounded-xl overflow-hidden">
                                         <button

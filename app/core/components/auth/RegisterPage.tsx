@@ -74,11 +74,15 @@ function RegisterForm() {
     handleRestore,
     handleLogout,
     isPending,
+    hasPersonalWorkspace,
   } = useRegister();
   const [workspaceStep, setWorkspaceStep] = useState<'mode' | 'details'>('mode');
   const isWorkspaceSetupFlow = isDirectSignupFlow || isNewWorkspaceFlow;
   const selectedWorkspace = WORKSPACE_MODE_COPY[form.org_type];
   const isFreelanceTeacherWorkspace = form.org_type === 'PERSONAL';
+  const workspaceModeOptions = WORKSPACE_MODE_OPTIONS.filter(
+    ({ value }) => !(hasPersonalWorkspace && value === 'PERSONAL')
+  );
 
   if (inviteLoading) {
     return (
@@ -345,7 +349,7 @@ function RegisterForm() {
           <div className="space-y-4">
             {isWorkspaceSetupFlow && workspaceStep === 'mode' ? (
               <div className="space-y-3">
-                {WORKSPACE_MODE_OPTIONS.map(({ value, icon: Icon }) => {
+                {workspaceModeOptions.map(({ value, icon: Icon }) => {
                   const option = WORKSPACE_MODE_COPY[value];
                   const selected = form.org_type === value;
                   return (

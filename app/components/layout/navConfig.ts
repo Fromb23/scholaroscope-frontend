@@ -159,27 +159,46 @@ export function getAdminNav(
     : [];
   const reportNavigationChildren = getAdminReportNavigationItems();
 
+  if (
+    (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType))
+    && academicSetup
+    && !academicSetup.complete
+  ) {
+    const currentStepLabel = academicSetup.current_step_label ?? 'Continue setup';
+
+    return {
+      primary: [
+        { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Academic Setup', href: '/academic', icon: GraduationCap },
+        { name: currentStepLabel, href: academicSetup.next_action.href, icon: CalendarDays },
+      ],
+      secondary: [
+        { name: 'Settings', href: '/admin/settings', icon: Settings },
+      ],
+    };
+  }
+
   if (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType)) {
     return {
       primary: [
-        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
         ACADEMIC_SETUP_NAV,
-        { name: 'Learners', href: '/learners', icon: Users },
-        { name: 'Teaching Sessions', href: '/sessions', icon: Calendar },
-        { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
+        { name: 'My learners', href: '/learners', icon: Users },
+        { name: 'My teaching record', href: '/sessions', icon: Calendar },
+        { name: 'My lesson plans', href: '/lesson-plans', icon: FileText },
         {
-          name: 'Assessments',
+          name: 'My assessments',
           href: '/assessments',
           icon: ClipboardCheck,
           children: [
-            { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
+            { name: 'All assessments', href: '/assessments', icon: ClipboardCheck },
             ...reportPoliciesChild,
           ],
         },
         ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
         {
-          name: 'Reports',
+          name: 'My reports',
           href: '/reports',
           icon: FileBarChart,
           children: reportNavigationChildren,
