@@ -26,7 +26,7 @@ import {
   getAdminNav,
   getInstructorNav,
   getRoleFooterLabel,
-  ROLE_COLORS,
+  getRoleColorScheme,
   ROLE_ICONS,
   AppLogoIcon,
   type NavigationConfig,
@@ -101,7 +101,7 @@ export default function Sidebar() {
   ]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
-  const colors = ROLE_COLORS[resolvedRole] ?? ROLE_COLORS.ADMIN;
+  const colors = getRoleColorScheme(resolvedRole, activeOrg?.org_type);
   const RoleIcon = ROLE_ICONS[resolvedRole] ?? ROLE_ICONS.ADMIN;
   const Logo = AppLogoIcon;
 
@@ -179,7 +179,7 @@ export default function Sidebar() {
             </div>
             {!user.is_superadmin && activeOrg && (
               <div className="pl-11">
-                <p className="theme-subtle text-xs">Organization</p>
+                <p className="theme-subtle text-xs">Workspace</p>
                 <p className="truncate text-sm font-medium theme-text">{activeOrg.name}</p>
               </div>
             )}
