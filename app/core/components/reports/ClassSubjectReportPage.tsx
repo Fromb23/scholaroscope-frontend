@@ -34,6 +34,8 @@ import {
   useClassSubjectReport,
   useInstructorCohortSubjects,
 } from '@/app/core/hooks/useReporting';
+import { useClassSubjectIntelligence } from '@/app/core/hooks/useAcademicIntelligence';
+import { ClassSubjectIntelligencePanel } from '@/app/core/components/reports/AcademicInsightPrimitives';
 import type {
   ClassSubjectLearnerRow,
   ReportExportFormat,
@@ -350,6 +352,15 @@ export function ClassSubjectReportPage({
     enabled: Boolean(cohortId && cohortSubjectId),
     termId: selectedTermId,
   });
+  const {
+    intelligence: classIntelligence,
+    loading: classIntelligenceLoading,
+    error: classIntelligenceError,
+    refetch: refetchClassIntelligence,
+  } = useClassSubjectIntelligence(
+    Number.isFinite(cohortSubjectId) && cohortSubjectId > 0 ? cohortSubjectId : null,
+    { enabled: Boolean(cohortSubjectId), termId: selectedTermId },
+  );
 
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -510,6 +521,19 @@ export function ClassSubjectReportPage({
 
       {report && !loading ? (
         <>
+          {classIntelligenceLoading ? (
+            <Card className="p-5">
+              <p className="text-sm theme-muted">Loading class academic intelligence...</p>
+            </Card>
+          ) : classIntelligenceError ? (
+            <ErrorBanner
+              message={classIntelligenceError}
+              onDismiss={() => void refetchClassIntelligence()}
+            />
+          ) : classIntelligence ? (
+            <ClassSubjectIntelligencePanel intelligence={classIntelligence} />
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <ReportMetricCard
               label="Learners"
