@@ -32,7 +32,7 @@ export interface SuspendedOrg {
 export function useRegister() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { login, logout, register: ctxRegister, restoreWorkspace } = useAuth();
+    const { login, logout, register: ctxRegister, restoreWorkspace, memberships } = useAuth();
 
     const inviteToken = searchParams.get('invite');
     const mode = searchParams.get('mode');
@@ -58,6 +58,15 @@ export function useRegister() {
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const hasPersonalWorkspace = memberships.some(
+        (membership) => membership.organization.org_type === 'PERSONAL'
+    );
+
+    useEffect(() => {
+        if (hasPersonalWorkspace && form.org_type === 'PERSONAL') {
+            setForm(f => ({ ...f, org_type: 'SCHOOL' }));
+        }
+    }, [form.org_type, hasPersonalWorkspace]);
 
     useEffect(() => {
         if (!isSuspendedRecovery) return;
@@ -257,5 +266,6 @@ export function useRegister() {
         handleSubmit, handleRestore, handleLogout, isPending,
         isDirectSignupFlow,
         isPersonalFlow: isDirectSignupFlow,
+        hasPersonalWorkspace,
     };
 }

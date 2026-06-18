@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import type { Role } from '@/app/core/types/auth';
+import type { OrgType, Role } from '@/app/core/types/auth';
 import type { Curriculum } from '@/app/core/types/academic';
 
 export interface NavItem {
@@ -23,6 +23,8 @@ export type PluginNavigationSlot =
 
 export interface PluginNavigationContext {
     role: Role;
+    orgType?: OrgType | null;
+    workspaceBehavior?: string | null;
     hasPlugin: (pluginKey: string) => boolean;
     hasCurriculumType: (curriculumType: string) => boolean;
     badges: Record<string, number>;

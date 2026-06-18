@@ -76,12 +76,19 @@ export const useAnnouncements = () => {
 
 // ── Unread count hook — used for sidebar badge ────────────────────────────
 
-export const useUnreadAnnouncements = () => {
+export const useUnreadAnnouncements = (options?: { enabled?: boolean }) => {
     const [count, setCount] = useState(0);
     const [unread, setUnread] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
+    const enabled = options?.enabled ?? true;
 
     const fetch = useCallback(async () => {
+        if (!enabled) {
+            setCount(0);
+            setUnread([]);
+            setLoading(false);
+            return;
+        }
         try {
             const data = await announcementAPI.getUnread();
             setCount(data.count);
@@ -91,7 +98,7 @@ export const useUnreadAnnouncements = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [enabled]);
 
     useEffect(() => { fetch(); }, [fetch]);
 

@@ -52,6 +52,8 @@ export default function Sidebar() {
   const pluginNavigationContext = useMemo<PluginNavigationContext>(
     () => ({
       role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
+      orgType: activeOrg?.org_type ?? null,
+      workspaceBehavior: capabilities.workspace_behavior,
       hasPlugin,
       hasCurriculumType: (curriculumType: string) => Boolean(resolveCurriculumForType(curricula, curriculumType)),
       badges,
@@ -67,7 +69,9 @@ export default function Sidebar() {
     }),
     [
       activeRole,
+      activeOrg?.org_type,
       badges,
+      capabilities.workspace_behavior,
       curricula,
       hasPlugin,
       instructorAccess.hasCurriculumAccess,

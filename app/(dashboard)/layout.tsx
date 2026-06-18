@@ -29,6 +29,9 @@ import { AccessNotice } from '../core/types/auth';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
 function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<typeof useAuth>['capabilities']): boolean {
+  if (/^\/announcements/.test(pathname)) {
+    return capabilities.workspace_behavior !== 'FREELANCE_TEACHER';
+  }
   if (/^\/admin\/(instructors|alerts)/.test(pathname)) {
     return capabilities.can_manage_staff;
   }
@@ -83,7 +86,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const academicSetupQuery = useAcademicSetupStatus({
     enabled: (
       capabilities.can_manage_academic_setup
-      && capabilities.workspace_behavior !== 'FREELANCE_TEACHER'
       && Boolean(activeOrg)
       && !user?.is_superadmin
     ),
@@ -150,7 +152,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       && isAcademicSetupIncomplete(academicSetupQuery.data)
       && isAcademicSetupOperationalAdminPath(pathname)
     ) {
-      router.replace(buildAcademicSetupRedirectHref(academicSetupQuery.data, pathname));
+      const nextActionPath = academicSetupQuery.data.next_action.href.split('?')[0];
+      if (nextActionPath !== pathname) {
+        router.replace(buildAcademicSetupRedirectHref(academicSetupQuery.data, pathname));
+      }
     }
   }, [
     academicSetupQuery.data,

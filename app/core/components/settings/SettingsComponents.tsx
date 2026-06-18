@@ -803,6 +803,7 @@ export function PluginsTab() {
             await refetch();
             await refetchDisableRequests();
             flash('success', 'installed_plugin' in response ? response.detail : 'Plugin updated.');
+            window.location.reload();
         } catch (err) {
             flash('error', extractErrorMessage(err as ApiError, 'Failed to update plugin.'));
         } finally { setToggling(false); }

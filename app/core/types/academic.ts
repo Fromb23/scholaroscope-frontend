@@ -22,7 +22,8 @@ export type AcademicSetupStepKey =
   | 'ACADEMIC_YEAR'
   | 'TERMS'
   | 'SUBJECTS'
-  | 'COHORTS';
+  | 'COHORTS'
+  | 'SCHEMES_OF_WORK';
 
 export type AcademicSetupStepStatus =
   | 'complete'
@@ -57,6 +58,11 @@ export interface AcademicSetupStatus {
   has_active_or_configured_term: boolean;
   has_subjects: boolean;
   has_cohorts_for_current_academic_year: boolean;
+  scheme_first_required?: boolean;
+  has_required_schemes?: boolean;
+  missing_required_scheme_count?: number;
+  required_scheme_count?: number;
+  generated_required_scheme_count?: number;
   current_academic_year_id: number | null;
   counts: {
     curricula: number;

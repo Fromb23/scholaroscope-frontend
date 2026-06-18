@@ -8,10 +8,9 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { AppearanceSettingsCard } from '@/app/components/theme/AppearanceSettingsCard';
 import { MembersTab, PluginsTab } from '@/app/core/components/settings/SettingsComponents';
+import { useAuth } from '@/app/context/AuthContext';
 
 type Tab = 'general' | 'members' | 'plugins';
-
-const VALID_TABS: Tab[] = ['general', 'members', 'plugins'];
 
 function GeneralTab() {
   return (
@@ -28,9 +27,18 @@ function GeneralTab() {
 function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { activeOrg, capabilities } = useAuth();
+  const isFreelance = activeOrg?.org_type === 'PERSONAL'
+    || capabilities.workspace_behavior === 'FREELANCE_TEACHER';
 
   const tabParam = searchParams.get('tab') as Tab;
-  const activeTab: Tab = VALID_TABS.includes(tabParam)
+  const availableTabs: { key: Tab; label: string; icon: React.ElementType }[] = [
+    { key: 'general', label: 'General', icon: Settings },
+    ...(!isFreelance ? [{ key: 'members' as const, label: 'Members', icon: Users }] : []),
+    { key: 'plugins', label: 'Plugins', icon: Puzzle },
+  ];
+  const validTabs = availableTabs.map((tab) => tab.key);
+  const activeTab: Tab = validTabs.includes(tabParam)
     ? tabParam
     : (searchParams.get('plugin') ? 'plugins' : 'general');
   const cameFromCurricula = searchParams.get('from') === 'curricula';
@@ -41,18 +49,16 @@ function SettingsContent() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: 'general', label: 'General', icon: Settings },
-    { key: 'members', label: 'Members', icon: Users },
-    { key: 'plugins', label: 'Plugins', icon: Puzzle },
-  ];
-
   return (
     <div className="mx-auto w-full min-w-0 max-w-3xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold theme-text">Settings</h1>
-          <p className="theme-muted mt-1 text-sm">Manage your workspace configuration and team</p>
+          <p className="theme-muted mt-1 text-sm">
+            {isFreelance
+              ? 'Manage my teaching workspace configuration'
+              : 'Manage your workspace configuration and team'}
+          </p>
         </div>
 
         {activeTab === 'plugins' ? (
@@ -66,7 +72,7 @@ function SettingsContent() {
       </div>
 
       <div className="theme-card-muted flex min-w-0 gap-1 overflow-x-auto rounded-xl p-1.5">
-        {tabs.map((tab) => {
+        {availableTabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -89,7 +95,7 @@ function SettingsContent() {
         <GeneralTab />
       ) : (
         <Card className="min-w-0 overflow-hidden p-4 sm:p-6">
-          {activeTab === 'members' && <MembersTab />}
+          {activeTab === 'members' && !isFreelance && <MembersTab />}
           {activeTab === 'plugins' && <PluginsTab />}
         </Card>
       )}

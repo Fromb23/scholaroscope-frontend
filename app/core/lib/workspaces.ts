@@ -53,8 +53,8 @@ export const WORKSPACE_MODE_COPY: Record<
   },
   PERSONAL: {
     label: 'Freelance Teacher Workspace',
-    description: 'Set up your learners, cohorts, lessons, assessments, and reports.',
-    placeholder: 'e.g. Rombo Freelance Teaching',
+    description: 'Set up my teaching workspace for learners, schemes of work, lesson plans, teaching records, and reports.',
+    placeholder: 'e.g. My Teaching Workspace',
   },
 };
 
