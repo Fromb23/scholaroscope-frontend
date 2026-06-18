@@ -24,7 +24,9 @@ import {
   useLearnerAvailableReportScopes,
   useLearnerSubjectReport,
 } from '@/app/core/hooks/useReporting';
+import { useLearnerSubjectIntelligence } from '@/app/core/hooks/useAcademicIntelligence';
 import { useStudent } from '@/app/core/hooks/useStudents';
+import { LearnerSubjectIntelligencePanel } from '@/app/core/components/reports/AcademicInsightPrimitives';
 import type {
   LearnerAvailableReportScope,
   LearnerReportMetricItem,
@@ -395,6 +397,16 @@ export function LearnerSubjectReportPage() {
     selectedCohortSubjectId,
     { enabled: Boolean(selectedCohortSubjectId) },
   );
+  const {
+    intelligence: subjectIntelligence,
+    loading: intelligenceLoading,
+    error: intelligenceError,
+    refetch: refetchIntelligence,
+  } = useLearnerSubjectIntelligence(
+    Number.isFinite(learnerId) && learnerId > 0 ? learnerId : null,
+    selectedCohortSubjectId,
+    { enabled: Boolean(selectedCohortSubjectId), includeEvidence: true },
+  );
 
   const [viewMode, setViewMode] = useState<ReportViewMode>('graph');
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
@@ -657,6 +669,19 @@ export function LearnerSubjectReportPage() {
                 </div>
               </div>
             </Card>
+
+            {intelligenceLoading ? (
+              <Card>
+                <p className="text-sm theme-muted">Loading academic intelligence...</p>
+              </Card>
+            ) : intelligenceError ? (
+              <ErrorBanner
+                message={intelligenceError}
+                onDismiss={() => void refetchIntelligence()}
+              />
+            ) : subjectIntelligence ? (
+              <LearnerSubjectIntelligencePanel intelligence={subjectIntelligence} />
+            ) : null}
 
             {viewMode === 'graph' ? (
               <>
