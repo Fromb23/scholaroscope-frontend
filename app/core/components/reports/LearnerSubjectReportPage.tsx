@@ -72,6 +72,27 @@ function riskVariant(riskLevel: ReportRiskLevel): 'success' | 'warning' | 'dange
   return 'danger';
 }
 
+function participationLabel(status: string | null | undefined): string {
+  switch (status) {
+    case 'NOT_IN_SCOPE':
+      return 'Not enrolled during this term';
+    case 'NOT_ADMITTED_YET':
+      return 'Not admitted during this term';
+    case 'NOT_ENROLLED_IN_COHORT':
+      return 'Not enrolled in this class during this term';
+    case 'NOT_ENROLLED_IN_SUBJECT':
+      return 'Not enrolled in this subject during this term';
+    case 'JOINED_DURING_TERM':
+      return 'Joined during this term';
+    case 'LEFT_DURING_TERM':
+      return 'Left during this term';
+    case 'IN_SCOPE':
+      return 'In scope for this term';
+    default:
+      return status ? status.replace(/_/g, ' ') : 'Term participation';
+  }
+}
+
 function indicatorToneClass(tone: LearnerSubjectReportKeyIndicator['tone']): string {
   if (tone === 'success') {
     return 'theme-success-surface';
@@ -760,6 +781,34 @@ export function LearnerSubjectReportPage() {
               </>
             ) : (
               <>
+                {report.term_participation ? (
+                  <Card>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Term Participation</h2>
+                        <p className="mt-1 text-sm text-gray-600">
+                          {report.term_participation.message || participationLabel(report.term_participation.status)}
+                        </p>
+                      </div>
+                      <Badge variant={report.term_participation.in_scope ? 'blue' : 'default'}>
+                        {participationLabel(report.term_participation.status)}
+                      </Badge>
+                    </div>
+                    {report.term_participation.in_scope && report.term_participation.effective_from ? (
+                      <p className="mt-3 text-sm text-gray-600">
+                        Metrics begin from {formatDate(report.term_participation.overlap_start ?? report.term_participation.effective_from)}.
+                      </p>
+                    ) : null}
+                  </Card>
+                ) : null}
+                {report.term_participation && !report.term_participation.in_scope ? (
+                  <Card>
+                    <p className="text-sm text-gray-600">
+                      This report is a historical participation view. No score, attendance rate, risk level, ranking, or CBC point is shown because the learner was not academically in scope.
+                    </p>
+                  </Card>
+                ) : (
+                  <>
                 <div className="grid gap-4 xl:grid-cols-2">
                   <KeyValueTable
                     title="Learner Details"
@@ -858,6 +907,8 @@ export function LearnerSubjectReportPage() {
                 </Card>
 
                 <StrandTable rows={report.charts.strand_progress} />
+                  </>
+                )}
               </>
             )}
           </div>

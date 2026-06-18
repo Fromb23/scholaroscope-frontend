@@ -33,6 +33,7 @@ const STATUS_LABELS: Record<AssessmentScoreStatus, string> = {
     [AssessmentScoreStatus.NOT_ASSIGNED]: 'Not assigned',
     [AssessmentScoreStatus.NOT_ADMITTED_YET]: 'Not admitted yet',
     [AssessmentScoreStatus.LATE_ENROLLED]: 'Joined after assessment',
+    [AssessmentScoreStatus.NOT_ENROLLED_IN_SUBJECT]: 'Not enrolled in subject',
 };
 
 const STATUS_OPTIONS = [
@@ -40,6 +41,7 @@ const STATUS_OPTIONS = [
     { value: AssessmentScoreStatus.ABSENT, label: STATUS_LABELS.ABSENT },
     { value: AssessmentScoreStatus.EXCUSED, label: STATUS_LABELS.EXCUSED },
     { value: AssessmentScoreStatus.LATE_ENROLLED, label: STATUS_LABELS.LATE_ENROLLED },
+    { value: AssessmentScoreStatus.NOT_ENROLLED_IN_SUBJECT, label: STATUS_LABELS.NOT_ENROLLED_IN_SUBJECT },
     { value: AssessmentScoreStatus.NOT_ASSIGNED, label: STATUS_LABELS.NOT_ASSIGNED },
     { value: AssessmentScoreStatus.NOT_ADMITTED_YET, label: STATUS_LABELS.NOT_ADMITTED_YET },
 ];

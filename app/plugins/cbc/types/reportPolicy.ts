@@ -10,7 +10,26 @@ export type CbcPolicyLevelCode =
     | 'BE2';
 
 export type CbcRoundingMode = 'ROUND_HALF_UP' | 'ROUND_DOWN' | 'ROUND_UP';
-export type CbcAssessmentResultStatus = 'FINAL' | 'PROVISIONAL' | 'INCOMPLETE';
+export type CbcAssessmentResultStatus =
+    | 'NOT_IN_SCOPE'
+    | 'NO_EVIDENCE'
+    | 'LATE_ENTRY_BASELINE_PENDING'
+    | 'PROVISIONAL_EVIDENCE'
+    | 'FINAL'
+    | 'PROVISIONAL'
+    | 'INCOMPLETE';
+
+export interface CbcLateEnrolmentPolicy {
+    pre_enrolment_component_handling: 'EXEMPT' | string;
+    allow_provisional_assessment_indicator: boolean;
+    award_final_point_only_when_evidence_sufficient: boolean;
+    minimum_mapped_outcomes_for_final_result: number | null;
+    minimum_essential_outcome_coverage_percent: number | null;
+    minimum_independent_evidence_events: number | null;
+    allow_single_broad_evidence_event: boolean;
+    allow_teacher_override: boolean;
+    teacher_override_requires_reason: boolean;
+}
 
 export interface CbcLevelScaleRow {
     min: number;
@@ -36,6 +55,7 @@ export interface CbcReportPolicy {
     level_scale: CbcLevelScaleRow[];
     diagnostic_assessment_types: string[];
     required_components: string[];
+    late_enrolment?: Partial<CbcLateEnrolmentPolicy>;
     include_assignments: boolean;
     include_projects: boolean;
     include_practicals: boolean;
@@ -57,6 +77,7 @@ export interface CbcReportPolicyPayload {
     level_scale: CbcLevelScaleRow[];
     diagnostic_assessment_types: string[];
     required_components: string[];
+    late_enrolment?: Partial<CbcLateEnrolmentPolicy>;
     include_assignments?: boolean;
     include_projects?: boolean;
     include_practicals?: boolean;

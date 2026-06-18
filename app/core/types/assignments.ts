@@ -224,7 +224,9 @@ export interface AssignmentFilters {
 }
 
 export type AssignmentRecipientStatus =
+    | 'NOT_APPLICABLE_PRE_ENROLMENT'
     | 'ASSIGNED'
+    | 'CATCH_UP_ASSIGNED'
     | 'SUBMITTED'
     | 'REVIEWED'
     | 'MISSING'
@@ -237,6 +239,9 @@ export interface AssignmentRecipient {
     student_name: string;
     admission_number: string;
     status: AssignmentRecipientStatus;
+    status_display?: string;
+    is_catch_up: boolean;
+    applicability_reason: string;
     assigned_at: string;
     submitted_at: string | null;
     reviewed_at: string | null;
@@ -250,6 +255,7 @@ export interface AssignmentRecipientCreatePayload {
 export interface AssignmentRecipientSelectionPayload {
     recipient_mode: Exclude<AssignmentRecipientMode, 'none'>;
     student_ids?: number[];
+    catch_up?: boolean;
 }
 
 export interface AssignmentPublishPayload {

@@ -5,12 +5,20 @@ import type {
 } from '@/app/plugins/cbc/types/cbc';
 
 export const CBC_ASSESSMENT_RESULT_STATUS_LABELS: Record<CbcAssessmentResultStatus, string> = {
+    NOT_IN_SCOPE: 'Not in scope',
+    NO_EVIDENCE: 'No evidence',
+    LATE_ENTRY_BASELINE_PENDING: 'Late-entry baseline pending',
+    PROVISIONAL_EVIDENCE: 'Provisional evidence',
     FINAL: 'Final',
     PROVISIONAL: 'Provisional',
     INCOMPLETE: 'Incomplete',
 };
 
 export const CBC_ASSESSMENT_RESULT_STATUS_HELPER_TEXT: Record<CbcAssessmentResultStatus, string> = {
+    NOT_IN_SCOPE: 'Learner was not enrolled in this subject during the reporting period.',
+    NO_EVIDENCE: 'No eligible competency evidence is available yet.',
+    LATE_ENTRY_BASELINE_PENDING: 'Post-enrolment evidence exists, but baseline or required eligible evidence is still pending.',
+    PROVISIONAL_EVIDENCE: 'Eligible evidence exists but is not sufficient for a final CBC point.',
     FINAL: 'All required components are available.',
     PROVISIONAL: 'Some required components are missing.',
     INCOMPLETE: 'No contributing result is available yet.',

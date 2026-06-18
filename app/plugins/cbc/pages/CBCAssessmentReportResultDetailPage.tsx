@@ -41,8 +41,14 @@ function getStatusBadgeVariant(status: CbcAssessmentResultStatus): BadgeVariant 
     switch (status) {
         case 'FINAL':
             return 'green';
+        case 'LATE_ENTRY_BASELINE_PENDING':
+        case 'PROVISIONAL_EVIDENCE':
         case 'PROVISIONAL':
             return 'yellow';
+        case 'NO_EVIDENCE':
+            return 'orange';
+        case 'NOT_IN_SCOPE':
+            return 'default';
         case 'INCOMPLETE':
             return 'default';
     }

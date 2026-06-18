@@ -19,6 +19,10 @@ export function CbcPerformanceSummary({
 
   const resultCounts = performance.result_counts ?? {
     FINAL: 0,
+    NOT_IN_SCOPE: 0,
+    NO_EVIDENCE: 0,
+    LATE_ENTRY_BASELINE_PENDING: 0,
+    PROVISIONAL_EVIDENCE: 0,
     PROVISIONAL: 0,
     INCOMPLETE: 0,
     stale_count: 0,
@@ -40,8 +44,9 @@ export function CbcPerformanceSummary({
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Final" value={formatNumber(resultCounts.FINAL, 0)} />
-        <Metric label="Provisional" value={formatNumber(resultCounts.PROVISIONAL, 0)} />
-        <Metric label="Incomplete" value={formatNumber(resultCounts.INCOMPLETE, 0)} />
+        <Metric label="Baseline pending" value={formatNumber(resultCounts.LATE_ENTRY_BASELINE_PENDING ?? 0, 0)} />
+        <Metric label="Provisional evidence" value={formatNumber(resultCounts.PROVISIONAL_EVIDENCE ?? resultCounts.PROVISIONAL, 0)} />
+        <Metric label="No evidence" value={formatNumber(resultCounts.NO_EVIDENCE ?? resultCounts.INCOMPLETE, 0)} />
         <Metric label="Stale" value={formatNumber(resultCounts.stale_count, 0)} />
       </div>
 

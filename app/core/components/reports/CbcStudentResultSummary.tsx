@@ -31,6 +31,8 @@ export function CbcStudentResultSummary({
 
   const componentEntries = Object.entries(result.component_scores ?? {});
   const diagnosticEntries = Object.entries(result.diagnostic_scores ?? {});
+  const isFinal = result.result_status === 'FINAL';
+  const resultStatusLabel = String(result.result_status ?? '').replace(/_/g, ' ') || '—';
 
   return (
     <div className="space-y-4">
@@ -41,13 +43,13 @@ export function CbcStudentResultSummary({
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="CBC Weighted Score" value={formatPercent(result.weighted_score)} />
-        <Metric label="CBC Result Code" value={result.cbc_code ?? '—'} />
-        <Metric label="CBC Level" value={result.cbc_level ?? '—'} />
-        <Metric label="CBC Points" value={formatNumber(result.cbc_points)} />
+        <Metric label="CBC Result Code" value={isFinal ? (result.cbc_code ?? '—') : 'Not awarded'} />
+        <Metric label="CBC Level" value={isFinal ? (result.cbc_level ?? '—') : 'Not awarded'} />
+        <Metric label="CBC Points" value={isFinal ? formatNumber(result.cbc_points) : 'Not awarded'} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Result Status" value={result.result_status ?? '—'} />
+        <Metric label="Result Status" value={resultStatusLabel} />
         <Metric label="Result Label" value={result.cbc_label ?? '—'} />
         <Metric label="Stale" value={result.is_stale ? 'Yes' : 'No'} />
         <Metric label="Computed At" value={formatDateTime(result.computed_at)} />
@@ -68,7 +70,7 @@ export function CbcStudentResultSummary({
           </div>
           {readiness.missing_components.length > 0 && (
             <p className="mt-2 text-xs text-gray-500">
-              Missing components: {readiness.missing_components.join(', ')}
+              Missing eligible components: {readiness.missing_components.join(', ')}
             </p>
           )}
         </div>
@@ -76,12 +78,18 @@ export function CbcStudentResultSummary({
 
       {result.missing_components.length > 0 && (
         <div>
-          <h4 className="text-sm font-medium text-gray-900">Missing Components</h4>
+          <h4 className="text-sm font-medium text-gray-900">Missing Eligible Components</h4>
           <p className="mt-2 text-sm text-gray-600">
             {result.missing_components.join(', ')}
           </p>
         </div>
       )}
+
+      {!isFinal ? (
+        <p className="text-sm text-gray-600">
+          Formal CBC code, level, and points are withheld until the result is final.
+        </p>
+      ) : null}
 
       {(componentEntries.length > 0 || diagnosticEntries.length > 0) && (
         <div className="grid gap-4 lg:grid-cols-2">

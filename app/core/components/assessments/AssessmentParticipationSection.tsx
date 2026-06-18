@@ -52,7 +52,15 @@ function isRecordGraded(
 
 function getLateOrNotPartExplanation(record: Pick<AssessmentParticipationRecord, 'participation_status'>): string {
   if (record.participation_status === AssessmentParticipationStatus.LATE_ENROLLED) {
-    return 'Joined after the assessment window and stays excluded from this participation roster.';
+    return 'Joined after assessment and stays excluded from this participation roster.';
+  }
+
+  if (record.participation_status === AssessmentParticipationStatus.NOT_ADMITTED_YET) {
+    return 'Not admitted at assessment time and stays excluded from this participation roster.';
+  }
+
+  if (record.participation_status === AssessmentParticipationStatus.NOT_ENROLLED_IN_SUBJECT) {
+    return 'Not enrolled in subject at assessment time and stays excluded from this participation roster.';
   }
 
   return 'Was not part of the assessment roster at assessment time and stays read-only here.';
@@ -163,6 +171,8 @@ export function AssessmentParticipationSection({
         && record.participation_status
         && record.participation_status !== AssessmentParticipationStatus.NOT_PART_OF_ASSESSMENT
         && record.participation_status !== AssessmentParticipationStatus.LATE_ENROLLED
+        && record.participation_status !== AssessmentParticipationStatus.NOT_ADMITTED_YET
+        && record.participation_status !== AssessmentParticipationStatus.NOT_ENROLLED_IN_SUBJECT
       ) {
         nextDraft[record.student] = record.participation_status;
       }
@@ -195,6 +205,8 @@ export function AssessmentParticipationSection({
     () => records.filter(
       (record) => record.participation_status === AssessmentParticipationStatus.LATE_ENROLLED
         || record.participation_status === AssessmentParticipationStatus.NOT_PART_OF_ASSESSMENT
+        || record.participation_status === AssessmentParticipationStatus.NOT_ADMITTED_YET
+        || record.participation_status === AssessmentParticipationStatus.NOT_ENROLLED_IN_SUBJECT
     ),
     [records]
   );

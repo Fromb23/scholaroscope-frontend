@@ -119,28 +119,50 @@ export function CbcReportPolicyDetailPage() {
                 </Card>
 
                 <Card>
-                    <h2 className="text-lg font-semibold text-gray-900">Components</h2>
-                    <div className="mt-4 space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                            {Object.entries(policy.assessment_weights).map(([type, weight]) => (
-                                <Badge key={type} variant="blue">{type} {weight}%</Badge>
-                            ))}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {(policy.required_components.length > 0 ? policy.required_components : ['None']).map((entry) => (
-                                <Badge key={entry} variant="purple">{entry}</Badge>
-                            ))}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {(policy.diagnostic_assessment_types.length > 0 ? policy.diagnostic_assessment_types : ['None']).map((entry) => (
-                                <Badge key={entry} variant="green">{entry}</Badge>
-                            ))}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Badge variant={policy.include_assignments ? 'green' : 'default'}>Assignments</Badge>
-                            <Badge variant={policy.include_projects ? 'green' : 'default'}>Projects</Badge>
-                            <Badge variant={policy.include_practicals ? 'green' : 'default'}>Practicals</Badge>
-                        </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Effective Components</h2>
+                    <div className="mt-4 overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Assessment type</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Weight</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Contributes</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Required if eligible</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-500">Diagnostic</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {Object.entries(policy.assessment_weights).map(([type, weight]) => (
+                                    <tr key={type}>
+                                        <td className="px-3 py-2 font-medium text-gray-900">{type}</td>
+                                        <td className="px-3 py-2">{weight}%</td>
+                                        <td className="px-3 py-2">{weight > 0 ? 'Yes' : 'No'}</td>
+                                        <td className="px-3 py-2">{policy.required_components.includes(type) ? 'Yes' : 'No'}</td>
+                                        <td className="px-3 py-2">{policy.diagnostic_assessment_types.includes(type) ? 'Yes' : 'No'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                    <h2 className="text-lg font-semibold text-gray-900">Optional Evidence Sources</h2>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Badge variant={policy.include_assignments ? 'green' : 'default'}>Assignments {policy.include_assignments ? 'enabled' : 'disabled'}</Badge>
+                        <Badge variant={policy.include_projects ? 'green' : 'default'}>Projects {policy.include_projects ? 'enabled' : 'disabled'}</Badge>
+                        <Badge variant={policy.include_practicals ? 'green' : 'default'}>Practicals {policy.include_practicals ? 'enabled' : 'disabled'}</Badge>
+                    </div>
+                </Card>
+                <Card>
+                    <h2 className="text-lg font-semibold text-gray-900">Late-Enrolment Rules</h2>
+                    <div className="mt-4 space-y-2 text-sm text-gray-700">
+                        <p><span className="font-medium text-gray-900">Pre-enrolment components:</span> {policy.late_enrolment?.pre_enrolment_component_handling ?? 'EXEMPT'}</p>
+                        <p><span className="font-medium text-gray-900">Final point rule:</span> {policy.late_enrolment?.award_final_point_only_when_evidence_sufficient !== false ? 'Only when evidence is sufficient' : 'Policy override allowed'}</p>
+                        <p><span className="font-medium text-gray-900">Single broad evidence event:</span> {policy.late_enrolment?.allow_single_broad_evidence_event ? 'Allowed' : 'Not allowed by default'}</p>
+                        <p><span className="font-medium text-gray-900">Teacher override reason:</span> {policy.late_enrolment?.teacher_override_requires_reason !== false ? 'Required' : 'Not required'}</p>
                     </div>
                 </Card>
             </div>

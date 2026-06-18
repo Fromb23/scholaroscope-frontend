@@ -34,9 +34,24 @@ export interface CbcDistributionByCode {
 
 export interface CbcResultCounts {
   FINAL: number;
+  NOT_IN_SCOPE?: number;
+  NO_EVIDENCE?: number;
+  LATE_ENTRY_BASELINE_PENDING?: number;
+  PROVISIONAL_EVIDENCE?: number;
   PROVISIONAL: number;
   INCOMPLETE: number;
   stale_count: number;
+}
+
+export interface TermParticipation {
+  status: string;
+  effective_from: string | null;
+  effective_to: string | null;
+  in_scope: boolean;
+  reason: string | null;
+  message: string;
+  overlap_start?: string | null;
+  overlap_end?: string | null;
 }
 
 export interface AttendanceSummary {
@@ -340,6 +355,7 @@ export interface CurriculumAwareSubjectSection {
   performance_source: PerformanceSource;
   status: string | null;
   note: string | null;
+  term_participation?: TermParticipation | null;
   assessment_completion: AssessmentCompletion | null;
   attendance: AttendanceSummary | ReportAverageSummary | null;
   session_summary?: ReportSessionSummary | null;
@@ -1046,6 +1062,7 @@ export interface LearnerSubjectReportPayload {
   performance_source: PerformanceSource;
   status: string | null;
   note: string | null;
+  term_participation?: TermParticipation | null;
   instructor_context: LearnerReportInstructorContext | null;
   attendance: LearnerReportAttendanceSection;
   assignments: LearnerReportAssignmentsSection;
