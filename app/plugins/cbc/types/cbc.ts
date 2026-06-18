@@ -619,6 +619,10 @@ export interface CBCVisibleProfile {
 }
 
 export type CbcAssessmentResultStatus =
+  | 'NOT_IN_SCOPE'
+  | 'NO_EVIDENCE'
+  | 'LATE_ENTRY_BASELINE_PENDING'
+  | 'PROVISIONAL_EVIDENCE'
   | 'FINAL'
   | 'PROVISIONAL'
   | 'INCOMPLETE';

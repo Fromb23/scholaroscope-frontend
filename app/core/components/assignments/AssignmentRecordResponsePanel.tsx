@@ -14,6 +14,16 @@ import type {
     AssignmentSubmission,
 } from '@/app/core/types/assignments';
 
+function recipientStatusLabel(recipient: AssignmentRecipient): string {
+    if (recipient.status === 'NOT_APPLICABLE_PRE_ENROLMENT') {
+        return 'Not applicable';
+    }
+    if (recipient.status === 'CATCH_UP_ASSIGNED' || recipient.is_catch_up) {
+        return 'Catch-up work assigned';
+    }
+    return recipient.status_display ?? recipient.status.replace(/_/g, ' ');
+}
+
 interface AssignmentRecordResponsePanelProps {
     assignment: Assignment;
     recipients: AssignmentRecipient[];
@@ -43,10 +53,15 @@ export function AssignmentRecordResponsePanel({
 
     const defaultRecipient = useMemo(() => {
         const submittedStudentIds = new Set(submissions.map((submission) => submission.student));
+        const applicableRecipients = recipients.filter(
+            (recipient) => recipient.status !== 'NOT_APPLICABLE_PRE_ENROLMENT',
+        );
         return (
-            recipients.find((recipient) => !submittedStudentIds.has(recipient.student))
-            ?? recipients.find((recipient) => recipient.status === 'ASSIGNED')
-            ?? recipients[0]
+            applicableRecipients.find((recipient) => !submittedStudentIds.has(recipient.student))
+            ?? applicableRecipients.find((recipient) => (
+                recipient.status === 'ASSIGNED' || recipient.status === 'CATCH_UP_ASSIGNED'
+            ))
+            ?? applicableRecipients[0]
             ?? null
         );
     }, [recipients, submissions]);
@@ -54,10 +69,11 @@ export function AssignmentRecordResponsePanel({
     const learnerOptions = useMemo(() => [
         { value: '', label: 'Select learner' },
         ...[...recipients]
+            .filter((recipient) => recipient.status !== 'NOT_APPLICABLE_PRE_ENROLMENT')
             .sort((left, right) => left.student_name.localeCompare(right.student_name))
             .map((recipient) => ({
                 value: String(recipient.student),
-                label: `${recipient.student_name} · ${recipient.admission_number} · ${recipient.status}`,
+                label: `${recipient.student_name} · ${recipient.admission_number} · ${recipientStatusLabel(recipient)}`,
             })),
     ], [recipients]);
 
