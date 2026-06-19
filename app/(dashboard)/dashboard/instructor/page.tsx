@@ -1,7 +1,7 @@
 'use client';
 
-import { InstructorDashboard } from '@/app/(dashboard)/dashboard/components/InstructorDashboard';
+import { TeachingTodayPage } from '@/app/core/components/dashboard/teachingToday/TeachingTodayPage';
 
 export default function Page() {
-    return <InstructorDashboard />;
+    return <TeachingTodayPage />;
 }
