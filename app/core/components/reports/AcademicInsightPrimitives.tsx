@@ -6,11 +6,9 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  ClipboardCheck,
   FileText,
   Lightbulb,
   ShieldCheck,
-  Target,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -18,9 +16,13 @@ import { Card } from '@/app/components/ui/Card';
 import type {
   AcademicOutcomeRef,
   ClassSubjectIntelligence,
+  ClassSubjectIntelligenceSupportingDetail,
   EvidenceConfidenceLevel,
+  EvidenceGapReason,
   IntelligenceStatus,
   LearnerSubjectIntelligence,
+  OutcomeExposureStatus,
+  OutcomeTeachingPriority,
   TrendDirection,
 } from '@/app/core/types/academicIntelligence';
 
@@ -58,6 +60,51 @@ export function academicInsightConfidenceVariant(level: EvidenceConfidenceLevel)
 
 export function academicInsightActionLabel(type: string): string {
   return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+export function academicInsightConfidenceLabel(level: EvidenceConfidenceLevel): string {
+  switch (level) {
+    case 'HIGH':
+      return 'High';
+    case 'MODERATE':
+      return 'Moderate';
+    default:
+      return 'Limited';
+  }
+}
+
+export function friendlyOutcomeExposureStatus(status: OutcomeExposureStatus): string {
+  switch (status) {
+    case 'NOT_IN_RECORDED_TEACHING_SCOPE':
+      return 'Not in recorded teaching scope';
+    case 'TAUGHT_NO_DIRECT_EVIDENCE':
+      return 'Taught, but no direct learner evidence';
+    case 'LIMITED_DIRECT_EVIDENCE':
+      return 'Direct evidence is still limited';
+    case 'SUFFICIENT_DIRECT_EVIDENCE':
+      return 'Direct evidence is sufficient';
+    case 'BROAD_SUBJECT_EVIDENCE_ONLY':
+      return 'Broad subject evidence only';
+    default:
+      return status;
+  }
+}
+
+export function friendlyEvidenceGapReason(reason: EvidenceGapReason): string {
+  switch (reason) {
+    case 'NO_DIRECT_LEARNER_EVIDENCE':
+      return 'No direct learner evidence has been recorded yet.';
+    case 'LOW_LEARNER_COVERAGE':
+      return 'Evidence covers too few eligible learners for a class conclusion.';
+    case 'INSUFFICIENT_INDEPENDENT_SOURCES':
+      return 'Evidence comes from too few independent sources.';
+    case 'BROAD_SUBJECT_SIGNAL_ONLY':
+      return 'A broad subject signal exists, but it is not outcome-specific.';
+    case 'NOT_IN_RECORDED_SCOPE':
+      return 'This outcome has no recorded current-term exposure.';
+    default:
+      return 'No evidence gap is currently flagged.';
+  }
 }
 
 export function hasUnsupportedCausalAcademicLanguage(message: string): boolean {
@@ -118,6 +165,51 @@ export function RecommendedActionCard({
       </div>
     </div>
   );
+}
+
+function formatOutcomeNames(outcomes: OutcomeTeachingPriority[], limit = 3): string {
+  const labels = outcomes
+    .slice(0, limit)
+    .map((outcome) => `"${outcome.description}"`);
+
+  if (labels.length === 0) return 'the recorded outcomes';
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`;
+}
+
+export function classEvidenceReliabilityMessage(intelligence: ClassSubjectIntelligence): string {
+  const { teaching_priority: teachingPriority } = intelligence;
+  const topOutcome = teachingPriority.priority_outcomes[0];
+  const evidenceCount = teachingPriority.supporting_counts.outcomes_needing_evidence;
+
+  if (teachingPriority.state === 'RETEACH' && topOutcome) {
+    return `${academicInsightConfidenceLabel(teachingPriority.confidence)}: direct evidence covers ${topOutcome.learners_with_direct_evidence} of ${topOutcome.eligible_learner_count} eligible learners.`;
+  }
+
+  if (teachingPriority.state === 'COLLECT_EVIDENCE') {
+    if (evidenceCount <= 0) {
+      return 'Limited until more direct learner evidence is recorded.';
+    }
+    return `Limited for ${evidenceCount} outcome${evidenceCount === 1 ? '' : 's'} currently in recorded teaching scope.`;
+  }
+
+  if (teachingPriority.state === 'RETHINK_EXPOSURE') {
+    return 'Limited until current-term teaching exposure is recorded explicitly.';
+  }
+
+  if (topOutcome) {
+    return `${academicInsightConfidenceLabel(teachingPriority.confidence)} for the outcomes currently in recorded scope.`;
+  }
+
+  return `${academicInsightConfidenceLabel(teachingPriority.confidence)} based on the recorded class evidence currently in scope.`;
+}
+
+function classSuccessLine(detail: ClassSubjectIntelligenceSupportingDetail): string | null {
+  if (detail.secure_outcomes.length === 0) {
+    return null;
+  }
+  return `What is going well: ${formatOutcomeNames(detail.secure_outcomes, 2)} currently show the strongest supported evidence.`;
 }
 
 export function ParticipationContextPanel({
@@ -356,7 +448,10 @@ export function ClassSubjectIntelligencePanel({
 }: {
   intelligence: ClassSubjectIntelligence;
 }) {
-  const firstAction = intelligence.suggested_next_teaching_action[0];
+  const [detailOpen, setDetailOpen] = useState(false);
+  const teachingPriority = intelligence.teaching_priority;
+  const visiblePriorities = teachingPriority.priority_outcomes.slice(0, 3);
+  const successLine = classSuccessLine(intelligence.supporting_detail);
 
   return (
     <section className="space-y-4">
@@ -364,66 +459,194 @@ export function ClassSubjectIntelligencePanel({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={academicInsightStatusTone(intelligence.status)}>{intelligence.status_label}</Badge>
+              <Badge variant={academicInsightStatusTone(intelligence.status)}>Class Academic Intelligence</Badge>
               <Badge variant="default">{intelligence.scope.term_name}</Badge>
             </div>
-            <h2 className="mt-3 text-lg font-semibold theme-text">Class Learning Picture</h2>
-            <p className="mt-1 text-sm theme-muted">{intelligence.class_learning_picture}</p>
+            <p className="mt-3 text-sm theme-muted">
+              {intelligence.scope.term_name} · {intelligence.scope.cohort_name} · {intelligence.scope.subject_name}
+            </p>
           </div>
-          {firstAction ? (
-            <div className="lg:max-w-md">
-              <RecommendedActionCard action={firstAction} />
-            </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-2">
+          <ClassInsightBlock
+            title="Current picture"
+            body={teachingPriority.headline}
+          />
+          <ClassInsightBlock
+            title="Evidence reliability"
+            body={classEvidenceReliabilityMessage(intelligence)}
+          />
+          <ClassInsightBlock
+            title="Next best action"
+            body={teachingPriority.recommended_action.message}
+          />
+          <ClassInsightBlock
+            title="Why this action"
+            body={teachingPriority.why_it_matters}
+          />
+          <ClassInsightBlock
+            title="Confidence"
+            body={academicInsightConfidenceLabel(teachingPriority.confidence)}
+          />
+          {successLine ? (
+            <ClassInsightBlock
+              title="What is going well"
+              body={successLine.replace('What is going well: ', '')}
+            />
           ) : null}
         </div>
+
+        {visiblePriorities.length > 0 ? (
+          <div className="mt-5 rounded-lg border theme-border theme-surface-muted px-4 py-3">
+            <p className="text-xs uppercase tracking-wide theme-subtle">Priority outcomes</p>
+            <p className="mt-2 text-sm theme-text">{formatOutcomeNames(visiblePriorities)}</p>
+          </div>
+        ) : null}
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="p-5">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 theme-subtle" />
-            <h3 className="text-sm font-semibold theme-text">Outcomes Needing Reteaching</h3>
+      <Card className="p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-base font-semibold theme-text">Supporting evidence</h3>
+            <p className="mt-1 text-sm theme-muted">
+              Expand only when you need the audit trail behind the recommendation.
+            </p>
           </div>
-          <OutcomeList outcomes={intelligence.outcomes_needing_reteaching} emptyMessage="No class-wide reteaching outcome is flagged." />
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="h-4 w-4 theme-subtle" />
-            <h3 className="text-sm font-semibold theme-text">Needs More Evidence</h3>
+          <Button variant="secondary" size="sm" onClick={() => setDetailOpen((current) => !current)}>
+            <FileText className="h-4 w-4" />
+            {detailOpen ? 'Hide supporting evidence' : 'See supporting evidence'}
+            {detailOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </div>
+
+        {detailOpen ? (
+          <div className="mt-5 space-y-5">
+            <SupportingOutcomeGroup
+              title="Priority outcomes"
+              outcomes={teachingPriority.priority_outcomes}
+              emptyMessage="No priority outcomes are currently surfaced."
+            />
+
+            {intelligence.supporting_detail.subject_context.assessment_count ? (
+              <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3">
+                <p className="text-sm font-semibold theme-text">Broad subject context</p>
+                <p className="mt-1 text-sm theme-muted">
+                  {intelligence.supporting_detail.subject_context.message}
+                </p>
+              </div>
+            ) : null}
+
+            <SupportingOutcomeGroup
+              title="What is going well"
+              outcomes={intelligence.supporting_detail.secure_outcomes}
+              emptyMessage="No secure outcomes are summarised yet."
+            />
+
+            <SupportingOutcomeGroup
+              title="Not yet in recorded teaching scope"
+              outcomes={intelligence.supporting_detail.outcomes_not_in_recorded_scope}
+              emptyMessage="All surfaced outcomes are already in recorded teaching scope."
+            />
           </div>
-          <OutcomeList outcomes={intelligence.outcomes_with_insufficient_evidence} emptyMessage="No high missing-evidence outcome is flagged." />
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 theme-subtle" />
-            <h3 className="text-sm font-semibold theme-text">Most Secure Outcomes</h3>
-          </div>
-          <OutcomeList outcomes={intelligence.most_secure_outcomes} emptyMessage="No secure outcome is identified yet." />
-        </Card>
-      </div>
+        ) : null}
+      </Card>
     </section>
   );
 }
 
-function OutcomeList({
+function ClassInsightBlock({
+  title,
+  body,
+}: {
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-lg border theme-border px-4 py-3">
+      <p className="text-xs uppercase tracking-wide theme-subtle">{title}</p>
+      <p className="mt-2 text-sm theme-text">{body}</p>
+    </div>
+  );
+}
+
+function SupportingOutcomeGroup({
+  title,
   outcomes,
   emptyMessage,
 }: {
-  outcomes: AcademicOutcomeRef[];
+  title: string;
+  outcomes: OutcomeTeachingPriority[];
   emptyMessage: string;
 }) {
   if (outcomes.length === 0) {
-    return <p className="mt-3 text-sm theme-muted">{emptyMessage}</p>;
+    return (
+      <div>
+        <h4 className="text-sm font-semibold theme-text">{title}</h4>
+        <p className="mt-2 text-sm theme-muted">{emptyMessage}</p>
+      </div>
+    );
   }
 
   return (
-    <div className="mt-3 space-y-3">
-      {outcomes.slice(0, 4).map((outcome) => (
-        <div key={outcome.id} className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
-          <p className="text-sm font-semibold theme-text">{outcome.code}</p>
-          <p className="mt-1 text-sm theme-muted line-clamp-2">{outcome.description}</p>
+    <div>
+      <h4 className="text-sm font-semibold theme-text">{title}</h4>
+      <div className="mt-3 space-y-3">
+        {outcomes.map((outcome) => (
+          <OutcomeAuditCard key={outcome.id} outcome={outcome} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OutcomeAuditCard({ outcome }: { outcome: OutcomeTeachingPriority }) {
+  return (
+    <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold theme-text">{outcome.description}</p>
+          <p className="mt-1 text-xs theme-subtle">Code: {outcome.code}</p>
         </div>
-      ))}
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="default">{friendlyOutcomeExposureStatus(outcome.exposure_status)}</Badge>
+          <Badge variant={academicInsightConfidenceVariant(outcome.evidence_confidence)}>
+            {academicInsightConfidenceLabel(outcome.evidence_confidence)}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <p className="text-xs uppercase tracking-wide theme-subtle">Learner coverage</p>
+          <p className="mt-1 text-sm theme-text">
+            {outcome.learners_with_direct_evidence} of {outcome.eligible_learner_count} eligible learners ({outcome.coverage_percent}%)
+          </p>
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide theme-subtle">Why surfaced</p>
+          <p className="mt-1 text-sm theme-text">{friendlyEvidenceGapReason(outcome.evidence_gap_reason)}</p>
+        </div>
+      </div>
+
+      {outcome.recorded_exposure_sources.length > 0 ? (
+        <div className="mt-4">
+          <p className="text-xs uppercase tracking-wide theme-subtle">Recorded exposure</p>
+          <div className="mt-2 space-y-2">
+            {outcome.recorded_exposure_sources.map((source, index) => (
+              <p key={`${source.type}-${source.date ?? 'nodate'}-${index}`} className="text-sm theme-muted">
+                {source.label}
+                {source.date ? ` · ${source.date}` : ''}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4 rounded-lg border theme-border bg-white/60 px-3 py-2">
+        <p className="text-xs uppercase tracking-wide theme-subtle">Suggested follow-up</p>
+        <p className="mt-1 text-sm theme-text">{outcome.recommended_action}</p>
+      </div>
     </div>
   );
 }

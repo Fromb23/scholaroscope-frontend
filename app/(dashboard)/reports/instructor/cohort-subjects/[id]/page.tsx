@@ -9,6 +9,7 @@ import {
 } from 'next/navigation';
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ElementType,
@@ -41,7 +42,7 @@ import {
   useInstructorCohortSubjectTeachingActivity,
   useInstructorCohortSubjects,
 } from '@/app/core/hooks/useReporting';
-import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import {
   countMapFromItems,
   formatPercent,
@@ -149,11 +150,13 @@ export default function InstructorCohortSubjectDetailReportPage() {
   const isValidCohortSubjectId = Number.isFinite(cohortSubjectId) && cohortSubjectId > 0;
   const activeTab: DetailTab = isDetailTab(tabParam) ? tabParam : 'learners';
   const selectedTerm = parsePositiveReportParam(searchParams.get('term'));
-  const workspaceReturnTo = buildInstructorCohortSubjectDetailHref(cohortSubjectId, selectedTerm);
+  const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
+  const effectiveTermId = selectedTerm ?? currentTerm?.id ?? null;
+  const workspaceReturnTo = buildInstructorCohortSubjectDetailHref(cohortSubjectId, effectiveTermId);
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
     fallbackHref: '/reports/instructor/cohort-subjects',
-    fallbackState: { term: selectedTerm },
+    fallbackState: { term: effectiveTermId },
   });
 
   const [exportOpen, setExportOpen] = useState(false);
@@ -184,6 +187,15 @@ export default function InstructorCohortSubjectDetailReportPage() {
   }, [pathname, router, searchParams]);
 
   const { terms, loading: termsLoading } = useTerms();
+  useEffect(() => {
+    if (selectedTerm || currentTermLoading) {
+      return;
+    }
+    if (currentTerm?.id) {
+      updateSearchParams({ term: currentTerm.id });
+    }
+  }, [currentTerm?.id, currentTermLoading, selectedTerm, updateSearchParams]);
+
   const {
     cohortSubjects,
     loading: cohortSubjectsLoading,
@@ -192,18 +204,18 @@ export default function InstructorCohortSubjectDetailReportPage() {
 
   const learnersQuery = useInstructorCohortSubjectLearners(
     isValidCohortSubjectId ? cohortSubjectId : null,
-    selectedTerm,
-    { enabled: activeTab === 'learners' && isValidCohortSubjectId },
+    effectiveTermId,
+    { enabled: activeTab === 'learners' && isValidCohortSubjectId && Boolean(effectiveTermId) },
   );
   const performanceQuery = useInstructorCohortSubjectPerformance(
     isValidCohortSubjectId ? cohortSubjectId : null,
-    selectedTerm,
-    { enabled: activeTab === 'performance' && isValidCohortSubjectId },
+    effectiveTermId,
+    { enabled: activeTab === 'performance' && isValidCohortSubjectId && Boolean(effectiveTermId) },
   );
   const teachingActivityQuery = useInstructorCohortSubjectTeachingActivity(
     isValidCohortSubjectId ? cohortSubjectId : null,
-    selectedTerm,
-    { enabled: activeTab === 'teaching-activity' && isValidCohortSubjectId },
+    effectiveTermId,
+    { enabled: activeTab === 'teaching-activity' && isValidCohortSubjectId && Boolean(effectiveTermId) },
   );
 
   const activeQuery = activeTab === 'learners'
@@ -218,15 +230,19 @@ export default function InstructorCohortSubjectDetailReportPage() {
     ?? performanceQuery.report
     ?? teachingActivityQuery.report
     ?? null;
-  const classReportHref = buildInstructorClassReportHref(cohortSubjectId, selectedTerm, {
-    cohortId: cohortSubjectMeta?.cohort_id ?? null,
-    returnTo: workspaceReturnTo,
-  });
+  const classReportHref = effectiveTermId
+    ? buildInstructorClassReportHref(cohortSubjectId, effectiveTermId, {
+        cohortId: cohortSubjectMeta?.cohort_id ?? null,
+        returnTo: workspaceReturnTo,
+      })
+    : null;
 
   const learners = learnersQuery.report?.learners ?? EMPTY_LEARNERS;
-  const termLabel = selectedTerm
-    ? terms.find((term) => term.id === selectedTerm)?.name ?? `Term ${selectedTerm}`
-    : 'All terms';
+  const termLabel = effectiveTermId
+    ? terms.find((term) => term.id === effectiveTermId)?.name
+      ?? currentTerm?.name
+      ?? `Term ${effectiveTermId}`
+    : 'Select a term';
 
   const pageTitle = cohortSubjectMeta
     ? `${cohortSubjectMeta.cohort_name} — ${cohortSubjectMeta.subject_name}`
@@ -457,16 +473,28 @@ export default function InstructorCohortSubjectDetailReportPage() {
               <span>Class Subject Report</span>
             </div>
             <p className="text-sm text-emerald-900/80">
-              Printable class summary with learner support needs, response trends, and teaching interventions.
+              Printable class summary with learner support needs, response trends, and term-scoped academic intelligence.
             </p>
+            {!effectiveTermId ? (
+              <p className="text-sm text-emerald-900/80">
+                Select a term to view class intelligence.
+              </p>
+            ) : null}
           </div>
-          <Link
-            href={classReportHref}
-            className="theme-focus-ring theme-button-primary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors lg:w-auto"
-          >
-            <BookOpen className="h-4 w-4" />
-            Open Class Report
-          </Link>
+          {classReportHref ? (
+            <Link
+              href={classReportHref}
+              className="theme-focus-ring theme-button-primary inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors lg:w-auto"
+            >
+              <BookOpen className="h-4 w-4" />
+              Open Class Report
+            </Link>
+          ) : (
+            <Button variant="secondary" size="sm" disabled className="w-full lg:w-auto">
+              <BookOpen className="h-4 w-4" />
+              Open Class Report
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -485,18 +513,24 @@ export default function InstructorCohortSubjectDetailReportPage() {
           <div className="w-full xl:w-72">
             <Select
               label="Term"
-              value={selectedTerm?.toString() ?? ''}
+              value={effectiveTermId?.toString() ?? ''}
               onChange={(event) => updateSearchParams({
                 term: event.target.value ? Number(event.target.value) : null,
               })}
-              disabled={termsLoading}
-              options={[
-                { value: '', label: 'All terms' },
-                ...terms.map((term) => ({
-                  value: String(term.id),
-                  label: `${term.academic_year_name} — ${term.name}`,
-                })),
-              ]}
+              disabled={termsLoading || (terms.length === 0 && !currentTerm)}
+              options={
+                terms.length > 0
+                  ? terms.map((term) => ({
+                      value: String(term.id),
+                      label: `${term.academic_year_name} — ${term.name}`,
+                    }))
+                  : [
+                      {
+                        value: '',
+                        label: termsLoading || currentTermLoading ? 'Loading terms...' : 'No terms available',
+                      },
+                    ]
+              }
             />
           </div>
         </div>

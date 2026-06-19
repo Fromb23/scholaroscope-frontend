@@ -349,7 +349,7 @@ export function ClassSubjectReportPage({
     loading,
     error,
   } = useClassSubjectReport(cohortId, cohortSubjectId, {
-    enabled: Boolean(cohortId && cohortSubjectId),
+    enabled: Boolean(cohortId && cohortSubjectId && selectedTermId),
     termId: selectedTermId,
   });
   const {
@@ -359,7 +359,7 @@ export function ClassSubjectReportPage({
     refetch: refetchClassIntelligence,
   } = useClassSubjectIntelligence(
     Number.isFinite(cohortSubjectId) && cohortSubjectId > 0 ? cohortSubjectId : null,
-    { enabled: Boolean(cohortSubjectId), termId: selectedTermId },
+    { enabled: Boolean(cohortSubjectId && selectedTermId), termId: selectedTermId },
   );
 
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
@@ -517,9 +517,20 @@ export function ClassSubjectReportPage({
         <ErrorBanner message={visibleError} onDismiss={() => setExportError(null)} />
       ) : null}
 
-      {loading ? <LoadingSpinner message="Loading class subject report..." /> : null}
+      {!selectedTermId ? (
+        <Card className="p-5">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold theme-text">Select a term to view class intelligence</h2>
+            <p className="text-sm theme-muted">
+              This instructor class report is term-scoped. Choose a term in the subject workspace, then reopen the class report.
+            </p>
+          </div>
+        </Card>
+      ) : null}
 
-      {report && !loading ? (
+      {selectedTermId && loading ? <LoadingSpinner message="Loading class subject report..." /> : null}
+
+      {selectedTermId && report && !loading ? (
         <>
           {classIntelligenceLoading ? (
             <Card className="p-5">

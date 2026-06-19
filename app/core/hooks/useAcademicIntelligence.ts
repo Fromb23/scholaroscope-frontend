@@ -66,9 +66,10 @@ export function useClassSubjectIntelligence(
   const [error, setError] = useState<string | null>(null);
 
   const fetchIntelligence = useCallback(async () => {
-    if (!enabled || !cohortSubjectId) {
+    if (!enabled || !cohortSubjectId || !options?.termId) {
       setIntelligence(null);
       setLoading(false);
+      setError(null);
       return;
     }
 
