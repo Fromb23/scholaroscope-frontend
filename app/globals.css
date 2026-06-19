@@ -345,6 +345,37 @@ html[data-theme='dark'] {
     color: var(--color-text);
   }
 
+  .teaching-today-nested-card {
+    --teaching-today-nested-bg: color-mix(in srgb, var(--color-surface) 78%, var(--color-app-bg));
+    border: 1px solid var(--color-border);
+    background-color: var(--teaching-today-nested-bg);
+    color: var(--color-text);
+  }
+
+  html[data-theme='dark'] .teaching-today-nested-card {
+    --teaching-today-nested-bg: color-mix(in srgb, var(--color-surface) 56%, var(--color-app-bg));
+  }
+
+  .teaching-today-row-info,
+  .teaching-today-row-warning,
+  .teaching-today-row-danger {
+    border-left-width: 3px;
+  }
+
+  .teaching-today-row-info {
+    border-left-color: color-mix(in srgb, var(--color-primary) 58%, transparent);
+  }
+
+  .teaching-today-row-warning {
+    border-left-color: color-mix(in srgb, var(--color-warning) 62%, transparent);
+    background-color: color-mix(in srgb, var(--color-warning) 3%, var(--teaching-today-nested-bg));
+  }
+
+  .teaching-today-row-danger {
+    border-left-color: color-mix(in srgb, var(--color-danger) 58%, transparent);
+    background-color: color-mix(in srgb, var(--color-danger) 3%, var(--teaching-today-nested-bg));
+  }
+
   .theme-toggle-button {
     border: 1px solid var(--color-border);
     border-radius: 0.85rem;
@@ -600,12 +631,28 @@ html[data-theme='dark'] {
     color: #c7d2fe !important;
   }
 
+  [data-theme='dark'] .text-indigo-800,
+  [data-theme='dark'] .text-indigo-700 {
+    color: #e0e7ff !important;
+  }
+
   [data-theme='dark'] .bg-orange-100 {
     background-color: rgba(249, 115, 22, 0.22) !important;
   }
 
+  [data-theme='dark'] .text-orange-900,
+  [data-theme='dark'] .text-orange-800,
+  [data-theme='dark'] .text-orange-700 {
+    color: #ffedd5 !important;
+  }
+
   [data-theme='dark'] .text-orange-600 {
     color: #fdba74 !important;
+  }
+
+  [data-theme='dark'] .border-orange-200,
+  [data-theme='dark'] .border-orange-100 {
+    border-color: rgba(249, 115, 22, 0.3) !important;
   }
 
   [data-theme='dark'] .ring-white {

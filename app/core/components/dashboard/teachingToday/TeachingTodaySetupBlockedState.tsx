@@ -40,7 +40,7 @@ export function TeachingTodaySetupBlockedState({ setupStatus }: TeachingTodaySet
                     {incompleteSteps.length > 0 ? (
                         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                             {incompleteSteps.map((step) => (
-                                <div key={step.key} className="rounded-lg border theme-border bg-white/70 p-3">
+                                <div key={step.key} className="teaching-today-nested-card rounded-lg p-3">
                                     <div className="flex items-start gap-2">
                                         {step.status === 'current' ? (
                                             <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--color-warning)]" />

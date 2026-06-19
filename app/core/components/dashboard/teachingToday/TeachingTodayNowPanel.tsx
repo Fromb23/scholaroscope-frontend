@@ -70,7 +70,7 @@ export function TeachingTodayNowPanel({ action }: TeachingTodayNowPanelProps) {
                     </p>
 
                     {action.session ? (
-                        <div className="mt-4 grid gap-3 rounded-lg border theme-border bg-white/70 p-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="teaching-today-nested-card mt-4 grid gap-3 rounded-lg p-3 sm:grid-cols-2 xl:grid-cols-4">
                             <div className="min-w-0">
                                 <p className="text-xs font-medium uppercase theme-subtle">Subject</p>
                                 <p className="mt-1 break-words text-sm font-semibold theme-text">

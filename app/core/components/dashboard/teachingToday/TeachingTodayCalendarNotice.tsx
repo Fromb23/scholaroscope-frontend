@@ -94,7 +94,7 @@ export function TeachingTodayCalendarNotice({ context }: TeachingTodayCalendarNo
                 {context.calendarEventsToday.length > 0 ? (
                     <div className="w-full space-y-2 lg:max-w-md">
                         {context.calendarEventsToday.map((event) => (
-                            <div key={event.id} className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
+                            <div key={event.id} className="teaching-today-nested-card rounded-lg px-3 py-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <p className="min-w-0 break-words text-sm font-medium theme-text">
                                         {event.title}

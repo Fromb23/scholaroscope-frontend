@@ -38,6 +38,7 @@ export function TeachingTodayPage() {
 
     const pageLoading = loading || instructorAccess.isLoading;
     const setupBlocked = context.learningDayState === 'SETUP_BLOCKED';
+    const promoteIncompletePanel = context.incomplete.length >= 5 && context.timeline.length <= 1;
 
     const assistantContext = useMemo(() => ({
         pageKey: 'teaching_today',
@@ -139,13 +140,29 @@ export function TeachingTodayPage() {
                 <>
                     <TeachingTodayCalendarNotice context={context} />
                     <TeachingTodayNowPanel action={context.nextAction} />
-                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)] xl:gap-6">
-                        <TeachingTodayTimeline context={context} />
-                        <div className="space-y-5 xl:space-y-6">
+                    {promoteIncompletePanel ? (
+                        <>
                             <TeachingTodayIncompletePanel items={context.incomplete} />
-                            <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
-                        </div>
-                    </div>
+                            <section className="grid gap-5 xl:grid-cols-12 xl:gap-6" aria-label="Today teaching follow-up">
+                                <div className="xl:col-span-7">
+                                    <TeachingTodayTimeline context={context} />
+                                </div>
+                                <div className="xl:col-span-5">
+                                    <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
+                                </div>
+                            </section>
+                        </>
+                    ) : (
+                        <section className="grid gap-5 xl:grid-cols-12 xl:gap-6" aria-label="Today teaching diary">
+                            <div className="space-y-5 xl:col-span-7 xl:space-y-6">
+                                <TeachingTodayTimeline context={context} />
+                                <TeachingTodayAfterTeachingPanel afterTeaching={context.afterTeaching} />
+                            </div>
+                            <aside className="space-y-5 xl:col-span-5 xl:space-y-6">
+                                <TeachingTodayIncompletePanel items={context.incomplete} />
+                            </aside>
+                        </section>
+                    )}
                 </>
             )}
         </div>

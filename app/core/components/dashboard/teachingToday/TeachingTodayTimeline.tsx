@@ -49,7 +49,7 @@ function SessionTimelineItem({ session }: { session: Session }) {
     const isActionDisabled = actionLabel === 'Completed' || actionLabel.startsWith('Opens ');
 
     return (
-        <article className="rounded-lg border theme-border bg-white/70 p-3 sm:p-4">
+        <article className="teaching-today-nested-card rounded-lg p-3 sm:p-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -57,8 +57,12 @@ function SessionTimelineItem({ session }: { session: Session }) {
                             <Clock className="h-4 w-4 shrink-0 theme-subtle" />
                             {formatSessionTimeRange(session)}
                         </p>
-                        <Badge variant={getSessionStatusVariant(session)}>{session.schedule_state.replaceAll('_', ' ')}</Badge>
-                        <Badge variant="default">{session.session_type_display || session.session_type}</Badge>
+                        <Badge variant={getSessionStatusVariant(session)} size="sm">
+                            {session.schedule_state.replaceAll('_', ' ')}
+                        </Badge>
+                        <Badge variant="default" size="sm">
+                            {session.session_type_display || session.session_type}
+                        </Badge>
                     </div>
 
                     <div className="mt-3 min-w-0">
@@ -126,7 +130,7 @@ export function TeachingTodayTimeline({ context }: TeachingTodayTimelineProps) {
             </div>
 
             {context.timeline.length === 0 ? (
-                <div className="mt-5 rounded-lg border border-dashed theme-border p-6 text-center">
+                <div className="teaching-today-nested-card mt-5 rounded-lg border-dashed p-6 text-center">
                     <CalendarX className="mx-auto h-8 w-8 theme-subtle" />
                     <p className="mt-3 text-sm font-semibold theme-text">{emptyState.title}</p>
                     <p className="mx-auto mt-1 max-w-xl text-sm theme-muted">{emptyState.body}</p>

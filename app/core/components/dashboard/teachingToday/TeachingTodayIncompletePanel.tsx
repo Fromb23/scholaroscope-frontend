@@ -23,10 +23,10 @@ const groupOrder: TeachingTodayIncompleteGroup[] = [
     'NEEDS_ATTENTION_BEFORE_END',
 ];
 
-const severitySurface: Record<TeachingTodayIncompleteItem['severity'], string> = {
-    info: 'theme-info-surface',
-    warning: 'theme-warning-surface',
-    danger: 'theme-danger-surface',
+const severityRowClass: Record<TeachingTodayIncompleteItem['severity'], string> = {
+    info: 'teaching-today-row-info',
+    warning: 'teaching-today-row-warning',
+    danger: 'teaching-today-row-danger',
 };
 
 const severityBadge: Record<TeachingTodayIncompleteItem['severity'], 'blue' | 'orange' | 'red'> = {
@@ -35,40 +35,38 @@ const severityBadge: Record<TeachingTodayIncompleteItem['severity'], 'blue' | 'o
     danger: 'red',
 };
 
+const fallbackActionSummary: Record<TeachingTodayIncompleteGroup, string> = {
+    STILL_OPEN: 'Keep the active lesson record current',
+    NEEDS_COMPLETION: 'Needs closure decision',
+    FORGOTTEN_PREVIOUS_DAY: 'Needs closure decision',
+    NEEDS_ATTENTION_BEFORE_END: 'Start, reschedule, or cancel',
+};
+
 function IncompleteItemRow({ item }: { item: TeachingTodayIncompleteItem }) {
+    const actionSummary = item.missing.length > 0
+        ? item.missing.join(' - ')
+        : fallbackActionSummary[item.group];
+
     return (
-        <article className={`rounded-lg border theme-border p-3 sm:p-4 ${severitySurface[item.severity]}`}>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <article className={`teaching-today-nested-card rounded-lg p-3 ${severityRowClass[item.severity]}`}>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                 <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={severityBadge[item.severity]}>{item.title}</Badge>
-                        <span className="text-xs theme-subtle">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Badge variant={severityBadge[item.severity]} size="sm">{item.title}</Badge>
+                        <span className="text-xs font-medium theme-subtle">
                             {item.session.session_date} - {formatSessionTimeRange(item.session)}
                         </span>
                     </div>
-                    <p className="mt-3 break-words text-sm font-semibold theme-text">
-                        {item.session.subject_name} - {item.session.cohort_name}
+                    <p className="mt-2 break-words text-sm font-semibold theme-text">
+                        {item.session.subject_name}
+                        <span className="font-normal theme-muted"> - {item.session.cohort_name}</span>
                     </p>
-                    <p className="mt-1 text-sm leading-6 theme-muted">{item.detail}</p>
-
-                    {item.missing.length > 0 ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {item.missing.map((missing) => (
-                                <Badge key={missing} variant="default" size="sm">
-                                    {missing}
-                                </Badge>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="mt-3 text-xs theme-subtle">
-                            Open the lesson record for the exact closure steps.
-                        </p>
-                    )}
+                    <p className="mt-1 break-words text-sm theme-muted">{actionSummary}</p>
                 </div>
 
                 <Link
                     href={item.actionHref}
-                    className="theme-focus-ring inline-flex min-h-10 w-full items-center justify-center rounded-lg px-3 py-2 text-sm font-medium theme-button-primary lg:w-44"
+                    className="theme-focus-ring inline-flex min-h-10 w-full items-center justify-center rounded-lg px-3 py-2 text-sm font-medium theme-button-primary md:w-44"
                 >
                     {item.actionLabel}
                 </Link>
@@ -102,7 +100,7 @@ export function TeachingTodayIncompletePanel({ items }: TeachingTodayIncompleteP
             </div>
 
             {items.length === 0 ? (
-                <div className="mt-5 rounded-lg border border-dashed theme-border p-6 text-center">
+                <div className="teaching-today-nested-card mt-5 rounded-lg border-dashed p-6 text-center">
                     <CheckCircle2 className="mx-auto h-8 w-8 text-[color:var(--color-success)]" />
                     <p className="mt-3 text-sm font-semibold theme-text">
                         No unfinished teaching records are waiting here.
@@ -112,16 +110,19 @@ export function TeachingTodayIncompletePanel({ items }: TeachingTodayIncompleteP
                     </p>
                 </div>
             ) : (
-                <div className="mt-5 space-y-5">
+                <div className="mt-5 space-y-4">
                     {grouped.map((entry) => (
-                        <div key={entry.group} className="space-y-3">
-                            <div className="flex items-center gap-2">
+                        <div key={entry.group} className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <AlertTriangle className="h-4 w-4 theme-subtle" />
                                 <h3 className="text-sm font-semibold theme-text">
                                     {incompleteGroupLabels[entry.group]}
                                 </h3>
+                                <Badge variant="default" size="sm">
+                                    {entry.items.length}
+                                </Badge>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {entry.items.map((item) => (
                                     <IncompleteItemRow key={item.id} item={item} />
                                 ))}
