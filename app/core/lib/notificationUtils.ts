@@ -26,7 +26,25 @@ export function isSessionNotification(notification: Notification): boolean {
 }
 
 export function getNotificationRoute(notification: Notification): string | null {
-    if (normalize(notification.entity_type) === 'SESSION' && notification.entity_id) {
+    const entityType = normalize(notification.entity_type);
+    const notificationType = normalize(notification.notification_type);
+
+    if (!notification.entity_id) {
+        return null;
+    }
+
+    if (entityType === 'SESSION') {
+        return `/sessions/${notification.entity_id}`;
+    }
+
+    if (
+        !entityType.includes('SUMMARY')
+        && (
+            notificationType.includes('SESSION')
+            || entityType.includes('SESSION')
+            || entityType.includes('LESSON')
+        )
+    ) {
         return `/sessions/${notification.entity_id}`;
     }
 

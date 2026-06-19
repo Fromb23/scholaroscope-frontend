@@ -3,7 +3,7 @@
 export interface Notification {
     id: number;
     notification_type: string;
-    priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+    priority: 'LOW' | 'NORMAL' | 'HIGH';
     title: string;
     body: string;
     entity_type: string;

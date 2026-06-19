@@ -252,11 +252,13 @@ export const useAssessmentScores = (params?: {
   search?: string;
   page?: number;
   page_size?: number;
+  enabled?: boolean;
 }) => {
   const [scores, setScores] = useState<AssessmentScore[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(params?.enabled !== false);
   const [error, setError] = useState<string | null>(null);
   const [totalItems, setTotalItems] = useState(0);
+  const enabled = params?.enabled ?? true;
   const scoreFilters = useMemo(
     () => ({
       assessment: params?.assessment,
@@ -279,6 +281,14 @@ export const useAssessmentScores = (params?: {
   );
 
   const fetchScores = useCallback(async () => {
+    if (!enabled) {
+      setScores([]);
+      setTotalItems(0);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -292,7 +302,7 @@ export const useAssessmentScores = (params?: {
     } finally {
       setLoading(false);
     }
-  }, [scoreFilters]);
+  }, [enabled, scoreFilters]);
 
   useEffect(() => {
     void fetchScores();
