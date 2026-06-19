@@ -34,12 +34,18 @@ import {
   useClassSubjectReport,
   useInstructorCohortSubjects,
 } from '@/app/core/hooks/useReporting';
+import { useTerms } from '@/app/core/hooks/useAcademic';
+import { useAuth } from '@/app/context/AuthContext';
 import { useClassSubjectIntelligence } from '@/app/core/hooks/useAcademicIntelligence';
 import { ClassSubjectIntelligencePanel } from '@/app/core/components/reports/AcademicInsightPrimitives';
 import type {
   ClassSubjectLearnerRow,
+  ClassSubjectReportPayload,
   ReportExportFormat,
 } from '@/app/core/types/reporting';
+import type { ClassSubjectIntelligence } from '@/app/core/types/academicIntelligence';
+import type { Term } from '@/app/core/types/academic';
+import type { User } from '@/app/core/types/auth';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 import {
   buildAttendanceReportHref,
@@ -75,6 +81,79 @@ function getLearnerSupportSignal(row: ClassSubjectLearnerRow): string | null {
 
 function formatLearnerCount(count: number): string {
   return `${count} learner${count === 1 ? '' : 's'}`;
+}
+
+function displayUserName(user: User | null): string | null {
+  if (!user) {
+    return null;
+  }
+
+  return user.full_name || `${user.first_name} ${user.last_name}`.trim() || user.email || null;
+}
+
+export function resolveClassSubjectReportTermLabel({
+  selectedTermId,
+  report,
+  intelligence,
+  terms,
+}: {
+  selectedTermId: number | null;
+  report?: Pick<ClassSubjectReportPayload, 'period'> | null;
+  intelligence?: Pick<ClassSubjectIntelligence, 'scope'> | null;
+  terms?: Array<Pick<Term, 'id' | 'name'>>;
+}): string {
+  if (report?.period?.term_id && report.period.label) {
+    return report.period.label;
+  }
+
+  if (
+    selectedTermId
+    && intelligence?.scope.term_id === selectedTermId
+    && intelligence.scope.term_name
+  ) {
+    return intelligence.scope.term_name;
+  }
+
+  if (selectedTermId) {
+    const termName = terms?.find((term) => term.id === selectedTermId)?.name;
+    if (termName) {
+      return termName;
+    }
+  }
+
+  return report?.period?.label || 'All recorded data';
+}
+
+export function ClassSubjectReportHeaderContext({
+  isInstructorRoute,
+  assignedInstructor,
+  viewerName,
+  periodLabel,
+  generatedAt,
+}: {
+  isInstructorRoute: boolean;
+  assignedInstructor?: ClassSubjectReportPayload['instructor'];
+  viewerName?: string | null;
+  periodLabel: string;
+  generatedAt: string;
+}) {
+  return (
+    <div className="mt-4 space-y-1 text-sm theme-muted">
+      {isInstructorRoute ? (
+        <p>{viewerName ? `Viewing as ${viewerName}` : 'Your class subject workspace'}</p>
+      ) : null}
+      {assignedInstructor ? (
+        <p>
+          Assigned instructor: {assignedInstructor.name}
+          {assignedInstructor.email ? ` · ${assignedInstructor.email}` : ''}
+        </p>
+      ) : !isInstructorRoute ? (
+        <p>No formal instructor assignment recorded</p>
+      ) : null}
+      <p>{periodLabel}</p>
+      <p>Generated {formatReportDate(generatedAt)}</p>
+    </div>
+  );
 }
 
 function LearnerReportLinks({
@@ -319,6 +398,7 @@ export function ClassSubjectReportPage({
   const params = useParams<{ id: string }>();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const cohortSubjectId = Number(params.id);
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
   const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
@@ -361,6 +441,7 @@ export function ClassSubjectReportPage({
     Number.isFinite(cohortSubjectId) && cohortSubjectId > 0 ? cohortSubjectId : null,
     { enabled: Boolean(cohortSubjectId && selectedTermId), termId: selectedTermId },
   );
+  const { terms } = useTerms();
 
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -393,6 +474,13 @@ export function ClassSubjectReportPage({
   const reportSubjectName = report?.subject.name ?? cohortSubjectMeta?.subject_name ?? 'Class subject';
   const reportSubjectCode = report?.subject.code ?? cohortSubjectMeta?.subject_code ?? null;
   const reportCohortName = report?.cohort.name ?? cohortSubjectMeta?.cohort_name ?? null;
+  const viewerName = displayUserName(user);
+  const reportPeriodLabel = resolveClassSubjectReportTermLabel({
+    selectedTermId,
+    report,
+    intelligence: classIntelligence,
+    terms,
+  });
   const hasCbcProgress = Boolean(
     report?.reporting_source === 'cbc'
     || report?.composition?.available_sections?.includes('cbc_progress'),
@@ -465,14 +553,13 @@ export function ClassSubjectReportPage({
                 </div>
 
                 {report ? (
-                  <div className="mt-4 space-y-1 text-sm theme-muted">
-                    <p>
-                      {report.instructor?.name || 'Instructor not assigned yet'}
-                      {report.instructor?.email ? ` · ${report.instructor.email}` : ''}
-                    </p>
-                    <p>{report.period?.label || 'All recorded data'}</p>
-                    <p>Generated {formatReportDate(report.generated_at)}</p>
-                  </div>
+                  <ClassSubjectReportHeaderContext
+                    isInstructorRoute={isInstructorRoute}
+                    assignedInstructor={report.instructor}
+                    viewerName={viewerName}
+                    periodLabel={reportPeriodLabel}
+                    generatedAt={report.generated_at}
+                  />
                 ) : null}
               </div>
             </div>
