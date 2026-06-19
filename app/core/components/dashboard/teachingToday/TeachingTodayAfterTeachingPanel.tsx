@@ -37,7 +37,7 @@ export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingToday
             </div>
 
             {pendingCount === 0 ? (
-                <div className="mt-5 rounded-lg border border-dashed theme-border p-5">
+                <div className="teaching-today-nested-card mt-5 rounded-lg border-dashed p-4">
                     <div className="flex items-start gap-3">
                         <Inbox className="mt-0.5 h-5 w-5 theme-subtle" />
                         <div>
@@ -49,7 +49,7 @@ export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingToday
                     </div>
                 </div>
             ) : rows.length === 0 ? (
-                <div className="mt-5 rounded-lg border theme-border theme-warning-surface p-4">
+                <div className="teaching-today-nested-card teaching-today-row-warning mt-5 rounded-lg p-4">
                     <p className="text-sm font-semibold theme-text">
                         {pendingCount} assessment record{pendingCount === 1 ? '' : 's'} need review.
                     </p>
@@ -69,21 +69,18 @@ export function TeachingTodayAfterTeachingPanel({ afterTeaching }: TeachingToday
                         <Link
                             key={row.id}
                             href={getAssessmentReviewHref(row)}
-                            className="block rounded-lg border theme-border bg-white/70 p-3 transition-colors theme-hover-surface sm:p-4"
+                            className="teaching-today-nested-card block rounded-lg p-3 transition-colors theme-hover-surface"
                         >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="min-w-0">
                                     <p className="break-words text-sm font-semibold theme-text">
                                         {row.student_name}
                                     </p>
                                     <p className="mt-1 break-words text-sm theme-muted">
-                                        {row.assessment_name}
-                                    </p>
-                                    <p className="mt-1 break-words text-xs theme-subtle">
-                                        {row.subject_name}
+                                        {row.assessment_name} - {row.subject_name}
                                     </p>
                                 </div>
-                                <Badge variant="orange" className="self-start">
+                                <Badge variant="orange" size="sm" className="self-start sm:self-center">
                                     {row.status_display || 'Pending review'}
                                 </Badge>
                             </div>
