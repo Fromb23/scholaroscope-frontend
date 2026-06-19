@@ -9,6 +9,37 @@ export type IntelligenceStatus =
 
 export type EvidenceConfidenceLevel = 'HIGH' | 'MODERATE' | 'LIMITED';
 
+export type OutcomeExposureStatus =
+  | 'NOT_IN_RECORDED_TEACHING_SCOPE'
+  | 'TAUGHT_NO_DIRECT_EVIDENCE'
+  | 'LIMITED_DIRECT_EVIDENCE'
+  | 'SUFFICIENT_DIRECT_EVIDENCE'
+  | 'BROAD_SUBJECT_EVIDENCE_ONLY';
+
+export type EvidenceGapReason =
+  | 'NONE'
+  | 'NO_DIRECT_LEARNER_EVIDENCE'
+  | 'LOW_LEARNER_COVERAGE'
+  | 'INSUFFICIENT_INDEPENDENT_SOURCES'
+  | 'BROAD_SUBJECT_SIGNAL_ONLY'
+  | 'NOT_IN_RECORDED_SCOPE';
+
+export type TeachingPriorityState =
+  | 'COLLECT_EVIDENCE'
+  | 'RETHINK_EXPOSURE'
+  | 'RETEACH'
+  | 'MONITOR'
+  | 'NO_ACTION';
+
+export type TeachingPriorityActionType =
+  | 'EXIT_TASK'
+  | 'QUICK_DIAGNOSTIC'
+  | 'RETEACH'
+  | 'RECORD_EVIDENCE'
+  | 'NONE';
+
+export type TermResolution = 'EXPLICIT' | 'CURRENT_TERM_DEFAULT';
+
 export type TrendDirection =
   | 'IMPROVING'
   | 'STABLE'
@@ -20,6 +51,100 @@ export type TrendDirection =
 export interface AcademicIntelligenceAction {
   type: string;
   message: string;
+}
+
+export interface OutcomeRecordedExposureSource {
+  type: 'COMPLETED_SESSION' | 'ASSIGNMENT' | 'DIRECT_EVIDENCE';
+  label: string;
+  date: string | null;
+}
+
+export interface OutcomeTeachingPriority extends AcademicOutcomeRef {
+  exposure_status: OutcomeExposureStatus;
+  evidence_gap_reason: EvidenceGapReason;
+  evidence_confidence: EvidenceConfidenceLevel;
+  performance_signal:
+    | 'SUPPORTED_WEAK'
+    | 'SUPPORTED_SECURE'
+    | 'INSUFFICIENT_DIRECT_EVIDENCE'
+    | 'BROAD_SUBJECT_ONLY'
+    | 'NOT_IN_SCOPE'
+    | 'MIXED';
+  class_score: number | null;
+  weak_learner_count: number;
+  secure_learner_count: number;
+  eligible_learner_count: number;
+  learners_with_direct_evidence: number;
+  coverage_percent: number;
+  direct_evidence_count: number;
+  independent_source_count: number;
+  recorded_exposure_sources: OutcomeRecordedExposureSource[];
+  recommended_action: string;
+}
+
+export interface TeachingPriority {
+  state: TeachingPriorityState;
+  headline: string;
+  why_it_matters: string;
+  confidence: EvidenceConfidenceLevel;
+  recommended_action: {
+    type: TeachingPriorityActionType;
+    message: string;
+  };
+  priority_outcomes: OutcomeTeachingPriority[];
+  supporting_counts: {
+    outcomes_in_recorded_scope: number;
+    outcomes_not_in_recorded_scope: number;
+    outcomes_needing_evidence: number;
+    outcomes_needing_reteaching: number;
+    outcomes_with_broad_subject_evidence_only: number;
+  };
+}
+
+export interface ClassSubjectIntelligenceSupportingDetail {
+  secure_outcomes: OutcomeTeachingPriority[];
+  outcomes_not_in_recorded_scope: OutcomeTeachingPriority[];
+  broad_subject_evidence_only_outcomes: OutcomeTeachingPriority[];
+  subject_context: {
+    assessment_count?: number;
+    learners_with_scores?: number;
+    average_score?: number | null;
+    message?: string;
+  };
+  class_participation: {
+    eligible_learner_count?: number;
+    learners_needing_targeted_support?: number;
+    learners_needing_more_evidence?: number;
+    learners_needing_baseline?: number;
+  };
+  learners_needing_targeted_support: Array<{
+    learner_id: number;
+    learner_name: string;
+    admission_number: string;
+    status: IntelligenceStatus;
+    confidence: EvidenceConfidenceLevel;
+    trend: TrendDirection;
+    message: string;
+  }>;
+  learners_needing_more_evidence: Array<{
+    learner_id: number;
+    learner_name: string;
+    admission_number: string;
+    status: IntelligenceStatus;
+    confidence: EvidenceConfidenceLevel;
+    trend: TrendDirection;
+    message: string;
+  }>;
+  learners_needing_baseline: Array<{
+    learner_id: number;
+    learner_name: string;
+    admission_number: string;
+    status: IntelligenceStatus;
+    confidence: EvidenceConfidenceLevel;
+    trend: TrendDirection;
+    message: string;
+  }>;
+  evidence_confidence_distribution: Record<EvidenceConfidenceLevel, number>;
 }
 
 export interface AcademicContributingFactor {
@@ -64,6 +189,7 @@ export interface LearnerSubjectIntelligence {
     subject_code: string;
     term_id: number;
     term_name: string;
+    term_resolution?: TermResolution | null;
   };
   status: IntelligenceStatus;
   status_label: string;
@@ -133,19 +259,13 @@ export interface ClassSubjectIntelligence {
     subject_code: string;
     term_id: number;
     term_name: string;
+    term_resolution: TermResolution | null;
   };
   status: IntelligenceStatus;
   status_label: string;
   class_learning_picture: string;
-  evidence_confidence_distribution: Record<string, number>;
-  most_secure_outcomes: AcademicOutcomeRef[];
-  outcomes_needing_reteaching: AcademicOutcomeRef[];
-  outcomes_with_insufficient_evidence: AcademicOutcomeRef[];
-  participation_and_evidence_quality: Record<string, unknown>;
-  learners_needing_targeted_support: Array<Record<string, unknown>>;
-  learners_needing_more_evidence: Array<Record<string, unknown>>;
-  learners_needing_baseline: Array<Record<string, unknown>>;
-  suggested_next_teaching_action: AcademicIntelligenceAction[];
+  teaching_priority: TeachingPriority;
+  supporting_detail: ClassSubjectIntelligenceSupportingDetail;
   computed_at: string | null;
   source_version: string;
   visibility: 'instructor' | 'admin';
