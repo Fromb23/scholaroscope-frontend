@@ -23,10 +23,10 @@ function timeAgo(dateStr: string): string {
 }
 
 const priorityDot: Record<string, string> = {
-  URGENT: 'bg-red-500',
-  HIGH: 'bg-orange-400',
-  NORMAL: 'bg-blue-400',
-  LOW: 'bg-gray-300',
+  URGENT: 'bg-[color:var(--color-danger)]',
+  HIGH: 'bg-[color:var(--color-warning)]',
+  NORMAL: 'bg-[color:var(--color-info)]',
+  LOW: 'bg-[color:var(--color-icon-muted)]',
 };
 
 function NotificationItem({
@@ -40,15 +40,15 @@ function NotificationItem({
     <button
       type="button"
       onClick={() => onSelect(notification)}
-      className={`flex w-full cursor-pointer gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50 ${
+      className={`flex w-full cursor-pointer gap-3 px-4 py-3 text-left transition-colors theme-hover-surface ${
         notification.is_read ? 'opacity-60' : ''
       }`}
     >
       <span
         className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${
           notification.is_read
-            ? 'bg-gray-200'
-            : (priorityDot[notification.priority] ?? 'bg-blue-400')
+            ? 'bg-[color:var(--color-border-strong)]'
+            : (priorityDot[notification.priority] ?? 'bg-[color:var(--color-info)]')
         }`}
       />
       <div className="min-w-0 flex-1">
@@ -119,12 +119,12 @@ export function NotificationBell() {
     <div ref={ref} className="relative">
       <button
         onClick={handleOpen}
-        className="theme-focus-ring relative rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+        className="theme-focus-ring relative rounded-lg p-2 theme-icon transition-colors theme-hover-surface"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[color:var(--color-danger)] text-[10px] font-bold text-[color:var(--color-text-inverse)] ring-2 ring-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -133,11 +133,11 @@ export function NotificationBell() {
       {open && (
         <div className="theme-dropdown absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <div className="flex items-center justify-between border-b theme-border px-4 py-3">
             <h3 className="text-sm font-semibold theme-text">
               Notifications
               {unreadCount > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 text-xs bg-red-100 text-red-600 rounded-full font-bold">
+                <span className="theme-danger-surface ml-2 px-1.5 py-0.5 text-xs rounded-full font-bold">
                   {unreadCount}
                 </span>
               )}
@@ -146,7 +146,7 @@ export function NotificationBell() {
               <button
                 onClick={handleMarkAllRead}
                 disabled={markingAll}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                className="flex items-center gap-1 text-xs theme-link font-medium disabled:opacity-50"
               >
                 {markingAll ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -162,11 +162,11 @@ export function NotificationBell() {
           <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
             {loading ? (
               <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                <Loader2 className="h-5 w-5 animate-spin theme-icon-muted" />
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-10 text-center">
-                <Bell className="h-8 w-8 text-gray-200 mx-auto mb-2" />
+                <Bell className="h-8 w-8 theme-icon-muted mx-auto mb-2" />
                 <p className="theme-subtle text-sm">No notifications yet</p>
               </div>
             ) : (

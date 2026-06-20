@@ -194,19 +194,19 @@ export function GlobalPeopleSearch() {
                                     </p>
                                 ) : null}
                                 {result.state_message ? (
-                                    <p className="mt-1 text-xs text-gray-500">
+                                    <p className="mt-1 text-xs theme-subtle">
                                         {result.state_message}
                                     </p>
                                 ) : null}
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-1">
                                 {result.global_status ? (
-                                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700">
+                                    <span className="rounded-full theme-badge-default px-2 py-0.5 text-[11px] font-medium">
                                         {globalStatusLabel(result.global_status)}
                                     </span>
                                 ) : null}
                                 {result.membership_status ? (
-                                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                                    <span className="rounded-full theme-brand-badge px-2 py-0.5 text-[11px] font-medium">
                                         {membershipStatusLabel(result.membership_status)}
                                     </span>
                                 ) : result.status ? (

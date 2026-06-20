@@ -64,6 +64,7 @@ function theme(overrides: Partial<EffectiveThemeResponse> = {}): EffectiveThemeR
     source: 'organization',
     appearance_mode: 'SYSTEM',
     tokens: {
+      ...DEFAULT_THEME_TOKENS,
       primary: '#123456',
       primaryForeground: '#FFFFFF',
       secondary: '#654321',
@@ -83,7 +84,7 @@ function theme(overrides: Partial<EffectiveThemeResponse> = {}): EffectiveThemeR
 }
 
 describe('effective tenant theme utilities', () => {
-  it('applies resolved brand tokens to existing CSS variables', () => {
+  it('applies resolved brand and semantic tokens to CSS variables', () => {
     const { target, values } = styleTarget();
 
     applyThemeTokens(theme(), target);
@@ -98,8 +99,22 @@ describe('effective tenant theme utilities', () => {
     expect(values.get('--brand-button-radius')).toBe('10px');
     expect(values.get('--color-primary')).toBe('#123456');
     expect(values.get('--color-primary-hover')).toBe('#0F2C48');
-    expect(values.get('--color-primary-soft')).toBe('#9BAAB8');
+    expect(values.get('--color-primary-soft')).toBe('#DEE3E7');
     expect(values.get('--color-primary-contrast')).toBe('#FFFFFF');
+    expect(values.get('--color-app-bg')).toBe('#F1F3F5');
+    expect(values.get('--color-card')).toBe('#FFFFFF');
+    expect(values.get('--color-header')).toBe('#FFFFFF');
+    expect(values.get('--color-sidebar')).toBe('#F9F7F6');
+    expect(values.get('--color-dropdown')).toBe('#FFFFFF');
+    expect(values.get('--color-text')).toBe('#0F172A');
+    expect(values.get('--color-text-muted')).toBe('#475569');
+    expect(values.get('--color-text-subtle')).toBe('#64748B');
+    expect(values.get('--color-link')).toBe('#123456');
+    expect(values.get('--color-link-hover')).toBe('#0F2C48');
+    expect(values.get('--color-focus-ring')).toBe('#123456');
+    expect(values.get('--color-table-header')).toBe('#ECEFF1');
+    expect(values.get('--color-table-link')).toBe('#123456');
+    expect(values.get('--color-icon-emphasis')).toBe('#123456');
   });
 
   it('replaces tokens when another active organization theme is applied', () => {
@@ -113,6 +128,7 @@ describe('effective tenant theme utilities', () => {
         org_type: 'INSTITUTION',
       },
       tokens: {
+        ...DEFAULT_THEME_TOKENS,
         primary: '#006644',
         primaryForeground: '#FFFFFF',
         secondary: '#111827',
@@ -126,6 +142,35 @@ describe('effective tenant theme utilities', () => {
 
     expect(values.get('--brand-primary')).toBe('#006644');
     expect(values.get('--brand-accent')).toBe('#F59E0B');
+    expect(values.get('--color-link')).toBe('#006644');
+    expect(values.get('--color-input-focus-border')).toBe('#006644');
+    expect(values.get('--color-table-link')).toBe('#006644');
+  });
+
+  it('keeps organization brand tokens while adapting surfaces in dark mode', () => {
+    const { target, values } = styleTarget();
+
+    applyThemeTokens(theme({
+      tokens: {
+        ...DEFAULT_THEME_TOKENS,
+        primary: '#006644',
+        primaryForeground: '#FFFFFF',
+        secondary: '#111827',
+        secondaryForeground: '#FFFFFF',
+        accent: '#F59E0B',
+        accentForeground: '#0F172A',
+        ring: '#006644',
+        muted: '#F8FAFC',
+      },
+    }), target, 'dark');
+
+    expect(values.get('--brand-primary')).toBe('#006644');
+    expect(values.get('--color-primary')).toBe('#006644');
+    expect(values.get('--color-link')).toBe('#006644');
+    expect(values.get('--color-focus-ring')).toBe('#006644');
+    expect(values.get('--color-app-bg')).toBe('#040509');
+    expect(values.get('--color-card')).not.toBe('#FFFFFF');
+    expect(values.get('--color-text')).toBe('#E5E7EB');
   });
 
   it('falls back to the Scholaroscope default theme when no custom theme exists', () => {
@@ -193,5 +238,33 @@ describe('effective tenant theme utilities', () => {
         can_teach: true,
       },
     })).toBe(false);
+  });
+
+  it('keeps shared UI components theme-native', () => {
+    const files = [
+      'app/components/ui/Button.tsx',
+      'app/components/ui/Input.tsx',
+      'app/components/ui/Select.tsx',
+      'app/components/ui/Badge.tsx',
+      'app/components/ui/Table.tsx',
+      'app/components/ui/ActionMenu.tsx',
+    ];
+    const source = files.map((file) => readFileSync(join(process.cwd(), file), 'utf8')).join('\n');
+
+    expect(source).toContain('theme-button-primary');
+    expect(source).toContain('theme-input');
+    expect(source).toContain('theme-select');
+    expect(source).toContain('theme-table-sort-icon');
+    expect(source).toContain('theme-dropdown');
+    expect(source).not.toMatch(/focus:ring-blue|focus:border-blue|text-blue|bg-blue|border-blue/);
+  });
+
+  it('uses themed learner list controls and table links', () => {
+    const source = readFileSync(join(process.cwd(), 'app/(dashboard)/learners/page.tsx'), 'utf8');
+
+    expect(source).toContain('theme-table-link');
+    expect(source).toContain('theme-input theme-select');
+    expect(source).toContain('theme-app-bg');
+    expect(source).not.toMatch(/focus:ring-blue|focus:border-blue|text-blue|bg-blue|border-blue/);
   });
 });

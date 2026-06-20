@@ -44,7 +44,7 @@ function ActionMenuItemButton({
     item.disabled
       ? 'cursor-not-allowed opacity-50'
       : item.destructive
-        ? 'text-red-700 hover:bg-red-50'
+        ? 'text-[color:var(--color-danger)] theme-hover-danger'
         : 'theme-text theme-hover-surface'
   }`;
 
@@ -147,7 +147,7 @@ export function ActionMenu({
         <div
           id={menuId}
           role="menu"
-          className={`absolute top-full z-30 mt-2 min-w-[12rem] rounded-lg border p-1 shadow-xl theme-border theme-surface-elevated ${
+          className={`theme-dropdown absolute top-full z-30 mt-2 min-w-[12rem] rounded-lg p-1 ${
             align === 'left' ? 'left-0' : 'right-0'
           } ${menuClassName}`}
         >

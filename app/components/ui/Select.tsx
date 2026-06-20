@@ -18,7 +18,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           ref={ref}
           className={`
-            theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-4 py-2
+            theme-focus-ring theme-input theme-select w-full rounded-lg px-4 py-2
             ${error ? 'theme-input-error' : ''}
             ${className}
           `}

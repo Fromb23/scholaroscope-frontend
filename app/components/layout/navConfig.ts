@@ -66,12 +66,12 @@ export interface RoleColorScheme {
 
 export const ROLE_COLORS: Record<Role, RoleColorScheme> = {
   SUPERADMIN: {
-    active: 'bg-purple-600 text-white shadow-sm',
-    hover: 'hover:bg-purple-500/12 hover:text-[color:var(--color-text)]',
-    childActive: 'border-l-4 border-purple-500 bg-purple-500/12 text-[color:var(--color-text)]',
-    badge: 'border border-purple-500/20 bg-purple-500/12 text-purple-700',
-    header: 'bg-purple-500/10 border-purple-500/20',
-    iconBg: 'bg-purple-600',
+    active: 'theme-nav-active',
+    hover: 'theme-nav-hover',
+    childActive: 'theme-nav-child-active',
+    badge: 'theme-nav-badge',
+    header: 'theme-nav-header',
+    iconBg: 'theme-nav-icon-bg',
   },
   ADMIN: {
     active: 'theme-nav-active',
