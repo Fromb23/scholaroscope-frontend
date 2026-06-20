@@ -63,6 +63,11 @@ import type {
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import {
+    shouldShowMergedCohortBadge,
+    shouldShowParticipatingCohorts,
+    shouldShowPostLessonAssignmentActions,
+} from '@/app/core/components/sessions/sessionDetailVisibility';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 type SessionPageNotice = {
@@ -258,7 +263,6 @@ export function SessionDetailPage() {
     const [transientWorkflowNotice, setTransientWorkflowNotice] = useState<SessionPageNotice | null>(null);
     const [confirmingTaughtOutcomes, setConfirmingTaughtOutcomes] = useState(false);
     const [taughtOutcomesValidationError, setTaughtOutcomesValidationError] = useState<string | null>(null);
-    const [creatingAssignment, setCreatingAssignment] = useState(false);
     const [issuingPreparedTask, setIssuingPreparedTask] = useState(false);
     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
     const [preparedAssignment, setPreparedAssignment] = useState<Assignment | null>(null);
@@ -288,7 +292,6 @@ export function SessionDetailPage() {
         cancelSession,
         rescheduleSession,
         confirmTaughtOutcomes,
-        createAssignmentFromLesson,
     } = useSessionDetail(sessionId);
     const issuePreparedAssignmentMutation = useIssuePreparedAssignment();
     const {
@@ -329,6 +332,9 @@ export function SessionDetailPage() {
         return activeClassIds.size;
     }, [activeCohorts, session]);
     const isMerged = activeParticipationCount > 1;
+    const showParticipatingCohorts = shouldShowParticipatingCohorts(sessionStatus);
+    const showMergedBadge = shouldShowMergedCohortBadge({ isMerged, status: sessionStatus });
+    const showPostLessonAssignmentActions = shouldShowPostLessonAssignmentActions();
 
     const attendanceStats = useMemo(
         () => calcAttendanceStats(attendanceRecords),
@@ -362,12 +368,6 @@ export function SessionDetailPage() {
         hasMarkedAttendance &&
         hasConfirmedTaughtOutcomes &&
         taughtOutcomeCount > 0
-    );
-    const canCreateAssignmentFromLesson = Boolean(
-        canCreateTeachingRecords &&
-        isCompleted &&
-        hasLessonPlan &&
-        hasConfirmedTaughtOutcomes
     );
     const showPreparedAssignmentScopeNote = Boolean(
         (preparedAssignment ?? lessonPlanPreparedDraft ?? lessonPlanIssuedAssignments[0] ?? null)
@@ -454,13 +454,11 @@ export function SessionDetailPage() {
         learnerTaskForLesson && learnerTaskForLesson.status !== 'DRAFT'
     );
     const showPreparedTaskIssueAction = Boolean(
-        preparedTaskDraft && (currentWorkflowStep === 'complete' || currentWorkflowStep === 'post_lesson')
-    );
-    const showQuickFollowUpAction = Boolean(
-        currentWorkflowStep === 'post_lesson'
-        && !preparedTaskDraft
-        && !issuedPreparedTask
-        && canCreateAssignmentFromLesson
+        preparedTaskDraft
+        && (
+            currentWorkflowStep === 'complete'
+            || (currentWorkflowStep === 'post_lesson' && showPostLessonAssignmentActions)
+        )
     );
     const showAttendanceSection = currentWorkflowStep === 'attendance' || isCompleted || needsCompletion;
     const showTaughtOutcomesSection = hasLessonPlan && (
@@ -1589,32 +1587,6 @@ export function SessionDetailPage() {
         taughtSelections,
     ]);
 
-    const handleCreateAssignmentFromLesson = async () => {
-        if (!session) {
-            return;
-        }
-
-        try {
-            setCreatingAssignment(true);
-            clearWorkflowFeedback();
-            const response = await createAssignmentFromLesson();
-            setPreparedAssignment(response.assignment);
-            setWorkflowSuccess(
-                response.created
-                    ? 'Quick follow-up task prepared.'
-                    : 'Quick follow-up task already prepared.'
-            );
-        } catch (error) {
-            setWorkflowError(
-                error instanceof Error
-                    ? error.message
-                    : 'We could not prepare a quick follow-up task.'
-            );
-        } finally {
-            setCreatingAssignment(false);
-        }
-    };
-
     const handleIssuePreparedTask = async () => {
         if (!session || !preparedTaskDraft) {
             return;
@@ -1690,7 +1662,7 @@ export function SessionDetailPage() {
                                         ? 'Current action: add lesson reflection'
                                         : 'Current action: close lesson record'
                     )
-                    : 'Current action: record follow-up';
+                    : 'Current action: review completed lesson';
     const currentActionDescription = isScheduled
         ? (hasPreparedTaskForLesson
             ? 'Lesson preparation is linked and the learner task is ready. Start from the lesson window when class begins.'
@@ -1715,9 +1687,7 @@ export function SessionDetailPage() {
                                 : closureNextStep === 'REFLECTION'
                                     ? 'Add the required lesson reflection. If you lose your place, re-check lesson closure to reopen the current step.'
                                     : 'All required teaching records are complete. Close the lesson record.')
-                    : (preparedTaskDraft
-                    ? 'The prepared learner task was not issued yet. Issue it now or leave it for later review.'
-                    : 'Use post-lesson time for review and any follow-up task.');
+                    : 'This lesson is complete. Review the record here; assignment work remains in the assignment workspace.';
     const lessonPreparationSummary = `${session.planned_outcomes.length} planned outcome${session.planned_outcomes.length === 1 ? '' : 's'} · ${
         preparedTaskDraft
             ? 'learner task prepared'
@@ -1827,7 +1797,7 @@ export function SessionDetailPage() {
                                                 disabled: false,
                                 }
                         )
-                        : currentWorkflowStep === 'post_lesson' && preparedTaskDraft
+                        : currentWorkflowStep === 'post_lesson' && showPostLessonAssignmentActions && preparedTaskDraft
                                 ? {
                                     label: issuingPreparedTask ? 'Issuing...' : 'Issue prepared task',
                                     onClick: () => {
@@ -1882,8 +1852,8 @@ export function SessionDetailPage() {
                     <div className="min-w-0 flex-1">
                         <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold">
                             <span className="truncate">{session.title || session.subject_name}</span>
-                            {isMerged ? (
-                                <Badge variant="purple">
+                            {showMergedBadge ? (
+                                <Badge variant="maroon">
                                     <Layers className="mr-1 h-3 w-3" />
                                     Multi-cohort
                                 </Badge>
@@ -2074,9 +2044,11 @@ export function SessionDetailPage() {
                         {preparedTaskWasIssued ? 'Learner task issued.' : 'Learner task prepared.'}
                     </span>{' '}
                     <span>
-                        {preparedTaskWasIssued
-                            ? 'It is available in post-lesson actions.'
-                            : 'It is ready to issue when the lesson is complete.'}
+                        {isCompleted
+                            ? 'It remains available from the assignment workspace and reports.'
+                            : preparedTaskWasIssued
+                                ? 'It is available in the assignment workspace.'
+                                : 'It is ready to issue when the lesson is complete.'}
                     </span>
                     {showPreparedAssignmentScopeNote ? (
                         <p className="mt-2">
@@ -2379,17 +2351,13 @@ export function SessionDetailPage() {
                 <Card>
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-gray-900">
-                                {isInstructor ? 'Post-lesson actions' : 'Post-lesson summary'}
-                            </h2>
+                            <h2 className="text-lg font-semibold text-gray-900">Post-lesson summary</h2>
                             <p className="text-sm text-gray-600">
-                                {isInstructor
-                                    ? 'Create follow-up work or reopen the lesson preparation after class.'
-                                    : 'Post-lesson evidence and assignment work stay outside the live teaching window.'}
+                                This lesson is complete. Evidence is locked here, and existing assignments remain available from the assignment workspace and reports.
                             </p>
                         </div>
 
-                        {preparedTaskDraft && !skipPreparedTaskPrompt ? (
+                        {showPostLessonAssignmentActions && preparedTaskDraft && !skipPreparedTaskPrompt ? (
                             <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                                 <div className="font-medium">Prepared task was not issued.</div>
                                 <div className="mt-1">
@@ -2409,40 +2377,14 @@ export function SessionDetailPage() {
                                             : 'No curriculum evidence workflow is available for this lesson.'}
                             </div>
 
-                            <ActionMenu
-                                buttonLabel="More"
-                                items={[
-                                    ...(learnerTaskForLesson ? [{
-                                        label: 'Open learner task',
-                                        href: `/academic/cohorts/${learnerTaskForLesson.cohort_id}/assignments/${learnerTaskForLesson.id}?${new URLSearchParams({
-                                            returnTo: lessonTaskReturnTo,
-                                        }).toString()}`,
-                                        icon: <FilePlus2 className="h-4 w-4" />,
-                                    }] : []),
-                                    ...(canCreateTeachingRecords && preparedTaskDraft && !preparedTaskWasIssued && !skipPreparedTaskPrompt ? [{
-                                        label: issuingPreparedTask ? 'Issuing...' : 'Issue prepared task',
-                                        onSelect: () => {
-                                            void handleIssuePreparedTask();
-                                        },
-                                        disabled: issuingPreparedTask,
-                                        icon: <FilePlus2 className="h-4 w-4" />,
-                                    }, {
-                                        label: 'Skip for this lesson',
-                                        onSelect: () => setSkipPreparedTaskPrompt(true),
-                                    }] : []),
-                                    ...(canCreateTeachingRecords && showQuickFollowUpAction ? [{
-                                        label: creatingAssignment ? 'Preparing...' : 'Prepare quick follow-up task',
-                                        onSelect: handleCreateAssignmentFromLesson,
-                                        disabled: creatingAssignment,
-                                        icon: <FilePlus2 className="h-4 w-4" />,
-                                    }] : []),
-                                    ...(hasLessonPlan ? [{
-                                        label: isInstructor ? 'View lesson preparation' : 'View lesson plan',
-                                        href: `/lesson-plans/${session.lesson_plan_id}`,
-                                        icon: <BookOpen className="h-4 w-4" />,
-                                    }] : []),
-                                ]}
-                            />
+                            {hasLessonPlan ? (
+                                <Link href={`/lesson-plans/${session.lesson_plan_id}`}>
+                                    <Button variant="secondary" size="sm">
+                                        <BookOpen className="mr-1.5 h-4 w-4" />
+                                        {isInstructor ? 'View lesson preparation' : 'View lesson plan'}
+                                    </Button>
+                                </Link>
+                            ) : null}
                         </div>
                     </div>
                 </Card>
@@ -2610,17 +2552,19 @@ export function SessionDetailPage() {
                 </CollapsibleSection>
             ) : null}
 
-            <ParticipatingCohorts
-                sessionId={sessionId}
-                isHistorical={isHistorical}
-                canManageLinks={!isHistorical}
-                onParticipationChanged={handleParticipationChanged}
-                primaryCohort={{
-                    id: session.cohort_id,
-                    name: session.cohort_name,
-                    level: session.cohort_level,
-                }}
-            />
+            {showParticipatingCohorts ? (
+                <ParticipatingCohorts
+                    sessionId={sessionId}
+                    isHistorical={isHistorical}
+                    canManageLinks={!isHistorical}
+                    onParticipationChanged={handleParticipationChanged}
+                    primaryCohort={{
+                        id: session.cohort_id,
+                        name: session.cohort_name,
+                        level: session.cohort_level,
+                    }}
+                />
+            ) : null}
 
             <RescheduleLessonModal
                 isOpen={showRescheduleModal}

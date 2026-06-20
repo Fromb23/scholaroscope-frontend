@@ -8,6 +8,8 @@ import {
     AlertTriangle,
     ArrowLeft,
     CalendarDays,
+    ChevronDown,
+    ChevronRight,
     Clock3,
     Download,
     Edit,
@@ -54,6 +56,11 @@ import {
 import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import {
+    getLessonPlanDetailInitialSectionState,
+    shouldOpenLearnerTaskFromQuery,
+    shouldShowLearnerTaskSection,
+} from '@/app/core/components/lessonPlans/lessonPlanDetailVisibility';
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -150,6 +157,52 @@ function buildLessonTaskInstructions(lessonPlan: LessonPlan): string {
     return sections.join('\n\n').trim();
 }
 
+const INITIAL_SECTION_STATE = getLessonPlanDetailInitialSectionState();
+
+function CollapsibleDetailSection({
+    title,
+    summary,
+    open,
+    onToggle,
+    children,
+}: {
+    title: string;
+    summary: string;
+    open: boolean;
+    onToggle: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <Card className="overflow-hidden p-0">
+            <button
+                type="button"
+                onClick={onToggle}
+                className="theme-focus-ring flex w-full items-start gap-3 px-6 py-4 text-left transition-colors theme-hover-surface"
+            >
+                <div className="theme-surface-elevated mt-0.5 shrink-0 rounded-lg border p-1.5 theme-border">
+                    {open ? (
+                        <ChevronDown className="h-4 w-4 text-[color:var(--color-primary)]" />
+                    ) : (
+                        <ChevronRight className="h-4 w-4 theme-subtle" />
+                    )}
+                </div>
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-base font-semibold theme-text">{title}</h2>
+                    <p className="mt-1 text-sm theme-muted">{summary}</p>
+                </div>
+                <span className="shrink-0 text-sm font-medium theme-link">
+                    {open ? 'Collapse' : 'Expand'}
+                </span>
+            </button>
+            {open ? (
+                <div className="border-t px-6 py-6 theme-border">
+                    {children}
+                </div>
+            ) : null}
+        </Card>
+    );
+}
+
 export function LessonPlanDetailPage() {
     const params = useParams();
     const pathname = usePathname();
@@ -196,6 +249,11 @@ export function LessonPlanDetailPage() {
     const [transientNotice, setTransientNotice] = useState<string | null>(null);
     const learnerTaskSectionRef = useRef<HTMLDivElement | null>(null);
     const [learnerTaskOpen, setLearnerTaskOpen] = useState(false);
+    const [outcomesOpen, setOutcomesOpen] = useState(INITIAL_SECTION_STATE.outcomesOpen);
+    const [lessonContentOpen, setLessonContentOpen] = useState(INITIAL_SECTION_STATE.lessonContentOpen);
+    const [referencesOpen, setReferencesOpen] = useState(INITIAL_SECTION_STATE.referencesOpen);
+    const [metadataOpen, setMetadataOpen] = useState(INITIAL_SECTION_STATE.metadataOpen);
+    const [generationMetadataOpen, setGenerationMetadataOpen] = useState(INITIAL_SECTION_STATE.generationMetadataOpen);
     const [learnerTaskChoice, setLearnerTaskChoice] = useState<'none' | 'prepare' | 'existing'>('none');
     const [learnerTaskType, setLearnerTaskType] = useState<'class_exercise' | 'homework' | 'group_activity'>('class_exercise');
     const [learnerTaskTitle, setLearnerTaskTitle] = useState('');
@@ -361,6 +419,13 @@ export function LessonPlanDetailPage() {
         ?? latestPreparedAssignment
     ), [latestPreparedAssignment, preparedAssignmentPreviewId, preparedAssignments]);
     const hasPreparedAssignment = Boolean(activePreparedAssignment);
+    const canShowLearnerTaskAction = Boolean(
+        canCreateTeachingRecords && lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
+    );
+    const showLearnerTaskSection = shouldShowLearnerTaskSection({
+        status: lessonPlan?.status,
+        canShowLearnerTaskAction,
+    });
 
     useEffect(() => {
         setPreparedAssignmentPreviewId(latestPreparedAssignment?.id ?? null);
@@ -392,7 +457,10 @@ export function LessonPlanDetailPage() {
                 setLearnerTaskChoice(
                     parsed.choice ?? (hasPreparedAssignment ? 'existing' : 'none')
                 );
-                setLearnerTaskOpen(searchParams.get('section') === 'learner-task');
+                setLearnerTaskOpen(shouldOpenLearnerTaskFromQuery({
+                    section: searchParams.get('section'),
+                    showLearnerTaskSection,
+                }));
                 return;
             } catch {
                 window.sessionStorage.removeItem(learnerTaskStorageKey ?? '');
@@ -406,7 +474,10 @@ export function LessonPlanDetailPage() {
         setLearnerTaskDueAt(preparedAssignmentDraft?.due_at ? preparedAssignmentDraft.due_at.slice(0, 16) : '');
         setLearnerTaskType(preparedAssignmentDraft?.delivery_mode === 'GROUP' ? 'group_activity' : 'class_exercise');
         setLearnerTaskChoice(hasPreparedAssignment ? 'existing' : 'none');
-        setLearnerTaskOpen(searchParams.get('section') === 'learner-task');
+        setLearnerTaskOpen(shouldOpenLearnerTaskFromQuery({
+            section: searchParams.get('section'),
+            showLearnerTaskSection,
+        }));
     }, [
         hasPreparedAssignment,
         learnerTaskStorageKey,
@@ -416,10 +487,11 @@ export function LessonPlanDetailPage() {
         preparedAssignmentDraft?.instructions,
         preparedAssignmentDraft?.title,
         searchParams,
+        showLearnerTaskSection,
     ]);
 
     useEffect(() => {
-        if (!learnerTaskStorageKey || !lessonPlan) {
+        if (!learnerTaskStorageKey || !lessonPlan || !showLearnerTaskSection) {
             return;
         }
 
@@ -443,11 +515,12 @@ export function LessonPlanDetailPage() {
         learnerTaskTitle,
         learnerTaskType,
         lessonPlan,
+        showLearnerTaskSection,
     ]);
 
     useEffect(() => {
         const section = searchParams.get('section');
-        if (section !== 'learner-task') {
+        if (!shouldOpenLearnerTaskFromQuery({ section, showLearnerTaskSection })) {
             return;
         }
 
@@ -460,7 +533,7 @@ export function LessonPlanDetailPage() {
         }, 100);
 
         return () => window.clearTimeout(timer);
-    }, [searchParams]);
+    }, [searchParams, showLearnerTaskSection]);
 
     useEffect(() => {
         const highlightValue = Number(searchParams.get('highlightAssignment') ?? '');
@@ -477,6 +550,9 @@ export function LessonPlanDetailPage() {
     }, [searchParams]);
 
     const openLearnerTaskSection = useCallback(() => {
+        if (!showLearnerTaskSection) {
+            return;
+        }
         setLearnerTaskChoice(hasPreparedAssignment ? 'existing' : 'prepare');
         setLearnerTaskOpen(true);
         setTimeout(() => {
@@ -485,7 +561,7 @@ export function LessonPlanDetailPage() {
                 block: 'start',
             });
         }, 50);
-    }, [hasPreparedAssignment]);
+    }, [hasPreparedAssignment, showLearnerTaskSection]);
     const closeLearnerTaskSection = useCallback(() => {
         setLearnerTaskOpen(false);
         setLearnerTaskError(null);
@@ -705,9 +781,6 @@ export function LessonPlanDetailPage() {
             };
         });
     };
-    const canShowLearnerTaskAction = Boolean(
-        canCreateTeachingRecords && lessonPlan && canPrepareAssignmentDraft(lessonPlan.status)
-    );
     const canShowScheduleLessonAction = Boolean(
         lessonPlan && canScheduleLesson(lessonPlan.status) && !lessonPlan.session
     );
@@ -1077,6 +1150,7 @@ export function LessonPlanDetailPage() {
                 </div>
             </Card>
 
+            {showLearnerTaskSection ? (
             <div ref={learnerTaskSectionRef} id="learner-task" className="scroll-mt-24">
                 <Card className={highlightedAssignmentId && activePreparedAssignment?.id === highlightedAssignmentId ? 'border-blue-300 bg-blue-50/50' : undefined}>
                     <div className="space-y-5">
@@ -1324,6 +1398,7 @@ export function LessonPlanDetailPage() {
                     </div>
                 </Card>
             </div>
+            ) : null}
 
             {lessonPlan.status === 'ARCHIVED' ? (
                 <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
@@ -1331,7 +1406,12 @@ export function LessonPlanDetailPage() {
                 </div>
             ) : null}
 
-            <Card>
+            <CollapsibleDetailSection
+                title="Planning metadata"
+                summary="Class, subject, teacher, year, timing, and linked scheduled lesson."
+                open={metadataOpen}
+                onToggle={() => setMetadataOpen((current) => !current)}
+            >
                 <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Class Subject</p>
@@ -1379,7 +1459,7 @@ export function LessonPlanDetailPage() {
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Scheduled Lesson</p>
                         <p className="mt-1 font-medium text-gray-900">
                             {lessonPlan.session ? (
-                                <Link href={`/sessions/${lessonPlan.session}`} className="inline-flex items-center gap-1 text-blue-600 hover:underline">
+                                <Link href={`/sessions/${lessonPlan.session}`} className="theme-link inline-flex items-center gap-1 hover:underline">
                                     <Link2 className="h-3.5 w-3.5" />
                                     {getLinkedLessonLabel(lessonPlan)}
                                 </Link>
@@ -1389,7 +1469,7 @@ export function LessonPlanDetailPage() {
                         </p>
                     </div>
                 </div>
-            </Card>
+            </CollapsibleDetailSection>
 
             {postLessonReflection ? (
                 <Card>
@@ -1411,7 +1491,12 @@ export function LessonPlanDetailPage() {
                 </Card>
             ) : null}
 
-            <Card>
+            <CollapsibleDetailSection
+                title={isInstructor ? 'Chosen learning outcomes' : 'Chosen Learning Outcomes'}
+                summary={`${lessonPlan.planned_outcomes.length} outcome${lessonPlan.planned_outcomes.length === 1 ? '' : 's'} selected for this lesson.`}
+                open={outcomesOpen}
+                onToggle={() => setOutcomesOpen((current) => !current)}
+            >
                 <div className="space-y-4">
                     <div className="space-y-1">
                         <h2 className="text-base font-semibold text-gray-900">
@@ -1445,9 +1530,14 @@ export function LessonPlanDetailPage() {
                         </div>
                     )}
                 </div>
-            </Card>
+            </CollapsibleDetailSection>
 
-            <Card>
+            <CollapsibleDetailSection
+                title="Generation metadata"
+                summary={generationSummary}
+                open={generationMetadataOpen}
+                onToggle={() => setGenerationMetadataOpen((current) => !current)}
+            >
                 <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Created</p>
@@ -1481,10 +1571,25 @@ export function LessonPlanDetailPage() {
                         ) : null}
                     </div>
                 </div>
-            </Card>
+            </CollapsibleDetailSection>
 
-            <LessonPlanSections lessonPlan={lessonPlan} />
-            <LessonPlanReferences lessonPlan={lessonPlan} />
+            <CollapsibleDetailSection
+                title="Lesson content"
+                summary="Objectives, prior knowledge, resources, lesson flow, activities, assessment, and differentiation."
+                open={lessonContentOpen}
+                onToggle={() => setLessonContentOpen((current) => !current)}
+            >
+                <LessonPlanSections lessonPlan={lessonPlan} />
+            </CollapsibleDetailSection>
+
+            <CollapsibleDetailSection
+                title="References"
+                summary="Reference materials attached to this lesson plan."
+                open={referencesOpen}
+                onToggle={() => setReferencesOpen((current) => !current)}
+            >
+                <LessonPlanReferences lessonPlan={lessonPlan} />
+            </CollapsibleDetailSection>
 
             <Modal
                 isOpen={markUsedOpen}
