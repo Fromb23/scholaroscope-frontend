@@ -165,7 +165,7 @@ export default function Sidebar() {
           <div className="flex h-16 items-center border-b theme-border px-6">
             <div className="flex items-center gap-3">
               <div className={`p-2 ${colors.iconBg} rounded-xl`}>
-                <Logo className="h-5 w-5 text-white" />
+                <Logo className="h-5 w-5 text-[color:var(--brand-primary-foreground)]" />
               </div>
               <h1 className="text-xl font-bold theme-text">ScholaroScope</h1>
             </div>
@@ -175,7 +175,7 @@ export default function Sidebar() {
           <div className={`px-6 py-4 border-b ${colors.header}`}>
             <div className="flex items-center gap-3 mb-3">
               <div className={`p-2 ${colors.iconBg} rounded-lg`}>
-                <RoleIcon className="h-4 w-4 text-white" />
+                <RoleIcon className="h-4 w-4 text-[color:var(--brand-primary-foreground)]" />
               </div>
               <div>
                 <p className="theme-subtle text-xs font-semibold uppercase tracking-wide">

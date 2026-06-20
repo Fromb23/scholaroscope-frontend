@@ -77,7 +77,7 @@ export function NavItem({
                     className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
                       childActive
                         ? colors.childActive
-                        : 'theme-subtle border-l-4 border-transparent hover:bg-gray-50 hover:text-gray-900'
+                        : `theme-subtle border-l-4 border-transparent ${colors.hover}`
                     }`}
                   >
                     <ChildIcon className="h-4 w-4 shrink-0" />

@@ -12,7 +12,7 @@ interface AppearanceSettingsCardProps {
 
 export function AppearanceSettingsCard({
   title = 'Theme preference',
-  description = 'This changes the appearance of ScholaroScope on this browser.',
+  description = 'Choose light, dark, or system appearance for your account.',
   compact = false,
 }: AppearanceSettingsCardProps) {
   return (

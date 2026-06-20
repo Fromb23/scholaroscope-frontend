@@ -14,7 +14,7 @@ export const ORG_TYPE_LABELS: Record<OrgType, string> = {
 export const ORG_TYPE_BADGE_VARIANTS: Record<OrgType, WorkspaceBadgeVariant> = {
   INSTITUTION: 'blue',
   PERSONAL: 'maroon',
-  INDEPENDENT_TEACHER: 'green',
+  INDEPENDENT_TEACHER: 'maroon',
   LEARNER_WORKSPACE: 'orange',
   TUITION_CENTER: 'indigo',
   HOMESCHOOL: 'green',
@@ -53,7 +53,8 @@ export const WORKSPACE_MODE_COPY: Record<
   },
   PERSONAL: {
     label: 'Freelance Teacher Workspace',
-    description: 'Set up my teaching workspace for learners, schemes of work, lesson plans, teaching records, and reports.',
+    description:
+      'Create a Freelance Teacher Workspace for managing your own learners, lesson plans, teaching records, assessments, reports, and academic intelligence.',
     placeholder: 'e.g. My Teaching Workspace',
   },
 };
@@ -63,9 +64,9 @@ export function getWorkspaceManagementLabel(orgType?: OrgType | null): string {
     case 'INSTITUTION':
       return 'Institution Management';
     case 'PERSONAL':
-      return 'Freelance Teaching Workspace';
+      return 'Freelance Teacher Workspace';
     case 'INDEPENDENT_TEACHER':
-      return 'Freelance Teaching Workspace';
+      return 'Freelance Teacher Workspace';
     case 'LEARNER_WORKSPACE':
       return 'Learner Workspace Management';
     case 'TUITION_CENTER':

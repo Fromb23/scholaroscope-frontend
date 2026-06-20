@@ -1,7 +1,11 @@
 'use client';
 
 import { Check, Laptop, Moon, Sun } from 'lucide-react';
+import { themeAPI } from '@/app/core/api/theme';
+import { useAuth } from '@/app/context/AuthContext';
+import { useEffectiveTheme } from '@/app/context/EffectiveThemeContext';
 import { useTheme, type ThemeMode } from '@/app/context/ThemeContext';
+import { themeModeToAppearanceMode } from '@/app/core/theme/effectiveTheme';
 
 interface ThemeModeSelectorProps {
   compact?: boolean;
@@ -41,6 +45,24 @@ export function ThemeModeSelector({
   className = '',
 }: ThemeModeSelectorProps) {
   const { themeMode, resolvedTheme, setThemeMode } = useTheme();
+  const { user } = useAuth();
+  const { refetch } = useEffectiveTheme();
+
+  const handleModeChange = async (mode: ThemeMode) => {
+    setThemeMode(mode);
+    if (!user) {
+      return;
+    }
+
+    try {
+      await themeAPI.updateMyThemePreference({
+        appearance_mode: themeModeToAppearanceMode(mode),
+      });
+      await refetch();
+    } catch (error) {
+      console.warn('[theme] Failed to save appearance preference.', error);
+    }
+  };
 
   return (
     <div className={`space-y-3 ${className}`}>
@@ -53,7 +75,7 @@ export function ThemeModeSelector({
             <button
               key={option.value}
               type="button"
-              onClick={() => setThemeMode(option.value)}
+              onClick={() => void handleModeChange(option.value)}
               className={`theme-toggle-button ${active ? 'theme-toggle-button-active' : ''} ${
                 compact ? 'min-h-12 px-3 py-2' : 'min-h-24 px-4 py-3'
               }`}

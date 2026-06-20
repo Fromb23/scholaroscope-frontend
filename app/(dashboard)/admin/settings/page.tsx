@@ -7,6 +7,7 @@ import { ArrowLeft, Settings, Users, Puzzle } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { AppearanceSettingsCard } from '@/app/components/theme/AppearanceSettingsCard';
+import { OrganizationThemeSettingsCard } from '@/app/components/theme/OrganizationThemeSettingsCard';
 import { MembersTab, PluginsTab } from '@/app/core/components/settings/SettingsComponents';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -17,8 +18,9 @@ function GeneralTab() {
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold theme-text">General settings</h2>
-        <p className="mt-1 text-sm theme-muted">Local browser preferences for this workspace.</p>
+        <p className="mt-1 text-sm theme-muted">Brand theme and appearance preferences for this workspace.</p>
       </div>
+      <OrganizationThemeSettingsCard />
       <AppearanceSettingsCard />
     </div>
   );
