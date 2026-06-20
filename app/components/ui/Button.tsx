@@ -15,6 +15,7 @@ export function Button({
   variant = 'primary',
   size = 'md',
   className = '',
+  style,
   ...props
 }: ButtonProps) {
   const baseStyles =
@@ -34,7 +35,14 @@ export function Button({
   };
 
   return (
-    <button className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
+    <button
+      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+      style={{
+        borderRadius: 'var(--brand-button-radius, 8px)',
+        ...style,
+      }}
+      {...props}
+    >
       {children}
     </button>
   );

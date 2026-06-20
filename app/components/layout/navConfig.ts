@@ -74,30 +74,30 @@ export const ROLE_COLORS: Record<Role, RoleColorScheme> = {
     iconBg: 'bg-purple-600',
   },
   ADMIN: {
-    active: 'bg-blue-600 text-white shadow-sm',
-    hover: 'hover:bg-blue-500/12 hover:text-[color:var(--color-text)]',
-    childActive: 'border-l-4 border-blue-500 bg-blue-500/12 text-[color:var(--color-text)]',
-    badge: 'border border-blue-500/20 bg-blue-500/12 text-blue-700',
-    header: 'bg-blue-500/10 border-blue-500/20',
-    iconBg: 'bg-blue-600',
+    active: 'theme-nav-active',
+    hover: 'theme-nav-hover',
+    childActive: 'theme-nav-child-active',
+    badge: 'theme-nav-badge',
+    header: 'theme-nav-header',
+    iconBg: 'theme-nav-icon-bg',
   },
   INSTRUCTOR: {
-    active: 'bg-green-600 text-white shadow-sm',
-    hover: 'hover:bg-green-500/12 hover:text-[color:var(--color-text)]',
-    childActive: 'border-l-4 border-green-500 bg-green-500/12 text-[color:var(--color-text)]',
-    badge: 'border border-green-500/20 bg-green-500/12 text-green-700',
-    header: 'bg-green-500/10 border-green-500/20',
-    iconBg: 'bg-green-600',
+    active: 'theme-nav-active',
+    hover: 'theme-nav-hover',
+    childActive: 'theme-nav-child-active',
+    badge: 'theme-nav-badge',
+    header: 'theme-nav-header',
+    iconBg: 'theme-nav-icon-bg',
   },
 };
 
 export const FREELANCER_WORKSPACE_COLORS: RoleColorScheme = {
-  active: 'bg-[#7f1d1d] text-white shadow-sm',
-  hover: 'hover:bg-[#7f1d1d]/10 hover:text-[color:var(--color-text)]',
-  childActive: 'border-l-4 border-[#7f1d1d] bg-[#7f1d1d]/10 text-[color:var(--color-text)]',
-  badge: 'border border-[#facc15]/40 bg-[#7f1d1d]/10 text-[#7f1d1d]',
-  header: 'bg-[#7f1d1d]/10 border-[#facc15]/30',
-  iconBg: 'bg-[#7f1d1d]',
+  active: 'theme-nav-active',
+  hover: 'theme-nav-hover',
+  childActive: 'theme-nav-child-active',
+  badge: 'theme-nav-badge',
+  header: 'theme-nav-header',
+  iconBg: 'theme-nav-icon-bg',
 };
 
 export function getRoleColorScheme(role: Role, orgType?: OrgType | null): RoleColorScheme {

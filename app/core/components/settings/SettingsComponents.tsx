@@ -362,6 +362,9 @@ export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
                         {invite.is_valid && (
                             <span className="text-xs text-yellow-600">{formatExpiry(invite.expires_at)}</span>
                         )}
+                        {invite.status === 'EXPIRED' && (
+                            <span className="text-xs text-gray-500">Expired link. Create a new invite to share access.</span>
+                        )}
                     </div>
                 </div>
             </div>

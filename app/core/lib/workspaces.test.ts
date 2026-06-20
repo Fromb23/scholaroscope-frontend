@@ -77,7 +77,7 @@ describe('workspace teaching capabilities', () => {
     expect(Object.keys(WORKSPACE_MODE_COPY)).not.toContain('INDEPENDENT_TEACHER');
     expect(WORKSPACE_MODE_COPY.PERSONAL.label).toBe('Freelance Teacher Workspace');
     expect(WORKSPACE_MODE_COPY.PERSONAL.description).toBe(
-      'Set up my teaching workspace for learners, schemes of work, lesson plans, teaching records, and reports.',
+      'Create a Freelance Teacher Workspace for managing your own learners, lesson plans, teaching records, assessments, reports, and academic intelligence.',
     );
   });
 

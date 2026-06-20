@@ -18,6 +18,15 @@
   --color-primary-hover: #1d4ed8;
   --color-primary-soft: #60a5fa;
   --color-primary-contrast: #ffffff;
+  --brand-primary: #2563eb;
+  --brand-primary-foreground: #ffffff;
+  --brand-secondary: #0f172a;
+  --brand-secondary-foreground: #ffffff;
+  --brand-accent: #16a34a;
+  --brand-accent-foreground: #ffffff;
+  --brand-ring: #2563eb;
+  --brand-muted: #f8fafc;
+  --brand-button-radius: 8px;
   --color-danger: #dc2626;
   --color-danger-soft: rgba(220, 38, 38, 0.12);
   --color-warning: #d97706;
@@ -247,6 +256,7 @@ html[data-theme='dark'] {
   }
 
   .theme-button-primary {
+    border-radius: var(--brand-button-radius);
     background-color: var(--color-primary);
     color: var(--color-primary-contrast);
   }
@@ -256,6 +266,7 @@ html[data-theme='dark'] {
   }
 
   .theme-button-secondary {
+    border-radius: var(--brand-button-radius);
     border: 1px solid var(--color-border);
     background-color: var(--color-surface-muted);
     color: var(--color-text);
@@ -267,6 +278,7 @@ html[data-theme='dark'] {
   }
 
   .theme-button-danger {
+    border-radius: var(--brand-button-radius);
     background-color: var(--color-danger);
     color: #fff5f5;
   }
@@ -276,6 +288,7 @@ html[data-theme='dark'] {
   }
 
   .theme-button-ghost {
+    border-radius: var(--brand-button-radius);
     color: var(--color-text-muted);
   }
 
@@ -343,6 +356,55 @@ html[data-theme='dark'] {
     border: 1px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
     background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
     color: var(--color-text);
+  }
+
+  .theme-brand-badge {
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 30%, transparent);
+    background-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    color: var(--brand-primary);
+  }
+
+  .theme-brand-icon {
+    background-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    color: var(--brand-primary);
+  }
+
+  .theme-brand-selected {
+    border-color: var(--brand-primary);
+    background-color: color-mix(in srgb, var(--brand-primary) 12%, var(--color-surface));
+  }
+
+  .theme-nav-active {
+    background-color: var(--brand-primary);
+    color: var(--brand-primary-foreground);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .theme-nav-hover:hover {
+    background-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    color: var(--color-text);
+  }
+
+  .theme-nav-child-active {
+    border-left: 4px solid var(--brand-primary);
+    background-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    color: var(--color-text);
+  }
+
+  .theme-nav-badge {
+    border: 1px solid color-mix(in srgb, var(--brand-primary) 26%, transparent);
+    background-color: color-mix(in srgb, var(--brand-primary) 12%, transparent);
+    color: var(--brand-primary);
+  }
+
+  .theme-nav-header {
+    border-color: color-mix(in srgb, var(--brand-primary) 22%, transparent);
+    background-color: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+  }
+
+  .theme-nav-icon-bg {
+    background-color: var(--brand-primary);
+    color: var(--brand-primary-foreground);
   }
 
   .teaching-today-nested-card {

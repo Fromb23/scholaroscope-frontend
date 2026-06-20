@@ -101,7 +101,7 @@ function RegisterForm() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
             <AlertCircle className="h-7 w-7 text-red-600" />
           </div>
-          <h2 className="text-xl font-semibold theme-text">Invite Invalid</h2>
+          <h2 className="text-xl font-semibold theme-text">Invite link unavailable</h2>
           <p className="theme-muted mt-2 text-sm">{inviteError}</p>
           <button
             onClick={() => router.push('/login')}
@@ -275,7 +275,7 @@ function RegisterForm() {
   }
 
   const title = isWorkspaceSetupFlow && workspaceStep === 'mode'
-    ? 'How will you use Scholaroscope?'
+    ? 'How will you use ScholaroScope?'
     : isNewWorkspaceFlow
       ? selectedWorkspace.label
       : isInviteFlow
@@ -361,19 +361,13 @@ function RegisterForm() {
                         setWorkspaceStep('details');
                       }}
                       className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
-                        selected && value === 'PERSONAL'
-                          ? 'border-[#7f1d1d] bg-[#7f1d1d]/10'
-                          : selected
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'theme-border theme-surface hover:bg-[color:var(--color-surface-muted)]'
+                        selected
+                          ? 'theme-brand-selected'
+                          : 'theme-border theme-surface hover:bg-[color:var(--color-surface-muted)]'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`rounded-lg p-2 ${
-                          value === 'PERSONAL'
-                            ? 'bg-[#7f1d1d]/10 text-[#7f1d1d]'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
+                        <div className="theme-brand-icon rounded-lg p-2">
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
