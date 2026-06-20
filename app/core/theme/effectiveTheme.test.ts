@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -87,10 +89,17 @@ describe('effective tenant theme utilities', () => {
     applyThemeTokens(theme(), target);
 
     expect(values.get('--brand-primary')).toBe('#123456');
+    expect(values.get('--brand-primary-foreground')).toBe('#FFFFFF');
+    expect(values.get('--brand-secondary')).toBe('#654321');
+    expect(values.get('--brand-secondary-foreground')).toBe('#FFFFFF');
     expect(values.get('--brand-accent')).toBe('#00AA77');
-    expect(values.get('--color-primary')).toBe('#123456');
-    expect(values.get('--color-primary-contrast')).toBe('#FFFFFF');
+    expect(values.get('--brand-accent-foreground')).toBe('#0F172A');
+    expect(values.get('--brand-ring')).toBe('#123456');
     expect(values.get('--brand-button-radius')).toBe('10px');
+    expect(values.get('--color-primary')).toBe('#123456');
+    expect(values.get('--color-primary-hover')).toBe('#0F2C48');
+    expect(values.get('--color-primary-soft')).toBe('#9BAAB8');
+    expect(values.get('--color-primary-contrast')).toBe('#FFFFFF');
   });
 
   it('replaces tokens when another active organization theme is applied', () => {
@@ -131,6 +140,17 @@ describe('effective tenant theme utilities', () => {
     expect(appearanceModeToThemeMode('LIGHT')).toBe('light');
     expect(appearanceModeToThemeMode('DARK')).toBe('dark');
     expect(appearanceModeToThemeMode('SYSTEM')).toBe('system');
+  });
+
+  it('does not redeclare brand primary tokens in the dark-mode CSS block', () => {
+    const globalsCss = readFileSync(join(process.cwd(), 'app/globals.css'), 'utf8');
+    const darkBlock = globalsCss.match(/html\[data-theme='dark'\] \{([\s\S]*?)\n\}/)?.[1] ?? '';
+
+    expect(darkBlock).not.toContain('--color-primary:');
+    expect(darkBlock).not.toContain('--color-primary-hover:');
+    expect(darkBlock).not.toContain('--color-primary-soft:');
+    expect(darkBlock).not.toContain('--color-primary-contrast:');
+    expect(darkBlock).not.toContain('--brand-primary:');
   });
 
   it('allows organization admins to edit organization themes', () => {

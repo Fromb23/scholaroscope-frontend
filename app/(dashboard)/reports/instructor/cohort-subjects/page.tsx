@@ -136,7 +136,7 @@ export default function InstructorCohortSubjectsReportPage() {
               averageGradeNote={item.average_grade_note}
               actions={(
                 <Link href={`/reports/instructor/cohort-subjects/${item.id}`}>
-                  <Button variant="ghost" size="sm">Open</Button>
+                  <Button variant="secondary" size="sm">Open report</Button>
                 </Link>
               )}
               footer={(
