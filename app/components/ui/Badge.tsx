@@ -27,19 +27,19 @@ export function Badge({
   title = '',
 }: BadgeProps) {
   const variants = {
-    success: 'border border-green-200 bg-green-100 text-green-800',
-    warning: 'border border-yellow-200 bg-yellow-100 text-yellow-800',
-    danger: 'border border-red-200 bg-red-100 text-red-800',
-    info: 'border border-blue-200 bg-blue-100 text-blue-800',
-    default: 'border theme-border theme-surface-muted theme-text',
-    blue: 'border border-blue-200 bg-blue-100 text-blue-800',
-    green: 'border border-green-200 bg-green-100 text-green-800',
-    yellow: 'border border-yellow-200 bg-yellow-100 text-yellow-800',
-    red: 'border border-red-200 bg-red-100 text-red-800',
+    success: 'theme-success-surface text-[color:var(--color-success)]',
+    warning: 'theme-warning-surface text-[color:var(--color-warning)]',
+    danger: 'theme-danger-surface text-[color:var(--color-danger)]',
+    info: 'theme-info-surface text-[color:var(--color-info)]',
+    default: 'theme-badge-default',
+    blue: 'theme-info-surface text-[color:var(--color-info)]',
+    green: 'theme-success-surface text-[color:var(--color-success)]',
+    yellow: 'theme-warning-surface text-[color:var(--color-warning)]',
+    red: 'theme-danger-surface text-[color:var(--color-danger)]',
     maroon: 'theme-brand-badge',
-    purple: 'border border-purple-200 bg-purple-100 text-purple-800',
-    indigo: 'border border-blue-200 bg-indigo-100 text-indigo-800',
-    orange: 'border border-yellow-200 bg-orange-100 text-orange-800',
+    purple: 'theme-brand-badge',
+    indigo: 'theme-brand-badge',
+    orange: 'theme-warning-surface text-[color:var(--color-warning)]',
   };
 
   const sizes = {

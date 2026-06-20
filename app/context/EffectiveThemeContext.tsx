@@ -33,20 +33,20 @@ const EffectiveThemeContext = createContext<EffectiveThemeContextValue | null>(n
 
 export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
   const { user, activeOrg, loading: authLoading } = useAuth();
-  const { setThemeMode } = useTheme();
+  const { resolvedTheme, setThemeMode } = useTheme();
   const [effectiveTheme, setEffectiveTheme] = useState<EffectiveThemeResponse>(DEFAULT_EFFECTIVE_THEME);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const themeRequestIdRef = useRef(0);
 
   const applyResolvedTheme = useCallback((theme: EffectiveThemeResponse, syncAppearance: boolean) => {
-    const normalized = applyThemeTokens(normalizeEffectiveTheme(theme));
+    const normalized = applyThemeTokens(normalizeEffectiveTheme(theme, resolvedTheme), undefined, resolvedTheme);
     setEffectiveTheme(normalized);
     if (syncAppearance) {
       setThemeMode(appearanceModeToThemeMode(normalized.appearance_mode));
     }
     return normalized;
-  }, [setThemeMode]);
+  }, [resolvedTheme, setThemeMode]);
 
   const refetch = useCallback(async () => {
     const requestId = themeRequestIdRef.current + 1;
@@ -86,6 +86,10 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
 
     void refetch();
   }, [activeOrg?.id, authLoading, refetch]);
+
+  useEffect(() => {
+    applyThemeTokens(effectiveTheme, undefined, resolvedTheme);
+  }, [effectiveTheme, resolvedTheme]);
 
   const value = useMemo<EffectiveThemeContextValue>(
     () => ({

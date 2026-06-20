@@ -389,7 +389,7 @@ function LearnersPageInner() {
             header: 'Admission No.',
             sortable: true,
             render: (row) => (
-                <span className="font-mono text-sm font-medium text-blue-700">
+                <span className="theme-table-link font-mono text-sm font-medium">
                     {row.admission_number}
                 </span>
             ),
@@ -406,8 +406,8 @@ function LearnersPageInner() {
             sortable: true,
             render: (row) => (
                 <div>
-                    <p className="font-medium text-gray-900">{row.primary_cohort_name ?? '-'}</p>
-                    <p className="text-xs text-gray-500">{row.primary_curriculum ?? ''}</p>
+                    <p className="font-medium theme-text">{row.primary_cohort_name ?? '-'}</p>
+                    <p className="text-xs theme-subtle">{row.primary_curriculum ?? ''}</p>
                 </div>
             ),
         },
@@ -425,7 +425,7 @@ function LearnersPageInner() {
             key: 'email',
             header: 'Email',
             render: (row) => (
-                <span className="text-sm text-gray-600">
+                <span className="text-sm theme-muted">
                     {row.email || '-'}
                 </span>
             ),
@@ -544,8 +544,8 @@ function LearnersPageInner() {
                 <Card>
                     <div className="space-y-4">
                         <div>
-                            <p className="text-sm font-medium text-gray-900">Search assigned learners</p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm font-medium theme-text">Search assigned learners</p>
+                            <p className="text-sm theme-muted">
                                 Search, filter, and sort within your assigned learner scope.
                             </p>
                         </div>
@@ -554,7 +554,7 @@ function LearnersPageInner() {
                             <select
                                 value={filters.cohort ?? ''}
                                 onChange={(event) => handleCohortChange(event.target.value)}
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="theme-input theme-select rounded-lg px-3 py-2 text-sm"
                             >
                                 <option value="">All assigned cohorts</option>
                                 {instructorCohortOptions.map((cohort) => (
@@ -568,7 +568,7 @@ function LearnersPageInner() {
                                     cohort_subject: event.target.value ? Number(event.target.value) : null,
                                     page: 1,
                                 })}
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="theme-input theme-select rounded-lg px-3 py-2 text-sm"
                             >
                                 <option value="">All assigned subjects</option>
                                 {instructorSubjectOptions.map((subject) => (
@@ -583,7 +583,7 @@ function LearnersPageInner() {
                                     page: 1,
                                 })}
                                 placeholder="Search by admission number or name"
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="theme-input rounded-lg px-3 py-2 text-sm"
                             />
 
                             <select
@@ -592,7 +592,7 @@ function LearnersPageInner() {
                                     status: event.target.value,
                                     page: 1,
                                 })}
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="theme-input theme-select rounded-lg px-3 py-2 text-sm"
                             >
                                 <option value="">All status</option>
                                 <option value="ACTIVE">Active</option>
@@ -611,8 +611,8 @@ function LearnersPageInner() {
             <Card>
                 <div className="space-y-4">
                     <div>
-                        <p className="text-sm font-medium text-gray-900">Generate learner list</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm font-medium theme-text">Generate learner list</p>
+                        <p className="text-sm theme-muted">
                             Select a curriculum and cohort to load the full class list, then refine the loaded rows below.
                         </p>
                     </div>
@@ -621,7 +621,7 @@ function LearnersPageInner() {
                         <select
                             value={filters.curriculum ?? ''}
                             onChange={(event) => handleCurriculumChange(event.target.value)}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="theme-input theme-select rounded-lg px-3 py-2 text-sm"
                         >
                             <option value="">Select curriculum</option>
                             {curricula.map((curriculum) => (
@@ -633,7 +633,7 @@ function LearnersPageInner() {
                             value={filters.cohort ?? ''}
                             onChange={(event) => handleCohortChange(event.target.value)}
                             disabled={!filters.curriculum}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            className="theme-input theme-select rounded-lg px-3 py-2 text-sm disabled:opacity-60"
                         >
                             <option value="">Select cohort</option>
                             {cohorts.map((cohort) => (
@@ -648,7 +648,7 @@ function LearnersPageInner() {
                                 page: 1,
                             })}
                             disabled={!filters.cohort}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                            className="theme-input theme-select rounded-lg px-3 py-2 text-sm disabled:opacity-60"
                         >
                             <option value="">All subjects</option>
                             {cohortSubjects.map((subject) => (
@@ -658,10 +658,10 @@ function LearnersPageInner() {
                     </div>
 
                     {hasGeneratedAdminList ? (
-                        <div className="space-y-3 border-t border-gray-200 pt-4">
+                        <div className="space-y-3 border-t theme-border pt-4">
                             <div>
-                                <p className="text-sm font-medium text-gray-900">Refine loaded cohort list</p>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm font-medium theme-text">Refine loaded cohort list</p>
+                                <p className="text-sm theme-muted">
                                     These filters work on the rows already loaded for the selected cohort.
                                 </p>
                             </div>
@@ -674,7 +674,7 @@ function LearnersPageInner() {
                                         page: 1,
                                     })}
                                     placeholder="Search by admission number or name"
-                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="theme-input rounded-lg px-3 py-2 text-sm"
                                 />
 
                                 <select
@@ -683,7 +683,7 @@ function LearnersPageInner() {
                                         status: event.target.value,
                                         page: 1,
                                     })}
-                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="theme-input theme-select rounded-lg px-3 py-2 text-sm"
                                 >
                                     <option value="">All status</option>
                                     <option value="ACTIVE">Active</option>
@@ -693,7 +693,7 @@ function LearnersPageInner() {
                                     <option value="WITHDRAWN">Withdrawn</option>
                                 </select>
 
-                                <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                <div className="theme-surface-muted flex items-center rounded-lg border theme-border px-3 py-2 text-sm theme-muted">
                                     {filteredStudents.length} learner{filteredStudents.length === 1 ? '' : 's'} match
                                 </div>
                             </div>
@@ -705,11 +705,11 @@ function LearnersPageInner() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="theme-app-bg space-y-6">
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">{pageTitle}</h1>
-                    <p className="mt-1 text-sm text-gray-500">{pageDescription}</p>
+                    <h1 className="text-3xl font-bold theme-text">{pageTitle}</h1>
+                    <p className="mt-1 text-sm theme-muted">{pageDescription}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -762,7 +762,7 @@ function LearnersPageInner() {
 
             {displayedError ? (
                 <Card>
-                    <p className="text-sm text-red-700">{displayedError}</p>
+                    <p className="text-sm text-[color:var(--color-danger)]">{displayedError}</p>
                 </Card>
             ) : null}
 
@@ -770,13 +770,13 @@ function LearnersPageInner() {
 
             {isInstructor && !instructorAssignmentsLoading && !hasInstructorLearnerScope ? (
                 <Card>
-                    <p className="py-10 text-center text-sm text-gray-500">
+                    <p className="py-10 text-center text-sm theme-muted">
                         Your teaching load is not assigned yet. Once your administrator assigns classes or subjects, your learners will appear here.
                     </p>
                 </Card>
             ) : isAdmin && !filters.cohort ? (
                 <Card>
-                    <p className="py-10 text-center text-sm text-gray-500">
+                    <p className="py-10 text-center text-sm theme-muted">
                         Select a curriculum and cohort to generate the learner list.
                     </p>
                 </Card>

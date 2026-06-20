@@ -69,18 +69,18 @@ interface SortConfig {
 
 export function Table({ children }: TableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border theme-border">
-      <table className="min-w-full divide-y divide-gray-200">{children}</table>
+    <div className="theme-table overflow-x-auto rounded-lg">
+      <table className="min-w-full">{children}</table>
     </div>
   );
 }
 
 export function TableHeader({ children }: TableProps) {
-  return <thead className="theme-surface-muted">{children}</thead>;
+  return <thead className="theme-table-header">{children}</thead>;
 }
 
 export function TableBody({ children }: TableProps) {
-  return <tbody className="divide-y divide-gray-200 theme-surface">{children}</tbody>;
+  return <tbody className="theme-surface">{children}</tbody>;
 }
 
 export function TableRow({
@@ -91,7 +91,7 @@ export function TableRow({
   return (
     <tr
       onClick={onClick}
-      className={`${onClick ? 'cursor-pointer transition-colors theme-hover-surface' : ''} ${className || ''}`}
+      className={`theme-table-row border-b transition-colors theme-table-row-hover ${onClick ? 'cursor-pointer' : ''} ${className || ''}`}
     >
       {children}
     </tr>
@@ -112,16 +112,16 @@ export function TableHead({
     <th
       onClick={sortable ? onSort : undefined}
       className={`theme-subtle px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-        sortable ? 'cursor-pointer select-none theme-hover-surface' : ''
+        sortable ? 'cursor-pointer select-none theme-table-row-hover' : ''
       }`}
     >
       <div className="flex items-center gap-2">
         {children}
         {sortable && (
           <span className="flex flex-col">
-            {sortDirection === null && <ChevronsUpDown className="h-4 w-4 theme-subtle" />}
-            {sortDirection === 'asc' && <ChevronUp className="w-4 h-4 text-blue-600" />}
-            {sortDirection === 'desc' && <ChevronDown className="w-4 h-4 text-blue-600" />}
+            {sortDirection === null && <ChevronsUpDown className="h-4 w-4 theme-table-sort-icon" />}
+            {sortDirection === 'asc' && <ChevronUp className="h-4 w-4 theme-table-sort-icon" />}
+            {sortDirection === 'desc' && <ChevronDown className="h-4 w-4 theme-table-sort-icon" />}
           </span>
         )}
       </div>
@@ -250,7 +250,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 <div key={column.key} className="min-w-50">
                   <select
                     onChange={(e) => handleFilter(column.key, e.target.value)}
-                    className="theme-input w-full rounded-lg px-4 py-2"
+                    className="theme-input theme-select w-full rounded-lg px-4 py-2"
                   >
                     <option value="">All {column.header}</option>
                     {column.filterOptions?.map((option) => (
@@ -265,9 +265,9 @@ export function DataTable<T extends Record<string, unknown>>({
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border theme-border">
-        <table className="min-w-full divide-y divide-gray-200 table-fixed">
-          <thead className="theme-surface-muted">
+      <div className="theme-table overflow-x-auto rounded-lg">
+        <table className="min-w-full table-fixed">
+          <thead className="theme-table-header">
             <tr>
               {columns.map((column) => (
                 <TableHead
@@ -281,7 +281,7 @@ export function DataTable<T extends Record<string, unknown>>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 theme-surface">
+          <tbody className="theme-surface">
             {loading ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-12 text-center">
@@ -328,7 +328,7 @@ export function DataTable<T extends Record<string, unknown>>({
             <select
               value={pagination.pageSize}
               onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              className="theme-input rounded-lg px-3 py-1 text-sm"
+              className="theme-input theme-select rounded-lg px-3 py-1 text-sm"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>

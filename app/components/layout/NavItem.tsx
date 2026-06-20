@@ -52,7 +52,7 @@ export function NavItem({
           </div>
           <div className="flex items-center gap-2">
             {item.badge !== undefined && item.badge > 0 && (
-              <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+              <span className="theme-danger-surface px-2 py-0.5 text-xs font-bold rounded-full">
                 {item.badge}
               </span>
             )}
@@ -106,7 +106,7 @@ export function NavItem({
           <span>{item.name}</span>
         </div>
         {item.badge !== undefined && item.badge > 0 && (
-          <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+          <span className="theme-danger-surface px-2 py-0.5 text-xs font-bold rounded-full">
             {item.badge}
           </span>
         )}

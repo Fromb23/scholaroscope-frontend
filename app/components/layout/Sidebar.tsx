@@ -156,7 +156,7 @@ export default function Sidebar() {
       )}
 
       <aside
-        className={`theme-surface fixed left-0 top-0 z-50 h-screen w-72 transform border-r theme-border transition-transform duration-300 ease-in-out ${
+        className={`theme-sidebar fixed left-0 top-0 z-50 h-screen w-72 transform border-r theme-border transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:static lg:z-auto lg:translate-x-0`}
       >
@@ -246,7 +246,7 @@ export default function Sidebar() {
                 <p className="font-semibold theme-muted">ScholaroScope v0.5.4</p>
                 <p className="mt-0.5">{getRoleFooterLabel(resolvedRole, activeOrg?.org_type)}</p>
               </div>
-              <Activity className="h-4 w-4 text-green-500" />
+              <Activity className="h-4 w-4 text-[color:var(--color-success)]" />
             </div>
           </div>
         </div>
