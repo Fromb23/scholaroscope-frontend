@@ -42,6 +42,7 @@ export interface AcademicSetupStep {
   status: AcademicSetupStepStatus;
   href: string;
   description: string;
+  locked_reason?: string | null;
 }
 
 export interface AcademicSetupStatus {
@@ -171,6 +172,7 @@ export interface Curriculum {
   name: string;
   curriculum_type: CurriculumType;
   curriculum_type_display: string;
+  source: 'platform' | 'plugin' | 'custom';
   description: string;
   is_active: boolean;
   offering_status: CurriculumOfferingStatus;
@@ -443,6 +445,28 @@ export interface SubjectDetail extends Subject {
     learner_count?: number | null;
     available_count?: number | null;
   }[];
+}
+
+export interface SubjectCatalogItem {
+  id: string;
+  source: string;
+  curriculum: number;
+  catalog_subject_id: string;
+  code: string;
+  name: string;
+  level: string;
+  description: string;
+  offered: boolean;
+  offering_id: string | null;
+  cohort_assignment_count: number;
+  plugin_key?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SubjectOfferingMutationPayload {
+  curriculum: number;
+  catalog_subject_id: string;
+  level?: string;
 }
 
 // Cohort

@@ -118,9 +118,12 @@ describe('admin navigation config', () => {
     expect(nav.primary.map((item) => item.name)).toEqual([
       'My teaching workspace',
       'Academic Setup',
+    ]);
+    expect(nav.primary.at(-1)?.children?.map((item) => item.name)).toEqual([
+      'Overview',
       'Set up schemes of work',
     ]);
-    expect(nav.primary.at(-1)?.href).toBe('/schemes?setup=1');
+    expect(nav.primary.at(-1)?.children?.at(-1)?.href).toBe('/schemes?setup=1');
   });
 
   it('removes create-new assessment child for tuition-center admins', () => {
@@ -144,6 +147,9 @@ describe('admin navigation config', () => {
     expect(nav.primary.map((item) => item.name)).toEqual([
       'Dashboard',
       'Academic Setup',
+    ]);
+    expect(nav.primary.at(-1)?.children?.map((item) => item.name)).toEqual([
+      'Overview',
       'Create current academic year',
     ]);
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);

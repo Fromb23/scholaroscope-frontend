@@ -81,6 +81,40 @@ export function getAcademicSetupPageState(
     return 'completed';
 }
 
+export function getAcademicSetupStepHref(step: AcademicSetupStep): string {
+    return withAcademicSetupMode(step.href);
+}
+
+export function getAcademicSetupStepStatusLabel(status: AcademicSetupStep['status']): string {
+    if (status === 'complete') return 'Complete';
+    if (status === 'current') return 'Current';
+    if (status === 'pending') return 'Available';
+    return 'Locked';
+}
+
+export function getAcademicSetupLockedReason(
+    status: AcademicSetupStatus,
+    step: AcademicSetupStep,
+): string | null {
+    if (step.status !== 'locked') {
+        return null;
+    }
+    if (step.locked_reason) {
+        return step.locked_reason;
+    }
+
+    const previousIncomplete = status.steps.find((candidate) => (
+        ACADEMIC_SETUP_STEP_ORDER.indexOf(candidate.key) < ACADEMIC_SETUP_STEP_ORDER.indexOf(step.key)
+        && candidate.status !== 'complete'
+    ));
+
+    if (previousIncomplete) {
+        return `Complete ${previousIncomplete.label.toLowerCase()} first.`;
+    }
+
+    return 'This step depends on earlier academic setup decisions.';
+}
+
 export function isAcademicSetupOperationalAdminPath(path: string): boolean {
     return ACADEMIC_SETUP_OPERATIONAL_PATHS.some((pattern) => pattern.test(path));
 }
@@ -162,4 +196,29 @@ export function getAcademicSetupCurrentStepNavItem(
         label: status.current_step_label,
         href: status.next_action.href,
     };
+}
+
+export function getAcademicSetupAvailableNavItems(
+    status: AcademicSetupStatus | null | undefined,
+): { label: string; href: string; disabled?: boolean }[] {
+    if (!status || status.complete) {
+        return [
+            { label: 'Overview', href: '/academic' },
+            { label: 'Curricula', href: '/academic/curricula' },
+            { label: 'Years', href: '/academic/years' },
+            { label: 'Terms', href: '/academic/terms' },
+            { label: 'Subjects / Offerings', href: '/academic/subjects' },
+            { label: 'Cohorts', href: '/academic/cohorts' },
+        ];
+    }
+
+    return [
+        { label: 'Overview', href: '/academic' },
+        ...status.steps
+            .filter((step) => step.status === 'complete' || step.status === 'current' || step.status === 'pending')
+            .map((step) => ({
+                label: step.key === 'SUBJECTS' ? 'Subjects / Offerings' : step.label,
+                href: getAcademicSetupStepHref(step),
+            })),
+    ];
 }

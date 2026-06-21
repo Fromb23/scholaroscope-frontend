@@ -25,6 +25,8 @@ import {
   CohortDetail,
   TermQueryParams,
   AcademicSetupStatus,
+  SubjectCatalogItem,
+  SubjectOfferingMutationPayload,
 } from '@/app/core/types/academic';
 import { CohortSubjectOption } from '@/app/core/types/session';
 import { PaginatedResponse } from './sessions';
@@ -326,6 +328,26 @@ export const subjectAPI = {
   delete: async (id: number) => {
     await apiClient.delete(`/subjects/${id}/`);
   }
+};
+
+export const subjectOfferingAPI = {
+  getCatalog: async (curriculumId: number): Promise<SubjectCatalogItem[]> => {
+    const response = await apiClient.get<SubjectCatalogItem[]>('/academic/subject-catalog/', {
+      params: { curriculum: curriculumId },
+    });
+    return Array.isArray(response.data)
+      ? response.data
+      : (response.data as { results?: SubjectCatalogItem[] }).results ?? [];
+  },
+
+  offer: async (payload: SubjectOfferingMutationPayload): Promise<SubjectCatalogItem> => {
+    const response = await apiClient.post<SubjectCatalogItem>('/academic/subject-offerings/', payload);
+    return response.data;
+  },
+
+  remove: async (offeringId: string): Promise<void> => {
+    await apiClient.delete(`/academic/subject-offerings/${encodeURIComponent(offeringId)}/`);
+  },
 };
 
 // Cohorts

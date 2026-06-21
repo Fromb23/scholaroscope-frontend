@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import NextLink from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
     Puzzle, Check, Power, PowerOff, ChevronRight, BookOpen,
@@ -618,21 +619,35 @@ export function InstalledPluginCard({
                                     Curriculum: <span className="font-medium text-gray-900">{getCurriculumBridgeName(curriculum)}</span>
                                 </p>
                                 <p className="break-words text-xs text-gray-500">
+                                    Setup status: {curriculum.is_active ? 'Available for setup' : 'Inactive'}
+                                </p>
+                                <p className="break-words text-xs text-gray-500">
                                     {getWorkflowSummaryText(curriculum, latestDisableRequest, activeDisableRequest)}
                                 </p>
                             </div>
                         ) : null}
 
-                        {PluginModal && canManagePluginCurriculum && (
-                            <button
-                                onClick={openCurriculum}
-                                className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                                <BookOpen className="h-3.5 w-3.5" />
-                                Manage Curriculum
-                                <ChevronRight className="h-3 w-3" />
-                            </button>
-                        )}
+                        <div className="mt-2 flex flex-wrap gap-3">
+                            {PluginModal && canManagePluginCurriculum ? (
+                                <button
+                                    onClick={openCurriculum}
+                                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    <BookOpen className="h-3.5 w-3.5" />
+                                    Manage curriculum
+                                    <ChevronRight className="h-3 w-3" />
+                                </button>
+                            ) : null}
+                            {curriculum ? (
+                                <NextLink
+                                    href={`/academic/subjects?setup=1&curriculum=${curriculum.id}`}
+                                    className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+                                >
+                                    <BookOpen className="h-3.5 w-3.5" />
+                                    Manage subject offerings
+                                </NextLink>
+                            ) : null}
+                        </div>
 
                         {PluginModal && !canManagePluginCurriculum && manageCurriculumHelperText ? (
                             <div className="theme-warning-surface mt-3 rounded-lg px-3 py-2 text-xs theme-text">
@@ -711,6 +726,12 @@ export function PluginsTab() {
     const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
     const pluginQuery = searchParams.get('plugin')?.trim().toLowerCase() ?? '';
     const curriculumQuery = searchParams.get('curriculum') ?? '';
+    const fromQuery = searchParams.get('from')?.trim().toLowerCase() ?? '';
+    const backLink = fromQuery === 'academic-setup'
+        ? { href: '/academic?setup=1', label: 'Back to Academic Setup' }
+        : fromQuery === 'curricula'
+            ? { href: '/academic/curricula?setup=1', label: 'Back to Curricula' }
+            : null;
 
     useEffect(() => {
         setLocalPlugins(plugins);
@@ -825,6 +846,12 @@ export function PluginsTab() {
     return (
         <div className="space-y-6">
             <FeedbackBanner feedback={feedback} onDismiss={() => setFeedback(null)} />
+
+            {backLink ? (
+                <NextLink href={backLink.href} className="inline-flex text-sm font-medium text-blue-600 hover:text-blue-700">
+                    {backLink.label}
+                </NextLink>
+            ) : null}
 
             <div>
                 <div className="mb-3">
