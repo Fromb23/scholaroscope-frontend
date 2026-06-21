@@ -26,6 +26,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import { PublicThemeToggle } from '@/app/components/theme/PublicThemeToggle';
 
 export function LandingPage() {
   const router = useRouter();
@@ -228,6 +229,8 @@ export function LandingPage() {
         .nav-links { display: flex; align-items: center; gap: 1.75rem; list-style: none; }
         .nav-links a { font-size: .83rem; font-weight: 500; color: var(--muted); text-decoration: none; transition: color .2s; }
         .nav-links a:hover { color: var(--text); }
+        .landing-theme-toggle { background: var(--surface) !important; border-color: var(--border-2) !important; color: var(--text) !important; box-shadow: none !important; }
+        .landing-theme-toggle:hover { background: var(--surface-2) !important; }
         .nav-btn-ghost { color: var(--text) !important; border: 1px solid var(--border-2) !important; padding: .45rem 1.1rem !important; border-radius: 6px; font-weight: 500 !important; transition: border-color .2s, color .2s !important; }
         .nav-btn-ghost:hover { border-color: var(--primary-soft) !important; color: var(--primary-soft) !important; }
         .nav-btn { background: var(--primary) !important; color: var(--white) !important; padding: .45rem 1.1rem !important; border-radius: 6px; display: inline-flex !important; align-items: center; gap: .35rem; font-weight: 600 !important; font-size: .83rem !important; transition: background .2s !important; }
@@ -382,6 +385,9 @@ export function LandingPage() {
               <a href="#who">Who It&apos;s For</a>
             </li>
             <li>
+              <PublicThemeToggle className="landing-theme-toggle" />
+            </li>
+            <li>
               <Link href="/login" className="nav-btn-ghost">
                 Log In
               </Link>
@@ -413,6 +419,9 @@ export function LandingPage() {
               <a href="#who" onClick={() => setMenuOpen(false)}>
                 Who It&apos;s For
               </a>
+            </li>
+            <li>
+              <PublicThemeToggle className="landing-theme-toggle" />
             </li>
             <li>
               <Link
