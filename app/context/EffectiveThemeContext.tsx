@@ -16,7 +16,6 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useTheme } from '@/app/context/ThemeContext';
 import {
   DEFAULT_EFFECTIVE_THEME,
-  appearanceModeToThemeMode,
   applyThemeTokens,
   normalizeEffectiveTheme,
 } from '@/app/core/theme/effectiveTheme';
@@ -33,20 +32,17 @@ const EffectiveThemeContext = createContext<EffectiveThemeContextValue | null>(n
 
 export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
   const { user, activeOrg, loading: authLoading } = useAuth();
-  const { resolvedTheme, setThemeMode } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [effectiveTheme, setEffectiveTheme] = useState<EffectiveThemeResponse>(DEFAULT_EFFECTIVE_THEME);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const themeRequestIdRef = useRef(0);
 
-  const applyResolvedTheme = useCallback((theme: EffectiveThemeResponse, syncAppearance: boolean) => {
+  const applyResolvedTheme = useCallback((theme: EffectiveThemeResponse) => {
     const normalized = applyThemeTokens(normalizeEffectiveTheme(theme, resolvedTheme), undefined, resolvedTheme);
     setEffectiveTheme(normalized);
-    if (syncAppearance) {
-      setThemeMode(appearanceModeToThemeMode(normalized.appearance_mode));
-    }
     return normalized;
-  }, [resolvedTheme, setThemeMode]);
+  }, [resolvedTheme]);
 
   const refetch = useCallback(async () => {
     const requestId = themeRequestIdRef.current + 1;
@@ -54,7 +50,7 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
 
     if (!user) {
       setError(null);
-      return applyResolvedTheme(DEFAULT_EFFECTIVE_THEME, false);
+      return applyResolvedTheme(DEFAULT_EFFECTIVE_THEME);
     }
 
     setLoading(true);
@@ -64,12 +60,12 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
       if (requestId !== themeRequestIdRef.current) {
         return normalizeEffectiveTheme(theme);
       }
-      return applyResolvedTheme(theme, true);
+      return applyResolvedTheme(theme);
     } catch (err) {
       if (requestId !== themeRequestIdRef.current) {
         return normalizeEffectiveTheme(DEFAULT_EFFECTIVE_THEME);
       }
-      const fallback = applyResolvedTheme(DEFAULT_EFFECTIVE_THEME, false);
+      const fallback = applyResolvedTheme(DEFAULT_EFFECTIVE_THEME);
       setError(err instanceof Error ? err.message : 'Theme settings could not be loaded.');
       return fallback;
     } finally {

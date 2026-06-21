@@ -12,6 +12,7 @@ import {
   Home,
   House,
   Loader2,
+  MailCheck,
   School,
   User,
 } from 'lucide-react';
@@ -21,7 +22,8 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AuthFrame } from './AuthFrame';
-import { ORG_TYPE_LABELS, WORKSPACE_MODE_COPY } from '@/app/core/lib/workspaces';
+import { ENABLE_MULTI_WORKSPACE_SIGNUP, ORG_TYPE_LABELS, WORKSPACE_MODE_COPY } from '@/app/core/lib/workspaces';
+import { authAPI } from '@/app/core/api/auth';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 import type { WorkspaceMode } from '@/app/core/types/auth';
 
@@ -70,6 +72,7 @@ function RegisterForm() {
     apiError,
     setApiError,
     success,
+    verificationRequired,
     handleSubmit,
     handleRestore,
     handleLogout,
@@ -83,6 +86,10 @@ function RegisterForm() {
   const workspaceModeOptions = WORKSPACE_MODE_OPTIONS.filter(
     ({ value }) => !(hasPersonalWorkspace && value === 'PERSONAL')
   );
+  const [resendState, setResendState] = useState<{ loading: boolean; message: string | null }>({
+    loading: false,
+    message: null,
+  });
 
   if (inviteLoading) {
     return (
@@ -109,6 +116,51 @@ function RegisterForm() {
           >
             <ArrowLeft className="h-4 w-4" /> Back to login
           </button>
+        </div>
+      </AuthFrame>
+    );
+  }
+
+  if (success && verificationRequired) {
+    return (
+      <AuthFrame>
+        <div className="theme-card mx-auto w-full max-w-md rounded-2xl p-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
+            <MailCheck className="h-7 w-7 text-blue-600" />
+          </div>
+          <h2 className="text-xl font-semibold theme-text">Check your email</h2>
+          <p className="theme-muted mt-2 text-sm">{verificationRequired.message}</p>
+          <p className="mt-3 text-sm font-medium theme-text">{verificationRequired.email}</p>
+          <p className="theme-subtle mt-1 text-xs">
+            This link expires in {verificationRequired.expiresInDays} days.
+          </p>
+          {resendState.message ? (
+            <p className="theme-info-surface mt-4 rounded-lg px-3 py-2 text-sm">{resendState.message}</p>
+          ) : null}
+          <div className="mt-6 space-y-3">
+            <Button
+              variant="secondary"
+              className="w-full"
+              disabled={resendState.loading}
+              onClick={async () => {
+                setResendState({ loading: true, message: null });
+                try {
+                  const response = await authAPI.resendVerification(verificationRequired.email);
+                  setResendState({ loading: false, message: response.message });
+                } catch {
+                  setResendState({ loading: false, message: 'Could not resend verification email. Try again shortly.' });
+                }
+              }}
+            >
+              {resendState.loading ? 'Sending...' : 'Resend verification email'}
+            </Button>
+            <button
+              onClick={() => router.push('/login')}
+              className="theme-link mx-auto flex items-center gap-1 text-sm font-medium"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back to login
+            </button>
+          </div>
         </div>
       </AuthFrame>
     );
@@ -352,17 +404,22 @@ function RegisterForm() {
                 {workspaceModeOptions.map(({ value, icon: Icon }) => {
                   const option = WORKSPACE_MODE_COPY[value];
                   const selected = form.org_type === value;
+                  const disabled = value !== 'PERSONAL' && !ENABLE_MULTI_WORKSPACE_SIGNUP;
                   return (
                     <button
                       key={value}
                       type="button"
+                      disabled={disabled}
                       onClick={() => {
+                        if (disabled) return;
                         setField('org_type', value);
                         setWorkspaceStep('details');
                       }}
                       className={`w-full rounded-lg border px-4 py-4 text-left transition-colors ${
                         selected
                           ? 'theme-brand-selected'
+                          : disabled
+                            ? 'theme-border theme-card-muted cursor-not-allowed opacity-75'
                           : 'theme-border theme-surface hover:bg-[color:var(--color-surface-muted)]'
                       }`}
                     >
@@ -371,7 +428,14 @@ function RegisterForm() {
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold theme-text">{option.label}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold theme-text">{option.label}</p>
+                            {disabled ? (
+                              <span className="rounded-full border theme-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide theme-subtle">
+                                Coming soon
+                              </span>
+                            ) : null}
+                          </div>
                           <p className="mt-1 text-sm theme-muted">{option.description}</p>
                         </div>
                       </div>

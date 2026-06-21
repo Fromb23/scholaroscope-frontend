@@ -37,7 +37,7 @@ export interface ExportPayload {
     autoFilter?: boolean;
 }
 
-export type ExportFormat = 'excel' | 'csv';
+export type ExportFormat = 'excel' | 'csv' | 'pdf';
 
 export interface ExportOptions {
     format: ExportFormat;

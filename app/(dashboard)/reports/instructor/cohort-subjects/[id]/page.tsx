@@ -37,6 +37,11 @@ import { CurriculumSubjectReportCard } from '@/app/core/components/reports/Curri
 import { GenericPerformanceSummary } from '@/app/core/components/reports/GenericPerformanceSummary';
 import { ReportingSourceState } from '@/app/core/components/reports/ReportingSourceState';
 import {
+  CompactReportGrid,
+  CompactStatsGrid,
+  ReportPageShell,
+} from '@/app/core/components/reports/ReportLayouts';
+import {
   useInstructorCohortSubjectLearners,
   useInstructorCohortSubjectPerformance,
   useInstructorCohortSubjectTeachingActivity,
@@ -437,7 +442,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <ReportPageShell>
       <div className="space-y-3">
         <Link href={backHref}>
           <Button variant="ghost" size="sm">
@@ -446,10 +451,10 @@ export default function InstructorCohortSubjectDetailReportPage() {
           </Button>
         </Link>
 
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{pageTitle}</h1>
-            <p className="mt-1 text-gray-500">
+            <h1 className="text-xl font-semibold text-gray-900 sm:text-2xl">{pageTitle}</h1>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
               Your class view for learners, marks, attendance, and teaching progress.
             </p>
           </div>
@@ -465,7 +470,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
         </div>
       </div>
 
-      <Card className="border border-emerald-200 bg-emerald-50 p-5">
+      <Card className="border border-emerald-200 bg-emerald-50 p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
@@ -498,8 +503,8 @@ export default function InstructorCohortSubjectDetailReportPage() {
         </div>
       </Card>
 
-      <Card>
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap gap-2">
             {cohortSubjectMeta && <Badge variant="blue">{cohortSubjectMeta.cohort_name}</Badge>}
             {curriculumType && <Badge variant="purple">{curriculumType}</Badge>}
@@ -545,7 +550,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
               key={tab.id}
               type="button"
               onClick={() => updateSearchParams({ tab: tab.id })}
-              className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                 active
                   ? 'border-blue-600 bg-blue-600 text-white'
                   : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
@@ -590,7 +595,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
               <h2 className="text-base font-semibold text-gray-900">Learners</h2>
               <Badge variant="blue">{learnersQuery.report.total_learners} learners</Badge>
             </div>
-            <div className="grid gap-4">
+            <CompactReportGrid>
               {learners.map((item) => (
                 <CurriculumSubjectReportCard
                   key={item.student.id}
@@ -607,14 +612,14 @@ export default function InstructorCohortSubjectDetailReportPage() {
                   cbcStudent={resolveInstructorCbcStudent(item)}
                 />
               ))}
-            </div>
+            </CompactReportGrid>
           </div>
         )
       )}
 
       {!activeQuery.loading && !activeQuery.error && activeTab === 'performance' && performanceQuery.report && (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="space-y-4">
+          <CompactStatsGrid>
             {reportingSource === 'generic' && (
               <>
                 <StatsCard title="Learners" value={performanceQuery.report.total_learners} icon={Users} color="blue" />
@@ -658,7 +663,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
                 />
               </>
             )}
-          </div>
+          </CompactStatsGrid>
 
           {performanceQuery.report.assessment_completion && (
             <AssessmentCompletionSummary completion={performanceQuery.report.assessment_completion} />
@@ -707,15 +712,15 @@ export default function InstructorCohortSubjectDetailReportPage() {
       )}
 
       {!activeQuery.loading && !activeQuery.error && activeTab === 'teaching-activity' && teachingActivityQuery.report && (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="space-y-4">
+          <CompactStatsGrid>
             <StatsCard title="Lessons Planned" value={teachingActivityQuery.report.sessions_created} icon={BookOpen} color="blue" />
             <StatsCard title="Lessons Completed" value={teachingActivityQuery.report.sessions_completed} icon={CheckCircle2} color="green" />
             <StatsCard title="Attendance Marked" value={teachingActivityQuery.report.attendance_marked} icon={Users} color="purple" />
             <StatsCard title="Attendance Completeness" value={formatPercent(teachingActivityQuery.report.attendance_completeness)} icon={Activity} color="indigo" />
-          </div>
+          </CompactStatsGrid>
 
-          <Card>
+          <Card className="p-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-lg border border-gray-200 p-4">
                 <p className="text-sm text-gray-500">Attendance Expected</p>
@@ -748,6 +753,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
           title="Export Class View"
         />
       )}
-    </div>
+    </ReportPageShell>
   );
 }

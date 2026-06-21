@@ -12,7 +12,7 @@ interface AppearanceSettingsCardProps {
 
 export function AppearanceSettingsCard({
   title = 'Theme preference',
-  description = 'Choose light, dark, or system appearance for your account.',
+  description = 'Dark mode follows your device settings. Organization branding customization applies primarily to the light workspace theme.',
   compact = false,
 }: AppearanceSettingsCardProps) {
   return (

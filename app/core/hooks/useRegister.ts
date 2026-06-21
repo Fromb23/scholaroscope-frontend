@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { authAPI } from '@/app/core/api/auth';
 import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvites';
+import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
 
 export interface RegisterForm {
@@ -49,10 +50,15 @@ export function useRegister() {
     const [suspendedOrgs, setSuspendedOrgs] = useState<SuspendedOrg[]>([]);
     const [restoring, setRestoring] = useState<number | null>(null);
     const [isPending, setIsPending] = useState(false);
+    const [verificationRequired, setVerificationRequired] = useState<{
+        email: string;
+        expiresInDays: number;
+        message: string;
+    } | null>(null);
 
     const [form, setForm] = useState<RegisterForm>({
         first_name: '', last_name: '', email: '', password: '', workspace_name: '',
-        org_type: 'SCHOOL',
+        org_type: 'PERSONAL',
     });
     const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
     const [submitting, setSubmitting] = useState(false);
@@ -63,7 +69,7 @@ export function useRegister() {
     );
 
     useEffect(() => {
-        if (hasPersonalWorkspace && form.org_type === 'PERSONAL') {
+        if (ENABLE_MULTI_WORKSPACE_SIGNUP && hasPersonalWorkspace && form.org_type === 'PERSONAL') {
             setForm(f => ({ ...f, org_type: 'SCHOOL' }));
         }
     }, [form.org_type, hasPersonalWorkspace]);
@@ -144,6 +150,10 @@ export function useRegister() {
         try {
             // ── New workspace or suspended recovery ───────────────────────
             if (isNewWorkspaceFlow || isSuspendedRecovery) {
+                if (!ENABLE_MULTI_WORKSPACE_SIGNUP && form.org_type !== 'PERSONAL') {
+                    setApiError('Public multi-workspace signup is not available yet.');
+                    return;
+                }
                 const res = await ctxRegister({
                     workspace_name: form.workspace_name,
                     org_type: form.org_type,
@@ -208,6 +218,16 @@ export function useRegister() {
                 return;
             }
 
+            if (res.status === 'email_verification_required') {
+                setVerificationRequired({
+                    email: res.email ?? form.email,
+                    expiresInDays: res.expires_in_days ?? 3,
+                    message: res.message ?? 'Check your email to activate your Freelance Teacher Workspace.',
+                });
+                setSuccess(true);
+                return;
+            }
+
             setSuccess(true);
             setTimeout(() => router.replace('/dashboard'), 1500);
 
@@ -261,6 +281,7 @@ export function useRegister() {
         isExistingUser: !!invite?.user_exists,
         invite, inviteError, inviteLoading,
         suspendedOrgs, restoring,
+        verificationRequired,
         form, fieldErrors, setField,
         submitting, apiError, setApiError, success,
         handleSubmit, handleRestore, handleLogout, isPending,

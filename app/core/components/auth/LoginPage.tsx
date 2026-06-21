@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
+import { authAPI } from '@/app/core/api/auth';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
@@ -22,6 +23,9 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const searchParams = useSearchParams();
   const { login, acceptInvite } = useAuth();
   const router = useRouter();
@@ -48,6 +52,7 @@ function LoginForm() {
   const resolveErrorMessage = (data: Record<string, unknown>): string => {
     const state = data?.state as string;
     const errorCode = data?.error as string;
+    const code = data?.code as string;
     const restrictedOrgs = (data?.restricted_orgs as AccessNotice[]) ?? [];
     const orgSuspendedOrgs = (data?.org_suspended_orgs as AccessNotice[]) ?? [];
     const removedOrgs = (data?.removed_orgs as AccessNotice[]) ?? [];
@@ -56,6 +61,12 @@ function LoginForm() {
 
     if (platformRestrictionMessage) {
       return platformRestrictionMessage;
+    }
+
+    if (errorCode === 'email_not_verified' || code === 'email_not_verified') {
+      return typeof data?.message === 'string'
+        ? data.message
+        : 'Verify your email before logging in.';
     }
 
     if (errorCode === 'restricted' || state === 'ONLY_SUSPENDED') {
@@ -89,6 +100,8 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setVerificationEmail(null);
+    setResendMessage(null);
     setLoading(true);
 
     try {
@@ -110,6 +123,9 @@ function LoginForm() {
     } catch (err: unknown) {
       const e = err as { data?: Record<string, unknown>; message?: string };
       const data = e?.data ?? {};
+      if (data.error === 'email_not_verified' || data.code === 'email_not_verified') {
+        setVerificationEmail(email);
+      }
       setError(resolveErrorMessage(data) || e?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -140,6 +156,33 @@ function LoginForm() {
           {error && (
             <div className="mb-4">
               <ErrorBanner message={error} onDismiss={() => setError('')} />
+              {verificationEmail ? (
+                <div className="mt-3 rounded-lg border theme-border theme-card-muted p-3 text-sm">
+                  <p className="theme-muted">Need a new activation link?</p>
+                  {resendMessage ? <p className="mt-2 theme-text">{resendMessage}</p> : null}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-3"
+                    disabled={resending}
+                    onClick={async () => {
+                      setResending(true);
+                      setResendMessage(null);
+                      try {
+                        const response = await authAPI.resendVerification(verificationEmail);
+                        setResendMessage(response.message);
+                      } catch {
+                        setResendMessage('Could not resend verification email. Try again shortly.');
+                      } finally {
+                        setResending(false);
+                      }
+                    }}
+                  >
+                    {resending ? 'Sending...' : 'Resend verification email'}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           )}
 

@@ -41,6 +41,7 @@ interface AuthContextType {
   switchOrg: (organizationId: number) => Promise<SwitchOrgResponse>;
   restoreWorkspace: (organizationId: number) => Promise<SwitchOrgResponse>;
   register: (payload: RegisterPayload) => Promise<RegisterResponse>;
+  verifyEmail: (token: string) => Promise<RegisterResponse>;
   acceptInvite: (inviteToken: string, email: string, password: string) => Promise<void>;
   accessNotices: AccessNotice[];
   clearAccessNotices: () => void;
@@ -297,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (payload: RegisterPayload): Promise<RegisterResponse> => {
     const response = await authAPI.register(payload);
 
-    if (response.status === 'pending') {
+    if (response.status === 'pending' || response.status === 'email_verification_required') {
       return response;
     }
 
@@ -314,6 +315,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       membership_version: response.membership_version ?? membershipVersion,
     });
     setLoading(false);
+    return response;
+  }, [applyAuthState, membershipVersion]);
+
+  const verifyEmail = useCallback(async (token: string): Promise<RegisterResponse> => {
+    const response = await authAPI.verifyEmail(token);
+    if (response.access && response.user) {
+      applyAuthState({
+        access: response.access,
+        user: response.user,
+        active_org: registerResponseActiveOrg(response),
+        capabilities: response.capabilities ?? DEFAULT_WORKSPACE_CAPABILITIES,
+        memberships: response.memberships ?? [],
+        membership_version: response.membership_version ?? membershipVersion,
+      });
+      setLoading(false);
+    }
     return response;
   }, [applyAuthState, membershipVersion]);
 
@@ -344,6 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       switchOrg,
       restoreWorkspace,
       register,
+      verifyEmail,
       acceptInvite,
       accessNotices,
       clearAccessNotices,

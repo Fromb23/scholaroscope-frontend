@@ -131,8 +131,10 @@ export interface RegisterPayload {
 }
 
 export interface RegisterResponse {
-  status?: 'pending';
+  status?: 'pending' | 'email_verification_required' | 'already_verified' | 'verified';
   message?: string;
+  email?: string;
+  expires_in_days?: number;
   access?: string;
   user?: User;
   active_org?: ActiveOrg | null;
@@ -146,6 +148,12 @@ export interface RegisterResponse {
     type: OrgType;
   };
   memberships?: OrgMembership[];
+}
+
+export type VerifyEmailResponse = RegisterResponse;
+
+export interface ResendVerificationResponse {
+  message: string;
 }
 
 export interface SuspendedOrg {

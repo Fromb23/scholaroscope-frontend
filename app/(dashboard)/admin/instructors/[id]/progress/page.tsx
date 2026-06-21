@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft, Calendar, Users, CheckCircle,
@@ -55,7 +56,7 @@ export default function InstructorProgressPage() {
     const {
         instructor, sessions, loading, error,
         refetch, teachingAssignments, cbcTeachingAssignments,
-        sessionStats, attendanceStats,
+        sessionStats, attendanceStats, schemes,
     } = useInstructorProgress(instructorId);
 
     const [submitting, setSubmitting] = useState(false);
@@ -137,6 +138,12 @@ export default function InstructorProgressPage() {
         { label: 'Absent', value: attendanceStats.absent, color: 'text-red-600' },
         { label: 'Late', value: attendanceStats.late, color: 'text-yellow-600' },
     ];
+    const groupedSchemes = schemes.reduce<Record<string, typeof schemes>>((groups, scheme) => {
+        const key = scheme.term_name || 'No term assigned';
+        groups[key] = groups[key] ?? [];
+        groups[key].push(scheme);
+        return groups;
+    }, {});
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
@@ -286,6 +293,64 @@ export default function InstructorProgressPage() {
                     </div>
                 </Card>
             )}
+
+            <Card>
+                <div className="p-6">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-emerald-500" />
+                            <h2 className="text-lg font-semibold text-gray-900">Schemes of Work</h2>
+                            <Badge variant="info" size="sm">{schemes.length} total</Badge>
+                        </div>
+                    </div>
+                    {schemes.length === 0 ? (
+                        <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+                            No schemes of work have been created by this instructor yet.
+                        </p>
+                    ) : (
+                        <div className="space-y-4">
+                            {Object.entries(groupedSchemes).map(([termName, items]) => (
+                                <div key={termName} className="rounded-xl border border-gray-200">
+                                    <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2">
+                                        <p className="text-sm font-semibold text-gray-900">{termName}</p>
+                                        <span className="text-xs text-gray-500">{items.length} scheme{items.length === 1 ? '' : 's'}</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {items.map((scheme) => (
+                                            <div key={scheme.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="truncate text-sm font-medium text-gray-900">{scheme.title}</p>
+                                                        <Badge
+                                                            variant={scheme.status === 'GENERATED' ? 'success' : scheme.status === 'DRAFT' ? 'warning' : 'default'}
+                                                            size="sm"
+                                                        >
+                                                            {scheme.status_display || scheme.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {[scheme.cohort_name, scheme.subject_name, scheme.level_label].filter(Boolean).join(' · ') || 'Class subject not assigned'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <Link href={`/schemes/${scheme.id}`}>
+                                                        <Button size="sm" variant="secondary">View scheme</Button>
+                                                    </Link>
+                                                    {scheme.cohort_subject ? (
+                                                        <Link href={`/sessions?cohort_subject=${scheme.cohort_subject}`}>
+                                                            <Button size="sm" variant="ghost">View related lessons</Button>
+                                                        </Link>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </Card>
 
             {/* Sessions */}
             <Card>
