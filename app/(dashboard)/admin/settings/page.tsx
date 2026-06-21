@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, Settings, Users, Puzzle } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
-import { AppearanceSettingsCard } from '@/app/components/theme/AppearanceSettingsCard';
-import { OrganizationThemeSettingsCard } from '@/app/components/theme/OrganizationThemeSettingsCard';
+import { ThemeSettingsCard } from '@/app/components/theme/ThemeSettingsCard';
 import { MembersTab, PluginsTab } from '@/app/core/components/settings/SettingsComponents';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -20,8 +19,7 @@ function GeneralTab() {
         <h2 className="text-lg font-semibold theme-text">General settings</h2>
         <p className="mt-1 text-sm theme-muted">Brand theme and appearance preferences for this workspace.</p>
       </div>
-      <OrganizationThemeSettingsCard />
-      <AppearanceSettingsCard />
+      <ThemeSettingsCard />
     </div>
   );
 }

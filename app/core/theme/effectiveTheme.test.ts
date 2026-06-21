@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_THEME_TOKENS,
+  SCHOLAROSCOPE_DARK_TOKENS,
   appearanceModeToThemeMode,
   applyThemeTokens,
   canEditOrganizationTheme,
   normalizeEffectiveTheme,
+  themeModeToAppearanceMode,
 } from './effectiveTheme';
 import type { ActiveOrg, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import type { EffectiveThemeResponse } from '@/app/core/types/theme';
@@ -59,10 +61,10 @@ const organization: ActiveOrg = {
 };
 
 function theme(overrides: Partial<EffectiveThemeResponse> = {}): EffectiveThemeResponse {
-  return normalizeEffectiveTheme({
+  return {
     organization,
     source: 'organization',
-    appearance_mode: 'SYSTEM',
+    appearance_mode: 'LIGHT',
     tokens: {
       ...DEFAULT_THEME_TOKENS,
       primary: '#123456',
@@ -80,122 +82,129 @@ function theme(overrides: Partial<EffectiveThemeResponse> = {}): EffectiveThemeR
     button_radius: 10,
     is_customized: true,
     ...overrides,
-  });
+  };
 }
 
 describe('effective tenant theme utilities', () => {
-  it('applies resolved brand and semantic tokens to CSS variables', () => {
+  it('DEFAULT ignores organization custom tokens and uses Scholaroscope light tokens', () => {
     const { target, values } = styleTarget();
 
-    applyThemeTokens(theme(), target);
+    applyThemeTokens(theme(), target, 'DEFAULT');
+
+    expect(values.get('--brand-primary')).toBe(DEFAULT_THEME_TOKENS.brandPrimary);
+    expect(values.get('--brand-accent')).toBe(DEFAULT_THEME_TOKENS.brandAccent);
+    expect(values.get('--color-primary')).toBe(DEFAULT_THEME_TOKENS.buttonPrimary);
+    expect(values.get('--color-link')).toBe(DEFAULT_THEME_TOKENS.link);
+    expect(values.get('--color-focus-ring')).toBe(DEFAULT_THEME_TOKENS.focusRing);
+    expect(values.get('--color-app-bg')).toBe(DEFAULT_THEME_TOKENS.appBackground);
+    expect(values.get('--color-card')).toBe(DEFAULT_THEME_TOKENS.cardBackground);
+    expect(values.get('--color-border')).toBe(DEFAULT_THEME_TOKENS.border);
+  });
+
+  it('CUSTOM applies organization colors to actions, links, selected states, and focus tokens', () => {
+    const { target, values } = styleTarget();
+
+    applyThemeTokens(theme(), target, 'CUSTOM');
 
     expect(values.get('--brand-primary')).toBe('#123456');
-    expect(values.get('--brand-primary-foreground')).toBe('#FFFFFF');
     expect(values.get('--brand-secondary')).toBe('#654321');
-    expect(values.get('--brand-secondary-foreground')).toBe('#FFFFFF');
     expect(values.get('--brand-accent')).toBe('#00AA77');
-    expect(values.get('--brand-accent-foreground')).toBe('#0F172A');
-    expect(values.get('--brand-ring')).toBe('#123456');
-    expect(values.get('--brand-button-radius')).toBe('10px');
     expect(values.get('--color-primary')).toBe('#123456');
-    expect(values.get('--color-primary-hover')).toBe('#0F2C48');
-    expect(values.get('--color-primary-soft')).toBe('#DEE3E7');
-    expect(values.get('--color-primary-contrast')).toBe('#FFFFFF');
-    expect(values.get('--color-app-bg')).toBe('#F1F3F5');
-    expect(values.get('--color-card')).toBe('#FFFFFF');
-    expect(values.get('--color-header')).toBe('#FFFFFF');
-    expect(values.get('--color-sidebar')).toBe('#F9F7F6');
-    expect(values.get('--color-dropdown')).toBe('#FFFFFF');
-    expect(values.get('--color-text')).toBe('#0F172A');
-    expect(values.get('--color-text-muted')).toBe('#475569');
-    expect(values.get('--color-text-subtle')).toBe('#64748B');
     expect(values.get('--color-link')).toBe('#123456');
-    expect(values.get('--color-link-hover')).toBe('#0F2C48');
     expect(values.get('--color-focus-ring')).toBe('#123456');
-    expect(values.get('--color-table-header')).toBe('#ECEFF1');
+    expect(values.get('--color-input-focus-border')).toBe('#123456');
     expect(values.get('--color-table-link')).toBe('#123456');
     expect(values.get('--color-icon-emphasis')).toBe('#123456');
   });
 
-  it('replaces tokens when another active organization theme is applied', () => {
+  it('CUSTOM keeps neutral readable surfaces and borders', () => {
     const { target, values } = styleTarget();
 
-    applyThemeTokens(theme(), target);
-    applyThemeTokens(theme({
-      organization: {
-        id: 20,
-        name: 'Olympic High',
-        org_type: 'INSTITUTION',
-      },
-      tokens: {
-        ...DEFAULT_THEME_TOKENS,
-        primary: '#006644',
-        primaryForeground: '#FFFFFF',
-        secondary: '#111827',
-        secondaryForeground: '#FFFFFF',
-        accent: '#F59E0B',
-        accentForeground: '#0F172A',
-        ring: '#006644',
-        muted: '#F8FAFC',
-      },
-    }), target);
+    applyThemeTokens(theme(), target, 'CUSTOM');
 
-    expect(values.get('--brand-primary')).toBe('#006644');
-    expect(values.get('--brand-accent')).toBe('#F59E0B');
-    expect(values.get('--color-link')).toBe('#006644');
-    expect(values.get('--color-input-focus-border')).toBe('#006644');
-    expect(values.get('--color-table-link')).toBe('#006644');
+    expect(values.get('--color-app-bg')).toBe('#F6F8FC');
+    expect(values.get('--color-card')).toBe('#FFFFFF');
+    expect(values.get('--color-header')).toBe('#FFFFFF');
+    expect(values.get('--color-sidebar')).toBe('#F8FAFC');
+    expect(values.get('--color-dropdown')).toBe('#FFFFFF');
+    expect(values.get('--color-border')).toBe('#D7E0EC');
+    expect(values.get('--color-border')).not.toBe('#123456');
   });
 
-  it('keeps organization brand tokens while adapting surfaces in dark mode', () => {
+  it('DARK uses fixed Scholaroscope dark tokens and ignores organization brand colors', () => {
     const { target, values } = styleTarget();
 
     applyThemeTokens(theme({
       tokens: {
         ...DEFAULT_THEME_TOKENS,
-        primary: '#006644',
+        primary: '#FF0000',
         primaryForeground: '#FFFFFF',
-        secondary: '#111827',
+        secondary: '#880000',
         secondaryForeground: '#FFFFFF',
-        accent: '#F59E0B',
-        accentForeground: '#0F172A',
-        ring: '#006644',
-        muted: '#F8FAFC',
+        accent: '#00FF00',
+        accentForeground: '#000000',
+        ring: '#FF0000',
+        muted: '#FFF1F1',
       },
-    }), target, 'dark');
+    }), target, 'DARK');
 
-    expect(values.get('--brand-primary')).toBe('#006644');
-    expect(values.get('--color-primary')).toBe('#006644');
-    expect(values.get('--color-link')).toBe('#006644');
-    expect(values.get('--color-focus-ring')).toBe('#006644');
-    expect(values.get('--color-app-bg')).toBe('#040509');
-    expect(values.get('--color-card')).not.toBe('#FFFFFF');
-    expect(values.get('--color-text')).toBe('#E5E7EB');
+    expect(values.get('--brand-primary')).toBe(SCHOLAROSCOPE_DARK_TOKENS.brandPrimary);
+    expect(values.get('--color-primary')).toBe(SCHOLAROSCOPE_DARK_TOKENS.buttonPrimary);
+    expect(values.get('--color-link')).toBe(SCHOLAROSCOPE_DARK_TOKENS.link);
+    expect(values.get('--color-focus-ring')).toBe(SCHOLAROSCOPE_DARK_TOKENS.focusRing);
+    expect(values.get('--color-app-bg')).toBe('#050812');
+    expect(values.get('--color-card')).toBe('#0B1220');
+    expect(values.get('--color-header')).toBe('#070B14');
+    expect(values.get('--color-sidebar')).toBe('#07111F');
+    expect(values.get('--color-dropdown')).toBe('#0B1220');
+  });
+
+  it('DARK border tokens are dark neutral and not derived from organization primary', () => {
+    const { target, values } = styleTarget();
+
+    applyThemeTokens(theme({
+      tokens: {
+        ...DEFAULT_THEME_TOKENS,
+        primary: '#FF0000',
+        secondary: '#00AAFF',
+        accent: '#00FF00',
+        ring: '#FF0000',
+      },
+    }), target, 'DARK');
+
+    expect(values.get('--color-border')).toBe('#1E293B');
+    expect(values.get('--color-border-strong')).toBe('#334155');
+    expect(values.get('--color-border')).not.toBe('#FFB8B8');
+    expect(values.get('--color-border')).not.toBe('#FF0000');
+    expect(values.get('--color-border-strong')).not.toBe('#FF9494');
   });
 
   it('falls back to the Scholaroscope default theme when no custom theme exists', () => {
-    const normalized = normalizeEffectiveTheme(null);
+    const normalized = normalizeEffectiveTheme(null, 'DEFAULT');
 
     expect(normalized.source).toBe('default');
     expect(normalized.tokens).toEqual(DEFAULT_THEME_TOKENS);
     expect(normalized.is_customized).toBe(false);
   });
 
-  it('keeps dark mode as a user appearance preference', () => {
-    expect(appearanceModeToThemeMode('LIGHT')).toBe('light');
-    expect(appearanceModeToThemeMode('DARK')).toBe('dark');
-    expect(appearanceModeToThemeMode('SYSTEM')).toBe('system');
+  it('maps legacy backend appearance modes to explicit frontend theme modes', () => {
+    expect(appearanceModeToThemeMode('LIGHT')).toBe('DEFAULT');
+    expect(appearanceModeToThemeMode('DARK')).toBe('DARK');
+    expect(appearanceModeToThemeMode('SYSTEM')).toBe('DEFAULT');
+    expect(themeModeToAppearanceMode('DEFAULT')).toBe('LIGHT');
+    expect(themeModeToAppearanceMode('DARK')).toBe('DARK');
+    expect(themeModeToAppearanceMode('CUSTOM')).toBe('LIGHT');
   });
 
-  it('does not redeclare brand primary tokens in the dark-mode CSS block', () => {
+  it('keeps the dark-mode CSS block on stable Scholaroscope dark colors', () => {
     const globalsCss = readFileSync(join(process.cwd(), 'app/globals.css'), 'utf8');
     const darkBlock = globalsCss.match(/html\[data-theme='dark'\] \{([\s\S]*?)\n\}/)?.[1] ?? '';
 
-    expect(darkBlock).not.toContain('--color-primary:');
-    expect(darkBlock).not.toContain('--color-primary-hover:');
-    expect(darkBlock).not.toContain('--color-primary-soft:');
-    expect(darkBlock).not.toContain('--color-primary-contrast:');
-    expect(darkBlock).not.toContain('--brand-primary:');
+    expect(darkBlock).toContain('--color-app-bg: #050812;');
+    expect(darkBlock).toContain('--color-border: #1e293b;');
+    expect(darkBlock).toContain('--color-border-strong: #334155;');
+    expect(darkBlock).not.toContain('mixHex');
+    expect(darkBlock).not.toContain('var(--brand-primary) 24%');
   });
 
   it('allows organization admins to edit organization themes', () => {

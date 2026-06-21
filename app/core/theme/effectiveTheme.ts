@@ -1,4 +1,4 @@
-import type { ResolvedTheme, ThemeMode } from '@/app/context/ThemeContext';
+import type { ResolvedTheme, ScholaroscopeThemeMode, ThemeMode } from '@/app/context/ThemeContext';
 import type { ActiveOrg, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import type { AppearanceMode, EffectiveThemeResponse, ThemeTokens } from '@/app/core/types/theme';
 
@@ -64,10 +64,72 @@ export const DEFAULT_THEME_TOKENS: ThemeTokens = {
   iconEmphasis: '#2563EB',
 };
 
+export const SCHOLAROSCOPE_DARK_TOKENS: ThemeTokens = {
+  primary: '#3B82F6',
+  primaryForeground: '#EFF6FF',
+  secondary: '#94A3B8',
+  secondaryForeground: '#020617',
+  accent: '#22C55E',
+  accentForeground: '#04130A',
+  ring: '#3B82F6',
+  muted: '#111827',
+  brandPrimary: '#3B82F6',
+  brandPrimaryForeground: '#EFF6FF',
+  brandSecondary: '#94A3B8',
+  brandSecondaryForeground: '#020617',
+  brandAccent: '#22C55E',
+  brandAccentForeground: '#04130A',
+  brandRing: '#3B82F6',
+  appBackground: '#050812',
+  surface: '#0B1220',
+  surfaceMuted: '#111827',
+  surfaceElevated: '#101827',
+  cardBackground: '#0B1220',
+  sidebarBackground: '#07111F',
+  headerBackground: '#070B14',
+  dropdownBackground: '#0B1220',
+  text: '#E5E7EB',
+  textMuted: '#CBD5E1',
+  textSubtle: '#94A3B8',
+  textInverse: '#020617',
+  link: '#93C5FD',
+  linkHover: '#BFDBFE',
+  border: '#1E293B',
+  borderStrong: '#334155',
+  inputBorder: '#243044',
+  inputFocusBorder: '#3B82F6',
+  info: '#60A5FA',
+  infoSoft: '#0F274A',
+  success: '#4ADE80',
+  successSoft: '#102A1C',
+  warning: '#FBBF24',
+  warningSoft: '#2F2208',
+  danger: '#F87171',
+  dangerSoft: '#321212',
+  hoverSurface: '#111827',
+  selectedSurface: '#10213A',
+  activeSurface: '#143052',
+  focusRing: '#60A5FA',
+  focusRingSoft: '#10213A',
+  buttonPrimary: '#2563EB',
+  buttonPrimaryHover: '#1D4ED8',
+  buttonPrimaryForeground: '#FFFFFF',
+  buttonSecondary: '#111827',
+  buttonSecondaryHover: '#172033',
+  badgeDefault: '#111827',
+  badgeDefaultForeground: '#E5E7EB',
+  tableHeaderBackground: '#111827',
+  tableRowHover: '#111827',
+  tableLink: '#93C5FD',
+  iconDefault: '#CBD5E1',
+  iconMuted: '#94A3B8',
+  iconEmphasis: '#93C5FD',
+};
+
 export const DEFAULT_EFFECTIVE_THEME: EffectiveThemeResponse = {
   organization: null,
   source: 'default',
-  appearance_mode: 'SYSTEM',
+  appearance_mode: 'LIGHT',
   tokens: DEFAULT_THEME_TOKENS,
   logo_url: '',
   favicon_url: '',
@@ -83,6 +145,8 @@ export interface ThemeStyleTarget {
 }
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+
+type ThemeModeInput = ScholaroscopeThemeMode | ResolvedTheme;
 
 function normalizeHex(value: string | undefined, fallback: string): string {
   if (!value || !HEX_RE.test(value)) {
@@ -129,10 +193,21 @@ export function mixHex(color: string, mixColor: string, amount: number): string 
   );
 }
 
-function deriveThemeTokens(
-  inputTokens: Partial<ThemeTokens>,
-  resolvedTheme: ResolvedTheme = 'light',
-): ThemeTokens {
+function coerceThemeMode(themeMode: ThemeModeInput = 'DEFAULT'): ScholaroscopeThemeMode {
+  switch (themeMode) {
+    case 'DARK':
+    case 'dark':
+      return 'DARK';
+    case 'CUSTOM':
+      return 'CUSTOM';
+    case 'DEFAULT':
+    case 'light':
+    default:
+      return 'DEFAULT';
+  }
+}
+
+function deriveCustomThemeTokens(inputTokens: Partial<ThemeTokens>): ThemeTokens {
   const primary = normalizeTokenHex(inputTokens, 'primary', DEFAULT_THEME_TOKENS.primary);
   const primaryForeground = normalizeTokenHex(inputTokens, 'primaryForeground', DEFAULT_THEME_TOKENS.primaryForeground);
   const secondary = normalizeTokenHex(inputTokens, 'secondary', DEFAULT_THEME_TOKENS.secondary);
@@ -141,21 +216,9 @@ function deriveThemeTokens(
   const accentForeground = normalizeTokenHex(inputTokens, 'accentForeground', DEFAULT_THEME_TOKENS.accentForeground);
   const ring = normalizeTokenHex(inputTokens, 'ring', primary);
   const muted = normalizeTokenHex(inputTokens, 'muted', DEFAULT_THEME_TOKENS.muted);
-  const isDark = resolvedTheme === 'dark';
 
-  const appBackground = isDark ? mixHex(secondary, '#000000', 0.78) : mixHex(primary, '#FFFFFF', 0.94);
-  const surface = isDark ? mixHex(secondary, '#000000', 0.62) : '#FFFFFF';
-  const surfaceMuted = isDark ? mixHex(primary, '#000000', 0.76) : mixHex(primary, '#FFFFFF', 0.92);
-  const surfaceElevated = isDark ? mixHex(secondary, '#000000', 0.52) : '#FFFFFF';
-  const border = isDark ? mixHex(primary, '#FFFFFF', 0.72) : mixHex(primary, '#FFFFFF', 0.78);
-  const borderStrong = isDark ? mixHex(primary, '#FFFFFF', 0.58) : mixHex(primary, '#FFFFFF', 0.62);
-  const text = isDark ? '#E5E7EB' : '#0F172A';
-  const textMuted = isDark ? '#CBD5E1' : '#475569';
-  const textSubtle = isDark ? '#94A3B8' : '#64748B';
-  const hoverSurface = isDark ? mixHex(primary, '#000000', 0.66) : mixHex(primary, '#FFFFFF', 0.90);
-  const selectedSurface = isDark ? mixHex(primary, '#000000', 0.54) : mixHex(primary, '#FFFFFF', 0.84);
-
-  const derived: ThemeTokens = {
+  return {
+    ...DEFAULT_THEME_TOKENS,
     primary,
     primaryForeground,
     secondary,
@@ -171,65 +234,69 @@ function deriveThemeTokens(
     brandAccent: accent,
     brandAccentForeground: accentForeground,
     brandRing: ring,
-    appBackground,
-    surface,
-    surfaceMuted,
-    surfaceElevated,
-    cardBackground: surface,
-    sidebarBackground: isDark ? mixHex(secondary, '#000000', 0.56) : mixHex(secondary, '#FFFFFF', 0.96),
-    headerBackground: surface,
-    dropdownBackground: surfaceElevated,
-    text,
-    textMuted,
-    textSubtle,
-    textInverse: primaryForeground,
-    link: primary,
-    linkHover: mixHex(primary, isDark ? '#FFFFFF' : '#000000', isDark ? 0.22 : 0.16),
-    border,
-    borderStrong,
-    inputBorder: border,
+    appBackground: '#F6F8FC',
+    surface: '#FFFFFF',
+    surfaceMuted: '#F3F6FB',
+    surfaceElevated: '#FFFFFF',
+    cardBackground: '#FFFFFF',
+    sidebarBackground: '#F8FAFC',
+    headerBackground: '#FFFFFF',
+    dropdownBackground: '#FFFFFF',
+    border: '#D7E0EC',
+    borderStrong: '#B8C5D6',
+    inputBorder: '#D7E0EC',
     inputFocusBorder: ring,
+    link: primary,
+    linkHover: mixHex(primary, '#000000', 0.16),
     info: primary,
-    infoSoft: isDark ? mixHex(primary, '#000000', 0.62) : mixHex(primary, '#FFFFFF', 0.86),
-    success: '#16A34A',
-    successSoft: isDark ? '#123322' : '#DCFCE7',
-    warning: '#D97706',
-    warningSoft: isDark ? '#3A2608' : '#FEF3C7',
-    danger: '#DC2626',
-    dangerSoft: isDark ? '#3B1212' : '#FEE2E2',
-    hoverSurface,
-    selectedSurface,
-    activeSurface: isDark ? mixHex(primary, '#000000', 0.46) : mixHex(primary, '#FFFFFF', 0.78),
+    infoSoft: mixHex(primary, '#FFFFFF', 0.90),
+    hoverSurface: '#EEF3F9',
+    selectedSurface: mixHex(primary, '#FFFFFF', 0.88),
+    activeSurface: mixHex(primary, '#FFFFFF', 0.82),
     focusRing: ring,
-    focusRingSoft: isDark ? mixHex(ring, '#000000', 0.54) : mixHex(ring, '#FFFFFF', 0.78),
+    focusRingSoft: mixHex(ring, '#FFFFFF', 0.84),
     buttonPrimary: primary,
-    buttonPrimaryHover: mixHex(primary, isDark ? '#FFFFFF' : '#000000', isDark ? 0.18 : 0.16),
+    buttonPrimaryHover: mixHex(primary, '#000000', 0.16),
     buttonPrimaryForeground: primaryForeground,
-    buttonSecondary: surfaceMuted,
-    buttonSecondaryHover: hoverSurface,
-    badgeDefault: surfaceMuted,
-    badgeDefaultForeground: text,
-    tableHeaderBackground: surfaceMuted,
-    tableRowHover: hoverSurface,
+    buttonSecondary: '#F3F6FB',
+    buttonSecondaryHover: '#EEF3F9',
+    badgeDefault: '#F3F6FB',
+    badgeDefaultForeground: '#0F172A',
+    tableHeaderBackground: '#F3F6FB',
+    tableRowHover: '#EEF3F9',
     tableLink: primary,
-    iconDefault: textMuted,
-    iconMuted: textSubtle,
     iconEmphasis: primary,
   };
+}
 
-  return derived;
+function deriveThemeTokens(
+  inputTokens: Partial<ThemeTokens>,
+  themeMode: ThemeModeInput = 'DEFAULT',
+): ThemeTokens {
+  const mode = coerceThemeMode(themeMode);
+
+  if (mode === 'DARK') {
+    return SCHOLAROSCOPE_DARK_TOKENS;
+  }
+
+  if (mode === 'CUSTOM') {
+    return deriveCustomThemeTokens(inputTokens);
+  }
+
+  return DEFAULT_THEME_TOKENS;
 }
 
 export function normalizeEffectiveTheme(
   theme?: Partial<EffectiveThemeResponse> | null,
-  resolvedTheme: ResolvedTheme = 'light',
+  themeMode: ThemeModeInput = 'DEFAULT',
 ): EffectiveThemeResponse {
+  const mode = coerceThemeMode(themeMode);
   const tokens = theme?.tokens ?? DEFAULT_THEME_TOKENS;
   return {
     ...DEFAULT_EFFECTIVE_THEME,
     ...theme,
-    appearance_mode: theme?.appearance_mode ?? DEFAULT_EFFECTIVE_THEME.appearance_mode,
-    tokens: deriveThemeTokens(tokens, resolvedTheme),
+    appearance_mode: theme?.appearance_mode ?? themeModeToAppearanceMode(mode),
+    tokens: deriveThemeTokens(tokens, mode),
     button_radius: Number.isFinite(theme?.button_radius)
       ? Math.min(Math.max(Number(theme?.button_radius), 0), 24)
       : DEFAULT_EFFECTIVE_THEME.button_radius,
@@ -238,34 +305,32 @@ export function normalizeEffectiveTheme(
 
 export function appearanceModeToThemeMode(mode: AppearanceMode): ThemeMode {
   switch (mode) {
-    case 'LIGHT':
-      return 'light';
     case 'DARK':
-      return 'dark';
+      return 'DARK';
+    case 'LIGHT':
     case 'SYSTEM':
     default:
-      return 'system';
+      return 'DEFAULT';
   }
 }
 
 export function themeModeToAppearanceMode(mode: ThemeMode): AppearanceMode {
   switch (mode) {
-    case 'light':
-      return 'LIGHT';
-    case 'dark':
+    case 'DARK':
       return 'DARK';
-    case 'system':
+    case 'CUSTOM':
+    case 'DEFAULT':
     default:
-      return 'SYSTEM';
+      return 'LIGHT';
   }
 }
 
 export function applyThemeTokens(
   theme: EffectiveThemeResponse = DEFAULT_EFFECTIVE_THEME,
   target?: ThemeStyleTarget,
-  resolvedTheme: ResolvedTheme = 'light',
+  themeMode: ThemeModeInput = 'DEFAULT',
 ): EffectiveThemeResponse {
-  const normalizedTheme = normalizeEffectiveTheme(theme, resolvedTheme);
+  const normalizedTheme = normalizeEffectiveTheme(theme, themeMode);
   const root = target ?? (
     typeof document !== 'undefined' ? document.documentElement : null
   );
@@ -292,13 +357,13 @@ export function applyThemeTokens(
   root.style.setProperty('--color-input-border', tokens.inputBorder);
   root.style.setProperty('--color-input-focus-border', tokens.inputFocusBorder);
 
-  root.style.setProperty('--brand-primary', tokens.primary);
-  root.style.setProperty('--brand-primary-foreground', tokens.primaryForeground);
-  root.style.setProperty('--brand-secondary', tokens.secondary);
-  root.style.setProperty('--brand-secondary-foreground', tokens.secondaryForeground);
-  root.style.setProperty('--brand-accent', tokens.accent);
-  root.style.setProperty('--brand-accent-foreground', tokens.accentForeground);
-  root.style.setProperty('--brand-ring', tokens.ring);
+  root.style.setProperty('--brand-primary', tokens.brandPrimary);
+  root.style.setProperty('--brand-primary-foreground', tokens.brandPrimaryForeground);
+  root.style.setProperty('--brand-secondary', tokens.brandSecondary);
+  root.style.setProperty('--brand-secondary-foreground', tokens.brandSecondaryForeground);
+  root.style.setProperty('--brand-accent', tokens.brandAccent);
+  root.style.setProperty('--brand-accent-foreground', tokens.brandAccentForeground);
+  root.style.setProperty('--brand-ring', tokens.brandRing);
   root.style.setProperty('--brand-muted', tokens.muted);
   root.style.setProperty('--brand-button-radius', `${normalizedTheme.button_radius}px`);
 

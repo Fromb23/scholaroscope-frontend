@@ -10,105 +10,106 @@ import {
   type ReactNode,
 } from 'react';
 
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ScholaroscopeThemeMode = 'DEFAULT' | 'DARK' | 'CUSTOM';
+export type ThemeMode = ScholaroscopeThemeMode;
 export type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextValue {
-  themeMode: ThemeMode;
+  themeMode: ScholaroscopeThemeMode;
   resolvedTheme: ResolvedTheme;
-  setThemeMode: (mode: ThemeMode) => void;
+  setThemeMode: (mode: ScholaroscopeThemeMode) => void;
   toggleTheme: () => void;
   isDark: boolean;
+  isCustom: boolean;
 }
 
-const THEME_STORAGE_KEY = 'scholaroscope_theme';
+export const THEME_MODE_STORAGE_KEY = 'scholaroscope_theme_mode';
+const LEGACY_THEME_STORAGE_KEY = 'scholaroscope_theme';
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function getSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined') {
-    return 'light';
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+function isThemeMode(value: string | null): value is ScholaroscopeThemeMode {
+  return value === 'DEFAULT' || value === 'DARK' || value === 'CUSTOM';
 }
 
-function applyTheme(theme: ResolvedTheme) {
+function legacyThemeToMode(value: string | null): ScholaroscopeThemeMode | null {
+  switch (value) {
+    case 'light':
+      return 'DEFAULT';
+    case 'dark':
+      return 'DARK';
+    default:
+      return null;
+  }
+}
+
+function readStoredThemeMode(): ScholaroscopeThemeMode {
+  if (typeof window === 'undefined') {
+    return 'DEFAULT';
+  }
+
+  const storedMode = window.localStorage.getItem(THEME_MODE_STORAGE_KEY);
+  if (isThemeMode(storedMode)) {
+    return storedMode;
+  }
+
+  const legacyMode = legacyThemeToMode(window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY));
+  if (legacyMode) {
+    window.localStorage.setItem(THEME_MODE_STORAGE_KEY, legacyMode);
+    return legacyMode;
+  }
+
+  return 'DEFAULT';
+}
+
+export function resolveThemeMode(mode: ScholaroscopeThemeMode): ResolvedTheme {
+  return mode === 'DARK' ? 'dark' : 'light';
+}
+
+function applyTheme(theme: ResolvedTheme, mode: ScholaroscopeThemeMode) {
   if (typeof document === 'undefined') {
     return;
   }
 
   const root = document.documentElement;
   root.dataset.theme = theme;
+  root.dataset.themeMode = mode;
   root.classList.toggle('dark', theme === 'dark');
   root.style.colorScheme = theme;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>('light');
+  const [themeMode, setThemeModeState] = useState<ScholaroscopeThemeMode>('DEFAULT');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    window.localStorage.removeItem(THEME_STORAGE_KEY);
-    const initialResolvedTheme = getSystemTheme();
-
-    setThemeModeState('system');
-    setSystemTheme(initialResolvedTheme);
-    applyTheme(initialResolvedTheme);
+    const initialMode = readStoredThemeMode();
+    setThemeModeState(initialMode);
+    applyTheme(resolveThemeMode(initialMode), initialMode);
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (event: MediaQueryListEvent) => {
-      setSystemTheme(event.matches ? 'dark' : 'light');
-    };
-
-    setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, []);
-
-  const resolvedTheme = systemTheme;
+  const resolvedTheme = resolveThemeMode(themeMode);
 
   useEffect(() => {
     if (!mounted) {
       return;
     }
 
-    applyTheme(resolvedTheme);
-  }, [mounted, resolvedTheme]);
+    applyTheme(resolvedTheme, themeMode);
+  }, [mounted, resolvedTheme, themeMode]);
 
-  useEffect(() => {
-    if (!mounted || typeof window === 'undefined') {
-      return;
+  const setThemeMode = useCallback((mode: ScholaroscopeThemeMode) => {
+    setThemeModeState(mode);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(THEME_MODE_STORAGE_KEY, mode);
     }
-
-    window.localStorage.removeItem(THEME_STORAGE_KEY);
-  }, [mounted, themeMode]);
-
-  const setThemeMode = useCallback(() => {
-    setThemeModeState('system');
+    applyTheme(resolveThemeMode(mode), mode);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeModeState('system');
-  }, []);
+    setThemeMode(themeMode === 'DARK' ? 'DEFAULT' : 'DARK');
+  }, [setThemeMode, themeMode]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
@@ -117,6 +118,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setThemeMode,
       toggleTheme,
       isDark: resolvedTheme === 'dark',
+      isCustom: themeMode === 'CUSTOM',
     }),
     [resolvedTheme, setThemeMode, themeMode, toggleTheme],
   );

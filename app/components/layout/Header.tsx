@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2, Plus } from 'lucide-react';
+import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2, Plus, Settings } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
@@ -10,7 +10,6 @@ import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { GlobalPeopleSearch } from '@/app/components/layout/GlobalPeopleSearch';
 import { NotificationBell } from '@/app/components/layout/NotificationBell';
-import { ThemeModeSelector } from '@/app/components/theme/ThemeModeSelector';
 
 export default function Header() {
   const { user, activeOrg, activeRole, memberships, logout, switchOrg } = useAuth();
@@ -172,12 +171,13 @@ export default function Header() {
                   <User className="h-4 w-4" />
                   View Profile
                 </Link>
-                <div className="border-t theme-border px-4 py-3">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide theme-subtle">
-                    Appearance
-                  </p>
-                  <ThemeModeSelector compact showResolvedTheme={false} />
-                </div>
+                <Link
+                  href={user?.is_superadmin ? '/superadmin/settings' : '/admin/settings'}
+                  className="flex w-full items-center gap-3 px-4 py-2 text-sm theme-text theme-hover-surface"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
                 <div className="border-t theme-border pt-2">
                   <button
                     onClick={handleLogout}

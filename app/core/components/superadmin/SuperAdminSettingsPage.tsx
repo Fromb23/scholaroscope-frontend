@@ -27,7 +27,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
-import { AppearanceSettingsCard } from '@/app/components/theme/AppearanceSettingsCard';
+import { ThemeSettingsCard } from '@/app/components/theme/ThemeSettingsCard';
 
 // ============================================================================
 // Types
@@ -606,7 +606,7 @@ export function SuperAdminSettingsPage() {
           </p>
         </div>
         <div className="max-w-2xl">
-          <AppearanceSettingsCard />
+          <ThemeSettingsCard showOrganizationEditor={false} />
         </div>
       </section>
 
