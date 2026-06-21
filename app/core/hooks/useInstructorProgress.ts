@@ -10,7 +10,9 @@ import { instructorsAPI, InstructorProfile } from '@/app/core/api/instructors';
 import type { PaginatedResponse } from '@/app/core/api/sessions';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
+import { schemesAPI } from '@/app/core/api/schemes';
 import type { Session } from '@/app/core/types/session';
+import type { SchemeOfWork } from '@/app/core/types/schemes';
 
 export interface SessionStats {
     total: number;
@@ -77,6 +79,7 @@ export function getTeachingAssignmentKey(assignment: TeachingAssignmentIdentity)
 export function useInstructorProgress(instructorId: number) {
     const [instructor, setInstructor] = useState<InstructorProfile | null>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
+    const [schemes, setSchemes] = useState<SchemeOfWork[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +106,9 @@ export function useInstructorProgress(instructorId: number) {
                     ? allSessions.filter((session) => session.created_by_id === instructorId)
                     : allSessions
             );
+
+            const schemesData = await schemesAPI.listSchemes({ teacher: instructorId });
+            setSchemes(Array.isArray(schemesData) ? schemesData : (schemesData.results ?? []));
         } catch {
             if (showLoadingState) {
                 setError('Failed to load instructor data');
@@ -169,6 +175,7 @@ export function useInstructorProgress(instructorId: number) {
     return {
         instructor,
         sessions,
+        schemes,
         loading,
         error,
         refetch: () => load(false),

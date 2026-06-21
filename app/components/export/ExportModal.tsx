@@ -10,6 +10,7 @@ import {
     Download,
     FileSpreadsheet,
     FileDown,
+    FileText,
     X,
     Info,
     Settings
@@ -106,6 +107,15 @@ export function ExportModal({
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
             borderColor: 'border-blue-200'
+        },
+        {
+            value: 'pdf' as ExportFormat,
+            label: 'PDF Document',
+            icon: FileText,
+            description: 'Best for sharing or printing a fixed report',
+            color: 'text-rose-600',
+            bgColor: 'bg-rose-50',
+            borderColor: 'border-rose-200'
         }
     ];
 

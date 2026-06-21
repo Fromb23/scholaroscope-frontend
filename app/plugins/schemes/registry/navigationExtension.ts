@@ -11,16 +11,25 @@ const schemesNavItem = (label = 'Schemes of Work') => ({
     ],
 });
 
+const schemesViewOnlyNavItem = (label = 'Schemes of Work') => ({
+    name: label,
+    href: '/schemes',
+    icon: BookOpen,
+});
+
 registerPluginNavigationEntry({
     key: 'schemes-admin-nav',
     slot: 'admin.primary.afterDashboard',
     priority: 20,
-    resolve: ({ hasPlugin, orgType, workspaceBehavior }) => {
+    resolve: ({ hasPlugin, orgType, workspaceBehavior, canTeach, isWorkspaceOwner }) => {
         if (!hasPlugin('schemes')) return null;
-        const label = orgType === 'PERSONAL' || workspaceBehavior === 'FREELANCE_TEACHER'
-            ? 'My schemes of work'
-            : 'Schemes of Work';
-        return schemesNavItem(label);
+        if (
+            canTeach
+            && (orgType === 'PERSONAL' || workspaceBehavior === 'FREELANCE_TEACHER' || isWorkspaceOwner)
+        ) {
+            return schemesNavItem('My schemes of work');
+        }
+        return schemesViewOnlyNavItem('Schemes of Work');
     },
 });
 

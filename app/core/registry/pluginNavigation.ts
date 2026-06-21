@@ -25,6 +25,8 @@ export interface PluginNavigationContext {
     role: Role;
     orgType?: OrgType | null;
     workspaceBehavior?: string | null;
+    canTeach?: boolean;
+    isWorkspaceOwner?: boolean;
     hasPlugin: (pluginKey: string) => boolean;
     hasCurriculumType: (curriculumType: string) => boolean;
     badges: Record<string, number>;

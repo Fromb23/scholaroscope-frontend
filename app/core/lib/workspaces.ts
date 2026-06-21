@@ -2,6 +2,9 @@ import type { OrgType, RegisterOrgType, Role, WorkspaceCapabilities, WorkspaceMo
 
 export type WorkspaceBadgeVariant = 'blue' | 'purple' | 'green' | 'orange' | 'indigo' | 'maroon';
 
+export const ENABLE_MULTI_WORKSPACE_SIGNUP =
+  process.env.NEXT_PUBLIC_ENABLE_MULTI_WORKSPACE_SIGNUP === 'true';
+
 export const ORG_TYPE_LABELS: Record<OrgType, string> = {
   INSTITUTION: 'Institution',
   PERSONAL: 'Freelance Teacher Workspace',
@@ -54,7 +57,7 @@ export const WORKSPACE_MODE_COPY: Record<
   PERSONAL: {
     label: 'Freelance Teacher Workspace',
     description:
-      'Create a Freelance Teacher Workspace for managing your own learners, lesson plans, teaching records, assessments, reports, and academic intelligence.',
+      'Start as a freelance teacher. Manage your learners, schemes of work, lesson plans, teaching records, assessments, reports, and academic intelligence in your own workspace.',
     placeholder: 'e.g. My Teaching Workspace',
   },
 };

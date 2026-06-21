@@ -11,9 +11,11 @@ import type {
   RefreshResponse,
   RegisterPayload,
   RegisterResponse,
+  ResendVerificationResponse,
   SuspendedOrg,
   SwitchOrgResponse,
   User,
+  VerifyEmailResponse,
   WorkspaceCapabilities,
 } from '@/app/core/types/auth';
 
@@ -174,6 +176,32 @@ export const authAPI = {
       await parseError(response, 'Registration failed');
     }
     return normalizeRegisterResponse(await response.json());
+  },
+
+  verifyEmail: async (token: string): Promise<VerifyEmailResponse> => {
+    const response = await fetch(`${API_URL}/users/verify-email/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    if (!response.ok) {
+      await parseError(response, 'Email verification failed');
+    }
+    return normalizeRegisterResponse(await response.json());
+  },
+
+  resendVerification: async (email: string): Promise<ResendVerificationResponse> => {
+    const response = await fetch(`${API_URL}/users/resend-verification/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      await parseError(response, 'Could not resend verification email');
+    }
+    return response.json();
   },
 
   logout: async (): Promise<void> => {
