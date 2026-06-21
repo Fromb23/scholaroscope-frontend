@@ -84,7 +84,9 @@ export function CurriculaPage() {
         description: '',
         is_active: true,
     }), [searchParams]);
-    const pluginSettingsHeaderHref = '/admin/settings?tab=plugins';
+    const pluginSettingsHeaderHref = setupMode
+        ? '/admin/settings?tab=plugins&from=academic-setup'
+        : '/admin/settings?tab=plugins&from=curricula';
 
     const getPluginSettingsHref = (curriculum: Curriculum): string | null => {
         const pluginKey = resolveCurriculumPluginKey(curriculum);
@@ -97,7 +99,7 @@ export function CurriculaPage() {
             tab: 'plugins',
             plugin: pluginKey,
             curriculum: String(curriculum.id),
-            from: 'curricula',
+            from: setupMode ? 'academic-setup' : 'curricula',
         });
 
         return `/admin/settings?${params.toString()}`;
@@ -296,6 +298,25 @@ export function CurriculaPage() {
                 </Card>
             ) : null}
 
+            <Card>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h2 className="text-sm font-semibold text-gray-900">
+                            Using CBC, Cambridge, or another national curriculum?
+                        </h2>
+                        <p className="mt-1 text-sm text-gray-600">
+                            National and international curricula are powered by plugins. Manage the curriculum plugin here, then choose subject offerings from the curriculum catalog.
+                        </p>
+                    </div>
+                    <Link href={pluginSettingsHeaderHref}>
+                        <Button type="button" variant="secondary">
+                            <Puzzle className="mr-2 h-4 w-4" />
+                            Open plugin settings
+                        </Button>
+                    </Link>
+                </div>
+            </Card>
+
             <DesktopOnly>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <StatsCard title="Total Curricula" value={curricula.length} icon={BookOpen} />
@@ -339,18 +360,30 @@ export function CurriculaPage() {
                             {activeCurricula.map(c => (
                                 <TableRow key={c.id}>
                                     <TableCell><span className="font-mono font-medium">{getCurriculumBridgeCode(c.curriculum_type)}</span></TableCell>
-                                    <TableCell><span className="font-medium">{getCurriculumBridgeName(c)}</span></TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-medium">{getCurriculumBridgeName(c)}</span>
+                                            {c.source === 'plugin' ? <Badge variant="blue">Managed by plugin</Badge> : null}
+                                        </div>
+                                    </TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
                                     <TableCell><CurriculumLifecycleBadge status={c.offering_status} /></TableCell>
                                     <TableCell><Badge variant="info">{c.subjects_count ?? 0}</Badge></TableCell>
                                     <TableCell><Badge variant="info">{c.cohorts_count ?? 0}</Badge></TableCell>
                                     <TableCell>
                                         {getPluginSettingsHref(c) && getPluginActionLabel(c) ? (
-                                            <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
-                                                <Button type="button" size="sm" variant="secondary">
-                                                    {getPluginActionLabel(c)}
-                                                </Button>
-                                            </Link>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
+                                                    <Button type="button" size="sm" variant="secondary">
+                                                        Open plugin settings
+                                                    </Button>
+                                                </Link>
+                                                <Link href={`/academic/subjects?setup=1&curriculum=${c.id}`}>
+                                                    <Button type="button" size="sm" variant="ghost">
+                                                        Manage subject offerings
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         ) : (
                                             <span className="text-sm text-gray-400">—</span>
                                         )}
@@ -384,16 +417,28 @@ export function CurriculaPage() {
                             {inactiveCurricula.map(c => (
                                 <TableRow key={c.id} className="opacity-60">
                                     <TableCell><span className="font-mono font-medium">{getCurriculumBridgeCode(c.curriculum_type)}</span></TableCell>
-                                    <TableCell><span className="font-medium">{getCurriculumBridgeName(c)}</span></TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-medium">{getCurriculumBridgeName(c)}</span>
+                                            {c.source === 'plugin' ? <Badge variant="blue">Managed by plugin</Badge> : null}
+                                        </div>
+                                    </TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
                                     <TableCell><CurriculumLifecycleBadge status={c.offering_status} /></TableCell>
                                     <TableCell>
                                         {getPluginSettingsHref(c) && getPluginActionLabel(c) ? (
-                                            <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
-                                                <Button type="button" size="sm" variant="secondary">
-                                                    {getPluginActionLabel(c)}
-                                                </Button>
-                                            </Link>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
+                                                    <Button type="button" size="sm" variant="secondary">
+                                                        Open plugin settings
+                                                    </Button>
+                                                </Link>
+                                                <Link href={`/academic/subjects?setup=1&curriculum=${c.id}`}>
+                                                    <Button type="button" size="sm" variant="ghost">
+                                                        Manage subject offerings
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         ) : (
                                             <span className="text-sm text-gray-400">—</span>
                                         )}

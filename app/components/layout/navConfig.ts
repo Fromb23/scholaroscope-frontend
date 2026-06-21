@@ -36,6 +36,7 @@ import {
   type PluginNavigationContext,
 } from '@/app/core/registry/pluginNavigation';
 import type { AcademicSetupStatus } from '@/app/core/types/academic';
+import { getAcademicSetupAvailableNavItems } from '@/app/core/lib/academicSetup';
 import {
   getWorkspaceManagementLabel,
   isLearnerCenteredWorkspace,
@@ -151,7 +152,7 @@ const ACADEMIC_SETUP_NAV: RegistryNavItem = {
 export function getAdminNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
-  academicSetup?: Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'> | null,
+  academicSetup?: (Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'> & Partial<AcademicSetupStatus>) | null,
   capabilities?: WorkspaceCapabilities | null,
 ): NavigationConfig {
   const reportPoliciesChild = pluginContext.hasAnyReportPolicySurface
@@ -159,18 +160,31 @@ export function getAdminNav(
     : [];
   const reportNavigationChildren = getAdminReportNavigationItems();
 
-  if (
-    (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType))
-    && academicSetup
-    && !academicSetup.complete
-  ) {
-    const currentStepLabel = academicSetup.current_step_label ?? 'Continue setup';
+  if (academicSetup && !academicSetup.complete) {
+    const setupItems = academicSetup.steps?.length
+      ? getAcademicSetupAvailableNavItems(academicSetup as AcademicSetupStatus)
+      : [
+          { label: 'Overview', href: '/academic' },
+          { label: academicSetup.current_step_label ?? academicSetup.next_action.label, href: academicSetup.next_action.href },
+        ];
+    const setupChildren = setupItems.map((item) => ({
+      name: item.label,
+      href: item.href,
+      icon: item.label.includes('Curricula') || item.label.includes('Subjects') ? BookOpen : CalendarDays,
+    }));
+    const dashboardLabel = (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType))
+      ? 'My teaching workspace'
+      : 'Dashboard';
 
     return {
       primary: [
-        { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
-        { name: 'Academic Setup', href: '/academic', icon: GraduationCap },
-        { name: currentStepLabel, href: academicSetup.next_action.href, icon: CalendarDays },
+        { name: dashboardLabel, href: '/dashboard/admin', icon: LayoutDashboard },
+        {
+          name: 'Academic Setup',
+          href: '/academic',
+          icon: GraduationCap,
+          children: setupChildren,
+        },
       ],
       secondary: [
         { name: 'Settings', href: '/admin/settings', icon: Settings },
@@ -206,21 +220,6 @@ export function getAdminNav(
       ],
       secondary: [
         ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
-        { name: 'Settings', href: '/admin/settings', icon: Settings },
-      ],
-    };
-  }
-
-  if (academicSetup && !academicSetup.complete) {
-    const currentStepLabel = academicSetup.current_step_label ?? 'Continue setup';
-
-    return {
-      primary: [
-        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
-        { name: 'Academic Setup', href: '/academic', icon: GraduationCap },
-        { name: currentStepLabel, href: academicSetup.next_action.href, icon: CalendarDays },
-      ],
-      secondary: [
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ],
     };

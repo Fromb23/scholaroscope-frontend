@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { getAcademicSetupPageState } from '@/app/core/lib/academicSetup';
+import { getAcademicSetupPageState, withAcademicSetupMode } from '@/app/core/lib/academicSetup';
 import type { AcademicSetupStatus, AcademicSetupStepKey } from '@/app/core/types/academic';
 
 export function AcademicSetupGate({
@@ -49,15 +49,20 @@ export function AcademicSetupGate({
             <Card>
                 <div className="space-y-3 p-5">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-lg font-semibold theme-text">Step already complete</h2>
+                        <h2 className="text-lg font-semibold theme-text">Setup step complete</h2>
                         <Badge variant="green">Complete</Badge>
                     </div>
                     <p className="text-sm theme-muted">
-                        This setup step is already satisfied. Continue to the next incomplete step.
+                        This step is complete. You can review or adjust it, then continue setup.
                     </p>
-                    <Link href={status.next_action.href}>
-                        <Button>{status.next_action.label}</Button>
-                    </Link>
+                    <div className="flex flex-wrap gap-2">
+                        <Link href={withAcademicSetupMode('/academic')}>
+                            <Button type="button" variant="secondary">Back to setup overview</Button>
+                        </Link>
+                        <Link href={withAcademicSetupMode(status.next_action.href)}>
+                            <Button>{status.next_action.label}</Button>
+                        </Link>
+                    </div>
                 </div>
             </Card>
         );

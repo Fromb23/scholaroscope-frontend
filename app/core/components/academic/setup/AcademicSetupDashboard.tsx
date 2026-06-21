@@ -11,8 +11,8 @@ import type { AcademicSetupStatus } from '@/app/core/types/academic';
 
 export function AcademicSetupDashboard({
     status,
-    title = 'Academic Setup',
-    intro = 'Complete the setup chain once so the workspace can carry the next operational action for you.',
+    title = 'Academic Engine Setup',
+    intro = 'You can review and adjust completed decisions at any time before teaching starts.',
 }: {
     status: AcademicSetupStatus;
     title?: string;
@@ -35,10 +35,12 @@ export function AcademicSetupDashboard({
                         <p className="text-sm theme-muted">{intro}</p>
                     </div>
 
-                    <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                    <div className="space-y-6">
                         <div className="space-y-4">
                             <div className="rounded-2xl border p-5 theme-border theme-surface-muted">
-                                <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">Current step</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide theme-subtle">
+                                    Set up your academic engine
+                                </p>
                                 <h2 className="mt-2 text-xl font-semibold theme-text">
                                     {status.current_step_label ?? 'Academic setup is complete'}
                                 </h2>
@@ -69,7 +71,7 @@ export function AcademicSetupDashboard({
                         </div>
 
                         <div className="space-y-3">
-                            <p className="text-sm font-semibold theme-text">Progress</p>
+                            <p className="text-sm font-semibold theme-text">Setup console</p>
                             <AcademicSetupProgress status={status} />
                         </div>
                     </div>
