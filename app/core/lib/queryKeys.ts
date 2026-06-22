@@ -3,6 +3,10 @@ export const academicKeys = {
         detail: (organizationId: number | null) =>
             ['academic', 'setup-status', organizationId] as const,
     },
+    todayMode: {
+        detail: (organizationId: number | null) =>
+            ['academic', 'today-mode', organizationId] as const,
+    },
     curricula: {
         all: ['academic', 'curricula'] as const,
         list: (organizationId: number | null) =>

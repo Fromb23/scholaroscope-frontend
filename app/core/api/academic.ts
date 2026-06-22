@@ -25,6 +25,7 @@ import {
   CohortDetail,
   TermQueryParams,
   AcademicSetupStatus,
+  AcademicTodayMode,
   SubjectCatalogItem,
   SubjectOfferingMutationPayload,
   LearnerSubjectOptionsResponse,
@@ -38,6 +39,14 @@ interface CurriculumQuery {
 }
 
 const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';
+
+
+export const academicTodayModeAPI = {
+  getTodayMode: async (): Promise<AcademicTodayMode> => {
+    const response = await apiClient.get<AcademicTodayMode>('/academic/calendar/today-mode/');
+    return response.data;
+  },
+};
 
 export const academicSetupAPI = {
   getStatus: async (): Promise<AcademicSetupStatus> => {

@@ -27,6 +27,7 @@ export type SessionScheduleState =
   | 'SCHEDULED_LOCKED'
   | 'SCHEDULED_READY'
   | 'SCHEDULED_OVERDUE'
+  | 'SCHEDULED_PAUSED'
   | 'IN_PROGRESS'
   | 'IN_PROGRESS_OVERDUE'
   | 'COMPLETED'

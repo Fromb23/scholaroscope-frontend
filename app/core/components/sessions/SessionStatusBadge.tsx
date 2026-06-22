@@ -11,9 +11,10 @@ import { AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import type { Session } from '@/app/core/types/session';
 
-type SessionStatus = 'upcoming' | 'ongoing' | 'completed' | 'missed' | 'needs_completion';
+type SessionStatus = 'upcoming' | 'ongoing' | 'completed' | 'missed' | 'needs_completion' | 'paused';
 
 function getSessionStatus(session: Session, currentMinutes: number): SessionStatus {
+    if (session.schedule_state === 'SCHEDULED_PAUSED') return 'paused';
     if (session.schedule_state === 'SCHEDULED_OVERDUE') return 'missed';
     if (session.schedule_state === 'IN_PROGRESS_OVERDUE') return 'needs_completion';
     if (session.status === 'COMPLETED') return 'completed';
@@ -49,6 +50,7 @@ export function SessionStatusBadge({ session, currentMinutes }: SessionStatusBad
         ongoing: { label: 'In progress', variant: 'success' as const, Icon: CheckCircle },
         completed: { label: 'Completed', variant: 'default' as const, Icon: CheckCircle },
         missed: { label: 'Missed / overdue', variant: 'warning' as const, Icon: AlertTriangle },
+        paused: { label: 'Paused for break', variant: 'info' as const, Icon: Clock },
         needs_completion: { label: 'Needs completion', variant: 'danger' as const, Icon: AlertTriangle },
     }[status];
 

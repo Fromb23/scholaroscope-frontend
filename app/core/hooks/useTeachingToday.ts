@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import {
     useCurrentAcademicYear,
     useCurrentTerm,
@@ -19,6 +20,7 @@ import type {
     Term,
     TermCalendarEvent,
     TermCalendarEventType,
+    AcademicTodayMode,
 } from '@/app/core/types/academic';
 import type { AssessmentScore } from '@/app/core/types/assessment';
 import { AssessmentScoreStatus } from '@/app/core/types/assessment';
@@ -91,6 +93,7 @@ export interface TeachingTodayContext {
     setupStatus: AcademicSetupStatus | null;
     calendarEventsToday: TermCalendarEvent[];
     calendarAffectsLearning: boolean;
+    todayMode: AcademicTodayMode | null;
     normalTeachingExpected: boolean;
     learningDayState: LearningDayState;
     sessions: TeachingTodaySessionGroups;
@@ -162,7 +165,8 @@ function eventTypeMatches(
 function deriveLearningDayState(
     setupStatus: AcademicSetupStatus | null,
     currentTerm: Term | null,
-    calendarEventsToday: TermCalendarEvent[]
+    calendarEventsToday: TermCalendarEvent[],
+    todayMode: AcademicTodayMode | null
 ): LearningDayState {
     if (setupStatus && !setupStatus.complete) {
         return 'SETUP_BLOCKED';
@@ -170,6 +174,22 @@ function deriveLearningDayState(
 
     if (!currentTerm) {
         return 'NO_ACTIVE_TERM';
+    }
+
+    if (todayMode?.mode === 'MIDTERM_BREAK') {
+        return 'MIDTERM_BREAK';
+    }
+
+    if (todayMode?.mode === 'MIDTERM_EXAM') {
+        return 'EXAM_DAY';
+    }
+
+    if (todayMode?.mode === 'HOLIDAY') {
+        return 'HOLIDAY';
+    }
+
+    if (todayMode?.mode === 'TERM_CLOSED') {
+        return 'CLOSING_PERIOD';
     }
 
     if (eventTypeMatches(calendarEventsToday, ['PUBLIC_HOLIDAY'])) {
@@ -682,6 +702,12 @@ export function useTeachingToday(): UseTeachingTodayResult {
         refetch: refetchTeachingLoad,
     } = useMyTeachingLoad();
     const {
+        data: todayModeData,
+        isLoading: todayModeLoading,
+        error: todayModeError,
+        refetch: refetchTodayMode,
+    } = useAcademicTodayMode();
+    const {
         currentYear,
         loading: currentYearLoading,
         error: currentYearError,
@@ -744,9 +770,10 @@ export function useTeachingToday(): UseTeachingTodayResult {
         () => computeCurrentWeek(currentTerm, todayKey),
         [currentTerm, todayKey]
     );
+    const todayMode = todayModeData ?? null;
     const learningDayState = useMemo(
-        () => deriveLearningDayState(setupStatus ?? null, currentTerm, calendarEventsToday),
-        [calendarEventsToday, currentTerm, setupStatus]
+        () => deriveLearningDayState(setupStatus ?? null, currentTerm, calendarEventsToday, todayMode),
+        [calendarEventsToday, currentTerm, setupStatus, todayMode]
     );
     const normalTeachingExpected = useMemo(
         () => isNormalTeachingExpected(learningDayState),
@@ -812,6 +839,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
             refetchReviewSummary(),
             refetchScores(),
             refetchTeachingLoad(),
+            refetchTodayMode(),
         ]);
         const nextRefresh = new Date();
         setClock(nextRefresh);
@@ -825,6 +853,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         refetchScores,
         refetchSetupStatus,
         refetchTeachingLoad,
+        refetchTodayMode,
         refetchTodaySessions,
     ]);
 
@@ -846,6 +875,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         || reviewSummaryLoading
         || scoresLoading
         || teachingLoadLoading
+        || todayModeLoading
     );
     const error = setupStatusError?.message
         ?? currentYearError
@@ -856,6 +886,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         ?? reviewSummaryError
         ?? scoresError
         ?? teachingLoadError?.message
+        ?? todayModeError?.message
         ?? null;
 
     return {
@@ -867,6 +898,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
             setupStatus: setupStatus ?? null,
             calendarEventsToday,
             calendarAffectsLearning: calendarEventsToday.some((event) => event.affects_learning),
+            todayMode,
             normalTeachingExpected,
             learningDayState,
             sessions: sessionGroups,
