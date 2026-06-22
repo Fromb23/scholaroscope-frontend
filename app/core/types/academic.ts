@@ -117,6 +117,33 @@ export type TermCalendarEventType =
   | 'SCHOOL_EVENT'
   | 'OTHER';
 
+
+export type AcademicTodayModeValue =
+  | 'TEACHING'
+  | 'MIDTERM_BREAK'
+  | 'MIDTERM_EXAM'
+  | 'HOLIDAY'
+  | 'TERM_CLOSED';
+
+export interface AcademicTodayModeEvent {
+  id: number;
+  title: string;
+  event_type: TermCalendarEventType;
+  start_date: string;
+  end_date: string;
+  affects_learning: boolean;
+}
+
+export interface AcademicTodayMode {
+  mode: AcademicTodayModeValue;
+  event: AcademicTodayModeEvent | null;
+  message: string;
+  teaching_paused: boolean;
+  allows_cleanup: boolean;
+  allows_new_teaching: boolean;
+  resumes_on: string | null;
+}
+
 export interface TermCalendarEvent {
   id: number;
   organization: number;

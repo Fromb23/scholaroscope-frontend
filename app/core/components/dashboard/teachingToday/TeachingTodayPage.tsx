@@ -9,6 +9,7 @@ import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useTeachingToday } from '@/app/core/hooks/useTeachingToday';
+import { AcademicBreakDashboard } from './AcademicBreakDashboard';
 import { TeachingTodayAfterTeachingPanel } from './TeachingTodayAfterTeachingPanel';
 import { TeachingTodayCalendarNotice } from './TeachingTodayCalendarNotice';
 import { TeachingTodayHeader } from './TeachingTodayHeader';
@@ -38,11 +39,16 @@ export function TeachingTodayPage() {
 
     const pageLoading = loading || instructorAccess.isLoading;
     const setupBlocked = context.learningDayState === 'SETUP_BLOCKED';
+    const academicBreakVariant = context.todayMode?.mode === 'MIDTERM_BREAK'
+        ? 'break'
+        : context.todayMode?.mode === 'MIDTERM_EXAM'
+            ? 'exam'
+            : null;
     const promoteIncompletePanel = context.incomplete.length >= 5 && context.timeline.length <= 1;
 
     const assistantContext = useMemo(() => ({
         pageKey: 'teaching_today',
-        pageTitle: 'Teaching Today',
+        pageTitle: academicBreakVariant === 'break' ? 'Midterm Break' : academicBreakVariant === 'exam' ? 'Midterm Exams' : 'Teaching Today',
         state: {
             is_loading: pageLoading,
             learning_day_state: context.learningDayState,
@@ -50,6 +56,7 @@ export function TeachingTodayPage() {
             incomplete_records: context.incomplete.length,
             pending_assessment_review: context.afterTeaching.pendingAssessmentReviewCount,
             has_teaching_assignments: context.teachingLoad.length > 0,
+            academic_today_mode: context.todayMode?.mode ?? 'UNKNOWN',
         },
         visibleActions: [
             { label: "Open today's sessions", type: 'navigate' as const, href: '/sessions/today' },
@@ -67,12 +74,14 @@ export function TeachingTodayPage() {
             ? 'No sessions are scheduled for today.'
             : undefined,
     }), [
+        academicBreakVariant,
         context.afterTeaching.pendingAssessmentReviewCount,
         context.incomplete.length,
         context.learningDayState,
         context.nextAction,
         context.teachingLoad.length,
         context.timeline.length,
+        context.todayMode?.mode,
         pageLoading,
         setupBlocked,
     ]);
@@ -91,6 +100,18 @@ export function TeachingTodayPage() {
     if (!user || activeRole === null) return null;
     if (activeRole !== 'INSTRUCTOR') return null;
     if (pageLoading) return <LoadingSpinner message="Opening Teaching Today..." />;
+
+    if (academicBreakVariant) {
+        return (
+            <AcademicBreakDashboard
+                context={context}
+                lastRefresh={lastRefresh}
+                onRefresh={() => void handleRefresh()}
+                refreshing={refreshing}
+                variant={academicBreakVariant}
+            />
+        );
+    }
 
     return (
         <div className="mx-auto max-w-7xl space-y-5 px-0 sm:space-y-6">
