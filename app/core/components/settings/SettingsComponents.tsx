@@ -394,12 +394,27 @@ export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
 // ── MembersTab ────────────────────────────────────────────────────────────
 
 export function MembersTab() {
+    const { activeRole, user } = useAuth();
     const { invites, loading, error, fetchInvites, createInvite, revokeInvite } = useInvites();
     const [createOpen, setCreateOpen] = useState(false);
     const [revoking, setRevoking] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    useEffect(() => { fetchInvites(); }, [fetchInvites]);
+    const canInviteMembers = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+
+    useEffect(() => {
+        if (canInviteMembers) {
+            fetchInvites();
+        }
+    }, [canInviteMembers, fetchInvites]);
+
+    if (!canInviteMembers) {
+        return (
+            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
+                Only workspace administrators can invite members.
+            </div>
+        );
+    }
 
     const flash = (type: 'success' | 'error', message: string) => {
         setFeedback({ type, message });

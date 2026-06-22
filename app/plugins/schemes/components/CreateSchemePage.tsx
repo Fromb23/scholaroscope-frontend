@@ -111,8 +111,15 @@ function parseIntegerInput(value: string): number | null {
 export function CreateSchemePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeRole, user } = useAuth();
+  const { activeRole, capabilities, user } = useAuth();
   const isInstructor = activeRole === 'INSTRUCTOR';
+  const canAdminCreateOwnDraft = Boolean(
+    activeRole === 'ADMIN'
+    && capabilities.can_teach
+    && capabilities.is_workspace_owner
+    && capabilities.workspace_behavior === 'FREELANCE_TEACHER',
+  );
+  const isInstitutionalAdmin = activeRole === 'ADMIN' && !canAdminCreateOwnDraft;
   const { curricula, loading: curriculaLoading } = useCurricula();
   const { terms, loading: termsLoading } = useTerms();
   const { subjects, loading: subjectsLoading } = useSubjects();
@@ -120,10 +127,10 @@ export function CreateSchemePage() {
   const { generateScheme, submitting, error: generateError, clearError } = useGenerateScheme();
 
   const [adminCohortSubjects, setAdminCohortSubjects] = useState<CohortSubject[]>([]);
-  const [adminContextLoading, setAdminContextLoading] = useState(!isInstructor);
+  const [adminContextLoading, setAdminContextLoading] = useState(!isInstructor && !isInstitutionalAdmin);
   const [adminContextError, setAdminContextError] = useState<string | null>(null);
   const [adminTeachers, setAdminTeachers] = useState<Array<{ id: number; label: string }>>([]);
-  const [adminTeachersLoading, setAdminTeachersLoading] = useState(!isInstructor);
+  const [adminTeachersLoading, setAdminTeachersLoading] = useState(!isInstructor && !isInstitutionalAdmin);
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -148,7 +155,7 @@ export function CreateSchemePage() {
   const [generationFailure, setGenerationFailure] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isInstructor) {
+    if (isInstructor || isInstitutionalAdmin) {
       setAdminContextLoading(false);
       setAdminContextError(null);
       setAdminTeachersLoading(false);
@@ -210,7 +217,7 @@ export function CreateSchemePage() {
     return () => {
       active = false;
     };
-  }, [isInstructor]);
+  }, [isInstructor, isInstitutionalAdmin]);
 
   useEffect(() => {
     const requestedCohortSubjectId = searchParams.get('cohort_subject');
@@ -811,6 +818,20 @@ export function CreateSchemePage() {
   );
 
   useAssistantPageContext(assistantContext);
+
+  if (isInstitutionalAdmin) {
+    return (
+      <Card className="mx-auto max-w-xl space-y-4 p-6 text-center">
+        <h1 className="text-xl font-semibold theme-text">Schemes of Work Supervision</h1>
+        <p className="text-sm theme-muted">
+          Institutional admins supervise generated schemes by class, subject, and instructor progress. Draft scheme creation is reserved for assigned teachers.
+        </p>
+        <Link href="/schemes">
+          <Button type="button" variant="secondary">Back to supervision</Button>
+        </Link>
+      </Card>
+    );
+  }
 
   if (loading && currentStep === 1) {
     return <LoadingSpinner message="Loading scheme setup..." fullScreen={false} />;

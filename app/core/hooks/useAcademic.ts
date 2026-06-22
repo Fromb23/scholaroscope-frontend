@@ -7,7 +7,8 @@ import {
   curriculumAPI,
   subjectAPI,
   cohortAPI,
-  cohortSubjectAPI
+  cohortSubjectAPI,
+  learnerSubjectOptionsAPI
 } from '@/app/core/api/academic';
 import {
   AcademicYear,
@@ -19,6 +20,7 @@ import {
   Cohort,
   CohortDetail,
   CohortSubject,
+  LearnerSubjectOption,
 } from '@/app/core/types/academic';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -500,6 +502,47 @@ export const useSubjects = (curriculumId?: number, options?: { enabled?: boolean
   };
 
   return { subjects, loading, error, refetch: fetchSubjects, createSubject, updateSubject, deleteSubject };
+};
+
+export const useLearnerSubjectOptions = (
+  learnerId: number | null | undefined,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = Boolean(learnerId) && (options?.enabled ?? true);
+  const [subjectOptions, setSubjectOptions] = useState<LearnerSubjectOption[]>([]);
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSubjectOptions = useCallback(async () => {
+    if (!enabled || !learnerId) {
+      setSubjectOptions([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    try {
+      setLoading(true);
+      const data = await learnerSubjectOptionsAPI.getAll(learnerId);
+      setSubjectOptions(data.results ?? []);
+      setError(null);
+    } catch (err) {
+      setSubjectOptions([]);
+      setError(extractErrorMessage(err as ApiError, 'Failed to fetch learner subject options'));
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, learnerId]);
+
+  useEffect(() => {
+    void fetchSubjectOptions();
+  }, [fetchSubjectOptions]);
+
+  return {
+    subjectOptions,
+    loading,
+    error,
+    refetch: fetchSubjectOptions,
+  };
 };
 
 export const useSubjectDetail = (subjectId: number | null) => {

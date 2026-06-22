@@ -50,6 +50,10 @@ function readStoredThemeMode(): ScholaroscopeThemeMode {
 
   const storedMode = window.localStorage.getItem(THEME_MODE_STORAGE_KEY);
   if (isThemeMode(storedMode)) {
+    if (storedMode === 'CUSTOM') {
+      window.localStorage.setItem(THEME_MODE_STORAGE_KEY, 'DEFAULT');
+      return 'DEFAULT';
+    }
     return storedMode;
   }
 

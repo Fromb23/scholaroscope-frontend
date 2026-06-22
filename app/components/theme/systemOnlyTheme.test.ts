@@ -20,13 +20,14 @@ describe('explicit Scholaroscope theme modes', () => {
     expect(resolveThemeMode('CUSTOM')).toBe('light');
   });
 
-  it('renders real Default, Dark, and Custom choice buttons', () => {
+  it('renders real Default and Dark choice buttons while hiding custom by default', () => {
     const source = readFileSync(join(process.cwd(), 'app/components/theme/ThemeModeSelector.tsx'), 'utf8');
 
     expect(source).toContain('THEME_OPTIONS');
     expect(source).toContain("label: 'Default Scholaroscope'");
     expect(source).toContain("label: 'Scholaroscope Dark'");
-    expect(source).toContain("label: 'Organization Custom'");
+    expect(source).toContain("allowCustom = false");
+    expect(source).toContain("option.value !== 'CUSTOM' || allowCustom");
     expect(source).not.toContain('Dark mode follows your device settings.');
   });
 });

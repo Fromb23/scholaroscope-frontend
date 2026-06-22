@@ -272,6 +272,7 @@ function deriveCustomThemeTokens(inputTokens: Partial<ThemeTokens>): ThemeTokens
 function deriveThemeTokens(
   inputTokens: Partial<ThemeTokens>,
   themeMode: ThemeModeInput = 'DEFAULT',
+  useOrganizationBrand = false,
 ): ThemeTokens {
   const mode = coerceThemeMode(themeMode);
 
@@ -279,7 +280,7 @@ function deriveThemeTokens(
     return SCHOLAROSCOPE_DARK_TOKENS;
   }
 
-  if (mode === 'CUSTOM') {
+  if (mode === 'CUSTOM' || useOrganizationBrand) {
     return deriveCustomThemeTokens(inputTokens);
   }
 
@@ -292,11 +293,12 @@ export function normalizeEffectiveTheme(
 ): EffectiveThemeResponse {
   const mode = coerceThemeMode(themeMode);
   const tokens = theme?.tokens ?? DEFAULT_THEME_TOKENS;
+  const useOrganizationBrand = mode !== 'DARK' && Boolean(theme?.is_customized);
   return {
     ...DEFAULT_EFFECTIVE_THEME,
     ...theme,
     appearance_mode: theme?.appearance_mode ?? themeModeToAppearanceMode(mode),
-    tokens: deriveThemeTokens(tokens, mode),
+    tokens: deriveThemeTokens(tokens, mode, useOrganizationBrand),
     button_radius: Number.isFinite(theme?.button_radius)
       ? Math.min(Math.max(Number(theme?.button_radius), 0), 24)
       : DEFAULT_EFFECTIVE_THEME.button_radius,
@@ -397,7 +399,6 @@ export function applyThemeTokens(
 export function canEditOrganizationTheme({
   activeOrg,
   activeRole,
-  capabilities,
   user,
 }: {
   activeOrg: ActiveOrg | null;
@@ -413,7 +414,7 @@ export function canEditOrganizationTheme({
     return true;
   }
 
-  return activeRole === 'ADMIN' && capabilities.can_manage_academic_setup;
+  return activeRole === 'ADMIN';
 }
 
 export function isFreelanceWorkspaceTheme(activeOrg?: ActiveOrg | null, capabilities?: WorkspaceCapabilities | null): boolean {

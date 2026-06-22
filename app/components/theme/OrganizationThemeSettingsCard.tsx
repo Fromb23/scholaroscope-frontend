@@ -143,7 +143,7 @@ export function OrganizationThemeSettingsCard() {
   const { effectiveTheme, refetch } = useEffectiveTheme();
   const canEdit = canEditOrganizationTheme({ user, activeOrg, activeRole, capabilities });
   const isFreelance = isFreelanceWorkspaceTheme(activeOrg, capabilities);
-  const title = isFreelance ? 'Freelance workspace theme' : 'Organization theme';
+  const title = isFreelance ? 'Freelance workspace branding' : 'Organization branding';
   const [form, setForm] = useState<ThemeForm>(() => buildFormFromEffectiveTheme(effectiveTheme));
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -217,7 +217,7 @@ export function OrganizationThemeSettingsCard() {
         <div className="min-w-0">
           <CardTitle>{title}</CardTitle>
           <p className="mt-1 text-sm theme-muted">
-            Manage brand colors for {activeOrg?.name ?? 'this workspace'}.
+            Manage brand colors inherited by users in {activeOrg?.name ?? 'this workspace'} when they use Scholaroscope default light mode.
           </p>
         </div>
       </CardHeader>

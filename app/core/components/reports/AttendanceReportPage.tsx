@@ -27,12 +27,26 @@ import {
   parsePositiveReportParam,
   resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
-import { useCurrentTerm, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurrentTerm, useLearnerSubjectOptions, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useAdminAttendanceScopeReport } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import type { ReportExportFormat } from '@/app/core/types/reporting';
 import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+
+function focusReportPanel(panelId: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  window.setTimeout(() => {
+    const panel = document.getElementById(panelId);
+    if (!panel) {
+      return;
+    }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.focus({ preventScroll: true });
+  }, 0);
+}
 
 export function AttendanceReportPage() {
   const router = useRouter();
@@ -61,6 +75,10 @@ export function AttendanceReportPage() {
   const { terms, loading: termsLoading } = useTerms();
   const { cohorts, loading: cohortsLoading } = useCohorts();
   const { subjects, loading: subjectsLoading } = useSubjects();
+  const {
+    subjectOptions: learnerSubjectOptions,
+    loading: learnerSubjectOptionsLoading,
+  } = useLearnerSubjectOptions(selectedStudentId, { enabled: Boolean(selectedStudentId) });
   const { students: learnerMatches, loading: learnerSearchLoading } = useStudents(
     {
       q: learnerQuery.trim(),
@@ -106,6 +124,12 @@ export function AttendanceReportPage() {
     updateQuery({ term: report.term.id });
   }, [report?.term?.id, selectedTermId, updateQuery]);
 
+  useEffect(() => {
+    if (selectedStudentId && report) {
+      focusReportPanel('attendance-report-panel');
+    }
+  }, [report, selectedStudentId]);
+
   const handleExport = useCallback(async (format: ReportExportFormat) => {
     try {
       const file = await adminReportsAPI.exportAttendanceScope(format, {
@@ -129,6 +153,52 @@ export function AttendanceReportPage() {
 
   const noActiveTerm = !selectedTermId && !currentTermLoading && !currentTerm;
   const waitingForTerm = hasScope && !selectedTermId && currentTermLoading;
+  const subjectSelectValue = selectedCohortSubjectId
+    ? `cohortSubject:${selectedCohortSubjectId}`
+    : selectedSubjectId
+      ? `subject:${selectedSubjectId}`
+      : '';
+  const learnerScopedSubjectSelectOptions = learnerSubjectOptions.map((option) => ({
+    value: option.cohort_subject_id
+      ? `cohortSubject:${option.cohort_subject_id}`
+      : `subject:${option.subject_id}`,
+    label: `${option.subject_name}${option.subject_code ? ` (${option.subject_code})` : ''}${option.cohort_name ? ` — ${option.cohort_name}` : ''}`,
+  }));
+  const subjectSelectOptions = selectedStudentId
+    ? [
+        { value: '', label: learnerSubjectOptionsLoading ? 'Loading learner subjects...' : 'All learner subjects' },
+        ...learnerScopedSubjectSelectOptions,
+      ]
+    : [
+        { value: '', label: 'All subjects' },
+        ...subjects.map((subject) => ({
+          value: `subject:${subject.id}`,
+          label: `${subject.name} (${subject.code})`,
+        })),
+      ];
+
+  useEffect(() => {
+    if (!selectedStudentId || learnerSubjectOptionsLoading) {
+      return;
+    }
+    if (!selectedSubjectId && !selectedCohortSubjectId) {
+      return;
+    }
+    const valid = learnerSubjectOptions.some((option) => (
+      (selectedCohortSubjectId && option.cohort_subject_id === selectedCohortSubjectId)
+      || (!selectedCohortSubjectId && selectedSubjectId && option.subject_id === selectedSubjectId)
+    ));
+    if (!valid) {
+      updateQuery({ subject: null, cohortSubject: null });
+    }
+  }, [
+    learnerSubjectOptions,
+    learnerSubjectOptionsLoading,
+    selectedCohortSubjectId,
+    selectedStudentId,
+    selectedSubjectId,
+    updateQuery,
+  ]);
 
   return (
     <AdminReportAccessGate>
@@ -204,16 +274,27 @@ export function AttendanceReportPage() {
             />
             <Select
               label="Subject"
-              value={selectedSubjectId ? String(selectedSubjectId) : ''}
-              onChange={(event) => updateQuery({ subject: event.target.value ? Number(event.target.value) : null })}
-              disabled={subjectsLoading}
-              options={[
-                { value: '', label: 'All subjects' },
-                ...subjects.map((subject) => ({
-                  value: String(subject.id),
-                  label: `${subject.name} (${subject.code})`,
-                })),
-              ]}
+              value={subjectSelectValue}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (!value) {
+                  updateQuery({ subject: null, cohortSubject: null });
+                  return;
+                }
+                if (value.startsWith('cohortSubject:')) {
+                  updateQuery({
+                    cohortSubject: Number(value.replace('cohortSubject:', '')),
+                    subject: null,
+                  });
+                  return;
+                }
+                updateQuery({
+                  subject: Number(value.replace('subject:', '')),
+                  cohortSubject: null,
+                });
+              }}
+              disabled={selectedStudentId ? learnerSubjectOptionsLoading : subjectsLoading}
+              options={subjectSelectOptions}
             />
           </div>
         </Card>
@@ -245,7 +326,11 @@ export function AttendanceReportPage() {
                         subject: selectedSubjectId,
                       }),
                     })}
-                    className="block rounded-xl border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/40"
+                    className={`block rounded-xl border px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/40 ${
+                      selectedStudentId === student.id
+                        ? 'border-blue-400 bg-blue-50/70'
+                        : 'border-gray-200'
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -291,7 +376,11 @@ export function AttendanceReportPage() {
         ) : waitingForTerm || (loading && !report) ? (
           <LoadingSpinner message="Loading attendance report..." />
         ) : report ? (
-          <div className="space-y-6">
+          <div
+            id="attendance-report-panel"
+            tabIndex={-1}
+            className="space-y-6 focus:outline-none"
+          >
             <div className="flex flex-wrap gap-2">
               {report.scope.student ? <Badge variant="blue">{report.scope.student.name}</Badge> : null}
               {report.scope.cohort ? <Badge variant="indigo">{report.scope.cohort.name}</Badge> : null}

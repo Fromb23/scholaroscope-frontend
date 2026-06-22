@@ -1,7 +1,7 @@
 export type SessionLifecycleStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | string;
 
 export function shouldShowParticipatingCohorts(status: SessionLifecycleStatus | null | undefined): boolean {
-  return status !== 'COMPLETED' && status !== 'CANCELLED';
+  return Boolean(status);
 }
 
 export function shouldShowMergedCohortBadge({

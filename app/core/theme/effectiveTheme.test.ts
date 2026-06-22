@@ -86,19 +86,16 @@ function theme(overrides: Partial<EffectiveThemeResponse> = {}): EffectiveThemeR
 }
 
 describe('effective tenant theme utilities', () => {
-  it('DEFAULT ignores organization custom tokens and uses Scholaroscope light tokens', () => {
+  it('DEFAULT applies organization custom tokens when workspace branding exists', () => {
     const { target, values } = styleTarget();
 
     applyThemeTokens(theme(), target, 'DEFAULT');
 
-    expect(values.get('--brand-primary')).toBe(DEFAULT_THEME_TOKENS.brandPrimary);
-    expect(values.get('--brand-accent')).toBe(DEFAULT_THEME_TOKENS.brandAccent);
-    expect(values.get('--color-primary')).toBe(DEFAULT_THEME_TOKENS.buttonPrimary);
-    expect(values.get('--color-link')).toBe(DEFAULT_THEME_TOKENS.link);
-    expect(values.get('--color-focus-ring')).toBe(DEFAULT_THEME_TOKENS.focusRing);
-    expect(values.get('--color-app-bg')).toBe(DEFAULT_THEME_TOKENS.appBackground);
-    expect(values.get('--color-card')).toBe(DEFAULT_THEME_TOKENS.cardBackground);
-    expect(values.get('--color-border')).toBe(DEFAULT_THEME_TOKENS.border);
+    expect(values.get('--brand-primary')).toBe('#123456');
+    expect(values.get('--brand-accent')).toBe('#00AA77');
+    expect(values.get('--color-primary')).toBe('#123456');
+    expect(values.get('--color-link')).toBe('#123456');
+    expect(values.get('--color-focus-ring')).toBe('#123456');
   });
 
   it('CUSTOM applies organization colors to actions, links, selected states, and focus tokens', () => {
@@ -185,6 +182,16 @@ describe('effective tenant theme utilities', () => {
     expect(normalized.source).toBe('default');
     expect(normalized.tokens).toEqual(DEFAULT_THEME_TOKENS);
     expect(normalized.is_customized).toBe(false);
+  });
+
+  it('DEFAULT falls back to Scholaroscope light tokens when no org branding exists', () => {
+    const { target, values } = styleTarget();
+
+    applyThemeTokens(theme({ is_customized: false, source: 'default' }), target, 'DEFAULT');
+
+    expect(values.get('--brand-primary')).toBe(DEFAULT_THEME_TOKENS.brandPrimary);
+    expect(values.get('--color-primary')).toBe(DEFAULT_THEME_TOKENS.buttonPrimary);
+    expect(values.get('--color-border')).toBe(DEFAULT_THEME_TOKENS.border);
   });
 
   it('maps legacy backend appearance modes to explicit frontend theme modes', () => {
