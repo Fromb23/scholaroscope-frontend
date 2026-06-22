@@ -27,6 +27,7 @@ import {
   AcademicSetupStatus,
   SubjectCatalogItem,
   SubjectOfferingMutationPayload,
+  LearnerSubjectOptionsResponse,
 } from '@/app/core/types/academic';
 import { CohortSubjectOption } from '@/app/core/types/session';
 import { PaginatedResponse } from './sessions';
@@ -41,6 +42,15 @@ const KERNEL_COHORT_SUBJECTS_BASE = '/cohort-subjects';
 export const academicSetupAPI = {
   getStatus: async (): Promise<AcademicSetupStatus> => {
     const response = await apiClient.get<AcademicSetupStatus>('/academic/setup-status/');
+    return response.data;
+  },
+};
+
+export const learnerSubjectOptionsAPI = {
+  getAll: async (learnerId: number): Promise<LearnerSubjectOptionsResponse> => {
+    const response = await apiClient.get<LearnerSubjectOptionsResponse>(
+      `/academic/learners/${learnerId}/subject-options/`
+    );
     return response.data;
   },
 };

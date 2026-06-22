@@ -333,6 +333,11 @@ export function SessionDetailPage() {
     }, [activeCohorts, session]);
     const isMerged = activeParticipationCount > 1;
     const showParticipatingCohorts = shouldShowParticipatingCohorts(sessionStatus);
+    const participatingCohortsLockedReason = isCompleted
+        ? 'Completed lessons cannot be relinked. Attendance and evidence records are preserved.'
+        : isCancelled
+            ? 'Cancelled lessons cannot be relinked. Attendance and evidence records are preserved.'
+            : undefined;
     const showMergedBadge = shouldShowMergedCohortBadge({ isMerged, status: sessionStatus });
     const showPostLessonAssignmentActions = shouldShowPostLessonAssignmentActions();
 
@@ -2556,7 +2561,8 @@ export function SessionDetailPage() {
                 <ParticipatingCohorts
                     sessionId={sessionId}
                     isHistorical={isHistorical}
-                    canManageLinks={!isHistorical}
+                    canManageLinks={canCreateTeachingRecords && !isHistorical && !isCompleted && !isCancelled}
+                    lockedReason={participatingCohortsLockedReason}
                     onParticipationChanged={handleParticipationChanged}
                     primaryCohort={{
                         id: session.cohort_id,

@@ -41,7 +41,7 @@ export const THEME_OPTIONS: Array<{
 export function ThemeModeSelector({
   compact = false,
   className = '',
-  allowCustom = true,
+  allowCustom = false,
   disabledModes = [],
   onModeChange,
 }: ThemeModeSelectorProps) {
@@ -54,7 +54,7 @@ export function ThemeModeSelector({
 
   return (
     <div className={`grid gap-3 ${compact ? '' : 'sm:grid-cols-3'} ${className}`}>
-      {THEME_OPTIONS.map((option) => {
+      {THEME_OPTIONS.filter((option) => option.value !== 'CUSTOM' || allowCustom).map((option) => {
         const Icon = option.icon;
         const selected = themeMode === option.value;
         const disabled = disabledModes.includes(option.value) || (option.value === 'CUSTOM' && !allowCustom);

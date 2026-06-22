@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { apiClient } from '@/app/core/api/client';
+import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
 
@@ -77,7 +78,10 @@ export function useInvites() {
             return invite;
         } catch (error) {
             const data = (error as { response?: { data?: object } }).response?.data ?? {};
-            throw Object.assign(new Error('Failed to create invite'), { data });
+            throw Object.assign(
+                new Error(extractErrorMessage(error as ApiError, 'Failed to create invite')),
+                { data },
+            );
         }
     }, [fetchInvites]);
 

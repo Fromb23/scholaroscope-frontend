@@ -27,7 +27,8 @@ function GeneralTab() {
 function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeOrg, capabilities } = useAuth();
+  const { activeOrg, activeRole, capabilities, loading, user } = useAuth();
+  const canManageSettings = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
   const isFreelance = activeOrg?.org_type === 'PERSONAL'
     || capabilities.workspace_behavior === 'FREELANCE_TEACHER';
 
@@ -42,6 +43,28 @@ function SettingsContent() {
     ? tabParam
     : (searchParams.get('plugin') ? 'plugins' : 'general');
   const cameFromCurricula = searchParams.get('from') === 'curricula';
+
+  if (loading) {
+    return <div className="p-6 text-sm theme-subtle">Loading settings...</div>;
+  }
+
+  if (!canManageSettings) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4">
+        <Card className="space-y-4 p-6 text-center">
+          <h1 className="text-xl font-semibold theme-text">You do not have permission to manage organization settings.</h1>
+          <p className="text-sm theme-muted">Organization settings are available to workspace administrators.</p>
+          <div className="flex justify-center gap-2">
+            <Link href={activeRole === 'INSTRUCTOR' ? '/profile' : '/dashboard'}>
+              <Button type="button" variant="secondary">
+                Back to {activeRole === 'INSTRUCTOR' ? 'Profile' : 'Dashboard'}
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   const setActiveTab = (tab: Tab) => {
     const params = new URLSearchParams(searchParams.toString());

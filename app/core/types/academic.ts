@@ -525,6 +525,25 @@ export interface CohortSubject {
   current_instructor_name?: string | null;
 }
 
+export interface LearnerSubjectOption {
+  id: string;
+  source: 'kernel' | 'cbc' | 'cambridge';
+  subject_id: number | null;
+  subject_name: string;
+  subject_code: string;
+  cohort_subject_id: number | null;
+  cohort_id: number | null;
+  cohort_name: string;
+  curriculum_type: string;
+  active: boolean;
+  enrolled: boolean;
+}
+
+export interface LearnerSubjectOptionsResponse {
+  learner: number;
+  results: LearnerSubjectOption[];
+}
+
 export interface CohortSubjectLearnerCounts {
   enrolled: number;
   available: number;

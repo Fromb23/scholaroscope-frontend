@@ -56,6 +56,20 @@ function SearchResultSkeleton() {
   );
 }
 
+function focusReportPanel(panelId: string) {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  window.setTimeout(() => {
+    const panel = document.getElementById(panelId);
+    if (!panel) {
+      return;
+    }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.focus({ preventScroll: true });
+  }, 0);
+}
+
 export function StudentsReportPage({
   studentIdFromRoute = null,
 }: {
@@ -131,6 +145,12 @@ export function StudentsReportPage({
     }
     updateQuery({ term: reportCard.term.id });
   }, [reportCard?.term?.id, selectedTermId, updateQuery]);
+
+  useEffect(() => {
+    if (selectedStudentId && reportCard) {
+      focusReportPanel('learner-report-panel');
+    }
+  }, [reportCard, selectedStudentId]);
 
   const handleExport = async (format: ReportExportFormat) => {
     if (!selectedStudentId) {
@@ -281,7 +301,11 @@ export function StudentsReportPage({
                     <Link
                       key={student.id}
                       href={href}
-                      className="block rounded-xl border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/40"
+                      className={`block rounded-xl border px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/40 ${
+                        selectedStudentId === student.id
+                          ? 'border-blue-400 bg-blue-50/70'
+                          : 'border-gray-200'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -315,7 +339,11 @@ export function StudentsReportPage({
           ) : waitingForTerm || (reportLoading && !reportCard) ? (
             <LoadingSpinner message="Loading learner report..." />
           ) : reportCard ? (
-            <div className="space-y-6 min-w-0 max-w-full">
+            <div
+              id="learner-report-panel"
+              tabIndex={-1}
+              className="space-y-6 min-w-0 max-w-full focus:outline-none"
+            >
               <Card className="max-w-full">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">

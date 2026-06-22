@@ -88,6 +88,7 @@ function SchemeCard({
   onDownloadDocx,
   onDownloadCsv,
   onOpen,
+  openLabel,
 }: {
   scheme: SchemeOfWork;
   downloading: boolean;
@@ -95,6 +96,7 @@ function SchemeCard({
   onDownloadDocx: () => void;
   onDownloadCsv: () => void;
   onOpen: () => void;
+  openLabel?: string;
 }) {
   return (
     <Card className="space-y-4">
@@ -130,7 +132,7 @@ function SchemeCard({
           </Button>
           <Button type="button" size="sm" onClick={onOpen}>
             <Eye className="h-4 w-4" />
-            {scheme.is_historical ? 'Open' : 'Open/Edit'}
+            {openLabel ?? (scheme.is_historical ? 'Open' : 'Open/Edit')}
           </Button>
         </div>
       </div>
@@ -195,7 +197,7 @@ function buildAdminSchemeGroups(
     let groupKey = `cohort:${scheme.cohort ?? cohortLabel}`;
     let groupLabel = cohortLabel;
     let groupDescription = "Class view starts from learners' classroom context.";
-    let sectionKey = `subject:${scheme.subject ?? subjectLabel}`;
+    let sectionKey = `cohort-subject:${scheme.cohort_subject ?? scheme.subject ?? subjectLabel}`;
     let sectionLabel = subjectLabel;
     let sectionDescription = `Teacher: ${instructorLabel}`;
 
@@ -261,9 +263,16 @@ function buildAdminSchemeGroups(
 
 export function SchemesPage() {
   const router = useRouter();
-  const { activeRole, user } = useAuth();
+  const { activeRole, capabilities, user } = useAuth();
   const isInstructor = activeRole === 'INSTRUCTOR';
   const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+  const canUseTeacherModeAsAdmin = Boolean(
+    activeRole === 'ADMIN'
+    && capabilities.can_teach
+    && capabilities.is_workspace_owner
+    && capabilities.workspace_behavior === 'FREELANCE_TEACHER',
+  );
+  const isInstitutionalAdminSupervisor = isAdminLike && !isInstructor && !canUseTeacherModeAsAdmin;
   const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
   const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
   const [search, setSearch] = useState('');
@@ -295,6 +304,7 @@ export function SchemesPage() {
       : selectedInstructorId,
   }), [isInstructor, selectedInstructorId, subjectFilter, termFilter, user?.id, viewMode]);
   const { schemes, loading, error, downloadSchemeDocx, downloadSchemeCsv } = useSchemes(schemeFilters);
+  const showCreateDraft = isInstructor || (canUseTeacherModeAsAdmin && viewMode === 'my_teaching');
   const createButtonLabel = isInstructor || viewMode === 'my_teaching'
     ? 'Create my draft scheme'
     : 'Create draft scheme';
@@ -449,19 +459,25 @@ export function SchemesPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold theme-text">
-            {isInstructor ? 'My Schemes of Work' : 'Schemes of Work'}
+            {isInstructor
+              ? 'My Schemes of Work'
+              : isInstitutionalAdminSupervisor
+                ? 'Schemes of Work Supervision'
+                : 'Schemes of Work'}
           </h1>
           <p className="mt-1 text-sm theme-subtle">{subtitle}</p>
         </div>
-        <Link href="/schemes/new">
-          <Button type="button">
-            <Plus className="h-4 w-4" />
-            {createButtonLabel}
-          </Button>
-        </Link>
+        {showCreateDraft ? (
+          <Link href="/schemes/new">
+            <Button type="button">
+              <Plus className="h-4 w-4" />
+              {createButtonLabel}
+            </Button>
+          </Link>
+        ) : null}
       </div>
 
-      {isAdminLike ? (
+      {isAdminLike && !isInstitutionalAdminSupervisor ? (
         <Card>
           <div className="space-y-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -480,14 +496,16 @@ export function SchemesPage() {
                 >
                   Admin supervision
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
-                  onClick={() => setViewMode('my_teaching')}
-                >
-                  My Teaching
-                </Button>
+                {canUseTeacherModeAsAdmin ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                    onClick={() => setViewMode('my_teaching')}
+                  >
+                    My Teaching
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -605,17 +623,21 @@ export function SchemesPage() {
             <p className="mt-1 text-sm theme-subtle">
               {viewMode === 'my_teaching'
                 ? 'No schemes are visible in your My Teaching view yet.'
-                : 'Create a draft scheme from your term plan.'}
+                : isInstitutionalAdminSupervisor
+                  ? 'Generated schemes will appear here by class, subject, and responsible instructor.'
+                  : 'Create a draft scheme from your term plan.'}
             </p>
           </div>
-          <div className="flex justify-center">
-            <Link href="/schemes/new">
-              <Button type="button">
-                <Plus className="h-4 w-4" />
-                {createButtonLabel}
-              </Button>
-            </Link>
-          </div>
+          {showCreateDraft ? (
+            <div className="flex justify-center">
+              <Link href="/schemes/new">
+                <Button type="button">
+                  <Plus className="h-4 w-4" />
+                  {createButtonLabel}
+                </Button>
+              </Link>
+            </div>
+          ) : null}
         </Card>
       ) : isAdminLike && viewMode === 'admin_supervision' ? (
         adminGroupedSchemes.map((group) => (
@@ -643,7 +665,21 @@ export function SchemesPage() {
                       downloadingCsv={downloadingCsvId === scheme.id}
                       onDownloadDocx={() => void handleDownloadDocx(scheme.id)}
                       onDownloadCsv={() => void handleDownloadCsv(scheme.id)}
-                      onOpen={() => router.push(`/schemes/${scheme.id}`)}
+                      openLabel="Instructor progress"
+                      onOpen={() => {
+                        if (!scheme.teacher) {
+                          router.push(`/schemes/${scheme.id}`);
+                          return;
+                        }
+                        const params = new URLSearchParams({ section: 'schemes' });
+                        if (scheme.cohort) {
+                          params.set('cohort', String(scheme.cohort));
+                        }
+                        if (scheme.cohort_subject) {
+                          params.set('subject', String(scheme.cohort_subject));
+                        }
+                        router.push(`/admin/instructors/${scheme.teacher}/progress?${params.toString()}`);
+                      }}
                     />
                   ))}
                 </div>

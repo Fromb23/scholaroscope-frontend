@@ -42,6 +42,7 @@ interface ParticipatingCohortsProps {
     sessionId: number;
     isHistorical?: boolean;
     canManageLinks?: boolean;
+    lockedReason?: string;
     onParticipationChanged?: () => Promise<void> | void;
     primaryCohort?: {
         id: number;
@@ -54,6 +55,7 @@ export function ParticipatingCohorts({
     sessionId,
     isHistorical = false,
     canManageLinks = true,
+    lockedReason,
     onParticipationChanged,
     primaryCohort,
 }: ParticipatingCohortsProps) {
@@ -195,6 +197,12 @@ export function ParticipatingCohorts({
                                 </div>
                             </div>
                         </div>
+
+                        {lockedReason ? (
+                            <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
+                                {lockedReason}
+                            </div>
+                        ) : null}
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="theme-card-muted rounded-lg px-4 py-3">

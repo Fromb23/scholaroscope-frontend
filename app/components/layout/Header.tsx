@@ -2,17 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2, Plus, Settings } from 'lucide-react';
+import { Menu, User, LogOut, Building2, ChevronDown, Check, Loader2, Plus, Settings, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import { useTheme } from '@/app/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { useSidebar } from '@/app/context/SidebarContext';
 import { GlobalPeopleSearch } from '@/app/components/layout/GlobalPeopleSearch';
 import { NotificationBell } from '@/app/components/layout/NotificationBell';
+import { themeAPI } from '@/app/core/api/theme';
+import { themeModeToAppearanceMode } from '@/app/core/theme/effectiveTheme';
 
 export default function Header() {
   const { user, activeOrg, activeRole, memberships, logout, switchOrg } = useAuth();
+  const { themeMode, setThemeMode, isDark } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { toggleSidebar } = useSidebar();
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
@@ -22,6 +26,13 @@ export default function Header() {
   const handleLogout = async () => {
     await logout();
     router.push('/login');
+  };
+  const handleToggleTheme = () => {
+    const nextMode = themeMode === 'DARK' ? 'DEFAULT' : 'DARK';
+    setThemeMode(nextMode);
+    void themeAPI.updateMyThemePreference({
+      appearance_mode: themeModeToAppearanceMode(nextMode),
+    }).catch(() => undefined);
   };
 
   const handleSwitchOrg = async (orgId: number) => {
@@ -49,6 +60,7 @@ export default function Header() {
   // Superadmins never see workspace controls
   const showWorkspaceControl = user && !user.is_superadmin;
   const showPeopleSearch = !!user && (user.is_superadmin || activeRole === 'ADMIN');
+  const showSettingsLink = !!user && (user.is_superadmin || activeRole === 'ADMIN');
 
   return (
     <header className="theme-header sticky top-0 z-30 flex h-16 items-center justify-between border-b theme-border px-4 lg:px-6">
@@ -171,14 +183,26 @@ export default function Header() {
                   <User className="h-4 w-4" />
                   View Profile
                 </Link>
-                <Link
-                  href={user?.is_superadmin ? '/superadmin/settings' : '/admin/settings'}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-sm theme-text theme-hover-surface"
-                >
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
+                {showSettingsLink ? (
+                  <Link
+                    href={user?.is_superadmin ? '/superadmin/settings' : '/admin/settings'}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-sm theme-text theme-hover-surface"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+                ) : null}
                 <div className="border-t theme-border pt-2">
+                  <button
+                    onClick={handleToggleTheme}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-2 text-sm theme-text theme-hover-surface"
+                  >
+                    <span className="flex items-center gap-3">
+                      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                      {isDark ? 'Scholaroscope Light' : 'Scholaroscope Dark'}
+                    </span>
+                    <span className="text-xs theme-subtle">{isDark ? 'On' : 'Off'}</span>
+                  </button>
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-3 px-4 py-2 text-sm text-[color:var(--color-danger)] theme-hover-danger"
