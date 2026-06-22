@@ -16,6 +16,7 @@ import { useSidebar } from '@/app/context/SidebarContext';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
@@ -43,6 +44,9 @@ export default function Sidebar() {
   const { curricula } = useCurricula();
   const academicSetupQuery = useAcademicSetupStatus({
     enabled: capabilities.can_manage_academic_setup && Boolean(activeOrg),
+  });
+  const academicTodayModeQuery = useAcademicTodayMode({
+    enabled: activeRole === 'INSTRUCTOR' && Boolean(activeOrg),
   });
   const instructorAccess = useInstructorCohortAccess();
   const badges = useNavBadges();
@@ -98,7 +102,7 @@ export default function Sidebar() {
       );
     }
     if (activeRole === 'INSTRUCTOR') {
-      return getInstructorNav(pluginNavigationContext);
+      return getInstructorNav(pluginNavigationContext, academicTodayModeQuery.data?.mode ?? null);
     }
     return { primary: [] };
   }, [
@@ -106,6 +110,7 @@ export default function Sidebar() {
     activeOrg?.org_type,
     activeRole,
     pluginNavigationContext,
+    academicTodayModeQuery.data?.mode,
     academicSetupQuery.data,
     capabilities,
   ]);
