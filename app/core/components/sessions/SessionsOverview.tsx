@@ -57,6 +57,29 @@ function parseCohortId(rawValue: string | null) {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function parsePositiveId(rawValue: string | null) {
+    if (!rawValue) return null;
+    const parsed = Number(rawValue);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseIdList(rawValue: string | null): Set<number> {
+    if (!rawValue) return new Set<number>();
+
+    return new Set(
+        rawValue
+            .split(',')
+            .map((value) => Number(value.trim()))
+            .filter((value) => Number.isInteger(value) && value > 0)
+    );
+}
+
+function isPendingCleanupSession(session: Session) {
+    return session.status === 'IN_PROGRESS'
+        || Boolean(session.needs_completion)
+        || session.schedule_state === 'IN_PROGRESS_OVERDUE';
+}
+
 function sortSessionsByDate(sessions: Session[]) {
     return [...sessions].sort((left, right) => {
         const leftTimestamp = new Date(`${left.session_date}T${left.start_time ?? '00:00:00'}`).getTime();
@@ -371,6 +394,7 @@ function CohortSessionsCards({
 
 function SessionWorkspaceView() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { activeOrg, activeRole, user, capabilities } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
@@ -399,6 +423,17 @@ function SessionWorkspaceView() {
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const [selectedCohortId, setSelectedCohortId] = useState<number | undefined>();
     const [selectedInstructorFilter, setSelectedInstructorFilter] = useState('');
+    const cleanupFilterActive = searchParams.get('filter') === 'pending_cleanup'
+        || searchParams.get('status') === 'needs_completion';
+    const cleanupSessionIds = useMemo(
+        () => parseIdList(searchParams.get('ids')),
+        [searchParams]
+    );
+    const selectedCohortSubjectId = parsePositiveId(searchParams.get('cohort_subject'));
+    const source = searchParams.get('source');
+    const returnTo = searchParams.get('returnTo');
+    const midtermCleanupView = cleanupFilterActive && source === 'midterm';
+    const safeReturnTo = returnTo?.startsWith('/') ? returnTo : null;
     const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || viewMode === 'my_teaching');
     const selectedInstructorId = useMemo(() => {
         if (!selectedInstructorFilter.startsWith('id:')) {
@@ -411,6 +446,7 @@ function SessionWorkspaceView() {
     const { instructors } = useInstructors({ enabled: isAdminLike });
     const { sessions, loading, error, refetch } = useSessions({
         term: selectedTerm,
+        cohort_subject: selectedCohortSubjectId ?? undefined,
         session_type: selectedType,
         cohort_subject__cohort: selectedCohortId,
         instructor_id: isAdminLike
@@ -424,7 +460,7 @@ function SessionWorkspaceView() {
         () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
         [curricula]
     );
-    const workspaceBackHref = isInstructor ? '/dashboard/instructor' : '/dashboard/admin';
+    const workspaceBackHref = safeReturnTo ?? (isInstructor ? '/dashboard/instructor' : '/dashboard/admin');
     const actionLabel = effectiveMyTeachingMode
         ? 'Prepare a lesson'
         : 'Create lesson plan';
@@ -516,6 +552,15 @@ function SessionWorkspaceView() {
                 return false;
             }
 
+            if (cleanupFilterActive) {
+                if (cleanupSessionIds.size > 0 && !cleanupSessionIds.has(session.id)) {
+                    return false;
+                }
+                if (!isPendingCleanupSession(session)) {
+                    return false;
+                }
+            }
+
             if (isAdminLike && effectiveMyTeachingMode) {
                 return matchesMyTeachingSession(session);
             }
@@ -529,6 +574,8 @@ function SessionWorkspaceView() {
     ), [
         effectiveMyTeachingMode,
         isAdminLike,
+        cleanupFilterActive,
+        cleanupSessionIds,
         selectedCohortId,
         selectedInstructorFilter,
         selectedTerm,
@@ -552,6 +599,15 @@ function SessionWorkspaceView() {
                 return false;
             }
 
+            if (cleanupFilterActive) {
+                if (cleanupSessionIds.size > 0 && !cleanupSessionIds.has(session.id)) {
+                    return false;
+                }
+                if (!isPendingCleanupSession(session)) {
+                    return false;
+                }
+            }
+
             if (isAdminLike && effectiveMyTeachingMode) {
                 return matchesMyTeachingSession(session);
             }
@@ -565,6 +621,8 @@ function SessionWorkspaceView() {
     ), [
         effectiveMyTeachingMode,
         isAdminLike,
+        cleanupFilterActive,
+        cleanupSessionIds,
         selectedCohortId,
         selectedInstructorFilter,
         selectedTerm,
@@ -691,11 +749,11 @@ function SessionWorkspaceView() {
 
     const assistantContext = useMemo(() => ({
         pageKey: 'sessions_overview',
-        pageTitle: effectiveMyTeachingMode ? 'My Lessons' : 'Scheduled Lessons',
+        pageTitle: midtermCleanupView ? 'Pending Lesson Reflections' : effectiveMyTeachingMode ? 'My Lessons' : 'Scheduled Lessons',
         state: {
             is_loading: loading,
             is_empty: !loading && !error && visibleSessions.length === 0,
-            no_results: !loading && Boolean(selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter) && visibleSessions.length === 0,
+            no_results: !loading && Boolean(selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter || cleanupFilterActive) && visibleSessions.length === 0,
             today_lessons: todayCount,
             has_priority_lesson: Boolean(priorityTodayAction),
         },
@@ -729,7 +787,7 @@ function SessionWorkspaceView() {
         workflowStep: todayCount > 0 ? 'scheduled_lessons' : 'plan_then_schedule',
         emptyStateReason: !loading && !error && visibleSessions.length === 0
             ? 'No lessons are scheduled yet.'
-            : (!loading && Boolean(selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter) && visibleSessions.length === 0
+            : (!loading && Boolean(selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter || cleanupFilterActive) && visibleSessions.length === 0
                 ? 'No lessons match the current filters.'
                 : undefined),
     }), [
@@ -739,7 +797,9 @@ function SessionWorkspaceView() {
         effectiveMyTeachingMode,
         error,
         isInstructor,
+        cleanupFilterActive,
         loading,
+        midtermCleanupView,
         priorityTodayAction,
         selectedCohortId,
         selectedInstructorFilter,
@@ -999,7 +1059,7 @@ function SessionWorkspaceView() {
                 <Link href={workspaceBackHref}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="h-4 w-4" />
-                        Back to Dashboard
+                        {midtermCleanupView ? 'Back to Midterm Break' : 'Back to Dashboard'}
                     </Button>
                 </Link>
             </div>
@@ -1007,15 +1067,32 @@ function SessionWorkspaceView() {
             <div className="flex justify-between items-start gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold theme-text">
-                        {effectiveMyTeachingMode ? 'My Lessons' : 'Scheduled Lessons'}
+                        {midtermCleanupView ? 'Pending Lesson Reflections' : effectiveMyTeachingMode ? 'My Lessons' : 'Scheduled Lessons'}
                     </h1>
                     <p className="mt-1 text-sm theme-muted">
-                        {effectiveMyTeachingMode
+                        {midtermCleanupView
+                            ? 'Only lesson records that still need a reflection or closing step are shown.'
+                            : effectiveMyTeachingMode
                             ? 'Start lessons, take attendance, and complete your teaching records.'
                             : 'Admin supervision shows organization work by class, instructor, and subject.'}
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                    {midtermCleanupView && safeReturnTo ? (
+                        <Link href={safeReturnTo}>
+                            <Button variant="ghost" size="sm">
+                                <ArrowLeft className="w-4 h-4 mr-1" />
+                                Back to Midterm Break
+                            </Button>
+                        </Link>
+                    ) : null}
+                    {cleanupFilterActive ? (
+                        <Link href="/sessions">
+                            <Button variant="secondary" size="sm">
+                                Clear lesson filter
+                            </Button>
+                        </Link>
+                    ) : null}
                     {!isInstructor ? (
                         <Link href="/sessions/today">
                             <Button variant="primary" size="sm">
@@ -1339,6 +1416,7 @@ function SessionWorkspaceView() {
                         </h3>
                         <p className="mt-1 text-sm theme-muted">
                             {selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter
+                                || cleanupFilterActive
                                 ? 'Try adjusting your filters'
                                 : effectiveMyTeachingMode
                                     ? 'No lessons scheduled yet. Prepare a lesson plan or check your assigned classes.'
@@ -1346,7 +1424,7 @@ function SessionWorkspaceView() {
                                         ? 'No scheduled sessions match the current supervision view. Filter by instructor or open reports to review teaching activity.'
                                         : 'No scheduled sessions match the current supervision view.'}
                         </p>
-                        {!selectedTerm && !selectedType && !selectedCohortId && !selectedInstructorFilter ? (
+                        {!selectedTerm && !selectedType && !selectedCohortId && !selectedInstructorFilter && !cleanupFilterActive ? (
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
                                 {canPlanLesson && canCreateTeachingRecords ? (
                                     <Link href="/lesson-plans/new" className="w-full sm:w-auto">

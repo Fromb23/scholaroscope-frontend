@@ -23,9 +23,10 @@ const pluginContext = {
 };
 
 let getAdminNav: typeof import('./navConfig').getAdminNav;
+let getInstructorNav: typeof import('./navConfig').getInstructorNav;
 
 beforeAll(async () => {
-  ({ getAdminNav } = await import('./navConfig'));
+  ({ getAdminNav, getInstructorNav } = await import('./navConfig'));
 });
 
 describe('admin navigation config', () => {
@@ -153,5 +154,20 @@ describe('admin navigation config', () => {
       'Create current academic year',
     ]);
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
+  });
+
+  it('renames instructor dashboard navigation during midterm modes', () => {
+    expect(getInstructorNav(pluginContext, 'MIDTERM_BREAK').primary[0]).toMatchObject({
+      name: 'Midterm Break',
+      href: '/dashboard/instructor',
+    });
+    expect(getInstructorNav(pluginContext, 'MIDTERM_EXAM').primary[0]).toMatchObject({
+      name: 'Midterm Exams',
+      href: '/dashboard/instructor',
+    });
+    expect(getInstructorNav(pluginContext, 'TEACHING').primary[0]).toMatchObject({
+      name: 'Teaching Today',
+      href: '/dashboard/instructor',
+    });
   });
 });

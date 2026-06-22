@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { AcademicBreakDashboard } from './AcademicBreakDashboard';
 import type { TeachingTodayContext } from '@/app/core/hooks/useTeachingToday';
 import type { Session } from '@/app/core/types/session';
+import { AssessmentScoreStatus } from '@/app/core/types/assessment';
 
 function buildSession(overrides: Partial<Session> = {}): Session {
     return {
@@ -140,10 +141,34 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
         nextAction: null,
         afterTeaching: {
             pendingAssessmentReviewCount: 3,
-            pendingReviewRows: [],
+            pendingReviewRows: [
+                {
+                    id: 201,
+                    assessment: 41,
+                    assessment_name: 'Computer Studies CAT',
+                    subject_name: 'Computer Studies',
+                    student: 99,
+                    student_name: 'Brian Otieno',
+                    student_admission: 'ADM-099',
+                    score: null,
+                    total_marks: 30,
+                    percentage: null,
+                    rubric_level: null,
+                    rubric_level_label: null,
+                    rubric_level_code: null,
+                    status: AssessmentScoreStatus.PENDING_REVIEW,
+                    status_display: 'Pending review',
+                    is_pending_review: true,
+                    comments: '',
+                    submitted_at: null,
+                    graded_at: '',
+                    graded_by: '',
+                },
+            ],
         },
         teachingLoad: [
             {
+                cohort_subject_id: 4,
                 cohort_id: 2,
                 cohort_name: 'Grade 10 East',
                 subject_id: 7,
@@ -173,15 +198,19 @@ function renderDashboard(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM') {
 }
 
 describe('AcademicBreakDashboard', () => {
-    it('replaces normal teaching pressure during midterm break with soft copy and cleanup options', () => {
+    it('uses teacher-facing midterm break copy and avoids system labels', () => {
         const html = renderDashboard('MIDTERM_BREAK');
 
         expect(html).toContain('Midterm Break');
-        expect(html).toContain('Teaching is paused for the midterm break');
-        expect(html).toContain('No normal teaching sessions are expected today.');
+        expect(html).toContain('Enjoy the break. A few things are ready when you want to review them.');
+        expect(html).toContain('No normal classes are expected today.');
         expect(html).toContain('This lesson record can be finished when you are ready.');
-        expect(html).toContain('Reports &amp; intelligence');
+        expect(html).toContain('A few things Scholaroscope noticed');
         expect(html).toContain('After the break');
+        expect(html).not.toContain('Soft review mode');
+        expect(html).not.toContain('Teaching paused');
+        expect(html).not.toContain('Cleanup available');
+        expect(html).not.toContain('gentle reminder');
         expect(html).not.toContain('Start lesson');
         expect(html).not.toContain('Take attendance');
         expect(html).not.toContain('You are behind');
@@ -189,12 +218,64 @@ describe('AcademicBreakDashboard', () => {
         expect(html).not.toContain('inactive');
     });
 
+    it('routes pending lesson reflection actions to the filtered cleanup sessions view', () => {
+        const html = renderDashboard('MIDTERM_BREAK');
+
+        expect(html).toContain('/sessions?filter=pending_cleanup');
+        expect(html).toContain('status=needs_completion');
+        expect(html).toContain('ids=11');
+        expect(html).toContain('cohort_subject=4');
+        expect(html).toContain('source=midterm');
+        expect(html).toContain('returnTo=%2Fdashboard%2Finstructor%3Fmode%3Dmidterm');
+    });
+
+    it('preserves return state on individual pending lesson links', () => {
+        const html = renderDashboard('MIDTERM_BREAK');
+
+        expect(html).toContain('/sessions/11?source=midterm&amp;returnTo=%2Fdashboard%2Finstructor%3Fmode%3Dmidterm');
+    });
+
+    it('routes assignment review to the cohort subject assignment workspace', () => {
+        const html = renderDashboard('MIDTERM_BREAK');
+
+        expect(html).toContain('/academic/cohorts/2/assignments?cohort_subject=4');
+        expect(html).toContain('review=needs_review');
+        expect(html).toContain('returnTo=%2Fdashboard%2Finstructor%3Fmode%3Dmidterm');
+    });
+
+    it('renders real context-derived intelligence cards with specific report routes', () => {
+        const html = renderDashboard('MIDTERM_BREAK');
+
+        expect(html).toContain('Brian Otieno may need a closer look before learning resumes.');
+        expect(html).toContain('/reports/attendance?term=3&amp;student=99&amp;subject=7');
+        expect(html).toContain('View attendance pattern');
+        expect(html).toContain('/reports/intelligence?source=midterm');
+    });
+
+    it('shows a calm empty intelligence state when no insights exist', () => {
+        const context = buildContext('MIDTERM_BREAK');
+        context.incomplete = [];
+        context.afterTeaching.pendingAssessmentReviewCount = 0;
+        context.afterTeaching.pendingReviewRows = [];
+        context.teachingLoad = [];
+
+        const html = renderToStaticMarkup(
+            createElement(AcademicBreakDashboard, {
+                context,
+                lastRefresh: new Date('2026-02-12T08:00:00Z'),
+                onRefresh: () => undefined,
+                variant: 'break',
+            })
+        );
+
+        expect(html).toContain('Nothing urgent is waiting. Enjoy the break.');
+    });
+
     it('emphasizes assessment and reporting during midterm exam mode', () => {
         const html = renderDashboard('MIDTERM_EXAM');
 
         expect(html).toContain('Midterm Exams');
-        expect(html).toContain('Teaching is paused while assessment and reporting take priority.');
-        expect(html).toContain('Exam reports, pending grading, and learner performance summaries take priority.');
+        expect(html).toContain('Assessment and reporting work is ready when you need it.');
         expect(html).toContain('Record assessment marks');
     });
 });

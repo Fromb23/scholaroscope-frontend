@@ -35,7 +35,7 @@ import {
   type NavItem as RegistryNavItem,
   type PluginNavigationContext,
 } from '@/app/core/registry/pluginNavigation';
-import type { AcademicSetupStatus } from '@/app/core/types/academic';
+import type { AcademicSetupStatus, AcademicTodayModeValue } from '@/app/core/types/academic';
 import { getAcademicSetupAvailableNavItems } from '@/app/core/lib/academicSetup';
 import {
   getWorkspaceManagementLabel,
@@ -348,10 +348,23 @@ export function getAdminNav(
   };
 }
 
-export function getInstructorNav(pluginContext: PluginNavigationContext): NavigationConfig {
+function getInstructorDashboardLabel(todayMode?: AcademicTodayModeValue | null): string {
+  if (todayMode === 'MIDTERM_BREAK') {
+    return 'Midterm Break';
+  }
+  if (todayMode === 'MIDTERM_EXAM') {
+    return 'Midterm Exams';
+  }
+  return 'Teaching Today';
+}
+
+export function getInstructorNav(
+  pluginContext: PluginNavigationContext,
+  todayMode?: AcademicTodayModeValue | null,
+): NavigationConfig {
   return {
     primary: [
-      { name: 'Teaching Today', href: '/dashboard/instructor', icon: LayoutDashboard },
+      { name: getInstructorDashboardLabel(todayMode), href: '/dashboard/instructor', icon: LayoutDashboard },
       ...getPluginNavigationItems('instructor.primary.afterDashboard', pluginContext),
       { name: 'Lesson Preparation', href: '/lesson-plans', icon: FileText },
       { name: 'My Lessons', href: '/sessions', icon: Calendar },

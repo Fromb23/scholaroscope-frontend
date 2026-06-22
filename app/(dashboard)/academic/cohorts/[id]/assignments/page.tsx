@@ -68,6 +68,14 @@ function normalizeQueryParam(
     return value && options.some((option) => option.value === value) ? value : '';
 }
 
+function isAssignmentNeedingReview(assignment: Assignment): boolean {
+    if (assignment.delivery_mode === 'GROUP') {
+        return assignment.group_submission_count > assignment.group_evaluation_count;
+    }
+
+    return assignment.submissions_count > assignment.reviewed_count;
+}
+
 function CohortSubjectWorkspaceCard({
     cohortSubjectId,
     subjectName,
@@ -165,6 +173,7 @@ export default function CohortAssignmentsPage() {
     const [deliveryModeFilter, setDeliveryModeFilter] = useState<AssignmentDeliveryMode | ''>(
         normalizeQueryParam(searchParams.get('delivery_mode'), DELIVERY_MODE_OPTIONS) as AssignmentDeliveryMode | ''
     );
+    const [reviewFilter, setReviewFilter] = useState(searchParams.get('review') === 'needs_review' ? 'needs_review' : '');
     const [cohortSubjectFilter, setCohortSubjectFilter] = useState<string>(searchParams.get('cohort_subject') ?? '');
     const [search, setSearch] = useState(searchParams.get('search') ?? '');
     const [createOpen, setCreateOpen] = useState(false);
@@ -231,6 +240,7 @@ export default function CohortAssignmentsPage() {
         setDeliveryModeFilter(
             normalizeQueryParam(searchParams.get('delivery_mode'), DELIVERY_MODE_OPTIONS) as AssignmentDeliveryMode | ''
         );
+        setReviewFilter(searchParams.get('review') === 'needs_review' ? 'needs_review' : '');
         setCohortSubjectFilter(searchParams.get('cohort_subject') ?? '');
         setSearch(searchParams.get('search') ?? '');
     }, [searchParams]);
@@ -256,9 +266,16 @@ export default function CohortAssignmentsPage() {
         || activeRole === 'INSTRUCTOR'
     );
 
+    const visibleAssignments = useMemo(
+        () => reviewFilter === 'needs_review'
+            ? assignments.filter(isAssignmentNeedingReview)
+            : assignments,
+        [assignments, reviewFilter]
+    );
+
     const dueSoonCount = useMemo(
-        () => assignments.filter((assignment) => isAssignmentDueSoon(assignment)).length,
-        [assignments]
+        () => visibleAssignments.filter((assignment) => isAssignmentDueSoon(assignment)).length,
+        [visibleAssignments]
     );
 
     const buildAssignmentsHref = useCallback((
@@ -280,8 +297,17 @@ export default function CohortAssignmentsPage() {
         if (evaluationTypeFilter) {
             nextSearchParams.set('evaluation_type', evaluationTypeFilter);
         }
+        if (reviewFilter) {
+            nextSearchParams.set('review', reviewFilter);
+        }
         if (trimmedSearch) {
             nextSearchParams.set('search', trimmedSearch);
+        }
+        if (searchParams.get('source')) {
+            nextSearchParams.set('source', searchParams.get('source') ?? '');
+        }
+        if (searchParams.get('returnTo')) {
+            nextSearchParams.set('returnTo', searchParams.get('returnTo') ?? '');
         }
         if (options?.includeHighlightAssignment !== false && highlightAssignmentId) {
             nextSearchParams.set('highlightAssignment', String(highlightAssignmentId));
@@ -291,7 +317,7 @@ export default function CohortAssignmentsPage() {
         return query
             ? `/academic/cohorts/${cohortId}/assignments?${query}`
             : `/academic/cohorts/${cohortId}/assignments`;
-    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, highlightAssignmentId, search, statusFilter]);
+    }, [cohortId, deliveryModeFilter, evaluationTypeFilter, highlightAssignmentId, reviewFilter, search, searchParams, statusFilter]);
     const assignmentsHref = useMemo(
         () => buildAssignmentsHref(cohortSubjectFilter || null),
         [buildAssignmentsHref, cohortSubjectFilter]
@@ -305,32 +331,32 @@ export default function CohortAssignmentsPage() {
             returnTo: assignmentsHref,
         }).toString()}`;
     const overdueCount = useMemo(
-        () => assignments.filter((assignment) => isAssignmentOverdue(assignment)).length,
-        [assignments]
+        () => visibleAssignments.filter((assignment) => isAssignmentOverdue(assignment)).length,
+        [visibleAssignments]
     );
     const publishedCount = useMemo(
-        () => assignments.filter((assignment) => assignment.status === 'PUBLISHED').length,
-        [assignments]
+        () => visibleAssignments.filter((assignment) => assignment.status === 'PUBLISHED').length,
+        [visibleAssignments]
     );
     const reviewedTotal = useMemo(
-        () => assignments.reduce((count, assignment) => (
+        () => visibleAssignments.reduce((count, assignment) => (
             count + (
                 assignment.delivery_mode === 'GROUP'
                     ? assignment.group_evaluation_count
                     : assignment.reviewed_count
             )
         ), 0),
-        [assignments]
+        [visibleAssignments]
     );
     const submissionTotal = useMemo(
-        () => assignments.reduce((count, assignment) => (
+        () => visibleAssignments.reduce((count, assignment) => (
             count + (
                 assignment.delivery_mode === 'GROUP'
                     ? assignment.group_submission_count
                     : assignment.submissions_count
             )
         ), 0),
-        [assignments]
+        [visibleAssignments]
     );
     const selectedCohortSubject = useMemo(() => (
         visibleCohortSubjects.find((subject) => String(subject.id) === cohortSubjectFilter) ?? null
@@ -338,16 +364,18 @@ export default function CohortAssignmentsPage() {
     const showingWorkspaceSelection = !cohortSubjectFilter;
     const contextualBackHref = cohortSubjectFilter
         ? assignmentPickerHref
-        : `/academic/cohorts/${cohortId}`;
+        : searchParams.get('source') === 'midterm' && searchParams.get('returnTo')?.startsWith('/')
+            ? searchParams.get('returnTo') ?? `/academic/cohorts/${cohortId}`
+            : `/academic/cohorts/${cohortId}`;
     const contextualBackLabel = cohortSubjectFilter ? 'Back to Assignments' : 'Back to Cohort';
     const assignmentFiltersActive = Boolean(
-        search.trim() || statusFilter || deliveryModeFilter || evaluationTypeFilter
+        search.trim() || statusFilter || deliveryModeFilter || evaluationTypeFilter || reviewFilter
     );
     const groupedWorkspaces = useMemo(() => (
         [...visibleCohortSubjects]
             .sort((left, right) => left.subject_name.localeCompare(right.subject_name))
             .map((subject) => {
-                const subjectAssignments = assignments.filter(
+                const subjectAssignments = visibleAssignments.filter(
                     (assignment) => assignment.cohort_subject === subject.id
                 );
 
@@ -360,7 +388,7 @@ export default function CohortAssignmentsPage() {
                     overdueCount: subjectAssignments.filter((assignment) => isAssignmentOverdue(assignment)).length,
                 };
             })
-    ), [assignments, visibleCohortSubjects]);
+    ), [visibleAssignments, visibleCohortSubjects]);
 
     if (!isValidCohortId) {
         return (
@@ -568,7 +596,7 @@ export default function CohortAssignmentsPage() {
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <StatsCard
                             title="Total Assignments"
-                            value={assignments.length}
+                            value={visibleAssignments.length}
                             icon={ClipboardList}
                             color="blue"
                         />
@@ -641,7 +669,7 @@ export default function CohortAssignmentsPage() {
 
                     {assignmentsLoading ? (
                         <LoadingSpinner fullScreen={false} message="Loading assignments..." />
-                    ) : assignments.length === 0 ? (
+                    ) : visibleAssignments.length === 0 ? (
                         <Card>
                             <div className="py-12 text-center">
                                 <ClipboardList className="mx-auto h-12 w-12 text-gray-300" />
@@ -655,7 +683,7 @@ export default function CohortAssignmentsPage() {
                         </Card>
                     ) : (
                         <div className="grid gap-4">
-                            {assignments.map((assignment) => (
+                            {visibleAssignments.map((assignment) => (
                                 <AssignmentCard
                                     key={assignment.id}
                                     assignment={assignment}
