@@ -30,6 +30,13 @@ export function MidtermIntelligenceReportPage() {
     assessments: insights.filter((insight) => insight.kind === 'assessments'),
     schemes: insights.filter((insight) => insight.kind === 'schemes'),
   }), [insights]);
+  const sections = useMemo(() => [
+    { key: 'sessions', title: 'Pending lesson records', empty: 'No pending lesson records are waiting.' },
+    { key: 'attendance', title: 'Attendance concerns', empty: 'No learner attendance concern is highlighted right now.' },
+    { key: 'assessments', title: 'Assessment review items', empty: 'No assessment review item is highlighted right now.' },
+    { key: 'assignments', title: 'Assignment review items', empty: 'No assignment response review is highlighted right now.' },
+    { key: 'schemes', title: 'Scheme rebalancing suggestions', empty: 'No scheme rebalancing suggestion is highlighted right now.' },
+  ] as const, []);
 
   if (loading) {
     return <LoadingSpinner fullScreen={false} message="Opening midterm insights..." />;
@@ -118,6 +125,35 @@ export function MidtermIntelligenceReportPage() {
           <ClipboardCheck className="h-5 w-5 text-sky-600" />
           <p className="mt-3 text-2xl font-semibold theme-text">{groupedInsights.schemes.length + groupedInsights.assessments.length}</p>
           <p className="mt-1 text-sm theme-muted">planning and assessment notes</p>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {sections.map((section) => {
+          const items = groupedInsights[section.key];
+          return (
+            <Card key={section.key} className="p-5">
+              <h2 className="text-base font-semibold theme-text">{section.title}</h2>
+              {items.length === 0 ? (
+                <p className="mt-2 text-sm leading-6 theme-muted">{section.empty}</p>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  {items.map((insight) => (
+                    <Link key={insight.id} href={insight.href} className="block rounded-xl border theme-border p-3 transition-colors theme-hover-surface">
+                      <p className="text-sm font-semibold theme-text">{insight.title}</p>
+                      <p className="mt-1 text-sm theme-link">{insight.actionLabel}</p>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+        <Card className="p-5">
+          <h2 className="text-base font-semibold theme-text">After-break recovery suggestions</h2>
+          <p className="mt-2 text-sm leading-6 theme-muted">
+            Use the highlighted schemes, learner concerns, and pending records to choose the next useful step when learning resumes.
+          </p>
         </Card>
       </div>
     </div>

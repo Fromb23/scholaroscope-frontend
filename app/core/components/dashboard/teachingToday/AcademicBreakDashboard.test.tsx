@@ -1,11 +1,17 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { AcademicBreakDashboard } from './AcademicBreakDashboard';
 import type { TeachingTodayContext } from '@/app/core/hooks/useTeachingToday';
 import type { Session } from '@/app/core/types/session';
 import { AssessmentScoreStatus } from '@/app/core/types/assessment';
+
+vi.mock('@/app/context/AuthContext', () => ({
+    useAuth: () => ({
+        user: { id: 23, first_name: 'Teacher', is_superadmin: false },
+    }),
+}));
 
 function buildSession(overrides: Partial<Session> = {}): Session {
     return {
@@ -112,6 +118,8 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
             allows_cleanup: true,
             allows_new_teaching: false,
             resumes_on: '2026-02-15',
+            daily_message: 'Take the pause. Scholaroscope will keep the term picture ready for you.',
+            is_last_day: false,
         },
         normalTeachingExpected: false,
         learningDayState: mode === 'MIDTERM_BREAK' ? 'MIDTERM_BREAK' : 'EXAM_DAY',
@@ -202,7 +210,7 @@ describe('AcademicBreakDashboard', () => {
         const html = renderDashboard('MIDTERM_BREAK');
 
         expect(html).toContain('Midterm Break');
-        expect(html).toContain('Enjoy the break. A few things are ready when you want to review them.');
+        expect(html).toContain('Take the pause. Scholaroscope will keep the term picture ready for you.');
         expect(html).toContain('No normal classes are expected today.');
         expect(html).toContain('This lesson record can be finished when you are ready.');
         expect(html).toContain('A few things Scholaroscope noticed');
@@ -247,9 +255,36 @@ describe('AcademicBreakDashboard', () => {
         const html = renderDashboard('MIDTERM_BREAK');
 
         expect(html).toContain('Brian Otieno may need a closer look before learning resumes.');
-        expect(html).toContain('/reports/attendance?term=3&amp;student=99&amp;subject=7');
+        expect(html).toContain('/reports/attendance?student=99&amp;subject=7&amp;term=3&amp;source=midterm');
         expect(html).toContain('View attendance pattern');
         expect(html).toContain('/reports/intelligence?source=midterm');
+    });
+
+    it('routes teacher reports to the current teacher progress context', () => {
+        const html = renderDashboard('MIDTERM_BREAK');
+
+        expect(html).toContain('/admin/instructors/23/progress?source=midterm');
+        expect(html).not.toContain('/reports/instructor?source=midterm');
+    });
+
+    it('renders last day readiness mode', () => {
+        const context = buildContext('MIDTERM_BREAK');
+        if (context.todayMode) {
+            context.todayMode.is_last_day = true;
+        }
+
+        const html = renderToStaticMarkup(
+            createElement(AcademicBreakDashboard, {
+                context,
+                lastRefresh: new Date('2026-02-14T08:00:00Z'),
+                onRefresh: () => undefined,
+                variant: 'break',
+            })
+        );
+
+        expect(html).toContain('Learning resumes soon');
+        expect(html).toContain('Check after-break plan');
+        expect(html).toContain('Finish pending records');
     });
 
     it('shows a calm empty intelligence state when no insights exist', () => {

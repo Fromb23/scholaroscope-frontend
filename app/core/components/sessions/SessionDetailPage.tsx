@@ -39,6 +39,7 @@ import {
 } from '@/app/core/lib/dashboardScroll';
 import { RescheduleLessonModal } from '@/app/core/components/sessions/RescheduleLessonModal';
 import { useSessionDetail, useSessionCohorts } from '@/app/core/hooks/useSessions';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useAttendanceDraft } from '@/app/core/hooks/useAttendanceDraft';
 import {
     usesExpandedSessionScope,
@@ -247,6 +248,7 @@ export function SessionDetailPage() {
     const searchParams = useSearchParams();
     const sessionId = Number(params.id);
     const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
@@ -318,6 +320,12 @@ export function SessionDetailPage() {
     const needsCompletion = Boolean(session?.needs_completion || isInProgressOverdue);
     const canReschedule = Boolean(session?.can_reschedule && !isHistorical);
     const canEditAttendance = canCreateTeachingRecords && isInProgress && !isHistorical;
+    const midtermBreakPausesNormalStart = todayMode?.mode === 'MIDTERM_BREAK'
+        && todayMode.allows_new_teaching === false
+        && session?.session_type !== 'EXAM'
+        && session?.session_type !== 'ASSEMBLY'
+        && session?.session_type !== 'FIELD_TRIP'
+        && session?.session_type !== 'OTHER';
     const teachingWorkflow = getSessionTeachingWorkflow(session);
     const curriculumLabel = session?.curriculum_name || getCurriculumTypeLabel(session?.curriculum_type) || 'General';
     const activeParticipationCount = useMemo(() => {
@@ -1719,7 +1727,7 @@ export function SessionDetailPage() {
             label: isScheduledOverdue ? 'Start late' : 'Start lesson',
             onClick: handleStartLesson,
             icon: <PlayCircle className="mr-1.5 h-4 w-4" />,
-            disabled: !session.can_start_now,
+            disabled: !session.can_start_now || midtermBreakPausesNormalStart,
         }
         : isScheduled && hasLessonPlan
             ? {
@@ -1933,7 +1941,11 @@ export function SessionDetailPage() {
                     </div>
                 ) : null}
 
-                {isScheduledReady ? (
+                {midtermBreakPausesNormalStart ? (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                        New normal teaching work resumes after the break.
+                    </div>
+                ) : isScheduledReady ? (
                     <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700">
                         Start lesson when you are ready, or reschedule it before class begins.
                     </div>

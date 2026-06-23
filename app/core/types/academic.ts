@@ -142,6 +142,8 @@ export interface AcademicTodayMode {
   allows_cleanup: boolean;
   allows_new_teaching: boolean;
   resumes_on: string | null;
+  daily_message?: string | null;
+  is_last_day?: boolean;
 }
 
 export interface TermCalendarEvent {

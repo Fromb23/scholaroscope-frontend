@@ -1,7 +1,6 @@
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import type { TeachingTodayContext, TeachingTodayIncompleteItem } from '@/app/core/hooks/useTeachingToday';
 import type { Session } from '@/app/core/types/session';
-import { buildAttendanceReportHref } from '@/app/core/components/reports/reportNavigation';
 
 export const MIDTERM_DASHBOARD_RETURN_TO = '/dashboard/instructor?mode=midterm';
 
@@ -148,6 +147,20 @@ export function buildMidtermInsightsHref(): string {
   });
 }
 
+export function buildMidtermTeacherReportsHref(teacherId: number | null | undefined): string {
+  if (teacherId) {
+    return appendQuery(`/admin/instructors/${teacherId}/progress`, {
+      source: 'midterm',
+      returnTo: MIDTERM_DASHBOARD_RETURN_TO,
+    });
+  }
+
+  return appendQuery('/reports/instructor', {
+    source: 'midterm',
+    returnTo: MIDTERM_DASHBOARD_RETURN_TO,
+  });
+}
+
 export function deriveMidtermInsights(context: TeachingTodayContext, limit = 4): MidtermInsight[] {
   const insights: MidtermInsight[] = [];
   const pendingSessionItems = getPendingSessionItems(context);
@@ -160,10 +173,11 @@ export function deriveMidtermInsights(context: TeachingTodayContext, limit = 4):
       title: `${firstPendingReviewRow.student_name} may need a closer look before learning resumes.`,
       body: `Open the current term attendance pattern alongside ${firstAssignment.subject_name}.`,
       actionLabel: 'View attendance pattern',
-      href: buildAttendanceReportHref({
+      href: appendQuery('/reports/attendance', {
         student: firstPendingReviewRow.student,
         subject: firstAssignment.subject_id,
         term: context.currentTerm.id,
+        source: 'midterm',
         returnTo: MIDTERM_DASHBOARD_RETURN_TO,
       }),
       kind: 'attendance',
