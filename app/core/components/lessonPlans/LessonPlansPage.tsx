@@ -17,6 +17,7 @@ import Modal from '@/app/components/ui/Modal';
 import { Select } from '@/app/components/ui/Select';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
@@ -346,6 +347,7 @@ function LessonPlanActions({
 export function LessonPlansPage() {
     const router = useRouter();
     const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
@@ -427,6 +429,7 @@ export function LessonPlansPage() {
     const createButtonLabel = effectiveMyTeachingMode
         ? 'Prepare a lesson'
         : 'Create lesson plan';
+    const midtermBreakPausesCreation = todayMode?.mode === 'MIDTERM_BREAK' && todayMode.allows_new_teaching === false;
 
     const instructorOptions = useMemo<LessonPlanInstructorOption[]>(() => {
         const options = new Map<string, LessonPlanInstructorOption>();
@@ -769,13 +772,17 @@ export function LessonPlansPage() {
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
 
-                {canCreateLessonPlan && canCreateTeachingRecords ? (
+                {canCreateLessonPlan && canCreateTeachingRecords && !midtermBreakPausesCreation ? (
                     <Link href="/lesson-plans/new">
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             {createButtonLabel}
                         </Button>
                     </Link>
+                ) : midtermBreakPausesCreation ? (
+                    <Button disabled>
+                        New normal teaching work resumes after the break.
+                    </Button>
                 ) : supervisionOnlyAdmin ? (
                     <Link href="/admin/instructors">
                         <Button variant="secondary">
@@ -966,13 +973,17 @@ export function LessonPlansPage() {
                                     ? 'Lesson plans will appear here after instructors prepare them.'
                                     : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
-                        {canCreateLessonPlan && canCreateTeachingRecords ? (
+                        {canCreateLessonPlan && canCreateTeachingRecords && !midtermBreakPausesCreation ? (
                             <Link href="/lesson-plans/new">
                                 <Button className="mt-4">
                                     <Plus className="mr-2 h-4 w-4" />
                                     {createButtonLabel}
                                 </Button>
                             </Link>
+                        ) : midtermBreakPausesCreation ? (
+                            <p className="mt-4 text-sm text-gray-500">
+                                New normal teaching work resumes after the break.
+                            </p>
                         ) : supervisionOnlyAdmin ? (
                             <p className="mt-4 text-sm text-gray-500">
                                 Lesson plans will appear here after instructors prepare them.

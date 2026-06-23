@@ -58,6 +58,7 @@ export function AttendanceReportPage() {
   const selectedCohortId = parsePositiveReportParam(searchParams.get('cohort'));
   const selectedSubjectId = parsePositiveReportParam(searchParams.get('subject'));
   const selectedCohortSubjectId = parsePositiveReportParam(searchParams.get('cohortSubject'));
+  const source = searchParams.get('source');
   const learnerQuery = searchParams.get('q') ?? '';
   const hasScope = Boolean(
     selectedStudentId
@@ -67,9 +68,10 @@ export function AttendanceReportPage() {
   );
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
-    fallbackHref: '/reports',
+    fallbackHref: source === 'midterm' ? '/dashboard/instructor?mode=midterm' : '/reports',
     fallbackState: { term: selectedTermId },
   });
+  const backLabel = source === 'midterm' ? 'Back to Midterm Break' : 'Back';
 
   const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
   const { terms, loading: termsLoading } = useTerms();
@@ -208,7 +210,7 @@ export function AttendanceReportPage() {
             <Link href={backHref}>
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                {backLabel}
               </Button>
             </Link>
             <div className="mt-3">

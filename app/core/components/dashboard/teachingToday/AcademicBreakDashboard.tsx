@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import { useAuth } from '@/app/context/AuthContext';
 import type { TeachingTodayContext } from '@/app/core/hooks/useTeachingToday';
 import type { Session } from '@/app/core/types/session';
 import {
@@ -20,6 +21,7 @@ import {
     buildMidtermInsightsHref,
     buildMidtermReturnHref,
     buildMidtermSchemesHref,
+    buildMidtermTeacherReportsHref,
     buildPendingLessonCleanupHref,
     buildPendingLessonItemHref,
     deriveMidtermInsights,
@@ -73,7 +75,8 @@ export function AcademicBreakModeBanner({ context, lastRefresh, onRefresh, refre
     const title = isExam ? 'Midterm Exams' : 'Midterm Break';
     const copy = isExam
         ? 'Assessment and reporting work is ready when you need it.'
-        : 'Enjoy the break. A few things are ready when you want to review them.';
+        : context.todayMode?.daily_message
+            ?? 'Enjoy the break. A few things are ready when you want to review them.';
 
     return (
         <section className="overflow-hidden rounded-3xl border border-blue-200 bg-[linear-gradient(135deg,#eef7ff_0%,#f7fbef_52%,#fff8ed_100%)] p-5 shadow-sm sm:p-7">
@@ -128,9 +131,11 @@ export function AcademicBreakModeBanner({ context, lastRefresh, onRefresh, refre
 }
 
 export function BreakCleanupActions({ context, variant }: { context: TeachingTodayContext; variant: 'break' | 'exam' }) {
+    const { user } = useAuth();
     const rows = context.incomplete.slice(0, 4);
     const isExam = variant === 'exam';
     const assignmentHref = buildAssignmentReviewHref(context);
+    const teacherReportsHref = buildMidtermTeacherReportsHref(user?.id);
 
     return (
         <section className="theme-card rounded-2xl border theme-border p-4 sm:p-6" aria-labelledby="break-actions">
@@ -163,7 +168,7 @@ export function BreakCleanupActions({ context, variant }: { context: TeachingTod
                     body="Assessment records remain available during the break."
                 />
                 <ActionCard
-                    href={buildMidtermReturnHref('/reports/instructor')}
+                    href={teacherReportsHref}
                     title="Open teacher reports"
                     body="Review the term picture without normal class activity around it."
                 />
@@ -271,6 +276,59 @@ export function AfterBreakRecoverySuggestions({ context }: { context: TeachingTo
     );
 }
 
+export function LastDayReadinessPanel({ context }: { context: TeachingTodayContext }) {
+    const firstTeachingAssignment = context.teachingLoad[0] ?? null;
+    const pendingCount = context.incomplete.length;
+
+    return (
+        <section className="theme-card rounded-2xl border theme-border p-4 sm:p-6" aria-labelledby="resume-soon">
+            <div className="flex items-start gap-3">
+                <div className="rounded-xl p-2 theme-warning-surface text-[color:var(--color-warning)]">
+                    <CalendarClock className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                    <h2 id="resume-soon" className="text-xl font-semibold theme-text">Learning resumes soon</h2>
+                    <p className="mt-1 text-sm leading-6 theme-muted">
+                        The next phase of the term is almost here. When you are ready, Scholaroscope can help you pick up from the next useful step.
+                    </p>
+                </div>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {context.todayMode?.resumes_on ? (
+                    <div className="teaching-today-nested-card rounded-xl p-4">
+                        <p className="text-xs font-semibold uppercase theme-subtle">Next teaching date</p>
+                        <p className="mt-1 text-sm font-semibold theme-text">{formatShortDateKey(context.todayMode.resumes_on)}</p>
+                    </div>
+                ) : null}
+                <div className="teaching-today-nested-card rounded-xl p-4">
+                    <p className="text-xs font-semibold uppercase theme-subtle">Next class/subject</p>
+                    <p className="mt-1 text-sm font-semibold theme-text">
+                        {firstTeachingAssignment
+                            ? `${firstTeachingAssignment.cohort_name} ${firstTeachingAssignment.subject_name}`
+                            : 'Open your teaching load when learning resumes.'}
+                    </p>
+                </div>
+                <Link href={buildPendingLessonCleanupHref(context)} className="teaching-today-nested-card rounded-xl p-4 transition-colors theme-hover-surface">
+                    <p className="text-xs font-semibold uppercase theme-subtle">Pending records</p>
+                    <p className="mt-1 text-sm font-semibold theme-text">
+                        {pendingCount > 0 ? `${pendingCount} can be closed before learning resumes.` : 'Nothing is waiting here.'}
+                    </p>
+                    <p className="mt-2 text-sm font-medium theme-link">Finish pending records</p>
+                </Link>
+                <Link href={buildMidtermSchemesHref(context)} className="teaching-today-nested-card rounded-xl p-4 transition-colors theme-hover-surface">
+                    <p className="text-sm font-semibold theme-text">Open schemes</p>
+                </Link>
+                <Link href={buildMidtermInsightsHref()} className="teaching-today-nested-card rounded-xl p-4 transition-colors theme-hover-surface">
+                    <p className="text-sm font-semibold theme-text">View learner concerns</p>
+                </Link>
+                <Link href={buildMidtermInsightsHref()} className="teaching-today-nested-card rounded-xl p-4 transition-colors theme-hover-surface">
+                    <p className="text-sm font-semibold theme-text">Check after-break plan</p>
+                </Link>
+            </div>
+        </section>
+    );
+}
+
 export function BeforeBreakPanel({ context }: { context: TeachingTodayContext }) {
     const pausedSessions = context.timeline.filter(isPausedSession).length;
 
@@ -292,16 +350,21 @@ export function BeforeBreakPanel({ context }: { context: TeachingTodayContext })
 }
 
 export function AcademicBreakDashboard(props: AcademicBreakDashboardProps) {
+    const { user } = useAuth();
+
     return (
         <div className="mx-auto max-w-7xl space-y-5 px-0 sm:space-y-6">
             <AcademicBreakModeBanner {...props} />
+            {props.variant === 'break' && props.context.todayMode?.is_last_day ? (
+                <LastDayReadinessPanel context={props.context} />
+            ) : null}
             <section className="grid gap-5 xl:grid-cols-12 xl:gap-6">
                 <div className="space-y-5 xl:col-span-7">
+                    <MidtermInsightsPanel context={props.context} />
                     <BreakCleanupActions context={props.context} variant={props.variant} />
                     <AfterBreakRecoverySuggestions context={props.context} />
                 </div>
                 <aside className="space-y-5 xl:col-span-5">
-                    <MidtermInsightsPanel context={props.context} />
                     <BeforeBreakPanel context={props.context} />
                     <section className="theme-card rounded-2xl border theme-border p-4 sm:p-6">
                         <div className="flex items-start gap-3">
@@ -311,7 +374,7 @@ export function AcademicBreakDashboard(props: AcademicBreakDashboardProps) {
                                 <p className="mt-1 text-sm leading-6 theme-muted">
                                     Reports remain available for a calm look at attendance, assessments, and class progress.
                                 </p>
-                                <Link href={buildMidtermReturnHref('/reports/instructor')} className="mt-4 inline-flex items-center text-sm font-medium theme-link">
+                                <Link href={buildMidtermTeacherReportsHref(user?.id)} className="mt-4 inline-flex items-center text-sm font-medium theme-link">
                                     Open reports
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Link>

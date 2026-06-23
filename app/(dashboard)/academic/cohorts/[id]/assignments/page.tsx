@@ -28,6 +28,7 @@ import {
     isAssignmentOverdue,
 } from '@/app/core/components/assignments/assignmentUtils';
 import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useAssignments } from '@/app/core/hooks/useAssignments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useAuth } from '@/app/context/AuthContext';
@@ -160,6 +161,7 @@ export default function CohortAssignmentsPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, activeRole, loading: authLoading } = useAuth();
+    const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const instructorAccess = useInstructorCohortAccess();
     const cohortId = Number(params.id);
     const isInstructor = activeRole === 'INSTRUCTOR';
@@ -265,6 +267,7 @@ export default function CohortAssignmentsPage() {
         || activeRole === 'ADMIN'
         || activeRole === 'INSTRUCTOR'
     );
+    const midtermBreakPausesCreation = todayMode?.mode === 'MIDTERM_BREAK' && todayMode.allows_new_teaching === false;
 
     const visibleAssignments = useMemo(
         () => reviewFilter === 'needs_review'
@@ -441,7 +444,7 @@ export default function CohortAssignmentsPage() {
                             </p>
                         </div>
 
-                        {canManageAssignments ? (
+                        {canManageAssignments && !midtermBreakPausesCreation ? (
                             <Button
                                 type="button"
                                 onClick={() => {
@@ -452,6 +455,10 @@ export default function CohortAssignmentsPage() {
                             >
                                 <Plus className="mr-2 h-4 w-4" />
                                 Create Assignment
+                            </Button>
+                        ) : midtermBreakPausesCreation ? (
+                            <Button type="button" disabled>
+                                New normal teaching work resumes after the break.
                             </Button>
                         ) : null}
                     </div>

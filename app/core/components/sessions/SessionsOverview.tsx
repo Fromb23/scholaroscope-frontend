@@ -758,7 +758,7 @@ function SessionWorkspaceView() {
             has_priority_lesson: Boolean(priorityTodayAction),
         },
         visibleActions: [
-            ...(canPlanLesson && canCreateTeachingRecords
+            ...(!midtermCleanupView && canPlanLesson && canCreateTeachingRecords
                 ? [{ label: actionLabel, type: 'navigate' as const, href: '/lesson-plans/new' }]
                 : []),
             ...(supervisionOnlyAdmin
@@ -771,7 +771,13 @@ function SessionWorkspaceView() {
                 ? [{ label: 'View My Classes', type: 'navigate' as const, href: '/academic/cohorts' }]
                 : []),
         ],
-        nextSafeAction: canPlanLesson && canCreateTeachingRecords
+        nextSafeAction: midtermCleanupView
+            ? {
+                label: 'Back to Midterm Break',
+                type: 'navigate' as const,
+                href: workspaceBackHref,
+            }
+            : canPlanLesson && canCreateTeachingRecords
             ? {
                 label: actionLabel,
                 type: 'navigate' as const,
@@ -784,7 +790,7 @@ function SessionWorkspaceView() {
                     href: '/admin/instructors',
                 }
             : undefined,
-        workflowStep: todayCount > 0 ? 'scheduled_lessons' : 'plan_then_schedule',
+        workflowStep: midtermCleanupView ? 'pending_cleanup' : todayCount > 0 ? 'scheduled_lessons' : 'plan_then_schedule',
         emptyStateReason: !loading && !error && visibleSessions.length === 0
             ? 'No lessons are scheduled yet.'
             : (!loading && Boolean(selectedTerm || selectedType || selectedCohortId || selectedInstructorFilter || cleanupFilterActive) && visibleSessions.length === 0
@@ -808,6 +814,7 @@ function SessionWorkspaceView() {
         supervisionOnlyAdmin,
         todayCount,
         visibleSessions.length,
+        workspaceBackHref,
     ]);
 
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -829,6 +836,91 @@ function SessionWorkspaceView() {
     };
 
     useAssistantPageContext(assistantContext);
+
+    if (midtermCleanupView) {
+        return (
+            <div className="space-y-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                        {safeReturnTo ? (
+                            <Link href={safeReturnTo}>
+                                <Button variant="ghost" size="sm">
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Back to Midterm Break
+                                </Button>
+                            </Link>
+                        ) : null}
+                        <h1 className="mt-3 text-2xl font-semibold theme-text">Pending Lesson Records</h1>
+                        <p className="mt-1 max-w-2xl text-sm leading-6 theme-muted">
+                            These are the lesson records that can be finished when you are ready.
+                        </p>
+                    </div>
+                    <Link href="/sessions" className="shrink-0">
+                        <Button variant="secondary" size="sm">Clear filter</Button>
+                    </Link>
+                </div>
+
+                {error ? (
+                    <ErrorState message={error} onRetry={refetch} />
+                ) : loading ? (
+                    <div className="py-12 text-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                        <p className="mt-2 theme-muted">Loading pending lesson records...</p>
+                    </div>
+                ) : visibleSessions.length === 0 ? (
+                    <Card>
+                        <div className="py-14 text-center">
+                            <ClipboardCheck className="mx-auto h-12 w-12 theme-subtle" />
+                            <h2 className="mt-3 text-base font-semibold theme-text">Nothing is waiting here. Enjoy the break.</h2>
+                        </div>
+                    </Card>
+                ) : (
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        {sortSessionsByDate(visibleSessions).map((session) => (
+                            <Card key={session.id} className="p-5">
+                                <div className="flex h-full flex-col gap-5">
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Badge variant="blue">{session.subject_name}</Badge>
+                                            <SessionLifecycleHint session={session} />
+                                        </div>
+                                        <h2 className="mt-3 text-lg font-semibold theme-text">
+                                            {session.cohort_name || 'Class record'}
+                                        </h2>
+                                        <p className="mt-1 text-sm theme-muted">
+                                            {formatSessionDate(session.session_date)} · {getSessionTimeLabel(session)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-semibold theme-text">What remains</p>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {[
+                                                'reflection',
+                                                'attendance',
+                                                'taught outcomes',
+                                                'learner evidence',
+                                                'close record',
+                                            ].map((item) => (
+                                                <Badge key={item} variant="default" size="sm">{item}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="mt-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <p className="text-xs theme-muted">
+                                            New normal teaching work resumes after the break.
+                                        </p>
+                                        <Link href={`/sessions/${session.id}?source=midterm&returnTo=${encodeURIComponent(workspaceBackHref)}`}>
+                                            <Button size="sm">Finish record</Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     const renderClassGroup = (group: {
         key: string;
