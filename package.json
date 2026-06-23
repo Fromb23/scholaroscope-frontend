@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint:fix": "eslint . --fix",
     "check:boundaries": "node tools/check-boundaries.mjs",
+    "check:pages": "node tools/check-thin-pages.mjs",
+    "check:architecture": "npm run check:boundaries && npm run check:pages",
     "prettier": "prettier --write **/*.{js,jsx,json,ts,tsx,css,md}",
     "prepare": "husky",
     "lint-staged": "lint-staged"

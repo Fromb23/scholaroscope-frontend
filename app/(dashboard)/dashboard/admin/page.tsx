@@ -1,4 +1,4 @@
-import { AdminDashboard } from '@/app/(dashboard)/dashboard/components/AdminDashboard';
+import { AdminDashboard } from '@/app/core/components/dashboard/AdminDashboard';
 
 export default function Page() {
     return <AdminDashboard />;

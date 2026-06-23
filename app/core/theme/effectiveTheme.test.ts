@@ -276,7 +276,7 @@ describe('effective tenant theme utilities', () => {
   });
 
   it('uses themed learner list controls and table links', () => {
-    const source = readFileSync(join(process.cwd(), 'app/(dashboard)/learners/page.tsx'), 'utf8');
+    const source = readFileSync(join(process.cwd(), 'app/core/components/learners/LearnersPage.tsx'), 'utf8');
 
     expect(source).toContain('theme-table-link');
     expect(source).toContain('theme-input theme-select');

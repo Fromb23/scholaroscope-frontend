@@ -1,6 +1,4 @@
-'use client';
-
-import { DashboardResolver } from '@/app/(dashboard)/dashboard/components/DashboardResolver';
+import { DashboardResolver } from '@/app/core/components/dashboard/DashboardResolver';
 
 export default function Page() {
     return <DashboardResolver />;

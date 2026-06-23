@@ -30,7 +30,7 @@ import {
     buildAcademicYearOptions,
     getInstructorAcademicYearFilterNotice,
     parseOptionalNumber,
-} from '@/app/(dashboard)/academic/cohorts/components/cohortsPageShared';
+} from '@/app/core/components/academic/cohorts/cohortsPageShared';
 
 export function InstructorMyCohortsPageContent() {
     const { academicYears } = useAcademicYears();

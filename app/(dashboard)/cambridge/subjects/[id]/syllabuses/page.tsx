@@ -1,10 +1,5 @@
-import { redirect } from 'next/navigation';
+import { CambridgeSubjectSyllabusesRedirectPage } from '@/app/plugins/cambridge/pages/CambridgeRedirectPages';
 
-export default async function CambridgeSubjectSyllabusesRedirect({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  redirect(`/cambridge/setup/subjects/${id}/syllabuses`);
+export default function Page(props: Parameters<typeof CambridgeSubjectSyllabusesRedirectPage>[0]) {
+    return <CambridgeSubjectSyllabusesRedirectPage {...props} />;
 }

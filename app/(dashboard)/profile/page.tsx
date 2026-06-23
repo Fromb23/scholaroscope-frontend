@@ -1,6 +1,4 @@
-'use client';
-
-import { ProfilePage } from '@/app/(dashboard)/profile/components/ProfilePage';
+import { ProfilePage } from '@/app/core/components/profile/ProfilePage';
 
 export default function Page() {
     return <ProfilePage />;

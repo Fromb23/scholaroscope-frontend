@@ -1,14 +1,5 @@
-import { TeachingRecordAccessGate } from '@/app/core/components/workspaces/TeachingRecordAccessGate';
-import { GenerateLessonPlanPage } from '@/app/core/components/lessonPlans/GenerateLessonPlanPage';
+import { NewLessonPlanRoutePage } from '@/app/core/components/lessonPlans/NewLessonPlanRoutePage';
 
 export default function Page() {
-    return (
-        <TeachingRecordAccessGate
-            backHref="/lesson-plans"
-            backLabel="Back to Lesson Plans"
-            title="Plan a lesson"
-        >
-            <GenerateLessonPlanPage />
-        </TeachingRecordAccessGate>
-    );
+    return <NewLessonPlanRoutePage />;
 }

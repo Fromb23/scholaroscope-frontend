@@ -1,3 +1,5 @@
 import CambridgeInstallationSubjectSyllabusesPage from '@/app/plugins/cambridge/pages/CambridgeInstallationSubjectSyllabusesPage';
 
-export default CambridgeInstallationSubjectSyllabusesPage;
+export default function Page() {
+    return <CambridgeInstallationSubjectSyllabusesPage />;
+}

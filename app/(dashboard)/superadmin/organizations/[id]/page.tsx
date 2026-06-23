@@ -1,6 +1,4 @@
-'use client';
-
-import { OrganizationDetailPage } from '@/app/(dashboard)/superadmin/organizations/components/OrganizationDetailPage';
+import { OrganizationDetailPage } from '@/app/core/components/superadmin/organizations/OrganizationDetailPage';
 
 export default function Page() {
     return <OrganizationDetailPage />;

@@ -9,7 +9,6 @@
 
 import { useState } from 'react';
 import { useProfile } from '@/app/core/hooks/useProfile';
-import { useMyRequests } from '@/app/plugins/requests/hooks/useRequests';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import {
@@ -17,21 +16,17 @@ import {
     AccountMetaCard,
     ContactDetailsCard,
     SecurityCard,
-    RecentRequestsCard,
-    DangerZoneCard,
     InlineAlert,
     EditProfileModal,
     ChangePasswordModal,
-    DeletionRequestModal,
 } from '@/app/core/components/profile/ProfileComponents';
+import { getProfileExtensions } from '@/app/core/registry/profileExtensions';
 
 export function ProfilePage() {
     const { profile, loading, error, updateProfile, changePassword } = useProfile();
-    const { requests, loading: requestsLoading, submitDeletionRequest, hasPendingDeletion } = useMyRequests();
 
     const [editOpen, setEditOpen] = useState(false);
     const [passwordOpen, setPasswordOpen] = useState(false);
-    const [deletionModal, setDeletionModal] = useState<'ACCOUNT_DELETION' | 'ORG_DELETION' | null>(null);
     const [profileSuccess, setProfileSuccess] = useState(false);
 
     // ── Guards ────────────────────────────────────────────────────────────
@@ -41,36 +36,13 @@ export function ProfilePage() {
 
     // ── Derived state ─────────────────────────────────────────────────────
 
-    const isInstructor = profile.role === 'INSTRUCTOR';
-    const isAdmin = profile.role === 'ADMIN';
-    const isSuperAdmin = profile.role === 'SUPERADMIN';
-
-    const accountDeletionPending = hasPendingDeletion('ACCOUNT_DELETION');
-    const orgDeletionPending = hasPendingDeletion('ORG_DELETION');
+    const profileExtensions = getProfileExtensions({ profile });
 
     const handleSaveProfile = async (data: { first_name: string; last_name: string; phone: string }) => {
         await updateProfile(data);
         setProfileSuccess(true);
         setTimeout(() => setProfileSuccess(false), 3000);
     };
-
-    // Build danger zone actions per role
-    const dangerActions = [
-        ...(isInstructor || isAdmin ? [{
-            label: 'Delete My Account',
-            description: 'Request your account and all associated data to be permanently erased. Your administrator will review this request.',
-            pending: accountDeletionPending,
-            pendingLabel: 'Request Pending',
-            onDelete: () => setDeletionModal('ACCOUNT_DELETION'),
-        }] : []),
-        ...(isAdmin ? [{
-            label: `Delete Organization${profile.organization_name ? ` · ${profile.organization_name}` : ''}`,
-            description: 'Request the complete deletion of your organization and all its data. This will be escalated to a SuperAdmin.',
-            pending: orgDeletionPending,
-            pendingLabel: 'Request Pending',
-            onDelete: () => setDeletionModal('ORG_DELETION'),
-        }] : []),
-    ];
 
     // ── Render ────────────────────────────────────────────────────────────
 
@@ -110,16 +82,9 @@ export function ProfilePage() {
 
                     <SecurityCard onChangePassword={() => setPasswordOpen(true)} />
 
-                    {!isSuperAdmin && (
-                        <RecentRequestsCard
-                            requests={requests}
-                            loading={requestsLoading}
-                        />
-                    )}
-
-                    {dangerActions.length > 0 && (
-                        <DangerZoneCard actions={dangerActions} />
-                    )}
+                    {profileExtensions.map((extension) => (
+                        <extension.Component key={extension.key} profile={profile} />
+                    ))}
                 </div>
             </div>
 
@@ -140,18 +105,6 @@ export function ProfilePage() {
                 onClose={() => setPasswordOpen(false)}
                 onSave={changePassword}
             />
-
-            {deletionModal && (
-                <DeletionRequestModal
-                    isOpen={!!deletionModal}
-                    onClose={() => setDeletionModal(null)}
-                    type={deletionModal}
-                    orgName={profile.organization_name}
-                    onConfirm={async reason => {
-                        await submitDeletionRequest(deletionModal, reason);
-                    }}
-                />
-            )}
         </div>
     );
 }

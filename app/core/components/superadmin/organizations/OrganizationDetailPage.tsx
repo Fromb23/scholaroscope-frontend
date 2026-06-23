@@ -47,7 +47,7 @@ const SubjectsPage = dynamic(
     { loading: loader, ssr: false }
 );
 const CohortsPage = dynamic(
-    () => import('@/app/(dashboard)/academic/cohorts/components/CohortsPage').then(mod => mod.CohortsPage),
+    () => import('@/app/core/components/academic/cohorts/CohortsPage').then(mod => mod.CohortsPage),
     { loading: loader, ssr: false }
 );
 

@@ -1,10 +1,5 @@
-import { redirect } from 'next/navigation';
+import { CambridgeFrameworkStrandsRedirectPage } from '@/app/plugins/cambridge/pages/CambridgeRedirectPages';
 
-export default async function CambridgeFrameworkStrandsRedirect({
-  params,
-}: {
-  params: Promise<{ frameworkId: string }>;
-}) {
-  const { frameworkId } = await params;
-  redirect(`/cambridge/setup/frameworks/${frameworkId}/strands`);
+export default function Page(props: Parameters<typeof CambridgeFrameworkStrandsRedirectPage>[0]) {
+    return <CambridgeFrameworkStrandsRedirectPage {...props} />;
 }
