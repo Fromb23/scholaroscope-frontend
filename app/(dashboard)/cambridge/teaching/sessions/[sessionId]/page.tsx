@@ -1,3 +1,5 @@
 import CambridgeTeachingSessionPage from '@/app/plugins/cambridge/pages/CambridgeTeachingSessionPage';
 
-export default CambridgeTeachingSessionPage;
+export default function Page() {
+    return <CambridgeTeachingSessionPage />;
+}

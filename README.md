@@ -71,6 +71,35 @@ When adding or changing features:
 - Preserve organization scoping and role scoping in every new workflow.
 - Treat registry extension points as part of the architecture, not as a workaround.
 
+### Route File Rule
+
+`app/**/page.tsx` must only import and render a page component.
+
+Allowed:
+
+```tsx
+import { SubjectsPage } from '@/app/core/components/academic/subjects/SubjectsPage';
+
+export default function Page() {
+  return <SubjectsPage />;
+}
+```
+
+Not allowed inside route files:
+
+- local components
+- hooks
+- filtering
+- form validation
+- table columns
+- API orchestration
+- role/capability branching
+- domain grouping helpers
+- large JSX
+
+Feature behavior belongs in `app/core/...` or `app/plugins/...`.
+Domain logic belongs in hooks, lib modules, services, registries, or typed API modules.
+
 ## What Not To Do
 
 - Do not describe this app as “just a Next.js frontend”.

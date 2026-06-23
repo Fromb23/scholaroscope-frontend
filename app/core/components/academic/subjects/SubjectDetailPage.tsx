@@ -14,7 +14,6 @@ import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { AssignSubjectToCohortModal } from '@/app/core/components/academic/AssignSubjectToCohortModal';
-import '@/app/plugins/cbc/registry/subjectExtension';
 
 export function SubjectDetailPage() {
     const params = useParams();

@@ -42,8 +42,8 @@ import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Cohort } from '@/app/core/types/academic';
 import { getCurriculumBridgeName, getCurriculumOptionLabel } from '@/app/core/lib/curriculumBridge';
-import { useCambridgeCohortQuickAction } from '@/app/plugins/cambridge/lib/cohortQuickAction';
-import { buildAcademicYearOptions, parseOptionalNumber } from '@/app/(dashboard)/academic/cohorts/components/cohortsPageShared';
+import { useRegisteredCohortQuickAction } from '@/app/core/registry/cohortQuickActions';
+import { buildAcademicYearOptions, parseOptionalNumber } from '@/app/core/components/academic/cohorts/cohortsPageShared';
 
 type CohortWithIndex = Record<string, unknown> & Cohort;
 
@@ -74,7 +74,7 @@ export function AdminCohortsPageContent() {
     const selectedYearId = parseOptionalNumber(filters.academic_year);
     const selectedCurriculumId = parseOptionalNumber(filters.curriculum);
     const shouldOpenCreate = searchParams.get('create') === '1';
-    const quickAction = useCambridgeCohortQuickAction({
+    const quickAction = useRegisteredCohortQuickAction({
         searchParams,
         curricula,
         selectedCurriculumId,

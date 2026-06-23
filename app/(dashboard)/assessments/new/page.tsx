@@ -1,16 +1,5 @@
-'use client';
-
-import { TeachingRecordAccessGate } from '@/app/core/components/workspaces/TeachingRecordAccessGate';
-import { CreateAssessmentPage } from '@/app/core/components/assessments/CreateAssessmentPage';
+import { CreateAssessmentRoutePage } from '@/app/core/components/assessments/CreateAssessmentRoutePage';
 
 export default function Page() {
-    return (
-        <TeachingRecordAccessGate
-            backHref="/assessments"
-            backLabel="Back to Assessments"
-            title="Create New Assessment"
-        >
-            <CreateAssessmentPage />
-        </TeachingRecordAccessGate>
-    );
+    return <CreateAssessmentRoutePage />;
 }

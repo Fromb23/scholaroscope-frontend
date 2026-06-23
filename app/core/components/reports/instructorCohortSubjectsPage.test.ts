@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 describe('instructor cohort subject reports page', () => {
   it('uses a visible themed button for the card CTA', () => {
     const source = readFileSync(
-      join(process.cwd(), 'app/(dashboard)/reports/instructor/cohort-subjects/page.tsx'),
+      join(process.cwd(), 'app/core/components/reports/InstructorCohortSubjectsReportPage.tsx'),
       'utf8',
     );
 

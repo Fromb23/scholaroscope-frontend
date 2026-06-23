@@ -1,9 +1,5 @@
-import { redirect } from 'next/navigation';
+import { CBCOutcomeAddRedirectPage } from '@/app/plugins/cbc/pages/CBCRedirectPages';
 
-export default function Page({
-    params,
-}: {
-    params: { sessionId: string };
-}) {
-    redirect(`/sessions/${params.sessionId}`);
+export default function Page(props: Parameters<typeof CBCOutcomeAddRedirectPage>[0]) {
+    return <CBCOutcomeAddRedirectPage {...props} />;
 }

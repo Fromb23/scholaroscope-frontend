@@ -1,3 +1,5 @@
 import CambridgeAuthoringSubjectFrameworksPage from '@/app/plugins/cambridge/pages/CambridgeAuthoringSubjectFrameworksPage';
 
-export default CambridgeAuthoringSubjectFrameworksPage;
+export default function Page() {
+    return <CambridgeAuthoringSubjectFrameworksPage />;
+}

@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { CambridgeAuthoringIndexRedirectPage } from '@/app/plugins/cambridge/pages/CambridgeRedirectPages';
 
-export default function CambridgeAuthoringIndexPage() {
-  redirect('/cambridge/authoring/programmes');
+export default function Page() {
+    return <CambridgeAuthoringIndexRedirectPage />;
 }

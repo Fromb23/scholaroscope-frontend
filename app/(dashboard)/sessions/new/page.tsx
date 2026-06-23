@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { NewSessionRedirectPage } from '@/app/core/components/routing/RedirectPages';
 
 export default function Page() {
-    redirect('/lesson-plans/new');
+    return <NewSessionRedirectPage />;
 }

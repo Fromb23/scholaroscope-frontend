@@ -16,7 +16,7 @@ describe('ThemeSettingsCard', () => {
 
   it('describes settings as organization branding instead of device preference', () => {
     const settingsSource = readFileSync(join(process.cwd(), 'app/components/theme/ThemeSettingsCard.tsx'), 'utf8');
-    const adminSettingsSource = readFileSync(join(process.cwd(), 'app/(dashboard)/admin/settings/page.tsx'), 'utf8');
+    const adminSettingsSource = readFileSync(join(process.cwd(), 'app/core/components/settings/AdminSettingsPage.tsx'), 'utf8');
 
     expect(settingsSource).toContain('Organization branding');
     expect(settingsSource).not.toContain('updateMyThemePreference');

@@ -8,7 +8,6 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AcademicSetupDashboard } from '@/app/core/components/academic/setup/AcademicSetupDashboard';
 import { useAdminDashboard } from '@/app/core/hooks/useAdminDashboard';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
-import { useRequests, useRequestStats } from '@/app/plugins/requests/hooks/useRequests';
 import {
     DashboardHeader,
     AlertsBanner,
@@ -19,9 +18,9 @@ import {
     QuickActions,
     TodaySessionsWidget,
     SystemOverview,
-    PendingApprovals,
 } from '@/app/core/components/dashboard/AdminDashboardWidgets';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { Slot } from '@/app/core/registry/slots';
 
 export function AdminDashboard() {
     const router = useRouter();
@@ -35,8 +34,6 @@ export function AdminDashboard() {
         currentTerm, currentYear,
         lastRefresh, isLoading, refresh,
     } = useAdminDashboard();
-    const { requests, loading: requestsLoading } = useRequests({ status: 'PENDING' });
-    const { stats: requestStats } = useRequestStats();
     const setupStatus = academicSetupQuery.data ?? null;
     const setupIncomplete = Boolean(setupStatus && !setupStatus.complete);
     const assistantContext = useMemo(() => ({
@@ -46,7 +43,6 @@ export function AdminDashboard() {
             is_loading: isLoading,
             setup_incomplete: setupIncomplete,
             has_current_term: Boolean(currentTerm),
-            pending_requests: requestStats?.pending ?? 0,
             sessions_today: sessions.length,
         },
         visibleActions: setupIncomplete
@@ -74,7 +70,7 @@ export function AdminDashboard() {
             : (!isLoading && !currentTerm
                 ? 'No current term is active yet.'
                 : undefined),
-    }), [currentTerm, isLoading, requestStats?.pending, sessions.length, setupIncomplete, setupStatus]);
+    }), [currentTerm, isLoading, sessions.length, setupIncomplete, setupStatus]);
 
     useAssistantPageContext(assistantContext);
 
@@ -114,11 +110,7 @@ export function AdminDashboard() {
 
                 {/* Left column — primary actions */}
                 <div className="xl:col-span-2 space-y-6">
-                    <PendingApprovals
-                        requests={requests}
-                        loading={requestsLoading}
-                        pendingCount={requestStats?.pending ?? 0}
-                    />
+                    <Slot name="admin.dashboard.pendingApprovals" />
 
                     {/* Attendance + Performance side by side */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
