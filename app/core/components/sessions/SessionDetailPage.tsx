@@ -1631,7 +1631,7 @@ export function SessionDetailPage() {
     if (loading && !session) {
         return (
             <div className="mx-auto w-full max-w-6xl pb-8">
-                <LoadingSpinner />
+                <LoadingSpinner message="Loading session details..." />
             </div>
         );
     }

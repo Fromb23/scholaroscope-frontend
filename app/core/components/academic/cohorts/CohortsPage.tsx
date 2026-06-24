@@ -9,7 +9,7 @@ export function CohortsPage() {
     const { activeRole, loading: authLoading } = useAuth();
 
     if (authLoading) {
-        return <LoadingSpinner fullScreen={false} />;
+        return <LoadingSpinner fullScreen={false} message="Preparing cohorts page..." />;
     }
 
     if (!activeRole) {

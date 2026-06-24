@@ -79,7 +79,7 @@ export function CambridgeConfirmModal({
             Cancel
           </Button>
           <Button type="button" variant={confirmVariant} onClick={onConfirm} disabled={confirming}>
-            {confirming ? 'Processing...' : confirmLabel}
+            {confirming ? 'Confirming catalog change...' : confirmLabel}
           </Button>
         </div>
       </div>

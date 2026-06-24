@@ -40,7 +40,7 @@ export function ReportPoliciesHubPage() {
     });
 
     if (authLoading) {
-        return <LoadingSpinner />;
+        return <LoadingSpinner message="Checking report policy access..." />;
     }
 
     if (!canManagePolicies) {
@@ -48,7 +48,7 @@ export function ReportPoliciesHubPage() {
     }
 
     if (curriculaLoading || pluginsLoading) {
-        return <LoadingSpinner />;
+        return <LoadingSpinner message="Loading report policies..." />;
     }
 
     if (curriculaError || pluginsError) {

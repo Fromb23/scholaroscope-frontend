@@ -285,6 +285,8 @@ export function CBCAuthoringOutcomesPage() {
                     data={page.outcomes.map(outcome => outcome as LearningOutcome & Record<string, unknown>)}
                     columns={columns}
                     loading={page.isLoading}
+                    loadingMessage="Loading CBC learning outcomes..."
+                    loadingVariant="skeleton"
                     enableSearch
                     enableSort
                     searchPlaceholder="Search outcomes…"

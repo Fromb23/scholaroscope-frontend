@@ -35,6 +35,8 @@ import {
     buildLearnerOverviewReportHref,
     buildLearnerSubjectReportHref,
 } from '@/app/core/lib/learnerReportingRoutes';
+import { CBCLearnerSummarySkeleton } from '@/app/plugins/cbc/components/progress/CBCLearnerSummarySkeleton';
+import { CBCOutcomeRowsSkeleton } from '@/app/plugins/cbc/components/progress/CBCOutcomeRowsSkeleton';
 import { useOutcomeProgress, useOutcomeProgressSummary } from '@/app/plugins/cbc/hooks/useCBC';
 import type {
     OutcomeProgress,
@@ -206,7 +208,8 @@ export function CBCStudentProgressPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCLoading message="Loading progress data…" />
+                <CBCLoading message="Loading CBC progress for this learner..." />
+                <CBCLearnerSummarySkeleton />
             </div>
         );
     }
@@ -484,7 +487,10 @@ export function CBCStudentProgressPage() {
                                             {isOpen ? (
                                                 <div className="border-t px-4 py-4 theme-border theme-surface-elevated">
                                                     {recordsLoading ? (
-                                                        <CBCLoading message="Loading outcomes…" />
+                                                        <>
+                                                            <CBCLoading message={`Loading outcomes for ${strand.strand_name}...`} />
+                                                            <CBCOutcomeRowsSkeleton />
+                                                        </>
                                                     ) : detailRows.length === 0 ? (
                                                         <p className="py-4 text-center text-sm italic theme-muted">
                                                             No outcome progress records yet.

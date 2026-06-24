@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, BookOpenCheck, ClipboardCheck, Sparkles } from '
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { ReportPreparingState } from '@/app/components/ui/loading';
 import { useTeachingToday } from '@/app/core/hooks/useTeachingToday';
 import { MIDTERM_DASHBOARD_RETURN_TO, deriveMidtermInsights } from '@/app/core/lib/midtermBreak';
 
@@ -39,7 +39,18 @@ export function MidtermIntelligenceReportPage() {
   ] as const, []);
 
   if (loading) {
-    return <LoadingSpinner fullScreen={false} message="Opening midterm insights..." />;
+    return (
+      <ReportPreparingState
+        title="Loading teaching context for midterm insights..."
+        description="Scholaroscope is preparing the deterministic records used by this report."
+        steps={[
+          'Reviewing your current teaching context',
+          'Checking lesson records, attendance, assignments, assessments, and schemes',
+          'Preparing midterm insights',
+        ]}
+        activeStep={1}
+      />
+    );
   }
 
   return (

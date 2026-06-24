@@ -57,7 +57,7 @@ export function CbcReportPolicyDetailPage() {
     );
 
     if (authLoading) {
-        return <LoadingSpinner />;
+        return <LoadingSpinner message="Checking CBC report policy access..." />;
     }
 
     if (!canManagePolicies) {
@@ -65,7 +65,7 @@ export function CbcReportPolicyDetailPage() {
     }
 
     if (loading) {
-        return <LoadingSpinner />;
+        return <LoadingSpinner message="Loading CBC report policy..." />;
     }
 
     if (error || !policy) {

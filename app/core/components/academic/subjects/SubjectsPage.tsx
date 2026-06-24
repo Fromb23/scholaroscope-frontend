@@ -13,7 +13,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import {
+    ButtonPendingContent,
+    CardSkeleton,
+    PageSkeleton,
+    SectionLoading,
+} from '@/app/components/ui/loading';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { AssignSubjectToCohortModal } from '@/app/core/components/academic/AssignSubjectToCohortModal';
@@ -161,7 +166,12 @@ export function SubjectsPage() {
     };
 
     if (setupMode && setupStatusQuery.isLoading && !setupStatus) {
-        return <LoadingSpinner fullScreen={false} message="Loading academic setup..." />;
+        return (
+            <div className="space-y-6">
+                <SectionLoading title="Loading academic setup..." />
+                <PageSkeleton variant="generic" />
+            </div>
+        );
     }
 
     if (setupMode && setupPageState === 'blocked') {
@@ -243,7 +253,11 @@ export function SubjectsPage() {
                             </a>
                         </div>
                         {catalogLoading ? (
-                            <LoadingSpinner fullScreen={false} message="Loading subject offerings..." />
+                            <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                {Array.from({ length: 4 }).map((_, index) => (
+                                    <CardSkeleton key={index} lines={2} className="theme-card-muted" />
+                                ))}
+                            </div>
                         ) : offeredCatalog.length === 0 ? (
                             <div className="mt-4 rounded-xl border border-dashed p-5 text-sm theme-muted theme-border">
                                 No subject offerings selected yet. Select from the curriculum catalog below.
@@ -270,7 +284,12 @@ export function SubjectsPage() {
                                                     disabled={catalogActionId === item.id}
                                                     onClick={() => handleRemoveOffering(item)}
                                                 >
-                                                    Remove offering
+                                                    <ButtonPendingContent
+                                                        pending={catalogActionId === item.id}
+                                                        pendingLabel={`Removing ${item.name}...`}
+                                                    >
+                                                        Remove offering
+                                                    </ButtonPendingContent>
                                                 </Button>
                                             ) : null}
                                         </div>
@@ -288,7 +307,17 @@ export function SubjectsPage() {
                             </p>
                         </div>
                         {catalogLoading ? (
-                            <LoadingSpinner fullScreen={false} message="Loading curriculum catalog..." />
+                            <div className="mt-4">
+                                <SectionLoading
+                                    title={`Loading ${activeCurriculum?.name ?? 'curriculum'} subject catalog...`}
+                                    description="Scholaroscope is reading available subjects and current offerings for this curriculum."
+                                />
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                    {Array.from({ length: 6 }).map((_, index) => (
+                                        <CardSkeleton key={index} lines={3} />
+                                    ))}
+                                </div>
+                            </div>
                         ) : availableCatalog.length === 0 ? (
                             <div className="mt-4 rounded-xl border border-dashed p-5 text-sm theme-muted theme-border">
                                 All available catalog subjects are already offered, or this plugin has no catalog entries available.
@@ -312,7 +341,12 @@ export function SubjectsPage() {
                                                     disabled={catalogActionId === item.id}
                                                     onClick={() => handleOfferSubject(item)}
                                                 >
-                                                    Offer subject
+                                                    <ButtonPendingContent
+                                                        pending={catalogActionId === item.id}
+                                                        pendingLabel={`Adding ${item.name}...`}
+                                                    >
+                                                        Offer subject
+                                                    </ButtonPendingContent>
                                                 </Button>
                                             ) : null}
                                         </div>
@@ -352,7 +386,7 @@ export function SubjectsPage() {
 
             {/* Grouped list */}
             {loading ? (
-                <LoadingSpinner fullScreen={false} message="Loading subjects..." />
+                <SectionLoading title="Loading subject offerings..." />
             ) : grouped.length === 0 ? (
                 <Card>
                     <div className="py-16 text-center">

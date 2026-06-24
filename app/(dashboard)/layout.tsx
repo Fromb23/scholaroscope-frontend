@@ -23,6 +23,7 @@ import { RegistrySlotProvider } from '@/app/core/registry/slots';
 import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import { AssistantProvider } from '@/app/core/components/assistant/AssistantProvider';
 import { AssistantWidget } from '@/app/core/components/assistant/AssistantWidget';
+import { PermissionResolvingState } from '@/app/components/ui/loading';
 import '@/app/plugins/registerAll';
 import { AlertTriangle } from 'lucide-react';
 import { AccessNotice } from '../core/types/auth';
@@ -178,17 +179,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       && academicSetupQuery.isLoading
     )
   ) {
-    return (
-      <div className="theme-app-bg flex h-dvh items-center justify-center">
-        <div className="text-center">
-          <div
-            className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
-            style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
-          />
-          <p className="theme-muted mt-4">Loading...</p>
-        </div>
-      </div>
-    );
+    const resolvingMessage = loading
+      ? 'Restoring your session...'
+      : !user
+        ? 'Redirecting to sign in...'
+        : activeOrg
+          ? `Checking setup for ${activeOrg.name}...`
+          : 'Checking your access...';
+
+    return <PermissionResolvingState fullScreen message={resolvingMessage} />;
   }
 
   return (

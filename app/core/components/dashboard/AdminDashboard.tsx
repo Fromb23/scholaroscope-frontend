@@ -4,7 +4,7 @@
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { AcademicSetupDashboard } from '@/app/core/components/academic/setup/AcademicSetupDashboard';
 import { useAdminDashboard } from '@/app/core/hooks/useAdminDashboard';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
@@ -83,12 +83,24 @@ export function AdminDashboard() {
     if (!user || activeRole === null) return null;
     if (activeRole !== 'ADMIN') return null;
     if (academicSetupQuery.isLoading && !setupStatus) {
-        return <LoadingSpinner message="Loading your workspace setup..." />;
+        return (
+            <div className="space-y-6">
+                <LoadingMessage title={`Checking setup for ${activeOrg?.name ?? 'your workspace'}...`} />
+                <PageSkeleton variant="dashboard" />
+            </div>
+        );
     }
     if (setupStatus && !setupStatus.complete) {
         return <AcademicSetupDashboard status={setupStatus} title="Complete Academic Setup" />;
     }
-    if (isLoading) return <LoadingSpinner message="Loading your dashboard..." />;
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <LoadingMessage title={`Preparing ${activeOrg?.name ?? 'your workspace'} dashboard...`} />
+                <PageSkeleton variant="dashboard" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

@@ -25,7 +25,7 @@ export function AdminReportAccessGate({
   }, [activeRole, loading, router, user]);
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner message="Checking report access..." />;
   }
 
   if (!user) {

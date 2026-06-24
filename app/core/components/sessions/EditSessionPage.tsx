@@ -32,7 +32,7 @@ export function EditSessionPage() {
 
     // ── Guards ────────────────────────────────────────────────────────────
 
-    if (loading && !session) return <LoadingSpinner />;
+    if (loading && !session) return <LoadingSpinner message="Loading session editor..." />;
 
     if (!session) {
         return <div className="p-10 text-gray-500">Session not found.</div>;

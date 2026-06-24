@@ -53,7 +53,7 @@ export function AuditLogsPage() {
         URL.revokeObjectURL(url);
     };
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading audit logs..." />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
 
     return (

@@ -332,7 +332,7 @@ export function CurriculaPage() {
                 </div>
 
                 {loading ? (
-                    <LoadingSpinner fullScreen={false} />
+                    <LoadingSpinner fullScreen={false} message="Loading curriculum options..." />
                 ) : activeCurricula.length === 0 ? (
                     <div className="py-12 text-center">
                         <BookOpen className="mx-auto h-12 w-12 text-gray-400" />

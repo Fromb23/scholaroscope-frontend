@@ -5,6 +5,7 @@ import { ReactNode } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
+import { PermissionResolvingState } from '@/app/components/ui/loading';
 
 interface TenantGuardProps {
     children: ReactNode;
@@ -19,7 +20,7 @@ export function TenantGuard({ children }: TenantGuardProps) {
     const { user, activeOrg, loading } = useAuth();
     const router = useRouter();
 
-    if (loading) return null;
+    if (loading) return <PermissionResolvingState message="Restoring your workspace session..." />;
     if (!user) {
         router.replace(buildLoginPath(getCurrentPath()));
         return null;
@@ -28,7 +29,7 @@ export function TenantGuard({ children }: TenantGuardProps) {
 
     if (!activeOrg) {
         router.replace('/register?mode=new_workspace&reason=suspended');
-        return null;
+        return <PermissionResolvingState message="Switching workspace..." />;
     }
 
     return <>{children}</>;

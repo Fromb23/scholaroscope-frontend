@@ -262,6 +262,8 @@ export function CBCAuthoringSubStrandsPage() {
                     data={page.subStrands as (SubStrand & Record<string, unknown>)[]}
                     columns={columns as Column<SubStrand & Record<string, unknown>>[]}
                     loading={page.isLoading}
+                    loadingMessage="Loading CBC substrands..."
+                    loadingVariant="skeleton"
                     enableSearch
                     enableSort
                     searchPlaceholder="Search sub-strands…"

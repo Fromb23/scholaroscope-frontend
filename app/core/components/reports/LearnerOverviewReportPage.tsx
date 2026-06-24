@@ -14,7 +14,11 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import {
+  ButtonPendingContent,
+  EntityLoadingState,
+  ReportPreparingState,
+} from '@/app/components/ui/loading';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
 import { downloadBlob } from '@/app/core/api/downloads';
 import {
@@ -104,6 +108,7 @@ export function LearnerOverviewReportPage() {
 
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportReady, setExportReady] = useState<string | null>(null);
 
   const handleExport = useCallback(async (format: ReportExportFormat) => {
     if (!Number.isFinite(learnerId)) {
@@ -112,9 +117,11 @@ export function LearnerOverviewReportPage() {
 
     try {
       setExportError(null);
+      setExportReady(null);
       setExporting(format);
       const file = await learnerReportingAPI.exportLearnerOverviewReport(learnerId, format);
       downloadBlob(file.blob, file.fileName);
+      setExportReady(`${format.toUpperCase()} download started.`);
     } catch (error) {
       setExportError(
         extractErrorMessage(error as ApiError, 'Failed to export learner overview report'),
@@ -131,7 +138,7 @@ export function LearnerOverviewReportPage() {
   );
 
   if (learnerLoading && !student) {
-    return <LoadingSpinner message="Loading learner reporting context..." />;
+    return <EntityLoadingState entity="learner reporting context" action="Loading" />;
   }
 
   return (
@@ -159,8 +166,10 @@ export function LearnerOverviewReportPage() {
             disabled={exporting !== null}
             onClick={() => void handleExport('pdf')}
           >
-            <Download className="h-4 w-4" />
-            {exporting === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
+            <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+              <Download className="h-4 w-4" />
+              Export PDF
+            </ButtonPendingContent>
           </Button>
           <Button
             variant="secondary"
@@ -168,8 +177,10 @@ export function LearnerOverviewReportPage() {
             disabled={exporting !== null}
             onClick={() => void handleExport('xlsx')}
           >
-            <Download className="h-4 w-4" />
-            {exporting === 'xlsx' ? 'Exporting Excel...' : 'Export Excel'}
+            <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+              <Download className="h-4 w-4" />
+              Export Excel
+            </ButtonPendingContent>
           </Button>
           <Button
             variant="ghost"
@@ -177,8 +188,10 @@ export function LearnerOverviewReportPage() {
             disabled={exporting !== null}
             onClick={() => void handleExport('csv')}
           >
-            <Download className="h-4 w-4" />
-            {exporting === 'csv' ? 'Exporting CSV...' : 'Export CSV'}
+            <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+              <Download className="h-4 w-4" />
+              Export CSV
+            </ButtonPendingContent>
           </Button>
         </div>
       </div>
@@ -190,7 +203,20 @@ export function LearnerOverviewReportPage() {
         />
       ) : null}
 
-      {reportLoading ? <LoadingSpinner message="Loading learner overview report..." /> : null}
+      {exportReady ? <p className="text-sm theme-muted">{exportReady}</p> : null}
+
+      {reportLoading ? (
+        <ReportPreparingState
+          title={`Building ${student?.name ?? 'learner'}'s overview report...`}
+          steps={[
+            'Collecting learner profile',
+            'Reading attendance and assignment signals',
+            'Calculating learning and participation risk',
+            'Preparing recommendations',
+          ]}
+          activeStep={1}
+        />
+      ) : null}
 
       {report && !reportLoading ? (
         <>

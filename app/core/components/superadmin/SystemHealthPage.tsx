@@ -30,7 +30,7 @@ export function SystemHealthPage() {
         setRefreshing(false);
     };
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading system health..." />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
     if (!health) return null;
 

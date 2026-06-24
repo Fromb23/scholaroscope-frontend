@@ -55,7 +55,7 @@ export function ReportsPage() {
 
   return (
     <AdminReportAccessGate>
-      {loading ? <LoadingSpinner /> : error ? <ErrorBanner message={error} onDismiss={() => {}} /> : (
+      {loading ? <LoadingSpinner message="Loading report workspace..." /> : error ? <ErrorBanner message={error} onDismiss={() => {}} /> : (
         <div className="space-y-8 max-w-full">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">

@@ -475,6 +475,7 @@ export function InstructorManagementPage() {
                     data={filtered.map(i => i as GlobalUser & Record<string, unknown>)}
                     columns={columns}
                     loading={false}
+                    loadingMessage="Loading instructor accounts..."
                     enableSearch
                     enableSort
                     searchPlaceholder="Search by name or email..."

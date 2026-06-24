@@ -310,6 +310,8 @@ export function CBCAuthoringStrandsPage() {
                                 data={page.visibleStrands.map(strand => strand as Strand & Record<string, unknown>)}
                                 columns={columns}
                                 loading={page.isLoading}
+                                loadingMessage="Loading CBC strands..."
+                                loadingVariant="skeleton"
                                 enableSearch
                                 enableSort
                                 searchPlaceholder="Search strands…"

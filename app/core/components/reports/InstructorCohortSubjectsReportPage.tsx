@@ -74,7 +74,7 @@ export default function InstructorCohortSubjectsReportPage() {
     };
   }, [averageAttendance, cohortSubjects]);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <LoadingSpinner message="Loading instructor class subject reports..." />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
 
   return (

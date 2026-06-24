@@ -17,7 +17,12 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import {
+  ButtonPendingContent,
+  EntityLoadingState,
+  ReportPreparingState,
+  SectionLoading,
+} from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
 import {
@@ -411,6 +416,7 @@ export function LearnerSubjectReportPage() {
   const [viewMode, setViewMode] = useState<ReportViewMode>('graph');
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportReady, setExportReady] = useState<string | null>(null);
 
   const subjectOptions = useMemo(() => {
     return allowedSubjectScopes.map((scope) => ({
@@ -446,12 +452,14 @@ export function LearnerSubjectReportPage() {
 
     try {
       setExportError(null);
+      setExportReady(null);
       setExporting(format);
       const file = await learnerReportingAPI.exportLearnerSubjectReport(learnerId, {
         format,
         cohortSubjectId: selectedCohortSubjectId,
       });
       downloadBlob(file.blob, file.fileName);
+      setExportReady(`${format.toUpperCase()} download started.`);
     } catch (error) {
       setExportError(
         extractErrorMessage(error as ApiError, 'Failed to export learner subject report'),
@@ -466,7 +474,7 @@ export function LearnerSubjectReportPage() {
   const canExport = Boolean(report) && !reportLoading && !reportError && !showAccessState;
 
   if (learnerLoading && !student) {
-    return <LoadingSpinner message="Loading learner reporting context..." />;
+    return <EntityLoadingState entity="learner reporting context" action="Loading" />;
   }
 
   return (
@@ -495,8 +503,10 @@ export function LearnerSubjectReportPage() {
               disabled={exporting !== null}
               onClick={() => void handleExport('pdf')}
             >
-              <Download className="h-4 w-4" />
-              {exporting === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
+              <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+                <Download className="h-4 w-4" />
+                Export PDF
+              </ButtonPendingContent>
             </Button>
             <Button
               variant="secondary"
@@ -504,8 +514,10 @@ export function LearnerSubjectReportPage() {
               disabled={exporting !== null}
               onClick={() => void handleExport('xlsx')}
             >
-              <Download className="h-4 w-4" />
-              {exporting === 'xlsx' ? 'Exporting Excel...' : 'Export Excel'}
+              <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+                <Download className="h-4 w-4" />
+                Export Excel
+              </ButtonPendingContent>
             </Button>
             <Button
               variant="ghost"
@@ -513,8 +525,10 @@ export function LearnerSubjectReportPage() {
               disabled={exporting !== null}
               onClick={() => void handleExport('csv')}
             >
-              <Download className="h-4 w-4" />
-              {exporting === 'csv' ? 'Exporting CSV...' : 'Export CSV'}
+              <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </ButtonPendingContent>
             </Button>
           </div>
         ) : null}
@@ -531,6 +545,8 @@ export function LearnerSubjectReportPage() {
       {exportError ? (
         <ErrorBanner message={exportError} onDismiss={() => setExportError(null)} />
       ) : null}
+
+      {exportReady ? <p className="text-sm theme-muted">{exportReady}</p> : null}
 
       <Card>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -554,7 +570,7 @@ export function LearnerSubjectReportPage() {
           <div>
             {scopesLoading ? (
               <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
-                Loading report scopes...
+                Loading learner subject report scopes...
               </div>
             ) : (
               <Select
@@ -612,7 +628,16 @@ export function LearnerSubjectReportPage() {
 
       {!showAccessState && selectedCohortSubjectId ? (
         reportLoading ? (
-          <LoadingSpinner message="Loading learner subject report..." />
+          <ReportPreparingState
+            title={`Building ${student?.full_name ?? 'learner'}'s subject report...`}
+            steps={[
+              'Collecting learner profile',
+              'Reading attendance and assignment signals',
+              'Calculating learning and participation risk',
+              'Preparing recommendations',
+            ]}
+            activeStep={1}
+          />
         ) : reportError ? (
           <ErrorBanner
             message={reportError}
@@ -671,9 +696,7 @@ export function LearnerSubjectReportPage() {
             </Card>
 
             {intelligenceLoading ? (
-              <Card>
-                <p className="text-sm theme-muted">Loading academic intelligence...</p>
-              </Card>
+              <SectionLoading title="Loading learner subject intelligence..." />
             ) : intelligenceError ? (
               <ErrorBanner
                 message={intelligenceError}

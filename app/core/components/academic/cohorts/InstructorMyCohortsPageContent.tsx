@@ -246,7 +246,7 @@ export function InstructorMyCohortsPageContent() {
 
             {loading ? (
                 <Card>
-                    <LoadingSpinner fullScreen={false} />
+                    <LoadingSpinner fullScreen={false} message="Loading assigned cohorts..." />
                 </Card>
             ) : filteredGroups.length === 0 ? (
                 <Card>

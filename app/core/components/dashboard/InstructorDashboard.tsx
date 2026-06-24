@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { useInstructorDashboard } from '@/app/core/hooks/useInstructorDashboard';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { SessionReminderPanel } from '@/app/core/components/dashboard/SessionReminderPanel';
@@ -20,7 +20,7 @@ import { useAssistantPageContext } from '@/app/core/components/assistant/useAssi
 
 export function InstructorDashboard() {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { user, activeOrg, activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
 
     const {
@@ -72,7 +72,14 @@ export function InstructorDashboard() {
 
     if (!user || activeRole === null) return null;
     if (activeRole !== 'INSTRUCTOR') return null;
-    if (dashboardLoading) return <LoadingSpinner message="Loading your dashboard..." />;
+    if (dashboardLoading) {
+        return (
+            <div className="max-w-[1800px] mx-auto space-y-6">
+                <LoadingMessage title={`Preparing ${activeOrg?.name ?? 'your'} teaching dashboard...`} />
+                <PageSkeleton variant="dashboard" />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-[1800px] mx-auto space-y-6">

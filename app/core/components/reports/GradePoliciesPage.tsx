@@ -170,9 +170,9 @@ export function GradePoliciesPage() {
         handleClose();
     };
 
-    if (authLoading) return <LoadingSpinner />;
+    if (authLoading) return <LoadingSpinner message="Checking grade policy access..." />;
     if (!canManagePolicies) return <PolicyAdminOnlyState title="Generic Grade Policies" />;
-    if (loading && !policies.length) return <LoadingSpinner />;
+    if (loading && !policies.length) return <LoadingSpinner message="Loading grade policies..." />;
 
     if (!genericSurfaceAvailable) {
         return (
