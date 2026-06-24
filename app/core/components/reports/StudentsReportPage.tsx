@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   BookOpen,
   Calendar,
+  ChevronDown,
+  ChevronUp,
   Download,
   FileText,
   Search,
@@ -83,6 +85,7 @@ export function StudentsReportPage({
     ?? parsePositiveReportParam(searchParams.get('student'));
   const selectedTermId = parsePositiveReportParam(searchParams.get('term'));
   const searchQuery = searchParams.get('q') ?? '';
+  const [expandedMobileSubjectId, setExpandedMobileSubjectId] = useState<number | null>(null);
   const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
   const backHref = resolveReportBackHref({
     returnTo: searchParams.get('returnTo'),
@@ -290,10 +293,8 @@ export function StudentsReportPage({
                 searchResults.map((student) => {
                   const href = buildLearnerReportHref(student.id, {
                     term: selectedTermId ?? currentTerm?.id ?? null,
-                    q: searchQuery || null,
                     returnTo: buildReportReturnTo('/reports/students', {
                       term: selectedTermId ?? currentTerm?.id ?? null,
-                      q: searchQuery || null,
                     }),
                   });
 
@@ -361,6 +362,13 @@ export function StudentsReportPage({
                   <div className="flex flex-wrap gap-2">
                     {reportCard.term ? <Badge variant="indigo">{reportCard.term.name}</Badge> : null}
                     <Badge variant="default">{reportCard.overall.total_subjects} subjects</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateQuery({ student: null, q: null })}
+                    >
+                      Change learner
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -424,6 +432,64 @@ export function StudentsReportPage({
                   {reportCard.subjects.map((subject) => {
                     const genericResult = resolveGenericStudentResult(subject.generic);
                     const cbcResult = resolveCbcStudentResult(subject.cbc);
+                    const subjectActions = (
+                      <>
+                        <Link
+                          href={buildLearnerSubjectReportHref(
+                            selectedStudentId,
+                            subject.cohort_subject.id,
+                            { returnTo: currentReturnTo },
+                          )}
+                        >
+                          <Button variant="secondary" size="sm">Learner Subject</Button>
+                        </Link>
+                        <Link
+                          href={buildCohortSubjectReportHref(subject.cohort_subject.id, {
+                            term: selectedTermId ?? reportCard.term?.id ?? null,
+                            cohort: subject.cohort_subject.cohort_id,
+                            subject: subject.cohort_subject.subject_id,
+                            student: selectedStudentId,
+                            returnTo: currentReturnTo,
+                          })}
+                        >
+                          <Button variant="secondary" size="sm">Class Subject</Button>
+                        </Link>
+                        <Link
+                          href={buildAttendanceReportHref({
+                            term: selectedTermId ?? reportCard.term?.id ?? null,
+                            student: selectedStudentId,
+                            cohortSubject: subject.cohort_subject.id,
+                            returnTo: currentReturnTo,
+                          })}
+                        >
+                          <Button variant="secondary" size="sm">Attendance</Button>
+                        </Link>
+                        {subject.assessment_completion?.total_assessments ? (
+                          <Link
+                            href={buildAssessmentReportHref(null, {
+                              term: selectedTermId ?? reportCard.term?.id ?? null,
+                              student: selectedStudentId,
+                              cohortSubject: subject.cohort_subject.id,
+                              returnTo: currentReturnTo,
+                            })}
+                          >
+                            <Button variant="ghost" size="sm">Assessments</Button>
+                          </Link>
+                        ) : null}
+                        {subject.reporting_source === 'cbc' ? (
+                          <Link
+                            href={buildCbcLearnerProgressHref(selectedStudentId, {
+                              subject: subject.cohort_subject.subject_id,
+                              cohortSubject: subject.cohort_subject.id,
+                              returnTo: currentReturnTo,
+                            })}
+                          >
+                            <Button variant="ghost" size="sm">CBC Progress</Button>
+                          </Link>
+                        ) : null}
+                      </>
+                    );
+                    const isMobileExpanded = expandedMobileSubjectId === subject.cohort_subject.id;
 
                     return (
                       <CurriculumSubjectReportCard
@@ -467,60 +533,26 @@ export function StudentsReportPage({
                               />
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
-                              <Link
-                                href={buildLearnerSubjectReportHref(
-                                  selectedStudentId,
-                                  subject.cohort_subject.id,
-                                  { returnTo: currentReturnTo },
-                                )}
+                            <div className="md:hidden">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setExpandedMobileSubjectId((current) => (
+                                  current === subject.cohort_subject.id ? null : subject.cohort_subject.id
+                                ))}
                               >
-                                <Button variant="secondary" size="sm">Learner Subject</Button>
-                              </Link>
-                              <Link
-                                href={buildCohortSubjectReportHref(subject.cohort_subject.id, {
-                                  term: selectedTermId ?? reportCard.term?.id ?? null,
-                                  cohort: subject.cohort_subject.cohort_id,
-                                  subject: subject.cohort_subject.subject_id,
-                                  student: selectedStudentId,
-                                  returnTo: currentReturnTo,
-                                })}
-                              >
-                                <Button variant="secondary" size="sm">Class Subject</Button>
-                              </Link>
-                              <Link
-                                href={buildAttendanceReportHref({
-                                  term: selectedTermId ?? reportCard.term?.id ?? null,
-                                  student: selectedStudentId,
-                                  cohortSubject: subject.cohort_subject.id,
-                                  returnTo: currentReturnTo,
-                                })}
-                              >
-                                <Button variant="secondary" size="sm">Attendance</Button>
-                              </Link>
-                              {subject.assessment_completion?.total_assessments ? (
-                                <Link
-                                  href={buildAssessmentReportHref(null, {
-                                    term: selectedTermId ?? reportCard.term?.id ?? null,
-                                    student: selectedStudentId,
-                                    cohortSubject: subject.cohort_subject.id,
-                                    returnTo: currentReturnTo,
-                                  })}
-                                >
-                                  <Button variant="ghost" size="sm">Assessments</Button>
-                                </Link>
+                                {isMobileExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                {isMobileExpanded ? 'Show less' : 'Show more'}
+                              </Button>
+                              {isMobileExpanded ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {subjectActions}
+                                </div>
                               ) : null}
-                              {subject.reporting_source === 'cbc' ? (
-                                <Link
-                                  href={buildCbcLearnerProgressHref(selectedStudentId, {
-                                    subject: subject.cohort_subject.subject_id,
-                                    cohortSubject: subject.cohort_subject.id,
-                                    returnTo: currentReturnTo,
-                                  })}
-                                >
-                                  <Button variant="ghost" size="sm">CBC Progress</Button>
-                                </Link>
-                              ) : null}
+                            </div>
+
+                            <div className="hidden flex-wrap gap-2 md:flex">
+                              {subjectActions}
                             </div>
                           </div>
                         )}

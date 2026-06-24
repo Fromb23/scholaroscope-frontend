@@ -11,6 +11,20 @@ import { authAPI } from '@/app/core/api/auth';
 import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 
+type ResetTokenState = 'validating' | 'valid' | 'expired' | 'used' | 'invalid';
+
+function resetMessageForCode(code?: string) {
+  switch (code) {
+    case 'password_reset_expired':
+      return 'This password reset link has expired. Reset links are valid for 24 hours. Please request a new one.';
+    case 'password_reset_used':
+      return 'This password reset link has already been used. Please request a new link.';
+    case 'password_reset_invalid':
+    default:
+      return 'This password reset link is invalid. Please request a new one.';
+  }
+}
+
 export function ResetPasswordPage() {
   const params = useParams();
   const router = useRouter();
@@ -21,8 +35,8 @@ export function ResetPasswordPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [validating, setValidating] = useState(true);
-  const [tokenValid, setTokenValid] = useState(false);
+  const [tokenState, setTokenState] = useState<ResetTokenState>('validating');
+  const [tokenMessage, setTokenMessage] = useState('');
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -41,8 +55,20 @@ export function ResetPasswordPage() {
       setSuccess(true);
       setTimeout(() => router.push('/login'), 3000);
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } };
-      setErrors({ general: axiosErr?.response?.data?.error || 'Invalid or expired reset link.' });
+      const axiosErr = err as { response?: { data?: { error?: string; code?: string } } };
+      const code = axiosErr?.response?.data?.code;
+      if (code === 'password_reset_expired' || code === 'password_reset_used' || code === 'password_reset_invalid') {
+        setTokenState(
+          code === 'password_reset_expired'
+            ? 'expired'
+            : code === 'password_reset_used'
+              ? 'used'
+              : 'invalid',
+        );
+        setTokenMessage(resetMessageForCode(code));
+        return;
+      }
+      setErrors({ general: axiosErr?.response?.data?.error || 'Could not reset your password.' });
     } finally {
       setLoading(false);
     }
@@ -51,18 +77,25 @@ export function ResetPasswordPage() {
   useEffect(() => {
     const validateToken = async () => {
       try {
-        await authAPI.validateResetToken({ uid, token });
-        setTokenValid(true);
-      } catch {
-        setTokenValid(false);
-      } finally {
-        setValidating(false);
+        const result = await authAPI.validateResetToken({ uid, token }) as { code?: string };
+        setTokenState(result.code === 'password_reset_valid' ? 'valid' : 'invalid');
+      } catch (err: unknown) {
+        const axiosErr = err as { response?: { data?: { code?: string } } };
+        const code = axiosErr?.response?.data?.code;
+        setTokenState(
+          code === 'password_reset_expired'
+            ? 'expired'
+            : code === 'password_reset_used'
+              ? 'used'
+              : 'invalid',
+        );
+        setTokenMessage(resetMessageForCode(code));
       }
     };
     validateToken();
   }, [uid, token]);
 
-  if (validating) {
+  if (tokenState === 'validating') {
     return (
       <AuthFrame>
         <div className="theme-card rounded-2xl p-8 text-center">
@@ -72,12 +105,12 @@ export function ResetPasswordPage() {
     );
   }
 
-  if (!tokenValid) {
+  if (tokenState !== 'valid') {
     return (
       <AuthFrame>
         <div className="theme-card space-y-3 rounded-2xl p-8 text-center">
           <p className="text-sm font-medium text-[color:var(--color-danger)]">
-            This reset link is invalid or has already been used.
+            {tokenMessage || resetMessageForCode()}
           </p>
           <a href="/forgot-password" className="theme-link block text-sm">
             Request a new one

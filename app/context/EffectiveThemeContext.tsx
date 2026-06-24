@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { usePathname } from 'next/navigation';
 
 import { themeAPI } from '@/app/core/api/theme';
 import { useAuth } from '@/app/context/AuthContext';
@@ -29,10 +30,44 @@ interface EffectiveThemeContextValue {
 }
 
 const EffectiveThemeContext = createContext<EffectiveThemeContextValue | null>(null);
+const LAST_ORG_THEME_STORAGE_KEY = 'scholaroscope_last_org_theme_snapshot';
+
+function readLastOrgThemeSnapshot(): EffectiveThemeResponse | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const raw = window.localStorage.getItem(LAST_ORG_THEME_STORAGE_KEY);
+    return raw ? JSON.parse(raw) as EffectiveThemeResponse : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeLastOrgThemeSnapshot(theme: EffectiveThemeResponse) {
+  if (typeof window === 'undefined' || !theme.organization || !theme.is_customized) {
+    return;
+  }
+  window.localStorage.setItem(LAST_ORG_THEME_STORAGE_KEY, JSON.stringify(theme));
+}
+
+function shouldUseSystemTheme(pathname: string | null): boolean {
+  if (!pathname || pathname === '/') {
+    return true;
+  }
+  return [
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/reset-password',
+    '/verify-email',
+  ].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
 
 export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
   const { user, activeOrg, loading: authLoading } = useAuth();
   const { themeMode } = useTheme();
+  const pathname = usePathname();
   const [effectiveTheme, setEffectiveTheme] = useState<EffectiveThemeResponse>(DEFAULT_EFFECTIVE_THEME);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +85,12 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
 
     if (!user) {
       setError(null);
+      if (!shouldUseSystemTheme(pathname)) {
+        const storedTheme = readLastOrgThemeSnapshot();
+        if (storedTheme) {
+          return applyResolvedTheme(storedTheme);
+        }
+      }
       return applyResolvedTheme(DEFAULT_EFFECTIVE_THEME);
     }
 
@@ -60,6 +101,7 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
       if (requestId !== themeRequestIdRef.current) {
         return normalizeEffectiveTheme(theme, themeMode);
       }
+      storeLastOrgThemeSnapshot(theme);
       return applyResolvedTheme(theme);
     } catch (err) {
       if (requestId !== themeRequestIdRef.current) {
@@ -73,7 +115,7 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }
-  }, [applyResolvedTheme, themeMode, user]);
+  }, [applyResolvedTheme, pathname, themeMode, user]);
 
   useEffect(() => {
     if (authLoading) {
@@ -81,7 +123,7 @@ export function EffectiveThemeProvider({ children }: { children: ReactNode }) {
     }
 
     void refetch();
-  }, [activeOrg?.id, authLoading, refetch]);
+  }, [activeOrg?.id, authLoading, pathname, refetch]);
 
   useEffect(() => {
     applyThemeTokens(effectiveTheme, undefined, themeMode);
