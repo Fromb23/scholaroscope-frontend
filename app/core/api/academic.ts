@@ -364,8 +364,11 @@ export const subjectOfferingAPI = {
     return response.data;
   },
 
-  remove: async (offeringId: string): Promise<void> => {
-    await apiClient.delete(`/academic/subject-offerings/${encodeURIComponent(offeringId)}/`);
+  remove: async (offeringId: string): Promise<{ detail?: string; code?: string }> => {
+    const response = await apiClient.delete<{ detail?: string; code?: string }>(
+      `/academic/subject-offerings/${encodeURIComponent(offeringId)}/`,
+    );
+    return response.data ?? {};
   },
 };
 

@@ -55,8 +55,6 @@ import {
   buildAttendanceReportHref,
   buildCbcCohortProgressHref,
   buildCbcLearnerProgressHref,
-  buildCohortReportHref,
-  buildInstructorReportHref,
   buildLearnerReportHref,
   buildLearnerSubjectReportHref,
   buildReportReturnTo,
@@ -93,6 +91,20 @@ function displayUserName(user: User | null): string | null {
   }
 
   return user.full_name || `${user.first_name} ${user.last_name}`.trim() || user.email || null;
+}
+
+function buildScopedOperationsHref(
+  basePath: string,
+  params: Record<string, number | string | null | undefined>,
+): string {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      search.set(key, String(value));
+    }
+  });
+  const query = search.toString();
+  return query ? `${basePath}?${query}` : basePath;
 }
 
 export function resolveClassSubjectReportTermLabel({
@@ -450,6 +462,7 @@ export function ClassSubjectReportPage({
   const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [fullSummaryOpen, setFullSummaryOpen] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
   const handleExport = useCallback(async (format: ReportExportFormat) => {
     if (!cohortId) {
@@ -489,6 +502,61 @@ export function ClassSubjectReportPage({
     report?.reporting_source === 'cbc'
     || report?.composition?.available_sections?.includes('cbc_progress'),
   );
+  const classSubjectActions = report ? [
+    {
+      label: 'Attendance',
+      href: buildAttendanceReportHref({
+        term: selectedTermId ?? report.period?.term_id ?? null,
+        cohort: report.cohort.id,
+        subject: report.subject.id,
+        cohortSubject: report.cohort_subject.id,
+        returnTo: currentReturnTo,
+      }),
+      variant: 'secondary' as const,
+    },
+    ...(hasCbcProgress ? [{
+      label: 'CBC Progress',
+      href: buildCbcCohortProgressHref(report.cohort.id, {
+        subject: report.subject.id,
+        cohortSubject: report.cohort_subject.id,
+        returnTo: currentReturnTo,
+      }),
+      variant: 'secondary' as const,
+    }] : []),
+    {
+      label: 'Assignments',
+      href: buildScopedOperationsHref('/assignments', {
+        term: selectedTermId ?? report.period?.term_id ?? null,
+        cohort_subject: report.cohort_subject.id,
+        cohort: report.cohort.id,
+        subject: report.subject.id,
+        returnTo: currentReturnTo,
+      }),
+      variant: 'ghost' as const,
+    },
+    {
+      label: 'Sessions',
+      href: buildScopedOperationsHref('/sessions', {
+        term: selectedTermId ?? report.period?.term_id ?? null,
+        cohort_subject: report.cohort_subject.id,
+        cohort: report.cohort.id,
+        subject: report.subject.id,
+        returnTo: currentReturnTo,
+      }),
+      variant: 'ghost' as const,
+    },
+    {
+      label: 'Assessments',
+      href: buildScopedOperationsHref('/assessments', {
+        term: selectedTermId ?? report.period?.term_id ?? null,
+        cohort_subject: report.cohort_subject.id,
+        cohort: report.cohort.id,
+        subject: report.subject.id,
+        returnTo: currentReturnTo,
+      }),
+      variant: 'ghost' as const,
+    },
+  ] : [];
   const renderLearnerLinks = useCallback((row: ClassSubjectLearnerRow) => {
     if (!report) {
       return null;
@@ -695,60 +763,35 @@ export function ClassSubjectReportPage({
               <div>
                 <h2 className="text-lg font-semibold theme-text">Context Drill-Down</h2>
                 <p className="mt-1 text-sm theme-muted">
-                  Keep moving from this class subject into the surrounding class, instructor,
-                  learner, attendance, and CBC progress context without losing the path you followed.
+                  Class-subject actions for this cohort subject. Mobile keeps these behind
+                  disclosure so the summary stays readable.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {!isInstructorRoute ? (
-                  <Link
-                    href={buildCohortReportHref(report.cohort.id, {
-                      term: selectedTermId ?? report.period?.term_id ?? null,
-                      subject: report.subject.id,
-                      cohortSubject: report.cohort_subject.id,
-                      returnTo: currentReturnTo,
-                    })}
-                  >
-                    <Button variant="secondary" size="sm">Class</Button>
-                  </Link>
+              <div className="md:hidden">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setMobileActionsOpen((current) => !current)}
+                >
+                  {mobileActionsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {mobileActionsOpen ? 'Show less' : 'Show more'}
+                </Button>
+                {mobileActionsOpen ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {classSubjectActions.map((item) => (
+                      <Link key={item.label} href={item.href}>
+                        <Button variant={item.variant} size="sm">{item.label}</Button>
+                      </Link>
+                    ))}
+                  </div>
                 ) : null}
-                {!isInstructorRoute ? (
-                  <Link
-                    href={buildAttendanceReportHref({
-                      term: selectedTermId ?? report.period?.term_id ?? null,
-                      cohort: report.cohort.id,
-                      subject: report.subject.id,
-                      cohortSubject: report.cohort_subject.id,
-                      returnTo: currentReturnTo,
-                    })}
-                  >
-                    <Button variant="secondary" size="sm">Attendance</Button>
+              </div>
+              <div className="hidden flex-wrap gap-2 md:flex">
+                {classSubjectActions.map((item) => (
+                  <Link key={item.label} href={item.href}>
+                    <Button variant={item.variant} size="sm">{item.label}</Button>
                   </Link>
-                ) : null}
-                {!isInstructorRoute && report.instructor?.id ? (
-                  <Link
-                    href={buildInstructorReportHref(report.instructor.id, {
-                      term: selectedTermId ?? report.period?.term_id ?? null,
-                      cohort: report.cohort.id,
-                      subject: report.subject.id,
-                      cohortSubject: report.cohort_subject.id,
-                      returnTo: currentReturnTo,
-                    })}
-                  >
-                    <Button variant="ghost" size="sm">Instructor</Button>
-                  </Link>
-                ) : null}
-                {hasCbcProgress ? (
-                  <Link
-                    href={buildCbcCohortProgressHref(report.cohort.id, {
-                      subject: report.subject.id,
-                      cohortSubject: report.cohort_subject.id,
-                      returnTo: currentReturnTo,
-                    })}
-                  >
-                    <Button variant="ghost" size="sm">CBC Progress</Button>
-                  </Link>
-                ) : null}
+                ))}
               </div>
             </div>
           </Card>

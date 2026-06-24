@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { Badge } from '@/app/components/ui/Badge';
 import {
     ButtonPendingContent,
     CardSkeleton,
@@ -36,6 +37,12 @@ import {
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { SubjectCatalogItem } from '@/app/core/types/academic';
+
+function isDropScheduled(item: SubjectCatalogItem): boolean {
+    return item.metadata?.drop_scheduled === true
+        || item.metadata?.offering_status === 'DROP_SCHEDULED'
+        || item.metadata?.offering_status === 'DROP_PENDING_TERM_CLOSE';
+}
 
 export function SubjectsPage() {
     const searchParams = useSearchParams();
@@ -154,10 +161,10 @@ export function SubjectsPage() {
         setCatalogActionId(item.id);
         setPageError(null);
         try {
-            await subjectOfferingAPI.remove(item.offering_id);
+            const result = await subjectOfferingAPI.remove(item.offering_id);
             await refetchCatalog();
             await setupStatusQuery.refetch();
-            setSetupActionMessage('Subject offering updated. Continue setup?');
+            setSetupActionMessage(result.detail ?? 'Subject offering updated. Continue setup?');
         } catch (error) {
             setPageError(extractErrorMessage(error as ApiError, 'Failed to remove subject offering.'));
         } finally {
@@ -269,12 +276,22 @@ export function SubjectsPage() {
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
                                                 <p className="font-semibold theme-text">{item.name}</p>
-                                                <p className="text-sm theme-muted">{item.code} · {item.level}</p>
+                                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                                    <p className="text-sm theme-muted">{item.code} · {item.level}</p>
+                                                    {isDropScheduled(item) ? (
+                                                        <Badge variant="warning">Scheduled removal</Badge>
+                                                    ) : null}
+                                                </div>
                                                 <p className="mt-1 text-xs theme-subtle">
                                                     {item.cohort_assignment_count > 0
                                                         ? `${item.cohort_assignment_count} cohort assignment(s)`
                                                         : 'Ready for cohort assignment'}
                                                 </p>
+                                                {isDropScheduled(item) ? (
+                                                    <p className="mt-2 text-xs text-amber-700">
+                                                        This subject is scheduled for removal from the next term after the current term is closed.
+                                                    </p>
+                                                ) : null}
                                             </div>
                                             {canManageSubjects ? (
                                                 <Button

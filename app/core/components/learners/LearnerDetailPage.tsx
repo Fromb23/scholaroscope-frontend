@@ -599,6 +599,41 @@ export default function LearnerDetailPage() {
             icon: <Trash2 className="h-4 w-4" />,
         }] : []),
     ];
+    const mobileMoreMenuItems = [
+        ...(canGenerateOverviewReport && reportScopes?.can_view_overview ? [{
+            label: 'Open Overall Report',
+            href: overviewReportHref,
+            icon: <FileText className="h-4 w-4" />,
+        }] : []),
+        ...(canRecordAssessment && hasOpenAssessments && !openAssessmentsLoading && !openAssessmentsError ? [{
+            label: 'Record Assessment',
+            onSelect: handleRecordAssessment,
+            icon: <ClipboardList className="h-4 w-4" />,
+        }] : []),
+        ...(canEdit ? [{
+            label: 'Edit Learner',
+            href: `/learners/${studentId}/edit`,
+            icon: <Edit className="h-4 w-4" />,
+        }] : []),
+        ...(canManage ? [
+            {
+                label: 'Enroll in Cohort',
+                onSelect: () => setEnrollOpen(true),
+                icon: <UserPlus className="h-4 w-4" />,
+            },
+            {
+                label: 'Update Status',
+                onSelect: () => setStatusOpen(true),
+                icon: <Users className="h-4 w-4" />,
+            },
+        ] : []),
+        ...(canEdit ? [{
+            label: 'Delete Learner',
+            onSelect: () => setDeleteOpen(true),
+            destructive: true,
+            icon: <Trash2 className="h-4 w-4" />,
+        }] : []),
+    ];
 
     if (loading) return <LoadingSpinner message="Loading student..." />;
     if (error || !student) return (
@@ -1108,13 +1143,7 @@ export default function LearnerDetailPage() {
                             </Button>
                         </Link>
                         <ActionMenu
-                            items={[
-                                ...(canGenerateOverviewReport && reportScopes?.can_view_overview ? [{
-                                    label: 'Open Overall Report',
-                                    href: overviewReportHref,
-                                    icon: <FileText className="h-4 w-4" />,
-                                }] : []),
-                            ]}
+                            items={mobileMoreMenuItems}
                         />
                     </div>
                 </div>
