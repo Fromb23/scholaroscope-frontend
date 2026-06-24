@@ -7,11 +7,11 @@ import { TenantGuard } from '@/app/core/guards/TenantGuard';
 import { useAuth } from '@/app/context/AuthContext';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useCambridgeInstallationStatus, useCambridgeOfferings, useCambridgeProgrammes, useDisableCambridgeInstallation, useDisableCambridgeProgramme, useEnableCambridgeInstallation, useEnableCambridgeProgramme, useInstallCambridge } from '../hooks';
 import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/CambridgeNavigation';
-import { modeLabel } from './authoringUtils';
+import { modeLabel, resolveCambridgeError } from './authoringUtils';
 
 export default function CambridgeSetupPage() {
   const { user, activeRole } = useAuth();
@@ -48,7 +48,10 @@ export default function CambridgeSetupPage() {
           {loading ? <LoadingSpinner fullScreen={false} message="Loading Cambridge setup..." /> : null}
 
           {hasError && errorVisible ? (
-            <ErrorBanner message="Failed to load Cambridge setup data." onDismiss={() => setErrorVisible(false)} />
+            <AppErrorBanner
+              error={resolveCambridgeError(installationError ?? programmesError, { flow: 'setup', action: 'load' })}
+              onDismiss={() => setErrorVisible(false)}
+            />
           ) : null}
 
           {!isAdmin ? (

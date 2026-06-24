@@ -5,6 +5,8 @@ import { CheckCircle2, MessageSquareText } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { sessionAPI } from '@/app/core/api/sessions';
+import { AppError, resolveAppError } from '@/app/core/errors';
+import { InlineActionError } from '@/app/components/ui/errors';
 import type {
   LessonReflectionSource,
   RecordLessonReflectionResponse,
@@ -37,7 +39,7 @@ export function LessonReflectionCard({
 }: Props) {
   const [reflection, setReflection] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [lastSavedReflection, setLastSavedReflection] = useState<string | null>(null);
 
@@ -46,40 +48,6 @@ export function LessonReflectionCard({
     cleanedReflection.length > 0 &&
     !isSaving &&
     cleanedReflection !== lastSavedReflection;
-
-  const extractErrorMessage = (saveError: unknown) => {
-    if (
-      typeof saveError === 'object' &&
-      saveError !== null &&
-      'response' in saveError &&
-      typeof saveError.response === 'object' &&
-      saveError.response !== null &&
-      'data' in saveError.response &&
-      typeof saveError.response.data === 'object' &&
-      saveError.response.data !== null
-    ) {
-      const data = saveError.response.data as Record<string, unknown>;
-
-      if (typeof data.detail === 'string') {
-        return data.detail;
-      }
-
-      for (const value of Object.values(data)) {
-        if (typeof value === 'string') {
-          return value;
-        }
-        if (
-          Array.isArray(value) &&
-          value.length > 0 &&
-          typeof value[0] === 'string'
-        ) {
-          return value[0];
-        }
-      }
-    }
-
-    return 'The lesson reflection could not be saved.';
-  };
 
   const handleSave = async () => {
     if (!canSave) {
@@ -102,7 +70,12 @@ export function LessonReflectionCard({
       setLastSavedReflection(response.reflection);
       onSaved?.(response);
     } catch (saveError: unknown) {
-      setError(extractErrorMessage(saveError));
+      setError(resolveAppError(saveError, {
+        domain: 'sessions',
+        action: 'save',
+        entityLabel: 'lesson reflection',
+        role: 'INSTRUCTOR',
+      }));
     } finally {
       setIsSaving(false);
     }
@@ -146,9 +119,11 @@ export function LessonReflectionCard({
         </div>
 
         {error ? (
-          <p className="theme-danger-surface rounded-lg px-3 py-2 text-sm">
-            {error}
-          </p>
+          <InlineActionError
+            error={error}
+            onDismiss={() => setError(null)}
+            onRetry={handleSave}
+          />
         ) : null}
 
         {savedMessage ? (

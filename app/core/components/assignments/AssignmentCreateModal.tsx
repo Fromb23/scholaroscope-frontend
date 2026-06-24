@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppError, resolveAppError } from '@/app/core/errors';
+import { InlineActionError } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -30,6 +31,18 @@ import type {
     AssignmentOutcomeCreatePayload,
     AssignmentUpdatePayload,
 } from '@/app/core/types/assignments';
+
+
+function makeAssignmentValidationError(message: string): AppError {
+    return {
+        kind: 'validation',
+        title: 'Assignment details need correction.',
+        message,
+        retryable: false,
+        severity: 'warning',
+        actionLabel: 'Review fields',
+    };
+}
 
 interface AssignmentCreateModalProps {
     isOpen: boolean;
@@ -153,7 +166,7 @@ export function AssignmentCreateModal({
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [learnerSearch, setLearnerSearch] = useState('');
     const [outcomes, setOutcomes] = useState<OutcomeDraft[]>([]);
-    const [formError, setFormError] = useState<string | null>(null);
+    const [formError, setFormError] = useState<AppError | null>(null);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -249,12 +262,12 @@ export function AssignmentCreateModal({
 
         for (const outcome of normalizedOutcomes) {
             if (!outcome.outcome_key || !outcome.outcome_label) {
-                setFormError('Each outcome needs both an outcome key and an outcome label.');
+                setFormError(makeAssignmentValidationError('Each outcome needs both an outcome key and an outcome label.'));
                 return null;
             }
 
             if (outcome.weight && Number.isNaN(Number(outcome.weight))) {
-                setFormError('Outcome weight must be a valid number.');
+                setFormError(makeAssignmentValidationError('Outcome weight must be a valid number.'));
                 return null;
             }
         }
@@ -271,32 +284,32 @@ export function AssignmentCreateModal({
         setFormError(null);
 
         if (!cohortSubjectId) {
-            setFormError('Select a subject group before saving the assignment.');
+            setFormError(makeAssignmentValidationError('Select a subject group before saving the assignment.'));
             return;
         }
 
         if (!title.trim()) {
-            setFormError('Assignment title is required.');
+            setFormError(makeAssignmentValidationError('Assignment title is required.'));
             return;
         }
 
         if (startsAt && dueAt && new Date(dueAt).getTime() < new Date(startsAt).getTime()) {
-            setFormError('Due date must be after the start date.');
+            setFormError(makeAssignmentValidationError('Due date must be after the start date.'));
             return;
         }
 
         if (evaluationType === 'NUMERIC' && !totalMarks) {
-            setFormError('Total marks are required for numeric assignments.');
+            setFormError(makeAssignmentValidationError('Total marks are required for numeric assignments.'));
             return;
         }
 
         if (evaluationType === 'RUBRIC' && !rubricScaleId) {
-            setFormError('Select a rubric scale for rubric assignments.');
+            setFormError(makeAssignmentValidationError('Select a rubric scale for rubric assignments.'));
             return;
         }
 
         if (publishNow && deliveryMode === 'INDIVIDUAL' && audienceChoice === 'selected_learners' && selectedStudentIds.length === 0) {
-            setFormError('Select at least one learner before publishing this assignment.');
+            setFormError(makeAssignmentValidationError('Select at least one learner before publishing this assignment.'));
             return;
         }
 
@@ -348,7 +361,12 @@ export function AssignmentCreateModal({
             onSaved?.(savedAssignment);
             onClose();
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to save assignment.');
+            setFormError(resolveAppError(err, {
+                domain: 'assignments',
+                action: isEditMode ? 'update' : 'create',
+                entityLabel: isLessonPreparationMode ? 'learner task' : 'assignment',
+                role: 'INSTRUCTOR',
+            }));
         }
     };
 
@@ -367,7 +385,7 @@ export function AssignmentCreateModal({
         >
             <div className="space-y-6">
                 {formError ? (
-                    <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
+                    <InlineActionError error={formError} onDismiss={() => setFormError(null)} />
                 ) : null}
 
                 {sortedSubjects.length === 0 ? (

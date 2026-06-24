@@ -11,7 +11,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    Users, Plus, GraduationCap, AlertTriangle, CheckCircle,
+    Users, Plus, GraduationCap, CheckCircle,
     UserCheck, UserX, BookOpen, LayoutGrid, List, Mail, Phone,
 } from 'lucide-react';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
@@ -31,7 +31,8 @@ import { DataTable, Column } from '@/app/components/ui/Table';
 import Modal from '@/app/components/ui/Modal';
 import { Input } from '@/app/components/ui/Input';
 import { UserCreatePayload } from '@/app/core/types/globalUsers';
-import { ErrorState } from '@/app/components/ui/ErrorState';
+import { AppError, getAppError, resolveAppError } from '@/app/core/errors';
+import { InlineActionError, RecoverableErrorCard } from '@/app/components/ui/errors';
 
 type ViewMode = 'table' | 'grid';
 
@@ -89,12 +90,13 @@ function CreateInstructorModal({
 }) {
     const [form, setForm] = useState<CreateForm>(EMPTY_CREATE);
     const [errors, setErrors] = useState<Partial<CreateForm>>({});
-    const [apiError, setApiError] = useState<string | null>(null);
+    const [apiError, setApiError] = useState<AppError | null>(null);
     const [showPw, setShowPw] = useState(false);
 
     const set = (f: keyof CreateForm, v: string) => {
         setForm(p => ({ ...p, [f]: v }));
         if (errors[f]) setErrors(p => ({ ...p, [f]: '' }));
+        if (apiError?.fieldErrors?.[f]) setApiError(null);
     };
 
     const validate = () => {
@@ -121,7 +123,23 @@ function CreateInstructorModal({
             });
             setForm(EMPTY_CREATE);
         } catch (err: unknown) {
-            setApiError(err instanceof Error ? err.message : 'Failed to create instructor');
+            const appError = getAppError(err) ?? resolveAppError(err, {
+                domain: 'instructors',
+                action: 'create',
+                entityLabel: 'instructor account',
+                role: 'ADMIN',
+            });
+            setApiError(appError);
+            if (appError.fieldErrors) {
+                setErrors(prev => ({
+                    ...prev,
+                    ...Object.fromEntries(
+                        Object.entries(appError.fieldErrors ?? {})
+                            .filter(([field]) => field in EMPTY_CREATE)
+                            .map(([field, messages]) => [field, messages[0] ?? 'Check this field']),
+                    ),
+                }));
+            }
         }
     };
 
@@ -151,11 +169,10 @@ function CreateInstructorModal({
                         onChange={e => set('password2', e.target.value)} error={errors.password2} />
                 </div>
 
-                {/* API-level error — shows only when submit fails */}
                 {apiError && (
-                    <ErrorState
-                        fullScreen={false}
-                        message={apiError}
+                    <InlineActionError
+                        error={apiError}
+                        onDismiss={() => setApiError(null)}
                     />
                 )}
 
@@ -232,7 +249,7 @@ export function InstructorManagementPage() {
     const [viewMode, setViewMode] = useState<ViewMode>('table');
     const [createOpen, setCreateOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [actionError, setActionError] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<AppError | null>(null);
     const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
     const flash = (msg: string) => {
@@ -381,13 +398,7 @@ export function InstructorManagementPage() {
     );
 
     if (error) return (
-        <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-                <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                <p className="text-sm text-red-600">{error}</p>
-                <Button variant="secondary" onClick={refetch} className="mt-3">Try Again</Button>
-            </div>
-        </div>
+        <RecoverableErrorCard error={error} onRetry={refetch} className="mx-auto mt-8 max-w-2xl" />
     );
 
     return (
@@ -428,11 +439,10 @@ export function InstructorManagementPage() {
 
             {/* Feedback */}
             {actionError && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    {actionError}
-                    <button onClick={() => setActionError(null)} className="ml-auto text-red-400 hover:text-red-600">✕</button>
-                </div>
+                <InlineActionError
+                    error={actionError}
+                    onDismiss={() => setActionError(null)}
+                />
             )}
             {actionSuccess && (
                 <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">

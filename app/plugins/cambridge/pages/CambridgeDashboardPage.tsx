@@ -10,13 +10,14 @@ import { PermissionGuard } from '@/app/core/guards/PermissionGuard';
 import { TenantGuard } from '@/app/core/guards/TenantGuard';
 import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import {
   useCambridgeCohortSubjects,
   useCambridgeInstallationStatus,
   useCambridgeOfferings,
   useCambridgeProgrammes,
 } from '../hooks';
+import { resolveCambridgeError } from './authoringUtils';
 
 export default function CambridgeDashboardPage() {
   const {
@@ -51,8 +52,8 @@ export default function CambridgeDashboardPage() {
           {loading ? <LoadingSpinner fullScreen={false} message="Loading Cambridge dashboard..." /> : null}
 
           {installationError && errorVisible ? (
-            <ErrorBanner
-              message="Failed to load Cambridge installation data."
+            <AppErrorBanner
+              error={resolveCambridgeError(installationError, { flow: 'dashboard', action: 'load' })}
               onDismiss={() => setErrorVisible(false)}
             />
           ) : null}

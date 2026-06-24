@@ -5,6 +5,7 @@ import { authAPI } from '@/app/core/api/auth';
 import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvites';
 import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
+import { AppError, resolveAppError } from '@/app/core/errors';
 
 export interface RegisterForm {
     first_name: string;
@@ -28,6 +29,27 @@ export interface SuspendedOrg {
     name: string;
     slug: string;
     org_type: OrgType;
+}
+
+function makeRegisterError(title: string, message: string, kind: AppError['kind'] = 'server'): AppError {
+    return {
+        kind,
+        title,
+        message,
+        retryable: kind === 'server' || kind === 'network',
+        severity: kind === 'validation' || kind === 'setup_required' ? 'warning' : 'error',
+        actionLabel: kind === 'server' || kind === 'network' ? 'Try again' : undefined,
+    };
+}
+
+function mapRegisterFieldErrors(fieldErrors: Record<string, string[]>): RegisterFieldErrors {
+    const mapped: RegisterFieldErrors = {};
+    for (const [field, messages] of Object.entries(fieldErrors)) {
+        if (field === 'first_name' || field === 'last_name' || field === 'email' || field === 'password' || field === 'workspace_name') {
+            mapped[field] = messages[0] ?? 'Check this field';
+        }
+    }
+    return mapped;
 }
 
 export function useRegister() {
@@ -62,7 +84,7 @@ export function useRegister() {
     });
     const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
     const [submitting, setSubmitting] = useState(false);
-    const [apiError, setApiError] = useState<string | null>(null);
+    const [apiError, setApiError] = useState<AppError | null>(null);
     const [success, setSuccess] = useState(false);
     const hasPersonalWorkspace = memberships.some(
         (membership) => membership.organization.org_type === 'PERSONAL'
@@ -103,6 +125,9 @@ export function useRegister() {
         setForm(f => ({ ...f, [key]: value }));
         if (key in fieldErrors && fieldErrors[key as keyof RegisterFieldErrors]) {
             setFieldErrors(e => ({ ...e, [key as keyof RegisterFieldErrors]: undefined }));
+        }
+        if (apiError?.fieldErrors?.[key]) {
+            setApiError(null);
         }
     };
 
@@ -151,7 +176,11 @@ export function useRegister() {
             // ── New workspace or suspended recovery ───────────────────────
             if (isNewWorkspaceFlow || isSuspendedRecovery) {
                 if (!ENABLE_MULTI_WORKSPACE_SIGNUP && form.org_type !== 'PERSONAL') {
-                    setApiError('Public multi-workspace signup is not available yet.');
+                    setApiError(makeRegisterError(
+                        'Workspace request is not available.',
+                        'Public multi-workspace signup is not available yet. Ask platform support to enable this workflow.',
+                        'setup_required',
+                    ));
                     return;
                 }
                 const res = await ctxRegister({
@@ -159,7 +188,10 @@ export function useRegister() {
                     org_type: form.org_type,
                 });
                 if (!res.organization) {
-                    setApiError('Something went wrong. Please try again.');
+                    setApiError(makeRegisterError(
+                        'Workspace was not created.',
+                        'The server did not return a workspace for this request. Try again, or contact platform support if it continues.',
+                    ));
                     return;
                 }
                 if (res.status === 'pending') {
@@ -193,7 +225,10 @@ export function useRegister() {
                         invite_code: inviteToken,
                     });
                     if (!res.access) {
-                        setApiError('Something went wrong. Please try again.');
+                        setApiError(makeRegisterError(
+                            'Account was not created.',
+                            'The invite was accepted by the server, but account access was not returned. Try again, or contact platform support if it continues.',
+                        ));
                         return;
                     }
                 }
@@ -232,24 +267,14 @@ export function useRegister() {
             setTimeout(() => router.replace('/dashboard'), 1500);
 
         } catch (err: unknown) {
-            const e = err as { data?: Record<string, unknown>; message?: string };
-            if (e.data) {
-                if (e.data.error && typeof e.data.error === 'object') {
-                    const structured = e.data.error as { message?: string };
-                    setApiError(structured.message ?? 'Something went wrong.');
-                } else {
-                    const mapped: RegisterFieldErrors = {};
-                    for (const [k, v] of Object.entries(e.data)) {
-                        if (k === 'non_field_errors') {
-                            setApiError(Array.isArray(v) ? v[0] : String(v));
-                        } else {
-                            mapped[k as keyof RegisterFieldErrors] = Array.isArray(v) ? v[0] : String(v);
-                        }
-                    }
-                    setFieldErrors(mapped);
-                }
-            } else {
-                setApiError(e.message ?? 'Something went wrong. Please try again.');
+            const appError = resolveAppError(err, {
+                domain: isInviteFlow ? 'auth' : 'workspace',
+                action: isInviteFlow ? 'verify' : 'create',
+                entityLabel: isInviteFlow ? 'account invitation' : 'workspace',
+            });
+            setApiError(appError);
+            if (appError.fieldErrors) {
+                setFieldErrors(mapRegisterFieldErrors(appError.fieldErrors));
             }
         } finally {
             setSubmitting(false);
@@ -264,8 +289,11 @@ export function useRegister() {
             setSuccess(true);
             setTimeout(() => { router.replace('/dashboard'); }, 1500);
         } catch (err: unknown) {
-            const e = err as { message?: string };
-            setApiError(e.message ?? 'Failed to restore workspace.');
+            setApiError(resolveAppError(err, {
+                domain: 'workspace',
+                action: 'switch',
+                entityLabel: 'workspace access',
+            }));
         } finally {
             setRestoring(null);
         }

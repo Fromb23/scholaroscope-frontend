@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Briefcase,
@@ -15,7 +15,8 @@ import {
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppError, resolveAppError } from '@/app/core/errors';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { downloadBlob } from '@/app/core/api/downloads';
@@ -28,7 +29,6 @@ import {
 import { useDashboardOverview } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import type { ReportExportFormat } from '@/app/core/types/reporting';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 const REPORT_CARD_ACCENTS: Record<string, string> = {
   learners: 'bg-blue-50 text-blue-600',
@@ -42,20 +42,42 @@ const REPORT_CARD_ACCENTS: Record<string, string> = {
 
 export function ReportsPage() {
   const { overview, loading, error } = useDashboardOverview();
+  const [exportError, setExportError] = useState<AppError | null>(null);
   const hierarchy = getAdminReportLandingSections();
+  const pageError = useMemo<AppError | null>(() => {
+    if (!error) return null;
+    return {
+      kind: 'report_not_ready',
+      title: 'This report workspace is not ready yet.',
+      message: error || 'Some summaries are stale or missing. Refresh the report data, then try again.',
+      retryable: true,
+      severity: 'warning',
+      actionLabel: 'Refresh report data',
+    };
+  }, [error]);
 
   const handleExport = useCallback(async (format: ReportExportFormat) => {
     try {
       const file = await adminReportsAPI.exportOverview(format);
       downloadBlob(file.blob, file.fileName);
     } catch (requestError) {
-      window.alert(extractErrorMessage(requestError as ApiError, 'Failed to export reporting overview.'));
+      setExportError(resolveAppError(requestError, {
+        domain: 'reports',
+        action: 'export',
+        entityLabel: 'reporting overview',
+        role: 'ADMIN',
+      }));
     }
   }, []);
 
   return (
     <AdminReportAccessGate>
-      {loading ? <LoadingSpinner message="Loading report workspace..." /> : error ? <ErrorBanner message={error} onDismiss={() => {}} /> : (
+      {exportError ? (
+        <div className="mb-4">
+          <AppErrorBanner error={exportError} onDismiss={() => setExportError(null)} />
+        </div>
+      ) : null}
+      {loading ? <LoadingSpinner message="Loading report workspace..." /> : pageError ? <AppErrorBanner error={pageError} onDismiss={() => {}} /> : (
         <div className="space-y-8 max-w-full">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">

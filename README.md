@@ -126,6 +126,34 @@ Avoid:
 - spinner-only buttons
 - showing empty states before loading has resolved
 
+## Error State Rule
+
+Errors must explain:
+
+1. what failed
+2. why it likely failed
+3. what the user can do next
+4. whether retry is safe
+5. who needs to act: teacher, admin, superadmin, or platform support
+
+Use:
+
+- `AppError` for structured error interpretation
+- `AppErrorBanner` for action/page errors
+- `ValidationErrorSummary` for field errors
+- `PermissionErrorState` for access issues
+- `NetworkErrorState` for connectivity issues
+- domain-specific copy for reports, sessions, assignments, assessments, CBC, and Cambridge
+
+Avoid:
+
+- raw “Something went wrong”
+- raw “Failed to fetch”
+- raw backend exceptions
+- displaying `err.message` directly
+- flattening field errors before forms can use them
+- generic server error for lifecycle/setup/report-readiness problems
+
 ## What Not To Do
 
 - Do not describe this app as “just a Next.js frontend”.

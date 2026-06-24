@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { authAPI } from '@/app/core/api/auth';
 import { Button } from '@/app/components/ui/Button';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppError, resolveAppError } from '@/app/core/errors';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useRouter } from 'next/navigation';
@@ -21,7 +22,7 @@ import type { AccessNotice } from '@/app/core/types/auth';
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<AppError | null>(null);
   const [loading, setLoading] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
@@ -36,11 +37,21 @@ function LoginForm() {
 
   useEffect(() => {
     if (searchParams.get('reason') === 'suspended') {
-      setError(
-        'Your organization has been suspended. Contact your administrator for more information.',
-      );
+      setError({
+        kind: 'permission',
+        title: 'Workspace access is suspended.',
+        message: 'Your organization has been suspended. Contact your administrator for more information.',
+        retryable: false,
+        severity: 'warning',
+      });
     } else if (searchParams.get('reason') === 'no_access') {
-      setError('You do not currently have access to any active workspace.');
+      setError({
+        kind: 'permission',
+        title: 'No active workspace is available.',
+        message: 'You do not currently have access to any active workspace. Ask an admin to activate or invite you to a workspace.',
+        retryable: false,
+        severity: 'warning',
+      });
     }
   }, [searchParams]);
 
@@ -94,12 +105,12 @@ function LoginForm() {
         .join('\n');
     }
 
-    return (data?.non_field_errors as string[])?.[0] || 'Login failed. Please try again.';
+    return (data?.non_field_errors as string[])?.[0] || '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setVerificationEmail(null);
     setResendMessage(null);
     setLoading(true);
@@ -126,7 +137,15 @@ function LoginForm() {
       if (data.error === 'email_not_verified' || data.code === 'email_not_verified') {
         setVerificationEmail(email);
       }
-      setError(resolveErrorMessage(data) || e?.message || 'Login failed. Please try again.');
+      const resolved = resolveAppError(err, { domain: 'auth', action: 'login', entityLabel: 'account access' });
+      const interpretedMessage = resolveErrorMessage(data);
+      setError({
+        ...resolved,
+        title: data.error === 'email_not_verified' || data.code === 'email_not_verified'
+          ? 'Email verification is required.'
+          : resolved.title,
+        message: interpretedMessage || resolved.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -155,7 +174,7 @@ function LoginForm() {
 
           {error && (
             <div className="mb-4">
-              <ErrorBanner message={error} onDismiss={() => setError('')} />
+              <AppErrorBanner error={error} onDismiss={() => setError(null)} />
               {verificationEmail ? (
                 <div className="mt-3 rounded-lg border theme-border theme-card-muted p-3 text-sm">
                   <p className="theme-muted">Need a new activation link?</p>
