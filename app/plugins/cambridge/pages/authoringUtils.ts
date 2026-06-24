@@ -1,5 +1,29 @@
+import type { AppError, ResolveAppErrorContext } from '@/app/core/errors';
+import { resolveAppError } from '@/app/core/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { extractErrorMessage } from '@/app/core/types/errors';
+
+
+export function resolveCambridgeError(
+  error: unknown,
+  options: {
+    flow: 'catalogue' | 'setup' | 'offering' | 'syllabus' | 'session' | 'dashboard';
+    action?: ResolveAppErrorContext['action'];
+    role?: ResolveAppErrorContext['role'];
+  },
+): AppError {
+  const resolved = resolveAppError(error, {
+    domain: 'cambridge',
+    action: options.action ?? 'load',
+    entityLabel: `Cambridge ${options.flow}`,
+    role: options.role ?? 'ADMIN',
+  });
+  return {
+    ...resolved,
+    title: `Cambridge ${options.flow} could not be ${options.action === 'save' ? 'saved' : 'loaded'}.`,
+    message: resolved.message || 'Check the Cambridge setup and try again. If it continues, ask an admin to verify catalogue and offering setup.',
+  };
+}
 
 export function toPositiveNumber(value: string): number | null {
   const parsed = Number(value);

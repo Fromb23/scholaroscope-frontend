@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppError, resolveAppError } from '@/app/core/errors';
+import { AppErrorBanner, InlineActionError } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { AssignmentOptionCards } from '@/app/core/components/assignments/AssignmentOptionCards';
@@ -19,6 +20,18 @@ import {
 } from '@/app/core/components/assignments/assignmentUtils';
 import { useAssignmentEligibleLearners, usePublishAssignment } from '@/app/core/hooks/useAssignments';
 import type { Assignment } from '@/app/core/types/assignments';
+
+
+function makePublishValidationError(message: string): AppError {
+    return {
+        kind: 'validation',
+        title: 'Assignment cannot be published yet.',
+        message,
+        retryable: false,
+        severity: 'warning',
+        actionLabel: 'Review learners',
+    };
+}
 
 interface AssignmentPublishModalProps {
     assignment: Assignment;
@@ -56,7 +69,7 @@ export function AssignmentPublishModal({
     );
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [learnerSearch, setLearnerSearch] = useState('');
-    const [formError, setFormError] = useState<string | null>(null);
+    const [formError, setFormError] = useState<AppError | null>(null);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -105,7 +118,7 @@ export function AssignmentPublishModal({
             && assignment.recipients_count === 0
             && usingCurrentRecipients
         ) {
-            setFormError('This draft has no learners yet. Choose who should receive it before publishing.');
+            setFormError(makePublishValidationError('This draft has no learners yet. Choose who should receive it before publishing.'));
             return;
         }
 
@@ -114,7 +127,7 @@ export function AssignmentPublishModal({
             && audienceChoice === 'selected_learners'
             && selectedStudentIds.length === 0
         ) {
-            setFormError('Select at least one learner before publishing this assignment.');
+            setFormError(makePublishValidationError('Select at least one learner before publishing this assignment.'));
             return;
         }
 
@@ -142,7 +155,13 @@ export function AssignmentPublishModal({
             onPublished?.();
             onClose();
         } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to publish assignment.');
+            setFormError(resolveAppError(err, {
+                domain: 'assignments',
+                action: 'publish',
+                entityLabel: 'assignment',
+                entityName: assignment.title,
+                role: 'INSTRUCTOR',
+            }));
         }
     };
 
@@ -155,7 +174,7 @@ export function AssignmentPublishModal({
         >
             <div className="space-y-5">
                 {formError ? (
-                    <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
+                    <InlineActionError error={formError} onDismiss={() => setFormError(null)} />
                 ) : null}
 
                 <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
@@ -220,8 +239,14 @@ export function AssignmentPublishModal({
                         {learnersQuery.isLoading ? (
                             <LoadingSpinner fullScreen={false} message="Loading learners..." />
                         ) : learnersQuery.error ? (
-                            <ErrorBanner
-                                message={learnersQuery.error.message}
+                            <AppErrorBanner
+                                error={resolveAppError(learnersQuery.error, {
+                                    domain: 'assignments',
+                                    action: 'load',
+                                    entityLabel: 'eligible learners for this assignment',
+                                    role: 'INSTRUCTOR',
+                                })}
+                                onAction={() => void learnersQuery.refetch()}
                                 onDismiss={() => void learnersQuery.refetch()}
                             />
                         ) : (

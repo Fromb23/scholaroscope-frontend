@@ -1,0 +1,68 @@
+const FIELD_LABELS: Record<string, string> = {
+  email: 'Email address',
+  first_name: 'First name',
+  last_name: 'Last name',
+  password: 'Password',
+  password2: 'Confirm password',
+  workspace_name: 'Workspace name',
+  non_field_errors: 'Form',
+  detail: 'Details',
+};
+
+const NON_FIELD_KEYS = new Set([
+  'detail',
+  'message',
+  'error',
+  'code',
+  'type',
+  'status',
+  'next_action',
+  'support_code',
+  'supportCode',
+  'request_id',
+  'trace_id',
+  'requires_attendance',
+]);
+
+function normalizeMessages(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => normalizeMessages(item))
+      .filter(Boolean);
+  }
+  if (typeof value === 'string') return [value];
+  if (value && typeof value === 'object') {
+    const nested = value as Record<string, unknown>;
+    if (typeof nested.message === 'string') return [nested.message];
+    if (typeof nested.detail === 'string') return [nested.detail];
+  }
+  return [];
+}
+
+export function extractFieldErrors(data: unknown): Record<string, string[]> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+
+  const result: Record<string, string[]> = {};
+  for (const [field, value] of Object.entries(data as Record<string, unknown>)) {
+    if (NON_FIELD_KEYS.has(field)) continue;
+    const messages = normalizeMessages(value);
+    if (messages.length > 0) {
+      result[field] = messages;
+    }
+  }
+  return result;
+}
+
+export function formatFieldLabel(field: string): string {
+  if (FIELD_LABELS[field]) return FIELD_LABELS[field];
+  return field
+    .replace(/_id$/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function fieldErrorsToSummary(fieldErrors: Record<string, string[]>): string {
+  return Object.entries(fieldErrors)
+    .flatMap(([field, messages]) => messages.map((message) => `${formatFieldLabel(field)}: ${message}`))
+    .join('\n');
+}

@@ -7,7 +7,7 @@ import { ArrowLeft, Briefcase, Search } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
@@ -120,7 +120,13 @@ export function AdminInstructorReportsPage() {
           </div>
         </Card>
 
-        {error ? <ErrorBanner message={error} onDismiss={() => {}} /> : null}
+        {error ? (
+          <AppErrorBanner
+            error={error}
+            onAction={() => undefined}
+            onDismiss={() => undefined}
+          />
+        ) : null}
 
         {loading ? <LoadingSpinner message="Loading instructors..." /> : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

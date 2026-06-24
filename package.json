@@ -13,10 +13,11 @@
     "check:boundaries": "node tools/check-boundaries.mjs",
     "check:pages": "node tools/check-thin-pages.mjs",
     "check:loading": "node tools/check-loading-copy.mjs",
-    "check:architecture": "npm run check:boundaries && npm run check:pages && npm run check:loading",
+    "check:architecture": "npm run check:boundaries && npm run check:pages && npm run check:loading && npm run check:errors",
     "prettier": "prettier --write **/*.{js,jsx,json,ts,tsx,css,md}",
     "prepare": "husky",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "check:errors": "node tools/check-error-copy.mjs"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx}": [

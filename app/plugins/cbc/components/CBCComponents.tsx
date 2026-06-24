@@ -21,6 +21,7 @@ import type { MasteryLevel, MasteryDistribution } from '@/app/plugins/cbc/types/
 import type { CBCInstructorSubjectSelection } from '@/app/plugins/cbc/lib/visibility';
 import { sanitizeInternalReturnTo } from '@/app/plugins/cbc/lib/navigation';
 import { Select } from '@/app/components/ui/Select';
+import { sanitizeServerMessage } from '@/app/core/errors';
 
 // ============================================================================
 // CBC Nav — single source, never duplicated across pages
@@ -489,7 +490,7 @@ function flattenErrorMessages(value: unknown): string[] {
 export function CBCError({
   error,
   onRetry,
-  title = 'Something went wrong',
+  title = 'CBC workflow could not be completed',
   debugContext,
 }: {
   error: unknown;
@@ -497,7 +498,8 @@ export function CBCError({
   title?: string;
   debugContext?: CBCErrorDebugContext | null;
 }) {
-  const msg = extractErrorMessage(error);
+  const msg = sanitizeServerMessage(extractErrorMessage(error), 'server')
+    ?? 'The CBC request could not be completed. Try again, or ask an admin to check the CBC setup if it continues.';
   const diagnostic = extractCBCErrorDiagnostic(error);
   const resolvedDebugContext =
     debugContext ??
@@ -591,7 +593,7 @@ export function CBCError({
 }
 
 export function extractErrorMessage(error: unknown): string {
-  if (!error) return 'An unknown error occurred';
+  if (!error) return 'The CBC request could not be completed.';
   if (typeof error === 'string') return error;
 
   const e = error as {
@@ -601,7 +603,7 @@ export function extractErrorMessage(error: unknown): string {
   };
 
   if (e.diagnostic?.backendDetail || e.diagnostic?.backendMessage) {
-    return e.diagnostic.backendDetail ?? e.diagnostic.backendMessage ?? 'Server error';
+    return e.diagnostic.backendDetail ?? e.diagnostic.backendMessage ?? 'The CBC server request could not be completed.';
   }
 
   if (e.response?.data) {
@@ -612,9 +614,9 @@ export function extractErrorMessage(error: unknown): string {
     if (flattenedMessages.length > 0) {
       return flattenedMessages.join('\n');
     }
-    return 'Server error';
+    return 'The CBC server request could not be completed.';
   }
-  return e.message ?? 'An unexpected error occurred';
+  return e.message ?? 'The CBC request could not be completed.';
 }
 
 function extractCBCErrorDiagnostic(error: unknown): CBCErrorDiagnostic | null {

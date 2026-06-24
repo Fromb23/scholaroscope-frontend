@@ -7,7 +7,7 @@ import {
     InstructorStats,
     UserUpdatePayload,
 } from '@/app/core/types/globalUsers';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { AppError, AppErrorException, resolveAppError } from '@/app/core/errors';
 
 function resolveActionUser(
     response: GlobalUserActionResponse,
@@ -30,7 +30,7 @@ function resolveActionUser(
 export const useInstructors = (options?: { enabled?: boolean }) => {
     const [instructors, setInstructors] = useState<GlobalUser[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<AppError | null>(null);
     const enabled = options?.enabled ?? true;
 
     const fetchInstructors = useCallback(async () => {
@@ -47,7 +47,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
             setInstructors(data);
             setError(null);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to fetch instructors'));
+            setError(resolveAppError(err, { domain: 'instructors', action: 'load', entityLabel: 'instructor accounts', role: 'ADMIN' }));
         } finally {
             setLoading(false);
         }
@@ -63,7 +63,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
             setInstructors(prev => [created, ...prev]);
             return created;
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to create instructor'));
+            throw new AppErrorException(resolveAppError(err, { domain: 'instructors', action: 'create', entityLabel: 'instructor account', role: 'ADMIN' }));
         }
     };
 
@@ -73,7 +73,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
             setInstructors(prev => prev.map(i => i.id === id ? updated : i));
             return updated;
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to update instructor'));
+            throw new AppErrorException(resolveAppError(err, { domain: 'instructors', action: 'update', entityLabel: 'instructor account', role: 'ADMIN' }));
         }
     };
 
@@ -86,7 +86,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
                     : i
             )));
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to remove instructor from organization'));
+            throw new AppErrorException(resolveAppError(err, { domain: 'instructors', action: 'delete', entityLabel: 'instructor account', role: 'ADMIN' }));
         }
     };
 
@@ -102,7 +102,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
             setInstructors(prev => prev.map(i => i.id === id ? resolved : i));
             return resolved;
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to change status'));
+            throw new AppErrorException(resolveAppError(err, { domain: 'instructors', action: 'update', entityLabel: 'instructor account status', role: 'ADMIN' }));
         }
     };
 
@@ -110,7 +110,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
         try {
             await instructorsAPI.resetPassword(id, new_password);
         } catch (err) {
-            throw new Error(extractErrorMessage(err as ApiError, 'Failed to reset password'));
+            throw new AppErrorException(resolveAppError(err, { domain: 'instructors', action: 'update', entityLabel: 'instructor password', role: 'ADMIN' }));
         }
     };
 
@@ -124,7 +124,7 @@ export const useInstructors = (options?: { enabled?: boolean }) => {
 export const useInstructorDetail = (id: number | null) => {
     const [instructor, setInstructor] = useState<InstructorProfile | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<AppError | null>(null);
 
     const fetchDetail = useCallback(async () => {
         if (!id) return;
@@ -134,7 +134,7 @@ export const useInstructorDetail = (id: number | null) => {
             setInstructor(data);
             setError(null);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to load instructor'));
+            setError(resolveAppError(err, { domain: 'instructors', action: 'load', entityLabel: 'instructor account', role: 'ADMIN' }));
         } finally {
             setLoading(false);
         }

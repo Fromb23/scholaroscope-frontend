@@ -18,7 +18,7 @@ import {
 import { useRegister } from '@/app/core/hooks/useRegister';
 import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ButtonPendingContent } from '@/app/components/ui/loading';
 import { AuthFrame } from './AuthFrame';
@@ -233,7 +233,7 @@ function RegisterForm() {
 
             {apiError && (
               <div className="mb-4">
-                <ErrorBanner message={apiError} onDismiss={() => setApiError(null)} />
+                <AppErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
               </div>
             )}
 
@@ -401,7 +401,7 @@ function RegisterForm() {
 
           {apiError && (
             <div className="mb-4">
-              <ErrorBanner message={apiError} onDismiss={() => setApiError(null)} />
+              <AppErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
             </div>
           )}
 
