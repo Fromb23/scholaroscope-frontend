@@ -15,7 +15,11 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import {
+  BackgroundRefreshBadge,
+  ButtonPendingContent,
+  ReportPreparingState,
+} from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
 import { downloadBlob } from '@/app/core/api/downloads';
@@ -305,7 +309,18 @@ export function TeacherPerformanceReportPage({
     : [];
 
   if (loading && !report) {
-    return <LoadingSpinner message="Loading teacher report..." />;
+    return (
+      <ReportPreparingState
+        title="Building teacher performance report..."
+        steps={[
+          'Collecting teacher profile',
+          'Reading attendance and assignment signals',
+          'Calculating learning and participation risk',
+          'Preparing recommendations',
+        ]}
+        activeStep={1}
+      />
+    );
   }
 
   return (
@@ -333,8 +348,10 @@ export function TeacherPerformanceReportPage({
             disabled={!report || exporting !== null}
             onClick={() => void handleExport('pdf')}
           >
-            <Download className="h-4 w-4" />
-            {exporting === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
+            <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+              <Download className="h-4 w-4" />
+              Export PDF
+            </ButtonPendingContent>
           </Button>
           <Button
             variant="secondary"
@@ -342,8 +359,10 @@ export function TeacherPerformanceReportPage({
             disabled={!report || exporting !== null}
             onClick={() => void handleExport('xlsx')}
           >
-            <Download className="h-4 w-4" />
-            {exporting === 'xlsx' ? 'Exporting Excel...' : 'Export Excel'}
+            <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+              <Download className="h-4 w-4" />
+              Export Excel
+            </ButtonPendingContent>
           </Button>
           <Button
             variant="ghost"
@@ -351,8 +370,10 @@ export function TeacherPerformanceReportPage({
             disabled={!report || exporting !== null}
             onClick={() => void handleExport('csv')}
           >
-            <Download className="h-4 w-4" />
-            {exporting === 'csv' ? 'Exporting CSV...' : 'Export CSV'}
+            <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+              <Download className="h-4 w-4" />
+              Export CSV
+            </ButtonPendingContent>
           </Button>
         </div>
       </div>
@@ -419,7 +440,7 @@ export function TeacherPerformanceReportPage({
         </div>
       </Card>
 
-      {loading ? <LoadingSpinner message="Refreshing teacher report..." /> : null}
+      {loading ? <BackgroundRefreshBadge message="Refreshing teacher report..." /> : null}
 
       {report ? (
         <>

@@ -242,7 +242,7 @@ function OrganizationsPageInner() {
         },
     ];
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading organizations..." />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
 
     return (
@@ -370,7 +370,7 @@ function OrganizationsPageInner() {
 
 export default function OrganizationsPage() {
     return (
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense fallback={<LoadingSpinner message="Preparing organizations..." />}>
             <OrganizationsPageInner />
         </Suspense>
     );

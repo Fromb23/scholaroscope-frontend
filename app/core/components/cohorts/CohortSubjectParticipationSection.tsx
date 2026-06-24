@@ -40,7 +40,7 @@ function getInstructorLabel(summary: CohortSubjectParticipationSummary | undefin
 
 function getParticipationCount(summary: CohortSubjectParticipationSummary | undefined) {
     if (!summary) {
-        return 'Loading...';
+        return 'Loading cohort subject participation...';
     }
 
     if (!summary.counts) {

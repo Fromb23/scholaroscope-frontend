@@ -104,7 +104,7 @@ export function OrganizationDetailPage() {
         setSuspendOpen(false);
     };
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading organization details..." />;
     if (error || !organization) return <ErrorState message={error ?? 'Organization not found'} />;
 
     const isSuspended = organization.status === 'SUSPENDED';

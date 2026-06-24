@@ -41,7 +41,7 @@ export function TodaySessionsPage() {
 
     if (authLoading || activeRole === 'INSTRUCTOR') return null;
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading today's sessions..." />;
     if (error) return <ErrorState message={error} />;
 
     const now = new Date();

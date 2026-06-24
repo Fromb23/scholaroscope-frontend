@@ -164,6 +164,8 @@ export function AttendanceTable({
                         data={filteredRecords as AttendanceWithIndex[]}
                         columns={columns}
                         loading={loading}
+                        loadingMessage="Loading attendance records..."
+                        loadingVariant="skeleton"
                         enableSearch
                         onSearch={setLocalSearch}
                         searchPlaceholder="Search learners, admissions, class, subject, status, or notes"

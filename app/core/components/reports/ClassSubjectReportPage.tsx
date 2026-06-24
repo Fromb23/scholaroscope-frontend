@@ -17,7 +17,11 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import {
+  ButtonPendingContent,
+  ReportPreparingState,
+  SectionLoading,
+} from '@/app/components/ui/loading';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
 import { downloadBlob } from '@/app/core/api/downloads';
 import {
@@ -521,7 +525,13 @@ export function ClassSubjectReportPage({
   }, [currentReturnTo, hasCbcProgress, isInstructorRoute, report]);
 
   if (cohortSubjectsLoading && cohortIdOverride == null && !cohortSubjectMeta) {
-    return <LoadingSpinner message="Loading class subject report context..." />;
+    return (
+      <ReportPreparingState
+        title="Loading class subject report context..."
+        steps={['Resolving class subject', 'Checking report access', 'Preparing report filters']}
+        activeStep={1}
+      />
+    );
   }
 
   return (
@@ -572,8 +582,10 @@ export function ClassSubjectReportPage({
                 disabled={!report || exporting !== null}
                 onClick={() => void handleExport('pdf')}
               >
-                <Download className="h-4 w-4" />
-                {exporting === 'pdf' ? 'Exporting PDF...' : 'Export PDF'}
+                <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+                  <Download className="h-4 w-4" />
+                  Export PDF
+                </ButtonPendingContent>
               </Button>
               <Button
                 variant="secondary"
@@ -582,8 +594,10 @@ export function ClassSubjectReportPage({
                 disabled={!report || exporting !== null}
                 onClick={() => void handleExport('xlsx')}
               >
-                <Download className="h-4 w-4" />
-                {exporting === 'xlsx' ? 'Exporting Excel...' : 'Export Excel'}
+                <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+                  <Download className="h-4 w-4" />
+                  Export Excel
+                </ButtonPendingContent>
               </Button>
               <Button
                 variant="ghost"
@@ -592,8 +606,10 @@ export function ClassSubjectReportPage({
                 disabled={!report || exporting !== null}
                 onClick={() => void handleExport('csv')}
               >
-                <Download className="h-4 w-4" />
-                {exporting === 'csv' ? 'Exporting CSV...' : 'Export CSV'}
+                <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </ButtonPendingContent>
               </Button>
             </div>
           </div>
@@ -615,14 +631,23 @@ export function ClassSubjectReportPage({
         </Card>
       ) : null}
 
-      {selectedTermId && loading ? <LoadingSpinner message="Loading class subject report..." /> : null}
+      {selectedTermId && loading ? (
+        <ReportPreparingState
+          title="Building class subject report..."
+          steps={[
+            'Collecting class subject roster',
+            'Reading attendance and assignment signals',
+            'Calculating learning and participation risk',
+            'Preparing recommendations',
+          ]}
+          activeStep={1}
+        />
+      ) : null}
 
       {selectedTermId && report && !loading ? (
         <>
           {classIntelligenceLoading ? (
-            <Card className="p-5">
-              <p className="text-sm theme-muted">Loading class academic intelligence...</p>
-            </Card>
+            <SectionLoading title="Loading class academic intelligence..." />
           ) : classIntelligenceError ? (
             <ErrorBanner
               message={classIntelligenceError}

@@ -71,7 +71,7 @@ export function GuidedCohortSetupModal({ strand, subjectLevel, onComplete, onClo
                             Step 1 — Select a cohort for level {subjectLevel}
                         </p>
                         {loading ? (
-                            <LoadingSpinner fullScreen={false} />
+                            <LoadingSpinner fullScreen={false} message="Loading matching cohorts..." />
                         ) :
                             cohorts.length === 0 ? (
                                 <div className="space-y-3">

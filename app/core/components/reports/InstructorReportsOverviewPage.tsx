@@ -87,7 +87,7 @@ export function InstructorReportsOverviewPage() {
     };
   }, [averageAttendance, overview, totalSessions]);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <LoadingSpinner message="Loading instructor report overview..." />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
 
   const reportCards = [

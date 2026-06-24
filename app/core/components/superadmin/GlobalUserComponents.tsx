@@ -445,6 +445,7 @@ export function UsersTable({
             data={users as (GlobalUser & Record<string, unknown>)[]}
             columns={columns as Column<GlobalUser & Record<string, unknown>>[]}
             loading={false}
+            loadingMessage="Loading platform users..."
             enableSearch={false}
             enableSort
             emptyMessage="No users match your filters"

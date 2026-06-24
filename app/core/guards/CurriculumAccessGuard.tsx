@@ -7,6 +7,7 @@ import { useInstructorCohortAccess, type InstructorCurriculumKey } from '@/app/c
 import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
 import { useCurriculumLifecycleGuard } from '@/app/core/hooks/useCurriculumLifecycleGuard';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { PermissionResolvingState } from '@/app/components/ui/loading';
 
 interface CurriculumAccessGuardProps {
     curriculum: InstructorCurriculumKey;
@@ -64,10 +65,10 @@ export function CurriculumAccessGuard({
         router.replace(roleHomeRoute[activeRole]);
     }, [access.isLoading, activeRole, allowed, loading, router]);
 
-    if (loading || access.isLoading) return null;
+    if (loading || access.isLoading) return <PermissionResolvingState message={`Checking ${curriculum} access...`} />;
     if (!allowed) return <>{fallback}</>;
     if (isAuthoringRoute && user?.is_superadmin) return <>{children}</>;
-    if (lifecycle.loading) return null;
+    if (lifecycle.loading) return <PermissionResolvingState message={`Checking ${curriculum} setup...`} />;
     if (!lifecycle.allowed) {
         return (
             <CurriculumLifecycleAccessState

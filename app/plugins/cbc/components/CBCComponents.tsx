@@ -628,7 +628,7 @@ function extractCBCErrorDiagnostic(error: unknown): CBCErrorDiagnostic | null {
 // CBCLoading — consistent spinner
 // ============================================================================
 
-export function CBCLoading({ message = 'Loading…' }: { message?: string }) {
+export function CBCLoading({ message = 'Preparing CBC workspace...' }: { message?: string }) {
   return (
     <div className="py-20 text-center">
       <div

@@ -5,6 +5,7 @@ import { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
+import { PermissionResolvingState } from '@/app/components/ui/loading';
 
 interface AuthGuardProps {
     children: ReactNode;
@@ -25,8 +26,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
         }
     }, [loading, router, user]);
 
-    if (loading) return null;
-    if (!user) return null;
+    if (loading) return <PermissionResolvingState message="Restoring your session..." />;
+    if (!user) return <PermissionResolvingState message="Redirecting to sign in..." />;
 
     return <>{children}</>;
 }

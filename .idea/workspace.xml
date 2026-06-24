@@ -6,6 +6,72 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/(dashboard)/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/(dashboard)/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/ui/LoadingSpinner.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/ui/LoadingSpinner.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/components/ui/Table.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/ui/Table.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/cohorts/AdminCohortsPageContent.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/cohorts/AdminCohortsPageContent.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/cohorts/CohortsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/cohorts/CohortsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/cohorts/InstructorMyCohortsPageContent.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/cohorts/InstructorMyCohortsPageContent.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/curricula/CurriculaPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/curricula/CurriculaPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/admin/instructors/InstructorManagementPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/admin/instructors/InstructorManagementPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentScoreTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentScoreTable.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/auth/VerifyEmailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/VerifyEmailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/cohorts/CohortSubjectParticipationSection.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/cohorts/CohortSubjectParticipationSection.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/AdminDashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/AdminDashboard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/DashboardResolver.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/DashboardResolver.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/InstructorDashboard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/dashboard/SuperAdminDashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/dashboard/SuperAdminDashboard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/learners/LearnersPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/learners/LearnersPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/profile/ProfileComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/profile/ProfileComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/AdminReportAccessGate.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/AdminReportAccessGate.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/AssessmentsReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/AssessmentsReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/AttendanceReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/AttendanceReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ClassSubjectReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ClassSubjectReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/GradePoliciesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/GradePoliciesPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/GradePolicyDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/GradePolicyDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/InstructorCohortSubjectReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/InstructorCohortSubjectReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/InstructorCohortSubjectsReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/InstructorCohortSubjectsReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/InstructorReportsOverviewPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/InstructorReportsOverviewPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/LearnerOverviewReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/LearnerOverviewReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/LearnerSubjectReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/LearnerSubjectReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/MidtermIntelligenceReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/MidtermIntelligenceReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ReportPoliciesHubPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ReportPoliciesHubPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/reports/TeacherPerformanceReportPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/TeacherPerformanceReportPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/AttendanceTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/AttendanceTable.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/EditSessionPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/EditSessionPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/SessionDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/TodaySessionsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/TodaySessionsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/settings/AdminSettingsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/settings/AdminSettingsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUserComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUserComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUsersPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/GlobalUsersPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/PluginsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/PluginsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/SystemHealthPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/SystemHealthPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/UserDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/UserDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/organizations/OrganizationDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/organizations/OrganizationDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/superadmin/organizations/OrganizationsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/superadmin/organizations/OrganizationsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/guards/AuthGuard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/guards/AuthGuard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/guards/CurriculumAccessGuard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/guards/CurriculumAccessGuard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/guards/PermissionGuard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/guards/PermissionGuard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/guards/TenantGuard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/guards/TenantGuard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/audit/components/AuditLogsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/audit/components/AuditLogsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/components/CambridgeAuthoringModals.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/components/CambridgeAuthoringModals.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/CBCComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/CBCComponents.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/GuidedCohortSetupModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/GuidedCohortSetupModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/authoring/CBCAuthoringOutcomesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/authoring/CBCAuthoringOutcomesPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/authoring/CBCAuthoringStrandsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/authoring/CBCAuthoringStrandsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/authoring/CBCAuthoringSubStrandsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/authoring/CBCAuthoringSubStrandsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCCohortProgressPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCCohortProgressPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCProgressPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/progress/CBCProgressPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/reportPolicies/CbcReportPoliciesPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/reportPolicies/CbcReportPoliciesPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/pages/CBCStudentProgressPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/pages/CBCStudentProgressPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,7 +79,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="763" />
+    <option name="cachedIndexableFilesCount" value="809" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -37,61 +103,61 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.3860618034280052" />
-      <entry key="MS500" value="4.282211183710313" />
-      <entry key="S2" value="10.352231332700462" />
-      <entry key="S5" value="14.066765944433538" />
-      <entry key="S10" value="15.838489945833171" />
-      <entry key="S30" value="17.23008920535523" />
-      <entry key="S60" value="17.60847457759985" />
-      <entry key="M2" value="17.81854070335402" />
-      <entry key="M5" value="18.649135903033983" />
-      <entry key="M10" value="21.78109832501946" />
-      <entry key="M15" value="26.235195363349355" />
-      <entry key="M30" value="42.2427905183016" />
-      <entry key="H1" value="68.67270261124307" />
-      <entry key="H2" value="98.36258952271855" />
-      <entry key="H4" value="142.31822494358505" />
-      <entry key="D1" value="599.0064804712205" />
-      <entry key="W1" value="1935.6695684631068" />
+      <entry key="MS100" value="1.080402877528026E-6" />
+      <entry key="MS500" value="0.06768867324092329" />
+      <entry key="S2" value="0.7931283826133436" />
+      <entry key="S5" value="2.4595192306985942" />
+      <entry key="S10" value="4.977617251976369" />
+      <entry key="S30" value="8.877831740555143" />
+      <entry key="S60" value="11.560807439340685" />
+      <entry key="M2" value="17.768757274701592" />
+      <entry key="M5" value="36.9279939572092" />
+      <entry key="M10" value="56.555468245028344" />
+      <entry key="M15" value="68.85634981509189" />
+      <entry key="M30" value="94.77643850812413" />
+      <entry key="H1" value="131.44614059426684" />
+      <entry key="H2" value="174.43330682564348" />
+      <entry key="H4" value="228.6996667960567" />
+      <entry key="D1" value="694.6915325695717" />
+      <entry key="W1" value="2040.3321819571258" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="0.0" />
-      <entry key="MS500" value="0.0" />
-      <entry key="S2" value="0.0" />
-      <entry key="S5" value="0.0" />
-      <entry key="S10" value="0.0" />
-      <entry key="S30" value="0.0" />
-      <entry key="S60" value="0.0" />
-      <entry key="M2" value="0.0" />
-      <entry key="M5" value="4.0781961189288586E-145" />
-      <entry key="M10" value="6.396784400985235E-73" />
-      <entry key="M15" value="7.520489346942427E-49" />
-      <entry key="M30" value="9.634857087463793E-25" />
-      <entry key="H1" value="1.2478832423264423E-12" />
-      <entry key="H2" value="1.5290928581111109E-6" />
-      <entry key="H4" value="0.001752042424756149" />
-      <entry key="D1" value="1.1101378472282817" />
-      <entry key="W1" value="7.264087234929622" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0" />
+      <entry key="S60" value="1.0" />
+      <entry key="M2" value="1.0" />
+      <entry key="M5" value="1.0" />
+      <entry key="M10" value="1.0" />
+      <entry key="M15" value="1.0" />
+      <entry key="M30" value="1.0" />
+      <entry key="H1" value="1.0000000000006666" />
+      <entry key="H2" value="1.0000011174748866" />
+      <entry key="H4" value="1.0014977749891434" />
+      <entry key="D1" value="2.081501771210623" />
+      <entry key="W1" value="8.237018270073953" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.2792897521763047" />
-      <entry key="MS500" value="4.170836805747224" />
-      <entry key="S2" value="10.227651303129491" />
-      <entry key="S5" value="13.993370867899932" />
-      <entry key="S10" value="15.796435127681553" />
-      <entry key="S30" value="17.2147048872151" />
-      <entry key="S60" value="17.600599321785754" />
-      <entry key="M2" value="17.814555323524097" />
-      <entry key="M5" value="18.647484989877768" />
-      <entry key="M10" value="21.780049407098005" />
-      <entry key="M15" value="26.23423712756129" />
-      <entry key="M30" value="42.241885984873235" />
-      <entry key="H1" value="68.67195442082846" />
-      <entry key="H2" value="98.36207286594131" />
-      <entry key="H4" value="142.31962736857716" />
-      <entry key="D1" value="600.1164287876771" />
-      <entry key="W1" value="1942.933576245124" />
+      <entry key="MS100" value="0.0033537869874770794" />
+      <entry key="MS500" value="0.35106570873097076" />
+      <entry key="S2" value="1.4489324288612324" />
+      <entry key="S5" value="3.2890539235062004" />
+      <entry key="S10" value="5.8846855586314595" />
+      <entry key="S30" value="9.844686163344138" />
+      <entry key="S60" value="12.543793777827936" />
+      <entry key="M2" value="18.75978537744509" />
+      <entry key="M5" value="37.923564549785276" />
+      <entry key="M10" value="57.55268931677303" />
+      <entry key="M15" value="69.8541681191908" />
+      <entry key="M30" value="95.77485318934663" />
+      <entry key="H1" value="132.44494403131634" />
+      <entry key="H2" value="175.4324822005429" />
+      <entry key="H4" value="229.7006273604957" />
+      <entry key="D1" value="696.7728076465363" />
+      <entry key="W1" value="2048.5691150018592" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -112,7 +178,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/freelance-workspace-cleanup&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/enforce-thin-page-architecture&quot;,
     &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
     &quot;js.debugger.nextJs.config.created.client&quot;: &quot;true&quot;,
     &quot;js.debugger.nextJs.config.created.server&quot;: &quot;true&quot;,
@@ -242,6 +308,7 @@
       <workItem from="1781976813108" duration="4555000" />
       <workItem from="1781989141418" duration="4252000" />
       <workItem from="1782112749988" duration="4027000" />
+      <workItem from="1782236492097" duration="2444000" />
     </task>
     <servers />
   </component>
@@ -255,11 +322,6 @@
           <url>file://$PROJECT_DIR$/app/core/components/cohorts/CohortComponents.tsx</url>
           <line>10</line>
           <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="javascript">
-          <url>file://$PROJECT_DIR$/app/plugins/cbc/api/fineArtsPracticals.ts</url>
-          <line>34</line>
-          <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

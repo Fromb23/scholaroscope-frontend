@@ -152,7 +152,7 @@ export function GradePolicyDetailPage() {
     }, [authLoading, canManagePolicies, loadPolicy]);
 
     if (authLoading) {
-        return <LoadingSpinner />;
+        return <LoadingSpinner message="Checking grade policy access..." />;
     }
 
     if (!canManagePolicies) {
@@ -160,7 +160,7 @@ export function GradePolicyDetailPage() {
     }
 
     if (loading) {
-        return <LoadingSpinner />;
+        return <LoadingSpinner message="Loading grade policy details..." />;
     }
 
     if (error || !policy) {

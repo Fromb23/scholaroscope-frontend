@@ -7,6 +7,11 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import {
+  BackgroundRefreshBadge,
+  SectionLoading,
+  TableSkeleton,
+} from '@/app/components/ui/loading';
 
 // ============================================================================
 // Types
@@ -20,6 +25,11 @@ interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
   loading?: boolean;
+  loadingMessage?: string;
+  loadingVariant?: 'spinner' | 'skeleton';
+  skeletonRows?: number;
+  isRefreshing?: boolean;
+  refreshMessage?: string;
   pagination?: PaginationConfig;
   initialSort?: SortConfig | null;
   onPaginationChange?: (page: number, pageSize: number) => void;
@@ -154,6 +164,11 @@ export function DataTable<T extends Record<string, unknown>>({
   enableFilter = false,
   rowClassName,
   onRowClick,
+  loadingMessage = 'Preparing table data...',
+  loadingVariant = 'spinner',
+  skeletonRows = 6,
+  isRefreshing = false,
+  refreshMessage = 'Updating table...',
 }: DataTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(initialSort);
@@ -221,8 +236,18 @@ export function DataTable<T extends Record<string, unknown>>({
     }
   };
 
+  const hasRows = data?.length > 0;
+  const initialLoading = loading && !hasRows && !isRefreshing;
+  const showRefreshBadge = isRefreshing || (loading && hasRows);
+
   return (
     <div className="space-y-4">
+      {showRefreshBadge ? (
+        <div className="flex justify-end">
+          <BackgroundRefreshBadge message={refreshMessage} />
+        </div>
+      ) : null}
+
       {/* Search and Filters Bar */}
       {(enableSearch || enableFilter) && (
         <div className="flex items-center gap-4 flex-wrap">
@@ -264,8 +289,12 @@ export function DataTable<T extends Record<string, unknown>>({
         </div>
       )}
 
-      {/* Table */}
-      <div className="theme-table overflow-x-auto rounded-lg">
+      {initialLoading && loadingVariant === 'skeleton' ? (
+        <TableSkeleton rows={skeletonRows} columns={columns.length} />
+      ) : initialLoading ? (
+        <SectionLoading title={loadingMessage} />
+      ) : (
+        <div className="theme-table overflow-x-auto rounded-lg">
         <table className="min-w-full table-fixed">
           <thead className="theme-table-header">
             <tr>
@@ -282,19 +311,7 @@ export function DataTable<T extends Record<string, unknown>>({
             </tr>
           </thead>
           <tbody className="theme-surface">
-            {loading ? (
-              <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div
-                      className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
-                      style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
-                    />
-                    <span className="theme-muted">Loading...</span>
-                  </div>
-                </td>
-              </tr>
-            ) : data?.length === 0 ? (
+            {data?.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-6 py-12 text-center">
                   <div className="theme-muted">{emptyMessage}</div>
@@ -317,10 +334,11 @@ export function DataTable<T extends Record<string, unknown>>({
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      )}
 
       {/* Pagination */}
-      {pagination && onPaginationChange && (
+      {!initialLoading && pagination && onPaginationChange && (
         <div className="theme-card flex items-center justify-between rounded-lg px-4 py-3">
           {/* Page size selector */}
           <div className="flex items-center gap-2">

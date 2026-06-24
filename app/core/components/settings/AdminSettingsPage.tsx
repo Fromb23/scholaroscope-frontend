@@ -128,7 +128,7 @@ function SettingsContent() {
 
 export function AdminSettingsPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm theme-subtle">Loading...</div>}>
+    <Suspense fallback={<div className="p-6 text-sm theme-subtle">Preparing admin settings...</div>}>
       <SettingsContent />
     </Suspense>
   );

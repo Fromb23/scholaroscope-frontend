@@ -172,7 +172,7 @@ export function UserDetailPage() {
         }
     };
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading platform user..." />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
     if (!user) return <ErrorState message="User not found" />;
 
@@ -296,7 +296,7 @@ export function UserDetailPage() {
                         </div>
 
                         {membershipsLoading ? (
-                            <LoadingSpinner fullScreen={false} />
+                            <LoadingSpinner fullScreen={false} message="Loading organization access..." />
                         ) : memberships.length === 0 ? (
                             <p className="text-sm text-gray-500 text-center py-8">No memberships found.</p>
                         ) : (

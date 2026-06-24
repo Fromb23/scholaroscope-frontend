@@ -61,7 +61,7 @@ export default function SuperAdminDashboard() {
 
     useAssistantPageContext(assistantContext);
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading platform dashboard..." />;
 
     return (
         <>
@@ -187,7 +187,7 @@ export default function SuperAdminDashboard() {
                             <h3 className="text-lg font-bold theme-text">Health Signals</h3>
                         </div>
                         {healthLoading ? (
-                            <LoadingSpinner fullScreen={false} />
+                            <LoadingSpinner fullScreen={false} message="Loading platform activity..." />
                         ) : health ? (
                             <div className="space-y-3">
                                 <SignalRow

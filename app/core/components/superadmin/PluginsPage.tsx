@@ -47,7 +47,7 @@ export function PluginsPage() {
         closeConfirm,
     } = usePluginsPage();
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading plugin registry..." />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
 
     return (

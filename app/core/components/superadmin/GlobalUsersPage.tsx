@@ -121,7 +121,7 @@ function GlobalUsersPageInner() {
             showSuccess('Account deleted successfully');
         });
 
-    if (loading) return <LoadingSpinner />;
+    if (loading) return <LoadingSpinner message="Loading platform users..." />;
     if (error) return <ErrorState message={error} onRetry={refetch} />;
 
     return (
@@ -248,7 +248,7 @@ function GlobalUsersPageInner() {
 
 export function GlobalUsersPage() {
     return (
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense fallback={<LoadingSpinner message="Preparing platform users..." />}>
             <GlobalUsersPageInner />
         </Suspense>
     );

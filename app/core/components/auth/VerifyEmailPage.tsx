@@ -136,7 +136,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<AuthFrame><div className="theme-card rounded-2xl p-8">Loading...</div></AuthFrame>}>
+    <Suspense fallback={<AuthFrame><div className="theme-card rounded-2xl p-8">Preparing email verification...</div></AuthFrame>}>
       <VerifyEmailContent />
     </Suspense>
   );

@@ -785,6 +785,10 @@ function LearnersPageInner() {
                     data={visibleStudents as LearnerTableRow[]}
                     columns={columns}
                     loading={displayedLoading}
+                    loadingMessage="Loading learner records..."
+                    loadingVariant="skeleton"
+                    isRefreshing={displayedLoading && visibleStudents.length > 0}
+                    refreshMessage="Updating learner records..."
                     pagination={displayedPagination}
                     initialSort={{ field: sort.field, direction: sort.direction }}
                     onPaginationChange={(page, pageSize) => updateFilters({ page, page_size: pageSize })}
@@ -806,7 +810,7 @@ function LearnersPageInner() {
 
 export default function LearnersPage() {
     return (
-        <Suspense fallback={<LoadingSpinner message="Loading..." />}>
+        <Suspense fallback={<LoadingSpinner message="Preparing learner records..." />}>
             <LearnersPageInner />
         </Suspense>
     );

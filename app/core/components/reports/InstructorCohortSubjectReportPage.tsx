@@ -434,7 +434,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
   }
 
   if (cohortSubjectsLoading && !cohortSubjectMeta && !reportMeta && activeQuery.loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner message="Loading instructor class subject report..." />;
   }
 
   if (cohortSubjectsError && !cohortSubjectMeta && !reportMeta && !activeQuery.loading) {
@@ -563,7 +563,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
         })}
       </div>
 
-      {activeQuery.loading && <LoadingSpinner />}
+      {activeQuery.loading && <LoadingSpinner message="Refreshing class subject report..." />}
 
       {!activeQuery.loading && activeQuery.error && (
         <ErrorState

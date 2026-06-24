@@ -545,7 +545,7 @@ export function AdminCohortsPageContent() {
 
             <Card>
                 {loading ? (
-                    <LoadingSpinner fullScreen={false} />
+                    <LoadingSpinner fullScreen={false} message="Loading cohort academic years..." />
                 ) : cohorts.length === 0 ? (
                     <div className="py-12 text-center">
                         <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />

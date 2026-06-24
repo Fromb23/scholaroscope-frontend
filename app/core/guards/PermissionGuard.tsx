@@ -4,6 +4,7 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { hasRouteAccess } from '@/app/utils/permissions';
+import { PermissionResolvingState } from '@/app/components/ui/loading';
 import type { Role, User } from '@/app/core/types/auth';
 
 interface PermissionGuardProps {
@@ -21,7 +22,7 @@ export function PermissionGuard({
 }: PermissionGuardProps) {
     const { user, activeRole, loading } = useAuth();
 
-    if (loading) return null;
+    if (loading) return <PermissionResolvingState message="Checking your access..." />;
 
     const allowed = check
         ? check(user, activeRole)

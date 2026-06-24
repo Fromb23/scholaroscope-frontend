@@ -26,6 +26,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
+import { CBCProgressSkeleton } from './CBCProgressSkeleton';
 import {
     buildCbcPath,
     buildCurrentCbcWorkspaceHref,
@@ -170,7 +171,13 @@ export function CBCProgressPage() {
     useAssistantPageContext(assistantContext);
 
     if (page.isLoading) {
-        return <CBCLoading message="Loading your assignments…" />;
+        return (
+            <div className="space-y-6">
+                <CBCNav />
+                <CBCLoading message="Loading CBC progress for your teaching context..." />
+                <CBCProgressSkeleton />
+            </div>
+        );
     }
 
     return (

@@ -23,6 +23,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { Select } from '@/app/components/ui/Select';
 import { getCbcBackLabel } from '@/app/plugins/cbc/lib/navigation';
+import { CBCProgressSkeleton } from './CBCProgressSkeleton';
 import type { MasteryLevel } from '@/app/plugins/cbc/types/cbc';
 import type { Subject } from '@/app/core/types/academic';
 
@@ -45,7 +46,8 @@ export function CBCCohortProgressPage() {
         return (
             <div className="space-y-6">
                 <CBCNav />
-                <CBCLoading message="Loading cohort…" />
+                <CBCLoading message={`Loading CBC progress for cohort ${cohortId}...`} />
+                <CBCProgressSkeleton />
             </div>
         );
     }
@@ -99,14 +101,14 @@ export function CBCCohortProgressPage() {
             )}
 
             {page.instructorScopeLoading ? (
-                <CBCLoading message="Loading instructor subject scope…" />
+                <CBCLoading message="Checking your CBC subject scope..." />
             ) : !page.selectedSubjectId ? (
                 <Card className="py-12 text-center">
                     <BookOpen className="mx-auto h-12 w-12 text-gray-300 mb-3" />
                     <p className="text-gray-500">Select a subject to view progress</p>
                 </Card>
             ) : page.isLoading ? (
-                <CBCLoading message="Computing competency data…" />
+                <CBCLoading message="Loading CBC competency progress..." />
             ) : page.error ? (
                 <CBCError error={page.error} onRetry={page.refetch} />
             ) : summary ? (

@@ -121,7 +121,7 @@ export function AssessmentsReportPage() {
         </Card>
 
         {error && <ErrorBanner message={error} onDismiss={() => {}} />}
-        {loading && <LoadingSpinner />}
+        {loading && <LoadingSpinner message="Loading assessment report..." />}
 
         {!loading && !selectedTerm && (
           <Card>

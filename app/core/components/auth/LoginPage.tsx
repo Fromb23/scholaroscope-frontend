@@ -251,7 +251,7 @@ export function LoginPage() {
       fallback={
         <AuthFrame>
           <div className="theme-card rounded-2xl p-8">
-            <LoadingSpinner fullScreen={false} message="Loading..." />
+            <LoadingSpinner fullScreen={false} message="Preparing sign-in..." />
           </div>
         </AuthFrame>
       }

@@ -255,7 +255,7 @@ export function RecentRequestsCard({ requests, loading }: RecentRequestsCardProp
             </div>
             <div className="px-6 py-2">
                 {loading ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">Loading...</p>
+                    <p className="text-sm text-gray-400 py-4 text-center">Loading profile requests...</p>
                 ) : safeRequests.length === 0 ? (
                     <p className="text-sm text-gray-400 text-center py-4">No requests submitted yet.</p>
                 ) : (

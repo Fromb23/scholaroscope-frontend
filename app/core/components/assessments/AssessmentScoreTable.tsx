@@ -337,6 +337,8 @@ export function AssessmentScoreTable({
                         data={scores as (AssessmentScore & Record<string, unknown>)[]}
                         columns={columns}
                         loading={loading}
+                        loadingMessage="Loading assessment score entries..."
+                        loadingVariant="skeleton"
                         enableSearch={false}
                         enableSort={false}
                         emptyMessage={

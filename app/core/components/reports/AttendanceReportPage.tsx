@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -14,7 +14,11 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
-import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import {
+  ButtonPendingContent,
+  ReportPreparingState,
+  SectionLoading,
+} from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
 import { downloadBlob } from '@/app/core/api/downloads';
 import { adminReportsAPI } from '@/app/core/api/reporting';
@@ -72,6 +76,7 @@ export function AttendanceReportPage() {
     fallbackState: { term: selectedTermId },
   });
   const backLabel = source === 'midterm' ? 'Back to Midterm Break' : 'Back';
+  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
 
   const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
   const { terms, loading: termsLoading } = useTerms();
@@ -134,6 +139,7 @@ export function AttendanceReportPage() {
 
   const handleExport = useCallback(async (format: ReportExportFormat) => {
     try {
+      setExporting(format);
       const file = await adminReportsAPI.exportAttendanceScope(format, {
         termId: selectedTermId,
         studentId: selectedStudentId,
@@ -144,6 +150,8 @@ export function AttendanceReportPage() {
       downloadBlob(file.blob, file.fileName);
     } catch (requestError) {
       window.alert(extractErrorMessage(requestError as ApiError, 'Failed to export attendance report.'));
+    } finally {
+      setExporting(null);
     }
   }, [
     selectedCohortId,
@@ -224,17 +232,23 @@ export function AttendanceReportPage() {
 
           {hasScope ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={() => void handleExport('pdf')}>
-                <Download className="h-4 w-4" />
-                Export PDF
+              <Button variant="secondary" size="sm" disabled={exporting !== null} onClick={() => void handleExport('pdf')}>
+                <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+                  <Download className="h-4 w-4" />
+                  Export PDF
+                </ButtonPendingContent>
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => void handleExport('xlsx')}>
-                <Download className="h-4 w-4" />
-                Export Excel
+              <Button variant="secondary" size="sm" disabled={exporting !== null} onClick={() => void handleExport('xlsx')}>
+                <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+                  <Download className="h-4 w-4" />
+                  Export Excel
+                </ButtonPendingContent>
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => void handleExport('csv')}>
-                <Download className="h-4 w-4" />
-                Export CSV
+              <Button variant="ghost" size="sm" disabled={exporting !== null} onClick={() => void handleExport('csv')}>
+                <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </ButtonPendingContent>
               </Button>
             </div>
           ) : null}
@@ -309,7 +323,7 @@ export function AttendanceReportPage() {
             </div>
             <div className="mt-4 space-y-3">
               {learnerSearchLoading ? (
-                <LoadingSpinner fullScreen={false} message="Searching learners..." />
+                <SectionLoading title="Searching learner attendance matches..." />
               ) : learnerMatches.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-200 px-4 py-4 text-sm text-gray-500">
                   No learners matched this search.
@@ -376,7 +390,16 @@ export function AttendanceReportPage() {
             </div>
           </Card>
         ) : waitingForTerm || (loading && !report) ? (
-          <LoadingSpinner message="Loading attendance report..." />
+          <ReportPreparingState
+            title="Building attendance risk report..."
+            steps={[
+              'Collecting attendance scope',
+              'Reading attendance and assignment signals',
+              'Calculating learning and participation risk',
+              'Preparing recommendations',
+            ]}
+            activeStep={1}
+          />
         ) : report ? (
           <div
             id="attendance-report-panel"

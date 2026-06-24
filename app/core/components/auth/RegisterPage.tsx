@@ -11,7 +11,6 @@ import {
   CheckCircle,
   Home,
   House,
-  Loader2,
   MailCheck,
   School,
   User,
@@ -21,6 +20,7 @@ import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { ButtonPendingContent } from '@/app/components/ui/loading';
 import { AuthFrame } from './AuthFrame';
 import { ENABLE_MULTI_WORKSPACE_SIGNUP, ORG_TYPE_LABELS, WORKSPACE_MODE_COPY } from '@/app/core/lib/workspaces';
 import { authAPI } from '@/app/core/api/auth';
@@ -264,11 +264,12 @@ function RegisterForm() {
                         disabled={!!restoring}
                         variant="secondary"
                       >
-                        {restoring === org.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'Restore'
-                        )}
+                        <ButtonPendingContent
+                          pending={restoring === org.id}
+                          pendingLabel={`Restoring ${org.name}...`}
+                        >
+                          Restore
+                        </ButtonPendingContent>
                       </Button>
                     </div>
                   ))}
@@ -301,14 +302,12 @@ function RegisterForm() {
                 disabled={submitting || !!restoring}
                 className="w-full"
               >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create New Workspace'
-                )}
+                <ButtonPendingContent
+                  pending={submitting}
+                  pendingLabel={`Requesting ${form.workspace_name || 'workspace'} approval...`}
+                >
+                  Create New Workspace
+                </ButtonPendingContent>
               </Button>
             </div>
 
@@ -355,6 +354,14 @@ function RegisterForm() {
         ? 'Accept & Sign In'
         : 'Create Account & Join'
       : 'Request Workspace';
+
+  const pendingLabel = isInviteFlow
+    ? `Accepting invitation to ${invite?.organization ?? 'workspace'}...`
+    : isFreelanceTeacherWorkspace
+      ? 'Creating your freelance teacher workspace...'
+      : isNewWorkspaceFlow
+        ? `Requesting ${form.workspace_name || 'workspace'} approval...`
+        : 'Creating your account...';
 
   return (
     <AuthFrame>
@@ -541,14 +548,9 @@ function RegisterForm() {
                 )}
 
                 <Button onClick={handleSubmit} disabled={submitting} className="mt-2 w-full">
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    submitLabel
-                  )}
+                  <ButtonPendingContent pending={submitting} pendingLabel={pendingLabel}>
+                    {submitLabel}
+                  </ButtonPendingContent>
                 </Button>
               </>
             )}
@@ -596,7 +598,7 @@ export function RegisterPage() {
       fallback={
         <AuthFrame>
           <div className="theme-card rounded-2xl p-8">
-            <LoadingSpinner fullScreen={false} message="Loading..." />
+            <LoadingSpinner fullScreen={false} message="Preparing account setup..." />
           </div>
         </AuthFrame>
       }

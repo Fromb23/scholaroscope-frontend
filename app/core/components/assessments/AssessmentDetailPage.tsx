@@ -188,7 +188,7 @@ export function AssessmentDetailPage() {
 
     useAssistantPageContext(assistantContext);
 
-    if (loading && !assessment) return <LoadingSpinner />;
+    if (loading && !assessment) return <LoadingSpinner message="Loading assessment details..." />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
     if (!assessment) return <div className="p-10 text-gray-500">Assessment not found.</div>;
 

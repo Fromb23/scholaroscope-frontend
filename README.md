@@ -100,6 +100,32 @@ Not allowed inside route files:
 Feature behavior belongs in `app/core/...` or `app/plugins/...`.
 Domain logic belongs in hooks, lib modules, services, registries, or typed API modules.
 
+## Loading State Rule
+
+Loading states must describe the user-facing operation, not just show motion.
+
+A loading state should not say “the app is busy.”
+It should say “the app understood your exact intent and is working on that specific thing.”
+
+Use:
+
+- skeletons for known layouts
+- button pending labels for mutations
+- section loaders for partial content
+- background refresh badges for refetches
+- entity-specific labels when an entity is known
+- staged states for reports/imports/exports/intelligence
+- permission/context resolving states for auth, tenant, and capability checks
+
+Avoid:
+
+- generic “Loading...”
+- full-page spinners for section data
+- replacing existing content during refetch
+- disabling buttons without saying what is happening
+- spinner-only buttons
+- showing empty states before loading has resolved
+
 ## What Not To Do
 
 - Do not describe this app as “just a Next.js frontend”.
