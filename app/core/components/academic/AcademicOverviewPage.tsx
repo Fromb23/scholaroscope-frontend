@@ -47,7 +47,7 @@ export default function AcademicOverview() {
             ? [{
                 label: setupStatus?.next_action.label ?? 'Open Academic Setup',
                 type: 'navigate' as const,
-                href: setupStatus?.next_action.href ?? '/academic/curricula?setup=1',
+                href: setupStatus?.next_action.href ?? '/admin/settings?tab=plugins&from=academic-setup',
             }]
             : [
                 { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' },
@@ -57,7 +57,7 @@ export default function AcademicOverview() {
             ? {
                 label: setupStatus?.next_action.label ?? 'Open Academic Setup',
                 type: 'navigate' as const,
-                href: setupStatus?.next_action.href ?? '/academic/curricula?setup=1',
+                href: setupStatus?.next_action.href ?? '/admin/settings?tab=plugins&from=academic-setup',
             }
             : (!terms.length
                 ? { label: 'Open Terms', type: 'navigate' as const, href: '/academic/terms' }
@@ -182,7 +182,7 @@ export default function AcademicOverview() {
                                         </Badge>
                                     ))
                                 ) : (
-                                    <div className="text-sm text-gray-400">No active curricula</div>
+                                    <div className="text-sm text-gray-400">No active curriculum</div>
                                 )}
                             </div>
                         </div>

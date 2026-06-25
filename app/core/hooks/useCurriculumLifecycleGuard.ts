@@ -102,7 +102,7 @@ export function useCurriculumLifecycleGuard(
       ?? (
         pluginActive
           ? 'This route is not available for the selected curriculum.'
-          : 'This curriculum engine is not available for your organization.'
+          : 'This Scholaroscope-powered curriculum is not available for your organization.'
       ),
     role,
   };

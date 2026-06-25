@@ -8,17 +8,16 @@
 // ============================================================================
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, BookOpen, Plus, Edit, Trash2, CheckCircle, PowerOff, Puzzle } from 'lucide-react';
+import { AlertTriangle, BookOpen, Trash2, CheckCircle, PowerOff, Puzzle } from 'lucide-react';
 import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import {
     getAcademicSetupPageState,
     resolveAcademicSetupOrigin,
-    withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -27,14 +26,12 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
-import { CurriculumFormModal } from '@/app/core/components/curricula/CurriculumFormModal';
 import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { curriculumAPI, curriculumDisableRequestAPI } from '@/app/core/api/academic';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 import {
-    canCreateCurriculumWork,
     canEditCurriculumWork,
     resolveCurriculumPluginKey,
 } from '@/app/core/lib/curriculumLifecycle';
@@ -42,19 +39,17 @@ import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
 import type { CurriculumDisableImpactSnapshot } from '@/app/core/types/academic';
-import type { CurriculumFormData } from '@/app/core/components/curricula/CurriculumFormModal';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
-import type { CurriculumType } from '@/app/core/types/academic';
 import {
-    CAMBRIDGE_BRIDGE_NAME,
     getCurriculumBridgeCode,
     getCurriculumBridgeName,
-    isCambridgeCurriculumType,
 } from '@/app/core/lib/curriculumBridge';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
+const CUSTOM_CURRICULUM_DISABLED_MESSAGE = 'Custom curriculum creation is disabled. Activate a Scholaroscope-powered curriculum instead.';
+
 export function CurriculaPage() {
-    const { curricula, loading, refetch, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
+    const { curricula, loading, refetch, deleteCurriculum } = useCurricula();
     const queryClient = useQueryClient();
     const { organizationId } = useOrganizationContext();
     const router = useRouter();
@@ -63,8 +58,6 @@ export function CurriculaPage() {
         enabled: searchParams.get('setup') === '1',
     });
 
-    const [showModal, setShowModal] = useState(false);
-    const [editing, setEditing] = useState<Curriculum | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
     const [disablingCurriculum, setDisablingCurriculum] = useState<Curriculum | null>(null);
     const [disableImpact, setDisableImpact] = useState<CurriculumDisableImpactSnapshot | null>(null);
@@ -92,12 +85,6 @@ export function CurriculaPage() {
     const setupStatus = setupStatusQuery.data ?? null;
     const setupPageState = getAcademicSetupPageState(setupStatus, 'CURRICULUM');
     const pageErrorRef = useScrollIntoViewOnMessage(pageError);
-    const createInitialData = useMemo<CurriculumFormData>(() => ({
-        name: isCambridgeCurriculumType(searchParams.get('curriculum_type')) ? CAMBRIDGE_BRIDGE_NAME : (searchParams.get('name') ?? ''),
-        curriculum_type: (searchParams.get('curriculum_type') ?? '') as CurriculumType,
-        description: '',
-        is_active: true,
-    }), [searchParams]);
     const pluginSettingsHeaderHref = setupMode
         ? '/admin/settings?tab=plugins&from=academic-setup'
         : '/admin/settings?tab=plugins&from=curricula';
@@ -126,7 +113,7 @@ export function CurriculaPage() {
 
         switch (curriculum.offering_status) {
             case 'ACTIVE':
-                return 'Manage curriculum engine';
+                return 'Open curriculum settings';
             case 'DISABLE_REQUESTED':
             case 'DRAINING':
             case 'FINALIZING':
@@ -138,63 +125,21 @@ export function CurriculaPage() {
             case 'REACTIVATING':
                 return 'View reactivation progress';
             default:
-                return 'Manage curriculum engine';
-        }
-    };
-
-    const openCreate = () => {
-        if (!curricula.some((curriculum) => canCreateCurriculumWork(curriculum))) {
-            setPageError('All curricula are currently blocked for new work. Wait until a curriculum returns to Active before creating another one.');
-            return;
-        }
-
-        setEditing(null);
-        setShowModal(true);
-    };
-    const openEdit = (c: Curriculum) => {
-        if (!canEditCurriculumWork(c)) {
-            setPageError('This curriculum is not accepting changes right now. Historical records remain readable, but curriculum setup is read-only.');
-            return;
-        }
-
-        setEditing(c);
-        setShowModal(true);
-    };
-    const clearCreateFlag = () => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.delete('create');
-        const next = params.toString();
-        router.replace(next ? `/academic/curricula?${next}` : '/academic/curricula', { scroll: false });
-    };
-    const closeModal = () => {
-        setShowModal(false);
-        setEditing(null);
-        if (shouldOpenCreate) {
-            clearCreateFlag();
+                return 'Open curriculum settings';
         }
     };
 
     useEffect(() => {
-        if (shouldOpenCreate && !editing) {
-            setShowModal(true);
+        if (!shouldOpenCreate) {
+            return;
         }
-    }, [editing, shouldOpenCreate]);
 
-    const handleSave = async (data: CurriculumFormData, editingId?: number) => {
-        if (editingId) {
-            await updateCurriculum(editingId, data);
-        } else {
-            await createCurriculum(data);
-            if (setupMode) {
-                const refreshedStatus = (await setupStatusQuery.refetch()).data;
-                router.push(
-                    withAcademicSetupMode(
-                        refreshedStatus?.next_action.href ?? '/academic/years?create=1',
-                    ),
-                );
-            }
-        }
-    };
+        setPageError(CUSTOM_CURRICULUM_DISABLED_MESSAGE);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('create');
+        const next = params.toString();
+        router.replace(next ? `/academic/curricula?${next}` : '/academic/curricula', { scroll: false });
+    }, [router, searchParams, shouldOpenCreate]);
 
     const handleDelete = async (curriculum: Curriculum) => {
         if (!confirm(`Delete "${getCurriculumBridgeName(curriculum)}"? This will affect all associated subjects and cohorts.`)) return;
@@ -349,15 +294,6 @@ export function CurriculaPage() {
                 <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => openEdit(curriculum)}
-                    disabled={!canEditCurriculumWork(curriculum)}
-                    title={!canEditCurriculumWork(curriculum) ? 'This curriculum is read-only while the disable lifecycle is in progress.' : undefined}
-                >
-                    <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                    size="sm"
-                    variant="ghost"
                     onClick={() => handleDelete(curriculum)}
                     disabled={!canEditCurriculumWork(curriculum)}
                     title={!canEditCurriculumWork(curriculum) ? 'This curriculum cannot be deleted while it is read-only.' : undefined}
@@ -402,27 +338,29 @@ export function CurriculaPage() {
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <Link href={pluginSettingsHeaderHref}>
-                        <Button type="button" variant="secondary">
+                        <Button type="button">
                             <Puzzle className="mr-2 h-4 w-4" />
-                            Curriculum settings
+                            Choose curriculum
                         </Button>
                     </Link>
-                    <Button
-                        onClick={openCreate}
-                        disabled={!curricula.some((curriculum) => canCreateCurriculumWork(curriculum))}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />Add Curriculum
-                    </Button>
                 </div>
             </div>
 
             {pageError ? (
-                <ErrorBanner
-                    ref={pageErrorRef}
-                    message={pageError}
-                    onDismiss={() => setPageError(null)}
-                    autoDismissMs={5000}
-                />
+                <div ref={pageErrorRef} className="space-y-3">
+                    <ErrorBanner
+                        message={pageError}
+                        onDismiss={() => setPageError(null)}
+                    />
+                    {pageError === CUSTOM_CURRICULUM_DISABLED_MESSAGE ? (
+                        <Link href={pluginSettingsHeaderHref}>
+                            <Button type="button" variant="secondary">
+                                <Puzzle className="h-4 w-4" />
+                                Choose curriculum
+                            </Button>
+                        </Link>
+                    ) : null}
+                </div>
             ) : null}
 
             {successMessage ? (
@@ -471,7 +409,7 @@ export function CurriculaPage() {
                             Using CBC, Cambridge, or another national curriculum?
                         </h2>
                         <p className="mt-1 text-sm text-gray-600">
-                            National and international curricula are powered by Scholaroscope. Manage the curriculum engine here, then choose subject offerings from the curriculum catalog.
+                            Select a Scholaroscope-powered curriculum such as CBC or Cambridge. Scholaroscope will register it in this workspace and unlock subject offerings.
                         </p>
                     </div>
                     <Link href={pluginSettingsHeaderHref}>
@@ -502,11 +440,14 @@ export function CurriculaPage() {
                 ) : activeCurricula.length === 0 ? (
                     <div className="py-12 text-center">
                         <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No active curricula</h3>
-                        <p className="mt-1 text-sm text-gray-500">Get started by creating a new curriculum</p>
-                        <Button className="mt-4" onClick={openCreate}>
-                            <Plus className="mr-2 h-4 w-4" />Add Curriculum
-                        </Button>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No active curriculum</h3>
+                        <p className="mt-1 text-sm text-gray-500">Choose a Scholaroscope-powered curriculum to start academic setup.</p>
+                        <Link href={pluginSettingsHeaderHref}>
+                            <Button className="mt-4">
+                                <Puzzle className="mr-2 h-4 w-4" />
+                                Choose curriculum
+                            </Button>
+                        </Link>
                     </div>
                 ) : (
                     <Table>
@@ -616,14 +557,6 @@ export function CurriculaPage() {
                     </Table>
                 </Card>
             )}
-
-            <CurriculumFormModal
-                isOpen={showModal}
-                onClose={closeModal}
-                editing={editing}
-                initialData={editing ? undefined : createInitialData}
-                onSave={handleSave}
-            />
 
             {disablingCurriculum ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
