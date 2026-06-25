@@ -59,7 +59,7 @@ export function LandingPage() {
 
   const donts = [
     "Access another organization's data — ever",
-    'Bypass the curriculum plugin system',
+    'Bypass the Scholaroscope curriculum engine',
     "Expect student dashboards by default — it's a plugin",
     'Use it as a standalone student-facing app',
     'Mix cross-organization records or memberships',

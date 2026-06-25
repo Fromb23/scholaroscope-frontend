@@ -77,7 +77,7 @@ export function AcademicSetupProgress({
 
                     {step.key === 'CURRICULUM' ? (
                         <div className="mt-4 rounded-xl border border-blue-100 bg-white/70 px-3 py-2 text-xs text-blue-900">
-                            National and international curricula are powered by Scholaroscope. Activate or manage the curriculum engine in Curriculum Settings.
+                            Select a Scholaroscope-powered curriculum such as CBC or Cambridge. Scholaroscope will register it in this workspace and unlock subject offerings.
                         </div>
                     ) : null}
 

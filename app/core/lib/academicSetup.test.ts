@@ -19,7 +19,7 @@ const incompleteStatus: AcademicSetupStatus = {
         href: '/academic/years?create=1',
     },
     steps: [
-        { key: 'CURRICULUM', label: 'Choose curriculum', status: 'complete', href: '/academic/curricula?setup=1', description: 'Choose the curriculum first.' },
+        { key: 'CURRICULUM', label: 'Choose curriculum', status: 'complete', href: '/admin/settings?tab=plugins&from=academic-setup', description: 'Choose the curriculum first.' },
         { key: 'ACADEMIC_YEAR', label: 'Create current academic year', status: 'current', href: '/academic/years?setup=1&create=1', description: 'Create the current academic year.' },
         { key: 'TERMS', label: 'Set up terms', status: 'locked', href: '/academic/terms?setup=1', description: 'Create terms for the current year.' },
         { key: 'SUBJECTS', label: 'Add or confirm subjects', status: 'locked', href: '/academic/subjects?setup=1', description: 'Add or confirm subjects.' },
@@ -111,7 +111,7 @@ describe('academic setup helpers', () => {
         })).toEqual({
             kind: 'cambridge',
             title: 'Cambridge Setup Flow',
-            message: 'Create the curriculum here, then return to the Cambridge offering to assign cohorts.',
+            message: 'Choose the curriculum here, then return to the Cambridge offering to assign cohorts.',
             returnLabel: 'Return to Cambridge offering',
         });
     });

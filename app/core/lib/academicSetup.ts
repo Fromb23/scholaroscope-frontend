@@ -172,7 +172,7 @@ export function resolveAcademicSetupOrigin(
         return {
             kind: 'cambridge',
             title: 'Cambridge Setup Flow',
-            message: 'Create the curriculum here, then return to the Cambridge offering to assign cohorts.',
+            message: 'Choose the curriculum here, then return to the Cambridge offering to assign cohorts.',
             returnLabel: 'Return to Cambridge offering',
         };
     }
