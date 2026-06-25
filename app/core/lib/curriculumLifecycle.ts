@@ -118,7 +118,9 @@ export function getCurriculumStatusMessage(
     case 'ACTIVE':
       return 'This curriculum is active.';
     case 'DISABLE_REQUESTED':
-      return 'A disable request has been created, but the curriculum is still active until draining starts.';
+      return role === 'INSTRUCTOR'
+        ? 'This curriculum is being disabled for this workspace. You can view historical records, but cannot create or modify academic work while shutdown is running.'
+        : 'This curriculum disable is in progress. Academic work is read-only until this process is cancelled or completed.';
     case 'DRAINING':
       return role === 'INSTRUCTOR'
         ? 'This curriculum is being phased out. New work is blocked. You may only complete already active work where allowed.'
@@ -151,6 +153,8 @@ export function isCurriculumReadOnly(
 
   return (
     curriculum.is_active === false
+    || curriculum.offering_status === 'DISABLE_REQUESTED'
+    || curriculum.offering_status === 'DRAINING'
     || curriculum.offering_status === 'FINALIZING'
     || curriculum.offering_status === 'DISABLED'
     || curriculum.offering_status === 'REACTIVATING'
@@ -167,10 +171,7 @@ export function canCreateCurriculumWork(
 
   return (
     curriculum.is_active !== false
-    && (
-      curriculum.offering_status === 'ACTIVE'
-      || curriculum.offering_status === 'DISABLE_REQUESTED'
-    )
+    && curriculum.offering_status === 'ACTIVE'
   );
 }
 
@@ -201,7 +202,6 @@ export function canUseCurriculumRoute(
         curriculum.is_active !== false
         && (
           curriculum.offering_status === 'ACTIVE'
-          || curriculum.offering_status === 'DISABLE_REQUESTED'
           || curriculum.offering_status === 'DRAINING'
         )
       );
