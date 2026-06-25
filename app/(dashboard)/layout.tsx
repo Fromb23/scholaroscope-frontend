@@ -29,6 +29,8 @@ import { AlertTriangle } from 'lucide-react';
 import { AccessNotice } from '../core/types/auth';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
+const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
+
 function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<typeof useAuth>['capabilities']): boolean {
   if (/^\/announcements/.test(pathname)) {
     return capabilities.workspace_behavior !== 'FREELANCE_TEACHER';
@@ -74,7 +76,7 @@ function DashboardContent({
         >
           <AssistantProvider>
             {children}
-            <AssistantWidget />
+            {GUIDE_ENABLED ? <AssistantWidget /> : null}
           </AssistantProvider>
         </main>
       </div>

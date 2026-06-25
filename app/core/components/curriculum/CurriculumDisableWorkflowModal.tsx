@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   Clock3,
@@ -171,9 +173,11 @@ export function CurriculumDisableWorkflowModal({
   activeRequestId?: number | null;
   onCompleted?: () => Promise<void> | void;
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<CurriculumDisableMode>('GRACEFUL');
   const [displayRequestId, setDisplayRequestId] = useState<number | null>(activeRequestId ?? latestRequestId);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<{ message: string; href?: string; label?: string } | null>(null);
   const curriculumAvailableForDisable = isCurriculumAvailableForDisable(curriculum);
 
   useEffect(() => {
@@ -181,6 +185,7 @@ export function CurriculumDisableWorkflowModal({
       setMode('GRACEFUL');
       setDisplayRequestId(activeRequestId ?? latestRequestId ?? null);
       setError(null);
+      setSuccessMessage(null);
       return;
     }
 
@@ -282,6 +287,7 @@ export function CurriculumDisableWorkflowModal({
 
   const handleStartWorkflow = async () => {
     setError(null);
+    setSuccessMessage(null);
     try {
       const response = await requestDisable.mutateAsync({
         mode,
@@ -289,6 +295,10 @@ export function CurriculumDisableWorkflowModal({
       });
       setDisplayRequestId(response.request.id);
       await refreshView({ includeRequest: false });
+      router.refresh();
+      setSuccessMessage({
+        message: 'Curriculum shutdown has started. Academic setup has been refreshed.',
+      });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to start disable workflow.');
     }
@@ -296,10 +306,12 @@ export function CurriculumDisableWorkflowModal({
 
   const handleCancel = async () => {
     setError(null);
+    setSuccessMessage(null);
     try {
       const response = await cancelRequest.mutateAsync();
       setDisplayRequestId(response.id);
       await refreshView();
+      router.refresh();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to cancel disable workflow.');
     }
@@ -307,9 +319,16 @@ export function CurriculumDisableWorkflowModal({
 
   const handleReactivate = async () => {
     setError(null);
+    setSuccessMessage(null);
     try {
-      await reactivateCurriculum.mutateAsync();
+      const reactivated = await reactivateCurriculum.mutateAsync();
       await refreshView();
+      router.refresh();
+      setSuccessMessage({
+        message: 'CBC has been reactivated. Review subject offerings before creating new academic work.',
+        href: `/academic/subjects?curriculum=${reactivated.id}`,
+        label: 'Review subject offerings',
+      });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to reactivate curriculum.');
     }
@@ -544,6 +563,21 @@ export function CurriculumDisableWorkflowModal({
       <div className="space-y-4">
         {error ? (
           <ErrorBanner message={error} onDismiss={() => setError(null)} />
+        ) : null}
+
+        {successMessage ? (
+          <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-medium">{successMessage.message}</p>
+              {successMessage.href && successMessage.label ? (
+                <Link href={successMessage.href}>
+                  <Button type="button" size="sm" variant="secondary">
+                    {successMessage.label}
+                  </Button>
+                </Link>
+              ) : null}
+            </div>
+          </div>
         ) : null}
 
         {showRequestPanel ? renderRequestPanel() : null}

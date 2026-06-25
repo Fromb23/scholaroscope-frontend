@@ -102,7 +102,7 @@ export function useCurriculumLifecycleGuard(
       ?? (
         pluginActive
           ? 'This route is not available for the selected curriculum.'
-          : 'This curriculum plugin is not available for your organization.'
+          : 'This curriculum engine is not available for your organization.'
       ),
     role,
   };

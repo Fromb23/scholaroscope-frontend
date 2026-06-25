@@ -10,6 +10,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BookOpen, Plus, Edit, Trash2, CheckCircle, PowerOff, Puzzle } from 'lucide-react';
 import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
@@ -31,6 +32,7 @@ import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/Curri
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { curriculumAPI, curriculumDisableRequestAPI } from '@/app/core/api/academic';
+import { academicKeys } from '@/app/core/lib/queryKeys';
 import {
     canCreateCurriculumWork,
     canEditCurriculumWork,
@@ -49,9 +51,12 @@ import {
     getCurriculumBridgeName,
     isCambridgeCurriculumType,
 } from '@/app/core/lib/curriculumBridge';
+import { useOrganizationContext } from '@/app/context/OrganizationContext';
 
 export function CurriculaPage() {
     const { curricula, loading, refetch, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
+    const queryClient = useQueryClient();
+    const { organizationId } = useOrganizationContext();
     const router = useRouter();
     const searchParams = useSearchParams();
     const setupStatusQuery = useAcademicSetupStatus({
@@ -67,6 +72,7 @@ export function CurriculaPage() {
     const [disableLoading, setDisableLoading] = useState(false);
     const [disableSubmitting, setDisableSubmitting] = useState(false);
     const [disableError, setDisableError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<{ message: string; href?: string; label?: string } | null>(null);
 
     const activeCurricula = curricula.filter(c => c.is_active);
     const inactiveCurricula = curricula.filter(c => !c.is_active);
@@ -120,19 +126,19 @@ export function CurriculaPage() {
 
         switch (curriculum.offering_status) {
             case 'ACTIVE':
-                return 'Manage plugin';
+                return 'Manage curriculum engine';
             case 'DISABLE_REQUESTED':
             case 'DRAINING':
             case 'FINALIZING':
                 return 'View disable workflow';
             case 'DISABLED':
-                return 'Reactivate in Plugin Settings';
+                return 'Reactivate in Curriculum Settings';
             case 'FAILED':
                 return 'Review disable failure';
             case 'REACTIVATING':
                 return 'View reactivation progress';
             default:
-                return 'Manage plugin';
+                return 'Manage curriculum engine';
         }
     };
 
@@ -201,6 +207,7 @@ export function CurriculaPage() {
     };
 
     const openDisable = async (curriculum: Curriculum) => {
+        setSuccessMessage(null);
         setDisablingCurriculum(curriculum);
         setDisableImpact(null);
         setActiveDisableRequestId(null);
@@ -225,6 +232,18 @@ export function CurriculaPage() {
         setDisableError(null);
     };
 
+    const refreshAcademicState = async () => {
+        await Promise.all([
+            refetch(),
+            setupStatusQuery.refetch(),
+            queryClient.invalidateQueries({ queryKey: academicKeys.curricula.all }),
+            queryClient.invalidateQueries({ queryKey: academicKeys.setupStatus.detail(organizationId) }),
+            queryClient.invalidateQueries({ queryKey: academicKeys.todayMode.detail(organizationId) }),
+            queryClient.invalidateQueries({ queryKey: academicKeys.curriculumDisableRequests.all }),
+        ]);
+        router.refresh();
+    };
+
     const confirmDisable = async () => {
         if (!disablingCurriculum) return;
         setDisableSubmitting(true);
@@ -234,11 +253,14 @@ export function CurriculaPage() {
                 mode: 'GRACEFUL',
                 confirm: true,
             });
-            await refetch();
+            await refreshAcademicState();
             setDisablingCurriculum(null);
             setDisableImpact(null);
             setActiveDisableRequestId(null);
             setDisableError(null);
+            setSuccessMessage({
+                message: 'Curriculum shutdown has started. Academic setup has been refreshed.',
+            });
         } catch (err) {
             setDisableError(extractErrorMessage(err as ApiError, 'Failed to disable curriculum.'));
         } finally {
@@ -252,7 +274,7 @@ export function CurriculaPage() {
         setDisableError(null);
         try {
             await curriculumDisableRequestAPI.cancel(activeDisableRequestId);
-            await refetch();
+            await refreshAcademicState();
             setDisablingCurriculum(null);
             setDisableImpact(null);
             setActiveDisableRequestId(null);
@@ -261,6 +283,22 @@ export function CurriculaPage() {
             setDisableError(extractErrorMessage(err as ApiError, 'Failed to cancel curriculum disable.'));
         } finally {
             setDisableSubmitting(false);
+        }
+    };
+
+    const handleReactivate = async (curriculum: Curriculum) => {
+        setPageError(null);
+        setSuccessMessage(null);
+        try {
+            const reactivated = await curriculumAPI.reactivate(curriculum.id);
+            await refreshAcademicState();
+            setSuccessMessage({
+                message: 'CBC has been reactivated. Review subject offerings before creating new academic work.',
+                href: `/academic/subjects?curriculum=${reactivated.id}`,
+                label: 'Review subject offerings',
+            });
+        } catch (err) {
+            setPageError(extractErrorMessage(err as ApiError, 'Failed to reactivate curriculum.'));
         }
     };
 
@@ -281,16 +319,27 @@ export function CurriculaPage() {
             const disablingAllowed = curriculum.offering_status === 'ACTIVE';
             const label = disablingAllowed ? 'Disable curriculum' : 'View disable workflow';
             return (
-                <div className="flex gap-2">
-                    <Button
-                        size="sm"
-                        variant={disablingAllowed ? 'danger' : 'secondary'}
-                        onClick={() => openDisable(curriculum)}
-                        title={disablingAllowed ? 'Disable this curriculum for the workspace.' : 'View disable impact, progress, and cancellation options.'}
-                    >
-                        <PowerOff className="h-4 w-4" />
-                        {label}
-                    </Button>
+                <div className="flex flex-wrap gap-2">
+                    {curriculum.offering_status === 'DISABLED' ? (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleReactivate(curriculum)}
+                        >
+                            <CheckCircle className="h-4 w-4" />
+                            Reactivate
+                        </Button>
+                    ) : (
+                        <Button
+                            size="sm"
+                            variant={disablingAllowed ? 'danger' : 'secondary'}
+                            onClick={() => openDisable(curriculum)}
+                            title={disablingAllowed ? 'Disable this curriculum for the workspace.' : 'View disable impact, progress, and cancellation options.'}
+                        >
+                            <PowerOff className="h-4 w-4" />
+                            {label}
+                        </Button>
+                    )}
                 </div>
             );
         }
@@ -355,7 +404,7 @@ export function CurriculaPage() {
                     <Link href={pluginSettingsHeaderHref}>
                         <Button type="button" variant="secondary">
                             <Puzzle className="mr-2 h-4 w-4" />
-                            Plugin settings
+                            Curriculum settings
                         </Button>
                     </Link>
                     <Button
@@ -374,6 +423,21 @@ export function CurriculaPage() {
                     onDismiss={() => setPageError(null)}
                     autoDismissMs={5000}
                 />
+            ) : null}
+
+            {successMessage ? (
+                <Card>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <p className="text-sm font-medium text-gray-900">{successMessage.message}</p>
+                        {successMessage.href && successMessage.label ? (
+                            <Link href={successMessage.href}>
+                                <Button type="button" variant="secondary">
+                                    {successMessage.label}
+                                </Button>
+                            </Link>
+                        ) : null}
+                    </div>
+                </Card>
             ) : null}
 
             {lifecycleCurricula.length > 0 ? (
@@ -407,13 +471,13 @@ export function CurriculaPage() {
                             Using CBC, Cambridge, or another national curriculum?
                         </h2>
                         <p className="mt-1 text-sm text-gray-600">
-                            National and international curricula are powered by plugins. Manage the curriculum plugin here, then choose subject offerings from the curriculum catalog.
+                            National and international curricula are powered by Scholaroscope. Manage the curriculum engine here, then choose subject offerings from the curriculum catalog.
                         </p>
                     </div>
                     <Link href={pluginSettingsHeaderHref}>
                         <Button type="button" variant="secondary">
                             <Puzzle className="mr-2 h-4 w-4" />
-                            Open plugin settings
+                            Open curriculum settings
                         </Button>
                     </Link>
                 </div>
@@ -454,7 +518,7 @@ export function CurriculaPage() {
                                 <TableHead>Status</TableHead>
                                 <TableHead>Subjects</TableHead>
                                 <TableHead>Cohorts</TableHead>
-                                <TableHead>Plugin</TableHead>
+                                <TableHead>Engine</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -465,7 +529,7 @@ export function CurriculaPage() {
                                     <TableCell>
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className="font-medium">{getCurriculumBridgeName(c)}</span>
-                                            {c.source === 'plugin' ? <Badge variant="blue">Managed by plugin</Badge> : null}
+                                            {c.source === 'plugin' ? <Badge variant="blue">Powered by Scholaroscope</Badge> : null}
                                         </div>
                                     </TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
@@ -477,7 +541,7 @@ export function CurriculaPage() {
                                             <div className="flex flex-wrap gap-2">
                                                 <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
                                                     <Button type="button" size="sm" variant="secondary">
-                                                        Open plugin settings
+                                                        Open curriculum settings
                                                     </Button>
                                                 </Link>
                                                 <Link href={`/academic/subjects?setup=1&curriculum=${c.id}`}>
@@ -511,7 +575,7 @@ export function CurriculaPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead>Plugin</TableHead>
+                                <TableHead>Engine</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -522,7 +586,7 @@ export function CurriculaPage() {
                                     <TableCell>
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className="font-medium">{getCurriculumBridgeName(c)}</span>
-                                            {c.source === 'plugin' ? <Badge variant="blue">Managed by plugin</Badge> : null}
+                                            {c.source === 'plugin' ? <Badge variant="blue">Powered by Scholaroscope</Badge> : null}
                                         </div>
                                     </TableCell>
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
@@ -532,7 +596,7 @@ export function CurriculaPage() {
                                             <div className="flex flex-wrap gap-2">
                                                 <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
                                                     <Button type="button" size="sm" variant="secondary">
-                                                        Open plugin settings
+                                                        Open curriculum settings
                                                     </Button>
                                                 </Link>
                                                 <Link href={`/academic/subjects?setup=1&curriculum=${c.id}`}>

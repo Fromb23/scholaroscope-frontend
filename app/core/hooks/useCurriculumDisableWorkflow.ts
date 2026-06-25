@@ -29,7 +29,10 @@ function invalidateCurriculumDisableQueries(
   curriculumId?: number | null,
   requestId?: number | null,
 ) {
+  queryClient.invalidateQueries({ queryKey: academicKeys.curricula.all });
   queryClient.invalidateQueries({ queryKey: academicKeys.curricula.list(organizationId) });
+  queryClient.invalidateQueries({ queryKey: academicKeys.setupStatus.detail(organizationId) });
+  queryClient.invalidateQueries({ queryKey: academicKeys.todayMode.detail(organizationId) });
   queryClient.invalidateQueries({ queryKey: academicKeys.curriculumDisableRequests.all });
 
   if (typeof curriculumId === 'number') {
