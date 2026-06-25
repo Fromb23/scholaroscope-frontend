@@ -30,6 +30,7 @@ import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
     canShowAdminMyTeaching,
+    isSelfManagedTeachingWorkspace,
     isSupervisionOnlyAdmin,
 } from '@/app/core/lib/workspaces';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
@@ -399,6 +400,11 @@ function SessionWorkspaceView() {
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
+        orgType: activeOrg?.org_type,
+        capabilities,
+    });
+    const showInstitutionSupervision = isAdminLike && !isSelfManagedTeaching;
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -434,7 +440,8 @@ function SessionWorkspaceView() {
     const returnTo = searchParams.get('returnTo');
     const midtermCleanupView = cleanupFilterActive && source === 'midterm';
     const safeReturnTo = returnTo?.startsWith('/') ? returnTo : null;
-    const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || viewMode === 'my_teaching');
+    const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || isSelfManagedTeaching || viewMode === 'my_teaching');
+    const shouldFilterToMyTeaching = showInstitutionSupervision && effectiveMyTeachingMode;
     const selectedInstructorId = useMemo(() => {
         if (!selectedInstructorFilter.startsWith('id:')) {
             return undefined;
@@ -443,14 +450,14 @@ function SessionWorkspaceView() {
         const parsed = Number(selectedInstructorFilter.slice(3));
         return Number.isFinite(parsed) ? parsed : undefined;
     }, [selectedInstructorFilter]);
-    const { instructors } = useInstructors({ enabled: isAdminLike });
+    const { instructors } = useInstructors({ enabled: showInstitutionSupervision });
     const { sessions, loading, error, refetch } = useSessions({
         term: selectedTerm,
         cohort_subject: selectedCohortSubjectId ?? undefined,
         session_type: selectedType,
         cohort_subject__cohort: selectedCohortId,
-        instructor_id: isAdminLike
-            ? (effectiveMyTeachingMode ? user?.id : selectedInstructorId)
+        instructor_id: showInstitutionSupervision
+            ? (shouldFilterToMyTeaching ? user?.id : selectedInstructorId)
             : undefined,
     });
     const { sessions: todaySessions } = useTodaySessions();
@@ -472,10 +479,15 @@ function SessionWorkspaceView() {
     }, [viewMode]);
 
     useEffect(() => {
+        if (isSelfManagedTeaching && viewMode !== 'my_teaching') {
+            setViewMode('my_teaching');
+            return;
+        }
+
         if (!canUseMyTeaching && viewMode === 'my_teaching') {
             setViewMode('admin_supervision');
         }
-    }, [canUseMyTeaching, viewMode]);
+    }, [canUseMyTeaching, isSelfManagedTeaching, viewMode]);
 
     const instructorOptions = useMemo(() => {
         const options = new Map<string, { value: string; label: string }>();
@@ -561,21 +573,21 @@ function SessionWorkspaceView() {
                 }
             }
 
-            if (isAdminLike && effectiveMyTeachingMode) {
+            if (shouldFilterToMyTeaching) {
                 return matchesMyTeachingSession(session);
             }
 
-            if (isAdminLike && selectedInstructorFilter) {
+            if (showInstitutionSupervision && selectedInstructorFilter) {
                 return matchesInstructorSelection(session, selectedInstructorFilter);
             }
 
             return true;
         })
     ), [
-        effectiveMyTeachingMode,
-        isAdminLike,
         cleanupFilterActive,
         cleanupSessionIds,
+        shouldFilterToMyTeaching,
+        showInstitutionSupervision,
         selectedCohortId,
         selectedInstructorFilter,
         selectedTerm,
@@ -608,21 +620,21 @@ function SessionWorkspaceView() {
                 }
             }
 
-            if (isAdminLike && effectiveMyTeachingMode) {
+            if (shouldFilterToMyTeaching) {
                 return matchesMyTeachingSession(session);
             }
 
-            if (isAdminLike && selectedInstructorFilter) {
+            if (showInstitutionSupervision && selectedInstructorFilter) {
                 return matchesInstructorSelection(session, selectedInstructorFilter);
             }
 
             return true;
         })
     ), [
-        effectiveMyTeachingMode,
-        isAdminLike,
         cleanupFilterActive,
         cleanupSessionIds,
+        shouldFilterToMyTeaching,
+        showInstitutionSupervision,
         selectedCohortId,
         selectedInstructorFilter,
         selectedTerm,
@@ -650,7 +662,7 @@ function SessionWorkspaceView() {
         : 0;
 
     const sessionGroups = useMemo(() => {
-        if (groupingMode === 'instructor' && isAdminLike && viewMode === 'admin_supervision') {
+        if (groupingMode === 'instructor' && showInstitutionSupervision && viewMode === 'admin_supervision') {
             const groups = new Map<string, {
                 key: string;
                 label: string;
@@ -745,7 +757,7 @@ function SessionWorkspaceView() {
                 items: sortSessionsByDate(group.items),
             }))
             .sort((left, right) => left.label.localeCompare(right.label));
-    }, [groupingMode, isAdminLike, viewMode, visibleSessions]);
+    }, [groupingMode, showInstitutionSupervision, viewMode, visibleSessions]);
 
     const assistantContext = useMemo(() => ({
         pageKey: 'sessions_overview',
@@ -761,7 +773,7 @@ function SessionWorkspaceView() {
             ...(!midtermCleanupView && canPlanLesson && canCreateTeachingRecords
                 ? [{ label: actionLabel, type: 'navigate' as const, href: '/lesson-plans/new' }]
                 : []),
-            ...(supervisionOnlyAdmin
+            ...(supervisionOnlyAdmin && !isSelfManagedTeaching
                 ? [
                     { label: 'View instructor activity', type: 'navigate' as const, href: '/admin/instructors' },
                     { label: 'Open reports', type: 'navigate' as const, href: '/reports' },
@@ -783,7 +795,7 @@ function SessionWorkspaceView() {
                 type: 'navigate' as const,
                 href: '/lesson-plans/new',
             }
-            : supervisionOnlyAdmin
+            : supervisionOnlyAdmin && !isSelfManagedTeaching
                 ? {
                     label: 'View instructor activity',
                     type: 'navigate' as const,
@@ -802,6 +814,7 @@ function SessionWorkspaceView() {
         canPlanLesson,
         effectiveMyTeachingMode,
         error,
+        isSelfManagedTeaching,
         isInstructor,
         cleanupFilterActive,
         loading,
@@ -1164,9 +1177,11 @@ function SessionWorkspaceView() {
                     <p className="mt-1 text-sm theme-muted">
                         {midtermCleanupView
                             ? 'Only lesson records that still need a reflection or closing step are shown.'
-                            : effectiveMyTeachingMode
-                            ? 'Start lessons, take attendance, and complete your teaching records.'
-                            : 'Admin supervision shows organization work by class, instructor, and subject.'}
+                            : isSelfManagedTeaching
+                                ? 'View your scheduled lessons by class, subject, and date.'
+                                : effectiveMyTeachingMode
+                                    ? 'Start lessons, take attendance, and complete your teaching records.'
+                                    : 'Admin supervision shows organization work by class, instructor, and subject.'}
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -1200,7 +1215,7 @@ function SessionWorkspaceView() {
                                 <span className="hidden sm:inline">{actionLabel}</span>
                             </Button>
                         </Link>
-                    ) : supervisionOnlyAdmin ? (
+                    ) : supervisionOnlyAdmin && !isSelfManagedTeaching ? (
                         <Link href="/admin/instructors">
                             <Button variant="secondary" size="sm">
                                 <Users className="w-4 h-4 sm:mr-1" />
@@ -1216,7 +1231,7 @@ function SessionWorkspaceView() {
                 </div>
             </div>
 
-            {isAdminLike ? (
+            {showInstitutionSupervision ? (
                 <Card>
                     <div className="space-y-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1431,7 +1446,13 @@ function SessionWorkspaceView() {
                 <div className="p-4 space-y-4">
                     <div
                         id="session-filters"
-                        className={`grid grid-cols-1 gap-3 ${isAdminLike ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}
+                        className={`grid grid-cols-1 gap-3 ${
+                            showInstitutionSupervision
+                                ? 'sm:grid-cols-5'
+                                : isAdminLike
+                                    ? 'sm:grid-cols-4'
+                                    : 'sm:grid-cols-3'
+                        }`}
                     >
                         <Select
                             label="Term"
@@ -1454,7 +1475,7 @@ function SessionWorkspaceView() {
                                 })),
                             ]}
                         />
-                        {isAdminLike && viewMode === 'admin_supervision' ? (
+                        {showInstitutionSupervision && viewMode === 'admin_supervision' ? (
                             <Select
                                 label="Instructor"
                                 value={selectedInstructorFilter}
@@ -1512,9 +1533,11 @@ function SessionWorkspaceView() {
                                 ? 'Try adjusting your filters'
                                 : effectiveMyTeachingMode
                                     ? 'No lessons scheduled yet. Prepare a lesson plan or check your assigned classes.'
-                                    : supervisionOnlyAdmin
+                                    : supervisionOnlyAdmin && !isSelfManagedTeaching
                                         ? 'No scheduled sessions match the current supervision view. Filter by instructor or open reports to review teaching activity.'
-                                        : 'No scheduled sessions match the current supervision view.'}
+                                        : isSelfManagedTeaching
+                                            ? 'No scheduled lessons match your current class and date filters.'
+                                            : 'No scheduled sessions match the current supervision view.'}
                         </p>
                         {!selectedTerm && !selectedType && !selectedCohortId && !selectedInstructorFilter && !cleanupFilterActive ? (
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -1525,7 +1548,7 @@ function SessionWorkspaceView() {
                                             {actionLabel}
                                         </Button>
                                     </Link>
-                                ) : supervisionOnlyAdmin ? (
+                                ) : supervisionOnlyAdmin && !isSelfManagedTeaching ? (
                                     <Link href="/admin/instructors" className="w-full sm:w-auto">
                                         <Button className="w-full sm:w-auto">
                                             <Users className="mr-2 h-4 w-4" />
@@ -1551,7 +1574,7 @@ function SessionWorkspaceView() {
                 </Card>
             ) : (
                 <div className="space-y-4">
-                    {groupingMode === 'instructor' && isAdminLike && viewMode === 'admin_supervision'
+                    {groupingMode === 'instructor' && showInstitutionSupervision && viewMode === 'admin_supervision'
                         ? sessionGroups.map((group) => renderInstructorGroup(group as {
                             key: string;
                             label: string;
@@ -1579,7 +1602,9 @@ function SessionWorkspaceView() {
                     {visibleSessions.length !== 1 ? 's' : ''}{' '}
                     {effectiveMyTeachingMode
                         ? 'within your teaching workspace.'
-                        : 'in the current supervision view.'}
+                        : isSelfManagedTeaching
+                            ? 'within your teaching workspace.'
+                            : 'in the current supervision view.'}
                 </p>
             ) : null}
         </div>

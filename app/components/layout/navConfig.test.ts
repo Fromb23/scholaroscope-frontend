@@ -83,6 +83,7 @@ describe('admin navigation config', () => {
     expect(nav.primary.map((item) => item.name)).toEqual([
       'My teaching workspace',
       'Academic Setup',
+      'Schemes of work',
       'My learners',
       'My teaching record',
       'My lesson plans',

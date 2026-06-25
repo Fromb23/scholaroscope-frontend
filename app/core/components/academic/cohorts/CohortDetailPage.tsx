@@ -36,7 +36,7 @@ import { hasCbcPathwayProfile, isCbcSeniorSchoolEntity } from '@/app/core/lib/cb
 import { withAcademicSetupMode } from '@/app/core/lib/academicSetup';
 import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
 import { getCurriculumBridgeName, isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
-import { isPersonalFreelancerWorkspace } from '@/app/core/lib/workspaces';
+import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { getCohortDetailCardExtensions } from '@/app/core/registry/cohortDetailCards';
@@ -423,11 +423,10 @@ export default function CohortHubPage() {
         : user.is_superadmin
             || activeRole === 'ADMIN'
             || (isInstructor && instructorAccess.cohortIds.includes(cohortId));
-    const isPersonalTeachingWorkspace = Boolean(
-        capabilities.workspace_behavior === 'FREELANCE_TEACHER'
-        || isPersonalFreelancerWorkspace(activeOrg?.org_type)
-        || activeOrg?.org_type === 'INDEPENDENT_TEACHER'
-    );
+    const isPersonalTeachingWorkspace = isSelfManagedTeachingWorkspace({
+        orgType: activeOrg?.org_type,
+        capabilities,
+    });
     const canManageInstructors = isAdminOrAbove(user, activeRole) && !isPersonalTeachingWorkspace;
     const canLinkSubjects = isAdminOrAbove(user, activeRole);
     const visibleCohortSubjects = isInstructor

@@ -507,6 +507,7 @@ export interface SubjectOfferingMutationPayload {
 export type SubjectOfferingCatalogStatus =
   | 'AVAILABLE'
   | 'OFFERED'
+  | 'REACTIVATED'
   | 'DROP_SCHEDULED'
   | 'DROP_PENDING_TERM_CLOSE'
   | 'DROPPED_HISTORICAL';

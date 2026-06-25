@@ -97,6 +97,15 @@ export function workspaceAllowsSelfManagedTeaching(orgType?: OrgType | null): bo
     || orgType === 'HOMESCHOOL';
 }
 
+export function isSelfManagedTeachingWorkspace(params: {
+  orgType?: OrgType | null;
+  capabilities?: WorkspaceCapabilities | null;
+}): boolean {
+  return params.capabilities?.workspace_behavior === 'FREELANCE_TEACHER'
+    || workspaceAllowsSelfManagedTeaching(params.orgType)
+    || isPersonalFreelancerWorkspace(params.orgType);
+}
+
 export function normalizeRegisterOrgType(orgType?: RegisterOrgType | OrgType | string): RegisterOrgType {
   if (orgType === 'INDEPENDENT_TEACHER' || orgType === 'FREELANCE_TEACHER') {
     return 'PERSONAL';
