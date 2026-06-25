@@ -10,6 +10,7 @@ import {
     getAcademicSetupLockedReason,
     getAcademicSetupStepHref,
     getAcademicSetupStepStatusLabel,
+    withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
 import type { AcademicSetupStatus } from '@/app/core/types/academic';
 
@@ -102,7 +103,7 @@ export function AcademicSetupProgress({
                             </Link>
                         )}
                         {step.key === 'CURRICULUM' ? (
-                            <Link href="/admin/settings?tab=plugins&from=academic-setup">
+                            <Link href={withAcademicSetupMode('/admin/settings?tab=plugins&from=academic-setup')}>
                                 <Button type="button" variant="ghost">
                                     <Puzzle className="h-4 w-4" />
                                     Choose curriculum

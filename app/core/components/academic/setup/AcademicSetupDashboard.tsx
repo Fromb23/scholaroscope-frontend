@@ -10,6 +10,7 @@ import { AcademicSetupProgress } from '@/app/core/components/academic/setup/Acad
 import {
     getAcademicSetupCurrentStepDisplayLabel,
     getAcademicSetupNextActionDisplayLabel,
+    withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
 import type { AcademicSetupStatus } from '@/app/core/types/academic';
 
@@ -23,6 +24,9 @@ export function AcademicSetupDashboard({
     intro?: string;
 }) {
     const lockedAreas = status.locked_until_complete.map((area) => area.replace(/_/g, ' '));
+    const nextActionHref = status.complete
+        ? status.next_action.href
+        : withAcademicSetupMode(status.next_action.href);
 
     return (
         <div className="space-y-6">
@@ -52,7 +56,7 @@ export function AcademicSetupDashboard({
                                     {status.current_step_description ?? 'Operational features are unlocked.'}
                                 </p>
                                 <div className="mt-4">
-                                    <Link href={status.next_action.href}>
+                                    <Link href={nextActionHref}>
                                         <Button>
                                             {getAcademicSetupNextActionDisplayLabel(status)}
                                             <ArrowRight className="h-4 w-4" />

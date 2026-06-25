@@ -36,6 +36,15 @@ const ACADEMIC_SETUP_OPERATIONAL_PATHS: RegExp[] = [
     /^\/cbc(\/.*)?$/,
 ];
 
+const ACADEMIC_SETUP_ADMIN_PATHS: RegExp[] = [
+    /^\/academic$/,
+    /^\/academic\/curricula(\/.*)?$/,
+    /^\/academic\/years(\/.*)?$/,
+    /^\/academic\/terms(\/.*)?$/,
+    /^\/academic\/subjects(\/.*)?$/,
+    /^\/academic\/cohorts(\/.*)?$/,
+];
+
 export type AcademicSetupPageState = 'current' | 'blocked' | 'completed' | 'done';
 export type AcademicSetupOriginKind = 'generic' | 'cambridge';
 
@@ -174,6 +183,10 @@ export function isAcademicSetupOperationalAdminPath(path: string): boolean {
     return ACADEMIC_SETUP_OPERATIONAL_PATHS.some((pattern) => pattern.test(path));
 }
 
+export function isAcademicSetupAdminPath(path: string): boolean {
+    return ACADEMIC_SETUP_ADMIN_PATHS.some((pattern) => pattern.test(path));
+}
+
 export function buildAcademicSetupRedirectHref(
     status: AcademicSetupStatus,
     blockedPath?: string | null,
@@ -251,7 +264,7 @@ export function getAcademicSetupCurrentStepNavItem(
 
     return {
         label,
-        href: status.next_action.href,
+        href: withAcademicSetupMode(status.next_action.href),
     };
 }
 

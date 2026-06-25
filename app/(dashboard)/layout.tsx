@@ -7,6 +7,7 @@ import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus'
 import { shouldRefreshForOrganizationChange } from '@/app/core/lib/organizationScope';
 import {
   buildAcademicSetupRedirectHref,
+  isAcademicSetupAdminPath,
   isAcademicSetupIncomplete,
   isAcademicSetupOperationalAdminPath,
 } from '@/app/core/lib/academicSetup';
@@ -144,6 +145,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     if (!routeAllowedByCapabilities(pathname, capabilities)) {
+      if (activeRole === 'ADMIN' && isAcademicSetupAdminPath(pathname)) {
+        return;
+      }
       router.replace(getUnauthorizedRouteFallback(activeRole, pathname));
       return;
     }
@@ -171,6 +175,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     user,
   ]);
 
+  const showAcademicSetupAccessDenied = (
+    !loading
+    && Boolean(user)
+    && !user?.is_superadmin
+    && activeRole === 'ADMIN'
+    && isAcademicSetupAdminPath(pathname)
+    && !capabilities.can_manage_academic_setup
+  );
+
   if (
     loading
     || !user
@@ -190,6 +203,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           : 'Checking your access...';
 
     return <PermissionResolvingState fullScreen message={resolvingMessage} />;
+  }
+
+  if (showAcademicSetupAccessDenied) {
+    return (
+      <SidebarProvider>
+        <NavBadgeProvider>
+          <RegistrySlotProvider>
+            <DashboardContent notices={accessNotices} onDismissNotice={clearAccessNotices}>
+              <div className="mx-auto max-w-3xl rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-950">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--color-warning)]" />
+                  <div className="space-y-2">
+                    <h1 className="text-lg font-semibold">Academic setup access required</h1>
+                    <p className="text-sm">
+                      Your account is signed in, but it is missing permission to manage academic setup.
+                      Ask a workspace admin to grant academic setup access before changing curriculum,
+                      academic years, terms, subjects, or cohorts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </DashboardContent>
+          </RegistrySlotProvider>
+        </NavBadgeProvider>
+      </SidebarProvider>
+    );
   }
 
   return (
