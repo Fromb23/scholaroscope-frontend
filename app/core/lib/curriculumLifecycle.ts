@@ -309,11 +309,11 @@ export function getCurriculumPluginManagementBlockMessage({
   }
 
   if (!pluginAvailable) {
-    return 'This plugin is unavailable right now.';
+    return 'This curriculum engine is unavailable right now.';
   }
 
   if (!pluginActive) {
-    return 'Activate this plugin to resume curriculum management.';
+    return 'Activate this curriculum engine to resume curriculum management.';
   }
 
   if (activeDisableRequestStatus === 'WAITING_DUE_DATES') {

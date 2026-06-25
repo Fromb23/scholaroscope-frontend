@@ -77,7 +77,7 @@ export function AcademicSetupProgress({
 
                     {step.key === 'CURRICULUM' ? (
                         <div className="mt-4 rounded-xl border border-blue-100 bg-white/70 px-3 py-2 text-xs text-blue-900">
-                            National and international curricula are powered by plugins. Activate or manage curriculum plugins in Plugin Settings.
+                            National and international curricula are powered by Scholaroscope. Activate or manage the curriculum engine in Curriculum Settings.
                         </div>
                     ) : null}
 
@@ -102,7 +102,7 @@ export function AcademicSetupProgress({
                             <Link href="/admin/settings?tab=plugins&from=academic-setup">
                                 <Button type="button" variant="ghost">
                                     <Puzzle className="h-4 w-4" />
-                                    Open plugin settings
+                                    Open curriculum settings
                                 </Button>
                             </Link>
                         ) : null}

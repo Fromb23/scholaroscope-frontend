@@ -1,9 +1,9 @@
 'use client';
 
-import { BookOpen, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -59,9 +59,11 @@ function catalogueHref(curriculumId: number, level?: string): string {
 }
 
 export function SubjectsPage() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const setupMode = searchParams.get('setup') === '1';
     const blockedNotice = searchParams.get('blocked') === '1';
+    const requestedLevel = searchParams.get('level');
     const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
     const {
         subjects,
@@ -106,6 +108,7 @@ export function SubjectsPage() {
     const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [setupActionMessage, setSetupActionMessage] = useState<string | null>(null);
+    const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
 
     const loadCatalog = async () => {
         if (!pluginManaged || !activeCurriculum) {
@@ -156,6 +159,20 @@ export function SubjectsPage() {
         () => groupRowsByLevel(filteredWorkspaceRows),
         [filteredWorkspaceRows],
     );
+    const workspaceGroupSummaries = useMemo(() => {
+        return new Map(
+            workspaceGroups.map((group) => {
+                const offered = group.rows.filter((item) => getCatalogStatus(item) === 'OFFERED').length;
+                const scheduledRemoval = group.rows.filter(isScheduledRemoval).length;
+                const contentMissing = group.rows.filter((item) => !isContentReady(item)).length;
+                const cohortAssignments = group.rows.reduce(
+                    (total, item) => total + (item.cohort_assignment_count ?? 0),
+                    0,
+                );
+                return [group.key, { offered, scheduledRemoval, contentMissing, cohortAssignments }];
+            }),
+        );
+    }, [workspaceGroups]);
     const levels = useMemo(() => uniqueCatalogLevels(catalog), [catalog]);
     const levelCounts = useMemo(() => {
         const counts = new Map<string, number>();
@@ -168,6 +185,45 @@ export function SubjectsPage() {
     const offeredCount = workspaceRows.filter((item) => getCatalogStatus(item) === 'OFFERED').length;
     const availableCount = catalog.filter((item) => getCatalogStatus(item) === 'AVAILABLE').length;
     const contentMissingCount = catalog.filter((item) => !isContentReady(item)).length;
+
+    useEffect(() => {
+        if (search.trim()) {
+            setExpandedLevels(new Set(workspaceGroups.map((group) => group.key)));
+            return;
+        }
+        if (requestedLevel) {
+            setExpandedLevels(new Set([requestedLevel]));
+            return;
+        }
+        setExpandedLevels(new Set());
+    }, [requestedLevel, search, workspaceGroups]);
+
+    const openLevelGroup = (level: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('level', level);
+        router.replace(`/academic/subjects?${params.toString()}`, { scroll: false });
+        setExpandedLevels((current) => new Set(current).add(level));
+    };
+
+    const toggleLevelGroup = (level: string) => {
+        setExpandedLevels((current) => {
+            const next = new Set(current);
+            if (next.has(level)) {
+                next.delete(level);
+            } else {
+                next.add(level);
+            }
+            return next;
+        });
+    };
+
+    const expandAllLevels = () => {
+        setExpandedLevels(new Set(workspaceGroups.map((group) => group.key)));
+    };
+
+    const collapseAllLevels = () => {
+        setExpandedLevels(new Set());
+    };
 
     const handleSave = async (...args: Parameters<typeof saveSubject>) => {
         await saveSubject(...args);
@@ -314,12 +370,15 @@ export function SubjectsPage() {
                             <p className="mt-1 text-2xl font-bold theme-text">{offeredCount}</p>
                         </Card>
                         {levels.slice(0, 3).map((level) => (
-                            <Link key={level} href={activeCurriculum ? catalogueHref(activeCurriculum.id, level) : '#'}>
-                                <Card className="py-4 px-5 transition-colors hover:theme-surface-muted">
-                                    <p className="text-xs font-medium theme-subtle">{formatCatalogLevel(level)}</p>
-                                    <p className="mt-1 text-2xl font-bold theme-text">{levelCounts.get(level) ?? 0}</p>
-                                </Card>
-                            </Link>
+                            <button
+                                key={level}
+                                type="button"
+                                onClick={() => openLevelGroup(level)}
+                                className="theme-card rounded-lg px-5 py-4 text-left transition-colors hover:theme-surface-muted"
+                            >
+                                <p className="text-xs font-medium theme-subtle">{formatCatalogLevel(level)}</p>
+                                <p className="mt-1 text-2xl font-bold theme-text">{levelCounts.get(level) ?? 0}</p>
+                            </button>
                         ))}
                         <Card className="py-4 px-5">
                             <p className="text-xs font-medium theme-subtle">Scheduled removals</p>
@@ -371,6 +430,24 @@ export function SubjectsPage() {
                         />
                     </div>
 
+                    <div className="flex flex-col gap-3 rounded-lg border theme-border px-4 py-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium theme-text">Group by:</span>
+                            <Button type="button" size="sm" variant="secondary">Level</Button>
+                            <Button type="button" size="sm" variant="ghost" disabled title="Subject grouping is planned for a later update.">
+                                Subject
+                            </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="button" size="sm" variant="secondary" onClick={expandAllLevels}>
+                                Expand all
+                            </Button>
+                            <Button type="button" size="sm" variant="secondary" onClick={collapseAllLevels}>
+                                Collapse all
+                            </Button>
+                        </div>
+                    </div>
+
                     {catalogLoading ? (
                         <div className="grid gap-3 md:grid-cols-2">
                             {Array.from({ length: 4 }).map((_, index) => (
@@ -381,9 +458,11 @@ export function SubjectsPage() {
                         <Card>
                             <div className="py-16 text-center">
                                 <BookOpen className="mx-auto mb-3 h-12 w-12 theme-subtle" />
-                                <h3 className="text-sm font-medium theme-text">No workspace subject offerings found</h3>
+                                <h3 className="text-sm font-medium theme-text">
+                                    {search ? 'No workspace subjects match your search' : 'No workspace subject offerings found'}
+                                </h3>
                                 <p className="mt-1 text-sm theme-muted">
-                                    {search ? 'No offered or scheduled subjects match your search.' : 'Add subject levels from the curriculum catalogue.'}
+                                    {search ? 'Try a different subject name, code, or level.' : 'Add subject levels from the curriculum catalogue.'}
                                 </p>
                                 {activeCurriculum ? (
                                     <Link href={catalogueHref(activeCurriculum.id)}>
@@ -399,11 +478,38 @@ export function SubjectsPage() {
                         <div className="space-y-4">
                             {workspaceGroups.map((group) => (
                                 <Card key={group.key} className="p-0">
-                                    <div className="border-b px-5 py-4 theme-border">
-                                        <h2 className="font-semibold theme-text">{formatCatalogLevel(group.level)}</h2>
-                                    </div>
-                                    <div className="divide-y theme-border">
-                                        {group.rows.map((item) => {
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleLevelGroup(group.key)}
+                                        className="flex w-full flex-col gap-3 border-b px-5 py-4 text-left theme-border lg:flex-row lg:items-center lg:justify-between"
+                                        aria-expanded={expandedLevels.has(group.key)}
+                                    >
+                                        <div className="flex min-w-0 items-center gap-2">
+                                            {expandedLevels.has(group.key) ? (
+                                                <ChevronDown className="h-4 w-4 shrink-0 theme-subtle" />
+                                            ) : (
+                                                <ChevronRight className="h-4 w-4 shrink-0 theme-subtle" />
+                                            )}
+                                            <h2 className="font-semibold theme-text">{formatCatalogLevel(group.level)}</h2>
+                                        </div>
+                                        {(() => {
+                                            const summary = workspaceGroupSummaries.get(group.key);
+                                            return (
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm theme-muted">
+                                                    <span>{summary?.offered ?? 0} offered</span>
+                                                    <span>{summary?.scheduledRemoval ?? 0} scheduled removal</span>
+                                                    <span>{summary?.contentMissing ?? 0} need curriculum import</span>
+                                                    <span>{summary?.cohortAssignments ?? 0} cohort assignments</span>
+                                                    <span className="font-medium theme-text">
+                                                        {expandedLevels.has(group.key) ? 'Collapse' : 'Expand'}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </button>
+                                    {expandedLevels.has(group.key) ? (
+                                        <div className="divide-y theme-border">
+                                            {group.rows.map((item) => {
                                             const rowStatus = getCatalogStatus(item);
                                             const rowError = rowErrors[item.id];
                                             return (
@@ -466,8 +572,9 @@ export function SubjectsPage() {
                                                     ) : null}
                                                 </div>
                                             );
-                                        })}
-                                    </div>
+                                            })}
+                                        </div>
+                                    ) : null}
                                 </Card>
                             ))}
                         </div>
