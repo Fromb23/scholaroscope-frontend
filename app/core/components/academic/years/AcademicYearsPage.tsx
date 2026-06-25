@@ -38,6 +38,9 @@ export function AcademicYearsPage() {
         is_current: false
     });
     const [saving, setSaving] = useState(false);
+    const [setupCurrentYearNotice, setSetupCurrentYearNotice] = useState<{
+        yearId: number;
+    } | null>(null);
     const setupStatus = setupStatusQuery.data ?? null;
     const setupPageState = getAcademicSetupPageState(setupStatus, 'ACADEMIC_YEAR');
 
@@ -51,9 +54,7 @@ export function AcademicYearsPage() {
             } else {
                 savedYear = await createAcademicYear(formData);
             }
-            if (setupMode && !savedYear.is_current) {
-                savedYear = await setCurrentYear(savedYear.id);
-            }
+            setSetupCurrentYearNotice(null);
             if (setupMode && savedYear.is_current) {
                 const refreshedStatus = (await setupStatusQuery.refetch()).data;
                 router.push(
@@ -61,6 +62,11 @@ export function AcademicYearsPage() {
                         refreshedStatus?.next_action.href ?? '/academic/terms',
                     ),
                 );
+            }
+            if (setupMode && !savedYear.is_current) {
+                setSetupCurrentYearNotice({
+                    yearId: savedYear.id,
+                });
             }
             setIsModalOpen(false);
             resetForm();
@@ -95,6 +101,7 @@ export function AcademicYearsPage() {
     const handleSetCurrent = async (id: number) => {
         try {
             await setCurrentYear(id);
+            setSetupCurrentYearNotice(null);
             if (setupMode) {
                 const refreshedStatus = (await setupStatusQuery.refetch()).data;
                 router.push(
@@ -148,6 +155,23 @@ export function AcademicYearsPage() {
                 setupMode={setupMode}
                 blockedNotice={blockedNotice}
             />
+            {setupMode && setupCurrentYearNotice ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm">
+                            Academic year created, but it is not current. Set it as current to continue setup.
+                        </p>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleSetCurrent(setupCurrentYearNotice.yearId)}
+                        >
+                            <CheckCircle className="h-4 w-4" />
+                            Set as current year
+                        </Button>
+                    </div>
+                </div>
+            ) : null}
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>

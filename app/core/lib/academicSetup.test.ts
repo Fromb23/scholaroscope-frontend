@@ -5,6 +5,7 @@ import {
     getAcademicSetupCurrentStepNavItem,
     getAcademicSetupDisplayLabel,
     getAcademicSetupPageState,
+    isAcademicSetupAdminPath,
     isAcademicSetupOperationalAdminPath,
     resolveAcademicSetupOrigin,
     withAcademicSetupMode,
@@ -65,13 +66,37 @@ describe('academic setup helpers', () => {
         expect(getAcademicSetupDisplayLabel('ACADEMIC_YEAR', 'Create current academic year')).toBe('Set up academic year');
         expect(getAcademicSetupCurrentStepNavItem(incompleteStatus)).toEqual({
             label: 'Set up academic year',
-            href: '/academic/years?create=1',
+            href: '/academic/years?create=1&setup=1',
         });
     });
 
     it('flags operational admin paths that should be gated during setup', () => {
         expect(isAcademicSetupOperationalAdminPath('/sessions/12')).toBe(true);
+        expect(isAcademicSetupOperationalAdminPath('/learners')).toBe(true);
+        expect(isAcademicSetupOperationalAdminPath('/lesson-plans')).toBe(true);
+        expect(isAcademicSetupOperationalAdminPath('/assessments')).toBe(true);
+        expect(isAcademicSetupOperationalAdminPath('/reports')).toBe(true);
+        expect(isAcademicSetupOperationalAdminPath('/schemes')).toBe(true);
+        expect(isAcademicSetupOperationalAdminPath('/cbc/classes')).toBe(true);
+    });
+
+    it('does not treat academic setup pages as operationally locked paths', () => {
+        expect(isAcademicSetupOperationalAdminPath('/academic')).toBe(false);
+        expect(isAcademicSetupOperationalAdminPath('/academic/curricula')).toBe(false);
+        expect(isAcademicSetupOperationalAdminPath('/academic/years')).toBe(false);
+        expect(isAcademicSetupOperationalAdminPath('/academic/terms')).toBe(false);
         expect(isAcademicSetupOperationalAdminPath('/academic/subjects')).toBe(false);
+        expect(isAcademicSetupOperationalAdminPath('/academic/cohorts')).toBe(false);
+    });
+
+    it('identifies academic setup pages for visible setup access states', () => {
+        expect(isAcademicSetupAdminPath('/academic')).toBe(true);
+        expect(isAcademicSetupAdminPath('/academic/curricula')).toBe(true);
+        expect(isAcademicSetupAdminPath('/academic/years')).toBe(true);
+        expect(isAcademicSetupAdminPath('/academic/terms')).toBe(true);
+        expect(isAcademicSetupAdminPath('/academic/subjects')).toBe(true);
+        expect(isAcademicSetupAdminPath('/academic/cohorts')).toBe(true);
+        expect(isAcademicSetupAdminPath('/sessions')).toBe(false);
     });
 
     it('treats schemes of work as the guided step after cohorts', () => {
