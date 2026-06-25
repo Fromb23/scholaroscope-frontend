@@ -7,6 +7,10 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { AcademicSetupProgress } from '@/app/core/components/academic/setup/AcademicSetupProgress';
+import {
+    getAcademicSetupCurrentStepDisplayLabel,
+    getAcademicSetupNextActionDisplayLabel,
+} from '@/app/core/lib/academicSetup';
 import type { AcademicSetupStatus } from '@/app/core/types/academic';
 
 export function AcademicSetupDashboard({
@@ -42,7 +46,7 @@ export function AcademicSetupDashboard({
                                     Set up your academic engine
                                 </p>
                                 <h2 className="mt-2 text-xl font-semibold theme-text">
-                                    {status.current_step_label ?? 'Academic setup is complete'}
+                                    {getAcademicSetupCurrentStepDisplayLabel(status) ?? 'Academic setup is complete'}
                                 </h2>
                                 <p className="mt-2 text-sm theme-muted">
                                     {status.current_step_description ?? 'Operational features are unlocked.'}
@@ -50,7 +54,7 @@ export function AcademicSetupDashboard({
                                 <div className="mt-4">
                                     <Link href={status.next_action.href}>
                                         <Button>
-                                            {status.next_action.label}
+                                            {getAcademicSetupNextActionDisplayLabel(status)}
                                             <ArrowRight className="h-4 w-4" />
                                         </Button>
                                     </Link>

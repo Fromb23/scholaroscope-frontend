@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle2, CircleDashed } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
+import { getAcademicSetupDisplayLabel } from '@/app/core/lib/academicSetup';
 import type { AcademicSetupStatus } from '@/app/core/types/academic';
 
 interface TeachingTodaySetupBlockedStateProps {
@@ -32,7 +33,9 @@ export function TeachingTodaySetupBlockedState({ setupStatus }: TeachingTodaySet
                     {currentStep ? (
                         <div className="mt-4 rounded-lg border theme-border theme-surface-muted p-3">
                             <p className="text-xs font-medium uppercase theme-subtle">Current missing setup</p>
-                            <p className="mt-1 text-sm font-semibold theme-text">{currentStep.label}</p>
+                            <p className="mt-1 text-sm font-semibold theme-text">
+                                {getAcademicSetupDisplayLabel(currentStep.key, currentStep.label)}
+                            </p>
                             <p className="mt-1 text-sm theme-muted">{currentStep.description}</p>
                         </div>
                     ) : null}
@@ -49,7 +52,7 @@ export function TeachingTodaySetupBlockedState({ setupStatus }: TeachingTodaySet
                                         )}
                                         <div className="min-w-0">
                                             <p className="break-words text-sm font-medium theme-text">
-                                                {step.label}
+                                                {getAcademicSetupDisplayLabel(step.key, step.label)}
                                             </p>
                                             <p className="mt-1 text-xs theme-muted">
                                                 {step.status === 'current' ? 'Next setup step' : 'Waiting for earlier setup'}

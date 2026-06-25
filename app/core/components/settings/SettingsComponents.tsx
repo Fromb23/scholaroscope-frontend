@@ -508,6 +508,7 @@ interface InstalledPluginCardProps {
     curriculum: Curriculum | null;
     activeDisableRequest: CurriculumDisableRequest | null;
     latestDisableRequest: CurriculumDisableRequest | null;
+    fromAcademicSetup?: boolean;
     onToggle: (id: number) => void;
     onWorkflowChanged: () => Promise<void>;
     toggling: boolean;
@@ -520,6 +521,7 @@ export function InstalledPluginCard({
     curriculum,
     activeDisableRequest,
     latestDisableRequest,
+    fromAcademicSetup = false,
     onToggle,
     onWorkflowChanged,
     toggling,
@@ -653,7 +655,7 @@ export function InstalledPluginCard({
                                     <ChevronRight className="h-3 w-3" />
                                 </button>
                             ) : null}
-                            {curriculum ? (
+                            {curriculum && !fromAcademicSetup ? (
                                 <NextLink
                                     href={`/academic/subjects?setup=1&curriculum=${curriculum.id}`}
                                     className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
@@ -742,6 +744,7 @@ export function PluginsTab() {
     const pluginQuery = searchParams.get('plugin')?.trim().toLowerCase() ?? '';
     const curriculumQuery = searchParams.get('curriculum') ?? '';
     const fromQuery = searchParams.get('from')?.trim().toLowerCase() ?? '';
+    const fromAcademicSetup = fromQuery === 'academic-setup';
     const backLink = fromQuery === 'academic-setup'
         ? { href: '/academic?setup=1', label: 'Back to Academic Setup' }
         : fromQuery === 'curricula'
@@ -889,6 +892,7 @@ export function PluginsTab() {
                                     const curriculum = curriculumByPluginId.get(p.id);
                                     return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
                                 })()}
+                                fromAcademicSetup={fromAcademicSetup}
                                 onToggle={handleToggle}
                                 onWorkflowChanged={handleWorkflowChanged}
                                 toggling={toggling}
@@ -926,6 +930,7 @@ export function PluginsTab() {
                                 const curriculum = curriculumByPluginId.get(p.id);
                                 return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
                             })()}
+                            fromAcademicSetup={fromAcademicSetup}
                             onToggle={handleToggle}
                             onWorkflowChanged={handleWorkflowChanged}
                             toggling={toggling}

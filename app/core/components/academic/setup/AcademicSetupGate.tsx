@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { getAcademicSetupPageState, withAcademicSetupMode } from '@/app/core/lib/academicSetup';
+import {
+    getAcademicSetupNextActionDisplayLabel,
+    getAcademicSetupPageState,
+    withAcademicSetupMode,
+} from '@/app/core/lib/academicSetup';
 import type { AcademicSetupStatus, AcademicSetupStepKey } from '@/app/core/types/academic';
 
 export function AcademicSetupGate({
@@ -36,8 +40,8 @@ export function AcademicSetupGate({
                     <p className="text-sm theme-muted">
                         Complete academic setup before using this workspace operationally.
                     </p>
-                    <Link href={status.next_action.href}>
-                        <Button>{status.next_action.label}</Button>
+                    <Link href={withAcademicSetupMode(status.next_action.href)}>
+                        <Button>{getAcademicSetupNextActionDisplayLabel(status)}</Button>
                     </Link>
                 </div>
             </Card>
@@ -60,7 +64,7 @@ export function AcademicSetupGate({
                             <Button type="button" variant="secondary">Back to setup overview</Button>
                         </Link>
                         <Link href={withAcademicSetupMode(status.next_action.href)}>
-                            <Button>{status.next_action.label}</Button>
+                            <Button>{getAcademicSetupNextActionDisplayLabel(status)}</Button>
                         </Link>
                     </div>
                 </div>

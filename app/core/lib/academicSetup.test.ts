@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
     buildAcademicSetupRedirectHref,
+    getAcademicSetupCurrentStepNavItem,
+    getAcademicSetupDisplayLabel,
     getAcademicSetupPageState,
     isAcademicSetupOperationalAdminPath,
     resolveAcademicSetupOrigin,
@@ -57,6 +59,14 @@ describe('academic setup helpers', () => {
 
     it('adds setup mode to continuation links without dropping existing params', () => {
         expect(withAcademicSetupMode('/academic/cohorts?create=1')).toBe('/academic/cohorts?create=1&setup=1');
+    });
+
+    it('uses frontend display labels for setup steps that changed copy', () => {
+        expect(getAcademicSetupDisplayLabel('ACADEMIC_YEAR', 'Create current academic year')).toBe('Set up academic year');
+        expect(getAcademicSetupCurrentStepNavItem(incompleteStatus)).toEqual({
+            label: 'Set up academic year',
+            href: '/academic/years?create=1',
+        });
     });
 
     it('flags operational admin paths that should be gated during setup', () => {

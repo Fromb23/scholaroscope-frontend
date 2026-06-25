@@ -36,7 +36,10 @@ import {
   type PluginNavigationContext,
 } from '@/app/core/registry/pluginNavigation';
 import type { AcademicSetupStatus, AcademicTodayModeValue } from '@/app/core/types/academic';
-import { getAcademicSetupAvailableNavItems } from '@/app/core/lib/academicSetup';
+import {
+  getAcademicSetupAvailableNavItems,
+  getAcademicSetupCurrentStepDisplayLabel,
+} from '@/app/core/lib/academicSetup';
 import {
   getWorkspaceManagementLabel,
   isLearnerCenteredWorkspace,
@@ -165,7 +168,11 @@ export function getAdminNav(
       ? getAcademicSetupAvailableNavItems(academicSetup as AcademicSetupStatus)
       : [
           { label: 'Overview', href: '/academic' },
-          { label: academicSetup.current_step_label ?? academicSetup.next_action.label, href: academicSetup.next_action.href },
+          {
+            label: getAcademicSetupCurrentStepDisplayLabel(academicSetup as AcademicSetupStatus)
+              ?? academicSetup.next_action.label,
+            href: academicSetup.next_action.href,
+          },
         ];
     const setupChildren = setupItems.map((item) => ({
       name: item.label,
