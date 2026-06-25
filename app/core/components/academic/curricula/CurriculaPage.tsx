@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, Plus, Edit, Trash2, CheckCircle, Puzzle } from 'lucide-react';
+import { AlertTriangle, BookOpen, Plus, Edit, Trash2, CheckCircle, PowerOff, Puzzle } from 'lucide-react';
 import { AcademicSetupGate } from '@/app/core/components/academic/setup/AcademicSetupGate';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
@@ -30,6 +30,7 @@ import { CurriculumFormModal } from '@/app/core/components/curricula/CurriculumF
 import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
+import { curriculumAPI, curriculumDisableRequestAPI } from '@/app/core/api/academic';
 import {
     canCreateCurriculumWork,
     canEditCurriculumWork,
@@ -38,6 +39,7 @@ import {
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
+import type { CurriculumDisableImpactSnapshot } from '@/app/core/types/academic';
 import type { CurriculumFormData } from '@/app/core/components/curricula/CurriculumFormModal';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import type { CurriculumType } from '@/app/core/types/academic';
@@ -49,7 +51,7 @@ import {
 } from '@/app/core/lib/curriculumBridge';
 
 export function CurriculaPage() {
-    const { curricula, loading, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
+    const { curricula, loading, refetch, createCurriculum, updateCurriculum, deleteCurriculum } = useCurricula();
     const router = useRouter();
     const searchParams = useSearchParams();
     const setupStatusQuery = useAcademicSetupStatus({
@@ -59,6 +61,12 @@ export function CurriculaPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState<Curriculum | null>(null);
     const [pageError, setPageError] = useState<string | null>(null);
+    const [disablingCurriculum, setDisablingCurriculum] = useState<Curriculum | null>(null);
+    const [disableImpact, setDisableImpact] = useState<CurriculumDisableImpactSnapshot | null>(null);
+    const [activeDisableRequestId, setActiveDisableRequestId] = useState<number | null>(null);
+    const [disableLoading, setDisableLoading] = useState(false);
+    const [disableSubmitting, setDisableSubmitting] = useState(false);
+    const [disableError, setDisableError] = useState<string | null>(null);
 
     const activeCurricula = curricula.filter(c => c.is_active);
     const inactiveCurricula = curricula.filter(c => !c.is_active);
@@ -192,30 +200,124 @@ export function CurriculaPage() {
         }
     };
 
+    const openDisable = async (curriculum: Curriculum) => {
+        setDisablingCurriculum(curriculum);
+        setDisableImpact(null);
+        setActiveDisableRequestId(null);
+        setDisableError(null);
+        setDisableLoading(true);
+        try {
+            const response = await curriculumAPI.getDisableImpact(curriculum.id);
+            setDisableImpact(response.impact_snapshot);
+            setActiveDisableRequestId(response.active_disable_request_id);
+        } catch (err) {
+            setDisableError(extractErrorMessage(err as ApiError, 'Failed to load disable impact.'));
+        } finally {
+            setDisableLoading(false);
+        }
+    };
+
+    const closeDisable = () => {
+        if (disableSubmitting) return;
+        setDisablingCurriculum(null);
+        setDisableImpact(null);
+        setActiveDisableRequestId(null);
+        setDisableError(null);
+    };
+
+    const confirmDisable = async () => {
+        if (!disablingCurriculum) return;
+        setDisableSubmitting(true);
+        setDisableError(null);
+        try {
+            await curriculumAPI.requestDisable(disablingCurriculum.id, {
+                mode: 'GRACEFUL',
+                confirm: true,
+            });
+            await refetch();
+            setDisablingCurriculum(null);
+            setDisableImpact(null);
+            setActiveDisableRequestId(null);
+            setDisableError(null);
+        } catch (err) {
+            setDisableError(extractErrorMessage(err as ApiError, 'Failed to disable curriculum.'));
+        } finally {
+            setDisableSubmitting(false);
+        }
+    };
+
+    const cancelDisable = async () => {
+        if (!activeDisableRequestId) return;
+        setDisableSubmitting(true);
+        setDisableError(null);
+        try {
+            await curriculumDisableRequestAPI.cancel(activeDisableRequestId);
+            await refetch();
+            setDisablingCurriculum(null);
+            setDisableImpact(null);
+            setActiveDisableRequestId(null);
+            setDisableError(null);
+        } catch (err) {
+            setDisableError(extractErrorMessage(err as ApiError, 'Failed to cancel curriculum disable.'));
+        } finally {
+            setDisableSubmitting(false);
+        }
+    };
+
+    const impactCounts = disableImpact ? [
+        { label: 'Subjects', value: disableImpact.academic_setup?.subject_count ?? 0 },
+        { label: 'Cohorts', value: disableImpact.academic_setup?.cohort_count ?? 0 },
+        { label: 'Cohort subject assignments', value: disableImpact.academic_setup?.cohort_subject_count ?? 0 },
+        { label: 'Sessions requiring completion/cancellation', value: disableImpact.sessions?.requiring_completion_count ?? disableImpact.sessions?.scheduled_total_count ?? 0 },
+        { label: 'Open assessments', value: (disableImpact.assessments?.draft_count ?? 0) + (disableImpact.assessments?.active_open_count ?? 0) },
+        { label: 'Pending lesson plans', value: (disableImpact.lesson_plans?.draft_count ?? 0) + (disableImpact.lesson_plans?.reviewed_ready_count ?? 0) + (disableImpact.lesson_plans?.scheduled_unused_count ?? 0) },
+        { label: 'Affected instructors/admins', value: (disableImpact.users?.affected_instructors?.length ?? 0) + (disableImpact.users?.affected_admins?.length ?? 0) },
+    ] : [];
+
     // ── Shared row actions ────────────────────────────────────────────────
 
-    const RowActions = ({ curriculum }: { curriculum: Curriculum }) => (
-        <div className="flex gap-2">
-            <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => openEdit(curriculum)}
-                disabled={!canEditCurriculumWork(curriculum)}
-                title={!canEditCurriculumWork(curriculum) ? 'This curriculum is read-only while the disable lifecycle is in progress.' : undefined}
-            >
-                <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleDelete(curriculum)}
-                disabled={!canEditCurriculumWork(curriculum)}
-                title={!canEditCurriculumWork(curriculum) ? 'This curriculum cannot be deleted while it is read-only.' : undefined}
-            >
-                <Trash2 className="h-4 w-4 text-red-600" />
-            </Button>
-        </div>
-    );
+    const RowActions = ({ curriculum }: { curriculum: Curriculum }) => {
+        if (curriculum.source === 'plugin') {
+            const disablingAllowed = curriculum.offering_status === 'ACTIVE';
+            const label = disablingAllowed ? 'Disable curriculum' : 'View disable workflow';
+            return (
+                <div className="flex gap-2">
+                    <Button
+                        size="sm"
+                        variant={disablingAllowed ? 'danger' : 'secondary'}
+                        onClick={() => openDisable(curriculum)}
+                        title={disablingAllowed ? 'Disable this curriculum for the workspace.' : 'View disable impact, progress, and cancellation options.'}
+                    >
+                        <PowerOff className="h-4 w-4" />
+                        {label}
+                    </Button>
+                </div>
+            );
+        }
+
+        return (
+            <div className="flex gap-2">
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => openEdit(curriculum)}
+                    disabled={!canEditCurriculumWork(curriculum)}
+                    title={!canEditCurriculumWork(curriculum) ? 'This curriculum is read-only while the disable lifecycle is in progress.' : undefined}
+                >
+                    <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDelete(curriculum)}
+                    disabled={!canEditCurriculumWork(curriculum)}
+                    title={!canEditCurriculumWork(curriculum) ? 'This curriculum cannot be deleted while it is read-only.' : undefined}
+                >
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                </Button>
+            </div>
+        );
+    };
 
     // ── Render ────────────────────────────────────────────────────────────
 
@@ -458,6 +560,86 @@ export function CurriculaPage() {
                 initialData={editing ? undefined : createInitialData}
                 onSave={handleSave}
             />
+
+            {disablingCurriculum ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-red-600" />
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">
+                                    Disable {getCurriculumBridgeName(disablingCurriculum)}
+                                </h2>
+                                <p className="mt-2 text-sm text-gray-600">
+                                    Disabling {getCurriculumBridgeName(disablingCurriculum)} will start a curriculum shutdown process for this workspace. Scholaroscope will preserve historical records, close or cancel pending curriculum work according to the disable workflow, and prevent new academic work under this curriculum while shutdown is running.
+                                </p>
+                                <p className="mt-2 text-sm text-gray-600">
+                                    Cancellation is possible only before finalization starts.
+                                </p>
+                            </div>
+                        </div>
+
+                        {disableError ? (
+                            <div className="mt-4">
+                                <ErrorBanner
+                                    message={disableError}
+                                    onDismiss={() => setDisableError(null)}
+                                />
+                            </div>
+                        ) : null}
+
+                        {disableLoading ? (
+                            <div className="mt-6">
+                                <LoadingSpinner fullScreen={false} message="Loading disable impact..." />
+                            </div>
+                        ) : (
+                            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                {impactCounts.map((item) => (
+                                    <div key={item.label} className="rounded-lg border border-gray-200 p-4">
+                                        <p className="text-xs font-medium text-gray-500">{item.label}</p>
+                                        <p className="mt-1 text-2xl font-semibold text-gray-900">{item.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="mt-6 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+                            Academic work under this curriculum becomes read-only while shutdown is running. Users can still view historical records and disable progress.
+                        </div>
+
+                        <div className="mt-6 flex flex-wrap justify-end gap-3">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={closeDisable}
+                                disabled={disableSubmitting}
+                            >
+                                Cancel
+                            </Button>
+                            {activeDisableRequestId && ['DISABLE_REQUESTED', 'DRAINING'].includes(disablingCurriculum.offering_status) ? (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={cancelDisable}
+                                    disabled={disableSubmitting}
+                                >
+                                    {disableSubmitting ? 'Cancelling...' : 'Cancel disable'}
+                                </Button>
+                            ) : null}
+                            {disablingCurriculum.offering_status === 'ACTIVE' ? (
+                                <Button
+                                    type="button"
+                                    variant="danger"
+                                    onClick={confirmDisable}
+                                    disabled={disableLoading || disableSubmitting}
+                                >
+                                    {disableSubmitting ? 'Starting shutdown...' : 'Confirm disable'}
+                                </Button>
+                            ) : null}
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 }
