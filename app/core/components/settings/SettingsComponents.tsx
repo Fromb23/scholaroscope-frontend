@@ -25,8 +25,10 @@ import { CurriculumDisableWorkflowModal } from '@/app/core/components/curriculum
 import { CurriculumLifecycleBadge } from '@/app/core/components/curriculum/CurriculumLifecycleBadge';
 import { pluginAPI } from '@/app/core/api/plugins';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { useCurriculumDisableRequests } from '@/app/core/hooks/useCurriculumDisableWorkflow';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { withAcademicSetupMode } from '@/app/core/lib/academicSetup';
 import {
     canStartNewDisableRequest,
     getDisableRequestStatusLabel,
@@ -38,7 +40,7 @@ import {
     resolveCurriculumForType,
 } from '@/app/core/lib/curriculumLifecycle';
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
-import type { Curriculum, CurriculumDisableRequest } from '@/app/core/types/academic';
+import type { AcademicSetupStatus, Curriculum, CurriculumDisableRequest } from '@/app/core/types/academic';
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useAuth } from '@/app/context/AuthContext';
@@ -155,6 +157,14 @@ function getWorkflowSummaryText(
         default:
             return 'Managed through the curriculum lifecycle workflow.';
     }
+}
+
+function getAcademicYearSetupHref(setupStatus: AcademicSetupStatus | null | undefined): string {
+    if (setupStatus?.current_step === 'ACADEMIC_YEAR') {
+        return withAcademicSetupMode(setupStatus.next_action.href);
+    }
+
+    return '/academic/years?setup=1&create=1';
 }
 
 // ── FeedbackBanner ────────────────────────────────────────────────────────
@@ -508,7 +518,8 @@ interface InstalledPluginCardProps {
     curriculum: Curriculum | null;
     activeDisableRequest: CurriculumDisableRequest | null;
     latestDisableRequest: CurriculumDisableRequest | null;
-    fromAcademicSetup?: boolean;
+    academicSetupMode?: boolean;
+    academicYearSetupHref?: string;
     onToggle: (id: number) => void;
     onWorkflowChanged: () => Promise<void>;
     toggling: boolean;
@@ -521,7 +532,8 @@ export function InstalledPluginCard({
     curriculum,
     activeDisableRequest,
     latestDisableRequest,
-    fromAcademicSetup = false,
+    academicSetupMode = false,
+    academicYearSetupHref = '/academic/years?setup=1&create=1',
     onToggle,
     onWorkflowChanged,
     toggling,
@@ -554,6 +566,13 @@ export function InstalledPluginCard({
         curriculum,
         activeDisableRequestStatus: activeDisableRequest?.status ?? null,
     });
+    const showAcademicSetupHandoff = Boolean(
+        academicSetupMode
+        && isCurriculumManagedPlugin
+        && isActive
+        && curriculum?.is_active
+        && curriculum.offering_status === 'ACTIVE'
+    );
     const workflowButtonLabel = (() => {
         if (!curriculum) {
             return 'Manage lifecycle';
@@ -644,27 +663,52 @@ export function InstalledPluginCard({
                             </div>
                         ) : null}
 
-                        <div className="mt-2 flex flex-wrap gap-3">
-                            {PluginModal && canManagePluginCurriculum ? (
-                                <button
-                                    onClick={openCurriculum}
-                                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                                >
-                                    <BookOpen className="h-3.5 w-3.5" />
-                                    Manage curriculum
-                                    <ChevronRight className="h-3 w-3" />
-                                </button>
-                            ) : null}
-                            {curriculum && !fromAcademicSetup ? (
-                                <NextLink
-                                    href={`/academic/subjects?setup=1&curriculum=${curriculum.id}`}
-                                    className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
-                                >
-                                    <BookOpen className="h-3.5 w-3.5" />
-                                    Manage subject offerings
-                                </NextLink>
-                            ) : null}
-                        </div>
+                        {showAcademicSetupHandoff ? (
+                            <div className="theme-card-muted mt-3 rounded-lg border border-gray-200 p-3">
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <h4 className="text-sm font-semibold text-gray-900">Curriculum selected</h4>
+                                        <p className="text-xs text-gray-600">
+                                            {getCurriculumBridgeName(curriculum)} has been registered in this workspace. Next, set up the academic year that will hold your terms, classes, lessons, assessments, and reports.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <NextLink href={academicYearSetupHref}>
+                                            <Button size="sm" type="button">
+                                                Set up academic year
+                                            </Button>
+                                        </NextLink>
+                                        <NextLink href="/academic?setup=1">
+                                            <Button size="sm" variant="secondary" type="button">
+                                                Back to setup overview
+                                            </Button>
+                                        </NextLink>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-2 flex flex-wrap gap-3">
+                                {PluginModal && canManagePluginCurriculum ? (
+                                    <button
+                                        onClick={openCurriculum}
+                                        className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                    >
+                                        <BookOpen className="h-3.5 w-3.5" />
+                                        Manage curriculum
+                                        <ChevronRight className="h-3 w-3" />
+                                    </button>
+                                ) : null}
+                                {curriculum && !academicSetupMode ? (
+                                    <NextLink
+                                        href={`/academic/subjects?setup=1&curriculum=${curriculum.id}`}
+                                        className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+                                    >
+                                        <BookOpen className="h-3.5 w-3.5" />
+                                        Manage subject offerings
+                                    </NextLink>
+                                ) : null}
+                            </div>
+                        )}
 
                         {PluginModal && !canManagePluginCurriculum && manageCurriculumHelperText ? (
                             <div className="theme-warning-surface mt-3 rounded-lg px-3 py-2 text-xs theme-text">
@@ -728,6 +772,12 @@ export function PluginsTab() {
     const { plugins, loading, error, refetch } = usePlugins();
     const searchParams = useSearchParams();
     const { curricula } = useCurricula();
+    const setupMode = searchParams.get('setup') === '1';
+    const fromQuery = searchParams.get('from')?.trim().toLowerCase() ?? '';
+    const academicSetupMode = setupMode || fromQuery === 'academic-setup';
+    const setupStatusQuery = useAcademicSetupStatus({
+        enabled: academicSetupMode,
+    });
     const {
         data: disableRequests = [],
         isLoading: disableRequestsLoading,
@@ -743,10 +793,9 @@ export function PluginsTab() {
     const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
     const pluginQuery = searchParams.get('plugin')?.trim().toLowerCase() ?? '';
     const curriculumQuery = searchParams.get('curriculum') ?? '';
-    const fromQuery = searchParams.get('from')?.trim().toLowerCase() ?? '';
-    const fromAcademicSetup = fromQuery === 'academic-setup';
-    const backLink = fromQuery === 'academic-setup'
-        ? { href: '/academic?setup=1', label: 'Back to Academic Setup' }
+    const academicYearSetupHref = getAcademicYearSetupHref(setupStatusQuery.data);
+    const backLink = academicSetupMode
+        ? { href: '/academic?setup=1', label: 'Back to setup overview' }
         : fromQuery === 'curricula'
             ? { href: '/academic/curricula?setup=1', label: 'Back to Curricula' }
             : null;
@@ -892,7 +941,8 @@ export function PluginsTab() {
                                     const curriculum = curriculumByPluginId.get(p.id);
                                     return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
                                 })()}
-                                fromAcademicSetup={fromAcademicSetup}
+                                academicSetupMode={academicSetupMode}
+                                academicYearSetupHref={academicYearSetupHref}
                                 onToggle={handleToggle}
                                 onWorkflowChanged={handleWorkflowChanged}
                                 toggling={toggling}
@@ -930,7 +980,8 @@ export function PluginsTab() {
                                 const curriculum = curriculumByPluginId.get(p.id);
                                 return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
                             })()}
-                            fromAcademicSetup={fromAcademicSetup}
+                            academicSetupMode={academicSetupMode}
+                            academicYearSetupHref={academicYearSetupHref}
                             onToggle={handleToggle}
                             onWorkflowChanged={handleWorkflowChanged}
                             toggling={toggling}
