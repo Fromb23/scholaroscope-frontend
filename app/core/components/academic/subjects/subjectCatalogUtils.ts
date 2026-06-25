@@ -36,6 +36,7 @@ export function statusLabel(item: SubjectCatalogItem): string {
 
   switch (getCatalogStatus(item)) {
     case 'OFFERED':
+    case 'REACTIVATED':
       return 'Offered by this workspace';
     case 'DROP_SCHEDULED':
     case 'DROP_PENDING_TERM_CLOSE':
@@ -51,6 +52,7 @@ export function statusLabel(item: SubjectCatalogItem): string {
 export function statusBadgeVariant(status: SubjectOfferingCatalogStatus): CatalogBadgeVariant {
   switch (status) {
     case 'OFFERED':
+    case 'REACTIVATED':
       return 'success';
     case 'DROP_SCHEDULED':
     case 'DROP_PENDING_TERM_CLOSE':
@@ -65,6 +67,15 @@ export function statusBadgeVariant(status: SubjectOfferingCatalogStatus): Catalo
 
 export function isWorkspaceOffering(item: SubjectCatalogItem): boolean {
   return getCatalogStatus(item) !== 'AVAILABLE' || Boolean(item.org_subject_id || item.offering_id);
+}
+
+export function isDroppedHistoricalOffering(item: SubjectCatalogItem): boolean {
+  return getCatalogStatus(item) === 'DROPPED_HISTORICAL';
+}
+
+export function isSetupReadyWorkspaceOffering(item: SubjectCatalogItem): boolean {
+  const status = getCatalogStatus(item);
+  return status === 'OFFERED' || status === 'REACTIVATED';
 }
 
 export function isScheduledRemoval(item: SubjectCatalogItem): boolean {

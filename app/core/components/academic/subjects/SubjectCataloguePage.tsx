@@ -24,6 +24,7 @@ import {
   contentReadinessLabel,
   formatCatalogLevel,
   getCatalogStatus,
+  isDroppedHistoricalOffering,
   isContentReady,
   isScheduledRemoval,
   matchesCatalogSearch,
@@ -52,6 +53,7 @@ function offeringStateMatches(item: SubjectCatalogItem, filter: OfferingStateFil
 
 function contentMatches(item: SubjectCatalogItem, filter: ContentFilter): boolean {
   if (filter === 'all') return true;
+  if (isDroppedHistoricalOffering(item)) return false;
   return filter === 'ready' ? isContentReady(item) : !isContentReady(item);
 }
 
@@ -368,7 +370,8 @@ export function SubjectCataloguePage() {
             {filteredRows.map((item) => {
               const status = getCatalogStatus(item);
               const rowError = rowErrors[item.id];
-              const missingContent = !isContentReady(item);
+              const isHistorical = isDroppedHistoricalOffering(item);
+              const missingContent = !isHistorical && !isContentReady(item);
               return (
                 <div key={item.id} className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                   <div className="min-w-0">
@@ -377,7 +380,9 @@ export function SubjectCataloguePage() {
                       <Badge variant="default">{item.subject_code ?? item.code}</Badge>
                       <Badge variant="info">{formatCatalogLevel(item.level)}</Badge>
                       <Badge variant={statusBadgeVariant(status)}>{statusLabel(item)}</Badge>
-                      <Badge variant={missingContent ? 'warning' : 'success'}>{contentReadinessLabel(item)}</Badge>
+                      {!isHistorical ? (
+                        <Badge variant={missingContent ? 'warning' : 'success'}>{contentReadinessLabel(item)}</Badge>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-sm theme-muted">
                       {item.cohort_assignment_count === 1 ? '1 cohort assignment' : `${item.cohort_assignment_count} cohort assignments`}

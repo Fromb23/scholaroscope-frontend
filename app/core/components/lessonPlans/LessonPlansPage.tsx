@@ -24,6 +24,7 @@ import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
     canShowAdminMyTeaching,
+    isSelfManagedTeachingWorkspace,
     isSupervisionOnlyAdmin,
 } from '@/app/core/lib/workspaces';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
@@ -179,6 +180,7 @@ function toOptionalNumber(value: string): number | undefined {
 function buildLessonPlanGroups(
     lessonPlans: LessonPlan[],
     groupingMode: AdminGroupingMode,
+    showInstructorContext = true,
 ): LessonPlanGroup[] {
     const groups = new Map<string, {
         label: string;
@@ -196,7 +198,9 @@ function buildLessonPlanGroups(
         let groupDescription = "Class view starts from learners' classroom context.";
         let sectionKey = `subject:${lessonPlan.subject ?? subjectLabel}`;
         let sectionLabel = subjectLabel;
-        let sectionDescription = `${instructorLabel} ownership stays visible on each lesson plan card.`;
+        let sectionDescription = showInstructorContext
+            ? `${instructorLabel} ownership stays visible on each lesson plan card.`
+            : 'Lesson plans for this class subject.';
 
         if (groupingMode === 'instructor') {
             groupKey = `teacher:${lessonPlan.teacher ?? instructorLabel}`;
@@ -211,7 +215,9 @@ function buildLessonPlanGroups(
             groupDescription = 'Subject view highlights where the teaching load sits across classes.';
             sectionKey = `class-teacher:${lessonPlan.cohort ?? cohortLabel}:${lessonPlan.teacher ?? instructorLabel}`;
             sectionLabel = `${cohortLabel} · ${instructorLabel}`;
-            sectionDescription = 'Class and instructor context for this subject.';
+            sectionDescription = showInstructorContext
+                ? 'Class and instructor context for this subject.'
+                : 'Class context for this subject.';
         }
 
         if (!groups.has(groupKey)) {
@@ -350,6 +356,11 @@ export function LessonPlansPage() {
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
+        orgType: activeOrg?.org_type,
+        capabilities,
+    });
+    const showInstitutionSupervision = isAdminLike && !isSelfManagedTeaching;
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -372,7 +383,7 @@ export function LessonPlansPage() {
     const { terms } = useTerms();
     const { subjects } = useSubjects();
     const { cohorts } = useCohorts();
-    const { instructors } = useInstructors({ enabled: isAdminLike });
+    const { instructors } = useInstructors({ enabled: showInstitutionSupervision });
     const canCreateLessonPlan = useMemo(
         () => curricula.some((curriculum) => canCreateCurriculumWork(curriculum)),
         [curricula]
@@ -413,15 +424,22 @@ export function LessonPlansPage() {
     } = useModalState<LessonPlan>();
 
     useEffect(() => {
+        if (isSelfManagedTeaching && viewMode !== 'my_teaching') {
+            setViewMode('my_teaching');
+            return;
+        }
+
         if (!canUseMyTeaching && viewMode === 'my_teaching') {
             setViewMode('admin_supervision');
         }
-    }, [canUseMyTeaching, viewMode]);
+    }, [canUseMyTeaching, isSelfManagedTeaching, viewMode]);
 
-    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && viewMode === 'my_teaching');
+    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
+    const shouldFilterToMyTeaching = showInstitutionSupervision && effectiveMyTeachingMode;
+    const useGroupedLessonPlanView = (showInstitutionSupervision && !effectiveMyTeachingMode) || isSelfManagedTeaching;
 
     const subtitle =
-        isInstructor
+        isSelfManagedTeaching || isInstructor
             ? 'Prepare lessons, review what is ready for class, and schedule the next one.'
             : viewMode === 'my_teaching' && canUseMyTeaching
                 ? 'Use My Teaching to view only lesson plans tied to your own teaching work.'
@@ -491,7 +509,7 @@ export function LessonPlansPage() {
                     return false;
                 }
 
-                if (isAdminLike && effectiveMyTeachingMode) {
+                if (shouldFilterToMyTeaching) {
                     const matchesTeacherId = typeof lessonPlan.teacher === 'number' && lessonPlan.teacher === user?.id;
                     const matchesTeacherName = normalizeText(lessonPlan.teacher_name) === normalizeText(user?.full_name);
 
@@ -500,7 +518,7 @@ export function LessonPlansPage() {
                     }
                 }
 
-                if (isAdminLike && viewMode === 'admin_supervision' && instructorFilter) {
+                if (showInstitutionSupervision && viewMode === 'admin_supervision' && instructorFilter) {
                     if (instructorFilter.startsWith('id:')) {
                         if (String(lessonPlan.teacher ?? '') !== instructorFilter.slice(3)) {
                             return false;
@@ -534,11 +552,11 @@ export function LessonPlansPage() {
         );
     }, [
         cohortFilter,
-        effectiveMyTeachingMode,
         instructorFilter,
-        isAdminLike,
         lessonPlans,
         search,
+        shouldFilterToMyTeaching,
+        showInstitutionSupervision,
         statusFilter,
         subjectFilter,
         termFilter,
@@ -549,11 +567,11 @@ export function LessonPlansPage() {
 
     const groupedLessonPlans = useMemo(
         () => (
-            isAdminLike && !effectiveMyTeachingMode
-                ? buildLessonPlanGroups(filteredLessonPlans, groupingMode)
+            useGroupedLessonPlanView
+                ? buildLessonPlanGroups(filteredLessonPlans, isSelfManagedTeaching ? 'class' : groupingMode, !isSelfManagedTeaching)
                 : []
         ),
-        [effectiveMyTeachingMode, filteredLessonPlans, groupingMode, isAdminLike]
+        [filteredLessonPlans, groupingMode, isSelfManagedTeaching, useGroupedLessonPlanView]
     );
     const hasServerFilters = Boolean(statusFilter || termFilter || subjectFilter || cohortFilter);
 
@@ -783,7 +801,7 @@ export function LessonPlansPage() {
                     <Button disabled>
                         New normal teaching work resumes after the break.
                     </Button>
-                ) : supervisionOnlyAdmin ? (
+                ) : supervisionOnlyAdmin && !isSelfManagedTeaching ? (
                     <Link href="/admin/instructors">
                         <Button variant="secondary">
                             View instructor activity
@@ -806,7 +824,7 @@ export function LessonPlansPage() {
                 />
             ) : null}
 
-            {isAdminLike ? (
+            {showInstitutionSupervision ? (
                 <Card>
                     <div className="space-y-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -884,7 +902,7 @@ export function LessonPlansPage() {
             ) : null}
 
             <Card>
-                <div className={`grid grid-cols-1 gap-4 ${isAdminLike && viewMode === 'admin_supervision' ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
+                <div className={`grid grid-cols-1 gap-4 ${showInstitutionSupervision && viewMode === 'admin_supervision' ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
                     <Input
                         label="Search"
                         value={search}
@@ -941,7 +959,7 @@ export function LessonPlansPage() {
                         ]}
                     />
 
-                    {isAdminLike && viewMode === 'admin_supervision' ? (
+                    {showInstitutionSupervision && viewMode === 'admin_supervision' ? (
                         <Select
                             label="Instructor"
                             value={instructorFilter}
@@ -962,14 +980,14 @@ export function LessonPlansPage() {
                         <h2 className="mt-3 text-base font-semibold text-gray-900">
                             {isInstructor
                                 ? 'No lesson preparations yet'
-                                : supervisionOnlyAdmin
+                                    : supervisionOnlyAdmin && !isSelfManagedTeaching
                                     ? 'No lesson plans have been prepared yet.'
                                     : 'No lesson plans yet'}
                         </h2>
                         <p className="mt-2 text-sm text-gray-500">
                             {isInstructor
                                 ? 'Start by choosing one of your assigned class subjects and the outcomes you want to teach.'
-                                : supervisionOnlyAdmin
+                                : supervisionOnlyAdmin && !isSelfManagedTeaching
                                     ? 'Lesson plans will appear here after instructors prepare them.'
                                     : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
@@ -984,7 +1002,7 @@ export function LessonPlansPage() {
                             <p className="mt-4 text-sm text-gray-500">
                                 New normal teaching work resumes after the break.
                             </p>
-                        ) : supervisionOnlyAdmin ? (
+                        ) : supervisionOnlyAdmin && !isSelfManagedTeaching ? (
                             <p className="mt-4 text-sm text-gray-500">
                                 Lesson plans will appear here after instructors prepare them.
                             </p>
@@ -1010,7 +1028,7 @@ export function LessonPlansPage() {
                         </p>
                     </div>
                 </Card>
-            ) : isAdminLike && !effectiveMyTeachingMode ? (
+            ) : useGroupedLessonPlanView ? (
                 <div className="space-y-6 pb-24">
                     {groupedLessonPlans.map((group) => (
                         <section key={group.key} className="space-y-4">

@@ -39,7 +39,9 @@ import {
     getCatalogStatus,
     groupRowsByLevel,
     isContentReady,
+    isDroppedHistoricalOffering,
     isScheduledRemoval,
+    isSetupReadyWorkspaceOffering,
     isWorkspaceOffering,
     matchesCatalogSearch,
     statusBadgeVariant,
@@ -162,9 +164,9 @@ export function SubjectsPage() {
     const workspaceGroupSummaries = useMemo(() => {
         return new Map(
             workspaceGroups.map((group) => {
-                const offered = group.rows.filter((item) => getCatalogStatus(item) === 'OFFERED').length;
+                const offered = group.rows.filter(isSetupReadyWorkspaceOffering).length;
                 const scheduledRemoval = group.rows.filter(isScheduledRemoval).length;
-                const contentMissing = group.rows.filter((item) => !isContentReady(item)).length;
+                const contentMissing = group.rows.filter((item) => !isDroppedHistoricalOffering(item) && !isContentReady(item)).length;
                 const cohortAssignments = group.rows.reduce(
                     (total, item) => total + (item.cohort_assignment_count ?? 0),
                     0,
@@ -177,14 +179,14 @@ export function SubjectsPage() {
     const levelCounts = useMemo(() => {
         const counts = new Map<string, number>();
         workspaceRows
-            .filter((item) => getCatalogStatus(item) === 'OFFERED')
+            .filter(isSetupReadyWorkspaceOffering)
             .forEach((item) => counts.set(item.level, (counts.get(item.level) ?? 0) + 1));
         return counts;
     }, [workspaceRows]);
     const scheduledRemovalCount = workspaceRows.filter(isScheduledRemoval).length;
-    const offeredCount = workspaceRows.filter((item) => getCatalogStatus(item) === 'OFFERED').length;
+    const offeredCount = workspaceRows.filter(isSetupReadyWorkspaceOffering).length;
     const availableCount = catalog.filter((item) => getCatalogStatus(item) === 'AVAILABLE').length;
-    const contentMissingCount = catalog.filter((item) => !isContentReady(item)).length;
+    const contentMissingCount = catalog.filter((item) => !isDroppedHistoricalOffering(item) && !isContentReady(item)).length;
 
     useEffect(() => {
         if (search.trim()) {
@@ -512,6 +514,7 @@ export function SubjectsPage() {
                                             {group.rows.map((item) => {
                                             const rowStatus = getCatalogStatus(item);
                                             const rowError = rowErrors[item.id];
+                                            const rowHistorical = isDroppedHistoricalOffering(item);
                                             return (
                                                 <div key={item.id} className="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                                                     <div className="min-w-0">
@@ -519,9 +522,11 @@ export function SubjectsPage() {
                                                             <p className="font-medium theme-text">{item.name}</p>
                                                             <Badge variant="default">{item.subject_code ?? item.code}</Badge>
                                                             <Badge variant={statusBadgeVariant(rowStatus)}>{statusLabel(item)}</Badge>
-                                                            <Badge variant={isContentReady(item) ? 'success' : 'warning'}>
-                                                                {contentReadinessLabel(item)}
-                                                            </Badge>
+                                                            {!rowHistorical ? (
+                                                                <Badge variant={isContentReady(item) ? 'success' : 'warning'}>
+                                                                    {contentReadinessLabel(item)}
+                                                                </Badge>
+                                                            ) : null}
                                                         </div>
                                                         <p className="mt-1 text-sm theme-muted">
                                                             {item.cohort_assignment_count === 1 ? '1 cohort assignment' : `${item.cohort_assignment_count} cohort assignments`}

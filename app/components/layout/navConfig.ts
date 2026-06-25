@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Database,
   CalendarDays,
+  Plus,
   Puzzle,
 } from 'lucide-react';
 import type { OrgType, Role, WorkspaceCapabilities } from '@/app/core/types/auth';
@@ -152,6 +153,34 @@ const ACADEMIC_SETUP_NAV: RegistryNavItem = {
   ],
 };
 
+const PERSONAL_SCHEMES_NAV: RegistryNavItem = {
+  name: 'Schemes of work',
+  href: '/schemes',
+  icon: BookOpen,
+  children: [
+    { name: 'Schemes of work', href: '/schemes', icon: BookOpen },
+    { name: 'Create draft scheme', href: '/schemes/new', icon: Plus },
+  ],
+};
+
+function splitSchemeNavigationItems(items: RegistryNavItem[]): {
+  schemes: RegistryNavItem[];
+  other: RegistryNavItem[];
+} {
+  const schemes: RegistryNavItem[] = [];
+  const other: RegistryNavItem[] = [];
+
+  items.forEach((item) => {
+    if (item.href.startsWith('/schemes')) {
+      schemes.push(item);
+    } else {
+      other.push(item);
+    }
+  });
+
+  return { schemes, other };
+}
+
 export function getAdminNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
@@ -200,11 +229,16 @@ export function getAdminNav(
   }
 
   if (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType)) {
+    const afterDashboardItems = getPluginNavigationItems('admin.primary.afterDashboard', pluginContext);
+    const { schemes: pluginSchemeItems, other: afterDashboardOtherItems } = splitSchemeNavigationItems(afterDashboardItems);
+    const schemeNavItems = pluginSchemeItems.length ? pluginSchemeItems : [PERSONAL_SCHEMES_NAV];
+
     return {
       primary: [
         { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
-        ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
+        ...afterDashboardOtherItems,
         ACADEMIC_SETUP_NAV,
+        ...schemeNavItems,
         { name: 'My learners', href: '/learners', icon: Users },
         { name: 'My teaching record', href: '/sessions', icon: Calendar },
         { name: 'My lesson plans', href: '/lesson-plans', icon: FileText },
