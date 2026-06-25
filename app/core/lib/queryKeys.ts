@@ -35,8 +35,8 @@ export const academicKeys = {
             ['academic', 'cohorts', 'students', 'available', cohortId] as const,
         subjectParticipationPrefix: (cohortId: number | null) =>
             ['academic', 'cohorts', 'subject-participation', cohortId] as const,
-        subjectParticipation: (cohortId: number | null, subjectIdsKey: string) =>
-            ['academic', 'cohorts', 'subject-participation', cohortId, subjectIdsKey] as const,
+        subjectParticipation: (cohortId: number | null, subjectIdsKey: string, includeInstructor = true) =>
+            ['academic', 'cohorts', 'subject-participation', cohortId, subjectIdsKey, includeInstructor] as const,
     },
     cohortSubjects: {
         all: ['academic', 'cohort-subjects'] as const,

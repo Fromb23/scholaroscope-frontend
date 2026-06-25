@@ -20,6 +20,7 @@ interface CohortSubjectParticipationSectionProps {
     linkSubjectsDisabledReason?: string | null;
     onLinkSubjects?: () => void;
     buildInstructorHref?: (subject: CohortSubject) => string;
+    showInstructorColumn?: boolean;
 }
 
 function getInstructorLabel(summary: CohortSubjectParticipationSummary | undefined) {
@@ -62,6 +63,7 @@ export function CohortSubjectParticipationSection({
     linkSubjectsDisabledReason = null,
     onLinkSubjects,
     buildInstructorHref,
+    showInstructorColumn = true,
 }: CohortSubjectParticipationSectionProps) {
     const linkSubjectsDisabled = Boolean(linkSubjectsDisabledReason);
 
@@ -71,7 +73,9 @@ export function CohortSubjectParticipationSection({
                 <div className="space-y-1">
                     <h2 className="text-xl font-semibold text-gray-900">Subject Participation</h2>
                     <p className="text-sm text-gray-500">
-                        Manage learner participation per cohort subject. Cohort placement only puts learners in the class; subject participation controls which subject sessions, attendance, assessments, and instructors apply to them.
+                        {showInstructorColumn
+                            ? 'Manage learner participation per cohort subject. Cohort placement only puts learners in the class; subject participation controls which subject sessions, attendance, assessments, and instructors apply to them.'
+                            : 'Manage learner participation per cohort subject. Cohort placement only puts learners in the class; subject participation controls which subject sessions, attendance, and assessments apply to them.'}
                     </p>
                 </div>
                 {canLinkSubjects && onLinkSubjects ? (
@@ -144,15 +148,17 @@ export function CohortSubjectParticipationSection({
                                                 {subject.is_compulsory ? <Badge variant="default">Compulsory</Badge> : null}
                                             </div>
 
-                                            <div className="grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
+                                            <div className={`grid gap-2 text-sm text-gray-600 ${showInstructorColumn ? 'sm:grid-cols-2' : ''}`}>
                                                 <div>
                                                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Participating Learners</p>
                                                     <p className="mt-1 font-semibold text-gray-900">{getParticipationCount(summary)}</p>
                                                 </div>
-                                                <div>
-                                                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Current Instructor</p>
-                                                    <p className="mt-1 font-medium text-gray-900">{getInstructorLabel(summary)}</p>
-                                                </div>
+                                                {showInstructorColumn ? (
+                                                    <div>
+                                                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Current Instructor</p>
+                                                        <p className="mt-1 font-medium text-gray-900">{getInstructorLabel(summary)}</p>
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         </div>
 

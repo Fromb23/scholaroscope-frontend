@@ -90,7 +90,7 @@ export function useCohortSubjectParticipation(
   );
 
   const query = useQuery<Record<number, CohortSubjectParticipationSummary>, Error>({
-    queryKey: academicKeys.cohorts.subjectParticipation(cohortId, subjectIdsKey),
+    queryKey: academicKeys.cohorts.subjectParticipation(cohortId, subjectIdsKey, includeInstructor),
     enabled: enabled && typeof cohortId === 'number' && cohortId > 0 && cohortSubjects.length > 0,
     staleTime: 30_000,
     queryFn: async () => {
