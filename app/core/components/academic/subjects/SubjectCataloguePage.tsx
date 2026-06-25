@@ -18,6 +18,7 @@ import type { SubjectCatalogItem, SubjectOfferingCatalogStatus } from '@/app/cor
 import {
   canOffer,
   canRemove,
+  canReoffer,
   canRestore,
   catalogRowLabel,
   contentMissingMessage,
@@ -227,10 +228,51 @@ export function SubjectCataloguePage() {
     }
   };
 
+  const handleReofferSubject = async (item: SubjectCatalogItem) => {
+    if (!item.offering_id || !activeCurriculum) return;
+    const label = catalogRowLabel(item);
+    if (!isContentReady(item)) {
+      const message = contentMissingMessage(item);
+      setRowErrors((current) => ({ ...current, [item.id]: message }));
+      setToastMessage(message);
+      return;
+    }
+    setActionId(item.id);
+    setRowErrors((current) => ({ ...current, [item.id]: '' }));
+    try {
+      await subjectOfferingAPI.reoffer(item.offering_id, activeCurriculum.id);
+      await loadCatalog();
+      setToastMessage(`${label} has been offered again.`);
+    } catch (error) {
+      const message = extractErrorMessage(error as ApiError, `Failed to offer ${label} again.`);
+      setRowErrors((current) => ({ ...current, [item.id]: message }));
+      setToastMessage(message);
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const renderAction = (item: SubjectCatalogItem) => {
     const status = getCatalogStatus(item) as SubjectOfferingCatalogStatus;
     if (!canManageSubjects) {
       return null;
+    }
+    if (status === 'DROPPED_HISTORICAL' && canReoffer(item) && item.offering_id) {
+      if (!isContentReady(item)) {
+        return (
+          <Button type="button" size="sm" variant="secondary" disabled>
+            Request curriculum import
+          </Button>
+        );
+      }
+      return (
+        <Button type="button" size="sm" disabled={actionId === item.id} onClick={() => handleReofferSubject(item)}>
+          <ButtonPendingContent pending={actionId === item.id} pendingLabel="Offering...">
+            <RotateCcw className="h-4 w-4" />
+            Offer again
+          </ButtonPendingContent>
+        </Button>
+      );
     }
     if (canOffer(item) && status !== 'DROPPED_HISTORICAL') {
       if (!isContentReady(item)) {
@@ -397,7 +439,7 @@ export function SubjectCataloguePage() {
                     ) : null}
                     {status === 'DROPPED_HISTORICAL' ? (
                       <p className="mt-1 text-xs theme-subtle">
-                        Historical offering. Re-offer only when the backend supports this subject level safely.
+                        Historical offering. Use Offer again when this subject should return to current teaching.
                       </p>
                     ) : null}
                     {rowError ? <p className="mt-2 text-sm text-red-600">{rowError}</p> : null}

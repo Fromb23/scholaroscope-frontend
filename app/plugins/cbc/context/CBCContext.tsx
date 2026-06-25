@@ -13,6 +13,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { useCBCCurriculum } from '@/app/plugins/cbc/hooks/useCBCCurriculum';
+import { isTeachingActorView } from '@/app/core/lib/workspaces';
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,8 @@ interface CBCFilterContextValue {
     setSelectedCohort: (id: number | null) => void;
     // Role-based access
     isAdmin: boolean;
+    isInstitutionAdminView: boolean;
+    isTeachingActorView: boolean;
     allowedSubjectIds: number[] | null;  // null = admin sees all
     allowedCohortIds: number[] | null;   // null = admin sees all
     teachingLoading: boolean;
@@ -82,9 +85,16 @@ export function CBCProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
     const { cbcCurriculumId, loading: curriculumLoading, isInstalled } = useCBCCurriculum();
-    const isAdmin = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const teachingActorView = isTeachingActorView({
+        activeRole,
+        activeOrg,
+        capabilities,
+        user,
+    });
+    const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !teachingActorView);
+    const isAdmin = isInstitutionAdminView;
     const teachingLoading = authLoading;
 
     const [filterState, setFilterState] = useState<PersistedFilterState>(() => buildFilterState(null, null));
@@ -231,6 +241,8 @@ export function CBCProvider({ children }: { children: ReactNode }) {
             setSelectedSubject,
             setSelectedCohort,
             isAdmin,
+            isInstitutionAdminView,
+            isTeachingActorView: teachingActorView,
             allowedSubjectIds: null,
             allowedCohortIds: null,
             teachingLoading,

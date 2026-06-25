@@ -527,6 +527,7 @@ export interface CBCTeachingAssignment {
   subject_id: number;
   subject_name: string;
   subject_code: string;
+  subject_offering_status?: string | null;
   subject_profile_id?: number | null;
   subject_profile_name?: string | null;
   subject_profile_code?: string | null;

@@ -5,6 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import { globalUsersAPI } from '@/app/core/api/globalUsers';
 import { isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
+import {
+    isSelfManagedTeachingAdmin,
+    isTeachingActorView,
+} from '@/app/core/lib/workspaces';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 
@@ -12,12 +16,17 @@ export type InstructorCurriculumKey = 'CBC' | 'CAMBRIDGE';
 export type MyTeachingLoadResponse = Awaited<ReturnType<typeof globalUsersAPI.getMyTeachingLoad>>;
 
 export function useMyTeachingLoad(options?: { enabled?: boolean }) {
-    const { user, activeRole } = useAuth();
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const { user, activeRole, activeOrg, capabilities } = useAuth();
+    const isTeachingActor = isTeachingActorView({
+        activeRole,
+        activeOrg,
+        capabilities,
+        user,
+    });
     const enabled = options?.enabled ?? true;
 
     return useQuery<MyTeachingLoadResponse, Error>({
-        queryKey: ['my-teaching-load', user?.id],
+        queryKey: ['my-teaching-load', activeOrg?.id ?? null, user?.id ?? null, activeRole],
         queryFn: async () => {
             try {
                 return await globalUsersAPI.getMyTeachingLoad();
@@ -27,7 +36,7 @@ export function useMyTeachingLoad(options?: { enabled?: boolean }) {
                 );
             }
         },
-        enabled: enabled && Boolean(user) && isInstructor,
+        enabled: enabled && Boolean(user) && isTeachingActor,
         staleTime: 60_000,
     });
 }
@@ -38,12 +47,21 @@ function uniqueSortedNumbers(values: Array<number | null | undefined>): number[]
 }
 
 export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
-    const { activeRole } = useAuth();
+    const { user, activeRole, activeOrg, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const selfManagedTeachingAdmin = isSelfManagedTeachingAdmin({
+        activeRole,
+        activeOrg,
+        capabilities,
+        user,
+    });
+    const isTeachingActor = isInstructor || selfManagedTeachingAdmin;
     const { data, isLoading, error } = useMyTeachingLoad(options);
 
     const assignments = useMemo(
-        () => data?.assignments ?? [],
+        () => (data?.assignments ?? []).filter(
+            assignment => assignment.subject_offering_status !== 'DROPPED_HISTORICAL'
+        ),
         [data?.assignments]
     );
     const cohortAssignments = useMemo(
@@ -97,13 +115,15 @@ export function useInstructorCohortAccess(options?: { enabled?: boolean }) {
     );
 
     const hasCurriculumAccess = useCallback((curriculum: InstructorCurriculumKey): boolean => {
-        if (!isInstructor) return true;
+        if (!isTeachingActor) return true;
         return curriculum === 'CBC' ? hasCBCAccess : hasCambridgeAccess;
-    }, [hasCBCAccess, hasCambridgeAccess, isInstructor]);
+    }, [hasCBCAccess, hasCambridgeAccess, isTeachingActor]);
 
     return {
         isInstructor,
-        isLoading: isInstructor ? isLoading : false,
+        isSelfManagedTeachingAdmin: selfManagedTeachingAdmin,
+        isTeachingActor,
+        isLoading: isTeachingActor ? isLoading : false,
         error,
         assignments,
         cohortAssignments,

@@ -239,8 +239,8 @@ export function CBCBrowserPage() {
                         <Card>
                             <CBCEmpty
                                 icon={BookOpen}
-                                title="No CBC Subjects Attached"
-                                description="No CBC subjects are attached to your assigned cohorts."
+                                title="No class subjects are assigned to you yet."
+                                description="Assigned CBC class subjects will appear here."
                             />
                         </Card>
                     ) : page.visible.length === 0 ? (

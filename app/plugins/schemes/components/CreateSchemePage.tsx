@@ -24,6 +24,7 @@ import { instructorsAPI } from '@/app/core/api/instructors';
 import { useTermCalendarEvents, useTerms, useCurricula, useSubjects } from '@/app/core/hooks/useAcademic';
 import { useGenerateScheme, useSchemeSubjectStrands } from '@/app/core/hooks/useSchemes';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { isSelfManagedTeachingAdmin } from '@/app/core/lib/workspaces';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type { CohortSubject, Curriculum, Subject, Term } from '@/app/core/types/academic';
 import { useAuth } from '@/app/context/AuthContext';
@@ -111,15 +112,16 @@ function parseIntegerInput(value: string): number | null {
 export function CreateSchemePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeRole, capabilities, user } = useAuth();
+  const { activeRole, activeOrg, capabilities, user } = useAuth();
   const isInstructor = activeRole === 'INSTRUCTOR';
-  const canAdminCreateOwnDraft = Boolean(
-    activeRole === 'ADMIN'
-    && capabilities.can_teach
-    && capabilities.is_workspace_owner
-    && capabilities.workspace_behavior === 'FREELANCE_TEACHER',
-  );
-  const isInstitutionalAdmin = activeRole === 'ADMIN' && !canAdminCreateOwnDraft;
+  const selfManagedTeachingAdmin = isSelfManagedTeachingAdmin({
+    activeRole,
+    activeOrg,
+    capabilities,
+    user,
+  });
+  const isTeachingActor = isInstructor || selfManagedTeachingAdmin;
+  const isInstitutionalAdmin = activeRole === 'ADMIN' && !selfManagedTeachingAdmin;
   const { curricula, loading: curriculaLoading } = useCurricula();
   const { terms, loading: termsLoading } = useTerms();
   const { subjects, loading: subjectsLoading } = useSubjects();
@@ -127,10 +129,10 @@ export function CreateSchemePage() {
   const { generateScheme, submitting, error: generateError, clearError } = useGenerateScheme();
 
   const [adminCohortSubjects, setAdminCohortSubjects] = useState<CohortSubject[]>([]);
-  const [adminContextLoading, setAdminContextLoading] = useState(!isInstructor && !isInstitutionalAdmin);
+  const [adminContextLoading, setAdminContextLoading] = useState(false);
   const [adminContextError, setAdminContextError] = useState<string | null>(null);
   const [adminTeachers, setAdminTeachers] = useState<Array<{ id: number; label: string }>>([]);
-  const [adminTeachersLoading, setAdminTeachersLoading] = useState(!isInstructor && !isInstitutionalAdmin);
+  const [adminTeachersLoading, setAdminTeachersLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -155,7 +157,7 @@ export function CreateSchemePage() {
   const [generationFailure, setGenerationFailure] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isInstructor || isInstitutionalAdmin) {
+    if (isTeachingActor || isInstitutionalAdmin) {
       setAdminContextLoading(false);
       setAdminContextError(null);
       setAdminTeachersLoading(false);
@@ -217,7 +219,7 @@ export function CreateSchemePage() {
     return () => {
       active = false;
     };
-  }, [isInstructor, isInstitutionalAdmin]);
+  }, [isTeachingActor, isInstitutionalAdmin]);
 
   useEffect(() => {
     const requestedCohortSubjectId = searchParams.get('cohort_subject');
@@ -264,9 +266,12 @@ export function CreateSchemePage() {
   }, [adminTeachers, user]);
 
   const contextOptions = useMemo<TeachingContextOption[]>(() => {
-    if (isInstructor) {
+    if (isTeachingActor) {
       return instructorAccess.assignments
-        .filter((assignment) => typeof assignment.cohort_subject_id === 'number')
+        .filter((assignment) => (
+          typeof assignment.cohort_subject_id === 'number'
+          && assignment.subject_offering_status !== 'DROPPED_HISTORICAL'
+        ))
         .map((assignment) => ({
           cohortSubjectId: assignment.cohort_subject_id as number,
           cohortName: assignment.cohort_name,
@@ -292,7 +297,7 @@ export function CreateSchemePage() {
         levelLabel: cohortSubject.cohort_level || subject?.level || 'Level',
       };
     });
-  }, [adminCohortSubjects, instructorAccess.assignments, isInstructor, subjectById]);
+  }, [adminCohortSubjects, instructorAccess.assignments, isTeachingActor, subjectById]);
 
   useEffect(() => {
     if (activeCurricula.length === 1 && !selectedCurriculumId) {
@@ -301,20 +306,20 @@ export function CreateSchemePage() {
   }, [activeCurricula, selectedCurriculumId]);
 
   useEffect(() => {
-    if (isInstructor && contextOptions.length === 1 && !selectedCohortSubjectId) {
+    if (isTeachingActor && contextOptions.length === 1 && !selectedCohortSubjectId) {
       const [option] = contextOptions;
       setSelectedCurriculumId(option.curriculumId ? String(option.curriculumId) : '');
       setSelectedSubjectId(String(option.subjectId));
       setSelectedLevelLabel(option.levelLabel);
       setSelectedCohortSubjectId(String(option.cohortSubjectId));
     }
-  }, [contextOptions, isInstructor, selectedCohortSubjectId]);
+  }, [contextOptions, isTeachingActor, selectedCohortSubjectId]);
 
   useEffect(() => {
-    if (!isInstructor && user && !selectedTeacherId) {
+    if (isTeachingActor && user && !selectedTeacherId) {
       setSelectedTeacherId(String(user.id));
     }
-  }, [isInstructor, selectedTeacherId, user]);
+  }, [isTeachingActor, selectedTeacherId, user]);
 
   const curriculumFilteredContexts = useMemo(
     () =>
@@ -538,8 +543,8 @@ export function CreateSchemePage() {
     if (selectedTerm.is_calendar_setup_complete) {
       return null;
     }
-    return isInstructor ? TERM_SETUP_INCOMPLETE_MESSAGE : ADMIN_TERM_SETUP_MESSAGE;
-  }, [isInstructor, selectedTerm]);
+    return isTeachingActor ? TERM_SETUP_INCOMPLETE_MESSAGE : ADMIN_TERM_SETUP_MESSAGE;
+  }, [isTeachingActor, selectedTerm]);
 
   const lessonsPerWeekValue = useMemo(
     () => parseIntegerInput(lessonsPerWeek),
@@ -760,7 +765,7 @@ export function CreateSchemePage() {
         lesson_duration_minutes: lessonDurationMinutesValue ?? 40,
         curriculum_range: rangeValidation.curriculumRange,
         generation_mode: 'AI_ASSISTED_DRAFT' as const,
-        ...(selectedTeacherId && !isInstructor && user && Number(selectedTeacherId) !== user.id
+        ...(selectedTeacherId && !isTeachingActor && user && Number(selectedTeacherId) !== user.id
           ? { teacher: Number(selectedTeacherId) }
           : {}),
       };
@@ -972,7 +977,7 @@ export function CreateSchemePage() {
               ]}
             />
 
-            {!isInstructor ? (
+            {!isTeachingActor ? (
               <Select
                 label="Teacher"
                 value={selectedTeacherId}
@@ -1070,13 +1075,13 @@ export function CreateSchemePage() {
                     <div>
                       <p className="font-medium">Admin-managed term calendar</p>
                       <p className="mt-1">
-                        {isInstructor
+                        {isTeachingActor
                           ? 'Calendar weeks are locked during scheme generation so every teacher in the term uses the same break and exam weeks.'
                           : 'Edit term calendar events in academic term setup before generating schemes for this term.'}
                       </p>
                     </div>
                   </div>
-                  {!isInstructor ? (
+                  {!isTeachingActor ? (
                     <Link href="/academic/terms">
                       <Button type="button" variant="secondary" size="sm">
                         Edit term calendar
@@ -1096,7 +1101,7 @@ export function CreateSchemePage() {
                         <p className="mt-1">{termCalendarSetupMessage}</p>
                       </div>
                     </div>
-                    {!isInstructor ? (
+                    {!isTeachingActor ? (
                       <Link href="/academic/terms">
                         <Button type="button" variant="secondary" size="sm">
                           Open term setup

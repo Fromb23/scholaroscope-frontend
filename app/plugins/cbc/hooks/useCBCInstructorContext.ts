@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
 import type { CohortSubject, Subject } from '@/app/core/types/academic';
+import { isTeachingActorView } from '@/app/core/lib/workspaces';
 import { cbcTeachingLoadAPI, cbcCatalogAPI } from '@/app/plugins/cbc/api/cbc';
 import { cbcKeys } from '@/app/plugins/cbc/lib/queryKeys';
 import {
@@ -59,8 +60,13 @@ function uniqueSortedIds(values: number[]) {
 }
 
 export function useCBCInstructorContext(selectedCurriculumId: number | null) {
-    const { user, activeOrg, activeRole } = useAuth();
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const { user, activeOrg, activeRole, capabilities } = useAuth();
+    const isTeachingActor = isTeachingActorView({
+        activeRole,
+        activeOrg,
+        capabilities,
+        user,
+    });
     const userId = user?.id ?? 0;
     const organizationId = activeOrg?.id ?? 0;
     const curriculumId = selectedCurriculumId ?? 0;
@@ -73,7 +79,9 @@ export function useCBCInstructorContext(selectedCurriculumId: number | null) {
                 cbcCatalogAPI.getCatalog(),
             ]);
 
-            const assignments = teachingLoad.assignments ?? [];
+            const assignments = (teachingLoad.assignments ?? []).filter(
+                assignment => assignment.subject_offering_status !== 'DROPPED_HISTORICAL'
+            );
 
             return {
                 assignments,
@@ -84,7 +92,7 @@ export function useCBCInstructorContext(selectedCurriculumId: number | null) {
                 curriculumName: catalog.curriculum_name ?? 'CBC',
             };
         },
-        enabled: isInstructor && Boolean(userId) && Boolean(organizationId) && Boolean(curriculumId),
+        enabled: isTeachingActor && Boolean(userId) && Boolean(organizationId) && Boolean(curriculumId),
         staleTime: 5 * 60 * 1000,
     });
 }

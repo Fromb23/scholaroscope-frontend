@@ -44,12 +44,15 @@ export function CreateAssessmentPage() {
     const { user, activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const { curricula } = useCurricula();
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const isTeachingActor = instructorAccess.isTeachingActor;
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
 
     const assignedSubjectOptions = useMemo<InstructorSubjectOption[]>(() => {
         const options = instructorAccess.assignments
-            .filter((assignment) => typeof assignment.cohort_subject_id === 'number')
+            .filter((assignment) => (
+                typeof assignment.cohort_subject_id === 'number'
+                && assignment.subject_offering_status !== 'DROPPED_HISTORICAL'
+            ))
             .map((assignment) => ({
                 id: assignment.cohort_subject_id as number,
                 cohort_id: assignment.cohort_id,
@@ -91,7 +94,7 @@ export function CreateAssessmentPage() {
         dismissError,
     } = useCreateAssessmentForm({
         allowedCohortSubjectIds,
-        enforceAssignedSubject: isInstructor,
+        enforceAssignedSubject: isTeachingActor,
     });
 
     const { terms } = useTerms();
@@ -118,7 +121,7 @@ export function CreateAssessmentPage() {
     ), [writableAssignedSubjectOptions]);
 
     const availableCohorts = useMemo(() => {
-        if (isInstructor) {
+        if (isTeachingActor) {
             return assignedCohorts.map((cohort) => ({
                 id: cohort.id,
                 name: cohort.label,
@@ -136,12 +139,12 @@ export function CreateAssessmentPage() {
             .map((cohort) => ({
                 ...cohort,
                 curriculum: cohort.curriculum,
-                curriculum_type: cohort.curriculum_type,
-            }));
-    }, [assignedCohorts, cohorts, curricula, isInstructor]);
+            curriculum_type: cohort.curriculum_type,
+        }));
+    }, [assignedCohorts, cohorts, curricula, isTeachingActor]);
 
     const availableSubjects = useMemo(() => {
-        if (isInstructor) {
+        if (isTeachingActor) {
             return writableAssignedSubjectOptions
                 .filter((option) => option.cohort_id === selectedCohortId)
                 .map((option) => ({
@@ -154,7 +157,7 @@ export function CreateAssessmentPage() {
             id: subject.id,
             label: `${subject.subject_code} — ${subject.subject_name}${subject.is_compulsory ? ' (Core)' : ''}`,
         }));
-    }, [isInstructor, selectedCohortId, subjects, writableAssignedSubjectOptions]);
+    }, [isTeachingActor, selectedCohortId, subjects, writableAssignedSubjectOptions]);
 
     const selectedCurriculum = useMemo(() => {
         const selectedCohort = availableCohorts.find((cohort) => cohort.id === selectedCohortId);
@@ -171,7 +174,7 @@ export function CreateAssessmentPage() {
     const isSelectedCurriculumWritable = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : true;
 
     useEffect(() => {
-        if (!isInstructor) return;
+        if (!isTeachingActor) return;
         if (assignedSubjectOptions.length === 1) {
             const only = assignedSubjectOptions[0];
             if (selectedCohortId !== only.cohort_id) {
@@ -186,7 +189,7 @@ export function CreateAssessmentPage() {
             selectCohort(assignedCohorts[0].id);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [assignedCohorts, assignedSubjectOptions, form.cohort_subject, isInstructor, selectedCohortId]);
+    }, [assignedCohorts, assignedSubjectOptions, form.cohort_subject, isTeachingActor, selectedCohortId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -203,7 +206,7 @@ export function CreateAssessmentPage() {
         router.push(`/assessments/${result.id}${nextSection}`);
     };
 
-    if (isInstructor && !instructorAccess.hasAssignedCohortSubjects) {
+    if (isTeachingActor && !instructorAccess.hasAssignedCohortSubjects) {
         return (
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -230,7 +233,7 @@ export function CreateAssessmentPage() {
         );
     }
 
-    if ((isInstructor ? assignedSubjectOptions.length > 0 : cohorts.length > 0) && availableCohorts.length === 0) {
+    if ((isTeachingActor ? assignedSubjectOptions.length > 0 : cohorts.length > 0) && availableCohorts.length === 0) {
         return (
             <CurriculumLifecycleAccessState
                 title="Assessment creation is unavailable"
@@ -259,7 +262,7 @@ export function CreateAssessmentPage() {
             {selectedCurriculum && selectedCurriculum.offering_status !== 'ACTIVE' ? (
                 <CurriculumLifecycleNotice
                     status={selectedCurriculum.offering_status}
-                    role={isInstructor ? 'INSTRUCTOR' : 'ADMIN'}
+                    role={isTeachingActor ? 'INSTRUCTOR' : 'ADMIN'}
                     title="Assessment creation status"
                 />
             ) : null}
@@ -279,7 +282,7 @@ export function CreateAssessmentPage() {
                                     value={selectedCohortId.toString()}
                                     onChange={(e) => selectCohort(Number(e.target.value))}
                                     required
-                                    disabled={isInstructor && assignedCohorts.length === 1}
+                                    disabled={isTeachingActor && assignedCohorts.length === 1}
                                     options={[
                                         { value: '0', label: 'Select Cohort' },
                                         ...availableCohorts.map((cohort) => ({
@@ -297,7 +300,7 @@ export function CreateAssessmentPage() {
                                     value={form.cohort_subject.toString()}
                                     onChange={(e) => setField('cohort_subject', Number(e.target.value))}
                                     required
-                                    disabled={!selectedCohortId || !isSelectedCurriculumWritable || (isInstructor && writableAssignedSubjectOptions.length === 1)}
+                                    disabled={!selectedCohortId || !isSelectedCurriculumWritable || (isTeachingActor && writableAssignedSubjectOptions.length === 1)}
                                     error={errors.cohort_subject}
                                     options={[
                                         {
@@ -494,7 +497,7 @@ export function CreateAssessmentPage() {
                     <Link href="/assessments">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>
-                    <Button type="submit" disabled={saving || (!isAdminLike && !isInstructor) || !isSelectedCurriculumWritable}>
+                    <Button type="submit" disabled={saving || (!isAdminLike && !isTeachingActor) || !isSelectedCurriculumWritable}>
                         <Save className="w-4 h-4 mr-2" />
                         {saving ? 'Creating…' : 'Create Assessment'}
                     </Button>

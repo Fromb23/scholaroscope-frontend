@@ -194,6 +194,7 @@ export interface AvailableCohortSubject extends SourceAwareSubjectReference {
     subject?: number;
     subject_name: string;
     subject_code?: string | null;
+    subject_offering_status?: string | null;
     is_compulsory?: boolean;
     curriculum_name?: string | null;
     curriculum_type?: string | null;

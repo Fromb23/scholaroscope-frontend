@@ -1,4 +1,12 @@
-import type { OrgType, RegisterOrgType, Role, WorkspaceCapabilities, WorkspaceMode } from '@/app/core/types/auth';
+import type {
+  ActiveOrg,
+  OrgType,
+  RegisterOrgType,
+  Role,
+  User,
+  WorkspaceCapabilities,
+  WorkspaceMode,
+} from '@/app/core/types/auth';
 
 export type WorkspaceBadgeVariant = 'blue' | 'purple' | 'green' | 'orange' | 'indigo' | 'maroon';
 
@@ -104,6 +112,42 @@ export function isSelfManagedTeachingWorkspace(params: {
   return params.capabilities?.workspace_behavior === 'FREELANCE_TEACHER'
     || workspaceAllowsSelfManagedTeaching(params.orgType)
     || isPersonalFreelancerWorkspace(params.orgType);
+}
+
+export function isSelfManagedTeachingAdmin(params: {
+  activeRole?: Role | null;
+  activeOrg?: ActiveOrg | null;
+  capabilities?: WorkspaceCapabilities | null;
+  user?: User | null;
+}): boolean {
+  const { activeRole, activeOrg, capabilities, user } = params;
+  if (activeRole !== 'ADMIN' || user?.is_superadmin) {
+    return false;
+  }
+
+  const orgType = activeOrg?.org_type ?? null;
+  const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
+    orgType,
+    capabilities,
+  });
+  if (!isSelfManagedTeaching) {
+    return false;
+  }
+
+  if (!capabilities) {
+    return true;
+  }
+
+  return Boolean(capabilities.can_teach || capabilities.is_workspace_owner);
+}
+
+export function isTeachingActorView(params: {
+  activeRole?: Role | null;
+  activeOrg?: ActiveOrg | null;
+  capabilities?: WorkspaceCapabilities | null;
+  user?: User | null;
+}): boolean {
+  return params.activeRole === 'INSTRUCTOR' || isSelfManagedTeachingAdmin(params);
 }
 
 export function normalizeRegisterOrgType(orgType?: RegisterOrgType | OrgType | string): RegisterOrgType {
