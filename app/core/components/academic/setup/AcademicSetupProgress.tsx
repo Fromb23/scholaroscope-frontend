@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle2, Lock, PlayCircle, Puzzle } from 'lucide-react
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import {
+    getAcademicSetupDisplayLabel,
     getAcademicSetupLockedReason,
     getAcademicSetupStepHref,
     getAcademicSetupStepStatusLabel,
@@ -64,7 +65,9 @@ export function AcademicSetupProgress({
                                     {getAcademicSetupStepStatusLabel(step.status)}
                                 </Badge>
                             </div>
-                            <p className="text-sm font-semibold theme-text">{step.label}</p>
+                            <p className="text-sm font-semibold theme-text">
+                                {getAcademicSetupDisplayLabel(step.key, step.label)}
+                            </p>
                             <p className="text-sm theme-muted">{step.description}</p>
                         </div>
                     </div>
@@ -77,7 +80,7 @@ export function AcademicSetupProgress({
 
                     {step.key === 'CURRICULUM' ? (
                         <div className="mt-4 rounded-xl border border-blue-100 bg-white/70 px-3 py-2 text-xs text-blue-900">
-                            Select a Scholaroscope-powered curriculum such as CBC or Cambridge. Scholaroscope will register it in this workspace and unlock subject offerings.
+                            Choose a Scholaroscope-powered curriculum such as CBC or Cambridge. Scholaroscope will register it in this workspace to start academic setup.
                         </div>
                     ) : null}
 
@@ -102,7 +105,7 @@ export function AcademicSetupProgress({
                             <Link href="/admin/settings?tab=plugins&from=academic-setup">
                                 <Button type="button" variant="ghost">
                                     <Puzzle className="h-4 w-4" />
-                                    Open curriculum settings
+                                    Choose curriculum
                                 </Button>
                             </Link>
                         ) : null}

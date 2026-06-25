@@ -18,6 +18,7 @@ import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus'
 import {
     getAcademicSetupPageState,
     resolveAcademicSetupOrigin,
+    withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -33,7 +34,6 @@ import { curriculumAPI, curriculumDisableRequestAPI } from '@/app/core/api/acade
 import { academicKeys } from '@/app/core/lib/queryKeys';
 import {
     canEditCurriculumWork,
-    resolveCurriculumPluginKey,
 } from '@/app/core/lib/curriculumLifecycle';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
@@ -88,46 +88,25 @@ export function CurriculaPage() {
     const pluginSettingsHeaderHref = setupMode
         ? '/admin/settings?tab=plugins&from=academic-setup'
         : '/admin/settings?tab=plugins&from=curricula';
+    const hasActiveCurricula = activeCurricula.length > 0;
+    const showChooseCurriculumActions = !setupMode || !hasActiveCurricula;
+    const showCurriculumSelectedCard = (
+        setupMode
+        && hasActiveCurricula
+        && setupPageState === 'completed'
+        && setupStatus?.current_step === 'ACADEMIC_YEAR'
+    );
+    const academicYearSetupHref = showCurriculumSelectedCard
+        ? withAcademicSetupMode(setupStatus?.next_action.href ?? '/academic/years?create=1')
+        : '/academic/years?setup=1&create=1';
 
-    const getPluginSettingsHref = (curriculum: Curriculum): string | null => {
-        const pluginKey = resolveCurriculumPluginKey(curriculum);
-
-        if (!pluginKey) {
-            return null;
-        }
-
-        const params = new URLSearchParams({
-            tab: 'plugins',
-            plugin: pluginKey,
-            curriculum: String(curriculum.id),
-            from: setupMode ? 'academic-setup' : 'curricula',
-        });
-
-        return `/admin/settings?${params.toString()}`;
-    };
-
-    const getPluginActionLabel = (curriculum: Curriculum): string | null => {
-        if (!resolveCurriculumPluginKey(curriculum)) {
-            return null;
-        }
-
-        switch (curriculum.offering_status) {
-            case 'ACTIVE':
-                return 'Open curriculum settings';
-            case 'DISABLE_REQUESTED':
-            case 'DRAINING':
-            case 'FINALIZING':
-                return 'View disable workflow';
-            case 'DISABLED':
-                return 'Reactivate in Curriculum Settings';
-            case 'FAILED':
-                return 'Review disable failure';
-            case 'REACTIVATING':
-                return 'View reactivation progress';
-            default:
-                return 'Open curriculum settings';
-        }
-    };
+    const getCurriculumEngineLabel = (curriculum: Curriculum): string => (
+        curriculum.source === 'plugin'
+            ? 'Powered by Scholaroscope'
+            : curriculum.source === 'custom'
+                ? 'Custom workspace curriculum'
+                : 'Workspace curriculum'
+    );
 
     useEffect(() => {
         if (!shouldOpenCreate) {
@@ -235,12 +214,10 @@ export function CurriculaPage() {
         setPageError(null);
         setSuccessMessage(null);
         try {
-            const reactivated = await curriculumAPI.reactivate(curriculum.id);
+            await curriculumAPI.reactivate(curriculum.id);
             await refreshAcademicState();
             setSuccessMessage({
-                message: 'CBC has been reactivated. Review subject offerings before creating new academic work.',
-                href: `/academic/subjects?curriculum=${reactivated.id}`,
-                label: 'Review subject offerings',
+                message: `${getCurriculumBridgeName(curriculum)} has been reactivated. Academic setup has been refreshed.`,
             });
         } catch (err) {
             setPageError(extractErrorMessage(err as ApiError, 'Failed to reactivate curriculum.'));
@@ -325,25 +302,49 @@ export function CurriculaPage() {
 
     return (
         <div className="space-y-6">
-            <AcademicSetupGate
-                status={setupStatus}
-                stepKey="CURRICULUM"
-                setupMode={setupMode}
-                blockedNotice={blockedNotice}
-            />
+            {showCurriculumSelectedCard ? (
+                <Card>
+                    <div className="space-y-4 p-5">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-lg font-semibold theme-text">Curriculum selected</h2>
+                            <Badge variant="green">Complete</Badge>
+                        </div>
+                        <p className="text-sm theme-muted">
+                            Your Scholaroscope-powered curriculum has been registered in this workspace. Next, set up the academic year that will hold your terms, classes, lessons, assessments, and reports.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            <Link href={academicYearSetupHref}>
+                                <Button type="button">Set up academic year</Button>
+                            </Link>
+                            <Link href={withAcademicSetupMode('/academic')}>
+                                <Button type="button" variant="secondary">Back to setup overview</Button>
+                            </Link>
+                        </div>
+                    </div>
+                </Card>
+            ) : (
+                <AcademicSetupGate
+                    status={setupStatus}
+                    stepKey="CURRICULUM"
+                    setupMode={setupMode}
+                    blockedNotice={blockedNotice}
+                />
+            )}
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Curricula</h1>
                     <p className="mt-2 text-gray-600">Manage educational curricula and programs</p>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                    <Link href={pluginSettingsHeaderHref}>
-                        <Button type="button">
-                            <Puzzle className="mr-2 h-4 w-4" />
-                            Choose curriculum
-                        </Button>
-                    </Link>
-                </div>
+                {showChooseCurriculumActions ? (
+                    <div className="flex flex-wrap gap-3">
+                        <Link href={pluginSettingsHeaderHref}>
+                            <Button type="button">
+                                <Puzzle className="mr-2 h-4 w-4" />
+                                Choose curriculum
+                            </Button>
+                        </Link>
+                    </div>
+                ) : null}
             </div>
 
             {pageError ? (
@@ -402,24 +403,26 @@ export function CurriculaPage() {
                 </Card>
             ) : null}
 
-            <Card>
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h2 className="text-sm font-semibold text-gray-900">
-                            Using CBC, Cambridge, or another national curriculum?
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-600">
-                            Select a Scholaroscope-powered curriculum such as CBC or Cambridge. Scholaroscope will register it in this workspace and unlock subject offerings.
-                        </p>
+            {showChooseCurriculumActions ? (
+                <Card>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h2 className="text-sm font-semibold text-gray-900">
+                                Using CBC, Cambridge, or another national curriculum?
+                            </h2>
+                            <p className="mt-1 text-sm text-gray-600">
+                                Choose a Scholaroscope-powered curriculum such as CBC or Cambridge. Scholaroscope will register it in this workspace to start academic setup.
+                            </p>
+                        </div>
+                        <Link href={pluginSettingsHeaderHref}>
+                            <Button type="button" variant="secondary">
+                                <Puzzle className="mr-2 h-4 w-4" />
+                                Choose curriculum
+                            </Button>
+                        </Link>
                     </div>
-                    <Link href={pluginSettingsHeaderHref}>
-                        <Button type="button" variant="secondary">
-                            <Puzzle className="mr-2 h-4 w-4" />
-                            Open curriculum settings
-                        </Button>
-                    </Link>
-                </div>
-            </Card>
+                </Card>
+            ) : null}
 
             <DesktopOnly>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -478,22 +481,7 @@ export function CurriculaPage() {
                                     <TableCell><Badge variant="info">{c.subjects_count ?? 0}</Badge></TableCell>
                                     <TableCell><Badge variant="info">{c.cohorts_count ?? 0}</Badge></TableCell>
                                     <TableCell>
-                                        {getPluginSettingsHref(c) && getPluginActionLabel(c) ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
-                                                    <Button type="button" size="sm" variant="secondary">
-                                                        Open curriculum settings
-                                                    </Button>
-                                                </Link>
-                                                <Link href={`/academic/subjects?setup=1&curriculum=${c.id}`}>
-                                                    <Button type="button" size="sm" variant="ghost">
-                                                        Manage subject offerings
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm text-gray-400">—</span>
-                                        )}
+                                        <span className="text-sm text-gray-500">{getCurriculumEngineLabel(c)}</span>
                                     </TableCell>
                                     <TableCell><RowActions curriculum={c} /></TableCell>
                                 </TableRow>
@@ -533,22 +521,7 @@ export function CurriculaPage() {
                                     <TableCell><span className="text-gray-600">{c.description || '—'}</span></TableCell>
                                     <TableCell><CurriculumLifecycleBadge status={c.offering_status} /></TableCell>
                                     <TableCell>
-                                        {getPluginSettingsHref(c) && getPluginActionLabel(c) ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                <Link href={getPluginSettingsHref(c) ?? pluginSettingsHeaderHref}>
-                                                    <Button type="button" size="sm" variant="secondary">
-                                                        Open curriculum settings
-                                                    </Button>
-                                                </Link>
-                                                <Link href={`/academic/subjects?setup=1&curriculum=${c.id}`}>
-                                                    <Button type="button" size="sm" variant="ghost">
-                                                        Manage subject offerings
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm text-gray-400">—</span>
-                                        )}
+                                        <span className="text-sm text-gray-500">{getCurriculumEngineLabel(c)}</span>
                                     </TableCell>
                                     <TableCell><RowActions curriculum={c} /></TableCell>
                                 </TableRow>

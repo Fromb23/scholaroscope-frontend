@@ -13,6 +13,14 @@ export const ACADEMIC_SETUP_STEP_ORDER: AcademicSetupStepKey[] = [
     'SCHEMES_OF_WORK',
 ];
 
+const ACADEMIC_SETUP_DISPLAY_LABELS: Partial<Record<AcademicSetupStepKey, string>> = {
+    ACADEMIC_YEAR: 'Set up academic year',
+};
+
+const ACADEMIC_SETUP_FALLBACK_LABELS: Record<string, string> = {
+    'Create current academic year': 'Set up academic year',
+};
+
 // TODO: Extend backend AcademicSetupStatus so current-year CBC senior cohorts without
 // `cbc_profile` or linked class subjects remain globally incomplete, not just on the cohort page.
 
@@ -85,6 +93,53 @@ export function getAcademicSetupStepHref(step: AcademicSetupStep): string {
     return withAcademicSetupMode(step.href);
 }
 
+export function getAcademicSetupDisplayLabel(
+    stepKey: AcademicSetupStepKey | null | undefined,
+    fallbackLabel: string | null | undefined,
+): string {
+    if (!stepKey) {
+        if (!fallbackLabel) {
+            return '';
+        }
+
+        return ACADEMIC_SETUP_FALLBACK_LABELS[fallbackLabel] ?? fallbackLabel;
+    }
+
+    return ACADEMIC_SETUP_DISPLAY_LABELS[stepKey]
+        ?? (fallbackLabel ? ACADEMIC_SETUP_FALLBACK_LABELS[fallbackLabel] ?? fallbackLabel : '');
+}
+
+export function getAcademicSetupCurrentStepDisplayLabel(
+    status: AcademicSetupStatus | null | undefined,
+): string | null {
+    if (!status) {
+        return null;
+    }
+
+    if (status.complete || !status.current_step) {
+        return getAcademicSetupDisplayLabel(undefined, status.current_step_label ?? status.next_action.label);
+    }
+
+    return getAcademicSetupDisplayLabel(
+        status.current_step,
+        status.current_step_label ?? status.next_action.label,
+    );
+}
+
+export function getAcademicSetupNextActionDisplayLabel(
+    status: AcademicSetupStatus | null | undefined,
+): string {
+    if (!status) {
+        return '';
+    }
+
+    if (status.complete) {
+        return status.next_action.label;
+    }
+
+    return getAcademicSetupDisplayLabel(status.current_step, status.next_action.label);
+}
+
 export function getAcademicSetupStepStatusLabel(status: AcademicSetupStep['status']): string {
     if (status === 'complete') return 'Complete';
     if (status === 'current') return 'Current';
@@ -109,7 +164,7 @@ export function getAcademicSetupLockedReason(
     ));
 
     if (previousIncomplete) {
-        return `Complete ${previousIncomplete.label.toLowerCase()} first.`;
+        return `Complete ${getAcademicSetupDisplayLabel(previousIncomplete.key, previousIncomplete.label).toLowerCase()} first.`;
     }
 
     return 'This step depends on earlier academic setup decisions.';
@@ -188,12 +243,14 @@ export function resolveAcademicSetupOrigin(
 export function getAcademicSetupCurrentStepNavItem(
     status: AcademicSetupStatus | null | undefined,
 ): { label: string; href: string } | null {
-    if (!status || status.complete || !status.current_step_label) {
+    const label = getAcademicSetupCurrentStepDisplayLabel(status);
+
+    if (!status || status.complete || !label) {
         return null;
     }
 
     return {
-        label: status.current_step_label,
+        label,
         href: status.next_action.href,
     };
 }
@@ -217,7 +274,9 @@ export function getAcademicSetupAvailableNavItems(
         ...status.steps
             .filter((step) => step.status === 'complete' || step.status === 'current' || step.status === 'pending')
             .map((step) => ({
-                label: step.key === 'SUBJECTS' ? 'Subjects / Offerings' : step.label,
+                label: step.key === 'SUBJECTS'
+                    ? 'Subjects / Offerings'
+                    : getAcademicSetupDisplayLabel(step.key, step.label),
                 href: getAcademicSetupStepHref(step),
             })),
     ];

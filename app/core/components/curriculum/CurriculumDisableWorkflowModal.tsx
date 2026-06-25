@@ -321,13 +321,11 @@ export function CurriculumDisableWorkflowModal({
     setError(null);
     setSuccessMessage(null);
     try {
-      const reactivated = await reactivateCurriculum.mutateAsync();
+      await reactivateCurriculum.mutateAsync();
       await refreshView();
       router.refresh();
       setSuccessMessage({
-        message: 'CBC has been reactivated. Review subject offerings before creating new academic work.',
-        href: `/academic/subjects?curriculum=${reactivated.id}`,
-        label: 'Review subject offerings',
+        message: `${curriculum.name} has been reactivated. Academic setup has been refreshed.`,
       });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Failed to reactivate curriculum.');

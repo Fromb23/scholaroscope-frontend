@@ -151,7 +151,7 @@ describe('admin navigation config', () => {
     ]);
     expect(nav.primary.at(-1)?.children?.map((item) => item.name)).toEqual([
       'Overview',
-      'Create current academic year',
+      'Set up academic year',
     ]);
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
   });
