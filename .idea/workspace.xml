@@ -5,40 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/AppErrorBanner.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/ErrorState.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/InlineActionError.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/NetworkErrorState.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/PermissionErrorState.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/RecoverableErrorCard.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/ValidationErrorSummary.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/errorPrimitives.test.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/components/ui/errors/index.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/errors/appError.test.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/errors/appError.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/errors/errorCopy.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/errors/fieldErrors.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/errors/index.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/errors/resolveAppError.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/core/errors/sanitizeServerMessage.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/check-error-copy.mjs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/admin/instructors/InstructorManagementPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/admin/instructors/InstructorManagementPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assignments/AssignmentCreateModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assignments/AssignmentCreateModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assignments/AssignmentPublishModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assignments/AssignmentPublishModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/LoginPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/RegisterPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/AdminInstructorReportsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/AdminInstructorReportsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/reports/ReportsPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/sessions/LessonReflectionCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/sessions/LessonReflectionCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useInstructors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useInstructors.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useRegister.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useRegister.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeDashboardPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeDashboardPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSetupPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/CambridgeSetupPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cambridge/pages/authoringUtils.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cambridge/pages/authoringUtils.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/plugins/cbc/components/CBCComponents.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/plugins/cbc/components/CBCComponents.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/academic.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/subjects/SubjectsPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/academic.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/academic.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,7 +16,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="827" />
+    <option name="cachedIndexableFilesCount" value="846" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -277,6 +247,8 @@
       <workItem from="1782112749988" duration="4027000" />
       <workItem from="1782236492097" duration="3299000" />
       <workItem from="1782281279285" duration="1447000" />
+      <workItem from="1782333208192" duration="601000" />
+      <workItem from="1782375925946" duration="432000" />
     </task>
     <servers />
   </component>
@@ -294,7 +266,6 @@
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/app/components/ui/errors/AppErrorBanner.tsx</url>
           <line>2</line>
-          <properties lambdaOrdinal="-1" />
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>

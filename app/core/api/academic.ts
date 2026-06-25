@@ -364,11 +364,25 @@ export const subjectOfferingAPI = {
     return response.data;
   },
 
-  remove: async (offeringId: string): Promise<{ detail?: string; code?: string }> => {
-    const response = await apiClient.delete<{ detail?: string; code?: string }>(
+  remove: async (
+    offeringId: string,
+    curriculumId?: number,
+  ): Promise<{ detail?: string; code?: string; drop_request_id?: number }> => {
+    const response = await apiClient.delete<{ detail?: string; code?: string; drop_request_id?: number }>(
       `/academic/subject-offerings/${encodeURIComponent(offeringId)}/`,
+      {
+        params: curriculumId ? { curriculum: curriculumId } : undefined,
+      },
     );
     return response.data ?? {};
+  },
+
+  restore: async (offeringId: string, curriculumId?: number): Promise<SubjectCatalogItem> => {
+    const response = await apiClient.post<SubjectCatalogItem>(
+      `/academic/subject-offerings/${encodeURIComponent(offeringId)}/restore/`,
+      curriculumId ? { curriculum: curriculumId } : undefined,
+    );
+    return response.data;
   },
 };
 

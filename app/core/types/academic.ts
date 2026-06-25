@@ -480,22 +480,48 @@ export interface SubjectCatalogItem {
   id: string;
   source: string;
   curriculum: number;
+  curriculum_id?: number;
   catalog_subject_id: string;
+  catalogue_profile_id?: number;
   code: string;
+  subject_code?: string;
   name: string;
+  title?: string;
   level: string;
   description: string;
   offered: boolean;
   offering_id: string | null;
+  org_subject_id?: number | null;
   cohort_assignment_count: number;
+  status?: SubjectOfferingCatalogStatus;
   plugin_key?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: SubjectCatalogMetadata;
 }
 
 export interface SubjectOfferingMutationPayload {
   curriculum: number;
   catalog_subject_id: string;
   level?: string;
+}
+
+export type SubjectOfferingCatalogStatus =
+  | 'AVAILABLE'
+  | 'OFFERED'
+  | 'DROP_SCHEDULED'
+  | 'DROP_PENDING_TERM_CLOSE'
+  | 'DROPPED_HISTORICAL';
+
+export interface SubjectCatalogMetadata {
+  subject_profile_id?: number;
+  catalogue_profile_id?: number;
+  offering_status?: SubjectOfferingCatalogStatus;
+  drop_scheduled?: boolean;
+  drop_request_id?: number | null;
+  can_offer?: boolean;
+  can_remove?: boolean;
+  can_restore?: boolean;
+  status_label?: string;
+  [key: string]: unknown;
 }
 
 // Cohort
