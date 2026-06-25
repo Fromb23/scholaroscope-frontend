@@ -518,7 +518,8 @@ interface InstalledPluginCardProps {
     curriculum: Curriculum | null;
     activeDisableRequest: CurriculumDisableRequest | null;
     latestDisableRequest: CurriculumDisableRequest | null;
-    academicSetupMode?: boolean;
+    shouldShowAcademicYearHandoff?: boolean;
+    shouldSuppressCurriculumManagement?: boolean;
     academicYearSetupHref?: string;
     onToggle: (id: number) => void;
     onWorkflowChanged: () => Promise<void>;
@@ -532,7 +533,8 @@ export function InstalledPluginCard({
     curriculum,
     activeDisableRequest,
     latestDisableRequest,
-    academicSetupMode = false,
+    shouldShowAcademicYearHandoff = false,
+    shouldSuppressCurriculumManagement = false,
     academicYearSetupHref = '/academic/years?setup=1&create=1',
     onToggle,
     onWorkflowChanged,
@@ -566,13 +568,6 @@ export function InstalledPluginCard({
         curriculum,
         activeDisableRequestStatus: activeDisableRequest?.status ?? null,
     });
-    const showAcademicSetupHandoff = Boolean(
-        academicSetupMode
-        && isCurriculumManagedPlugin
-        && isActive
-        && curriculum?.is_active
-        && curriculum.offering_status === 'ACTIVE'
-    );
     const workflowButtonLabel = (() => {
         if (!curriculum) {
             return 'Manage lifecycle';
@@ -663,7 +658,7 @@ export function InstalledPluginCard({
                             </div>
                         ) : null}
 
-                        {showAcademicSetupHandoff ? (
+                        {shouldShowAcademicYearHandoff ? (
                             <div className="theme-card-muted mt-3 rounded-lg border border-gray-200 p-3">
                                 <div className="space-y-3">
                                     <div className="space-y-1">
@@ -688,7 +683,7 @@ export function InstalledPluginCard({
                             </div>
                         ) : (
                             <div className="mt-2 flex flex-wrap gap-3">
-                                {PluginModal && canManagePluginCurriculum ? (
+                                {PluginModal && canManagePluginCurriculum && !shouldSuppressCurriculumManagement ? (
                                     <button
                                         onClick={openCurriculum}
                                         className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
@@ -698,7 +693,7 @@ export function InstalledPluginCard({
                                         <ChevronRight className="h-3 w-3" />
                                     </button>
                                 ) : null}
-                                {curriculum && !academicSetupMode ? (
+                                {curriculum && !shouldSuppressCurriculumManagement ? (
                                     <NextLink
                                         href={`/academic/subjects?setup=1&curriculum=${curriculum.id}`}
                                         className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
@@ -794,6 +789,8 @@ export function PluginsTab() {
     const pluginQuery = searchParams.get('plugin')?.trim().toLowerCase() ?? '';
     const curriculumQuery = searchParams.get('curriculum') ?? '';
     const academicYearSetupHref = getAcademicYearSetupHref(setupStatusQuery.data);
+    const setupStatus = setupStatusQuery.data ?? null;
+    const setupIncomplete = Boolean(setupStatus && !setupStatus.complete);
     const backLink = academicSetupMode
         ? { href: '/academic?setup=1', label: 'Back to setup overview' }
         : fromQuery === 'curricula'
@@ -928,30 +925,44 @@ export function PluginsTab() {
                 <div className="space-y-2">
                     {corePlugins.length === 0
                         ? <p className="text-sm text-gray-400 py-4 text-center">No core plugins</p>
-                        : corePlugins.map(p => (
-                            <InstalledPluginCard
-                                key={p.id}
-                                plugin={p}
-                                curriculum={curriculumByPluginId.get(p.id) ?? null}
-                                activeDisableRequest={(() => {
-                                    const curriculum = curriculumByPluginId.get(p.id);
-                                    return curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
-                                })()}
-                                latestDisableRequest={(() => {
-                                    const curriculum = curriculumByPluginId.get(p.id);
-                                    return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
-                                })()}
-                                academicSetupMode={academicSetupMode}
-                                academicYearSetupHref={academicYearSetupHref}
-                                onToggle={handleToggle}
-                                onWorkflowChanged={handleWorkflowChanged}
-                                toggling={toggling}
-                                highlighted={highlightedPluginKey === p.key}
-                                containerRef={(node) => {
-                                    pluginCardRefs.current[p.key] = node;
-                                }}
-                            />
-                        ))
+                        : corePlugins.map(p => {
+                            const curriculum = curriculumByPluginId.get(p.id) ?? null;
+                            const isCurriculumManagedPlugin = isCurriculumPlugin(p) && Boolean(curriculum);
+                            const isActive = p.state === 'active' || p.is_active;
+                            const shouldSuppressCurriculumManagement = Boolean(
+                                academicSetupMode
+                                && setupIncomplete
+                                && isCurriculumManagedPlugin
+                            );
+                            const shouldShowAcademicYearHandoff = Boolean(
+                                shouldSuppressCurriculumManagement
+                                && setupStatus?.current_step === 'ACADEMIC_YEAR'
+                                && setupStatus.has_current_academic_year === false
+                                && isActive
+                                && curriculum?.is_active
+                                && curriculum.offering_status === 'ACTIVE'
+                            );
+
+                            return (
+                                <InstalledPluginCard
+                                    key={p.id}
+                                    plugin={p}
+                                    curriculum={curriculum}
+                                    activeDisableRequest={curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
+                                    latestDisableRequest={curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
+                                    shouldShowAcademicYearHandoff={shouldShowAcademicYearHandoff}
+                                    shouldSuppressCurriculumManagement={shouldSuppressCurriculumManagement}
+                                    academicYearSetupHref={academicYearSetupHref}
+                                    onToggle={handleToggle}
+                                    onWorkflowChanged={handleWorkflowChanged}
+                                    toggling={toggling}
+                                    highlighted={highlightedPluginKey === p.key}
+                                    containerRef={(node) => {
+                                        pluginCardRefs.current[p.key] = node;
+                                    }}
+                                />
+                            );
+                        })
                     }
                 </div>
             </div>
@@ -967,30 +978,44 @@ export function PluginsTab() {
                             <Puzzle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                             <p className="text-sm text-gray-500">No optional plugins installed.</p>
                         </div>
-                    ) : optionalPlugins.map(p => (
-                        <InstalledPluginCard
-                            key={p.id}
-                            plugin={p}
-                            curriculum={curriculumByPluginId.get(p.id) ?? null}
-                            activeDisableRequest={(() => {
-                                const curriculum = curriculumByPluginId.get(p.id);
-                                return curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
-                            })()}
-                            latestDisableRequest={(() => {
-                                const curriculum = curriculumByPluginId.get(p.id);
-                                return curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null;
-                            })()}
-                            academicSetupMode={academicSetupMode}
-                            academicYearSetupHref={academicYearSetupHref}
-                            onToggle={handleToggle}
-                            onWorkflowChanged={handleWorkflowChanged}
-                            toggling={toggling}
-                            highlighted={highlightedPluginKey === p.key}
-                            containerRef={(node) => {
-                                pluginCardRefs.current[p.key] = node;
-                            }}
-                        />
-                    ))}
+                    ) : optionalPlugins.map(p => {
+                        const curriculum = curriculumByPluginId.get(p.id) ?? null;
+                        const isCurriculumManagedPlugin = isCurriculumPlugin(p) && Boolean(curriculum);
+                        const isActive = p.state === 'active' || p.is_active;
+                        const shouldSuppressCurriculumManagement = Boolean(
+                            academicSetupMode
+                            && setupIncomplete
+                            && isCurriculumManagedPlugin
+                        );
+                        const shouldShowAcademicYearHandoff = Boolean(
+                            shouldSuppressCurriculumManagement
+                            && setupStatus?.current_step === 'ACADEMIC_YEAR'
+                            && setupStatus.has_current_academic_year === false
+                            && isActive
+                            && curriculum?.is_active
+                            && curriculum.offering_status === 'ACTIVE'
+                        );
+
+                        return (
+                            <InstalledPluginCard
+                                key={p.id}
+                                plugin={p}
+                                curriculum={curriculum}
+                                activeDisableRequest={curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
+                                latestDisableRequest={curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
+                                shouldShowAcademicYearHandoff={shouldShowAcademicYearHandoff}
+                                shouldSuppressCurriculumManagement={shouldSuppressCurriculumManagement}
+                                academicYearSetupHref={academicYearSetupHref}
+                                onToggle={handleToggle}
+                                onWorkflowChanged={handleWorkflowChanged}
+                                toggling={toggling}
+                                highlighted={highlightedPluginKey === p.key}
+                                containerRef={(node) => {
+                                    pluginCardRefs.current[p.key] = node;
+                                }}
+                            />
+                        );
+                    })}
                 </div>
             </div>
         </div>
