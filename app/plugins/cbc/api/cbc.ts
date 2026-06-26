@@ -552,4 +552,21 @@ export const cbcAPI = {
     );
     return response.data;
   },
+
+  computeAssessmentReportResults: async (payload: {
+    source?: 'class_configuration' | 'institution_governance';
+    term: number;
+    cohort?: number;
+    cohort_subject?: number;
+    cbc_cohort_subject?: number;
+  }): Promise<{
+    detail: string;
+    computed_count: number;
+    term: string;
+    class_scoped_only: boolean;
+    errors: string[];
+  }> => {
+    const response = await apiClient.post('/cbc/assessment-report-results/compute/', payload);
+    return response.data;
+  },
 };

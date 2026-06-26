@@ -29,6 +29,19 @@ export interface WorkspaceCapabilities {
   is_workspace_owner: boolean;
   workspace_mode: string | null;
   workspace_behavior: string | null;
+  can_manage_report_policy?: boolean;
+  report_policy_mode?: 'INSTITUTION_GOVERNANCE' | 'CLASS_CONFIGURATION' | string | null;
+  report_computation_class_scoped_only?: boolean;
+  can_author_report_subject_profile?: boolean;
+  report_configuration?: {
+    report_policy_available: boolean;
+    report_policy_mode: 'INSTITUTION_GOVERNANCE' | 'CLASS_CONFIGURATION' | string | null;
+    report_computation_available: boolean;
+    report_computation_class_scoped_only: boolean;
+    subject_profile_authoring_allowed: boolean;
+    reporting_governance_routes_allowed: boolean;
+    allowed_policy_scopes: string[];
+  };
 }
 
 export interface AccessNotice {

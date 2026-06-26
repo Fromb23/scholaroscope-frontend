@@ -2,13 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
@@ -24,21 +23,42 @@ import {
     buildCbcSubjectProfileOptions,
 } from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
 import { useCbcReportPolicies } from '@/app/plugins/cbc/hooks/useCbcReportPolicies';
-import type { CbcReportPolicy } from '@/app/plugins/cbc/types/reportPolicy';
+import type { CbcReportPolicy, CbcReportPolicyFilters, PolicyAuthoringMode } from '@/app/plugins/cbc/types/reportPolicy';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
 
-export function CbcReportPoliciesPage() {
-    const { user, activeRole, loading: authLoading } = useAuth();
-    const canManagePolicies = isAdminOrAbove(user, activeRole);
+interface CbcReportPoliciesPageProps {
+    authoringMode?: PolicyAuthoringMode;
+    cohortId?: number | null;
+    lockedCohortSubjectId?: number | null;
+    lockedKernelCohortSubjectId?: number | null;
+    returnTo?: string | null;
+    backLabel?: string;
+    title?: string;
+    description?: string;
+}
+
+export function CbcReportPoliciesPage({
+    authoringMode = 'INSTITUTION_GOVERNANCE',
+    cohortId = null,
+    lockedCohortSubjectId = null,
+    lockedKernelCohortSubjectId = null,
+    returnTo = null,
+    backLabel = 'Back',
+    title,
+    description,
+}: CbcReportPoliciesPageProps = {}) {
+    const { user, capabilities, loading: authLoading } = useAuth();
+    const canManagePolicies = canManageCbcReportPolicyAuthoring({
+        user,
+        capabilities,
+        authoringMode,
+    });
     const [showModal, setShowModal] = useState(false);
     const [editingPolicy, setEditingPolicy] = useState<CbcReportPolicy | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
 
-    const { policies, loading, error, refetch, deletePolicy } = useCbcReportPolicies(
-        undefined,
-        { enabled: canManagePolicies },
-    );
     const { cohorts } = useCohorts();
     const { curricula } = useCurricula();
     const { plugins } = usePlugins();
@@ -63,6 +83,39 @@ export function CbcReportPoliciesPage() {
         () => buildCbcCohortSubjectOptions(cohortSubjects),
         [cohortSubjects],
     );
+    const cohortOptions = useMemo(
+        () => cohorts.map((cohort) => ({
+            id: cohort.id,
+            label: cohort.name,
+        })),
+        [cohorts],
+    );
+    const lockedCohortSubject = useMemo(() => (
+        cohortSubjectOptions.find((subject) => (
+            subject.id === lockedCohortSubjectId
+            || subject.cohortSubjectId === lockedKernelCohortSubjectId
+        )) ?? null
+    ), [cohortSubjectOptions, lockedCohortSubjectId, lockedKernelCohortSubjectId]);
+    const resolvedLockedCohortSubjectId = lockedCohortSubject?.id ?? lockedCohortSubjectId ?? null;
+    const filters = useMemo<CbcReportPolicyFilters | undefined>(() => {
+        if (authoringMode === 'CLASS_SUBJECT_SETUP' && resolvedLockedCohortSubjectId) {
+            return { cbc_cohort_subject: resolvedLockedCohortSubjectId };
+        }
+        if (authoringMode === 'CLASS_SETUP' && cohortId) {
+            return { cohort: cohortId };
+        }
+        if (authoringMode === 'WORKSPACE_POLICY') {
+            return { is_default: true };
+        }
+        return undefined;
+    }, [authoringMode, cohortId, resolvedLockedCohortSubjectId]);
+    const { policies, loading, error, refetch, deletePolicy } = useCbcReportPolicies(
+        filters,
+        {
+            enabled: canManagePolicies
+                && (authoringMode !== 'CLASS_SUBJECT_SETUP' || Boolean(resolvedLockedCohortSubjectId)),
+        },
+    );
     const termOptions = useMemo(
         () => terms.map((term) => ({
             id: term.id,
@@ -74,6 +127,11 @@ export function CbcReportPoliciesPage() {
         () => policies.find((policy) => policy.is_default) ?? null,
         [policies],
     );
+    const isInstitutionGovernance = authoringMode === 'INSTITUTION_GOVERNANCE';
+    const createButtonLabel = isInstitutionGovernance ? 'New CBC Report Policy' : 'New Report Setup';
+    const authoringNotice = isInstitutionGovernance
+        ? 'Assessment pages preview CBC policy context and link here for policy authoring. They do not create or edit CBC policies inline.'
+        : 'Class report setup is saved against this class workspace context.';
 
     const handleOpen = (policy?: CbcReportPolicy) => {
         if (!canManagePolicies) return;
@@ -110,7 +168,7 @@ export function CbcReportPoliciesPage() {
     }
 
     if (!canManagePolicies) {
-        return <PolicyAdminOnlyState title="CBC Report Policies" />;
+        return <PolicyAdminOnlyState title={title ?? 'CBC Report Policies'} />;
     }
 
     if (loading && !policies.length) {
@@ -121,9 +179,9 @@ export function CbcReportPoliciesPage() {
         return (
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">CBC Report Policies</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">{title ?? 'CBC Report Policies'}</h1>
                     <p className="mt-1 text-gray-500">
-                        CBC report policies are only available when the CBC plugin and CBC curriculum are active.
+                        {description ?? 'CBC report policies are only available when the CBC plugin and CBC curriculum are active.'}
                     </p>
                 </div>
                 <Card className="max-w-3xl">
@@ -131,9 +189,15 @@ export function CbcReportPoliciesPage() {
                         <p className="text-sm text-gray-600">
                             This organization does not currently expose the CBC report policy surface.
                         </p>
-                        <Link href="/reports/policies">
-                            <Button variant="secondary">Open Policy Hub</Button>
-                        </Link>
+                        {isInstitutionGovernance ? (
+                            <Link href="/reports/policies">
+                                <Button variant="secondary">Open Policy Hub</Button>
+                            </Link>
+                        ) : returnTo ? (
+                            <Link href={returnTo}>
+                                <Button variant="secondary">Back to workspace</Button>
+                            </Link>
+                        ) : null}
                     </div>
                 </Card>
             </div>
@@ -142,23 +206,31 @@ export function CbcReportPoliciesPage() {
 
     return (
         <div className="space-y-6">
+            {returnTo ? (
+                <Link href={returnTo}>
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        {backLabel}
+                    </Button>
+                </Link>
+            ) : null}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">CBC Report Policies</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">{title ?? 'CBC Report Policies'}</h1>
                     <p className="mt-1 text-gray-500">
-                        Plugin-owned policy authoring for CBC report interpretation.
+                        {description ?? 'Plugin-owned policy authoring for CBC report interpretation.'}
                     </p>
                 </div>
                 {canManagePolicies && (
                     <Button onClick={() => handleOpen()}>
                         <Plus className="mr-1.5 h-4 w-4" />
-                        New CBC Report Policy
+                        {createButtonLabel}
                     </Button>
                 )}
             </div>
 
             <div className="rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800">
-                Assessment pages preview CBC policy context and link here for policy authoring. They do not create or edit CBC policies inline.
+                {authoringNotice}
             </div>
 
             {error && (
@@ -182,7 +254,12 @@ export function CbcReportPoliciesPage() {
                 <CbcReportPolicyFormModal
                     editingPolicy={editingPolicy}
                     defaultPolicy={editingPolicy ? null : defaultPolicy}
+                    authoringMode={authoringMode}
+                    lockedCohortId={cohortId}
+                    lockedCohortSubjectId={resolvedLockedCohortSubjectId}
+                    lockedCohortSubjectLabel={lockedCohortSubject?.label ?? null}
                     subjectProfiles={subjectProfileOptions}
+                    cohorts={cohortOptions}
                     cohortSubjects={cohortSubjectOptions}
                     terms={termOptions}
                     onSuccess={handleSuccess}
