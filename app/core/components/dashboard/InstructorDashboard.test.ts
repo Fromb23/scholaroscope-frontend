@@ -30,6 +30,12 @@ describe('freelance dashboard quick actions', () => {
     ]);
   });
 
+  it('keeps lesson preparation primary and learners secondary', () => {
+    expect(getFreelanceDashboardPrimaryActions().map((action) => action.label)).toContain('Lesson preparations');
+    expect(getFreelanceDashboardPrimaryActions().map((action) => action.label)).not.toContain('Learners');
+    expect(getFreelanceDashboardMoreActions().map((action) => action.label)).toContain('Learners');
+  });
+
   it('hides lower-priority primary actions on mobile while preserving a More menu', () => {
     const source = readFileSync(
       join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
