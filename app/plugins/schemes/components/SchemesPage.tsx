@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { useCurricula, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useSchemes } from '@/app/core/hooks/useSchemes';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
@@ -274,10 +275,12 @@ export function SchemesPage() {
     && capabilities.workspace_behavior === 'FREELANCE_TEACHER',
   );
   const isInstitutionalAdminSupervisor = isAdminLike && !isInstructor && !canUseTeacherModeAsAdmin;
+  const instructorAccess = useInstructorCohortAccess();
   const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
   const [groupingMode, setGroupingMode] = useState<AdminGroupingMode>('class');
   const [search, setSearch] = useState('');
   const [termFilter, setTermFilter] = useState('');
+  const [cohortSubjectFilter, setCohortSubjectFilter] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [cohortFilter, setCohortFilter] = useState('');
   const [instructorFilter, setInstructorFilter] = useState('');
@@ -297,13 +300,62 @@ export function SchemesPage() {
     const parsed = Number(instructorFilter.slice(3));
     return Number.isFinite(parsed) ? parsed : undefined;
   }, [instructorFilter]);
+  const safeReturnTo = useMemo(() => {
+    const value = searchParams.get('returnTo');
+    return value?.startsWith('/') ? value : null;
+  }, [searchParams]);
+  const effectiveMyTeachingMode = isInstructor || viewMode === 'my_teaching';
+  const assignedCohortSubjectOptions = useMemo(() => (
+    Array.from(
+      new Map(
+        instructorAccess.assignments
+          .filter((assignment) => (
+            typeof assignment.cohort_subject_id === 'number'
+            && assignment.subject_offering_status !== 'DROPPED_HISTORICAL'
+          ))
+          .map((assignment) => [
+            assignment.cohort_subject_id,
+            {
+              id: assignment.cohort_subject_id as number,
+              cohortId: assignment.cohort_id,
+              cohortName: assignment.cohort_name,
+              label: `${assignment.cohort_name} - ${assignment.subject_name}`,
+            },
+          ])
+      ).values()
+    ).sort((left, right) => left.label.localeCompare(right.label))
+  ), [instructorAccess.assignments]);
+  const visibleAssignedCohortSubjectOptions = useMemo(
+    () => assignedCohortSubjectOptions.filter((option) => (
+      !cohortFilter || String(option.cohortId) === cohortFilter
+    )),
+    [assignedCohortSubjectOptions, cohortFilter]
+  );
+  const availableCohorts = useMemo(() => {
+    if (!effectiveMyTeachingMode) {
+      return cohorts;
+    }
+
+    return Array.from(
+      new Map(
+        assignedCohortSubjectOptions.map((option) => [
+          option.cohortId,
+          {
+            id: option.cohortId,
+            name: option.cohortName,
+          },
+        ])
+      ).values()
+    ).sort((left, right) => left.name.localeCompare(right.name));
+  }, [assignedCohortSubjectOptions, cohorts, effectiveMyTeachingMode]);
   const schemeFilters = useMemo(() => ({
     term: toOptionalNumber(termFilter),
+    cohort_subject: toOptionalNumber(cohortSubjectFilter),
     subject: toOptionalNumber(subjectFilter),
     teacher: isInstructor || viewMode === 'my_teaching'
       ? user?.id
       : selectedInstructorId,
-  }), [isInstructor, selectedInstructorId, subjectFilter, termFilter, user?.id, viewMode]);
+  }), [cohortSubjectFilter, isInstructor, selectedInstructorId, subjectFilter, termFilter, user?.id, viewMode]);
   const { schemes, loading, error, downloadSchemeDocx, downloadSchemeCsv } = useSchemes(schemeFilters);
   const showCreateDraft = isInstructor || (canUseTeacherModeAsAdmin && viewMode === 'my_teaching');
   const createButtonLabel = isInstructor || viewMode === 'my_teaching'
@@ -316,15 +368,19 @@ export function SchemesPage() {
       : 'Admin supervision shows organization work by class, instructor, and subject.';
 
   useEffect(() => {
+    const requestedCohortSubject = searchParams.get('cohort_subject');
     const requestedSubject = searchParams.get('subject');
     const requestedCohort = searchParams.get('cohort');
+    if (requestedCohortSubject && requestedCohortSubject !== cohortSubjectFilter) {
+      setCohortSubjectFilter(requestedCohortSubject);
+    }
     if (requestedSubject && requestedSubject !== subjectFilter) {
       setSubjectFilter(requestedSubject);
     }
     if (requestedCohort && requestedCohort !== cohortFilter) {
       setCohortFilter(requestedCohort);
     }
-  }, [cohortFilter, searchParams, subjectFilter]);
+  }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter]);
 
   useEffect(() => {
     if (canUseTeacherModeAsAdmin && viewMode !== 'my_teaching') {
@@ -381,6 +437,10 @@ export function SchemesPage() {
         return false;
       }
 
+      if (cohortSubjectFilter && String(scheme.cohort_subject ?? '') !== cohortSubjectFilter) {
+        return false;
+      }
+
       if (isAdminLike && viewMode === 'admin_supervision' && instructorFilter) {
         if (instructorFilter.startsWith('id:')) {
           return String(scheme.teacher ?? '') === instructorFilter.slice(3);
@@ -393,8 +453,25 @@ export function SchemesPage() {
 
       return true;
     }),
-    [cohortFilter, instructorFilter, isAdminLike, schemes, search, viewMode],
+    [cohortFilter, cohortSubjectFilter, instructorFilter, isAdminLike, schemes, search, viewMode],
   );
+  const workspaceHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (termFilter) params.set('term', termFilter);
+    if (cohortSubjectFilter) params.set('cohort_subject', cohortSubjectFilter);
+    if (subjectFilter) params.set('subject', subjectFilter);
+    if (cohortFilter) params.set('cohort', cohortFilter);
+    if (safeReturnTo) params.set('returnTo', safeReturnTo);
+    const query = params.toString();
+    return query ? `/schemes?${query}` : '/schemes';
+  }, [cohortFilter, cohortSubjectFilter, safeReturnTo, subjectFilter, termFilter]);
+  const createSchemeHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (cohortSubjectFilter) params.set('cohort_subject', cohortSubjectFilter);
+    if (termFilter) params.set('term', termFilter);
+    params.set('returnTo', workspaceHref);
+    return `/schemes/new?${params.toString()}`;
+  }, [cohortSubjectFilter, termFilter, workspaceHref]);
 
   const multipleActiveCurricula = useMemo(() => {
     const activeCount = curricula.filter((curriculum) => curriculum.is_active).length;
@@ -477,7 +554,7 @@ export function SchemesPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold theme-text">
-            {isInstructor
+            {effectiveMyTeachingMode
               ? 'My Schemes of Work'
               : isInstitutionalAdminSupervisor
                 ? 'Schemes of Work Supervision'
@@ -485,8 +562,15 @@ export function SchemesPage() {
           </h1>
           <p className="mt-1 text-sm theme-subtle">{subtitle}</p>
         </div>
+        {safeReturnTo ? (
+          <Link href={safeReturnTo}>
+            <Button type="button" variant="ghost" size="sm">
+              Back
+            </Button>
+          </Link>
+        ) : null}
         {showCreateDraft ? (
-          <Link href="/schemes/new">
+          <Link href={createSchemeHref}>
             <Button type="button">
               <Plus className="h-4 w-4" />
               {createButtonLabel}
@@ -595,22 +679,37 @@ export function SchemesPage() {
               ...terms.map((term) => ({ value: String(term.id), label: term.name })),
             ]}
           />
-          <Select
-            label="Subject"
-            value={subjectFilter}
-            onChange={(event) => setSubjectFilter(event.target.value)}
-            options={[
-              { value: '', label: 'All subjects' },
-              ...subjects.map((subject) => ({ value: String(subject.id), label: subject.name })),
-            ]}
-          />
+          {effectiveMyTeachingMode ? (
+            <Select
+              label="Class subject"
+              value={cohortSubjectFilter}
+              onChange={(event) => setCohortSubjectFilter(event.target.value)}
+              options={[
+                { value: '', label: 'All class subjects' },
+                ...visibleAssignedCohortSubjectOptions.map((option) => ({
+                  value: String(option.id),
+                  label: option.label,
+                })),
+              ]}
+            />
+          ) : (
+            <Select
+              label="Subject"
+              value={subjectFilter}
+              onChange={(event) => setSubjectFilter(event.target.value)}
+              options={[
+                { value: '', label: 'All subjects' },
+                ...subjects.map((subject) => ({ value: String(subject.id), label: subject.name })),
+              ]}
+            />
+          )}
           <Select
             label="Class"
             value={cohortFilter}
             onChange={(event) => setCohortFilter(event.target.value)}
             options={[
               { value: '', label: 'All classes' },
-              ...cohorts.map((cohort) => ({ value: String(cohort.id), label: cohort.name })),
+              ...availableCohorts.map((cohort) => ({ value: String(cohort.id), label: cohort.name })),
             ]}
           />
           {isAdminLike && viewMode === 'admin_supervision' ? (
@@ -634,7 +733,7 @@ export function SchemesPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold theme-text">
-              {search || termFilter || subjectFilter || cohortFilter || (viewMode === 'admin_supervision' && instructorFilter)
+              {search || termFilter || cohortSubjectFilter || subjectFilter || cohortFilter || (viewMode === 'admin_supervision' && instructorFilter)
                 ? 'No schemes match these filters'
                 : 'No schemes created yet'}
             </h2>
@@ -648,7 +747,7 @@ export function SchemesPage() {
           </div>
           {showCreateDraft ? (
             <div className="flex justify-center">
-              <Link href="/schemes/new">
+              <Link href={createSchemeHref}>
                 <Button type="button">
                   <Plus className="h-4 w-4" />
                   {createButtonLabel}

@@ -84,6 +84,10 @@ export function GenerateLessonPlanPage() {
     } | null>(null);
     const requestedCohortSubjectId = searchParams.get('cohort_subject');
     const requestedTermId = searchParams.get('term');
+    const safeReturnTo = useMemo(() => {
+        const value = searchParams.get('returnTo');
+        return value?.startsWith('/') ? value : null;
+    }, [searchParams]);
 
     const selectedCohortSubjectId = cohortSubjectId ? Number(cohortSubjectId) : null;
     const selectedTermId = termId ? Number(termId) : null;
@@ -355,7 +359,12 @@ export function GenerateLessonPlanPage() {
                     : 'rule-based';
 
             router.push(
-                `/lesson-plans/${generated.lesson_plan.id}?notice=${generated.created ? 'generated' : 'existing'}&mode=${generationMode}&references=${generated.selected_references_count}`
+                `/lesson-plans/${generated.lesson_plan.id}?${new URLSearchParams({
+                    notice: generated.created ? 'generated' : 'existing',
+                    mode: generationMode,
+                    references: String(generated.selected_references_count),
+                    returnTo: safeReturnTo ?? '/lesson-plans',
+                }).toString()}`
             );
         } catch (submitError) {
             const message = submitError instanceof Error
@@ -405,7 +414,7 @@ export function GenerateLessonPlanPage() {
     return (
         <div className="space-y-6 pb-32 md:pb-0">
             <div className="space-y-3">
-                <Link href="/lesson-plans">
+                <Link href={safeReturnTo ?? '/lesson-plans'}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back

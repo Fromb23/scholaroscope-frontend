@@ -16,6 +16,7 @@ export interface LessonPlanQueryParams {
     search?: string;
     status?: LessonPlanStatus;
     term?: number;
+    cohort_subject?: number;
     subject?: number;
     cohort?: number;
     session?: number;

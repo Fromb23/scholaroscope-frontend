@@ -210,6 +210,10 @@ export function LessonPlanDetailPage() {
     const searchParams = useSearchParams();
     const { activeOrg, activeRole, user, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const safeReturnTo = useMemo(() => {
+        const value = searchParams.get('returnTo');
+        return value?.startsWith('/') ? value : null;
+    }, [searchParams]);
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -1005,10 +1009,10 @@ export function LessonPlanDetailPage() {
     return (
         <div className="space-y-6">
             <div className="space-y-3">
-                <Link href="/lesson-plans">
+                <Link href={safeReturnTo ?? '/lesson-plans'}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        {isInstructor ? 'Back to Lesson Preparation' : 'Back'}
+                        {safeReturnTo ? 'Back' : (isInstructor ? 'Back to Lesson Preparation' : 'Back')}
                     </Button>
                 </Link>
 

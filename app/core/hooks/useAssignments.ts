@@ -95,11 +95,11 @@ function toIdSet(idsKey: string): Set<number> {
 }
 
 function ensureInstructorCohortSubjectAccess(
-    isInstructor: boolean,
+    isTeachingActor: boolean,
     allowedCohortSubjectIds: Set<number>,
     cohortSubjectId: number | null | undefined
 ) {
-    if (!isInstructor) return;
+    if (!isTeachingActor) return;
 
     if (typeof cohortSubjectId !== 'number' || !allowedCohortSubjectIds.has(cohortSubjectId)) {
         throw new Error(
@@ -201,7 +201,7 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
         () => toIdSet(instructorAccess.cohortSubjectIdsKey),
         [instructorAccess.cohortSubjectIdsKey]
     );
-    const accessReady = !instructorAccess.isInstructor || !instructorAccess.isLoading;
+    const accessReady = !instructorAccess.isTeachingActor || !instructorAccess.isLoading;
 
     const query = useQuery<{ assignments: Assignment[]; totalCount: number }, Error>({
         queryKey: assignmentKeys.list(normalizedFilters),
@@ -209,13 +209,13 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
             try {
                 const response = await assignmentsAPI.list(normalizedFilters as AssignmentFilters);
                 const items = unwrapList(response);
-                const scopedItems = instructorAccess.isInstructor
+                const scopedItems = instructorAccess.isTeachingActor
                     ? items.filter((assignment) => allowedCohortSubjectIds.has(assignment.cohort_subject))
                     : items;
 
                 return {
                     assignments: scopedItems,
-                    totalCount: instructorAccess.isInstructor ? scopedItems.length : unwrapCount(response),
+                    totalCount: instructorAccess.isTeachingActor ? scopedItems.length : unwrapCount(response),
                 };
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignments.'));
@@ -228,7 +228,7 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
     return {
         assignments: query.data?.assignments ?? [],
         totalCount: query.data?.totalCount ?? 0,
-        loading: query.isLoading || (enabled && instructorAccess.isInstructor && instructorAccess.isLoading),
+        loading: query.isLoading || (enabled && instructorAccess.isTeachingActor && instructorAccess.isLoading),
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };
@@ -241,7 +241,7 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
         () => toIdSet(instructorAccess.cohortSubjectIdsKey),
         [instructorAccess.cohortSubjectIdsKey]
     );
-    const accessReady = !instructorAccess.isInstructor || !instructorAccess.isLoading;
+    const accessReady = !instructorAccess.isTeachingActor || !instructorAccess.isLoading;
 
     const query = useQuery<Assignment, Error>({
         queryKey: assignmentKeys.detail(assignmentId),
@@ -253,7 +253,7 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
             try {
                 const assignment = await assignmentsAPI.getById(assignmentId);
                 ensureInstructorCohortSubjectAccess(
-                    instructorAccess.isInstructor,
+                    instructorAccess.isTeachingActor,
                     allowedCohortSubjectIds,
                     assignment.cohort_subject
                 );
@@ -268,7 +268,7 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
 
     return {
         assignment: query.data ?? null,
-        loading: query.isLoading || (enabled && instructorAccess.isInstructor && instructorAccess.isLoading),
+        loading: query.isLoading || (enabled && instructorAccess.isTeachingActor && instructorAccess.isLoading),
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };
@@ -723,7 +723,7 @@ export function useCreateAssignment() {
     return useMutation({
         mutationFn: async (data: AssignmentCreatePayload) => {
             ensureInstructorCohortSubjectAccess(
-                instructorAccess.isInstructor,
+                instructorAccess.isTeachingActor,
                 allowedCohortSubjectIds,
                 data.cohort_subject
             );
@@ -786,7 +786,7 @@ export function useUpdateAssignment(currentCohortSubjectId?: number | null) {
     return useMutation({
         mutationFn: async ({ id, data }: { id: number; data: AssignmentUpdatePayload }) => {
             ensureInstructorCohortSubjectAccess(
-                instructorAccess.isInstructor,
+                instructorAccess.isTeachingActor,
                 allowedCohortSubjectIds,
                 data.cohort_subject ?? currentCohortSubjectId
             );

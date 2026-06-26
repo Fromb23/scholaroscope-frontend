@@ -124,6 +124,7 @@ export interface SchemeOfWork {
 export interface SchemeListQueryParams {
     term?: number | string;
     teacher?: number | string;
+    cohort_subject?: number | string;
     subject?: number | string;
     curriculum?: number | string;
     status?: SchemeStatus;

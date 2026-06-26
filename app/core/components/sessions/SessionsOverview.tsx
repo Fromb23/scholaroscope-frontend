@@ -468,6 +468,27 @@ function SessionWorkspaceView() {
         [curricula]
     );
     const workspaceBackHref = safeReturnTo ?? (isInstructor ? '/dashboard/instructor' : '/dashboard/admin');
+    const currentWorkspaceHref = useMemo(() => {
+        const query = searchParams.toString();
+        return query ? `/sessions?${query}` : '/sessions';
+    }, [searchParams]);
+    const createLessonPlanHref = useMemo(() => {
+        const params = new URLSearchParams({
+            returnTo: currentWorkspaceHref,
+        });
+        if (selectedCohortSubjectId) {
+            params.set('cohort_subject', String(selectedCohortSubjectId));
+        }
+        if (selectedTerm) {
+            params.set('term', String(selectedTerm));
+        }
+        return `/lesson-plans/new?${params.toString()}`;
+    }, [currentWorkspaceHref, selectedCohortSubjectId, selectedTerm]);
+    const buildSessionDetailHref = useCallback((sessionId: number) => (
+        `/sessions/${sessionId}?${new URLSearchParams({
+            returnTo: currentWorkspaceHref,
+        }).toString()}`
+    ), [currentWorkspaceHref]);
     const actionLabel = effectiveMyTeachingMode
         ? 'Prepare a lesson'
         : 'Create lesson plan';
@@ -771,7 +792,7 @@ function SessionWorkspaceView() {
         },
         visibleActions: [
             ...(!midtermCleanupView && canPlanLesson && canCreateTeachingRecords
-                ? [{ label: actionLabel, type: 'navigate' as const, href: '/lesson-plans/new' }]
+                ? [{ label: actionLabel, type: 'navigate' as const, href: createLessonPlanHref }]
                 : []),
             ...(supervisionOnlyAdmin && !isSelfManagedTeaching
                 ? [
@@ -793,7 +814,7 @@ function SessionWorkspaceView() {
             ? {
                 label: actionLabel,
                 type: 'navigate' as const,
-                href: '/lesson-plans/new',
+                href: createLessonPlanHref,
             }
             : supervisionOnlyAdmin && !isSelfManagedTeaching
                 ? {
@@ -812,6 +833,7 @@ function SessionWorkspaceView() {
         actionLabel,
         canCreateTeachingRecords,
         canPlanLesson,
+        createLessonPlanHref,
         effectiveMyTeachingMode,
         error,
         isSelfManagedTeaching,
@@ -1209,7 +1231,7 @@ function SessionWorkspaceView() {
                         </Link>
                     ) : null}
                     {canPlanLesson && canCreateTeachingRecords ? (
-                        <Link href="/lesson-plans/new">
+                        <Link href={createLessonPlanHref}>
                             <Button size="sm">
                                 <Plus className="w-4 h-4 sm:mr-1" />
                                 <span className="hidden sm:inline">{actionLabel}</span>
@@ -1336,18 +1358,18 @@ function SessionWorkspaceView() {
                         </div>
 
                         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                            <Link href={`/sessions/${priorityTodayAction.session.id}`} className="w-full sm:w-auto">
+                            <Link href={buildSessionDetailHref(priorityTodayAction.session.id)} className="w-full sm:w-auto">
                                 <Button className="w-full sm:w-auto">
                                     Continue lesson
                                 </Button>
                             </Link>
-                            <Link href={`/sessions/${priorityTodayAction.session.id}`} className="w-full sm:w-auto">
+                            <Link href={buildSessionDetailHref(priorityTodayAction.session.id)} className="w-full sm:w-auto">
                                 <Button variant="secondary" className="w-full sm:w-auto">
                                     <ClipboardCheck className="h-4 w-4" />
                                     Review attendance
                                 </Button>
                             </Link>
-                            <Link href={`/sessions/${priorityTodayAction.session.id}`} className="w-full sm:w-auto">
+                            <Link href={buildSessionDetailHref(priorityTodayAction.session.id)} className="w-full sm:w-auto">
                                 <Button variant="secondary" className="w-full sm:w-auto">
                                     End lesson
                                 </Button>
@@ -1398,7 +1420,7 @@ function SessionWorkspaceView() {
                                                 {session.venue ? ` · ${session.venue}` : ''}
                                             </div>
                                         </div>
-                                        <Link href={`/sessions/${session.id}`} className="shrink-0">
+                                        <Link href={buildSessionDetailHref(session.id)} className="shrink-0">
                                             <Button variant="primary" size="sm">
                                                 <span className="hidden sm:inline">
                                                     {canCreateTeachingRecords ? getTodayLessonActionLabel(session) : 'View'}
@@ -1422,7 +1444,7 @@ function SessionWorkspaceView() {
                         </p>
                         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
                             {canPlanLesson && canCreateTeachingRecords ? (
-                                <Link href="/lesson-plans/new" className="w-full sm:w-auto">
+                                <Link href={createLessonPlanHref} className="w-full sm:w-auto">
                                     <Button className="w-full sm:w-auto">
                                         {actionLabel}
                                     </Button>
@@ -1542,7 +1564,7 @@ function SessionWorkspaceView() {
                         {!selectedTerm && !selectedType && !selectedCohortId && !selectedInstructorFilter && !cleanupFilterActive ? (
                             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
                                 {canPlanLesson && canCreateTeachingRecords ? (
-                                    <Link href="/lesson-plans/new" className="w-full sm:w-auto">
+                                    <Link href={createLessonPlanHref} className="w-full sm:w-auto">
                                         <Button className="w-full sm:w-auto">
                                             <Plus className="mr-2 h-4 w-4" />
                                             {actionLabel}

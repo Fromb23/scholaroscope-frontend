@@ -26,6 +26,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
+import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
 import { CBCProgressSkeleton } from './CBCProgressSkeleton';
 import {
     buildCbcPath,
@@ -46,6 +47,25 @@ function formatLevelLabel(level: string | null | undefined) {
 function getCohortDisplayLabel(cohort: { name?: string | null } | null | undefined) {
     const name = cohort?.name?.trim();
     return name || 'Selected class';
+}
+
+function getCohortMetaBadges(cohort: unknown) {
+    const value = (cohort ?? null) as {
+        level?: string | null;
+        curriculum_type?: string | null;
+        academic_year_name?: string | null;
+    } | null;
+    if (!value) return [];
+
+    const items: string[] = [];
+    const levelLabel = value.level
+        ? getAcademicLevelLabel(value.level, value.curriculum_type ?? 'CBE')
+        : null;
+
+    if (levelLabel) items.push(levelLabel);
+    if (value.academic_year_name) items.push(value.academic_year_name);
+
+    return items;
 }
 
 function getSubStrandCount(strand: {
@@ -242,6 +262,11 @@ export function CBCProgressPage() {
                                     <Badge variant="indigo" size="md">
                                         {getCohortDisplayLabel(page.effectiveCohort)}
                                     </Badge>
+                                    {getCohortMetaBadges(page.effectiveCohort).map((item) => (
+                                        <Badge key={item} variant="default" size="md">
+                                            {item}
+                                        </Badge>
+                                    ))}
                                 </div>
                             ) : (
                                 <p className="text-sm text-gray-600">

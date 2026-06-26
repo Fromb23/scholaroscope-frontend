@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent, ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, FileText, Plus, RotateCcw } from 'lucide-react';
@@ -18,6 +18,7 @@ import { Select } from '@/app/components/ui/Select';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useLessonPlans } from '@/app/core/hooks/useLessonPlans';
 import { useCurricula, useTerms, useSubjects } from '@/app/core/hooks/useAcademic';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
@@ -354,6 +355,7 @@ export function LessonPlansPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const instructorAccess = useInstructorCohortAccess();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
@@ -392,6 +394,7 @@ export function LessonPlansPage() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<LessonPlanStatus | ''>('');
     const [termFilter, setTermFilter] = useState('');
+    const [cohortSubjectFilter, setCohortSubjectFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [cohortFilter, setCohortFilter] = useState('');
     const [instructorFilter, setInstructorFilter] = useState('');
@@ -404,9 +407,10 @@ export function LessonPlansPage() {
     const lessonPlanFilters = useMemo(() => ({
         status: statusFilter || undefined,
         term: toOptionalNumber(termFilter),
+        cohort_subject: toOptionalNumber(cohortSubjectFilter),
         subject: toOptionalNumber(subjectFilter),
         cohort: toOptionalNumber(cohortFilter),
-    }), [cohortFilter, statusFilter, subjectFilter, termFilter]);
+    }), [cohortFilter, cohortSubjectFilter, statusFilter, subjectFilter, termFilter]);
     const {
         lessonPlans,
         loading,
@@ -424,16 +428,25 @@ export function LessonPlansPage() {
         close: closeMarkUsed,
     } = useModalState<LessonPlan>();
 
+    const safeReturnTo = useMemo(() => {
+        const value = searchParams.get('returnTo');
+        return value?.startsWith('/') ? value : null;
+    }, [searchParams]);
+
     useEffect(() => {
-        const requestedSubject = searchParams.get('subject') ?? searchParams.get('cohort_subject');
+        const requestedCohortSubject = searchParams.get('cohort_subject');
+        const requestedSubject = searchParams.get('subject');
         const requestedCohort = searchParams.get('cohort');
+        if (requestedCohortSubject && requestedCohortSubject !== cohortSubjectFilter) {
+            setCohortSubjectFilter(requestedCohortSubject);
+        }
         if (requestedSubject && requestedSubject !== subjectFilter) {
             setSubjectFilter(requestedSubject);
         }
         if (requestedCohort && requestedCohort !== cohortFilter) {
             setCohortFilter(requestedCohort);
         }
-    }, [cohortFilter, searchParams, subjectFilter]);
+    }, [cohortFilter, cohortSubjectFilter, searchParams, subjectFilter]);
 
     useEffect(() => {
         if (isSelfManagedTeaching && viewMode !== 'my_teaching') {
@@ -449,6 +462,84 @@ export function LessonPlansPage() {
     const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
     const shouldFilterToMyTeaching = showInstitutionSupervision && effectiveMyTeachingMode;
     const useGroupedLessonPlanView = (showInstitutionSupervision && !effectiveMyTeachingMode) || isSelfManagedTeaching;
+    const assignedCohortSubjectOptions = useMemo(() => (
+        Array.from(
+            new Map(
+                instructorAccess.assignments
+                    .filter((assignment) => (
+                        typeof assignment.cohort_subject_id === 'number'
+                        && assignment.subject_offering_status !== 'DROPPED_HISTORICAL'
+                    ))
+                    .map((assignment) => [
+                        assignment.cohort_subject_id,
+                        {
+                            id: assignment.cohort_subject_id as number,
+                            cohortId: assignment.cohort_id,
+                            cohortName: assignment.cohort_name,
+                            subjectName: assignment.subject_name,
+                            label: `${assignment.cohort_name} - ${assignment.subject_name}`,
+                        },
+                    ])
+            ).values()
+        ).sort((left, right) => left.label.localeCompare(right.label))
+    ), [instructorAccess.assignments]);
+    const visibleAssignedCohortSubjectOptions = useMemo(
+        () => assignedCohortSubjectOptions.filter((option) => (
+            !cohortFilter || String(option.cohortId) === cohortFilter
+        )),
+        [assignedCohortSubjectOptions, cohortFilter]
+    );
+    const availableCohortOptions = useMemo(() => {
+        if (!effectiveMyTeachingMode) {
+            return cohorts;
+        }
+
+        return Array.from(
+            new Map(
+                assignedCohortSubjectOptions.map((option) => [
+                    option.cohortId,
+                    {
+                        id: option.cohortId,
+                        name: option.cohortName,
+                    },
+                ])
+            ).values()
+        ).sort((left, right) => left.name.localeCompare(right.name));
+    }, [assignedCohortSubjectOptions, cohorts, effectiveMyTeachingMode]);
+    const buildWorkspaceHref = useCallback((overrides?: Partial<{
+        term: string;
+        cohort_subject: string;
+        subject: string;
+        cohort: string;
+    }>) => {
+        const params = new URLSearchParams();
+        const resolved = {
+            term: overrides?.term ?? termFilter,
+            cohort_subject: overrides?.cohort_subject ?? cohortSubjectFilter,
+            subject: overrides?.subject ?? subjectFilter,
+            cohort: overrides?.cohort ?? cohortFilter,
+        };
+
+        if (resolved.term) params.set('term', resolved.term);
+        if (resolved.cohort_subject) params.set('cohort_subject', resolved.cohort_subject);
+        if (resolved.subject) params.set('subject', resolved.subject);
+        if (resolved.cohort) params.set('cohort', resolved.cohort);
+        if (safeReturnTo) params.set('returnTo', safeReturnTo);
+
+        const query = params.toString();
+        return query ? `/lesson-plans?${query}` : '/lesson-plans';
+    }, [cohortFilter, cohortSubjectFilter, safeReturnTo, subjectFilter, termFilter]);
+    const createLessonPlanHref = useMemo(() => {
+        const params = new URLSearchParams();
+        if (cohortSubjectFilter) {
+            params.set('cohort_subject', cohortSubjectFilter);
+        }
+        if (termFilter) {
+            params.set('term', termFilter);
+        }
+        params.set('returnTo', buildWorkspaceHref());
+        return `/lesson-plans/new?${params.toString()}`;
+    }, [buildWorkspaceHref, cohortSubjectFilter, termFilter]);
 
     const subtitle =
         isSelfManagedTeaching || isInstructor
@@ -517,6 +608,10 @@ export function LessonPlansPage() {
                     return false;
                 }
 
+                if (cohortSubjectFilter && String(lessonPlan.cohort_subject ?? '') !== cohortSubjectFilter) {
+                    return false;
+                }
+
                 if (cohortFilter && String(lessonPlan.cohort ?? '') !== cohortFilter) {
                     return false;
                 }
@@ -564,6 +659,7 @@ export function LessonPlansPage() {
         );
     }, [
         cohortFilter,
+        cohortSubjectFilter,
         instructorFilter,
         lessonPlans,
         search,
@@ -585,7 +681,7 @@ export function LessonPlansPage() {
         ),
         [filteredLessonPlans, groupingMode, isSelfManagedTeaching, useGroupedLessonPlanView]
     );
-    const hasServerFilters = Boolean(statusFilter || termFilter || subjectFilter || cohortFilter);
+    const hasServerFilters = Boolean(statusFilter || termFilter || cohortSubjectFilter || subjectFilter || cohortFilter);
 
     const setLessonPlanFeedback = (lessonPlanId: number, feedback: RowActionFeedback | null) => {
         setRowActionFeedback((current) => {
@@ -747,7 +843,9 @@ export function LessonPlansPage() {
                             lessonPlan={lessonPlan}
                             canCreateTeachingRecord={canCreateTeachingRecords}
                             pendingActionKey={pendingActionKey}
-                            onView={(plan) => router.push(`/lesson-plans/${plan.id}`)}
+                            onView={(plan) => router.push(`/lesson-plans/${plan.id}?${new URLSearchParams({
+                                returnTo: buildWorkspaceHref(),
+                            }).toString()}`)}
                             onMarkReviewed={(plan) => {
                                 void handleRowAction(plan, 'reviewed');
                             }}
@@ -797,13 +895,21 @@ export function LessonPlansPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        {isInstructor ? 'Lesson Preparation' : 'Lesson Plans'}
+                        {effectiveMyTeachingMode ? 'Lesson Preparation' : 'Lesson Plans'}
                     </h1>
                     <p className="mt-1 text-gray-600">{subtitle}</p>
                 </div>
 
+                {safeReturnTo ? (
+                    <Link href={safeReturnTo}>
+                        <Button variant="ghost" size="sm">
+                            Back
+                        </Button>
+                    </Link>
+                ) : null}
+
                 {canCreateLessonPlan && canCreateTeachingRecords && !midtermBreakPausesCreation ? (
-                    <Link href="/lesson-plans/new">
+                    <Link href={createLessonPlanHref}>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             {createButtonLabel}
@@ -945,18 +1051,33 @@ export function LessonPlansPage() {
                         ]}
                     />
 
-                    <Select
-                        label="Subject"
-                        value={subjectFilter}
-                        onChange={(event) => setSubjectFilter(event.target.value)}
-                        options={[
-                            { value: '', label: 'All subjects' },
-                            ...subjects.map((subject) => ({
-                                value: String(subject.id),
-                                label: subject.name,
-                            })),
-                        ]}
-                    />
+                    {effectiveMyTeachingMode ? (
+                        <Select
+                            label="Class subject"
+                            value={cohortSubjectFilter}
+                            onChange={(event) => setCohortSubjectFilter(event.target.value)}
+                            options={[
+                                { value: '', label: 'All class subjects' },
+                                ...visibleAssignedCohortSubjectOptions.map((option) => ({
+                                    value: String(option.id),
+                                    label: option.label,
+                                })),
+                            ]}
+                        />
+                    ) : (
+                        <Select
+                            label="Subject"
+                            value={subjectFilter}
+                            onChange={(event) => setSubjectFilter(event.target.value)}
+                            options={[
+                                { value: '', label: 'All subjects' },
+                                ...subjects.map((subject) => ({
+                                    value: String(subject.id),
+                                    label: subject.name,
+                                })),
+                            ]}
+                        />
+                    )}
 
                     <Select
                         label="Cohort"
@@ -964,7 +1085,7 @@ export function LessonPlansPage() {
                         onChange={(event) => setCohortFilter(event.target.value)}
                         options={[
                             { value: '', label: 'All cohorts' },
-                            ...cohorts.map((cohort) => ({
+                            ...availableCohortOptions.map((cohort) => ({
                                 value: String(cohort.id),
                                 label: cohort.name,
                             })),
@@ -990,21 +1111,21 @@ export function LessonPlansPage() {
                     <div className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <h2 className="mt-3 text-base font-semibold text-gray-900">
-                            {isInstructor
+                            {effectiveMyTeachingMode
                                 ? 'No lesson preparations yet'
                                     : supervisionOnlyAdmin && !isSelfManagedTeaching
                                     ? 'No lesson plans have been prepared yet.'
                                     : 'No lesson plans yet'}
                         </h2>
                         <p className="mt-2 text-sm text-gray-500">
-                            {isInstructor
+                            {effectiveMyTeachingMode
                                 ? 'Start by choosing one of your assigned class subjects and the outcomes you want to teach.'
                                 : supervisionOnlyAdmin && !isSelfManagedTeaching
                                     ? 'Lesson plans will appear here after instructors prepare them.'
                                     : 'No lesson plans yet. Start by planning what you are preparing to teach.'}
                         </p>
                         {canCreateLessonPlan && canCreateTeachingRecords && !midtermBreakPausesCreation ? (
-                            <Link href="/lesson-plans/new">
+                            <Link href={createLessonPlanHref}>
                                 <Button className="mt-4">
                                     <Plus className="mr-2 h-4 w-4" />
                                     {createButtonLabel}
@@ -1031,7 +1152,7 @@ export function LessonPlansPage() {
                     <div className="py-12 text-center">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <h2 className="mt-3 text-base font-semibold text-gray-900">
-                            {isInstructor ? 'No matching lesson preparations' : 'No matching lesson plans'}
+                            {effectiveMyTeachingMode ? 'No matching lesson preparations' : 'No matching lesson plans'}
                         </h2>
                         <p className="mt-2 text-sm text-gray-500">
                             {effectiveMyTeachingMode

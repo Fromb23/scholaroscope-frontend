@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
+import { Button } from '@/app/components/ui/Button';
+import { Card } from '@/app/components/ui/Card';
 import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { useInstructorDashboard } from '@/app/core/hooks/useInstructorDashboard';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -91,6 +94,24 @@ export function InstructorDashboard() {
                 lastRefresh={lastRefresh}
                 onRefresh={refresh}
             />
+            {instructorAccess.isSelfManagedTeachingAdmin ? (
+                <Card>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h2 className="text-base font-semibold theme-text">My teaching workspace</h2>
+                            <p className="mt-1 text-sm theme-muted">
+                                Teaching stays scoped to your assigned class subjects. Setup and workspace controls remain available here.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Link href="/academic"><Button variant="secondary" size="sm">Academic Setup</Button></Link>
+                            <Link href="/academic/cohorts"><Button variant="secondary" size="sm">Manage class subjects</Button></Link>
+                            <Link href="/learners"><Button variant="secondary" size="sm">Learners</Button></Link>
+                            <Link href="/admin/settings"><Button variant="secondary" size="sm">Settings</Button></Link>
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
             <TeacherNextActionPanel
                 sessions={sessions}
                 alerts={alerts}

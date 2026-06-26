@@ -201,7 +201,7 @@ export const useSessions = (params?: SessionQueryParams) => {
       const data = await sessionAPI.getAll(sessionFilters);
       const allSessions = unwrapList(data);
       setSessions(
-        instructorAccess.isInstructor
+        instructorAccess.isTeachingActor
           ? filterInstructorSessions(
             allSessions,
             instructorAccess.assignments,
@@ -220,7 +220,7 @@ export const useSessions = (params?: SessionQueryParams) => {
     allowedCohortIds,
     allowedCohortSubjectIds,
     instructorAccess.assignments,
-    instructorAccess.isInstructor,
+    instructorAccess.isTeachingActor,
     sessionFilters,
   ]);
 
@@ -285,7 +285,7 @@ export const useTodaySessions = () => {
       setLoading(true);
       const data = await sessionAPI.getToday();
       setSessions(
-        instructorAccess.isInstructor
+        instructorAccess.isTeachingActor
           ? filterInstructorSessions(
             data,
             instructorAccess.assignments,
@@ -304,7 +304,7 @@ export const useTodaySessions = () => {
     allowedCohortIds,
     allowedCohortSubjectIds,
     instructorAccess.assignments,
-    instructorAccess.isInstructor,
+    instructorAccess.isTeachingActor,
   ]);
 
   useEffect(() => {

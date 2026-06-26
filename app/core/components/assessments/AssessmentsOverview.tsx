@@ -89,6 +89,10 @@ export function AssessmentsOverview() {
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isSelfManagedTeachingAdmin = instructorAccess.isSelfManagedTeachingAdmin;
     const showInstitutionSupervision = isAdminLike && !isSelfManagedTeachingAdmin;
+    const safeReturnTo = useMemo(() => {
+        const value = searchParams.get('returnTo');
+        return value?.startsWith('/') ? value : null;
+    }, [searchParams]);
     const { curricula } = useCurricula();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
@@ -143,6 +147,17 @@ export function AssessmentsOverview() {
         assessment_type: selectedType,
         evaluation_type: selectedEvalType,
     });
+    const createAssessmentHref = useMemo(() => {
+        const params = new URLSearchParams();
+        if (selectedCohort) {
+            params.set('cohort', String(selectedCohort));
+        }
+        if (selectedCohortSubject) {
+            params.set('cohort_subject', String(selectedCohortSubject));
+        }
+        params.set('returnTo', `${'/assessments'}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
+        return `/assessments/new?${params.toString()}`;
+    }, [searchParams, selectedCohort, selectedCohortSubject]);
 
     const availableCohortSubjects = useMemo(() => {
         if (isTeachingActor) {
@@ -356,7 +371,7 @@ export function AssessmentsOverview() {
         },
         visibleActions: [
             ...(canCreateAssessment
-                ? [{ label: createButtonLabel, type: 'navigate' as const, href: '/assessments/new' }]
+                ? [{ label: createButtonLabel, type: 'navigate' as const, href: createAssessmentHref }]
                 : []),
             ...(supervisionOnlyAdmin
                 ? [
@@ -366,7 +381,7 @@ export function AssessmentsOverview() {
                 : []),
         ],
         nextSafeAction: canCreateAssessment
-            ? { label: createButtonLabel, type: 'navigate' as const, href: '/assessments/new' }
+            ? { label: createButtonLabel, type: 'navigate' as const, href: createAssessmentHref }
             : supervisionOnlyAdmin
                 ? { label: 'View instructor activity', type: 'navigate' as const, href: '/admin/instructors' }
             : undefined,
@@ -376,6 +391,7 @@ export function AssessmentsOverview() {
             : undefined,
     }), [
         canCreateAssessment,
+        createAssessmentHref,
         createButtonLabel,
         instructorAccess.hasAssignedCohortSubjects,
         effectiveMyTeachingMode,
@@ -402,8 +418,13 @@ export function AssessmentsOverview() {
                                 : 'Admin supervision shows organization work by class, instructor, and subject.'}
                     </p>
                 </div>
+                {safeReturnTo ? (
+                    <Link href={safeReturnTo}>
+                        <Button variant="ghost" size="sm">Back</Button>
+                    </Link>
+                ) : null}
                 {canCreateAssessment ? (
-                    <Link href="/assessments/new">
+                    <Link href={createAssessmentHref}>
                         <Button>
                             <Plus className="w-4 h-4 mr-2" />
                             {createButtonLabel}
@@ -575,7 +596,7 @@ export function AssessmentsOverview() {
                                         : 'No assessments are visible in this supervision view yet.'}
                         </p>
                         {canCreateAssessment && !selectedTerm && !selectedCohort && !selectedCohortSubject && !selectedType && !selectedEvalType && !selectedInstructorFilter && (
-                            <Link href="/assessments/new">
+                            <Link href={createAssessmentHref}>
                                 <Button className="mt-4">
                                     <Plus className="mr-2 h-4 w-4" />
                                     {createButtonLabel}
