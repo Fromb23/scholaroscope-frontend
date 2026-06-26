@@ -25,6 +25,7 @@ import type {
     CbcPolicyLevelCode,
     CbcReportPolicy,
     CbcReportPolicyPayload,
+    PolicyAuthoringMode,
 } from '@/app/plugins/cbc/types/reportPolicy';
 import { cbcReportPolicyAPI } from '@/app/plugins/cbc/api/reportPolicies';
 
@@ -42,7 +43,14 @@ interface CbcSubjectProfileOption {
 interface CbcCohortSubjectOption {
     id: number;
     label: string;
+    cohortId?: number | null;
+    cohortSubjectId?: number | null;
     subjectProfileId?: number | null;
+}
+
+interface CbcCohortOption {
+    id: number;
+    label: string;
 }
 
 interface CbcTermOption {
@@ -56,10 +64,11 @@ interface FormErrors {
     level_scale?: string;
 }
 
-interface CbcPolicyFormState {
+export interface CbcPolicyFormState {
     name: string;
     description: string;
     subject_profile: number | null;
+    cohort: number | null;
     cbc_cohort_subject: number | null;
     term: number | null;
     assessment_weights: CbcAssessmentWeightDraft[];
@@ -77,7 +86,12 @@ interface CbcPolicyFormState {
 interface CbcReportPolicyFormModalProps {
     editingPolicy: CbcReportPolicy | null;
     defaultPolicy?: CbcReportPolicy | null;
+    authoringMode?: PolicyAuthoringMode;
+    lockedCohortId?: number | null;
+    lockedCohortSubjectId?: number | null;
+    lockedCohortSubjectLabel?: string | null;
     subjectProfiles: CbcSubjectProfileOption[];
+    cohorts?: CbcCohortOption[];
     cohortSubjects: CbcCohortSubjectOption[];
     terms: CbcTermOption[];
     onSuccess: (policy: CbcReportPolicy) => void;
@@ -103,6 +117,7 @@ function buildEmptyForm(): CbcPolicyFormState {
         name: '',
         description: '',
         subject_profile: null,
+        cohort: null,
         cbc_cohort_subject: null,
         term: null,
         assessment_weights: Object.entries(CBC_ENTRY_MIDTERM_PRESET.assessment_weights).map(([type, weight]) => ({
@@ -137,6 +152,7 @@ function payloadToForm(policy?: CbcReportPolicy | null): CbcPolicyFormState {
         name: policy.name,
         description: policy.description ?? '',
         subject_profile: policy.subject_profile,
+        cohort: policy.cohort,
         cbc_cohort_subject: policy.cbc_cohort_subject,
         term: policy.term,
         assessment_weights: Object.entries(policy.assessment_weights).map(([type, weight]) => ({
@@ -160,6 +176,99 @@ function payloadToForm(policy?: CbcReportPolicy | null): CbcPolicyFormState {
         is_default: policy.is_default,
         is_active: policy.is_active,
     };
+}
+
+function isClassAuthoringMode(mode: PolicyAuthoringMode): boolean {
+    return mode !== 'INSTITUTION_GOVERNANCE';
+}
+
+export function buildCbcReportPolicyPayload(
+    form: CbcPolicyFormState,
+    authoringMode: PolicyAuthoringMode,
+    editingPolicy?: CbcReportPolicy | null,
+): CbcReportPolicyPayload {
+    const classMode = isClassAuthoringMode(authoringMode);
+    return {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        source: classMode ? 'class_configuration' : 'institution_governance',
+        subject_profile: classMode ? undefined : form.subject_profile,
+        cohort: form.cohort,
+        cbc_cohort_subject: form.cbc_cohort_subject,
+        term: form.term,
+        assessment_weights: Object.fromEntries(
+            form.assessment_weights.map((entry) => [entry.type, Number(entry.weight) || 0]),
+        ),
+        level_scale: form.level_scale.map((row) => ({
+            min: Number(row.min),
+            max: Number(row.max),
+            level: row.level,
+            code: row.code,
+            label: row.label.trim(),
+            points: Number(row.points),
+        })),
+        diagnostic_assessment_types: [...form.diagnostic_assessment_types],
+        required_components: [...form.required_components],
+        late_enrolment: {
+            pre_enrolment_component_handling: 'EXEMPT',
+            allow_provisional_assessment_indicator: true,
+            award_final_point_only_when_evidence_sufficient: true,
+            minimum_mapped_outcomes_for_final_result: null,
+            minimum_essential_outcome_coverage_percent: null,
+            minimum_independent_evidence_events: null,
+            allow_single_broad_evidence_event: false,
+            allow_teacher_override: true,
+            teacher_override_requires_reason: true,
+            ...(editingPolicy?.late_enrolment ?? {}),
+        },
+        include_assignments: form.include_assignments,
+        include_projects: form.include_projects,
+        include_practicals: form.include_practicals,
+        rounding_mode: form.rounding_mode,
+        is_default: form.is_default,
+        is_active: form.is_active,
+    };
+}
+
+function applyAuthoringContext(
+    state: CbcPolicyFormState,
+    params: {
+        authoringMode: PolicyAuthoringMode;
+        lockedCohortId?: number | null;
+        lockedCohortSubjectId?: number | null;
+    },
+): CbcPolicyFormState {
+    if (params.authoringMode === 'CLASS_SUBJECT_SETUP') {
+        return {
+            ...state,
+            subject_profile: null,
+            cohort: params.lockedCohortId ?? state.cohort,
+            cbc_cohort_subject: params.lockedCohortSubjectId ?? state.cbc_cohort_subject,
+            is_default: false,
+        };
+    }
+
+    if (params.authoringMode === 'CLASS_SETUP') {
+        return {
+            ...state,
+            subject_profile: null,
+            cohort: params.lockedCohortId ?? state.cohort,
+            cbc_cohort_subject: null,
+            is_default: false,
+        };
+    }
+
+    if (params.authoringMode === 'WORKSPACE_POLICY') {
+        return {
+            ...state,
+            subject_profile: null,
+            cohort: null,
+            cbc_cohort_subject: null,
+            is_default: true,
+        };
+    }
+
+    return state;
 }
 
 function templateToForm(policy?: CbcReportPolicy | null): CbcPolicyFormState {
@@ -196,7 +305,12 @@ function templateToForm(policy?: CbcReportPolicy | null): CbcPolicyFormState {
 export function CbcReportPolicyFormModal({
     editingPolicy,
     defaultPolicy = null,
+    authoringMode = 'INSTITUTION_GOVERNANCE',
+    lockedCohortId = null,
+    lockedCohortSubjectId = null,
+    lockedCohortSubjectLabel = null,
     subjectProfiles,
+    cohorts = [],
     cohortSubjects,
     terms,
     onSuccess,
@@ -204,11 +318,18 @@ export function CbcReportPolicyFormModal({
 }: CbcReportPolicyFormModalProps) {
     const initialState = useMemo(
         () => (
-            editingPolicy
-                ? payloadToForm(editingPolicy)
-                : templateToForm(defaultPolicy ?? null)
+            applyAuthoringContext(
+                editingPolicy
+                    ? payloadToForm(editingPolicy)
+                    : templateToForm(defaultPolicy ?? null),
+                {
+                    authoringMode,
+                    lockedCohortId,
+                    lockedCohortSubjectId,
+                },
+            )
         ),
-        [defaultPolicy, editingPolicy],
+        [authoringMode, defaultPolicy, editingPolicy, lockedCohortId, lockedCohortSubjectId],
     );
     const [form, setForm] = useState<CbcPolicyFormState>(initialState);
     const [errors, setErrors] = useState<FormErrors>({});
@@ -372,44 +493,7 @@ export function CbcReportPolicyFormModal({
         setSaveError(null);
 
         try {
-            const payload: CbcReportPolicyPayload = {
-                name: form.name.trim(),
-                description: form.description.trim() || undefined,
-                subject_profile: form.subject_profile,
-                cbc_cohort_subject: form.cbc_cohort_subject,
-                term: form.term,
-                assessment_weights: Object.fromEntries(
-                    form.assessment_weights.map((entry) => [entry.type, Number(entry.weight) || 0]),
-                ),
-                level_scale: form.level_scale.map((row) => ({
-                    min: Number(row.min),
-                    max: Number(row.max),
-                    level: row.level,
-                    code: row.code,
-                    label: row.label.trim(),
-                    points: Number(row.points),
-                })),
-                diagnostic_assessment_types: [...form.diagnostic_assessment_types],
-                required_components: [...form.required_components],
-                late_enrolment: {
-                    pre_enrolment_component_handling: 'EXEMPT',
-                    allow_provisional_assessment_indicator: true,
-                    award_final_point_only_when_evidence_sufficient: true,
-                    minimum_mapped_outcomes_for_final_result: null,
-                    minimum_essential_outcome_coverage_percent: null,
-                    minimum_independent_evidence_events: null,
-                    allow_single_broad_evidence_event: false,
-                    allow_teacher_override: true,
-                    teacher_override_requires_reason: true,
-                    ...(editingPolicy?.late_enrolment ?? {}),
-                },
-                include_assignments: form.include_assignments,
-                include_projects: form.include_projects,
-                include_practicals: form.include_practicals,
-                rounding_mode: form.rounding_mode,
-                is_default: form.is_default,
-                is_active: form.is_active,
-            };
+            const payload = buildCbcReportPolicyPayload(form, authoringMode, editingPolicy);
 
             const saved = editingPolicy
                 ? await cbcReportPolicyAPI.update(editingPolicy.id, payload)
@@ -427,7 +511,9 @@ export function CbcReportPolicyFormModal({
         <Modal
             isOpen
             onClose={onClose}
-            title={editingPolicy ? 'Edit CBC Report Policy' : 'New CBC Report Policy'}
+            title={authoringMode === 'INSTITUTION_GOVERNANCE'
+                ? (editingPolicy ? 'Edit CBC Report Policy' : 'New CBC Report Policy')
+                : (editingPolicy ? 'Edit Report Setup' : 'New Report Setup')}
             size="xl"
         >
             <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
@@ -458,44 +544,93 @@ export function CbcReportPolicyFormModal({
                     </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Select
-                        label="Subject Profile"
-                        value={form.subject_profile?.toString() ?? ''}
-                        onChange={(event) => setField(
-                            'subject_profile',
-                            event.target.value ? Number(event.target.value) : null,
-                        )}
-                        options={[
-                            { value: '', label: 'Any subject profile' },
-                            ...subjectProfiles.map((profile) => ({
-                                value: String(profile.id),
-                                label: profile.label,
-                            })),
-                        ]}
-                    />
-                    <Select
-                        label="CBC Cohort Subject"
-                        value={form.cbc_cohort_subject?.toString() ?? ''}
-                        onChange={(event) => {
-                            const selectedId = event.target.value ? Number(event.target.value) : null;
-                            setField('cbc_cohort_subject', selectedId);
+                <div className="grid gap-4 md:grid-cols-4">
+                    {authoringMode === 'INSTITUTION_GOVERNANCE' ? (
+                        <Select
+                            label="Subject Profile"
+                            value={form.subject_profile?.toString() ?? ''}
+                            onChange={(event) => setField(
+                                'subject_profile',
+                                event.target.value ? Number(event.target.value) : null,
+                            )}
+                            options={[
+                                { value: '', label: 'Any subject profile' },
+                                ...subjectProfiles.map((profile) => ({
+                                    value: String(profile.id),
+                                    label: profile.label,
+                                })),
+                            ]}
+                        />
+                    ) : (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                            <p className="text-xs font-medium uppercase text-gray-500">Scope</p>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {authoringMode === 'CLASS_SUBJECT_SETUP'
+                                    ? 'This class subject'
+                                    : authoringMode === 'CLASS_SETUP'
+                                        ? 'Whole class'
+                                        : 'Workspace default'}
+                            </p>
+                        </div>
+                    )}
+                    {authoringMode === 'INSTITUTION_GOVERNANCE' ? (
+                        <Select
+                            label="Cohort"
+                            value={form.cohort?.toString() ?? ''}
+                            onChange={(event) => setField(
+                                'cohort',
+                                event.target.value ? Number(event.target.value) : null,
+                            )}
+                            options={[
+                                { value: '', label: 'Any cohort' },
+                                ...cohorts.map((cohort) => ({
+                                    value: String(cohort.id),
+                                    label: cohort.label,
+                                })),
+                            ]}
+                        />
+                    ) : null}
+                    {authoringMode === 'INSTITUTION_GOVERNANCE' ? (
+                        <Select
+                            label="CBC Cohort Subject"
+                            value={form.cbc_cohort_subject?.toString() ?? ''}
+                            onChange={(event) => {
+                                const selectedId = event.target.value ? Number(event.target.value) : null;
+                                setField('cbc_cohort_subject', selectedId);
 
-                            if (!selectedId) return;
+                                if (!selectedId) return;
 
-                            const selectedOption = cohortSubjects.find((option) => option.id === selectedId);
-                            if (selectedOption?.subjectProfileId) {
-                                setField('subject_profile', selectedOption.subjectProfileId);
-                            }
-                        }}
-                        options={[
-                            { value: '', label: 'Any CBC cohort subject' },
-                            ...cohortSubjects.map((subject) => ({
-                                value: String(subject.id),
-                                label: subject.label,
-                            })),
-                        ]}
-                    />
+                                const selectedOption = cohortSubjects.find((option) => option.id === selectedId);
+                                if (selectedOption?.subjectProfileId) {
+                                    setField('subject_profile', selectedOption.subjectProfileId);
+                                }
+                                if (selectedOption?.cohortId) {
+                                    setField('cohort', selectedOption.cohortId);
+                                }
+                            }}
+                            options={[
+                                { value: '', label: 'Any CBC cohort subject' },
+                                ...cohortSubjects.map((subject) => ({
+                                    value: String(subject.id),
+                                    label: subject.label,
+                                })),
+                            ]}
+                        />
+                    ) : authoringMode === 'CLASS_SUBJECT_SETUP' ? (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                            <p className="text-xs font-medium uppercase text-gray-500">Class subject</p>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {lockedCohortSubjectLabel ?? 'Selected class subject'}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                            <p className="text-xs font-medium uppercase text-gray-500">Class</p>
+                            <p className="mt-1 text-sm font-semibold text-gray-900">
+                                {lockedCohortId ? `Class ${lockedCohortId}` : 'Selected class'}
+                            </p>
+                        </div>
+                    )}
                     <Select
                         label="Term"
                         value={form.term?.toString() ?? ''}
@@ -511,7 +646,9 @@ export function CbcReportPolicyFormModal({
                 </div>
 
                 <div className="rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800">
-                    CBC report policies are plugin-owned. Assessment pages only preview these rules and link back here for policy authoring.
+                    {authoringMode === 'INSTITUTION_GOVERNANCE'
+                        ? 'CBC report policies are plugin-owned. Assessment pages only preview these rules and link back here for policy authoring.'
+                        : 'Class configuration report setup is saved against this class workspace context.'}
                 </div>
 
                 <div className="border-t border-gray-100 pt-4">
@@ -651,7 +788,7 @@ export function CbcReportPolicyFormModal({
                     <Button type="submit" disabled={saving}>
                         {saving
                             ? (editingPolicy ? 'Saving…' : 'Creating…')
-                            : (editingPolicy ? 'Save Changes' : 'Create CBC Report Policy')}
+                            : (editingPolicy ? 'Save Changes' : (authoringMode === 'INSTITUTION_GOVERNANCE' ? 'Create CBC Report Policy' : 'Create Report Setup'))}
                     </Button>
                 </div>
             </form>

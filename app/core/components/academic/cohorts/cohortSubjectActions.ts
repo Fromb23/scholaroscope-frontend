@@ -27,9 +27,11 @@ export function buildCohortSubjectTeachingActions(params: {
   subject: CohortSubject;
   isCBC: boolean;
   hasCBCPlugin: boolean;
+  isClassConfigurationWorkspace?: boolean;
 }): CohortSubjectAction[] {
-  const { cohortId, cohortReturnTo, subject, isCBC, hasCBCPlugin } = params;
+  const { cohortId, cohortReturnTo, subject, isCBC, hasCBCPlugin, isClassConfigurationWorkspace = false } = params;
   const subjectReturnTo = buildCohortSubjectReturnTo(cohortReturnTo, subject.id);
+  const cbcCohortSubjectId = subject.cbc_cohort_subject_id ?? null;
   const baseParams = {
     cohort: cohortId,
     cohort_subject: subject.id,
@@ -57,17 +59,42 @@ export function buildCohortSubjectTeachingActions(params: {
       label: 'Assessments',
       href: buildScopedHref('/assessments', baseParams),
     },
-    {
-      label: 'Subject reports',
-      href: buildScopedHref(`/reports/instructor/cohort-subjects/${subject.id}`, {
-        returnTo: subjectReturnTo,
-        source: 'cohort_subject',
-      }),
-    },
   ];
+  const subjectReportAction = {
+    label: 'Subject report',
+    href: buildScopedHref(`/reports/instructor/cohort-subjects/${subject.id}`, {
+      returnTo: subjectReturnTo,
+      source: 'cohort_subject',
+    }),
+  };
 
   if (isCBC && hasCBCPlugin) {
+    if (isClassConfigurationWorkspace) {
+      actions.push(
+        {
+          label: 'Configure policy',
+          href: buildScopedHref(`/academic/cohorts/${cohortId}/subjects/${subject.id}/report-policy`, {
+            source: 'class_configuration',
+            cohort: cohortId,
+            cohort_subject: subject.id,
+            cbc_cohort_subject: cbcCohortSubjectId,
+            returnTo: subjectReturnTo,
+          }),
+        },
+        {
+          label: 'Compute subject results',
+          href: buildScopedHref(`/academic/cohorts/${cohortId}/subjects/${subject.id}/report-computation`, {
+            source: 'class_configuration',
+            cohort: cohortId,
+            cohort_subject: subject.id,
+            returnTo: subjectReturnTo,
+          }),
+        },
+      );
+    }
+
     actions.push(
+      subjectReportAction,
       {
         label: 'CBC Browser',
         href: buildScopedHref('/cbc/browser', {
@@ -87,6 +114,8 @@ export function buildCohortSubjectTeachingActions(params: {
         }),
       },
     );
+  } else {
+    actions.push(subjectReportAction);
   }
 
   return actions;

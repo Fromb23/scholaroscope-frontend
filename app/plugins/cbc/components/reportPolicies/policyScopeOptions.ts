@@ -10,6 +10,8 @@ export interface CbcSubjectProfileOption {
 export interface CbcCohortSubjectOption {
     id: number;
     label: string;
+    cohortId?: number | null;
+    cohortSubjectId?: number | null;
     subjectProfileId?: number | null;
 }
 
@@ -48,6 +50,8 @@ export function buildCbcCohortSubjectOptions(subjects: CohortSubject[]): CbcCoho
             return {
                 id: scopedSubject.cbc_cohort_subject_id ?? scopedSubject.id,
                 label: `${scopedSubject.cohort_name} · ${scopedSubject.subject_code} · ${scopedSubject.subject_name}`,
+                cohortId: scopedSubject.cohort_id ?? scopedSubject.cohort,
+                cohortSubjectId: scopedSubject.id,
                 subjectProfileId: scopedSubject.subject_profile_id ?? null,
             };
         })

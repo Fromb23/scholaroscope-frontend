@@ -510,6 +510,16 @@ export default function CohortHubPage() {
         cohort: String(cohortId),
         returnTo: cohortReturnTo,
     }).toString()}`;
+    const classReportSetupHref = buildScopedHref(`/academic/cohorts/${cohortId}/report-setup`, {
+        source: 'class_configuration',
+        cohort: cohortId,
+        returnTo: cohortReturnTo,
+    });
+    const classReportComputationHref = buildScopedHref(`/academic/cohorts/${cohortId}/report-computation`, {
+        source: 'class_configuration',
+        cohort: cohortId,
+        returnTo: cohortReturnTo,
+    });
     const showSubjectTeachingActions = shouldShowCohortSubjectTeachingActions({
         isTeachingActor,
     });
@@ -531,8 +541,9 @@ export default function CohortHubPage() {
             subject,
             isCBC,
             hasCBCPlugin,
+            isClassConfigurationWorkspace: isPersonalTeachingWorkspace,
         });
-    }, [cohortId, cohortReturnTo, hasCBCPlugin, isCBC]);
+    }, [cohortId, cohortReturnTo, hasCBCPlugin, isCBC, isPersonalTeachingWorkspace]);
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
         ? 'CBC tools are not available for this organization yet.'
         : null;
@@ -842,6 +853,24 @@ export default function CohortHubPage() {
 
                             {showSubjectTeachingActions && isCBC ? (
                                 <>
+                                    {isPersonalTeachingWorkspace && hasCBCPlugin ? (
+                                        <>
+                                            <ActionCard
+                                                title="Configure class report policy"
+                                                description="Class configuration for CBC report interpretation."
+                                                icon={Settings2}
+                                                href={classReportSetupHref}
+                                                footerLabel="Open setup"
+                                            />
+                                            <ActionCard
+                                                title="Compute class results"
+                                                description="Run CBC report computation for this class scope."
+                                                icon={LineChart}
+                                                href={classReportComputationHref}
+                                                footerLabel="Compute"
+                                            />
+                                        </>
+                                    ) : null}
                                     <ActionCard
                                         title="CBC Subjects & Outcomes"
                                         description="Browse strands, sub-strands, and outcomes taught in this cohort."
@@ -934,6 +963,24 @@ export default function CohortHubPage() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {isPersonalTeachingWorkspace && hasCBCPlugin ? (
+                            <>
+                                <ActionCard
+                                    title="Configure class report policy"
+                                    description="Class configuration for CBC report interpretation."
+                                    icon={Settings2}
+                                    href={classReportSetupHref}
+                                    footerLabel="Open setup"
+                                />
+                                <ActionCard
+                                    title="Compute class results"
+                                    description="Run CBC report computation for this class scope."
+                                    icon={LineChart}
+                                    href={classReportComputationHref}
+                                    footerLabel="Compute"
+                                />
+                            </>
+                        ) : null}
                         <ActionCard
                             title="Sessions"
                             description="Open sessions filtered to this cohort."

@@ -10,6 +10,11 @@ export type CbcPolicyLevelCode =
     | 'BE2';
 
 export type CbcRoundingMode = 'ROUND_HALF_UP' | 'ROUND_DOWN' | 'ROUND_UP';
+export type PolicyAuthoringMode =
+    | 'CLASS_SUBJECT_SETUP'
+    | 'CLASS_SETUP'
+    | 'WORKSPACE_POLICY'
+    | 'INSTITUTION_GOVERNANCE';
 export type CbcAssessmentResultStatus =
     | 'NOT_IN_SCOPE'
     | 'NO_EVIDENCE'
@@ -47,6 +52,8 @@ export interface CbcReportPolicy {
     organization: number;
     subject_profile: number | null;
     subject_profile_name?: string | null;
+    cohort: number | null;
+    cohort_name?: string | null;
     cbc_cohort_subject: number | null;
     cbc_cohort_subject_name?: string | null;
     term: number | null;
@@ -70,7 +77,9 @@ export interface CbcReportPolicy {
 export interface CbcReportPolicyPayload {
     name: string;
     description?: string;
+    source?: 'class_configuration' | 'institution_governance';
     subject_profile?: number | null;
+    cohort?: number | null;
     cbc_cohort_subject?: number | null;
     term?: number | null;
     assessment_weights: Record<string, number>;
@@ -88,6 +97,7 @@ export interface CbcReportPolicyPayload {
 
 export interface CbcReportPolicyFilters {
     subject_profile?: number;
+    cohort?: number;
     cbc_cohort_subject?: number;
     term?: number;
     is_active?: boolean;

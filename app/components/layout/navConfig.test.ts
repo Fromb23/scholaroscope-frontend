@@ -58,7 +58,7 @@ describe('admin navigation config', () => {
     ]);
   });
 
-  it('uses self-managed teaching labels for future self-managed workspace behavior', () => {
+  it('uses class-owned navigation for future self-managed workspace behavior', () => {
     const nav = getAdminNav(pluginContext, 'HOMESCHOOL', null, {
       can_teach: true,
       can_manage_academic_setup: true,
@@ -73,8 +73,8 @@ describe('admin navigation config', () => {
       workspace_behavior: 'SELF_MANAGED',
     });
 
-    expect(nav.primary.some((item) => item.name === 'My teaching record')).toBe(true);
-    expect(nav.primary.some((item) => item.name === 'My lesson plans')).toBe(true);
+    expect(nav.primary.some((item) => item.name === 'My teaching record')).toBe(false);
+    expect(nav.primary.some((item) => item.name === 'My lesson plans')).toBe(false);
     expect(nav.primary.find((item) => item.name === 'Academic Setup')?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe('My classes');
   });
 
@@ -103,18 +103,29 @@ describe('admin navigation config', () => {
     expect(nav.primary.map((item) => item.name)).toEqual([
       'My teaching workspace',
       'Academic Setup',
-      'Schemes of work',
       'My learners',
+    ]);
+    const academicSetup = nav.primary.find((item) => item.name === 'Academic Setup');
+    expect(academicSetup?.children?.map((item) => item.name)).toEqual([
+      'Curricula',
+      'Academic years',
+      'Terms',
+      'My classes',
+    ]);
+    expect(academicSetup?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe('My classes');
+    expect(nav.primary.filter((item) => item.href === '/academic/cohorts')).toHaveLength(0);
+    expect(nav.primary.some((item) => item.href === '/reports/policies')).toBe(false);
+    expect(nav.primary.some((item) => item.name === 'Instructors')).toBe(false);
+    expect(nav.primary.some((item) => item.name === 'System Alerts')).toBe(false);
+    for (const removed of [
+      'Schemes of work',
       'My teaching record',
       'My lesson plans',
       'My assessments',
       'My reports',
-    ]);
-    const academicSetup = nav.primary.find((item) => item.name === 'Academic Setup');
-    expect(academicSetup?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe('My classes');
-    expect(nav.primary.filter((item) => item.href === '/academic/cohorts')).toHaveLength(0);
-    expect(nav.primary.some((item) => item.name === 'Instructors')).toBe(false);
-    expect(nav.primary.some((item) => item.name === 'System Alerts')).toBe(false);
+    ]) {
+      expect(nav.primary.some((item) => item.name === removed)).toBe(false);
+    }
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
   });
 

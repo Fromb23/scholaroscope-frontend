@@ -54,6 +54,24 @@ const selfManagedCapabilities = {
   is_workspace_owner: true,
   workspace_mode: 'FREELANCE_TEACHER',
   workspace_behavior: 'FREELANCE_TEACHER',
+  can_manage_report_policy: true,
+  report_policy_mode: 'CLASS_CONFIGURATION',
+  report_computation_class_scoped_only: true,
+  can_author_report_subject_profile: false,
+  report_configuration: {
+    report_policy_available: true,
+    report_policy_mode: 'CLASS_CONFIGURATION',
+    report_computation_available: true,
+    report_computation_class_scoped_only: true,
+    subject_profile_authoring_allowed: false,
+    reporting_governance_routes_allowed: false,
+    allowed_policy_scopes: [
+      'WORKSPACE_DEFAULT',
+      'COHORT',
+      'COHORT_SUBJECT',
+      'TERM',
+    ],
+  },
 } satisfies WorkspaceCapabilities;
 
 describe('report access policy', () => {
@@ -70,6 +88,15 @@ describe('report access policy', () => {
       activeOrg: personal,
       capabilities: selfManagedCapabilities,
     })).toBe(true);
+  });
+
+  it('does not treat class-configuration report capability as institution report governance', () => {
+    expect(canRenderInstitutionReportOverview({
+      user,
+      activeRole: 'ADMIN',
+      activeOrg: personal,
+      capabilities: selfManagedCapabilities,
+    })).toBe(false);
   });
 
   it('keeps institution admins on institution report surfaces', () => {
