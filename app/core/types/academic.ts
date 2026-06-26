@@ -521,6 +521,7 @@ export interface SubjectCatalogMetadata {
   can_offer?: boolean;
   can_remove?: boolean;
   can_restore?: boolean;
+  can_reoffer?: boolean;
   status_label?: string;
   [key: string]: unknown;
 }
@@ -719,6 +720,7 @@ export interface TeachingAssignment {
   assigned?: boolean;
   subject_name: string;
   subject_code?: string | null;
+  subject_offering_status?: SubjectOfferingCatalogStatus | null;
   curriculum_id?: number | null;
   curriculum_name?: string | null;
   level: string;

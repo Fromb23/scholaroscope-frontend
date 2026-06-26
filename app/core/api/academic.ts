@@ -384,6 +384,14 @@ export const subjectOfferingAPI = {
     );
     return response.data;
   },
+
+  reoffer: async (offeringId: string, curriculumId?: number): Promise<SubjectCatalogItem> => {
+    const response = await apiClient.post<SubjectCatalogItem>(
+      `/academic/subject-offerings/${encodeURIComponent(offeringId)}/reoffer/`,
+      curriculumId ? { curriculum: curriculumId } : undefined,
+    );
+    return response.data;
+  },
 };
 
 // Cohorts

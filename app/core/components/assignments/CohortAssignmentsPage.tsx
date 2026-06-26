@@ -164,7 +164,8 @@ export default function CohortAssignmentsPage() {
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const instructorAccess = useInstructorCohortAccess();
     const cohortId = Number(params.id);
-    const isInstructor = activeRole === 'INSTRUCTOR';
+    const isTeachingActor = instructorAccess.isTeachingActor;
+    const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !isTeachingActor);
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
     const [statusFilter, setStatusFilter] = useState<AssignmentStatus | ''>(
         normalizeQueryParam(searchParams.get('status'), STATUS_OPTIONS) as AssignmentStatus | ''
@@ -198,18 +199,17 @@ export default function CohortAssignmentsPage() {
         error: cohortSubjectsError,
     } = useCohortSubjects(isValidCohortId ? cohortId : undefined);
 
-    const accessLoading = authLoading || (isInstructor && instructorAccess.isLoading);
+    const accessLoading = authLoading || (isTeachingActor && instructorAccess.isLoading);
     const allowed = !user
         ? false
-        : user.is_superadmin
-            || activeRole === 'ADMIN'
-            || (isInstructor && instructorAccess.cohortIds.includes(cohortId));
+        : isInstitutionAdminView
+            || (isTeachingActor && instructorAccess.cohortIds.includes(cohortId));
 
     const visibleCohortSubjects = useMemo(() => (
-        isInstructor
+        isTeachingActor
             ? cohortSubjects.filter((subject) => instructorAccess.cohortSubjectIds.includes(subject.id))
             : cohortSubjects
-    ), [cohortSubjects, instructorAccess.cohortSubjectIds, isInstructor]);
+    ), [cohortSubjects, instructorAccess.cohortSubjectIds, isTeachingActor]);
 
     const {
         assignments,
@@ -270,10 +270,15 @@ export default function CohortAssignmentsPage() {
     const midtermBreakPausesCreation = todayMode?.mode === 'MIDTERM_BREAK' && todayMode.allows_new_teaching === false;
 
     const visibleAssignments = useMemo(
-        () => reviewFilter === 'needs_review'
-            ? assignments.filter(isAssignmentNeedingReview)
-            : assignments,
-        [assignments, reviewFilter]
+        () => {
+            const scopedAssignments = isTeachingActor
+                ? assignments.filter((assignment) => instructorAccess.cohortSubjectIds.includes(assignment.cohort_subject))
+                : assignments;
+            return reviewFilter === 'needs_review'
+                ? scopedAssignments.filter(isAssignmentNeedingReview)
+                : scopedAssignments;
+        },
+        [assignments, instructorAccess.cohortSubjectIds, isTeachingActor, reviewFilter]
     );
 
     const dueSoonCount = useMemo(
@@ -364,7 +369,7 @@ export default function CohortAssignmentsPage() {
     const selectedCohortSubject = useMemo(() => (
         visibleCohortSubjects.find((subject) => String(subject.id) === cohortSubjectFilter) ?? null
     ), [cohortSubjectFilter, visibleCohortSubjects]);
-    const showingWorkspaceSelection = !cohortSubjectFilter;
+    const showingWorkspaceSelection = !cohortSubjectFilter || (isTeachingActor && !selectedCohortSubject);
     const contextualBackHref = cohortSubjectFilter
         ? assignmentPickerHref
         : searchParams.get('source') === 'midterm' && searchParams.get('returnTo')?.startsWith('/')
@@ -475,10 +480,10 @@ export default function CohortAssignmentsPage() {
                 </div>
             ) : null}
 
-            {isInstructor && visibleCohortSubjects.length === 0 ? (
+            {isTeachingActor && visibleCohortSubjects.length === 0 ? (
                 <Card>
                     <p className="text-sm theme-muted">
-                        You do not have an assigned subject in this cohort.
+                        No class subjects are assigned to you yet.
                     </p>
                 </Card>
             ) : null}
@@ -518,7 +523,7 @@ export default function CohortAssignmentsPage() {
                                     dueSoonCount={workspace.dueSoonCount}
                                     overdueCount={workspace.overdueCount}
                                     href={buildAssignmentsHref(String(workspace.subject.id))}
-                                    highlighted={isInstructor && visibleCohortSubjects.length === 1}
+                                    highlighted={isTeachingActor && visibleCohortSubjects.length === 1}
                                 />
                             ))}
                         </div>

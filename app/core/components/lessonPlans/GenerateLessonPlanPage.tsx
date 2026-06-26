@@ -93,7 +93,10 @@ export function GenerateLessonPlanPage() {
     const assignmentOptions = useMemo(
         () =>
             assignments
-                .filter((assignment) => assignment.cohort_subject_id)
+                .filter((assignment) => (
+                    assignment.cohort_subject_id
+                    && assignment.subject_offering_status !== 'DROPPED_HISTORICAL'
+                ))
                 .map((assignment) => ({
                     value: String(assignment.cohort_subject_id),
                     label: `${assignment.cohort_name} • ${assignment.subject_name}`,

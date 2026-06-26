@@ -42,7 +42,7 @@ export function statusLabel(item: SubjectCatalogItem): string {
     case 'DROP_PENDING_TERM_CLOSE':
       return 'Scheduled removal';
     case 'DROPPED_HISTORICAL':
-      return 'Dropped historical';
+      return 'Historical / Dropped';
     case 'AVAILABLE':
     default:
       return 'Available in catalogue';
@@ -102,6 +102,10 @@ export function canRemove(item: SubjectCatalogItem): boolean {
 export function canRestore(item: SubjectCatalogItem): boolean {
   const status = getCatalogStatus(item);
   return Boolean(item.metadata?.can_restore ?? (status === 'DROP_SCHEDULED' || status === 'DROP_PENDING_TERM_CLOSE'));
+}
+
+export function canReoffer(item: SubjectCatalogItem): boolean {
+  return Boolean(item.metadata?.can_reoffer ?? getCatalogStatus(item) === 'DROPPED_HISTORICAL');
 }
 
 export function compareCatalogLevels(left: string, right: string): number {

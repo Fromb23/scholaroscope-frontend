@@ -32,8 +32,10 @@ import type { ApiError } from '@/app/core/types/errors';
 import type { SubjectCatalogItem } from '@/app/core/types/academic';
 import {
     canRemove,
+    canReoffer,
     canRestore,
     catalogRowLabel,
+    contentMissingMessage,
     contentReadinessLabel,
     formatCatalogLevel,
     getCatalogStatus,
@@ -275,6 +277,33 @@ export function SubjectsPage() {
             setSetupActionMessage(setupMode ? `${message} Continue setup?` : message);
         } catch (error) {
             const message = extractErrorMessage(error as ApiError, `Failed to restore ${label}.`);
+            setRowErrors((current) => ({ ...current, [item.id]: message }));
+            setToastMessage(message);
+        } finally {
+            setCatalogActionId(null);
+        }
+    };
+
+    const handleReofferSubject = async (item: SubjectCatalogItem) => {
+        if (!item.offering_id || !activeCurriculum) return;
+        const label = catalogRowLabel(item);
+        if (!isContentReady(item)) {
+            const message = contentMissingMessage(item);
+            setRowErrors((current) => ({ ...current, [item.id]: message }));
+            setToastMessage(message);
+            return;
+        }
+        setCatalogActionId(item.id);
+        setRowErrors((current) => ({ ...current, [item.id]: '' }));
+        try {
+            await subjectOfferingAPI.reoffer(item.offering_id, activeCurriculum.id);
+            await loadCatalog();
+            await setupStatusQuery.refetch();
+            const message = `${label} has been offered again.`;
+            setToastMessage(message);
+            setSetupActionMessage(setupMode ? `${message} Continue setup?` : message);
+        } catch (error) {
+            const message = extractErrorMessage(error as ApiError, `Failed to offer ${label} again.`);
             setRowErrors((current) => ({ ...current, [item.id]: message }));
             setToastMessage(message);
         } finally {
@@ -538,7 +567,7 @@ export function SubjectsPage() {
                                                         ) : null}
                                                         {rowStatus === 'DROPPED_HISTORICAL' ? (
                                                             <p className="mt-1 text-xs theme-subtle">
-                                                                This offering is retained for historical records.
+                                                                This offering is retained for historical records. Use Offer again when it should return to current teaching.
                                                             </p>
                                                         ) : null}
                                                         {rowError ? <p className="mt-2 text-sm text-red-600">{rowError}</p> : null}
@@ -572,6 +601,31 @@ export function SubjectsPage() {
                                                                         Restore offering
                                                                     </ButtonPendingContent>
                                                                 </Button>
+                                                            ) : null}
+                                                            {rowStatus === 'DROPPED_HISTORICAL' && canReoffer(item) && item.offering_id ? (
+                                                                !isContentReady(item) ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        disabled
+                                                                    >
+                                                                        Request curriculum import
+                                                                    </Button>
+                                                                ) : (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        disabled={catalogActionId === item.id}
+                                                                        onClick={() => handleReofferSubject(item)}
+                                                                    >
+                                                                        <ButtonPendingContent pending={catalogActionId === item.id} pendingLabel="Offering...">
+                                                                            <RotateCcw className="h-4 w-4" />
+                                                                            Offer again
+                                                                        </ButtonPendingContent>
+                                                                    </Button>
+                                                                )
                                                             ) : null}
                                                         </div>
                                                     ) : null}

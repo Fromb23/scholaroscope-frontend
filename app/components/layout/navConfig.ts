@@ -163,6 +163,12 @@ const PERSONAL_SCHEMES_NAV: RegistryNavItem = {
   ],
 };
 
+const PERSONAL_MY_CLASSES_NAV: RegistryNavItem = {
+  name: 'My classes',
+  href: '/academic/cohorts',
+  icon: Users,
+};
+
 function splitSchemeNavigationItems(items: RegistryNavItem[]): {
   schemes: RegistryNavItem[];
   other: RegistryNavItem[];
@@ -238,6 +244,7 @@ export function getAdminNav(
         { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
         ...afterDashboardOtherItems,
         ACADEMIC_SETUP_NAV,
+        PERSONAL_MY_CLASSES_NAV,
         ...schemeNavItems,
         { name: 'My learners', href: '/learners', icon: Users },
         { name: 'My teaching record', href: '/sessions', icon: Calendar },

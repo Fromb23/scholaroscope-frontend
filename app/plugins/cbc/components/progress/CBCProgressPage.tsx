@@ -317,8 +317,8 @@ export function CBCProgressPage() {
                         {!page.isAdmin && !page.hasVisibleProfiles ? (
                             <CBCEmpty
                                 icon={BookOpen}
-                                title="No CBC Subjects Available"
-                                description="No CBC subjects are attached to your assigned classes."
+                                title="No class subjects are assigned to you yet."
+                                description="Assigned CBC class subjects will appear here."
                             />
                         ) : page.visibleStrands.length === 0 ? (
                             <CBCEmpty
