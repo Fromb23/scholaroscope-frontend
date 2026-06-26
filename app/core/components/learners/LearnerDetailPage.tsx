@@ -32,6 +32,9 @@ import {
 } from '@/app/core/components/learners/LearnerModals';
 import { LearnerAssessmentPickerModal } from '@/app/core/components/learners/LearnerAssessmentPickerModal';
 import type { StudentCohortEnrollment } from '@/app/core/types/student';
+import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
+import { getLearnerProfileBackTarget } from '@/app/core/components/learners/learnerProfileNavigation';
+import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success', GRADUATED: 'info', TRANSFERRED: 'warning',
@@ -52,22 +55,6 @@ const END_REASON_LABELS: Record<string, string> = {
     COMPLETED: 'Completed', GRADUATED: 'Graduated', TRANSFERRED: 'Transferred',
     WRONG_ASSIGNMENT: 'Wrong Assignment', WITHDRAWN: 'Withdrawn', PROMOTED: 'Promoted',
 };
-import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
-
-function buildLearnersBackHref(back: string | null): string {
-    if (!back) {
-        return '/learners';
-    }
-
-    try {
-        const decoded = decodeURIComponent(back);
-        const params = new URLSearchParams(decoded);
-        const normalized = params.toString();
-        return normalized ? `/learners?${normalized}` : '/learners';
-    } catch {
-        return '/learners';
-    }
-}
 
 function calculateAge(dob?: string): string {
     if (!dob) return 'N/A';
@@ -183,12 +170,21 @@ export default function LearnerDetailPage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole, capabilities } = useAuth();
+    const { user, activeOrg, activeRole, capabilities } = useAuth();
     const studentId = Number(params.id);
-    const backHref = useMemo(
-        () => buildLearnersBackHref(searchParams.get('back')),
-        [searchParams],
+    const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
+        orgType: activeOrg?.org_type ?? null,
+        capabilities,
+    });
+    const backTarget = useMemo(
+        () => getLearnerProfileBackTarget({
+            returnTo: searchParams.get('returnTo'),
+            back: searchParams.get('back'),
+            isSelfManagedTeachingWorkspace: selfManagedTeachingWorkspace,
+        }),
+        [searchParams, selfManagedTeachingWorkspace],
     );
+    const backHref = backTarget.href;
 
     const {
         student, loading, error,
@@ -640,7 +636,7 @@ export default function LearnerDetailPage() {
         <div className="flex items-center justify-center h-64 flex-col gap-3">
             <p className="text-sm text-gray-500">{error ?? 'Student not found'}</p>
             <Link href={backHref}>
-                <Button variant="secondary">Back to Learners</Button>
+                <Button variant="secondary">{backTarget.label}</Button>
             </Link>
         </div>
     );
@@ -650,7 +646,7 @@ export default function LearnerDetailPage() {
             <div className="flex items-start justify-between gap-3">
                 <Link href={backHref}>
                     <Button variant="ghost" size="sm">
-                        <ArrowLeft className="mr-2 h-4 w-4" />Back to Learners
+                        <ArrowLeft className="mr-2 h-4 w-4" />{backTarget.label}
                     </Button>
                 </Link>
                 <div className="flex shrink-0 items-center gap-2">

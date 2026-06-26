@@ -56,6 +56,7 @@ describe('admin navigation config', () => {
       'Report Policies',
       'Compute / Maintenance',
     ]);
+    expect(nav.primary.some((item) => item.name === 'Learners' && item.href === '/learners')).toBe(true);
   });
 
   it('uses class-owned navigation for future self-managed workspace behavior', () => {
@@ -102,9 +103,11 @@ describe('admin navigation config', () => {
 
     expect(nav.primary.map((item) => item.name)).toEqual([
       'My teaching workspace',
+      'Lesson preparations',
       'Academic Setup',
-      'My learners',
     ]);
+    expect(nav.primary.some((item) => item.name === 'My learners')).toBe(false);
+    expect(nav.primary.find((item) => item.name === 'Lesson preparations')?.href).toBe('/lesson-plans');
     const academicSetup = nav.primary.find((item) => item.name === 'Academic Setup');
     expect(academicSetup?.children?.map((item) => item.name)).toEqual([
       'Curricula',

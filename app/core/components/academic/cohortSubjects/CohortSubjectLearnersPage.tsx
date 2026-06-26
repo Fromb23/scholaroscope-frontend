@@ -23,6 +23,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { buildClassSubjectLearnerProfileHref } from '@/app/core/components/learners/learnerProfileNavigation';
 import {
     Table,
     TableBody,
@@ -196,7 +197,13 @@ function getLearnerStatusVariant(student: StudentSummary): 'success' | 'warning'
     }
 }
 
-function ReadOnlyLearnerTable({ learners }: { learners: StudentSummary[] }) {
+function ReadOnlyLearnerTable({
+    learners,
+    buildLearnerHref,
+}: {
+    learners: StudentSummary[];
+    buildLearnerHref: (learnerId: number) => string;
+}) {
     if (learners.length === 0) {
         return (
             <Card>
@@ -234,7 +241,7 @@ function ReadOnlyLearnerTable({ learners }: { learners: StudentSummary[] }) {
                                 <TableCell>
                                     <div className="min-w-0">
                                         <Link
-                                            href={`/learners/${learner.id}`}
+                                            href={buildLearnerHref(learner.id)}
                                             className="font-medium text-blue-600 hover:underline"
                                         >
                                             {getStudentName(learner)}
@@ -562,7 +569,14 @@ export default function CohortSubjectLearnersPage() {
             ) : null}
 
             {instructorView ? (
-                <ReadOnlyLearnerTable learners={learnerData.enrolled} />
+                <ReadOnlyLearnerTable
+                    learners={learnerData.enrolled}
+                    buildLearnerHref={(learnerId) => buildClassSubjectLearnerProfileHref(
+                        learnerId,
+                        learnerData.cohort_id,
+                        cohortSubjectId,
+                    )}
+                />
             ) : (
                 <div className="grid gap-6 xl:grid-cols-2">
                     <LearnerTable

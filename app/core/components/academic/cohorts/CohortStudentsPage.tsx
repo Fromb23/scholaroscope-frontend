@@ -20,6 +20,7 @@ import { Input } from '@/app/components/ui/Input';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { buildClassLearnerProfileHref } from '@/app/core/components/learners/learnerProfileNavigation';
 import {
     Table,
     TableBody,
@@ -238,7 +239,7 @@ export function CohortStudentsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Link
-                                                href={`/learners/${student.id}`}
+                                                href={buildClassLearnerProfileHref(student.id, cohortId)}
                                                 className="font-medium text-blue-600 hover:underline"
                                             >
                                                 {student.full_name}

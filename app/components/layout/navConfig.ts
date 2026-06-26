@@ -220,8 +220,8 @@ export function getAdminNav(
     return {
       primary: [
         { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Lesson preparations', href: '/lesson-plans', icon: FileText },
         selfManagedAcademicSetupNav(),
-        { name: 'My learners', href: '/learners', icon: Users },
       ],
       secondary: [
         { name: 'Settings', href: '/admin/settings', icon: Settings },
