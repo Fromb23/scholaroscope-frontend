@@ -5,6 +5,7 @@ import { BookOpen } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { ActionMenu, type ActionMenuItem } from '@/app/components/ui/ActionMenu';
 import type { CohortSubject } from '@/app/core/types/academic';
 import type { CohortSubjectParticipationSummary } from '@/app/core/hooks/useCohortSubjectParticipation';
 
@@ -57,6 +58,31 @@ function getParticipationCount(summary: CohortSubjectParticipationSummary | unde
     }
 
     return String(summary.counts.enrolled);
+}
+
+export function buildCohortSubjectActionMenuItems({
+    subjectLearnersHref,
+    subjectActions,
+    instructorHref,
+}: {
+    subjectLearnersHref: string;
+    subjectActions: CohortSubjectAction[];
+    instructorHref?: string | null;
+}): ActionMenuItem[] {
+    return [
+        {
+            label: 'Manage Subject Learners',
+            href: subjectLearnersHref,
+        },
+        ...subjectActions.map((action) => ({
+            label: action.label,
+            href: action.href,
+        })),
+        ...(instructorHref ? [{
+            label: 'Assign/Manage Instructor',
+            href: instructorHref,
+        }] : []),
+    ];
 }
 
 export function CohortSubjectParticipationSection({
@@ -145,6 +171,15 @@ export function CohortSubjectParticipationSection({
                         {cohortSubjects.map((subject) => {
                             const summary = summaries[subject.id];
                             const subjectActions = buildSubjectActions?.(subject) ?? [];
+                            const subjectLearnersHref = buildSubjectLearnersHref?.(subject) ?? `/academic/cohort-subjects/${subject.id}/learners`;
+                            const instructorHref = canManageInstructors && buildInstructorHref
+                                ? buildInstructorHref(subject)
+                                : null;
+                            const mobileActionItems = buildCohortSubjectActionMenuItems({
+                                subjectLearnersHref,
+                                subjectActions,
+                                instructorHref,
+                            });
 
                             return (
                                 <div
@@ -174,12 +209,23 @@ export function CohortSubjectParticipationSection({
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-wrap gap-2">
+                                        <div className="sm:hidden">
+                                            <ActionMenu
+                                                items={mobileActionItems}
+                                                buttonLabel="More"
+                                                ariaLabel={`Open ${subject.subject_name} actions`}
+                                                align="left"
+                                                hideLabelOnMobile={false}
+                                                menuClassName="min-w-[16rem]"
+                                            />
+                                        </div>
+
+                                        <div className="hidden flex-wrap gap-2 sm:flex">
                                             <Link
-                                                href={buildSubjectLearnersHref?.(subject) ?? `/academic/cohort-subjects/${subject.id}/learners`}
-                                                className="w-full sm:w-auto"
+                                                href={subjectLearnersHref}
+                                                className="w-auto"
                                             >
-                                                <Button className="w-full sm:w-auto">
+                                                <Button>
                                                     <BookOpen className="mr-2 h-4 w-4" />
                                                     Manage Subject Learners
                                                 </Button>
@@ -188,19 +234,18 @@ export function CohortSubjectParticipationSection({
                                                 <Link
                                                     key={`${subject.id}:${action.href}`}
                                                     href={action.href}
-                                                    className="w-full sm:w-auto"
+                                                    className="w-auto"
                                                 >
                                                     <Button
                                                         variant={action.variant === 'primary' ? 'primary' : 'secondary'}
-                                                        className="w-full sm:w-auto"
                                                     >
                                                         {action.label}
                                                     </Button>
                                                 </Link>
                                             ))}
-                                            {canManageInstructors && buildInstructorHref ? (
-                                                <Link href={buildInstructorHref(subject)} className="w-full sm:w-auto">
-                                                    <Button variant="secondary" className="w-full sm:w-auto">
+                                            {instructorHref ? (
+                                                <Link href={instructorHref} className="w-auto">
+                                                    <Button variant="secondary">
                                                         Assign/Manage Instructor
                                                     </Button>
                                                 </Link>
