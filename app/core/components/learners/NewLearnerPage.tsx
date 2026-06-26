@@ -3,12 +3,17 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, ChevronRight, Save } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { learnersAPI } from '@/app/core/api/learners';
+import { bulkEnrollCohortSubjectLearners } from '@/app/core/api/academic';
 import { useCohortDetail, useCohorts } from '@/app/core/hooks/useAcademic';
+import { useAuth } from '@/app/context/AuthContext';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
+import { getLearnerCreateReturnTo } from '@/app/core/components/learners/learnerCreateNavigation';
 
 const INITIAL_FORM_DATA = {
     admission_number: '',
@@ -52,14 +57,36 @@ function getLearnerCreationError(error: unknown) {
     return 'Failed to create learner';
 }
 
+function parsePositiveId(value: string | null): number | null {
+    const parsed = Number(value ?? '');
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 export default function NewStudentPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const { activeOrg, capabilities } = useAuth();
+    const requestedCohortId = parsePositiveId(searchParams.get('cohort'));
+    const requestedCohortSubjectId = parsePositiveId(searchParams.get('cohort_subject'));
+    const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
+        orgType: activeOrg?.org_type,
+        capabilities,
+    });
+    const returnAfterCreate = getLearnerCreateReturnTo({
+        returnTo: searchParams.get('returnTo'),
+        cohortId: requestedCohortId,
+        isSelfManagedTeachingWorkspace: selfManagedTeachingWorkspace,
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [createdLearner, setCreatedLearner] = useState<CreatedLearnerState | null>(null);
 
     const { cohorts } = useCohorts();
 
-    const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+    const [formData, setFormData] = useState({
+        ...INITIAL_FORM_DATA,
+        cohort: requestedCohortId ? String(requestedCohortId) : '',
+    });
     const selectedCohortId = formData.cohort ? Number(formData.cohort) : null;
     const selectedCohort = useMemo(
         () => cohorts.find((cohort) => cohort.id === selectedCohortId) ?? null,
@@ -89,6 +116,18 @@ export default function NewStudentPage() {
             const createdStudent = await learnersAPI.createStudent(studentData);
             const learnerName = createdStudent.full_name?.trim()
                 || `${formData.first_name} ${formData.last_name}`.trim();
+
+            if (requestedCohortSubjectId) {
+                await bulkEnrollCohortSubjectLearners(
+                    requestedCohortSubjectId,
+                    [createdStudent.id],
+                );
+            }
+
+            if (returnAfterCreate) {
+                router.push(returnAfterCreate);
+                return;
+            }
 
             setCreatedLearner({
                 cohortId: studentData.cohort,

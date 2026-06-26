@@ -8,16 +8,23 @@ import {
 } from '@/app/core/components/profile/ProfileComponents';
 import type { ProfileExtensionContext } from '@/app/core/registry/profileExtensions';
 import { useMyRequests } from '@/app/plugins/requests/hooks/useRequests';
+import { useAuth } from '@/app/context/AuthContext';
+import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 
 type DeletionRequestType = 'ACCOUNT_DELETION' | 'ORG_DELETION';
 
 export function ProfileRequestsExtension({ profile }: ProfileExtensionContext) {
+    const { activeOrg, capabilities } = useAuth();
     const { requests, loading, submitDeletionRequest, hasPendingDeletion } = useMyRequests();
     const [deletionModal, setDeletionModal] = useState<DeletionRequestType | null>(null);
 
     const isInstructor = profile.role === 'INSTRUCTOR';
     const isAdmin = profile.role === 'ADMIN';
     const isSuperAdmin = profile.role === 'SUPERADMIN';
+    const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
+        orgType: activeOrg?.org_type,
+        capabilities,
+    });
 
     const dangerActions = [
         ...(isInstructor || isAdmin ? [{
@@ -38,7 +45,7 @@ export function ProfileRequestsExtension({ profile }: ProfileExtensionContext) {
 
     return (
         <>
-            {!isSuperAdmin ? (
+            {!isSuperAdmin && !selfManagedTeachingWorkspace ? (
                 <RecentRequestsCard
                     requests={requests}
                     loading={loading}
