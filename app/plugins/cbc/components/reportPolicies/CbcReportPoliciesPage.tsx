@@ -244,6 +244,7 @@ export function CbcReportPoliciesPage({
             <CbcReportPoliciesTable
                 policies={policies}
                 canManage={canManagePolicies}
+                authoringMode={authoringMode}
                 deletingId={deletingId}
                 onCreate={() => handleOpen()}
                 onEdit={handleOpen}

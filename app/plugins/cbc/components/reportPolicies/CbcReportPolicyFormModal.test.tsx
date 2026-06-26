@@ -105,6 +105,22 @@ describe('CBC report policy form modal', () => {
     expect(payload.subject_profile).toBeUndefined();
   });
 
+  it('builds whole-class setup payloads without subject or subject-profile scope', () => {
+    const payload = buildCbcReportPolicyPayload(
+      baseForm({
+        subject_profile: null,
+        cohort: 9,
+        cbc_cohort_subject: null,
+      }),
+      'CLASS_SETUP',
+    );
+
+    expect(payload.source).toBe('class_configuration');
+    expect(payload.cohort).toBe(9);
+    expect(payload.cbc_cohort_subject).toBeNull();
+    expect(payload.subject_profile).toBeUndefined();
+  });
+
   it('preserves subject profile authoring in institution governance payloads', () => {
     const payload = buildCbcReportPolicyPayload(
       baseForm(),
