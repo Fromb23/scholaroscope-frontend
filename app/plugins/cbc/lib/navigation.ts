@@ -28,6 +28,7 @@ export function buildCbcPath(
     params?: {
         cohort?: number | string | null;
         subject?: number | string | null;
+        cohortSubjectId?: number | string | null;
         returnTo?: string | null;
     },
 ): string {
@@ -38,6 +39,9 @@ export function buildCbcPath(
     }
     if (params?.subject) {
         searchParams.set('subject', String(params.subject));
+    }
+    if (params?.cohortSubjectId) {
+        searchParams.set('cohort_subject_id', String(params.cohortSubjectId));
     }
 
     const safeReturnTo = sanitizeInternalReturnTo(params?.returnTo);

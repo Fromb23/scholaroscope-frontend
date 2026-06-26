@@ -89,7 +89,7 @@ export const useAssessments = (params?: {
       const data = await assessmentAPI.getAll(assessmentFilters);
       const allAssessments = unwrapList(data);
       setAssessments(
-        instructorAccess.isInstructor
+        instructorAccess.isTeachingActor
           ? allAssessments.filter(assessment => allowedCohortSubjectIds.has(assessment.cohort_subject))
           : allAssessments
       );
@@ -99,7 +99,7 @@ export const useAssessments = (params?: {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortSubjectIds, assessmentFilters, instructorAccess.isInstructor]);
+  }, [allowedCohortSubjectIds, assessmentFilters, instructorAccess.isTeachingActor]);
 
   useEffect(() => {
     void fetchAssessments();

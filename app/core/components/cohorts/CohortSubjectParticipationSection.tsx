@@ -8,6 +8,12 @@ import { Card } from '@/app/components/ui/Card';
 import type { CohortSubject } from '@/app/core/types/academic';
 import type { CohortSubjectParticipationSummary } from '@/app/core/hooks/useCohortSubjectParticipation';
 
+export interface CohortSubjectAction {
+    label: string;
+    href: string;
+    variant?: 'primary' | 'secondary';
+}
+
 interface CohortSubjectParticipationSectionProps {
     cohortSubjects: CohortSubject[];
     summaries: Record<number, CohortSubjectParticipationSummary>;
@@ -20,7 +26,9 @@ interface CohortSubjectParticipationSectionProps {
     linkSubjectsDisabledReason?: string | null;
     onLinkSubjects?: () => void;
     buildInstructorHref?: (subject: CohortSubject) => string;
+    buildSubjectLearnersHref?: (subject: CohortSubject) => string;
     showInstructorColumn?: boolean;
+    buildSubjectActions?: (subject: CohortSubject) => CohortSubjectAction[];
 }
 
 function getInstructorLabel(summary: CohortSubjectParticipationSummary | undefined) {
@@ -63,7 +71,9 @@ export function CohortSubjectParticipationSection({
     linkSubjectsDisabledReason = null,
     onLinkSubjects,
     buildInstructorHref,
+    buildSubjectLearnersHref,
     showInstructorColumn = true,
+    buildSubjectActions,
 }: CohortSubjectParticipationSectionProps) {
     const linkSubjectsDisabled = Boolean(linkSubjectsDisabledReason);
 
@@ -134,10 +144,12 @@ export function CohortSubjectParticipationSection({
                     <div className="grid gap-4 md:grid-cols-2">
                         {cohortSubjects.map((subject) => {
                             const summary = summaries[subject.id];
+                            const subjectActions = buildSubjectActions?.(subject) ?? [];
 
                             return (
                                 <div
                                     key={subject.id}
+                                    id={`subject-${subject.id}`}
                                     className="rounded-xl border border-gray-200 p-4"
                                 >
                                     <div className="space-y-4">
@@ -162,9 +174,9 @@ export function CohortSubjectParticipationSection({
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                        <div className="flex flex-wrap gap-2">
                                             <Link
-                                                href={`/academic/cohort-subjects/${subject.id}/learners`}
+                                                href={buildSubjectLearnersHref?.(subject) ?? `/academic/cohort-subjects/${subject.id}/learners`}
                                                 className="w-full sm:w-auto"
                                             >
                                                 <Button className="w-full sm:w-auto">
@@ -172,6 +184,20 @@ export function CohortSubjectParticipationSection({
                                                     Manage Subject Learners
                                                 </Button>
                                             </Link>
+                                            {subjectActions.map((action) => (
+                                                <Link
+                                                    key={`${subject.id}:${action.href}`}
+                                                    href={action.href}
+                                                    className="w-full sm:w-auto"
+                                                >
+                                                    <Button
+                                                        variant={action.variant === 'primary' ? 'primary' : 'secondary'}
+                                                        className="w-full sm:w-auto"
+                                                    >
+                                                        {action.label}
+                                                    </Button>
+                                                </Link>
+                                            ))}
                                             {canManageInstructors && buildInstructorHref ? (
                                                 <Link href={buildInstructorHref(subject)} className="w-full sm:w-auto">
                                                     <Button variant="secondary" className="w-full sm:w-auto">

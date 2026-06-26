@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Download, Eye, FileText, Plus } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -263,6 +263,7 @@ function buildAdminSchemeGroups(
 
 export function SchemesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeRole, capabilities, user } = useAuth();
   const isInstructor = activeRole === 'INSTRUCTOR';
   const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
@@ -313,6 +314,23 @@ export function SchemesPage() {
     : viewMode === 'my_teaching'
       ? 'Use My Teaching to view only schemes tied to your own teaching work.'
       : 'Admin supervision shows organization work by class, instructor, and subject.';
+
+  useEffect(() => {
+    const requestedSubject = searchParams.get('subject');
+    const requestedCohort = searchParams.get('cohort');
+    if (requestedSubject && requestedSubject !== subjectFilter) {
+      setSubjectFilter(requestedSubject);
+    }
+    if (requestedCohort && requestedCohort !== cohortFilter) {
+      setCohortFilter(requestedCohort);
+    }
+  }, [cohortFilter, searchParams, subjectFilter]);
+
+  useEffect(() => {
+    if (canUseTeacherModeAsAdmin && viewMode !== 'my_teaching') {
+      setViewMode('my_teaching');
+    }
+  }, [canUseTeacherModeAsAdmin, viewMode]);
 
   const instructorOptions = useMemo(() => {
     const options = new Map<string, { value: string; label: string }>();

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Award, ClipboardList, FileText, Filter, Plus, TrendingUp } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
@@ -48,8 +48,14 @@ function normalizeText(value: string | null | undefined): string {
     return (value ?? '').trim().toLowerCase();
 }
 
+function parsePositiveId(value: string | null): number | undefined {
+    const parsed = Number(value ?? '');
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 export function AssessmentsOverview() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { activeOrg, user, activeRole, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
@@ -80,11 +86,14 @@ export function AssessmentsOverview() {
     const [selectedInstructorFilter, setSelectedInstructorFilter] = useState('');
     const [groupView, setGroupView] = useState<GroupView>('class');
     const instructorAccess = useInstructorCohortAccess();
+    const isTeachingActor = instructorAccess.isTeachingActor;
+    const isSelfManagedTeachingAdmin = instructorAccess.isSelfManagedTeachingAdmin;
+    const showInstitutionSupervision = isAdminLike && !isSelfManagedTeachingAdmin;
     const { curricula } = useCurricula();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
-    const { instructors } = useInstructors({ enabled: isAdminLike });
+    const { instructors } = useInstructors({ enabled: showInstitutionSupervision });
     const { terms } = useTerms();
     const hasWritableAssessmentCurriculum = useMemo(() => {
         if (isAdminLike) {
@@ -99,18 +108,34 @@ export function AssessmentsOverview() {
         });
     }, [curricula, instructorAccess.assignments, isAdminLike]);
     const canCreateAssessment = hasWritableAssessmentCurriculum && (
-        canCreateTeachingRecords || (activeRole === 'INSTRUCTOR' && instructorAccess.hasAssignedCohortSubjects)
+        canCreateTeachingRecords || (isTeachingActor && instructorAccess.hasAssignedCohortSubjects)
     );
-    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && viewMode === 'my_teaching');
+    const effectiveMyTeachingMode = isTeachingActor || (canUseMyTeaching && viewMode === 'my_teaching');
     const createButtonLabel = effectiveMyTeachingMode
         ? 'Create my assessment'
         : 'Create assessment';
 
     useEffect(() => {
+        if (isSelfManagedTeachingAdmin && viewMode !== 'my_teaching') {
+            setViewMode('my_teaching');
+            return;
+        }
         if (!canUseMyTeaching && viewMode === 'my_teaching') {
             setViewMode('admin_supervision');
         }
-    }, [canUseMyTeaching, viewMode]);
+    }, [canUseMyTeaching, isSelfManagedTeachingAdmin, viewMode]);
+
+    useEffect(() => {
+        const queryCohort = parsePositiveId(searchParams.get('cohort'));
+        const queryCohortSubject = parsePositiveId(searchParams.get('cohort_subject'));
+
+        if (queryCohort !== undefined) {
+            setSelectedCohort(queryCohort);
+        }
+        if (queryCohortSubject !== undefined) {
+            setSelectedCohortSubject(queryCohortSubject);
+        }
+    }, [searchParams]);
 
     const { assessments, loading } = useAssessments({
         term: selectedTerm,
@@ -120,7 +145,7 @@ export function AssessmentsOverview() {
     });
 
     const availableCohortSubjects = useMemo(() => {
-        if (activeRole === 'INSTRUCTOR') {
+        if (isTeachingActor) {
             const items = instructorAccess.assignments
                 .filter((assignment) => typeof assignment.cohort_subject_id === 'number')
                 .map((assignment) => ({
@@ -144,7 +169,7 @@ export function AssessmentsOverview() {
             }))
             .filter((subject) => !selectedCohort || subject.cohortId === selectedCohort)
             .sort((left, right) => left.label.localeCompare(right.label));
-    }, [activeRole, cohortSubjects, instructorAccess.assignments, selectedCohort]);
+    }, [cohortSubjects, instructorAccess.assignments, isTeachingActor, selectedCohort]);
 
     const creatorLabelById = useMemo(() => {
         const labels = new Map<number, string>();
@@ -367,10 +392,10 @@ export function AssessmentsOverview() {
             <div className="flex justify-between items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        {isInstructor ? 'Assessments & Grading' : effectiveMyTeachingMode ? 'My Assessments' : 'Assessment Overview'}
+                        {isTeachingActor ? 'Assessments & Grading' : effectiveMyTeachingMode ? 'My Assessments' : 'Assessment Overview'}
                     </h1>
                     <p className="text-gray-600 mt-1">
-                        {isInstructor
+                        {isTeachingActor
                             ? 'Create, review, and grade class work.'
                             : effectiveMyTeachingMode
                                 ? 'Use My Teaching to view only your own assessment work.'
@@ -391,7 +416,7 @@ export function AssessmentsOverview() {
                 ) : null}
             </div>
 
-            {isAdminLike ? (
+            {showInstitutionSupervision ? (
                 <Card>
                     <div className="space-y-5 p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -501,7 +526,7 @@ export function AssessmentsOverview() {
                                 })),
                             ]}
                         />
-                        {isAdminLike && !effectiveMyTeachingMode ? (
+                        {showInstitutionSupervision && !effectiveMyTeachingMode ? (
                             <Select
                                 label="Instructor"
                                 value={selectedInstructorFilter}
@@ -541,7 +566,7 @@ export function AssessmentsOverview() {
                             {effectiveMyTeachingMode ? 'No assessments yet' : 'No assessments found'}
                         </h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            {isInstructor && !instructorAccess.hasAssignedCohortSubjects
+                            {isTeachingActor && !instructorAccess.hasAssignedCohortSubjects
                                 ? 'Your teaching load is not assigned yet. Assessments will appear once your classes and subjects are assigned.'
                                 : selectedTerm || selectedCohort || selectedCohortSubject || selectedType || selectedEvalType || selectedInstructorFilter
                                     ? 'Try adjusting your filters.'

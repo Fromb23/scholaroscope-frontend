@@ -3,7 +3,7 @@
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
     Bot,
@@ -51,6 +51,7 @@ import type {
 
 export function GenerateLessonPlanPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { curricula } = useCurricula();
     const { terms } = useTerms();
     const { assignments, isLoading: assignmentsLoading, error: assignmentsError } = useInstructorCohortAccess();
@@ -81,6 +82,8 @@ export function GenerateLessonPlanPage() {
         cohortSubjectId: number;
         termId: number;
     } | null>(null);
+    const requestedCohortSubjectId = searchParams.get('cohort_subject');
+    const requestedTermId = searchParams.get('term');
 
     const selectedCohortSubjectId = cohortSubjectId ? Number(cohortSubjectId) : null;
     const selectedTermId = termId ? Number(termId) : null;
@@ -129,6 +132,30 @@ export function GenerateLessonPlanPage() {
 
         return resolveCurriculumForType(curricula, selectedAssignment.curriculumType);
     }, [curricula, selectedAssignment]);
+
+    useEffect(() => {
+        if (
+            requestedCohortSubjectId
+            && availableAssignmentOptions.some((option) => option.value === requestedCohortSubjectId)
+            && cohortSubjectId !== requestedCohortSubjectId
+        ) {
+            setCohortSubjectId(requestedCohortSubjectId);
+        }
+        if (
+            requestedTermId
+            && terms.some((term) => String(term.id) === requestedTermId)
+            && termId !== requestedTermId
+        ) {
+            setTermId(requestedTermId);
+        }
+    }, [
+        availableAssignmentOptions,
+        cohortSubjectId,
+        requestedCohortSubjectId,
+        requestedTermId,
+        termId,
+        terms,
+    ]);
 
     const submitting = creatingLessonPlan || generatingLessonPlan;
     const plannedOutcomeMap = useMemo(

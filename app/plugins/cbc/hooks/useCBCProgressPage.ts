@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     useStrandsByCurriculum,
     useStrandDetailsBySubjectProfiles,
@@ -40,6 +41,11 @@ function getOutcomeCount(strand: StrandLike) {
 
 export function useCBCProgressPage() {
     const [selectedSubjectFilterId, setSelectedSubjectFilterId] = useState<number | null>(null);
+    const searchParams = useSearchParams();
+    const requestedCohortSubjectId = useMemo(() => {
+        const value = Number(searchParams.get('cohort_subject_id') ?? '');
+        return Number.isFinite(value) && value > 0 ? value : null;
+    }, [searchParams]);
 
     const {
         selectedCurriculumId,
@@ -63,6 +69,7 @@ export function useCBCProgressPage() {
         selectedCurriculumId,
         requestedCohortId: selectedCohortId,
         requestedSubjectId: selectedSubjectFilterId,
+        requestedCohortSubjectId,
     });
 
     const {

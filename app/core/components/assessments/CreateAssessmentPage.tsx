@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CheckSquare, ClipboardList, Save, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
@@ -29,6 +29,11 @@ const EVALUATION_TYPES = [
     { value: 'COMPETENCY', label: 'Competency' },
 ];
 
+function parsePositiveId(value: string | null): number | null {
+    const parsed = Number(value ?? '');
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 type InstructorSubjectOption = {
     id: number;
     cohort_id: number;
@@ -41,6 +46,7 @@ type InstructorSubjectOption = {
 
 export function CreateAssessmentPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const { curricula } = useCurricula();
@@ -102,6 +108,14 @@ export function CreateAssessmentPage() {
     const { subjects } = useCohortSubjects(selectedCohortId || undefined);
     const { rubricScales } = useRubricScales();
     const saveErrorRef = useScrollIntoViewOnMessage(saveError);
+    const requestedCohortId = useMemo(
+        () => parsePositiveId(searchParams.get('cohort')),
+        [searchParams]
+    );
+    const requestedCohortSubjectId = useMemo(
+        () => parsePositiveId(searchParams.get('cohort_subject')),
+        [searchParams]
+    );
 
     const assignedCohorts = useMemo(() => (
         Array.from(
@@ -175,6 +189,28 @@ export function CreateAssessmentPage() {
 
     useEffect(() => {
         if (!isTeachingActor) return;
+        if (
+            requestedCohortSubjectId
+            && allowedCohortSubjectIds.includes(requestedCohortSubjectId)
+        ) {
+            const requestedOption = assignedSubjectOptions.find(
+                (option) => option.id === requestedCohortSubjectId
+            );
+            if (requestedOption && selectedCohortId !== requestedOption.cohort_id) {
+                selectCohort(requestedOption.cohort_id);
+            }
+            if (form.cohort_subject !== requestedCohortSubjectId) {
+                setField('cohort_subject', requestedCohortSubjectId);
+            }
+            return;
+        }
+        if (
+            requestedCohortId
+            && assignedCohorts.some((cohort) => cohort.id === requestedCohortId)
+            && selectedCohortId !== requestedCohortId
+        ) {
+            selectCohort(requestedCohortId);
+        }
         if (assignedSubjectOptions.length === 1) {
             const only = assignedSubjectOptions[0];
             if (selectedCohortId !== only.cohort_id) {
@@ -189,7 +225,16 @@ export function CreateAssessmentPage() {
             selectCohort(assignedCohorts[0].id);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [assignedCohorts, assignedSubjectOptions, form.cohort_subject, isTeachingActor, selectedCohortId]);
+    }, [
+        allowedCohortSubjectIds,
+        assignedCohorts,
+        assignedSubjectOptions,
+        form.cohort_subject,
+        isTeachingActor,
+        requestedCohortId,
+        requestedCohortSubjectId,
+        selectedCohortId,
+    ]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

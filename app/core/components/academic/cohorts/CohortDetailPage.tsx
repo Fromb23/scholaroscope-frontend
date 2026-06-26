@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
@@ -31,7 +31,10 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { ManageCohortSubjectsModal } from '@/app/core/components/cohorts/CohortComponents';
-import { CohortSubjectParticipationSection } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
+import {
+    CohortSubjectParticipationSection,
+    type CohortSubjectAction,
+} from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
 import { hasCbcPathwayProfile, isCbcSeniorSchoolEntity } from '@/app/core/lib/cbcSeniorSchool';
 import { withAcademicSetupMode } from '@/app/core/lib/academicSetup';
 import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
@@ -40,6 +43,7 @@ import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { getCohortDetailCardExtensions } from '@/app/core/registry/cohortDetailCards';
+import type { CohortSubject } from '@/app/core/types/academic';
 
 interface MetadataItemProps {
     label: string;
@@ -146,6 +150,16 @@ function buildInstructorManagementHref(cohortId: number, cohortName: string, sub
     });
 
     return `/admin/instructors?${params.toString()}`;
+}
+
+function buildScopedHref(path: string, params: Record<string, string | number | null | undefined>) {
+    const search = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === null || value === undefined || value === '') return;
+        search.set(key, String(value));
+    });
+    const query = search.toString();
+    return query ? `${path}?${query}` : path;
 }
 
 function CbcSeniorSetupSection({
@@ -416,20 +430,21 @@ export default function CohortHubPage() {
     } = useCohortSubjects(isValidCohortId ? cohortId : undefined);
     const enrolledStudentsQuery = useCohortEnrolledStudents(cohortId);
 
-    const isInstructor = activeRole === 'INSTRUCTOR';
-    const accessLoading = authLoading || pluginsLoading || (isInstructor && instructorAccess.isLoading);
-    const allowed = !user
-        ? false
-        : user.is_superadmin
-            || activeRole === 'ADMIN'
-            || (isInstructor && instructorAccess.cohortIds.includes(cohortId));
     const isPersonalTeachingWorkspace = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type,
         capabilities,
     });
+    const isTeachingActor = instructorAccess.isTeachingActor;
+    const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !isTeachingActor);
+    const accessLoading = authLoading || pluginsLoading || (isTeachingActor && instructorAccess.isLoading);
+    const allowed = !user
+        ? false
+        : isInstitutionAdminView
+            || (isTeachingActor && instructorAccess.cohortIds.includes(cohortId))
+            || (isPersonalTeachingWorkspace && activeRole === 'ADMIN');
     const canManageInstructors = isAdminOrAbove(user, activeRole) && !isPersonalTeachingWorkspace;
     const canLinkSubjects = isAdminOrAbove(user, activeRole);
-    const visibleCohortSubjects = isInstructor
+    const visibleCohortSubjects = isTeachingActor
         ? cohortSubjects.filter(subject => instructorAccess.cohortSubjectIds.includes(subject.id))
         : cohortSubjects;
     const subjectParticipationQuery = useCohortSubjectParticipation(
@@ -481,7 +496,7 @@ export default function CohortHubPage() {
         ?? (effectiveSetupMode ? withAcademicSetupMode('/academic/cohorts') : '/academic/cohorts');
     const backLabel = safeReturnTo
         ? 'Back'
-        : (isInstructor ? 'Back to My Teaching Load' : 'Back to Cohorts');
+        : (isTeachingActor ? 'Back to My Teaching Load' : 'Back to Cohorts');
     const cbcBrowserHref = `${'/cbc/browser'}?${new URLSearchParams({
         cohort: String(cohortId),
         returnTo: cohortReturnTo,
@@ -490,6 +505,82 @@ export default function CohortHubPage() {
         cohort: String(cohortId),
         returnTo: cohortReturnTo,
     }).toString()}`;
+    const showCohortTeachingActions = !isTeachingActor;
+    const workflowSubjectCount = isTeachingActor ? visibleCohortSubjects.length : subjectCount;
+    const buildSubjectReturnTo = useCallback(
+        (subjectId: number) => `${cohortReturnTo}#subject-${subjectId}`,
+        [cohortReturnTo]
+    );
+    const buildSubjectLearnersHref = useCallback(
+        (subject: CohortSubject) => buildScopedHref(`/academic/cohort-subjects/${subject.id}/learners`, {
+            returnTo: buildSubjectReturnTo(subject.id),
+        }),
+        [buildSubjectReturnTo]
+    );
+    const buildSubjectActions = useCallback((subject: CohortSubject): CohortSubjectAction[] => {
+        const subjectReturnTo = buildSubjectReturnTo(subject.id);
+        const baseParams = {
+            cohort: cohortId,
+            cohort_subject: subject.id,
+            subject: subject.id,
+            source: 'cohort_subject',
+            returnTo: subjectReturnTo,
+        };
+        const actions: CohortSubjectAction[] = [
+            {
+                label: 'Schemes',
+                href: buildScopedHref('/schemes', baseParams),
+            },
+            {
+                label: 'Lesson plans',
+                href: buildScopedHref('/lesson-plans', baseParams),
+            },
+            {
+                label: 'Sessions',
+                href: buildScopedHref('/sessions', baseParams),
+            },
+            {
+                label: 'Assignments',
+                href: buildScopedHref(`/academic/cohorts/${cohortId}/assignments`, baseParams),
+            },
+            {
+                label: 'Assessments',
+                href: buildScopedHref('/assessments', baseParams),
+            },
+            {
+                label: 'Subject reports',
+                href: buildScopedHref(`/reports/instructor/cohort-subjects/${subject.id}`, {
+                    returnTo: subjectReturnTo,
+                    source: 'cohort_subject',
+                }),
+            },
+        ];
+
+        if (isCBC && hasCBCPlugin) {
+            actions.push(
+                {
+                    label: 'CBC Browser',
+                    href: buildScopedHref('/cbc/browser', {
+                        cohort: cohortId,
+                        cohort_subject_id: subject.id,
+                        returnTo: subjectReturnTo,
+                        source: 'cohort_subject',
+                    }),
+                },
+                {
+                    label: 'CBC Progress',
+                    href: buildScopedHref('/cbc/progress', {
+                        cohort: cohortId,
+                        cohort_subject_id: subject.id,
+                        returnTo: subjectReturnTo,
+                        source: 'cohort_subject',
+                    }),
+                }
+            );
+        }
+
+        return actions;
+    }, [buildSubjectReturnTo, cohortId, hasCBCPlugin, isCBC]);
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
         ? 'CBC tools are not available for this organization yet.'
         : null;
@@ -535,12 +626,14 @@ export default function CohortHubPage() {
                     href: setupContinueHref,
                 }]
                 : []),
-            {
-                label: 'Open Sessions',
-                type: 'navigate' as const,
-                href: sessionsHref,
-            },
-            ...(cohort && isCBC && hasCBCPlugin && subjectCount > 0
+            ...(showCohortTeachingActions
+                ? [{
+                    label: 'Open Sessions',
+                    type: 'navigate' as const,
+                    href: sessionsHref,
+                }]
+                : []),
+            ...(showCohortTeachingActions && cohort && isCBC && hasCBCPlugin && workflowSubjectCount > 0
                 ? [
                     {
                         label: 'Browse CBC',
@@ -567,16 +660,16 @@ export default function CohortHubPage() {
                 type: 'page_action' as const,
                 handler: () => setAssignSubjectsOpen(true),
             }
-            : cohort && isCBC && hasCBCPlugin && subjectCount > 0
+            : showCohortTeachingActions && cohort && isCBC && hasCBCPlugin && workflowSubjectCount > 0
                 ? {
                     label: 'Browse CBC',
                     type: 'navigate' as const,
                     href: cbcBrowserHref,
                 }
                 : {
-                    label: 'Open Sessions',
+                    label: showCohortTeachingActions ? 'Open Sessions' : 'Review class subjects',
                     type: 'navigate' as const,
-                    href: sessionsHref,
+                    href: showCohortTeachingActions ? sessionsHref : cohortReturnTo,
                 },
         workflowStep: cohort && isCBC ? 'cohort_cbc_tools' : 'cohort_actions',
         emptyStateReason: !cohort && !cohortLoading
@@ -597,13 +690,15 @@ export default function CohortHubPage() {
         cbcProgressHref,
         backHref,
         cohortSetupReady,
+        cohortReturnTo,
         backLabel,
         setupContinueHref,
         setupContinueLabel,
         effectiveSetupMode,
         sessionsHref,
-        subjectCount,
+        showCohortTeachingActions,
         visibleCohortSubjects.length,
+        workflowSubjectCount,
     ]);
 
     useAssistantPageContext(assistantContext);
@@ -633,7 +728,7 @@ export default function CohortHubPage() {
     const unknownCurriculumReason = `No workflow is configured yet for ${curriculumName}.`;
     const cbcWorkflowDisabledReason = !hasCBCPlugin
         ? 'CBC tools are not available for this organization yet.'
-        : subjectCount === 0
+        : workflowSubjectCount === 0
             ? 'No CBC subjects assigned to this cohort yet.'
             : undefined;
     const openAssignSubjects = () => setAssignSubjectsOpen(true);
@@ -750,41 +845,45 @@ export default function CohortHubPage() {
                                     footerLabel="View class list"
                                 />
                             ) : null}
-                            <ActionCard
-                                title="Sessions"
-                                description="Open sessions filtered to this cohort."
-                                icon={Calendar}
-                                href={sessionsHref}
-                                footerLabel="Open sessions"
-                            />
-                            <ActionCard
-                                title="Assignments"
-                                description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
-                                icon={ClipboardList}
-                                href={`/academic/cohorts/${cohort.id}/assignments`}
-                                footerLabel="Manage assignments"
-                            />
+                            {showCohortTeachingActions ? (
+                                <>
+                                    <ActionCard
+                                        title="Sessions"
+                                        description="Open sessions filtered to this cohort."
+                                        icon={Calendar}
+                                        href={sessionsHref}
+                                        footerLabel="Open sessions"
+                                    />
+                                    <ActionCard
+                                        title="Assignments"
+                                        description="Open cohort-scoped assignments while keeping creation authority pinned to cohort subjects."
+                                        icon={ClipboardList}
+                                        href={`/academic/cohorts/${cohort.id}/assignments`}
+                                        footerLabel="Manage assignments"
+                                    />
+                                </>
+                            ) : null}
 
-                            {isCBC ? (
+                            {showCohortTeachingActions && isCBC ? (
                                 <>
                                     <ActionCard
                                         title="CBC Subjects & Outcomes"
                                         description="Browse strands, sub-strands, and outcomes taught in this cohort."
                                         icon={BookOpen}
-                                        href={hasCBCPlugin && subjectCount > 0 ? cbcBrowserHref : undefined}
+                                        href={hasCBCPlugin && workflowSubjectCount > 0 ? cbcBrowserHref : undefined}
                                         disabledReason={cbcWorkflowDisabledReason}
-                                        footerLabel={subjectCount > 0 ? `${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : undefined}
+                                        footerLabel={workflowSubjectCount > 0 ? `${workflowSubjectCount} subject${workflowSubjectCount === 1 ? '' : 's'}` : undefined}
                                     />
                                     <ActionCard
                                         title="CBC Progress"
                                         description="Track CBC progress and coverage for this cohort."
                                         icon={LineChart}
-                                        href={hasCBCPlugin && subjectCount > 0 ? cbcProgressHref : undefined}
+                                        href={hasCBCPlugin && workflowSubjectCount > 0 ? cbcProgressHref : undefined}
                                         disabledReason={cbcWorkflowDisabledReason}
-                                        footerLabel={subjectCount > 0 ? 'View progress' : undefined}
+                                        footerLabel={workflowSubjectCount > 0 ? 'View progress' : undefined}
                                     />
                                 </>
-                            ) : isCambridge ? (
+                            ) : showCohortTeachingActions && isCambridge ? (
                                 hasCambridgePlugin && cohortDetailCardExtensions.length > 0 ? (
                                     cohortDetailCardExtensions.map((extension) => (
                                         <extension.Component key={extension.key} cohortId={cohort.id} />
@@ -805,7 +904,7 @@ export default function CohortHubPage() {
                                         />
                                     </>
                                 )
-                            ) : (
+                            ) : showCohortTeachingActions ? (
                                 <>
                                     <ActionCard
                                         title={`${curriculumName} Content`}
@@ -820,7 +919,7 @@ export default function CohortHubPage() {
                                         disabledReason={unknownCurriculumReason}
                                     />
                                 </>
-                            )}
+                            ) : null}
                         </>
                     )}
                 </div>
@@ -831,8 +930,8 @@ export default function CohortHubPage() {
                 summaries={subjectParticipationQuery.summaries}
                 loading={cohortSubjectsLoading || subjectParticipationQuery.loading}
                 error={cohortSubjectsError ?? subjectParticipationQuery.error}
-                emptyMessage={isInstructor
-                    ? 'No cohort subjects are assigned to you yet.'
+                emptyMessage={isTeachingActor
+                    ? 'No class subjects are assigned to you yet.'
                     : subjectCount === 0
                         ? 'No class subjects have been added yet. Start with class subject setup.'
                         : undefined}
@@ -844,10 +943,12 @@ export default function CohortHubPage() {
                 buildInstructorHref={canManageInstructors
                     ? (subject) => buildInstructorManagementHref(cohort.id, cohort.name, subject)
                     : undefined}
+                buildSubjectLearnersHref={buildSubjectLearnersHref}
+                buildSubjectActions={buildSubjectActions}
                 showInstructorColumn={!isPersonalTeachingWorkspace}
             />
 
-            {isCbcSeniorCohort ? (
+            {isCbcSeniorCohort && showCohortTeachingActions ? (
                 <section className="space-y-4">
                     <div className="space-y-1">
                         <h2 className="text-xl font-semibold text-gray-900">Delivery Workflows</h2>
@@ -875,17 +976,17 @@ export default function CohortHubPage() {
                             title="CBC Subjects & Outcomes"
                             description="Browse strands, sub-strands, and outcomes taught in this cohort."
                             icon={BookOpen}
-                            href={hasCBCPlugin && subjectCount > 0 ? cbcBrowserHref : undefined}
+                            href={hasCBCPlugin && workflowSubjectCount > 0 ? cbcBrowserHref : undefined}
                             disabledReason={cbcWorkflowDisabledReason}
-                            footerLabel={subjectCount > 0 ? `${subjectCount} subject${subjectCount === 1 ? '' : 's'}` : undefined}
+                            footerLabel={workflowSubjectCount > 0 ? `${workflowSubjectCount} subject${workflowSubjectCount === 1 ? '' : 's'}` : undefined}
                         />
                         <ActionCard
                             title="CBC Progress"
                             description="Track CBC progress and coverage for this cohort."
                             icon={LineChart}
-                            href={hasCBCPlugin && subjectCount > 0 ? cbcProgressHref : undefined}
+                            href={hasCBCPlugin && workflowSubjectCount > 0 ? cbcProgressHref : undefined}
                             disabledReason={cbcWorkflowDisabledReason}
-                            footerLabel={subjectCount > 0 ? 'View progress' : undefined}
+                            footerLabel={workflowSubjectCount > 0 ? 'View progress' : undefined}
                         />
                     </div>
                 </section>

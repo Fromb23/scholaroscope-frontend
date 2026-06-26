@@ -22,6 +22,7 @@ export function InstructorDashboard() {
     const router = useRouter();
     const { user, activeOrg, activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
+    const isTeachingDashboardActor = instructorAccess.isTeachingActor;
 
     const {
         metrics, alerts, sessions, teachingCohorts,
@@ -65,13 +66,13 @@ export function InstructorDashboard() {
     useAssistantPageContext(assistantContext);
 
     useEffect(() => {
-        if (activeRole && activeRole !== 'INSTRUCTOR') {
+        if (activeRole && !isTeachingDashboardActor) {
             router.push('/dashboard');
         }
-    }, [activeRole, router]);
+    }, [activeRole, isTeachingDashboardActor, router]);
 
     if (!user || activeRole === null) return null;
-    if (activeRole !== 'INSTRUCTOR') return null;
+    if (!isTeachingDashboardActor) return null;
     if (dashboardLoading) {
         return (
             <div className="max-w-[1800px] mx-auto space-y-6">
