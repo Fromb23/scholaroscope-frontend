@@ -26,11 +26,11 @@ const cohortSubject = {
 } satisfies CohortSubject;
 
 const subjectActions: CohortSubjectAction[] = [
-  { label: 'Schemes', href: '/schemes?cohort_subject=26' },
-  { label: 'Lesson plans', href: '/lesson-plans?cohort_subject=26' },
-  { label: 'Sessions', href: '/sessions?cohort_subject=26' },
-  { label: 'Configure policy', href: '/academic/cohorts/9/subjects/26/report-policy' },
-  { label: 'Compute subject results', href: '/academic/cohorts/9/subjects/26/report-computation' },
+  { label: 'Prepare scheme', href: '/schemes?cohort_subject=26' },
+  { label: 'Prepare lesson', href: '/lesson-plans?cohort_subject=26' },
+  { label: 'Record lesson', href: '/sessions?cohort_subject=26' },
+  { label: 'Set report rules', href: '/academic/cohorts/9/subjects/26/report-policy' },
+  { label: 'Calculate subject report', href: '/academic/cohorts/9/subjects/26/report-computation' },
 ];
 
 function renderSubjectSection() {
@@ -64,14 +64,14 @@ describe('cohort subject participation section actions', () => {
     });
 
     expect(items.map((item) => item.label)).toEqual([
-      'Manage Subject Learners',
-      'Schemes',
-      'Lesson plans',
-      'Sessions',
-      'Configure policy',
-      'Compute subject results',
+      'Manage learners',
+      'Prepare scheme',
+      'Prepare lesson',
+      'Record lesson',
+      'Set report rules',
+      'Calculate subject report',
     ]);
-    expect(items.find((item) => item.label === 'Schemes')?.href).toBe('/schemes?cohort_subject=26');
+    expect(items.find((item) => item.label === 'Prepare scheme')?.href).toBe('/schemes?cohort_subject=26');
   });
 
   it('renders a compact mobile More surface while preserving desktop actions', () => {
@@ -81,8 +81,8 @@ describe('cohort subject participation section actions', () => {
     expect(html).toContain('More');
     expect(html).toContain('sm:hidden');
     expect(html).toContain('hidden flex-wrap gap-2 sm:flex');
-    expect(html).toContain('Manage Subject Learners');
-    expect(html).toContain('Configure policy');
+    expect(html).toContain('Manage learners');
+    expect(html).toContain('Set report rules');
     expect(html).toContain('/academic/cohorts/9/subjects/26/report-computation');
   });
 });

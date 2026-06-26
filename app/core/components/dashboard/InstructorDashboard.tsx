@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { BarChart3, BookOpen, CalendarCheck, ClipboardList, GraduationCap, Settings, Users } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { ActionMenu, type ActionMenuItem } from '@/app/components/ui/ActionMenu';
 import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { useInstructorDashboard } from '@/app/core/hooks/useInstructorDashboard';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -19,6 +21,43 @@ import {
     AssessmentsSummaryCard,
 } from '@/app/core/components/dashboard/InstructorDashboardWidgets';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+
+export interface FreelanceDashboardAction {
+    label: string;
+    href: string;
+}
+
+export function getFreelanceDashboardPrimaryActions(): FreelanceDashboardAction[] {
+    return [
+        { label: 'Lesson preparations', href: '/lesson-plans' },
+        { label: 'My classes', href: '/academic/cohorts' },
+        { label: 'Teaching record', href: '/sessions' },
+        { label: 'Reports / progress', href: '/reports/instructor' },
+    ];
+}
+
+export function getFreelanceDashboardMoreActions(): FreelanceDashboardAction[] {
+    return [
+        { label: 'Academic Setup', href: '/academic' },
+        { label: 'Manage class subjects', href: '/academic/cohorts' },
+        { label: 'Learners', href: '/learners' },
+        { label: 'Settings', href: '/admin/settings' },
+    ];
+}
+
+const freelanceActionIcons = {
+    'Lesson preparations': <ClipboardList className="h-4 w-4" />,
+    'My classes': <GraduationCap className="h-4 w-4" />,
+    'Teaching record': <CalendarCheck className="h-4 w-4" />,
+    'Reports / progress': <BarChart3 className="h-4 w-4" />,
+} satisfies Record<string, ReactNode>;
+
+const freelanceMoreActionIcons = {
+    'Academic Setup': <BookOpen className="h-4 w-4" />,
+    'Manage class subjects': <GraduationCap className="h-4 w-4" />,
+    Learners: <Users className="h-4 w-4" />,
+    Settings: <Settings className="h-4 w-4" />,
+} satisfies Record<string, ReactNode>;
 
 
 export function InstructorDashboard() {
@@ -37,6 +76,15 @@ export function InstructorDashboard() {
 
     const hasTeachingAssignments = teachingLoad.length > 0;
     const dashboardLoading = isLoading || instructorAccess.isLoading;
+    const freelancePrimaryActions = useMemo(() => getFreelanceDashboardPrimaryActions(), []);
+    const freelanceMoreActions = useMemo<ActionMenuItem[]>(
+        () => getFreelanceDashboardMoreActions().map((action) => ({
+            label: action.label,
+            href: action.href,
+            icon: freelanceMoreActionIcons[action.label as keyof typeof freelanceMoreActionIcons],
+        })),
+        [],
+    );
     const assistantContext = useMemo(() => ({
         pageKey: 'instructor_dashboard',
         pageTitle: 'Teaching Today',
@@ -100,14 +148,32 @@ export function InstructorDashboard() {
                         <div>
                             <h2 className="text-base font-semibold theme-text">My teaching workspace</h2>
                             <p className="mt-1 text-sm theme-muted">
-                                Teaching stays scoped to your assigned class subjects. Setup and workspace controls remain available here.
+                                Daily teaching work stays first. Setup and workspace controls remain available under More.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Link href="/academic"><Button variant="secondary" size="sm">Academic Setup</Button></Link>
-                            <Link href="/academic/cohorts"><Button variant="secondary" size="sm">Manage class subjects</Button></Link>
-                            <Link href="/learners"><Button variant="secondary" size="sm">Learners</Button></Link>
-                            <Link href="/admin/settings"><Button variant="secondary" size="sm">Settings</Button></Link>
+                            {freelancePrimaryActions.map((action, index) => (
+                                <Link
+                                    key={action.label}
+                                    href={action.href}
+                                    className={index > 1 ? 'hidden sm:inline-flex' : 'inline-flex'}
+                                >
+                                    <Button
+                                        variant={index === 0 ? 'primary' : 'secondary'}
+                                        size="sm"
+                                    >
+                                        {freelanceActionIcons[action.label as keyof typeof freelanceActionIcons]}
+                                        {action.label}
+                                    </Button>
+                                </Link>
+                            ))}
+                            <ActionMenu
+                                items={freelanceMoreActions}
+                                buttonLabel="More"
+                                ariaLabel="Open more workspace actions"
+                                align="right"
+                                hideLabelOnMobile={false}
+                            />
                         </div>
                     </div>
                 </Card>

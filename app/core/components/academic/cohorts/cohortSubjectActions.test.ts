@@ -33,7 +33,7 @@ describe('cohort subject teaching actions', () => {
       hasCBCPlugin: true,
     });
 
-    for (const label of ['Schemes', 'Lesson plans', 'Sessions', 'Assignments', 'Assessments']) {
+    for (const label of ['Prepare scheme', 'Prepare lesson', 'Record lesson', 'Assignments', 'Assessments']) {
       const href = actions.find((action) => action.label === label)?.href ?? '';
       const query = new URLSearchParams(href.split('?')[1] ?? '');
       expect(query.get('cohort_subject')).toBe('26');
@@ -41,11 +41,11 @@ describe('cohort subject teaching actions', () => {
       expect(query.get('returnTo')).toBe('/academic/cohorts/9#subject-26');
     }
 
-    expect(actions.find((action) => action.label === 'Subject report')?.href).toBe(
+    expect(actions.find((action) => action.label === 'Open subject report')?.href).toBe(
       '/reports/instructor/cohort-subjects/26?returnTo=%2Facademic%2Fcohorts%2F9%23subject-26&source=cohort_subject',
     );
-    expect(actions.find((action) => action.label === 'CBC Browser')?.href).toContain('cohort_subject_id=26');
-    expect(actions.find((action) => action.label === 'CBC Progress')?.href).toContain('cohort_subject_id=26');
+    expect(actions.find((action) => action.label === 'View CBC content')?.href).toContain('cohort_subject_id=26');
+    expect(actions.find((action) => action.label === 'Check CBC progress')?.href).toContain('cohort_subject_id=26');
   });
 
   it('adds class-owned report setup actions for self-managed CBC class subjects', () => {
@@ -58,15 +58,27 @@ describe('cohort subject teaching actions', () => {
       isClassConfigurationWorkspace: true,
     });
 
-    expect(actions.find((action) => action.label === 'Configure policy')?.href).toBe(
+    expect(actions.find((action) => action.label === 'Set report rules')?.href).toBe(
       '/academic/cohorts/9/subjects/26/report-policy?source=class_configuration&cohort=9&cohort_subject=26&cbc_cohort_subject=41&returnTo=%2Facademic%2Fcohorts%2F9%23subject-26',
     );
-    expect(actions.find((action) => action.label === 'Compute subject results')?.href).toBe(
+    expect(actions.find((action) => action.label === 'Calculate subject report')?.href).toBe(
       '/academic/cohorts/9/subjects/26/report-computation?source=class_configuration&cohort=9&cohort_subject=26&returnTo=%2Facademic%2Fcohorts%2F9%23subject-26',
     );
-    expect(actions.map((action) => action.label).indexOf('Configure policy')).toBeLessThan(
-      actions.map((action) => action.label).indexOf('Subject report'),
+    expect(actions.map((action) => action.label).indexOf('Set report rules')).toBeLessThan(
+      actions.map((action) => action.label).indexOf('Open subject report'),
     );
+    expect(actions.map((action) => action.label)).toEqual([
+      'Prepare scheme',
+      'Prepare lesson',
+      'Record lesson',
+      'Assignments',
+      'Assessments',
+      'Set report rules',
+      'Calculate subject report',
+      'Open subject report',
+      'View CBC content',
+      'Check CBC progress',
+    ]);
   });
 
   it('does not expose freelance class-configuration actions for institution subject cards', () => {
@@ -79,8 +91,8 @@ describe('cohort subject teaching actions', () => {
       isClassConfigurationWorkspace: false,
     });
 
-    expect(actions.some((action) => action.label === 'Configure policy')).toBe(false);
-    expect(actions.some((action) => action.label === 'Compute subject results')).toBe(false);
+    expect(actions.some((action) => action.label === 'Set report rules')).toBe(false);
+    expect(actions.some((action) => action.label === 'Calculate subject report')).toBe(false);
   });
 
   it('shows teaching workflow actions only for teaching actors', () => {

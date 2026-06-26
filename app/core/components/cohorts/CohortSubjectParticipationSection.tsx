@@ -71,7 +71,7 @@ export function buildCohortSubjectActionMenuItems({
 }): ActionMenuItem[] {
     return [
         {
-            label: 'Manage Subject Learners',
+            label: 'Manage learners',
             href: subjectLearnersHref,
         },
         ...subjectActions.map((action) => ({
@@ -227,7 +227,7 @@ export function CohortSubjectParticipationSection({
                                             >
                                                 <Button>
                                                     <BookOpen className="mr-2 h-4 w-4" />
-                                                    Manage Subject Learners
+                                                    Manage learners
                                                 </Button>
                                             </Link>
                                             {subjectActions.map((action) => (

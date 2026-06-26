@@ -46,10 +46,11 @@ export function buildCbcCohortSubjectOptions(subjects: CohortSubject[]): CbcCoho
         .filter((subject) => isCbcCurriculum(subject))
         .map((subject) => {
             const scopedSubject = subject as CbcScopedCohortSubject;
+            const cohortName = scopedSubject.cohort_name?.trim() || 'Selected class';
 
             return {
                 id: scopedSubject.cbc_cohort_subject_id ?? scopedSubject.id,
-                label: `${scopedSubject.cohort_name} · ${scopedSubject.subject_code} · ${scopedSubject.subject_name}`,
+                label: `${cohortName} · ${scopedSubject.subject_code} · ${scopedSubject.subject_name}`,
                 cohortId: scopedSubject.cohort_id ?? scopedSubject.cohort,
                 cohortSubjectId: scopedSubject.id,
                 subjectProfileId: scopedSubject.subject_profile_id ?? null,
