@@ -110,6 +110,7 @@ export function isSelfManagedTeachingWorkspace(params: {
   capabilities?: WorkspaceCapabilities | null;
 }): boolean {
   return params.capabilities?.workspace_behavior === 'FREELANCE_TEACHER'
+    || params.capabilities?.workspace_behavior === 'SELF_MANAGED'
     || workspaceAllowsSelfManagedTeaching(params.orgType)
     || isPersonalFreelancerWorkspace(params.orgType);
 }

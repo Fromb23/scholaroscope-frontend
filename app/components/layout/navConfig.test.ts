@@ -11,6 +11,13 @@ vi.mock('@/app/core/lib/workspaces', () => ({
   isSelfManagedWorkspace: (orgType?: string | null) => (
     orgType === 'PERSONAL' || orgType === 'INDEPENDENT_TEACHER' || orgType === 'HOMESCHOOL'
   ),
+  isSelfManagedTeachingWorkspace: ({ orgType, capabilities }: { orgType?: string | null; capabilities?: { can_teach?: boolean; workspace_behavior?: string | null } | null }) => (
+    capabilities?.workspace_behavior === 'FREELANCE_TEACHER'
+    || capabilities?.workspace_behavior === 'SELF_MANAGED'
+    || orgType === 'PERSONAL'
+    || orgType === 'INDEPENDENT_TEACHER'
+    || orgType === 'HOMESCHOOL'
+  ),
 }));
 
 const pluginContext = {
@@ -51,11 +58,24 @@ describe('admin navigation config', () => {
     ]);
   });
 
-  it('keeps self-managed admin teaching labels intact', () => {
-    const nav = getAdminNav(pluginContext, 'HOMESCHOOL');
+  it('uses self-managed teaching labels for future self-managed workspace behavior', () => {
+    const nav = getAdminNav(pluginContext, 'HOMESCHOOL', null, {
+      can_teach: true,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: false,
+      is_workspace_owner: true,
+      workspace_mode: 'SELF_MANAGED',
+      workspace_behavior: 'SELF_MANAGED',
+    });
 
-    expect(nav.primary.some((item) => item.name === 'Teaching Sessions')).toBe(true);
-    expect(nav.primary.some((item) => item.name === 'Lesson Plans')).toBe(true);
+    expect(nav.primary.some((item) => item.name === 'My teaching record')).toBe(true);
+    expect(nav.primary.some((item) => item.name === 'My lesson plans')).toBe(true);
+    expect(nav.primary.find((item) => item.name === 'Academic Setup')?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe('My classes');
   });
 
   it('shows freelance teacher navigation for personal workspaces', () => {
@@ -90,6 +110,9 @@ describe('admin navigation config', () => {
       'My assessments',
       'My reports',
     ]);
+    const academicSetup = nav.primary.find((item) => item.name === 'Academic Setup');
+    expect(academicSetup?.children?.find((item) => item.href === '/academic/cohorts')?.name).toBe('My classes');
+    expect(nav.primary.filter((item) => item.href === '/academic/cohorts')).toHaveLength(0);
     expect(nav.primary.some((item) => item.name === 'Instructors')).toBe(false);
     expect(nav.primary.some((item) => item.name === 'System Alerts')).toBe(false);
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);

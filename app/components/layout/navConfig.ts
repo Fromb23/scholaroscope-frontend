@@ -46,6 +46,7 @@ import {
   isLearnerCenteredWorkspace,
   isPersonalFreelancerWorkspace,
   isSelfManagedWorkspace,
+  isSelfManagedTeachingWorkspace,
 } from '@/app/core/lib/workspaces';
 import { getAdminReportNavigationItems } from '../../core/components/reports/reportHierarchy';
 
@@ -163,12 +164,6 @@ const PERSONAL_SCHEMES_NAV: RegistryNavItem = {
   ],
 };
 
-const PERSONAL_MY_CLASSES_NAV: RegistryNavItem = {
-  name: 'My classes',
-  href: '/academic/cohorts',
-  icon: Users,
-};
-
 function splitSchemeNavigationItems(items: RegistryNavItem[]): {
   schemes: RegistryNavItem[];
   other: RegistryNavItem[];
@@ -187,6 +182,17 @@ function splitSchemeNavigationItems(items: RegistryNavItem[]): {
   return { schemes, other };
 }
 
+function selfManagedAcademicSetupNav(): RegistryNavItem {
+  return {
+    ...ACADEMIC_SETUP_NAV,
+    children: ACADEMIC_SETUP_NAV.children?.map((child) => (
+      child.href === '/academic/cohorts'
+        ? { ...child, name: 'My classes' }
+        : child
+    )),
+  };
+}
+
 export function getAdminNav(
   pluginContext: PluginNavigationContext,
   orgType?: OrgType | null,
@@ -197,6 +203,10 @@ export function getAdminNav(
     ? [{ name: 'Report Policies', href: '/reports/policies', icon: Award }]
     : [];
   const reportNavigationChildren = getAdminReportNavigationItems();
+  const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
+    orgType,
+    capabilities,
+  });
 
   if (academicSetup && !academicSetup.complete) {
     const setupItems = academicSetup.steps?.length
@@ -214,7 +224,7 @@ export function getAdminNav(
       href: item.href,
       icon: item.label.includes('Curricula') || item.label.includes('Subjects') ? BookOpen : CalendarDays,
     }));
-    const dashboardLabel = (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType))
+    const dashboardLabel = selfManagedTeachingWorkspace
       ? 'My teaching workspace'
       : 'Dashboard';
 
@@ -234,7 +244,7 @@ export function getAdminNav(
     };
   }
 
-  if (capabilities?.workspace_behavior === 'FREELANCE_TEACHER' || isPersonalFreelancerWorkspace(orgType)) {
+  if (selfManagedTeachingWorkspace) {
     const afterDashboardItems = getPluginNavigationItems('admin.primary.afterDashboard', pluginContext);
     const { schemes: pluginSchemeItems, other: afterDashboardOtherItems } = splitSchemeNavigationItems(afterDashboardItems);
     const schemeNavItems = pluginSchemeItems.length ? pluginSchemeItems : [PERSONAL_SCHEMES_NAV];
@@ -243,8 +253,7 @@ export function getAdminNav(
       primary: [
         { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
         ...afterDashboardOtherItems,
-        ACADEMIC_SETUP_NAV,
-        PERSONAL_MY_CLASSES_NAV,
+        selfManagedAcademicSetupNav(),
         ...schemeNavItems,
         { name: 'My learners', href: '/learners', icon: Users },
         { name: 'My teaching record', href: '/sessions', icon: Calendar },

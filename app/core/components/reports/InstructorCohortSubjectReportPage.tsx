@@ -73,6 +73,7 @@ import {
   parsePositiveReportParam,
   resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
+import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
 
 type DetailTab = 'learners' | 'performance' | 'teaching-activity';
 
@@ -163,6 +164,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
     fallbackHref: '/reports/instructor/cohort-subjects',
     fallbackState: { term: effectiveTermId },
   });
+  const backLabel = getReturnBackLabel(searchParams.get('returnTo'));
 
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -447,7 +449,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
         <Link href={backHref}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            {backLabel}
           </Button>
         </Link>
 
