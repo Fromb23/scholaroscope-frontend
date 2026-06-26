@@ -104,6 +104,7 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
             search: params?.search,
             status: params?.status,
             term: params?.term,
+            cohort_subject: params?.cohort_subject,
             subject: params?.subject,
             cohort: params?.cohort,
             session: params?.session,
@@ -119,6 +120,7 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
             params?.search,
             params?.session,
             params?.status,
+            params?.cohort_subject,
             params?.subject,
             params?.term,
         ]

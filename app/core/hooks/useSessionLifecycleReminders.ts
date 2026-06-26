@@ -206,7 +206,7 @@ export function useSessionLifecycleReminders() {
         try {
             setRecentLoading(true);
             const data = await sessionAPI.getByDateRange(rangeStart, todayKey);
-            const filtered = instructorAccess.isInstructor
+            const filtered = instructorAccess.isTeachingActor
                 ? filterInstructorSessions(
                     data,
                     instructorAccess.assignments,
@@ -227,7 +227,7 @@ export function useSessionLifecycleReminders() {
         allowedCohortIds,
         allowedCohortSubjectIds,
         instructorAccess.assignments,
-        instructorAccess.isInstructor,
+        instructorAccess.isTeachingActor,
         rangeStart,
         todayKey,
     ]);

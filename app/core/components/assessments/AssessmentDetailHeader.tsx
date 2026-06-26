@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
     CheckCircle,
@@ -52,9 +54,23 @@ export function AssessmentDetailHeader({
     onDownloadPdf,
     onDelete,
 }: AssessmentDetailHeaderProps) {
+    const searchParams = useSearchParams();
+    const safeReturnTo = useMemo(() => {
+        const value = searchParams.get('returnTo');
+        return value?.startsWith('/') ? value : null;
+    }, [searchParams]);
+    const editHref = useMemo(() => {
+        if (!safeReturnTo) {
+            return `/assessments/${assessmentId}/edit`;
+        }
+        return `/assessments/${assessmentId}/edit?${new URLSearchParams({
+            returnTo: safeReturnTo,
+        }).toString()}`;
+    }, [assessmentId, safeReturnTo]);
+
     return (
         <div className="space-y-3">
-            <Link href="/assessments">
+            <Link href={safeReturnTo ?? '/assessments'}>
                 <Button variant="ghost" size="sm">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -99,7 +115,7 @@ export function AssessmentDetailHeader({
                     </Button>
                 )}
                 {!isFinalized && canUpdate && (
-                    <Link href={`/assessments/${assessmentId}/edit`}>
+                    <Link href={editHref}>
                         <Button variant="secondary" size="sm">
                             <Edit className="mr-1.5 h-4 w-4" />
                             Edit

@@ -155,6 +155,10 @@ export function CreateSchemePage() {
   const [rangeInitializedForKey, setRangeInitializedForKey] = useState<string | null>(null);
   const [rangeTouched, setRangeTouched] = useState(false);
   const [generationFailure, setGenerationFailure] = useState<string | null>(null);
+  const safeReturnTo = useMemo(() => {
+    const value = searchParams.get('returnTo');
+    return value?.startsWith('/') ? value : null;
+  }, [searchParams]);
 
   useEffect(() => {
     if (isTeachingActor || isInstitutionalAdmin) {
@@ -771,7 +775,9 @@ export function CreateSchemePage() {
       };
 
       const generated = await generateScheme(payload);
-      router.push(`/schemes/${generated.id}`);
+      router.push(`/schemes/${generated.id}?${new URLSearchParams({
+        returnTo: safeReturnTo ?? '/schemes',
+      }).toString()}`);
     } catch (err) {
       setGenerationFailure(
         err instanceof Error ? err.message : 'We could not generate the draft scheme.',
@@ -831,7 +837,7 @@ export function CreateSchemePage() {
         <p className="text-sm theme-muted">
           Institutional admins supervise generated schemes by class, subject, and instructor progress. Draft scheme creation is reserved for assigned teachers.
         </p>
-        <Link href="/schemes">
+        <Link href={safeReturnTo ?? '/schemes'}>
           <Button type="button" variant="secondary">Back to supervision</Button>
         </Link>
       </Card>
@@ -851,10 +857,10 @@ export function CreateSchemePage() {
   return (
     <div className="space-y-6 pb-24 lg:pb-12">
       <div className="flex items-center gap-3">
-        <Link href="/schemes">
+        <Link href={safeReturnTo ?? '/schemes'}>
           <Button type="button" variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4" />
-            Back to Schemes
+            {safeReturnTo ? 'Back' : 'Back to Schemes'}
           </Button>
         </Link>
       </div>

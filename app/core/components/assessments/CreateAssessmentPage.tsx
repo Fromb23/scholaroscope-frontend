@@ -116,6 +116,10 @@ export function CreateAssessmentPage() {
         () => parsePositiveId(searchParams.get('cohort_subject')),
         [searchParams]
     );
+    const safeReturnTo = useMemo(() => {
+        const value = searchParams.get('returnTo');
+        return value?.startsWith('/') ? value : null;
+    }, [searchParams]);
 
     const assignedCohorts = useMemo(() => (
         Array.from(
@@ -248,17 +252,25 @@ export function CreateAssessmentPage() {
         const nextSection = tracksAssessmentParticipation(form.participation_mode)
             ? '?section=participation'
             : '';
-        router.push(`/assessments/${result.id}${nextSection}`);
+        const detailSearchParams = new URLSearchParams();
+        if (nextSection) {
+            detailSearchParams.set('section', 'participation');
+        }
+        if (safeReturnTo) {
+            detailSearchParams.set('returnTo', safeReturnTo);
+        }
+        const query = detailSearchParams.toString();
+        router.push(`/assessments/${result.id}${query ? `?${query}` : ''}`);
     };
 
     if (isTeachingActor && !instructorAccess.hasAssignedCohortSubjects) {
         return (
             <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                    <Link href="/assessments">
+                    <Link href={safeReturnTo ?? '/assessments'}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Assessments
+                            {safeReturnTo ? 'Back' : 'Back to Assessments'}
                         </Button>
                     </Link>
                     <div>
@@ -292,10 +304,10 @@ export function CreateAssessmentPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center gap-4">
-                <Link href="/assessments">
+                <Link href={safeReturnTo ?? '/assessments'}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Assessments
+                        {safeReturnTo ? 'Back' : 'Back to Assessments'}
                     </Button>
                 </Link>
                 <div>
@@ -539,7 +551,7 @@ export function CreateAssessmentPage() {
                 ) : null}
 
                 <div className="flex items-center justify-end gap-4">
-                    <Link href="/assessments">
+                    <Link href={safeReturnTo ?? '/assessments'}>
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>
                     <Button type="submit" disabled={saving || (!isAdminLike && !isTeachingActor) || !isSelectedCurriculumWritable}>

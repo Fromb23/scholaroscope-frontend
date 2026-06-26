@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ChevronDown,
@@ -248,6 +248,11 @@ function EmptyLessonState({ week }: { week: SchemeWeek }) {
 
 export function SchemeDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const safeReturnTo = useMemo(() => {
+    const value = searchParams.get('returnTo');
+    return value?.startsWith('/') ? value : null;
+  }, [searchParams]);
   const { activeOrg } = useAuth();
   const schemeId = getSchemeId(params.id);
   const {
@@ -543,10 +548,10 @@ export function SchemeDetailPage() {
   return (
     <div className="space-y-6 pb-24 lg:pb-12">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/schemes">
+        <Link href={safeReturnTo ?? '/schemes'}>
           <Button type="button" variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4" />
-            Back to Schemes
+            {safeReturnTo ? 'Back' : 'Back to Schemes'}
           </Button>
         </Link>
       </div>
