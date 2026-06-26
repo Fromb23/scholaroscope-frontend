@@ -15,6 +15,10 @@ export type PolicyAuthoringMode =
     | 'CLASS_SETUP'
     | 'WORKSPACE_POLICY'
     | 'INSTITUTION_GOVERNANCE';
+export type CbcClassReportPolicyScope =
+    | 'COHORT'
+    | 'COHORT_SUBJECT'
+    | 'WORKSPACE_DEFAULT';
 export type CbcAssessmentResultStatus =
     | 'NOT_IN_SCOPE'
     | 'NO_EVIDENCE'

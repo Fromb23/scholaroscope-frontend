@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildCbcReportPolicyPayload,
   CbcReportPolicyFormModal,
+  mapCbcReportPolicyApiErrors,
   type CbcPolicyFormState,
 } from './CbcReportPolicyFormModal';
 
@@ -18,6 +19,7 @@ function baseForm(overrides: Partial<CbcPolicyFormState> = {}): CbcPolicyFormSta
   return {
     name: 'Grade 7 Mathematics policy',
     description: '',
+    policy_scope: 'COHORT_SUBJECT',
     subject_profile: 12,
     cohort: 9,
     cbc_cohort_subject: 41,
@@ -42,7 +44,7 @@ function baseForm(overrides: Partial<CbcPolicyFormState> = {}): CbcPolicyFormSta
   };
 }
 
-function renderModal(authoringMode: 'CLASS_SUBJECT_SETUP' | 'INSTITUTION_GOVERNANCE') {
+function renderModal(authoringMode: 'CLASS_SUBJECT_SETUP' | 'CLASS_SETUP' | 'INSTITUTION_GOVERNANCE') {
   return renderToStaticMarkup(
     <CbcReportPolicyFormModal
       editingPolicy={null}
@@ -75,10 +77,11 @@ function renderModal(authoringMode: 'CLASS_SUBJECT_SETUP' | 'INSTITUTION_GOVERNA
 }
 
 describe('CBC report policy form modal', () => {
-  it('uses locked class-subject setup copy instead of national subject profile selection', () => {
+  it('uses class-subject setup scope selection instead of national subject profile selection', () => {
     const html = renderModal('CLASS_SUBJECT_SETUP');
 
-    expect(html).toContain('This class subject');
+    expect(html).toContain('Policy applies to');
+    expect(html).toContain('Specific subject');
     expect(html).toContain('Grade 7 · Mathematics');
     expect(html).toContain('Class configuration');
     expect(html).not.toContain('Subject Profile');
@@ -93,6 +96,13 @@ describe('CBC report policy form modal', () => {
     expect(html).toContain('CBC Report Policy');
   });
 
+  it('renders the class/cohort label instead of the raw cohort id when available', () => {
+    const html = renderModal('CLASS_SETUP');
+
+    expect(html).toContain('Grade 7');
+    expect(html).not.toContain('Class 9');
+  });
+
   it('derives class-subject payload from locked context without sending catalog subject profile', () => {
     const payload = buildCbcReportPolicyPayload(
       baseForm(),
@@ -105,9 +115,10 @@ describe('CBC report policy form modal', () => {
     expect(payload.subject_profile).toBeUndefined();
   });
 
-  it('builds whole-class setup payloads without subject or subject-profile scope', () => {
+  it('class setup mode can build whole-class payloads without subject or subject-profile scope', () => {
     const payload = buildCbcReportPolicyPayload(
       baseForm({
+        policy_scope: 'COHORT',
         subject_profile: null,
         cohort: 9,
         cbc_cohort_subject: null,
@@ -117,7 +128,45 @@ describe('CBC report policy form modal', () => {
 
     expect(payload.source).toBe('class_configuration');
     expect(payload.cohort).toBe(9);
-    expect(payload.cbc_cohort_subject).toBeNull();
+    expect(payload).not.toHaveProperty('cbc_cohort_subject');
+    expect(payload.subject_profile).toBeUndefined();
+    expect(payload.is_default).toBe(false);
+  });
+
+  it('class setup mode can build specific-subject payload when a subject is selected', () => {
+    const payload = buildCbcReportPolicyPayload(
+      baseForm({
+        policy_scope: 'COHORT_SUBJECT',
+        subject_profile: 12,
+        cohort: 9,
+        cbc_cohort_subject: 41,
+      }),
+      'CLASS_SETUP',
+    );
+
+    expect(payload.source).toBe('class_configuration');
+    expect(payload.cohort).toBe(9);
+    expect(payload.cbc_cohort_subject).toBe(41);
+    expect(payload.subject_profile).toBeUndefined();
+    expect(payload.is_default).toBe(false);
+  });
+
+  it('class setup mode can build workspace-default payload without class or subject scope', () => {
+    const payload = buildCbcReportPolicyPayload(
+      baseForm({
+        policy_scope: 'WORKSPACE_DEFAULT',
+        subject_profile: 12,
+        cohort: 9,
+        cbc_cohort_subject: 41,
+        is_default: true,
+      }),
+      'CLASS_SETUP',
+    );
+
+    expect(payload.source).toBe('class_configuration');
+    expect(payload.is_default).toBe(true);
+    expect(payload).not.toHaveProperty('cohort');
+    expect(payload).not.toHaveProperty('cbc_cohort_subject');
     expect(payload.subject_profile).toBeUndefined();
   });
 
@@ -129,5 +178,77 @@ describe('CBC report policy form modal', () => {
 
     expect(payload.source).toBe('institution_governance');
     expect(payload.subject_profile).toBe(12);
+  });
+
+  it('maps backend field errors to visible field-level errors', () => {
+    const mapped = mapCbcReportPolicyApiErrors(
+      {
+        response: {
+          data: {
+            name: ['This field cannot be blank.'],
+            assessment_weights: ['Weights must total 100.'],
+            level_scale: ['Invalid CBC levels.'],
+            term: ['Term outside your organization.'],
+          },
+        },
+      },
+      'CLASS_SETUP',
+    );
+
+    expect(mapped.globalError).toBeNull();
+    expect(mapped.fieldErrors.name).toBe('This field cannot be blank.');
+    expect(mapped.fieldErrors.assessment_weights).toBe('Weights must total 100.');
+    expect(mapped.fieldErrors.level_scale).toBe('Invalid CBC levels.');
+    expect(mapped.fieldErrors.term).toBe('Term outside your organization.');
+    expect(mapped.firstTarget).toBe('name');
+  });
+
+  it('keeps non-field backend errors global', () => {
+    const mapped = mapCbcReportPolicyApiErrors(
+      {
+        response: {
+          data: {
+            non_field_errors: ['Class report setup requires a class subject, class, or workspace default policy scope.'],
+          },
+        },
+      },
+      'CLASS_SETUP',
+    );
+
+    expect(mapped.fieldErrors).toEqual({});
+    expect(mapped.globalError).toContain('Class report setup requires');
+    expect(mapped.firstTarget).toBeNull();
+  });
+
+  it('renders hidden or derived class-configuration errors near the scope section', () => {
+    const derivedSubjectProfile = mapCbcReportPolicyApiErrors(
+      {
+        response: {
+          data: {
+            subject_profile: ['Class report setup cannot author subject-profile-only CBC report policies.'],
+          },
+        },
+      },
+      'CLASS_SETUP',
+    );
+    const mapped = mapCbcReportPolicyApiErrors(
+      {
+        response: {
+          data: {
+            subject_profile: ['Class report setup cannot author subject-profile-only CBC report policies.'],
+            cbc_cohort_subject: ['CBC cohort subject outside your organization.'],
+          },
+        },
+      },
+      'CLASS_SETUP',
+    );
+
+    expect(derivedSubjectProfile.fieldErrors.scope).toBe(
+      'Choose a class subject instead of a catalog subject profile.',
+    );
+    expect(mapped.globalError).toBeNull();
+    expect(mapped.fieldErrors.scope).toBe('CBC cohort subject outside your organization.');
+    expect(mapped.fieldErrors.cbc_cohort_subject).toBe('CBC cohort subject outside your organization.');
+    expect(mapped.firstTarget).toBe('scope');
   });
 });

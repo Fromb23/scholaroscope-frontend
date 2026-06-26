@@ -97,18 +97,19 @@ export function CbcReportPoliciesPage({
         )) ?? null
     ), [cohortSubjectOptions, lockedCohortSubjectId, lockedKernelCohortSubjectId]);
     const resolvedLockedCohortSubjectId = lockedCohortSubject?.id ?? lockedCohortSubjectId ?? null;
+    const classCohortSubjectIds = useMemo(() => (
+        new Set(
+            cohortSubjectOptions
+                .filter((subject) => !cohortId || subject.cohortId === cohortId)
+                .map((subject) => subject.id),
+        )
+    ), [cohortId, cohortSubjectOptions]);
     const filters = useMemo<CbcReportPolicyFilters | undefined>(() => {
-        if (authoringMode === 'CLASS_SUBJECT_SETUP' && resolvedLockedCohortSubjectId) {
-            return { cbc_cohort_subject: resolvedLockedCohortSubjectId };
-        }
-        if (authoringMode === 'CLASS_SETUP' && cohortId) {
-            return { cohort: cohortId };
-        }
         if (authoringMode === 'WORKSPACE_POLICY') {
             return { is_default: true };
         }
         return undefined;
-    }, [authoringMode, cohortId, resolvedLockedCohortSubjectId]);
+    }, [authoringMode]);
     const { policies, loading, error, refetch, deletePolicy } = useCbcReportPolicies(
         filters,
         {
@@ -116,6 +117,26 @@ export function CbcReportPoliciesPage({
                 && (authoringMode !== 'CLASS_SUBJECT_SETUP' || Boolean(resolvedLockedCohortSubjectId)),
         },
     );
+    const visiblePolicies = useMemo(() => {
+        if (authoringMode === 'CLASS_SUBJECT_SETUP') {
+            return policies.filter((policy) => (
+                policy.is_default
+                || policy.cbc_cohort_subject === resolvedLockedCohortSubjectId
+                || (policy.cohort === cohortId && policy.cbc_cohort_subject === null)
+            ));
+        }
+        if (authoringMode === 'CLASS_SETUP') {
+            return policies.filter((policy) => (
+                policy.is_default
+                || policy.cohort === cohortId
+                || (policy.cbc_cohort_subject !== null && classCohortSubjectIds.has(policy.cbc_cohort_subject))
+            ));
+        }
+        if (authoringMode === 'WORKSPACE_POLICY') {
+            return policies.filter((policy) => policy.is_default);
+        }
+        return policies;
+    }, [authoringMode, classCohortSubjectIds, cohortId, policies, resolvedLockedCohortSubjectId]);
     const termOptions = useMemo(
         () => terms.map((term) => ({
             id: term.id,
@@ -242,7 +263,7 @@ export function CbcReportPoliciesPage({
             {deleteError && <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />}
 
             <CbcReportPoliciesTable
-                policies={policies}
+                policies={visiblePolicies}
                 canManage={canManagePolicies}
                 authoringMode={authoringMode}
                 deletingId={deletingId}

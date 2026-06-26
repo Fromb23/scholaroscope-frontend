@@ -40,15 +40,15 @@ export function buildCohortSubjectTeachingActions(params: {
   };
   const actions: CohortSubjectAction[] = [
     {
-      label: 'Schemes',
+      label: 'Prepare scheme',
       href: buildScopedHref('/schemes', baseParams),
     },
     {
-      label: 'Lesson plans',
+      label: 'Prepare lesson',
       href: buildScopedHref('/lesson-plans', baseParams),
     },
     {
-      label: 'Sessions',
+      label: 'Record lesson',
       href: buildScopedHref('/sessions', baseParams),
     },
     {
@@ -61,7 +61,7 @@ export function buildCohortSubjectTeachingActions(params: {
     },
   ];
   const subjectReportAction = {
-    label: 'Subject report',
+    label: 'Open subject report',
     href: buildScopedHref(`/reports/instructor/cohort-subjects/${subject.id}`, {
       returnTo: subjectReturnTo,
       source: 'cohort_subject',
@@ -72,7 +72,7 @@ export function buildCohortSubjectTeachingActions(params: {
     if (isClassConfigurationWorkspace) {
       actions.push(
         {
-          label: 'Configure policy',
+          label: 'Set report rules',
           href: buildScopedHref(`/academic/cohorts/${cohortId}/subjects/${subject.id}/report-policy`, {
             source: 'class_configuration',
             cohort: cohortId,
@@ -82,7 +82,7 @@ export function buildCohortSubjectTeachingActions(params: {
           }),
         },
         {
-          label: 'Compute subject results',
+          label: 'Calculate subject report',
           href: buildScopedHref(`/academic/cohorts/${cohortId}/subjects/${subject.id}/report-computation`, {
             source: 'class_configuration',
             cohort: cohortId,
@@ -96,7 +96,7 @@ export function buildCohortSubjectTeachingActions(params: {
     actions.push(
       subjectReportAction,
       {
-        label: 'CBC Browser',
+        label: 'View CBC content',
         href: buildScopedHref('/cbc/browser', {
           cohort: cohortId,
           cohort_subject_id: subject.id,
@@ -105,7 +105,7 @@ export function buildCohortSubjectTeachingActions(params: {
         }),
       },
       {
-        label: 'CBC Progress',
+        label: 'Check CBC progress',
         href: buildScopedHref('/cbc/progress', {
           cohort: cohortId,
           cohort_subject_id: subject.id,

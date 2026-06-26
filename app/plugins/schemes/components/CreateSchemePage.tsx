@@ -58,8 +58,27 @@ const NO_REGISTERED_STRAND_RANGE_MESSAGE =
   "No strand range is registered for this class subject yet. Register the subject's sub-strands in curriculum setup before generating a scheme.";
 const TERM_SETUP_INCOMPLETE_MESSAGE =
   'Your admin needs to complete the term calendar before schemes can be generated.';
+export const SELF_MANAGED_TERM_SETUP_INCOMPLETE_MESSAGE =
+  'Complete or review your term calendar before generating this scheme.';
 const ADMIN_TERM_SETUP_MESSAGE =
   'Complete the term calendar in term setup before generating schemes of work.';
+
+export function getSchemeTermCalendarSetupMessage(params: {
+  selectedTerm: Pick<Term, 'is_calendar_setup_complete'> | null;
+  selfManagedTeachingAdmin: boolean;
+  isTeachingActor: boolean;
+}): string | null {
+  if (!params.selectedTerm) {
+    return null;
+  }
+  if (params.selectedTerm.is_calendar_setup_complete) {
+    return null;
+  }
+  if (params.selfManagedTeachingAdmin) {
+    return SELF_MANAGED_TERM_SETUP_INCOMPLETE_MESSAGE;
+  }
+  return params.isTeachingActor ? TERM_SETUP_INCOMPLETE_MESSAGE : ADMIN_TERM_SETUP_MESSAGE;
+}
 
 function unwrapCohortSubjects(
   data: CohortSubject[] | PaginatedResponse<CohortSubject>,
@@ -541,14 +560,14 @@ export function CreateSchemePage() {
   );
 
   const termCalendarSetupMessage = useMemo(() => {
-    if (!selectedTerm) {
-      return null;
-    }
-    if (selectedTerm.is_calendar_setup_complete) {
-      return null;
-    }
-    return isTeachingActor ? TERM_SETUP_INCOMPLETE_MESSAGE : ADMIN_TERM_SETUP_MESSAGE;
-  }, [isTeachingActor, selectedTerm]);
+    return getSchemeTermCalendarSetupMessage({
+      selectedTerm,
+      selfManagedTeachingAdmin,
+      isTeachingActor,
+    });
+  }, [isTeachingActor, selectedTerm, selfManagedTeachingAdmin]);
+  const canReviewTermCalendar = selfManagedTeachingAdmin || !isTeachingActor;
+  const termCalendarActionLabel = selfManagedTeachingAdmin ? 'Review term calendar' : 'Open term setup';
 
   const lessonsPerWeekValue = useMemo(
     () => parseIntegerInput(lessonsPerWeek),
@@ -1028,8 +1047,9 @@ export function CreateSchemePage() {
               Step 2: Review term calendar and teaching load
             </h2>
             <p className="mt-1 text-sm theme-subtle">
-              The organization term calendar defines breaks, exams, and holidays for every scheme
-              in this term. Set only the subject-specific teaching load here.
+              {selfManagedTeachingAdmin
+                ? 'Your workspace term calendar defines breaks, exams, and holidays for every scheme in this term. Set only the subject-specific teaching load here.'
+                : 'The organization term calendar defines breaks, exams, and holidays for every scheme in this term. Set only the subject-specific teaching load here.'}
             </p>
           </div>
 
@@ -1079,18 +1099,22 @@ export function CreateSchemePage() {
                   <div className="flex items-start gap-3">
                     <Info className="mt-0.5 h-4 w-4 shrink-0" />
                     <div>
-                      <p className="font-medium">Admin-managed term calendar</p>
+                      <p className="font-medium">
+                        {selfManagedTeachingAdmin ? 'Your term calendar' : 'Admin-managed term calendar'}
+                      </p>
                       <p className="mt-1">
-                        {isTeachingActor
-                          ? 'Calendar weeks are locked during scheme generation so every teacher in the term uses the same break and exam weeks.'
+                        {selfManagedTeachingAdmin
+                          ? 'Review term calendar events before generating schemes so breaks, exams, and holidays are reflected correctly.'
+                          : isTeachingActor
+                            ? 'Calendar weeks are locked during scheme generation so every teacher in the term uses the same break and exam weeks.'
                           : 'Edit term calendar events in academic term setup before generating schemes for this term.'}
                       </p>
                     </div>
                   </div>
-                  {!isTeachingActor ? (
+                  {canReviewTermCalendar ? (
                     <Link href="/academic/terms">
                       <Button type="button" variant="secondary" size="sm">
-                        Edit term calendar
+                        {selfManagedTeachingAdmin ? 'Review term calendar' : 'Edit term calendar'}
                       </Button>
                     </Link>
                   ) : null}
@@ -1107,10 +1131,10 @@ export function CreateSchemePage() {
                         <p className="mt-1">{termCalendarSetupMessage}</p>
                       </div>
                     </div>
-                    {!isTeachingActor ? (
+                    {canReviewTermCalendar ? (
                       <Link href="/academic/terms">
                         <Button type="button" variant="secondary" size="sm">
-                          Open term setup
+                          {termCalendarActionLabel}
                         </Button>
                       </Link>
                     ) : null}
