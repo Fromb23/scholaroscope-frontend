@@ -101,10 +101,12 @@ export function useResolvedCBCInstructorContext({
     selectedCurriculumId,
     requestedCohortId,
     requestedSubjectId,
+    requestedCohortSubjectId,
 }: {
     selectedCurriculumId: number | null;
     requestedCohortId: number | null;
     requestedSubjectId: number | null;
+    requestedCohortSubjectId?: number | null;
 }) {
     const query = useCBCInstructorContext(selectedCurriculumId);
     const data = query.data;
@@ -149,8 +151,16 @@ export function useResolvedCBCInstructorContext({
         if (requestedSubjectId !== null && subjectSelections.some(selection => selection.filter_id === requestedSubjectId)) {
             return requestedSubjectId;
         }
+        if (requestedCohortSubjectId !== null && requestedCohortSubjectId !== undefined) {
+            const requestedSelection = subjectSelections.find(
+                selection => selection.cohort_subject_id === requestedCohortSubjectId
+            );
+            if (requestedSelection) {
+                return requestedSelection.filter_id;
+            }
+        }
         return subjectSelections.length === 1 ? subjectSelections[0].filter_id : null;
-    }, [requestedSubjectId, subjectSelections]);
+    }, [requestedCohortSubjectId, requestedSubjectId, subjectSelections]);
 
     const selectedSelection = useMemo(
         () => subjectSelections.find(selection => selection.filter_id === selectedSubjectId) ?? null,

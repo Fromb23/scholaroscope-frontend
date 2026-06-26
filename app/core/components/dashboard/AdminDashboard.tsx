@@ -8,6 +8,7 @@ import { LoadingMessage, PageSkeleton } from '@/app/components/ui/loading';
 import { AcademicSetupDashboard } from '@/app/core/components/academic/setup/AcademicSetupDashboard';
 import { useAdminDashboard } from '@/app/core/hooks/useAdminDashboard';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import {
     DashboardHeader,
     AlertsBanner,
@@ -21,10 +22,12 @@ import {
 } from '@/app/core/components/dashboard/AdminDashboardWidgets';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { Slot } from '@/app/core/registry/slots';
+import { InstructorDashboard } from '@/app/core/components/dashboard/InstructorDashboard';
 
 export function AdminDashboard() {
     const router = useRouter();
     const { user, activeOrg, activeRole } = useAuth();
+    const instructorAccess = useInstructorCohortAccess();
     const academicSetupQuery = useAcademicSetupStatus({
         enabled: activeRole === 'ADMIN' && Boolean(activeOrg),
     });
@@ -92,6 +95,9 @@ export function AdminDashboard() {
     }
     if (setupStatus && !setupStatus.complete) {
         return <AcademicSetupDashboard status={setupStatus} title="Complete Academic Setup" />;
+    }
+    if (instructorAccess.isSelfManagedTeachingAdmin) {
+        return <InstructorDashboard />;
     }
     if (isLoading) {
         return (

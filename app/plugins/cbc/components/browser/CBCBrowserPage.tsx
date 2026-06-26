@@ -33,6 +33,11 @@ function formatLevelLabel(level: string | null | undefined) {
         .trim();
 }
 
+function getCohortDisplayLabel(cohort: { name?: string | null } | null | undefined) {
+    const name = cohort?.name?.trim();
+    return name || 'Selected class';
+}
+
 export function CBCBrowserPage() {
     const page = useCBCBrowserPage();
     const pathname = usePathname();
@@ -45,6 +50,7 @@ export function CBCBrowserPage() {
     const cbcProgressHref = buildCbcPath('/cbc/progress', {
         cohort: page.effectiveCohortId,
         subject: page.resolvedSubject?.id ?? null,
+        cohortSubjectId: page.resolvedInstructorSubjectSelection?.cohort_subject_id ?? null,
         returnTo: safeReturnTo,
     });
     const selectedSubjectName = page.resolvedSubject?.name ?? '';
@@ -90,6 +96,7 @@ export function CBCBrowserPage() {
                     href: buildCbcPath(`/cbc/browser/strands/${firstVisibleStrandId}`, {
                         cohort: page.effectiveCohortId,
                         subject: page.resolvedSubject?.id ?? null,
+                        cohortSubjectId: page.resolvedInstructorSubjectSelection?.cohort_subject_id ?? null,
                         returnTo: currentWorkspaceHref,
                     }),
                 }]
@@ -102,6 +109,7 @@ export function CBCBrowserPage() {
                 href: buildCbcPath(`/cbc/browser/strands/${firstVisibleStrandId}`, {
                     cohort: page.effectiveCohortId,
                     subject: page.resolvedSubject?.id ?? null,
+                    cohortSubjectId: page.resolvedInstructorSubjectSelection?.cohort_subject_id ?? null,
                     returnTo: currentWorkspaceHref,
                 }),
             }
@@ -120,6 +128,7 @@ export function CBCBrowserPage() {
         selectedCohortName,
         selectedSubjectName,
         page.effectiveCohortId,
+        page.resolvedInstructorSubjectSelection?.cohort_subject_id,
         page.resolvedSubject?.id,
     ]);
 
@@ -178,8 +187,9 @@ export function CBCBrowserPage() {
                             </p>
                             {page.effectiveCohort ? (
                                 <div className="flex flex-wrap gap-2">
-                                    <Badge variant="indigo" size="md">{page.effectiveCohort.name}</Badge>
-                                    <Badge variant="default" size="md">Cohort {page.effectiveCohort.id}</Badge>
+                                    <Badge variant="indigo" size="md">
+                                        {getCohortDisplayLabel(page.effectiveCohort)}
+                                    </Badge>
                                 </div>
                             ) : (
                                 <p className="text-sm theme-muted">
@@ -263,6 +273,7 @@ export function CBCBrowserPage() {
                                     href={buildCbcPath(`/cbc/browser/strands/${strand.id}`, {
                                         cohort: page.effectiveCohortId,
                                         subject: page.resolvedSubject?.id ?? null,
+                                        cohortSubjectId: page.resolvedInstructorSubjectSelection?.cohort_subject_id ?? null,
                                         returnTo: currentWorkspaceHref,
                                     })}
                                     className="block group"

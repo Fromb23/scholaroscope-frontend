@@ -3,7 +3,7 @@
 import type { FormEvent, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, FileText, Plus, RotateCcw } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -352,6 +352,7 @@ function LessonPlanActions({
 
 export function LessonPlansPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { activeOrg, activeRole, user, capabilities } = useAuth();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
@@ -422,6 +423,17 @@ export function LessonPlansPage() {
         open: openMarkUsed,
         close: closeMarkUsed,
     } = useModalState<LessonPlan>();
+
+    useEffect(() => {
+        const requestedSubject = searchParams.get('subject') ?? searchParams.get('cohort_subject');
+        const requestedCohort = searchParams.get('cohort');
+        if (requestedSubject && requestedSubject !== subjectFilter) {
+            setSubjectFilter(requestedSubject);
+        }
+        if (requestedCohort && requestedCohort !== cohortFilter) {
+            setCohortFilter(requestedCohort);
+        }
+    }, [cohortFilter, searchParams, subjectFilter]);
 
     useEffect(() => {
         if (isSelfManagedTeaching && viewMode !== 'my_teaching') {

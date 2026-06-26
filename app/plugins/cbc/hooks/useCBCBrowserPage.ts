@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useStrands } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCBCContext } from '@/app/plugins/cbc/context/CBCContext';
 import { useSubjects } from '@/app/core/hooks/useAcademic';
@@ -14,6 +14,11 @@ export function useCBCBrowserPage() {
     const [selectedSubjectFilterId, setSelectedSubjectFilterId] = useState<number | null>(null);
     const [search, setSearch] = useState('');
     const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const requestedCohortSubjectId = useMemo(() => {
+        const value = Number(searchParams.get('cohort_subject_id') ?? '');
+        return Number.isFinite(value) && value > 0 ? value : null;
+    }, [searchParams]);
 
     const {
         selectedCurriculumId,
@@ -47,6 +52,7 @@ export function useCBCBrowserPage() {
         selectedCurriculumId,
         requestedCohortId: selectedCohortId,
         requestedSubjectId: selectedSubjectFilterId,
+        requestedCohortSubjectId,
     });
 
     const {
@@ -273,6 +279,7 @@ export function useCBCBrowserPage() {
         effectiveCohortId,
         assignedCohorts,
         resolvedSubject,
+        resolvedInstructorSubjectSelection,
         strandsError,
         strandFetchDebugContext,
     };
