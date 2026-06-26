@@ -23,6 +23,10 @@ import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import {
+    buildClassSubjectReturnTo,
+    buildLearnerCreateHref,
+} from '@/app/core/components/learners/learnerCreateNavigation';
 import { buildClassSubjectLearnerProfileHref } from '@/app/core/components/learners/learnerProfileNavigation';
 import {
     Table,
@@ -419,10 +423,16 @@ export default function CohortSubjectLearnersPage() {
     }
 
     const cohortHref = `/academic/cohorts/${learnerData.cohort_id}`;
+    const subjectReturnTo = buildClassSubjectReturnTo(learnerData.cohort_id, cohortSubjectId);
     const cohortLabel = cohortSubject?.cohort_name || `Cohort #${learnerData.cohort_id}`;
     const subjectLabel = cohortSubject?.subject_name || learnerData.subject_name;
     const isMutating = enrollMutation.isPending || unenrollMutation.isPending;
     const cohortStudentsHref = `/academic/cohorts/${learnerData.cohort_id}/students`;
+    const createLearnerHref = buildLearnerCreateHref({
+        cohortId: learnerData.cohort_id,
+        cohortSubjectId,
+        returnTo: subjectReturnTo,
+    });
     const canViewCohortStudents = canManageLearners;
     const pageTitle = instructorView
         ? `${subjectLabel} Learners`
@@ -496,6 +506,14 @@ export default function CohortSubjectLearnersPage() {
                         <Link href={cohortStudentsHref} className="w-full sm:w-auto">
                             <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                                 View Cohort Students
+                            </Button>
+                        </Link>
+                    ) : null}
+                    {canManageLearners ? (
+                        <Link href={createLearnerHref} className="w-full sm:w-auto">
+                            <Button variant="primary" size="sm" className="w-full sm:w-auto">
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Add learner to this class
                             </Button>
                         </Link>
                     ) : null}

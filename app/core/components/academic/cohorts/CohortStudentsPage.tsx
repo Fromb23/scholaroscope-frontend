@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, Users } from 'lucide-react';
+import { ArrowLeft, Download, UserPlus, Users } from 'lucide-react';
 import { useCohortDetail } from '@/app/core/hooks/useAcademic';
 import { type EnrolledStudent, useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { Button } from '@/app/components/ui/Button';
@@ -20,6 +20,7 @@ import { Input } from '@/app/components/ui/Input';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { buildLearnerCreateHref } from '@/app/core/components/learners/learnerCreateNavigation';
 import { buildClassLearnerProfileHref } from '@/app/core/components/learners/learnerProfileNavigation';
 import {
     Table,
@@ -157,6 +158,10 @@ export function CohortStudentsPage() {
     const emptyMessage = enrolled.length === 0
         ? 'No learners are currently enrolled in this cohort.'
         : 'No learners match your search.';
+    const createLearnerHref = buildLearnerCreateHref({
+        cohortId,
+        returnTo: `/academic/cohorts/${cohortId}`,
+    });
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
@@ -196,6 +201,16 @@ export function CohortStudentsPage() {
                             </p>
                         </div>
                         <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:items-center">
+                            <Link href={createLearnerHref} className="sm:self-start lg:self-auto">
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    className="w-full gap-2 sm:w-auto"
+                                >
+                                    <UserPlus className="h-4 w-4" />
+                                    Create learner
+                                </Button>
+                            </Link>
                             <Button
                                 variant="secondary"
                                 size="sm"
