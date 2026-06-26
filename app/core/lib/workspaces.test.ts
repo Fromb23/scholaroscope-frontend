@@ -4,6 +4,7 @@ import {
   canCreateTeachingRecord,
   canShowAdminMyTeaching,
   canUseTeachingMode,
+  isSelfManagedTeachingWorkspace,
   isSupervisionOnlyAdmin,
   normalizeRegisterOrgType,
   ORG_TYPE_OPTIONS,
@@ -59,6 +60,25 @@ describe('workspace teaching capabilities', () => {
         is_workspace_owner: true,
         workspace_mode: 'FREELANCE_TEACHER',
         workspace_behavior: 'FREELANCE_TEACHER',
+      },
+    })).toBe(true);
+  });
+
+  it('recognizes backend self-managed workspace behavior as the forward-compatible contract', () => {
+    expect(isSelfManagedTeachingWorkspace({
+      orgType: 'INSTITUTION',
+      capabilities: {
+        can_teach: true,
+        can_manage_academic_setup: true,
+        can_manage_learners: true,
+        can_manage_cohorts: true,
+        can_manage_subjects: true,
+        can_manage_assessments: true,
+        can_view_reports: true,
+        can_manage_staff: false,
+        is_workspace_owner: true,
+        workspace_mode: 'SELF_MANAGED',
+        workspace_behavior: 'SELF_MANAGED',
       },
     })).toBe(true);
   });

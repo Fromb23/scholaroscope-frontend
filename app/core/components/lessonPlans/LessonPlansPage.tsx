@@ -28,6 +28,7 @@ import {
     isSelfManagedTeachingWorkspace,
     isSupervisionOnlyAdmin,
 } from '@/app/core/lib/workspaces';
+import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useModalState } from '@/app/core/hooks/useModalState';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
@@ -408,7 +409,7 @@ export function LessonPlansPage() {
         status: statusFilter || undefined,
         term: toOptionalNumber(termFilter),
         cohort_subject: toOptionalNumber(cohortSubjectFilter),
-        subject: toOptionalNumber(subjectFilter),
+        subject: cohortSubjectFilter ? undefined : toOptionalNumber(subjectFilter),
         cohort: toOptionalNumber(cohortFilter),
     }), [cohortFilter, cohortSubjectFilter, statusFilter, subjectFilter, termFilter]);
     const {
@@ -440,7 +441,7 @@ export function LessonPlansPage() {
         if (requestedCohortSubject && requestedCohortSubject !== cohortSubjectFilter) {
             setCohortSubjectFilter(requestedCohortSubject);
         }
-        if (requestedSubject && requestedSubject !== subjectFilter) {
+        if (!requestedCohortSubject && requestedSubject && requestedSubject !== subjectFilter) {
             setSubjectFilter(requestedSubject);
         }
         if (requestedCohort && requestedCohort !== cohortFilter) {
@@ -522,7 +523,7 @@ export function LessonPlansPage() {
 
         if (resolved.term) params.set('term', resolved.term);
         if (resolved.cohort_subject) params.set('cohort_subject', resolved.cohort_subject);
-        if (resolved.subject) params.set('subject', resolved.subject);
+        if (!resolved.cohort_subject && resolved.subject) params.set('subject', resolved.subject);
         if (resolved.cohort) params.set('cohort', resolved.cohort);
         if (safeReturnTo) params.set('returnTo', safeReturnTo);
 
@@ -550,6 +551,7 @@ export function LessonPlansPage() {
     const createButtonLabel = effectiveMyTeachingMode
         ? 'Prepare a lesson'
         : 'Create lesson plan';
+    const backLabel = getReturnBackLabel(safeReturnTo);
     const midtermBreakPausesCreation = todayMode?.mode === 'MIDTERM_BREAK' && todayMode.allows_new_teaching === false;
 
     const instructorOptions = useMemo<LessonPlanInstructorOption[]>(() => {
@@ -903,7 +905,7 @@ export function LessonPlansPage() {
                 {safeReturnTo ? (
                     <Link href={safeReturnTo}>
                         <Button variant="ghost" size="sm">
-                            Back
+                            {backLabel}
                         </Button>
                     </Link>
                 ) : null}

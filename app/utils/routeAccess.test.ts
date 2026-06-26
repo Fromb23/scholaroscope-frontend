@@ -18,6 +18,7 @@ describe('route access', () => {
 
     expect(matchedRule).toBeDefined();
     expect(matchedRule?.allowedRoles).toContain('INSTRUCTOR');
+    expect(matchedRule?.allowedRoles).toContain('ADMIN');
   });
 
   it('allows admins to open plural instructor report routes', () => {
@@ -36,8 +37,8 @@ describe('route access', () => {
     expect(canAccess('/reports/instructor/teacher-report', 'INSTRUCTOR')).toBe(true);
   });
 
-  it('redirects admins away from instructor report routes to admin reports', () => {
-    expect(getUnauthorizedRouteFallback('ADMIN', '/reports/instructor/cohort-subjects/3')).toBe('/reports');
+  it('allows admins to open instructor report routes so capability gates can resolve self-managed teaching', () => {
+    expect(canAccess('/reports/instructor/cohort-subjects/3', 'ADMIN')).toBe(true);
   });
 
   it('keeps admins on plural instructor report routes', () => {
@@ -45,9 +46,8 @@ describe('route access', () => {
     expect(canAccess('/reports/instructors/20', 'ADMIN')).toBe(true);
   });
 
-  it('redirects admins away from singular instructor self-report routes', () => {
-    expect(canAccess('/reports/instructor', 'ADMIN')).toBe(false);
-    expect(getUnauthorizedRouteFallback('ADMIN', '/reports/instructor')).toBe('/reports');
+  it('allows admins to reach singular instructor routes for capability-scoped report handling', () => {
+    expect(canAccess('/reports/instructor', 'ADMIN')).toBe(true);
   });
 
   it('redirects instructors away from admin plural instructor report routes', () => {

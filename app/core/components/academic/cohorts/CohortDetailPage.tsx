@@ -43,6 +43,11 @@ import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { isAdminOrAbove } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { getCohortDetailCardExtensions } from '@/app/core/registry/cohortDetailCards';
+import {
+    buildCohortSubjectReturnTo,
+    buildCohortSubjectTeachingActions,
+    shouldShowCohortSubjectTeachingActions,
+} from '@/app/core/components/academic/cohorts/cohortSubjectActions';
 import type { CohortSubject } from '@/app/core/types/academic';
 
 interface MetadataItemProps {
@@ -505,10 +510,12 @@ export default function CohortHubPage() {
         cohort: String(cohortId),
         returnTo: cohortReturnTo,
     }).toString()}`;
-    const showCohortTeachingActions = !isTeachingActor;
+    const showSubjectTeachingActions = shouldShowCohortSubjectTeachingActions({
+        isTeachingActor,
+    });
     const workflowSubjectCount = isTeachingActor ? visibleCohortSubjects.length : subjectCount;
     const buildSubjectReturnTo = useCallback(
-        (subjectId: number) => `${cohortReturnTo}#subject-${subjectId}`,
+        (subjectId: number) => buildCohortSubjectReturnTo(cohortReturnTo, subjectId),
         [cohortReturnTo]
     );
     const buildSubjectLearnersHref = useCallback(
@@ -518,69 +525,14 @@ export default function CohortHubPage() {
         [buildSubjectReturnTo]
     );
     const buildSubjectActions = useCallback((subject: CohortSubject): CohortSubjectAction[] => {
-        const subjectReturnTo = buildSubjectReturnTo(subject.id);
-        const baseParams = {
-            cohort: cohortId,
-            cohort_subject: subject.id,
-            subject: subject.id,
-            source: 'cohort_subject',
-            returnTo: subjectReturnTo,
-        };
-        const actions: CohortSubjectAction[] = [
-            {
-                label: 'Schemes',
-                href: buildScopedHref('/schemes', baseParams),
-            },
-            {
-                label: 'Lesson plans',
-                href: buildScopedHref('/lesson-plans', baseParams),
-            },
-            {
-                label: 'Sessions',
-                href: buildScopedHref('/sessions', baseParams),
-            },
-            {
-                label: 'Assignments',
-                href: buildScopedHref(`/academic/cohorts/${cohortId}/assignments`, baseParams),
-            },
-            {
-                label: 'Assessments',
-                href: buildScopedHref('/assessments', baseParams),
-            },
-            {
-                label: 'Subject reports',
-                href: buildScopedHref(`/reports/instructor/cohort-subjects/${subject.id}`, {
-                    returnTo: subjectReturnTo,
-                    source: 'cohort_subject',
-                }),
-            },
-        ];
-
-        if (isCBC && hasCBCPlugin) {
-            actions.push(
-                {
-                    label: 'CBC Browser',
-                    href: buildScopedHref('/cbc/browser', {
-                        cohort: cohortId,
-                        cohort_subject_id: subject.id,
-                        returnTo: subjectReturnTo,
-                        source: 'cohort_subject',
-                    }),
-                },
-                {
-                    label: 'CBC Progress',
-                    href: buildScopedHref('/cbc/progress', {
-                        cohort: cohortId,
-                        cohort_subject_id: subject.id,
-                        returnTo: subjectReturnTo,
-                        source: 'cohort_subject',
-                    }),
-                }
-            );
-        }
-
-        return actions;
-    }, [buildSubjectReturnTo, cohortId, hasCBCPlugin, isCBC]);
+        return buildCohortSubjectTeachingActions({
+            cohortId,
+            cohortReturnTo,
+            subject,
+            isCBC,
+            hasCBCPlugin,
+        });
+    }, [cohortId, cohortReturnTo, hasCBCPlugin, isCBC]);
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
         ? 'CBC tools are not available for this organization yet.'
         : null;
@@ -626,14 +578,14 @@ export default function CohortHubPage() {
                     href: setupContinueHref,
                 }]
                 : []),
-            ...(showCohortTeachingActions
+            ...(showSubjectTeachingActions
                 ? [{
                     label: 'Open Sessions',
                     type: 'navigate' as const,
                     href: sessionsHref,
                 }]
                 : []),
-            ...(showCohortTeachingActions && cohort && isCBC && hasCBCPlugin && workflowSubjectCount > 0
+            ...(showSubjectTeachingActions && cohort && isCBC && hasCBCPlugin && workflowSubjectCount > 0
                 ? [
                     {
                         label: 'Browse CBC',
@@ -660,16 +612,16 @@ export default function CohortHubPage() {
                 type: 'page_action' as const,
                 handler: () => setAssignSubjectsOpen(true),
             }
-            : showCohortTeachingActions && cohort && isCBC && hasCBCPlugin && workflowSubjectCount > 0
+            : showSubjectTeachingActions && cohort && isCBC && hasCBCPlugin && workflowSubjectCount > 0
                 ? {
                     label: 'Browse CBC',
                     type: 'navigate' as const,
                     href: cbcBrowserHref,
                 }
                 : {
-                    label: showCohortTeachingActions ? 'Open Sessions' : 'Review class subjects',
+                    label: showSubjectTeachingActions ? 'Open Sessions' : 'Review class subjects',
                     type: 'navigate' as const,
-                    href: showCohortTeachingActions ? sessionsHref : cohortReturnTo,
+                    href: showSubjectTeachingActions ? sessionsHref : cohortReturnTo,
                 },
         workflowStep: cohort && isCBC ? 'cohort_cbc_tools' : 'cohort_actions',
         emptyStateReason: !cohort && !cohortLoading
@@ -696,9 +648,33 @@ export default function CohortHubPage() {
         setupContinueLabel,
         effectiveSetupMode,
         sessionsHref,
-        showCohortTeachingActions,
+        showSubjectTeachingActions,
         visibleCohortSubjects.length,
         workflowSubjectCount,
+    ]);
+
+    useEffect(() => {
+        if (cohortSubjectsLoading || subjectParticipationQuery.loading) {
+            return;
+        }
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const targetId = window.location.hash.slice(1);
+        if (!/^subject-\d+$/.test(targetId)) {
+            return;
+        }
+
+        window.requestAnimationFrame(() => {
+            document.getElementById(targetId)?.scrollIntoView({
+                block: 'center',
+            });
+        });
+    }, [
+        cohortSubjectsLoading,
+        subjectParticipationQuery.loading,
+        visibleCohortSubjects.length,
     ]);
 
     useAssistantPageContext(assistantContext);
@@ -845,7 +821,7 @@ export default function CohortHubPage() {
                                     footerLabel="View class list"
                                 />
                             ) : null}
-                            {showCohortTeachingActions ? (
+                            {showSubjectTeachingActions ? (
                                 <>
                                     <ActionCard
                                         title="Sessions"
@@ -864,7 +840,7 @@ export default function CohortHubPage() {
                                 </>
                             ) : null}
 
-                            {showCohortTeachingActions && isCBC ? (
+                            {showSubjectTeachingActions && isCBC ? (
                                 <>
                                     <ActionCard
                                         title="CBC Subjects & Outcomes"
@@ -883,7 +859,7 @@ export default function CohortHubPage() {
                                         footerLabel={workflowSubjectCount > 0 ? 'View progress' : undefined}
                                     />
                                 </>
-                            ) : showCohortTeachingActions && isCambridge ? (
+                            ) : showSubjectTeachingActions && isCambridge ? (
                                 hasCambridgePlugin && cohortDetailCardExtensions.length > 0 ? (
                                     cohortDetailCardExtensions.map((extension) => (
                                         <extension.Component key={extension.key} cohortId={cohort.id} />
@@ -904,7 +880,7 @@ export default function CohortHubPage() {
                                         />
                                     </>
                                 )
-                            ) : showCohortTeachingActions ? (
+                            ) : showSubjectTeachingActions ? (
                                 <>
                                     <ActionCard
                                         title={`${curriculumName} Content`}
@@ -944,11 +920,11 @@ export default function CohortHubPage() {
                     ? (subject) => buildInstructorManagementHref(cohort.id, cohort.name, subject)
                     : undefined}
                 buildSubjectLearnersHref={buildSubjectLearnersHref}
-                buildSubjectActions={buildSubjectActions}
+                buildSubjectActions={showSubjectTeachingActions ? buildSubjectActions : undefined}
                 showInstructorColumn={!isPersonalTeachingWorkspace}
             />
 
-            {isCbcSeniorCohort && showCohortTeachingActions ? (
+            {isCbcSeniorCohort && showSubjectTeachingActions ? (
                 <section className="space-y-4">
                     <div className="space-y-1">
                         <h2 className="text-xl font-semibold text-gray-900">Delivery Workflows</h2>

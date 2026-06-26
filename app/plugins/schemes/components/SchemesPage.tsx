@@ -20,6 +20,8 @@ import { useSchemes } from '@/app/core/hooks/useSchemes';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import type { SchemeOfWork } from '@/app/core/types/schemes';
 import { useAuth } from '@/app/context/AuthContext';
+import { isSelfManagedTeachingAdmin } from '@/app/core/lib/workspaces';
+import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
 import { formatTimestamp } from '@/app/plugins/schemes/lib/workflow';
 
 function getStatusVariant(scheme: SchemeOfWork): 'success' | 'warning' | 'default' {
@@ -265,15 +267,15 @@ function buildAdminSchemeGroups(
 export function SchemesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeRole, capabilities, user } = useAuth();
+  const { activeOrg, activeRole, capabilities, user } = useAuth();
   const isInstructor = activeRole === 'INSTRUCTOR';
   const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
-  const canUseTeacherModeAsAdmin = Boolean(
-    activeRole === 'ADMIN'
-    && capabilities.can_teach
-    && capabilities.is_workspace_owner
-    && capabilities.workspace_behavior === 'FREELANCE_TEACHER',
-  );
+  const canUseTeacherModeAsAdmin = isSelfManagedTeachingAdmin({
+    activeRole,
+    activeOrg,
+    capabilities,
+    user,
+  });
   const isInstitutionalAdminSupervisor = isAdminLike && !isInstructor && !canUseTeacherModeAsAdmin;
   const instructorAccess = useInstructorCohortAccess();
   const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
@@ -291,7 +293,7 @@ export function SchemesPage() {
   const { terms } = useTerms();
   const { subjects } = useSubjects();
   const { cohorts } = useCohorts();
-  const { instructors } = useInstructors({ enabled: isAdminLike });
+  const { instructors } = useInstructors({ enabled: isInstitutionalAdminSupervisor });
   const selectedInstructorId = useMemo(() => {
     if (!instructorFilter.startsWith('id:')) {
       return undefined;
@@ -304,7 +306,7 @@ export function SchemesPage() {
     const value = searchParams.get('returnTo');
     return value?.startsWith('/') ? value : null;
   }, [searchParams]);
-  const effectiveMyTeachingMode = isInstructor || viewMode === 'my_teaching';
+  const effectiveMyTeachingMode = isInstructor || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
   const assignedCohortSubjectOptions = useMemo(() => (
     Array.from(
       new Map(
@@ -351,14 +353,14 @@ export function SchemesPage() {
   const schemeFilters = useMemo(() => ({
     term: toOptionalNumber(termFilter),
     cohort_subject: toOptionalNumber(cohortSubjectFilter),
-    subject: toOptionalNumber(subjectFilter),
-    teacher: isInstructor || viewMode === 'my_teaching'
+    subject: cohortSubjectFilter ? undefined : toOptionalNumber(subjectFilter),
+    teacher: effectiveMyTeachingMode
       ? user?.id
       : selectedInstructorId,
-  }), [cohortSubjectFilter, isInstructor, selectedInstructorId, subjectFilter, termFilter, user?.id, viewMode]);
+  }), [cohortSubjectFilter, effectiveMyTeachingMode, selectedInstructorId, subjectFilter, termFilter, user?.id]);
   const { schemes, loading, error, downloadSchemeDocx, downloadSchemeCsv } = useSchemes(schemeFilters);
-  const showCreateDraft = isInstructor || (canUseTeacherModeAsAdmin && viewMode === 'my_teaching');
-  const createButtonLabel = isInstructor || viewMode === 'my_teaching'
+  const showCreateDraft = isInstructor || canUseTeacherModeAsAdmin;
+  const createButtonLabel = effectiveMyTeachingMode
     ? 'Create my draft scheme'
     : 'Create draft scheme';
   const subtitle = isInstructor
@@ -374,7 +376,7 @@ export function SchemesPage() {
     if (requestedCohortSubject && requestedCohortSubject !== cohortSubjectFilter) {
       setCohortSubjectFilter(requestedCohortSubject);
     }
-    if (requestedSubject && requestedSubject !== subjectFilter) {
+    if (!requestedCohortSubject && requestedSubject && requestedSubject !== subjectFilter) {
       setSubjectFilter(requestedSubject);
     }
     if (requestedCohort && requestedCohort !== cohortFilter) {
@@ -441,7 +443,7 @@ export function SchemesPage() {
         return false;
       }
 
-      if (isAdminLike && viewMode === 'admin_supervision' && instructorFilter) {
+      if (isInstitutionalAdminSupervisor && viewMode === 'admin_supervision' && instructorFilter) {
         if (instructorFilter.startsWith('id:')) {
           return String(scheme.teacher ?? '') === instructorFilter.slice(3);
         }
@@ -453,13 +455,13 @@ export function SchemesPage() {
 
       return true;
     }),
-    [cohortFilter, cohortSubjectFilter, instructorFilter, isAdminLike, schemes, search, viewMode],
+    [cohortFilter, cohortSubjectFilter, instructorFilter, isInstitutionalAdminSupervisor, schemes, search, viewMode],
   );
   const workspaceHref = useMemo(() => {
     const params = new URLSearchParams();
     if (termFilter) params.set('term', termFilter);
     if (cohortSubjectFilter) params.set('cohort_subject', cohortSubjectFilter);
-    if (subjectFilter) params.set('subject', subjectFilter);
+    if (!cohortSubjectFilter && subjectFilter) params.set('subject', subjectFilter);
     if (cohortFilter) params.set('cohort', cohortFilter);
     if (safeReturnTo) params.set('returnTo', safeReturnTo);
     const query = params.toString();
@@ -472,6 +474,7 @@ export function SchemesPage() {
     params.set('returnTo', workspaceHref);
     return `/schemes/new?${params.toString()}`;
   }, [cohortSubjectFilter, termFilter, workspaceHref]);
+  const backLabel = getReturnBackLabel(safeReturnTo);
 
   const multipleActiveCurricula = useMemo(() => {
     const activeCount = curricula.filter((curriculum) => curriculum.is_active).length;
@@ -511,10 +514,10 @@ export function SchemesPage() {
   }, [filteredSchemes, multipleActiveCurricula]);
 
   const adminGroupedSchemes = useMemo(
-    () => (isAdminLike && viewMode === 'admin_supervision'
+    () => (isInstitutionalAdminSupervisor && viewMode === 'admin_supervision'
       ? buildAdminSchemeGroups(filteredSchemes, groupingMode)
       : []),
-    [filteredSchemes, groupingMode, isAdminLike, viewMode],
+    [filteredSchemes, groupingMode, isInstitutionalAdminSupervisor, viewMode],
   );
 
   const handleDownloadDocx = async (schemeId: number) => {
@@ -565,7 +568,7 @@ export function SchemesPage() {
         {safeReturnTo ? (
           <Link href={safeReturnTo}>
             <Button type="button" variant="ghost" size="sm">
-              Back
+              {backLabel}
             </Button>
           </Link>
         ) : null}
@@ -579,7 +582,7 @@ export function SchemesPage() {
         ) : null}
       </div>
 
-      {isAdminLike && !isInstitutionalAdminSupervisor ? (
+      {isInstitutionalAdminSupervisor ? (
         <Card>
           <div className="space-y-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -663,7 +666,7 @@ export function SchemesPage() {
       ) : null}
 
       <Card>
-        <div className={`grid grid-cols-1 gap-4 ${isAdminLike && viewMode === 'admin_supervision' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+        <div className={`grid grid-cols-1 gap-4 ${isInstitutionalAdminSupervisor && viewMode === 'admin_supervision' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -712,7 +715,7 @@ export function SchemesPage() {
               ...availableCohorts.map((cohort) => ({ value: String(cohort.id), label: cohort.name })),
             ]}
           />
-          {isAdminLike && viewMode === 'admin_supervision' ? (
+          {isInstitutionalAdminSupervisor && viewMode === 'admin_supervision' ? (
             <Select
               label="Instructor"
               value={instructorFilter}
@@ -756,7 +759,7 @@ export function SchemesPage() {
             </div>
           ) : null}
         </Card>
-      ) : isAdminLike && viewMode === 'admin_supervision' ? (
+      ) : isInstitutionalAdminSupervisor && viewMode === 'admin_supervision' ? (
         adminGroupedSchemes.map((group) => (
           <section key={group.key} className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -793,7 +796,7 @@ export function SchemesPage() {
                           params.set('cohort', String(scheme.cohort));
                         }
                         if (scheme.cohort_subject) {
-                          params.set('subject', String(scheme.cohort_subject));
+                          params.set('cohort_subject', String(scheme.cohort_subject));
                         }
                         router.push(`/admin/instructors/${scheme.teacher}/progress?${params.toString()}`);
                       }}

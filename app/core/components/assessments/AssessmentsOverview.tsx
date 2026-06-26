@@ -22,6 +22,7 @@ import {
     canShowAdminMyTeaching,
     isSupervisionOnlyAdmin,
 } from '@/app/core/lib/workspaces';
+import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
 import { ASSESSMENT_TYPE_OPTIONS, type Assessment } from '@/app/core/types/assessment';
 import type { AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import { useAuth } from '@/app/context/AuthContext';
@@ -93,6 +94,7 @@ export function AssessmentsOverview() {
         const value = searchParams.get('returnTo');
         return value?.startsWith('/') ? value : null;
     }, [searchParams]);
+    const source = searchParams.get('source');
     const { curricula } = useCurricula();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
@@ -155,9 +157,17 @@ export function AssessmentsOverview() {
         if (selectedCohortSubject) {
             params.set('cohort_subject', String(selectedCohortSubject));
         }
+        if (source) {
+            params.set('source', source);
+        } else if (selectedCohortSubject) {
+            params.set('source', 'cohort_subject');
+        }
         params.set('returnTo', `${'/assessments'}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
         return `/assessments/new?${params.toString()}`;
-    }, [searchParams, selectedCohort, selectedCohortSubject]);
+    }, [searchParams, selectedCohort, selectedCohortSubject, source]);
+    const backLabel = source === 'cohort_subject'
+        ? 'Back to workspace'
+        : getReturnBackLabel(safeReturnTo);
 
     const availableCohortSubjects = useMemo(() => {
         if (isTeachingActor) {
@@ -420,7 +430,7 @@ export function AssessmentsOverview() {
                 </div>
                 {safeReturnTo ? (
                     <Link href={safeReturnTo}>
-                        <Button variant="ghost" size="sm">Back</Button>
+                        <Button variant="ghost" size="sm">{backLabel}</Button>
                     </Link>
                 ) : null}
                 {canCreateAssessment ? (
