@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { authAPI } from '@/app/core/api/auth';
 import { Button } from '@/app/components/ui/Button';
-import { AppError, resolveAppError } from '@/app/core/errors';
+import { resolveAuthError, type AppError } from '@/app/core/errors';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -96,7 +96,7 @@ function LoginForm() {
         .join('\n');
     }
 
-    if (errorCode === 'no_active_workspace') {
+    if (errorCode === 'no_active_workspace' || code === 'no_active_workspace') {
       const detail = typeof data?.detail === 'string'
         ? data.detail
         : 'You do not currently have access to any active workspace.';
@@ -137,7 +137,7 @@ function LoginForm() {
       if (data.error === 'email_not_verified' || data.code === 'email_not_verified') {
         setVerificationEmail(email);
       }
-      const resolved = resolveAppError(err, { domain: 'auth', action: 'login', entityLabel: 'account access' });
+      const resolved = resolveAuthError(err, { action: 'login', entityLabel: 'account access' });
       const interpretedMessage = resolveErrorMessage(data);
       setError({
         ...resolved,

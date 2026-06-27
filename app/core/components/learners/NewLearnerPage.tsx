@@ -12,6 +12,8 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { AppErrorBanner } from '@/app/components/ui/errors';
+import { resolveLearnerError, type AppError } from '@/app/core/errors';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { getLearnerCreateReturnTo } from '@/app/core/components/learners/learnerCreateNavigation';
 
@@ -33,30 +35,6 @@ interface CreatedLearnerState {
     learnerName: string;
 }
 
-function getLearnerCreationError(error: unknown) {
-    if (
-        error
-        && typeof error === 'object'
-        && 'response' in error
-        && error.response
-        && typeof error.response === 'object'
-        && 'data' in error.response
-    ) {
-        const data = error.response.data as {
-            admission_number?: string[];
-            detail?: string;
-            message?: string;
-        };
-
-        return data.admission_number?.[0]
-            || data.detail
-            || data.message
-            || 'Failed to create learner';
-    }
-
-    return 'Failed to create learner';
-}
-
 function parsePositiveId(value: string | null): number | null {
     const parsed = Number(value ?? '');
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -65,7 +43,7 @@ function parsePositiveId(value: string | null): number | null {
 export default function NewStudentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, capabilities } = useAuth();
+    const { activeOrg, activeRole, capabilities } = useAuth();
     const requestedCohortId = parsePositiveId(searchParams.get('cohort'));
     const requestedCohortSubjectId = parsePositiveId(searchParams.get('cohort_subject'));
     const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
@@ -78,7 +56,7 @@ export default function NewStudentPage() {
         isSelfManagedTeachingWorkspace: selfManagedTeachingWorkspace,
     });
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [error, setError] = useState<AppError | null>(null);
     const [createdLearner, setCreatedLearner] = useState<CreatedLearnerState | null>(null);
 
     const { cohorts } = useCohorts();
@@ -97,7 +75,7 @@ export default function NewStudentPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
+        setError(null);
         setLoading(true);
 
         try {
@@ -135,7 +113,13 @@ export default function NewStudentPage() {
                 learnerName,
             });
         } catch (error) {
-            setError(getLearnerCreationError(error));
+            setError(resolveLearnerError(error, {
+                action: 'create',
+                entityLabel: 'learner record',
+                role: activeRole,
+                workspaceBehavior: capabilities.workspace_behavior,
+                capabilities,
+            }));
         } finally {
             setLoading(false);
         }
@@ -182,7 +166,7 @@ export default function NewStudentPage() {
                                 className="w-full sm:w-auto"
                                 onClick={() => {
                                     setCreatedLearner(null);
-                                    setError('');
+                                    setError(null);
                                     setFormData(INITIAL_FORM_DATA);
                                 }}
                             >
@@ -250,8 +234,8 @@ export default function NewStudentPage() {
             {/* Form */}
             <Card>
                 {error && (
-                    <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-600">
-                        {error}
+                    <div className="mb-6">
+                        <AppErrorBanner error={error} onDismiss={() => setError(null)} />
                     </div>
                 )}
 
@@ -266,12 +250,14 @@ export default function NewStudentPage() {
                                 value={formData.admission_number}
                                 onChange={(e) => setFormData({ ...formData, admission_number: e.target.value })}
                                 placeholder="2025001"
+                                error={error?.fieldErrors?.admission_number?.[0]}
                             />
                             <Select
                                 label="Cohort"
                                 required
                                 value={formData.cohort}
                                 onChange={(e) => setFormData({ ...formData, cohort: e.target.value })}
+                                error={error?.fieldErrors?.cohort?.[0]}
                                 options={[
                                     { value: '', label: 'Select cohort...' },
                                     ...cohorts.map(c => ({ value: c.id, label: c.name }))
@@ -287,12 +273,14 @@ export default function NewStudentPage() {
                             value={formData.first_name}
                             onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                             placeholder="John"
+                            error={error?.fieldErrors?.first_name?.[0]}
                         />
                         <Input
                             label="Middle Name (Optional)"
                             value={formData.middle_name}
                             onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })}
                             placeholder="Kamau"
+                            error={error?.fieldErrors?.middle_name?.[0]}
                         />
                         <Input
                             label="Last Name"
@@ -300,6 +288,7 @@ export default function NewStudentPage() {
                             value={formData.last_name}
                             onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                             placeholder="Mwangi"
+                            error={error?.fieldErrors?.last_name?.[0]}
                         />
                     </div>
 
@@ -309,6 +298,7 @@ export default function NewStudentPage() {
                             type="date"
                             value={formData.date_of_birth}
                             onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                            error={error?.fieldErrors?.date_of_birth?.[0]}
                         />
                         <Select
                             label="Gender"
@@ -332,6 +322,7 @@ export default function NewStudentPage() {
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 placeholder="john.mwangi@student.school.com"
+                                error={error?.fieldErrors?.email?.[0]}
                             />
                             <Input
                                 label="Phone (Optional)"
@@ -339,6 +330,7 @@ export default function NewStudentPage() {
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                 placeholder="+254712345678"
+                                error={error?.fieldErrors?.phone?.[0]}
                             />
                         </div>
                     </div>

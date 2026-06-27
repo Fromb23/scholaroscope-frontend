@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { AppError, resolveAppError } from '@/app/core/errors';
+import { resolveReportError, type AppError } from '@/app/core/errors';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
@@ -61,8 +61,7 @@ export function ReportsPage() {
       const file = await adminReportsAPI.exportOverview(format);
       downloadBlob(file.blob, file.fileName);
     } catch (requestError) {
-      setExportError(resolveAppError(requestError, {
-        domain: 'reports',
+      setExportError(resolveReportError(requestError, {
         action: 'export',
         entityLabel: 'reporting overview',
         role: 'ADMIN',

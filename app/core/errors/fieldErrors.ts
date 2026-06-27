@@ -19,10 +19,17 @@ const NON_FIELD_KEYS = new Set([
   'next_action',
   'support_code',
   'supportCode',
+  'field_errors',
+  'fieldErrors',
   'request_id',
   'trace_id',
+  'context',
   'requires_attendance',
 ]);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
 
 function normalizeMessages(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -40,16 +47,31 @@ function normalizeMessages(value: unknown): string[] {
 }
 
 export function extractFieldErrors(data: unknown): Record<string, string[]> {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  if (!isRecord(data)) return {};
 
   const result: Record<string, string[]> = {};
-  for (const [field, value] of Object.entries(data as Record<string, unknown>)) {
-    if (NON_FIELD_KEYS.has(field)) continue;
-    const messages = normalizeMessages(value);
-    if (messages.length > 0) {
-      result[field] = messages;
+
+  const addFields = (source: unknown) => {
+    if (!isRecord(source)) return;
+    for (const [field, value] of Object.entries(source)) {
+      if (NON_FIELD_KEYS.has(field)) continue;
+      const messages = normalizeMessages(value);
+      if (messages.length > 0) {
+        result[field] = [...(result[field] ?? []), ...messages];
+      }
     }
+  };
+
+  addFields(data);
+
+  if (isRecord(data.error)) {
+    addFields(data.error.field_errors);
+    addFields(data.error.fieldErrors);
   }
+
+  addFields(data.field_errors);
+  addFields(data.fieldErrors);
+
   return result;
 }
 

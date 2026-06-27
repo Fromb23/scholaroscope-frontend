@@ -36,10 +36,18 @@ const ACTION_VERBS: Record<ResolveAppErrorContext['action'], string> = {
   unknown: 'complete',
 };
 
-function actorFor(role: ResolveAppErrorContext['role']): string {
-  if (role === 'INSTRUCTOR') return 'teacher';
-  if (role === 'ADMIN') return 'admin';
-  if (role === 'SUPERADMIN') return 'superadmin';
+function isTeacherWorkspaceBehavior(value?: string | null): boolean {
+  const normalized = value?.toUpperCase() ?? '';
+  return normalized === 'FREELANCE_TEACHER' || normalized === 'SELF_MANAGED';
+}
+
+function actorFor(context: ResolveAppErrorContext): string {
+  if (isTeacherWorkspaceBehavior(context.workspaceBehavior)) return 'teacher';
+  if (isTeacherWorkspaceBehavior(context.capabilities?.workspace_behavior)) return 'teacher';
+  if (context.capabilities?.can_teach === true && context.capabilities.can_manage_staff === false) return 'teacher';
+  if (context.role === 'INSTRUCTOR') return 'teacher';
+  if (context.role === 'ADMIN') return 'admin';
+  if (context.role === 'SUPERADMIN') return 'superadmin';
   return 'user';
 }
 
@@ -52,7 +60,7 @@ function failedAction(context: ResolveAppErrorContext): string {
 }
 
 export function severityForKind(kind: AppErrorKind): AppErrorSeverity {
-  if (kind === 'report_not_ready' || kind === 'setup_required') return 'warning';
+  if (kind === 'report_not_ready' || kind === 'setup_required' || kind === 'workspace_boundary') return 'warning';
   if (kind === 'validation') return 'warning';
   return 'error';
 }
@@ -71,6 +79,8 @@ export function titleForKind(kind: AppErrorKind, context: ResolveAppErrorContext
     case 'permission':
     case 'tenant_scope':
       return `You do not have access to this ${label}.`;
+    case 'workspace_boundary':
+      return 'This action is not available in this workspace.';
     case 'authentication':
       return 'Sign-in could not be completed.';
     case 'not_found':
@@ -93,7 +103,7 @@ export function titleForKind(kind: AppErrorKind, context: ResolveAppErrorContext
 }
 
 export function defaultMessageForKind(kind: AppErrorKind, context: ResolveAppErrorContext): string {
-  const actor = actorFor(context.role);
+  const actor = actorFor(context);
 
   if (context.domain === 'instructors' && context.action === 'create') {
     return 'Check the email address and required fields, then try again. If the account already exists, use the existing instructor record or ask an admin to restore access.';
@@ -132,6 +142,15 @@ export function defaultMessageForKind(kind: AppErrorKind, context: ResolveAppErr
       return 'This record is locked by its current lifecycle stage. Ask an admin to reopen it if a change is required.';
     case 'tenant_scope':
       return 'This record belongs to another workspace or is outside your current access. Switch workspace or ask an admin to review access.';
+    case 'workspace_boundary':
+      if (
+        isTeacherWorkspaceBehavior(context.workspaceBehavior)
+        || isTeacherWorkspaceBehavior(context.capabilities?.workspace_behavior)
+        || (context.capabilities?.can_teach === true && context.capabilities.can_manage_staff === false)
+      ) {
+        return 'Freelance Teacher Workspaces are designed for one teacher. Use an institution workspace if you need staff or member management.';
+      }
+      return 'This workspace type does not allow that action.';
     case 'report_not_ready':
       return 'The report data is still being prepared or needs refresh. Refresh the report data, then try again.';
     default:
@@ -143,6 +162,7 @@ export function actionLabelForKind(kind: AppErrorKind, context: ResolveAppErrorC
   if (kind === 'network' || kind === 'server' || kind === 'report_not_ready') return 'Try again';
   if (kind === 'authentication' && context.action === 'login') return 'Check sign-in details';
   if (kind === 'validation') return 'Review fields';
+  if (kind === 'workspace_boundary') return 'Review workspace type';
   return undefined;
 }
 
