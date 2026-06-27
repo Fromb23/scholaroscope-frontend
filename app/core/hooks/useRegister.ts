@@ -5,7 +5,7 @@ import { authAPI } from '@/app/core/api/auth';
 import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvites';
 import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
-import { AppError, resolveAppError } from '@/app/core/errors';
+import { resolveAuthError, resolveWorkspaceError, type AppError } from '@/app/core/errors';
 
 export interface RegisterForm {
     first_name: string;
@@ -267,11 +267,16 @@ export function useRegister() {
             setTimeout(() => router.replace('/dashboard'), 1500);
 
         } catch (err: unknown) {
-            const appError = resolveAppError(err, {
-                domain: isInviteFlow ? 'auth' : 'workspace',
-                action: isInviteFlow ? 'verify' : 'create',
-                entityLabel: isInviteFlow ? 'account invitation' : 'workspace',
-            });
+            const appError = isInviteFlow
+                ? resolveAuthError(err, {
+                    action: 'verify',
+                    entityLabel: 'account invitation',
+                })
+                : resolveWorkspaceError(err, {
+                    action: 'create',
+                    entityLabel: 'workspace',
+                    workspaceBehavior: form.org_type === 'PERSONAL' ? 'FREELANCE_TEACHER' : null,
+                });
             setApiError(appError);
             if (appError.fieldErrors) {
                 setFieldErrors(mapRegisterFieldErrors(appError.fieldErrors));
@@ -289,8 +294,7 @@ export function useRegister() {
             setSuccess(true);
             setTimeout(() => { router.replace('/dashboard'); }, 1500);
         } catch (err: unknown) {
-            setApiError(resolveAppError(err, {
-                domain: 'workspace',
+            setApiError(resolveWorkspaceError(err, {
                 action: 'switch',
                 entityLabel: 'workspace access',
             }));

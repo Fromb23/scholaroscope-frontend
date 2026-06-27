@@ -1,5 +1,6 @@
 import type { AppError, AppErrorKind, ResolveAppErrorContext } from './appError';
 import { actionLabelForKind, defaultMessageForKind, severityForKind, titleForKind } from './errorCopy';
+import { getErrorCodeCopy } from './errorCodeCopy';
 import { extractFieldErrors } from './fieldErrors';
 import { sanitizeServerMessage } from './sanitizeServerMessage';
 
@@ -104,6 +105,7 @@ function classifyError(status: number | undefined, serverCode: string | undefine
   if (codeIncludes(serverCode, 'not_authenticated', 'authentication', 'token')) return 'authentication';
   if (codeIncludes(serverCode, 'not_found', 'missing')) return 'not_found';
   if (codeIncludes(serverCode, 'conflict', 'duplicate', 'already_exists')) return 'conflict';
+  if (codeIncludes(serverCode, 'workspace_boundary', 'personal_workspace', 'single_teacher', 'workspace_mode', 'workspace_behavior', 'freelance')) return 'workspace_boundary';
   if (codeIncludes(serverCode, 'setup_required', 'setup')) return 'setup_required';
   if (codeIncludes(serverCode, 'lifecycle_locked', 'finalized', 'locked')) return 'lifecycle_locked';
   if (codeIncludes(serverCode, 'tenant_scope', 'workspace_scope', 'wrong_workspace')) return 'tenant_scope';
@@ -119,27 +121,42 @@ function isRetryable(kind: AppErrorKind, context: ResolveAppErrorContext): boole
   return false;
 }
 
+function isFrameworkGenericMessage(kind: AppErrorKind, message: string | null): boolean {
+  if (!message) return false;
+  if (kind === 'permission') {
+    return /^You do not have permission to perform this action\.?$/i.test(message);
+  }
+  if (kind === 'authentication') {
+    return /^Authentication credentials were not provided\.?$/i.test(message);
+  }
+  return false;
+}
+
 export function resolveAppError(err: unknown, context: ResolveAppErrorContext): AppError {
   const data = getErrorData(err);
   const rawStatus = getStatus(err);
   const fieldErrors = extractFieldErrors(data);
   const serverCode = getServerCode(data);
-  const kind = classifyError(rawStatus, serverCode, fieldErrors);
+  const registryCopy = getErrorCodeCopy(serverCode);
+  const kind = registryCopy?.kind ?? classifyError(rawStatus, serverCode, fieldErrors);
   const serverMessage = sanitizeServerMessage(getServerMessage(data, err), kind);
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
   const defaultMessage = defaultMessageForKind(kind, context);
-  const message = kind === 'validation' && hasFieldErrors
+  const safeServerMessage = isFrameworkGenericMessage(kind, serverMessage)
+    ? null
+    : serverMessage;
+  const message = registryCopy?.message ?? (kind === 'validation' && hasFieldErrors
     ? defaultMessage
-    : serverMessage ?? defaultMessage;
+    : safeServerMessage ?? defaultMessage);
 
   return {
     kind,
-    title: titleForKind(kind, context),
+    title: registryCopy?.title ?? titleForKind(kind, context),
     message,
     fieldErrors: hasFieldErrors ? fieldErrors : undefined,
-    retryable: isRetryable(kind, context),
-    severity: severityForKind(kind),
-    actionLabel: actionLabelForKind(kind, context),
+    retryable: registryCopy?.retryable ?? isRetryable(kind, context),
+    severity: registryCopy?.severity ?? severityForKind(kind),
+    actionLabel: registryCopy?.actionLabel ?? actionLabelForKind(kind, context),
     supportCode: getSupportCode(data),
     rawStatus,
     serverCode,

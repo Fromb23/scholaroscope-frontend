@@ -19,4 +19,12 @@ describe('new learner class-context save flow', () => {
     expect(source).toContain('requestedCohortSubjectId');
     expect(source).not.toContain('freelance-only');
   });
+
+  it('resolves creation failures through the learner error architecture', () => {
+    expect(source).toContain('resolveLearnerError');
+    expect(source).toContain('<AppErrorBanner error={error}');
+    expect(source).toContain("error={error?.fieldErrors?.admission_number?.[0]}");
+    expect(source).toContain("error={error?.fieldErrors?.cohort?.[0]}");
+    expect(source).not.toContain('getLearnerCreationError');
+  });
 });

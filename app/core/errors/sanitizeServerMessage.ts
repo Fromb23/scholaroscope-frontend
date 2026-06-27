@@ -21,6 +21,7 @@ const INTERNAL_PATTERNS = [
 
 const FALLBACK_BY_KIND: Partial<Record<AppErrorKind, string>> = {
   validation: 'Some details need correction before this can be saved.',
+  workspace_boundary: 'This workspace type does not allow that action.',
   server: 'The server could not complete this request. Try again later.',
   unknown: 'The request could not be completed. Try again, or contact support if it continues.',
 };

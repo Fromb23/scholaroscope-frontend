@@ -128,17 +128,23 @@ Avoid:
 
 ## Error State Rule
 
+Errors are product contracts, not decorative alerts. User-facing code must not
+render raw exceptions, raw server messages, or vague fallback text.
+
 Errors must explain:
 
 1. what failed
 2. why it likely failed
-3. what the user can do next
-4. whether retry is safe
-5. who needs to act: teacher, admin, superadmin, or platform support
+3. role/workspace/domain-aware recovery language
+4. what the user can do next
+5. whether retry is safe
+6. who needs to act: teacher, admin, superadmin, or platform support
 
 Use:
 
 - `AppError` for structured error interpretation
+- `errorCodeCopy` for stable backend business codes
+- domain resolvers such as `resolveTeachingError`, `resolveLearnerError`, `resolveReportError`, and `resolveWorkspaceError`
 - `AppErrorBanner` for action/page errors
 - `ValidationErrorSummary` for field errors
 - `PermissionErrorState` for access issues
@@ -151,6 +157,8 @@ Avoid:
 - raw “Failed to fetch”
 - raw backend exceptions
 - displaying `err.message` directly
+- displaying `extractErrorMessage()` directly in feature UI
+- calling `resolveAppError()` directly from feature code when a domain resolver exists
 - flattening field errors before forms can use them
 - generic server error for lifecycle/setup/report-readiness problems
 

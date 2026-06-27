@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
-import { AppError, resolveAppError } from '@/app/core/errors';
+import { resolveAssignmentError, type AppError } from '@/app/core/errors';
 import { AppErrorBanner, InlineActionError } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -155,8 +155,7 @@ export function AssignmentPublishModal({
             onPublished?.();
             onClose();
         } catch (err) {
-            setFormError(resolveAppError(err, {
-                domain: 'assignments',
+            setFormError(resolveAssignmentError(err, {
                 action: 'publish',
                 entityLabel: 'assignment',
                 entityName: assignment.title,
@@ -240,8 +239,7 @@ export function AssignmentPublishModal({
                             <LoadingSpinner fullScreen={false} message="Loading learners..." />
                         ) : learnersQuery.error ? (
                             <AppErrorBanner
-                                error={resolveAppError(learnersQuery.error, {
-                                    domain: 'assignments',
+                                error={resolveAssignmentError(learnersQuery.error, {
                                     action: 'load',
                                     entityLabel: 'eligible learners for this assignment',
                                     role: 'INSTRUCTOR',

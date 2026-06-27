@@ -18,6 +18,8 @@ describe('cohort report setup routes', () => {
     expect(source).toContain("source: 'class_configuration'");
     expect(source).toContain('cohort: cohortId');
     expect(source).toContain("cohort_subject: scope === 'subject' ? cohortSubjectId ?? undefined : undefined");
+    expect(source).toContain('resolveReportError');
+    expect(source).not.toContain('getStructuredErrorCode');
   });
 
   it('preserves workspace return navigation copy', () => {
@@ -39,7 +41,7 @@ describe('cohort report setup routes', () => {
     );
   });
 
-  it('maps structured policy-required compute errors to setup guidance', () => {
+  it('maps class policy-required compute errors through the shared resolver to setup guidance', () => {
     const error = {
       response: {
         data: {
@@ -51,18 +53,59 @@ describe('cohort report setup routes', () => {
       },
     };
 
-    expect(resolveCbcComputeFailure(error, 'subject', 9, 26)).toEqual({
-      message: 'Create report rules before calculating this subject report.',
+    expect(resolveCbcComputeFailure(error, 'class', 9)).toEqual(expect.objectContaining({
+      kind: 'setup_required',
+      serverCode: 'class_report_policy_required',
+      message: 'Create report rules for this class or subject before calculating results.',
+      actionLabel: 'Set report rules',
+      actionHref: '/academic/cohorts/9/report-setup?source=class_configuration&cohort=9&returnTo=%2Facademic%2Fcohorts%2F9',
+    }));
+  });
+
+  it('maps subject policy-required compute errors through the shared resolver to setup guidance', () => {
+    const error = {
+      response: {
+        data: {
+          error: {
+            code: 'class_report_policy_required',
+            message: 'Create report rules before calculating this report.',
+          },
+        },
+      },
+    };
+
+    expect(resolveCbcComputeFailure(error, 'subject', 9, 26)).toEqual(expect.objectContaining({
+      kind: 'setup_required',
+      serverCode: 'class_report_policy_required',
+      message: 'Create report rules for this class or subject before calculating results.',
       actionLabel: 'Set report rules',
       actionHref: '/academic/cohorts/9/subjects/26/report-policy?source=class_configuration&cohort=9&cohort_subject=26&returnTo=%2Facademic%2Fcohorts%2F9%23subject-26',
-    });
+    }));
   });
 
   it('keeps generic compute errors generic', () => {
-    expect(resolveCbcComputeFailure({
+    const resolved = resolveCbcComputeFailure({
       response: { data: { message: 'Unexpected compute failure.' } },
-    }, 'class', 9)).toEqual({
+    }, 'class', 9);
+
+    expect(resolved).toEqual(expect.objectContaining({
       message: 'Unexpected compute failure.',
-    });
+    }));
+    expect(resolved.actionHref).toBeUndefined();
+  });
+
+  it('sanitizes unsafe generic compute errors', () => {
+    const resolved = resolveCbcComputeFailure({
+      response: {
+        status: 500,
+        data: { error: { message: 'IntegrityError: report_policy_id violates SQL constraint' } },
+      },
+    }, 'class', 9);
+
+    expect(resolved).toEqual(expect.objectContaining({
+      kind: 'server',
+      message: 'The server could not complete this request. Try again later.',
+    }));
+    expect(resolved.actionHref).toBeUndefined();
   });
 });

@@ -5,7 +5,7 @@ import { CheckCircle2, MessageSquareText } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { sessionAPI } from '@/app/core/api/sessions';
-import { AppError, resolveAppError } from '@/app/core/errors';
+import { resolveTeachingError, type AppError } from '@/app/core/errors';
 import { InlineActionError } from '@/app/components/ui/errors';
 import type {
   LessonReflectionSource,
@@ -70,8 +70,7 @@ export function LessonReflectionCard({
       setLastSavedReflection(response.reflection);
       onSaved?.(response);
     } catch (saveError: unknown) {
-      setError(resolveAppError(saveError, {
-        domain: 'sessions',
+      setError(resolveTeachingError(saveError, {
         action: 'save',
         entityLabel: 'lesson reflection',
         role: 'INSTRUCTOR',

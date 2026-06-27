@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
-import { AppError, resolveAppError } from '@/app/core/errors';
+import { resolveAssignmentError, type AppError } from '@/app/core/errors';
 import { InlineActionError } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
@@ -361,8 +361,7 @@ export function AssignmentCreateModal({
             onSaved?.(savedAssignment);
             onClose();
         } catch (err) {
-            setFormError(resolveAppError(err, {
-                domain: 'assignments',
+            setFormError(resolveAssignmentError(err, {
                 action: isEditMode ? 'update' : 'create',
                 entityLabel: isLessonPreparationMode ? 'learner task' : 'assignment',
                 role: 'INSTRUCTOR',

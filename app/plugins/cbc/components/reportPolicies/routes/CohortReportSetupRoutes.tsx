@@ -9,17 +9,16 @@ import { Card } from '@/app/components/ui/Card';
 import { Select } from '@/app/components/ui/Select';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
+import { resolveReportError, type AppError } from '@/app/core/errors';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { cbcAPI } from '@/app/plugins/cbc/api/cbc';
 import { CbcReportPoliciesPage } from '@/app/plugins/cbc/components/reportPolicies/CbcReportPoliciesPage';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 export type ReportSetupScope = 'class' | 'subject';
 
-export interface ComputeFailureState {
-    message: string;
-    actionLabel?: string;
+export interface ComputeFailureState extends AppError {
     actionHref?: string;
 }
 
@@ -36,19 +35,6 @@ function useWorkspaceReturnTo(cohortId: number | null): string {
         return rawReturnTo;
     }
     return cohortId ? `/academic/cohorts/${cohortId}` : '/academic/cohorts';
-}
-
-function getStructuredErrorCode(error: unknown): string | null {
-    const data = (error as ApiError | undefined)?.response?.data;
-    if (!data || typeof data !== 'object' || Array.isArray(data) || !('error' in data)) {
-        return null;
-    }
-
-    const structured = data.error;
-    return structured && typeof structured === 'object' && !Array.isArray(structured)
-        && typeof structured.code === 'string'
-        ? structured.code
-        : null;
 }
 
 export function buildComputePolicyRequiredSetupHref(
@@ -78,19 +64,20 @@ export function resolveCbcComputeFailure(
     cohortId: number,
     cohortSubjectId?: number | null,
 ): ComputeFailureState {
-    if (getStructuredErrorCode(error) === 'class_report_policy_required') {
+    const resolved = resolveReportError(error, {
+        action: 'compute',
+        entityLabel: scope === 'subject' ? 'subject report' : 'class report',
+        role: 'INSTRUCTOR',
+    });
+
+    if (resolved.serverCode === 'class_report_policy_required') {
         return {
-            message: scope === 'subject'
-                ? 'Create report rules before calculating this subject report.'
-                : 'Create report rules before calculating this class report.',
-            actionLabel: 'Set report rules',
+            ...resolved,
             actionHref: buildComputePolicyRequiredSetupHref(scope, cohortId, cohortSubjectId),
         };
     }
 
-    return {
-        message: extractErrorMessage(error as ApiError, 'Failed to compute CBC results.'),
-    };
+    return resolved;
 }
 
 export function CohortReportPolicyRoutePage({ scope }: { scope: ReportSetupScope }) {
@@ -140,7 +127,14 @@ export function CohortReportComputationRoutePage({ scope }: { scope: ReportSetup
 
     const handleCompute = async () => {
         if (!selectedTerm) {
-            setError({ message: 'Select a term before computing results.' });
+            setError({
+                kind: 'validation',
+                title: 'Choose a term before calculating.',
+                message: 'Select the term you want to calculate, then try again.',
+                retryable: false,
+                severity: 'warning',
+                actionLabel: 'Review fields',
+            });
             return;
         }
         setComputing(true);
@@ -191,8 +185,13 @@ export function CohortReportComputationRoutePage({ scope }: { scope: ReportSetup
                     ]}
                 />
                 {error ? (
-                    <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
-                        <p className="text-sm font-medium text-red-700">{error.message}</p>
+                    <div className="space-y-3">
+                        <AppErrorBanner
+                            error={error}
+                            compact
+                            onDismiss={() => setError(null)}
+                            onAction={!error.actionHref && error.retryable ? handleCompute : undefined}
+                        />
                         {error.actionHref ? (
                             <Link href={error.actionHref}>
                                 <Button type="button" variant="secondary" size="sm">

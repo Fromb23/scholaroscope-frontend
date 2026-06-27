@@ -9,6 +9,7 @@ export type AppErrorKind =
   | 'setup_required'
   | 'lifecycle_locked'
   | 'tenant_scope'
+  | 'workspace_boundary'
   | 'report_not_ready'
   | 'unknown';
 
@@ -29,6 +30,13 @@ export interface AppError {
 
 export interface ResolveAppErrorContext {
   role?: 'ADMIN' | 'INSTRUCTOR' | 'SUPERADMIN' | string | null;
+  workspaceBehavior?: string | null;
+  capabilities?: {
+    can_teach?: boolean;
+    can_manage_staff?: boolean;
+    is_workspace_owner?: boolean;
+    workspace_behavior?: string | null;
+  };
   domain:
     | 'auth'
     | 'workspace'
