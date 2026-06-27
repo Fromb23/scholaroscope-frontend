@@ -162,6 +162,22 @@ Avoid:
 - flattening field errors before forms can use them
 - generic server error for lifecycle/setup/report-readiness problems
 
+## Workspace Boundary Rule
+
+Raw role is not product behavior. Workspace behavior and capabilities define product behavior.
+
+Freelance owner-admin must not be treated as institution admin. A freelance owner-admin runs a teacher-owned, self-managed teaching workspace; institution admin means governance, supervision, and staff/member management.
+
+Feature UI must use workspace/capability helpers instead of raw `ADMIN`, `PERSONAL`, or workspace behavior checks. Use helpers such as `isSelfManagedTeachingWorkspace`, `isSelfManagedTeachingAdmin`, `isTeachingActorView`, `canUseTeachingMode`, `canManageWorkspaceUsers`, `canShowStaffManagement`, and `canShowInstitutionGovernance`.
+
+Raw workspace mode and organization-type checks are allowed only at API/type boundaries, onboarding selection, tests, and workspace policy/copy helpers.
+
+## Error Placement Rule
+
+A blocking form or page error must have one primary user-facing surface.
+
+Do not render the same server/app error message in multiple banners, including one above a form and another inside a sticky footer. Field validation may appear inline and in a validation summary, but server/app errors should not duplicate.
+
 ## Form State Rule
 
 Forms must never fail silently.
@@ -180,6 +196,10 @@ Blocking form validation should not auto-dismiss. Transient non-blocking feedbac
 Use `FormValidationSummary`, `useFormValidationFeedback`, and the shared form error utilities for local field validation. Use `AppError` and domain resolvers for valid input blocked by workflow, permission, setup, workspace, report-readiness, or lifecycle state.
 
 Field errors must remain attached to fields. State errors must stay in `AppErrorBanner`, `ErrorState`, or a domain-specific state component with recovery copy.
+
+## Lesson Planning Rule
+
+Lesson title is required for lesson plan generation and editing. Blank titles must block submission before API calls, show an inline field error, appear in the validation summary, preserve entered values, and focus or scroll to the first invalid field or summary.
 
 ## What Not To Do
 

@@ -641,14 +641,14 @@ const BASELINE = {
     "removeBy": "2026-10-31"
   },
   "app/core/components/lessonPlans/GenerateLessonPlanPage.tsx::error-banner-without-title": {
-    "count": 3,
+    "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
     "priority": "P1",
     "removeBy": "2026-10-31"
   },
   "app/core/components/lessonPlans/GenerateLessonPlanPage.tsx::legacy-error-banner": {
-    "count": 3,
+    "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
     "priority": "P1",

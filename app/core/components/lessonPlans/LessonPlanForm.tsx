@@ -8,8 +8,21 @@ import { Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import { Input } from '@/app/components/ui/Input';
 import { LessonPlanReferenceEditorSlot } from '@/app/core/components/lessonPlans/LessonPlanReferenceEditorSlot';
+import {
+    LESSON_PLAN_EDIT_FIELD_ORDER,
+    LESSON_PLAN_FIELD_LABELS,
+    validateLessonPlanEditForm,
+    type LessonPlanEditField,
+} from '@/app/core/components/lessonPlans/lessonPlanFormValidation';
+import {
+    getFormFieldErrorMessage,
+    hasFormFieldErrors,
+    useFormValidationFeedback,
+    type FormFieldErrors,
+} from '@/app/core/forms';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import {
     referenceRecordToInput,
@@ -169,9 +182,23 @@ export function LessonPlanForm({
     );
     const [referencePages, setReferencePages] = useState<ReferencePageInput[]>(() => initialReferencePages);
     const [referencesDirty, setReferencesDirty] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<LessonPlanEditField>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const formErrorRef = useScrollIntoViewOnMessage(formError);
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+        getFieldErrorId,
+        getFieldDescribedBy,
+    } = useFormValidationFeedback<LessonPlanEditField>({
+        fieldErrors,
+        fieldOrder: LESSON_PLAN_EDIT_FIELD_ORDER,
+        fieldLabels: LESSON_PLAN_FIELD_LABELS,
+        summaryId: 'lesson-plan-validation-summary',
+    });
     const referencesLocked = lessonPlan.status === 'SCHEDULED';
     const plannedOutcomeMap = useMemo(
         () => new Map(lessonPlan.planned_outcomes.map((outcome) => [outcome.outcome_id, outcome])),
@@ -182,10 +209,18 @@ export function LessonPlanForm({
         setFormData(buildInitialState(lessonPlan));
         setReferencePages(initialReferencePages);
         setReferencesDirty(false);
+        setFieldErrors({});
+        setFormError(null);
     }, [initialReferencePages, lessonPlan]);
 
     const updateField = (field: keyof LessonPlanFormState, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+        setFieldErrors((current) => {
+            if (!(field in current)) return current;
+            const next = { ...current };
+            delete next[field as LessonPlanEditField];
+            return next;
+        });
         setFormError(null);
     };
 
@@ -221,13 +256,17 @@ export function LessonPlanForm({
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (!formData.title.trim()) {
-            setFormError('Title is required.');
+        const validationErrors = validateLessonPlanEditForm({ title: formData.title });
+        setFieldErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            setFormError(null);
+            focusFirstError(validationErrors);
             return;
         }
 
+        const trimmedTitle = formData.title.trim();
         const payload: LessonPlanUpdatePayload = {
-            title: formData.title.trim(),
+            title: trimmedTitle,
             objectives: cleanStringList(formData.objectives),
             prior_knowledge: formData.prior_knowledge.trim(),
             learning_resources: cleanStringList(formData.learning_resources),
@@ -345,6 +384,24 @@ export function LessonPlanForm({
                 )
             ) : null}
 
+            <div ref={summaryRef}>
+                <FormValidationSummary
+                    id="lesson-plan-validation-summary"
+                    title="Some fields need correction."
+                    fieldErrors={fieldErrors}
+                    fieldLabels={LESSON_PLAN_FIELD_LABELS}
+                    onFieldClick={focusField}
+                />
+            </div>
+
+            {formError ? (
+                <ErrorBanner
+                    ref={formErrorRef}
+                    message={formError}
+                    onDismiss={() => setFormError(null)}
+                />
+            ) : null}
+
             <Card>
                 <div className="space-y-5">
                     <div className="space-y-1">
@@ -357,14 +414,29 @@ export function LessonPlanForm({
                     </div>
 
                     <div className="space-y-1">
-                        <label className="block text-sm font-medium text-gray-700">Title</label>
+                        <label htmlFor="lesson-plan-title" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <span>Title</span>
+                            <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
+                                Required
+                            </span>
+                        </label>
                         <textarea
+                            id="lesson-plan-title"
+                            ref={setFieldRef('title')}
                             value={formData.title}
                             onChange={(event) => updateField('title', event.target.value)}
                             placeholder="Lesson plan title"
                             rows={3}
-                            className={TEXTAREA_CLASSNAME}
+                            required
+                            aria-invalid={fieldErrors.title ? true : undefined}
+                            aria-describedby={getFieldDescribedBy('title')}
+                            className={`${TEXTAREA_CLASSNAME} ${fieldErrors.title ? 'theme-input-error' : ''}`}
                         />
+                        {fieldErrors.title ? (
+                            <p id={getFieldErrorId('title')} className="text-sm text-[color:var(--color-danger)]">
+                                {getFormFieldErrorMessage(fieldErrors.title)}
+                            </p>
+                        ) : null}
                     </div>
 
                     <RepeatableListField
@@ -503,15 +575,6 @@ export function LessonPlanForm({
                     </div>
                 </div>
             </Card>
-
-            {formError ? (
-                <ErrorBanner
-                    ref={formErrorRef}
-                    message={formError}
-                    onDismiss={() => setFormError(null)}
-                    autoDismissMs={5000}
-                />
-            ) : null}
 
             <div className="hidden flex-wrap items-center justify-end gap-3 md:flex">
                 <Link href={`/lesson-plans/${lessonPlan.id}`}>

@@ -20,9 +20,16 @@ import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
+import {
+    getFormFieldErrorMessage,
+    hasFormFieldErrors,
+    useFormValidationFeedback,
+    type FormFieldErrors,
+} from '@/app/core/forms';
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import {
     getReferenceOutcomeCoverage,
@@ -30,6 +37,12 @@ import {
     validateReferencePages,
 } from '@/app/core/lib/lessonPlanReferences';
 import { LessonPlanOutcomeProviderSlot } from '@/app/core/components/lessonPlans/LessonPlanOutcomeProviderSlot';
+import {
+    LESSON_PLAN_FIELD_LABELS,
+    LESSON_PLAN_GENERATION_FIELD_ORDER,
+    validateLessonPlanGenerationForm,
+    type LessonPlanGenerationField,
+} from '@/app/core/components/lessonPlans/lessonPlanFormValidation';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
@@ -73,6 +86,7 @@ export function GenerateLessonPlanPage() {
     const [title, setTitle] = useState('');
     const [plannedOutcomes, setPlannedOutcomes] = useState<PlannedOutcome[]>([]);
     const [referencePages, setReferencePages] = useState<ReferencePageInput[]>([]);
+    const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<LessonPlanGenerationField>>({});
     const [useAi, setUseAi] = useState(true);
     const [submittingError, setSubmittingError] = useState<string | null>(null);
     const [showRetryWithoutAi, setShowRetryWithoutAi] = useState(false);
@@ -189,6 +203,17 @@ export function GenerateLessonPlanPage() {
     const errorContainerRef = useScrollIntoViewOnMessage(
         activeErrorMessage || (showRetryWithoutAi ? '__retry__' : null)
     );
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<LessonPlanGenerationField>({
+        fieldErrors,
+        fieldOrder: LESSON_PLAN_GENERATION_FIELD_ORDER,
+        fieldLabels: LESSON_PLAN_FIELD_LABELS,
+        summaryId: 'generate-lesson-plan-validation-summary',
+    });
     const showMissingReferenceWarning = (
         plannedOutcomes.length > 0
         && referenceCoverage.missingOutcomes.length > 0
@@ -266,9 +291,20 @@ export function GenerateLessonPlanPage() {
 
     const clearVisibleErrors = () => {
         setSubmittingError(null);
+        setFieldErrors({});
         clearCreateError();
         clearGenerateError();
         setShowRetryWithoutAi(false);
+    };
+
+    const updateTitle = (value: string) => {
+        setTitle(value);
+        setFieldErrors((current) => {
+            if (!current.title) return current;
+            const next = { ...current };
+            delete next.title;
+            return next;
+        });
     };
 
     const upsertDraftLessonPlan = async (
@@ -311,6 +347,15 @@ export function GenerateLessonPlanPage() {
         clearCreateError();
         clearGenerateError();
 
+        const validationErrors = validateLessonPlanGenerationForm({ title });
+        setFieldErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            focusFirstError(validationErrors);
+            return;
+        }
+
+        const trimmedTitle = title.trim();
+
         if (!selectedCohortSubjectId || !termId) {
             setSubmittingError('Choose the class subject and term before continuing.');
             return;
@@ -343,7 +388,7 @@ export function GenerateLessonPlanPage() {
             const lessonPlan = await upsertDraftLessonPlan({
                 cohort_subject: selectedCohortSubjectId,
                 term: Number(termId),
-                title: title.trim() || undefined,
+                title: trimmedTitle,
                 planned_outcomes: plannedOutcomes,
                 reference_pages: validatedReferences.payload,
             });
@@ -502,7 +547,6 @@ export function GenerateLessonPlanPage() {
                     <ErrorBanner
                         message={activeErrorMessage}
                         onDismiss={clearVisibleErrors}
-                        autoDismissMs={5000}
                     />
                 ) : null}
 
@@ -542,6 +586,16 @@ export function GenerateLessonPlanPage() {
             </div>
 
             <form id="generate-lesson-plan-form" onSubmit={handleSubmit} className="space-y-6 pb-24 md:pb-0">
+                <div ref={summaryRef}>
+                    <FormValidationSummary
+                        id="generate-lesson-plan-validation-summary"
+                        title="Some fields need correction."
+                        fieldErrors={fieldErrors}
+                        fieldLabels={LESSON_PLAN_FIELD_LABELS}
+                        onFieldClick={focusField}
+                    />
+                </div>
+
                 <Card className="theme-card-muted">
                     <div className="space-y-5">
                         <div className="flex items-center justify-between gap-3">
@@ -580,10 +634,13 @@ export function GenerateLessonPlanPage() {
                         </div>
 
                         <Input
+                            ref={setFieldRef('title')}
                             label="Lesson title"
                             value={title}
-                            onChange={(event) => setTitle(event.target.value)}
-                            placeholder="Optional title"
+                            onChange={(event) => updateTitle(event.target.value)}
+                            placeholder="e.g. Fractions and equivalent parts"
+                            required
+                            error={getFormFieldErrorMessage(fieldErrors.title)}
                         />
 
                         {schemeFirstBlocked ? (
@@ -674,16 +731,6 @@ export function GenerateLessonPlanPage() {
                     </Card>
                 ) : null}
 
-                {activeErrorMessage ? (
-                    <ErrorBanner
-                        message={activeErrorMessage}
-                        onDismiss={clearVisibleErrors}
-                        autoDismissMs={5000}
-                        compact
-                        className="hidden md:flex"
-                    />
-                ) : null}
-
                 {!schemeFirstBlocked ? (
                     <div className="hidden justify-end md:flex">
                         <Button type="submit" disabled={submitButtonDisabled}>
@@ -696,14 +743,6 @@ export function GenerateLessonPlanPage() {
             {!schemeFirstBlocked ? (
                 <div className="theme-surface-elevated fixed inset-x-0 bottom-0 z-30 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden theme-border">
                     <div className="mx-auto max-w-6xl space-y-3">
-                        {activeErrorMessage ? (
-                            <ErrorBanner
-                                message={activeErrorMessage}
-                                onDismiss={clearVisibleErrors}
-                                autoDismissMs={5000}
-                                compact
-                            />
-                        ) : null}
                         <Button
                             type="submit"
                             form="generate-lesson-plan-form"

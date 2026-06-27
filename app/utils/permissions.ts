@@ -49,8 +49,15 @@ export const hasRouteAccess = (
 
 // ── Feature-level checks ──────────────────────────────────────────────────────
 
-export const canManageUsers = (user: User, activeRole: Role | null): boolean =>
-    isAdminOrAbove(user, activeRole);
+export const canManageUsers = (
+    user: User,
+    activeRole: Role | null,
+    capabilities?: WorkspaceCapabilities,
+): boolean => {
+    if (user?.is_superadmin) return true;
+    if (capabilities) return Boolean(capabilities.can_manage_staff);
+    return isAdminOrAbove(user, activeRole);
+};
 
 export const canManageStaff = (
     user: User,

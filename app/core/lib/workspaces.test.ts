@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canCreateTeachingRecord,
+  canManageWorkspaceUsers,
+  canShowFreelanceTeachingWorkspace,
+  canShowInstitutionGovernance,
+  canShowStaffManagement,
   canShowAdminMyTeaching,
   canUseTeachingMode,
   isSelfManagedTeachingWorkspace,
@@ -81,6 +85,84 @@ describe('workspace teaching capabilities', () => {
         workspace_behavior: 'SELF_MANAGED',
       },
     })).toBe(true);
+  });
+
+  it('does not treat freelance owner-admin as an institution staff manager', () => {
+    const freelanceCapabilities = {
+      can_teach: true,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: false,
+      is_workspace_owner: true,
+      workspace_mode: 'FREELANCE_TEACHER',
+      workspace_behavior: 'FREELANCE_TEACHER',
+    };
+
+    expect(canManageWorkspaceUsers({
+      role: 'ADMIN',
+      orgType: 'PERSONAL',
+      isWorkspaceOwner: true,
+      capabilities: freelanceCapabilities,
+    })).toBe(false);
+    expect(canShowStaffManagement({
+      role: 'ADMIN',
+      orgType: 'PERSONAL',
+      isWorkspaceOwner: true,
+      capabilities: freelanceCapabilities,
+    })).toBe(false);
+    expect(canShowInstitutionGovernance({
+      role: 'ADMIN',
+      orgType: 'PERSONAL',
+      isWorkspaceOwner: true,
+      capabilities: freelanceCapabilities,
+    })).toBe(false);
+    expect(canShowFreelanceTeachingWorkspace({
+      role: 'ADMIN',
+      orgType: 'PERSONAL',
+      isWorkspaceOwner: true,
+      capabilities: freelanceCapabilities,
+    })).toBe(true);
+  });
+
+  it('allows institution admins with staff capability to manage workspace users', () => {
+    const institutionCapabilities = {
+      can_teach: false,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: true,
+      is_workspace_owner: false,
+      workspace_mode: 'INSTITUTION',
+      workspace_behavior: 'INSTITUTION',
+    };
+
+    expect(canManageWorkspaceUsers({
+      role: 'ADMIN',
+      orgType: 'INSTITUTION',
+      capabilities: institutionCapabilities,
+    })).toBe(true);
+    expect(canShowStaffManagement({
+      role: 'ADMIN',
+      orgType: 'INSTITUTION',
+      capabilities: institutionCapabilities,
+    })).toBe(true);
+    expect(canShowInstitutionGovernance({
+      role: 'ADMIN',
+      orgType: 'INSTITUTION',
+      capabilities: institutionCapabilities,
+    })).toBe(true);
+    expect(canShowFreelanceTeachingWorkspace({
+      role: 'ADMIN',
+      orgType: 'INSTITUTION',
+      capabilities: institutionCapabilities,
+    })).toBe(false);
   });
 
   it('keeps learner-workspace and tuition-center admins out of teaching mode', () => {

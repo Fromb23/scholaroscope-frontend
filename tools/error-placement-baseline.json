@@ -1,0 +1,9 @@
+{
+  "core/components/auth/RegisterPage.tsx::duplicate-error-banner:apiError": {
+    "count": 2,
+    "reason": "Existing duplicate error-placement migration debt. Do not render the same blocking app/form error in multiple banners.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  }
+}
