@@ -5,7 +5,9 @@ import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import Modal from '@/app/components/ui/Modal';
+import { useFormValidationFeedback } from '@/app/core/forms';
 import { GradingScaleEditor } from '@/app/core/components/gradePolicies/GradingScaleEditor';
 import { PolicyWeightsEditor } from '@/app/core/components/gradePolicies/PolicyWeightsEditor';
 import {
@@ -25,6 +27,29 @@ const AGGREGATION_METHODS = [
 ];
 
 const ASSESSMENT_TYPES = ASSESSMENT_TYPE_OPTIONS.map(option => option.value);
+
+type PolicyFormField =
+    | 'name'
+    | 'aggregation_method'
+    | 'scope'
+    | 'weight_entries'
+    | 'grading_scale';
+
+const POLICY_FIELD_ORDER: PolicyFormField[] = [
+    'name',
+    'aggregation_method',
+    'scope',
+    'weight_entries',
+    'grading_scale',
+];
+
+const POLICY_FIELD_LABELS: Record<PolicyFormField, string> = {
+    name: 'Policy name',
+    aggregation_method: 'Aggregation method',
+    scope: 'Scope',
+    weight_entries: 'Assessment weights',
+    grading_scale: 'Grading scale',
+};
 
 interface PolicyFormModalProps {
     editingPolicy: GradePolicy | null;
@@ -67,10 +92,24 @@ export function PolicyFormModal({
         submit,
         dismissError,
     } = useCreatePolicyForm(onSuccess, editingPolicy, { validateScope });
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<PolicyFormField>({
+        fieldErrors: errors,
+        fieldOrder: POLICY_FIELD_ORDER,
+        fieldLabels: POLICY_FIELD_LABELS,
+        summaryId: 'grade-policy-validation-summary',
+    });
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
-        await submit();
+        const result = await submit();
+        if (result.validationErrors) {
+            focusFirstError(result.validationErrors);
+        }
     };
 
     const showWeights = ['WEIGHTED', 'AVERAGE_PLUS_EXAM', 'PAPERS_AVERAGE'].includes(
@@ -87,6 +126,16 @@ export function PolicyFormModal({
             <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
                 {saveError && <ErrorBanner message={saveError} onDismiss={dismissError} />}
 
+                <div ref={summaryRef}>
+                    <FormValidationSummary
+                        id="grade-policy-validation-summary"
+                        title="Some fields need correction."
+                        fieldErrors={errors}
+                        fieldLabels={POLICY_FIELD_LABELS}
+                        onFieldClick={focusField}
+                    />
+                </div>
+
                 <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                     Generic grade policies are kernel-owned. CBC/CBE reporting is managed in CBC Report Policies.
                 </div>
@@ -94,6 +143,7 @@ export function PolicyFormModal({
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
                         <Input
+                            ref={setFieldRef('name')}
                             label="Policy Name"
                             value={form.name}
                             onChange={(event) => setField('name', event.target.value)}
@@ -117,6 +167,7 @@ export function PolicyFormModal({
                 </div>
 
                 <Select
+                    ref={setFieldRef('aggregation_method')}
                     label="Aggregation Method"
                     value={form.aggregation_method}
                     onChange={(event) => setField('aggregation_method', event.target.value)}
@@ -128,7 +179,7 @@ export function PolicyFormModal({
                     ]}
                 />
 
-                <div className="border-t border-gray-100 pt-4">
+                <div ref={setFieldRef('scope')} tabIndex={-1} className="border-t border-gray-100 pt-4">
                     <p className="mb-1 text-sm font-medium text-gray-700">
                         Scope
                     </p>
@@ -234,7 +285,7 @@ export function PolicyFormModal({
                 )}
 
                 {showWeights && (
-                    <div className="border-t border-gray-100 pt-4">
+                    <div ref={setFieldRef('weight_entries')} tabIndex={-1} className="border-t border-gray-100 pt-4">
                         <PolicyWeightsEditor
                             entries={form.weight_entries}
                             error={errors.weight_entries}
@@ -303,7 +354,7 @@ export function PolicyFormModal({
                     </div>
                 </div>
 
-                <div className="border-t border-gray-100 pt-4">
+                <div ref={setFieldRef('grading_scale')} tabIndex={-1} className="border-t border-gray-100 pt-4">
                     <GradingScaleEditor
                         bands={form.grading_scale}
                         error={errors.grading_scale}

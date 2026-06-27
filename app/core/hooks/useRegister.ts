@@ -6,6 +6,12 @@ import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvite
 import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
 import { resolveAuthError, resolveWorkspaceError, type AppError } from '@/app/core/errors';
+import {
+    createFormValidationAppError,
+    hasFormFieldErrors,
+    normalizeFormFieldErrors,
+    type FormFieldErrors,
+} from '@/app/core/forms';
 
 export interface RegisterForm {
     first_name: string;
@@ -16,13 +22,8 @@ export interface RegisterForm {
     org_type: WorkspaceMode;
 }
 
-export interface RegisterFieldErrors {
-    first_name?: string;
-    last_name?: string;
-    email?: string;
-    password?: string;
-    workspace_name?: string;
-}
+export type RegisterField = 'first_name' | 'last_name' | 'email' | 'password' | 'workspace_name';
+export type RegisterFieldErrors = FormFieldErrors<RegisterField>;
 
 export interface SuspendedOrg {
     id: number;
@@ -83,6 +84,7 @@ export function useRegister() {
         org_type: 'PERSONAL',
     });
     const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
+    const [formValidationError, setFormValidationError] = useState<AppError | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState<AppError | null>(null);
     const [success, setSuccess] = useState(false);
@@ -126,18 +128,20 @@ export function useRegister() {
         if (key in fieldErrors && fieldErrors[key as keyof RegisterFieldErrors]) {
             setFieldErrors(e => ({ ...e, [key as keyof RegisterFieldErrors]: undefined }));
         }
+        if (formValidationError?.fieldErrors?.[key]) {
+            setFormValidationError(null);
+        }
         if (apiError?.fieldErrors?.[key]) {
             setApiError(null);
         }
     };
 
-    const validate = (): boolean => {
+    const validate = (): FormFieldErrors<RegisterField> => {
         const e: RegisterFieldErrors = {};
 
         if (isNewWorkspaceFlow || isSuspendedRecovery) {
             if (!form.workspace_name.trim()) e.workspace_name = 'Workspace name is required';
-            setFieldErrors(e);
-            return Object.keys(e).length === 0;
+            return e;
         }
 
         const isExistingUser = !!invite?.user_exists;
@@ -163,13 +167,20 @@ export function useRegister() {
             e.workspace_name = 'Workspace name is required';
         }
 
-        setFieldErrors(e);
-        return Object.keys(e).length === 0;
+        return e;
     };
 
     const handleSubmit = async () => {
-        if (!validate()) return;
+        const validationErrors = validate();
+        setFieldErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            setFormValidationError(createFormValidationAppError({
+                fieldErrors: normalizeFormFieldErrors(validationErrors),
+            }));
+            return;
+        }
         setSubmitting(true);
+        setFormValidationError(null);
         setApiError(null);
 
         try {
@@ -315,6 +326,7 @@ export function useRegister() {
         suspendedOrgs, restoring,
         verificationRequired,
         form, fieldErrors, setField,
+        formValidationError,
         submitting, apiError, setApiError, success,
         handleSubmit, handleRestore, handleLogout, isPending,
         isDirectSignupFlow,

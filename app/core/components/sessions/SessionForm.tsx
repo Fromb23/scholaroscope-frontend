@@ -18,12 +18,23 @@ import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { FormValidationSummary } from '@/app/components/ui/forms';
+import {
+    formFieldErrorsToStringMap,
+    hasFormFieldErrors,
+    useFormValidationFeedback,
+    type FormFieldErrors,
+} from '@/app/core/forms';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions, useCohortSubjectOptions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms, useCohorts } from '@/app/core/hooks/useAcademic';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { canCreateCurriculumWork } from '@/app/core/lib/curriculumLifecycle';
 import { getSessionFormExtensions } from '@/app/core/registry/sessionFormExtensions';
+import {
+    validateSessionCreateForm,
+    type SessionCreateField,
+} from '@/app/core/components/sessions/sessionFormValidation';
 import { useAuth } from '@/app/context/AuthContext';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
@@ -66,6 +77,26 @@ const DEFAULT_FORM: SessionFormData = {
     description: '',
     venue: '',
     auto_create_attendance: true,
+};
+
+const SESSION_FIELD_ORDER: SessionCreateField[] = [
+    'cohort',
+    'cohort_subject',
+    'session_date',
+    'start_time',
+    'end_time',
+    'title',
+    'venue',
+];
+
+const SESSION_FIELD_LABELS: Partial<Record<SessionCreateField, string>> = {
+    cohort: 'Cohort',
+    cohort_subject: 'Subject',
+    session_date: 'Session date',
+    start_time: 'Start time',
+    end_time: 'End time',
+    title: 'Session title',
+    venue: 'Venue',
 };
 
 // ── SessionForm ───────────────────────────────────────────────────────────
@@ -128,10 +159,21 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
     const selectedSubjectOption = filteredSubjectOptions.find(option => option.id === selectedSubjectOptionId) ?? null;
     const [formData, setFormData] = useState<SessionFormData>(DEFAULT_FORM);
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [errors, setErrors] = useState<FormFieldErrors<SessionCreateField>>({});
     const [saving, setSaving] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const submitErrorRef = useScrollIntoViewOnMessage(submitError);
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<SessionCreateField>({
+        fieldErrors: errors,
+        fieldOrder: SESSION_FIELD_ORDER,
+        fieldLabels: SESSION_FIELD_LABELS,
+        summaryId: 'session-form-validation-summary',
+    });
     const sessionFormExtensionContext = useMemo(() => ({
         formData,
         selectedSubjectOption,
@@ -212,29 +254,28 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         setSubmitError(null);
     };
 
-    const validate = (): boolean => {
-        const newErrors: Record<string, string> = {};
-        if (!selectedCohort) newErrors.cohort = 'Cohort is required';
-        if (!selectedSubjectOption || !selectedSubjectOption.session_supported || !formData.subject_source || !formData.subject_id) {
-            newErrors.cohort_subject = 'Subject is required';
-        }
-        if (!formData.session_date) newErrors.session_date = 'Date is required';
-        if (!formData.start_time) newErrors.start_time = 'Start time is required';
-        if (!formData.end_time) newErrors.end_time = 'End time is required';
-        if (formData.start_time && formData.end_time && formData.start_time >= formData.end_time) {
-            newErrors.end_time = 'End time must be after start time';
-        }
+    const validateForm = (): FormFieldErrors<SessionCreateField> => {
+        const extensionErrors: FormFieldErrors<SessionCreateField> = {};
         sessionFormExtensions.forEach((extension) => {
-            Object.assign(newErrors, extension.validate?.(sessionFormExtensionContext) ?? {});
+            Object.assign(extensionErrors, extension.validate?.(sessionFormExtensionContext) ?? {});
         });
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        return validateSessionCreateForm({
+            formData,
+            selectedCohort,
+            selectedSubjectOption,
+            extensionErrors,
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isSelectedCurriculumWritable) return;
-        if (!validate()) return;
+        const validationErrors = validateForm();
+        setErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            focusFirstError(validationErrors);
+            return;
+        }
 
         setSaving(true);
         setSubmitError(null);
@@ -270,6 +311,16 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                 />
             ) : null}
 
+            <div ref={summaryRef}>
+                <FormValidationSummary
+                    id="session-form-validation-summary"
+                    title="Some fields need correction."
+                    fieldErrors={errors}
+                    fieldLabels={SESSION_FIELD_LABELS}
+                    onFieldClick={focusField}
+                />
+            </div>
+
             {/* Basic Information */}
             <Card>
                 <div className="p-6">
@@ -280,25 +331,28 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <Select
+                                ref={setFieldRef('cohort')}
                                 label="Cohort"
                                 value={selectedCohort.toString()}
                                 onChange={e => handleCohortChange(Number(e.target.value))}
                                 required
+                                error={errors.cohort as string | undefined}
                                 options={[
                                     { value: '', label: 'Select Cohort' },
                                     ...availableCohorts.map(c => ({ value: String(c.id), label: c.name })),
                                 ]}
                             />
-                            {errors.cohort && <p className="mt-1 text-sm text-red-600">{errors.cohort}</p>}
                         </div>
 
                         <div>
                             <Select
+                                ref={setFieldRef('cohort_subject')}
                                 label="Subject"
                                 value={selectedSubjectOptionId}
                                 onChange={e => handleCohortSubjectChange(e.target.value)}
                                 required
                                 disabled={!selectedCohort || !isSelectedCurriculumWritable}
+                                error={errors.cohort_subject as string | undefined}
                                 options={[
                                     { value: '', label: selectedCohort ? 'Select Subject' : 'Select a cohort first' },
                                     ...filteredSubjectOptions.map(option => ({
@@ -310,7 +364,6 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                                     })),
                                 ]}
                             />
-                            {errors.cohort_subject && <p className="mt-1 text-sm text-red-600">{errors.cohort_subject}</p>}
                         </div>
 
                         <div>
@@ -346,13 +399,14 @@ export function SessionForm({ currentYear }: SessionFormProps) {
 
                         <div>
                             <Input
+                                ref={setFieldRef('session_date')}
                                 label="Session Date"
                                 type="date"
                                 value={formData.session_date}
                                 onChange={e => handleChange('session_date', e.target.value)}
                                 required
+                                error={errors.session_date as string | undefined}
                             />
-                            {errors.session_date && <p className="mt-1 text-sm text-red-600">{errors.session_date}</p>}
                         </div>
                     </div>
                 </div>
@@ -367,11 +421,14 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                     </div>
                     <div className="space-y-4">
                         <Input
+                            ref={setFieldRef('title')}
                             label="Session Title"
                             type="text"
                             placeholder="e.g., Introduction to Algebra"
                             value={formData.title}
                             onChange={e => handleChange('title', e.target.value)}
+                            required
+                            error={errors.title as string | undefined}
                         />
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -395,7 +452,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                     <ExtensionComponent
                         key={extension.key}
                         {...sessionFormExtensionContext}
-                        errors={errors}
+                        errors={formFieldErrorsToStringMap(errors)}
                         onChange={handleChange}
                     />
                 );
@@ -411,30 +468,35 @@ export function SessionForm({ currentYear }: SessionFormProps) {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <Input
+                                ref={setFieldRef('start_time')}
                                 label="Start Time"
                                 type="time"
                                 value={formData.start_time ?? ''}
                                 onChange={e => handleChange('start_time', e.target.value)}
                                 required
+                                error={errors.start_time as string | undefined}
                             />
-                            {errors.start_time && <p className="mt-1 text-sm text-red-600">{errors.start_time}</p>}
                         </div>
                         <div>
                             <Input
+                                ref={setFieldRef('end_time')}
                                 label="End Time"
                                 type="time"
                                 value={formData.end_time ?? ''}
                                 onChange={e => handleChange('end_time', e.target.value)}
                                 required
+                                error={errors.end_time as string | undefined}
                             />
-                            {errors.end_time && <p className="mt-1 text-sm text-red-600">{errors.end_time}</p>}
                         </div>
                         <Input
+                            ref={setFieldRef('venue')}
                             label="Venue"
                             type="text"
                             placeholder="e.g., Room 101, Lab 2"
                             value={formData.venue}
                             onChange={e => handleChange('venue', e.target.value)}
+                            required
+                            error={errors.venue as string | undefined}
                         />
                     </div>
                 </div>

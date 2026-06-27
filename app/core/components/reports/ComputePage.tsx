@@ -4,22 +4,30 @@
 // app/(dashboard)/reports/compute/page.tsx — render only
 // ============================================================================
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { Settings, Play, Loader, Zap } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { getFormFieldErrorMessage, useFormValidationFeedback } from '@/app/core/forms';
 import { ComputeOptionCard } from '@/app/core/components/reports/ComputeOptionCard';
 import { ComputeResultBanner } from '@/app/core/components/reports/ComputeResultBanner';
 import { useComputePage } from '@/app/core/hooks/reports/useComputePage';
+
+const COMPUTE_FIELD_LABELS = {
+    term: 'Term',
+};
 
 export function ComputePage() {
     const {
         selectedTerm,
         computing,
         results,
+        fieldErrors,
         globalError,
         termsLoading,
         computeOptions,
@@ -32,6 +40,23 @@ export function ComputePage() {
         handleComputeAll,
         computeWithPolicy,
     } = useComputePage();
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<'term'>({
+        fieldErrors,
+        fieldOrder: ['term'],
+        fieldLabels: COMPUTE_FIELD_LABELS,
+        summaryId: 'report-compute-validation-summary',
+    });
+
+    useEffect(() => {
+        if (fieldErrors.term) {
+            focusFirstError(fieldErrors);
+        }
+    }, [fieldErrors, focusFirstError]);
 
     return (
         <div className="space-y-6">
@@ -49,13 +74,27 @@ export function ComputePage() {
 
             {globalError && <ErrorBanner message={globalError} onDismiss={() => setGlobalError(null)} />}
 
+            <div ref={summaryRef}>
+                <FormValidationSummary
+                    id="report-compute-validation-summary"
+                    title="Some fields need correction."
+                    fieldErrors={fieldErrors}
+                    fieldLabels={COMPUTE_FIELD_LABELS}
+                    onFieldClick={focusField}
+                />
+            </div>
+
             {/* Term selector */}
             <Card>
                 <Select
+                    ref={setFieldRef('term')}
                     label="Select Term"
                     value={selectedTerm?.toString() ?? ''}
                     onChange={(event) => handleTermChange(event.target.value)}
                     disabled={termsLoading}
+                    required
+                    error={getFormFieldErrorMessage(fieldErrors.term)}
+                    helperText="Choose the reporting term before running any computation."
                     options={termOptions}
                 />
             </Card>
@@ -78,7 +117,7 @@ export function ComputePage() {
                         <div className="flex items-center gap-3">
                             <Button
                                 onClick={() => run('policy', () => computeWithPolicy(selectedTerm!))}
-                                disabled={!selectedTerm || computing === 'policy'}
+                                disabled={computing === 'policy'}
                             >
                                 {computing === 'policy'
                                     ? <><Loader className="h-4 w-4 mr-1.5 animate-spin" />Computing…</>
@@ -108,7 +147,7 @@ export function ComputePage() {
                             option={option}
                             result={results[option.id]}
                             computing={computing === option.id}
-                            disabled={!selectedTerm || computing === option.id || computing === 'all'}
+                            disabled={computing === option.id || computing === 'all'}
                             onCompute={() => run(option.id, option.run)}
                         />
                     ))}
@@ -133,7 +172,7 @@ export function ComputePage() {
                 </div>
                 <Button
                     onClick={handleComputeAll}
-                    disabled={!selectedTerm || computing !== null}
+                    disabled={computing !== null}
                     className="w-full md:w-auto"
                 >
                     {computing === 'all'

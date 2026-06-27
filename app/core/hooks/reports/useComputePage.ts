@@ -11,6 +11,7 @@ import {
 } from '@/app/core/hooks/useReporting';
 import { useComputedGrades } from '@/app/core/hooks/useGradePolicies';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import type { FormFieldErrors } from '@/app/core/forms';
 
 export interface ComputeResult {
     success: boolean;
@@ -29,6 +30,7 @@ export function useComputePage() {
     const [computing, setComputing] = useState<string | null>(null);
     const [results, setResults] = useState<Record<string, ComputeResult>>({});
     const [globalError, setGlobalError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<'term'>>({});
 
     const { terms, loading: termsLoading } = useTerms();
     const { computeSummaries: computeAttendance } = useAttendanceSummaries();
@@ -38,10 +40,20 @@ export function useComputePage() {
     const { computeSummaries: computeAssessmentTypes } = useAssessmentTypeSummaries();
     const { computeWithPolicy } = useComputedGrades();
 
+    const requireSelectedTerm = () => {
+        if (selectedTerm) {
+            return true;
+        }
+
+        setFieldErrors({ term: 'Select a term before computing.' });
+        return false;
+    };
+
     const run = async (id: string, fn: () => Promise<void>) => {
-        if (!selectedTerm) return;
+        if (!requireSelectedTerm()) return;
 
         setComputing(id);
+        setFieldErrors({});
         try {
             await fn();
             setResults((previous) => ({
@@ -105,9 +117,10 @@ export function useComputePage() {
     );
 
     const handleComputeAll = async () => {
-        if (!selectedTerm) return;
+        if (!requireSelectedTerm()) return;
 
         setComputing('all');
+        setFieldErrors({});
         for (const option of computeOptions) {
             try {
                 await option.run();
@@ -130,6 +143,7 @@ export function useComputePage() {
 
     const handleTermChange = (value: string) => {
         setSelectedTerm(value ? Number(value) : null);
+        setFieldErrors({});
         setResults({});
     };
 
@@ -147,6 +161,7 @@ export function useComputePage() {
         selectedTerm,
         computing,
         results,
+        fieldErrors,
         globalError,
         termsLoading,
         computeOptions,
@@ -155,6 +170,7 @@ export function useComputePage() {
         termOptions,
         run,
         setGlobalError,
+        setFieldErrors,
         handleTermChange,
         handleComputeAll,
         computeWithPolicy,
