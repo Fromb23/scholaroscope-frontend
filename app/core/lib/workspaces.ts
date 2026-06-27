@@ -204,6 +204,40 @@ export function isSupervisionOnlyAdmin(params: TeachingCapabilityParams): boolea
   return params.role === 'ADMIN' && !canUseTeachingMode(params);
 }
 
+export function canManageWorkspaceUsers(params: TeachingCapabilityParams): boolean {
+  if (params.isSuperadmin) {
+    return true;
+  }
+
+  if (params.capabilities) {
+    return Boolean(params.capabilities.can_manage_staff);
+  }
+
+  return params.role === 'ADMIN';
+}
+
+export function canShowStaffManagement(params: TeachingCapabilityParams): boolean {
+  return canManageWorkspaceUsers(params);
+}
+
+export function canShowInstitutionGovernance(params: TeachingCapabilityParams): boolean {
+  if (!canManageWorkspaceUsers(params)) {
+    return false;
+  }
+
+  return !isSelfManagedTeachingWorkspace({
+    orgType: params.orgType,
+    capabilities: params.capabilities,
+  });
+}
+
+export function canShowFreelanceTeachingWorkspace(params: TeachingCapabilityParams): boolean {
+  return canUseTeachingMode(params) && isSelfManagedTeachingWorkspace({
+    orgType: params.orgType,
+    capabilities: params.capabilities,
+  });
+}
+
 export const ORG_TYPE_OPTIONS: Array<{ value: OrgType; label: string }> = [
   { value: 'INSTITUTION', label: ORG_TYPE_LABELS.INSTITUTION },
   { value: 'PERSONAL', label: ORG_TYPE_LABELS.PERSONAL },

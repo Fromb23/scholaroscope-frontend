@@ -1,0 +1,506 @@
+{
+  "(dashboard)/layout.tsx::raw-admin-role-check": {
+    "count": 4,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "(dashboard)/layout.tsx::raw-workspace-behavior-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "components/layout/Header.tsx::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "components/layout/navConfig.ts::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "components/layout/Sidebar.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "components/layout/Sidebar.tsx::raw-workspace-behavior-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/academic/cohorts/CohortDetailPage.tsx::admin-or-above-workspace-ui": {
+    "count": 4,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/academic/cohorts/CohortDetailPage.tsx::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/academic/cohortSubjects/CohortSubjectLearnersPage.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/components/academic/subjects/SubjectDetailPage.tsx::admin-or-above-workspace-ui": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/components/academic/terms/TermsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/components/assessments/AssessmentPolicyPreviewCard.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "core/components/assessments/AssessmentsOverview.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "core/components/assessments/CreateAssessmentPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "core/components/assessments/EditAssessmentPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "core/components/assignments/CohortAssignmentDetailPage.tsx::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "core/components/assignments/CohortAssignmentsPage.tsx::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "core/components/dashboard/AdminDashboard.tsx::raw-admin-role-check": {
+    "count": 3,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/learners/LearnerDetailPage.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/learners/LearnersPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/lessonPlans/LessonPlansPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/reports/GradePoliciesPage.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/reports/GradePolicyDetailPage.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/reports/ReportPoliciesHubPage.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/reports/ReportsPage.tsx::freelance-risky-staff-admin-copy": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/sessions/SessionsOverview.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/settings/AdminSettingsPage.tsx::freelance-risky-staff-admin-copy": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/settings/AdminSettingsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/settings/AdminSettingsPage.tsx::raw-personal-org-type-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/settings/AdminSettingsPage.tsx::raw-workspace-behavior-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/settings/SettingsComponents.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P0",
+    "removeBy": "2026-08-31"
+  },
+  "core/components/superadmin/GlobalUserComponents.tsx::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/components/superadmin/OrgDetailComponents.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/components/superadmin/UserDetailPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/guards/CurriculumAccessGuard.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/hooks/academic/useSubjectsPage.ts::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/hooks/assessments/useAssessmentDetailPage.ts::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "core/theme/effectiveTheme.ts::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/theme/effectiveTheme.ts::raw-personal-org-type-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "core/theme/effectiveTheme.ts::raw-workspace-behavior-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/announcements/components/AnnouncementsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/announcements/components/AnnouncementsRoutePage.tsx::raw-personal-org-type-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/announcements/components/AnnouncementsRoutePage.tsx::raw-workspace-behavior-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/announcements/registry/navBadgeExtension.tsx::raw-personal-org-type-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/announcements/registry/navBadgeExtension.tsx::raw-workspace-behavior-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/announcements/registry/navigationExtension.ts::raw-personal-org-type-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/announcements/registry/navigationExtension.ts::raw-workspace-behavior-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/cambridge/pages/CambridgeAuthoringFrameworkStrandsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeAuthoringProgrammesPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeAuthoringProgrammeSubjectsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeAuthoringStrandChildrenPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeAuthoringSubjectFrameworksPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeAuthoringSubstrandObjectivesPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeAuthoringSyllabusChildrenPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeInstallationProgrammeSubjectsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeOfferingCohortsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeSetupPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cambridge/pages/CambridgeSubjectManagementPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cbc/components/reportPolicies/CbcAssessmentPolicyPreview.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage.tsx::admin-or-above-workspace-ui": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cbc/context/CBCContext.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cbc/hooks/useCBCCohortProgressPage.ts::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cbc/hooks/useCBCTeaching.ts::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/cbc/pages/CBCStudentProgressPage.tsx::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/requests/components/NewRequestPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/requests/components/ProfileRequestsExtension.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/requests/components/RequestDetailPage.tsx::raw-admin-role-check": {
+    "count": 2,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/requests/components/RequestsPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P2",
+    "removeBy": "2026-12-31"
+  },
+  "plugins/schemes/components/CreateSchemePage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/schemes/components/SchemesPage.tsx::raw-admin-role-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/schemes/registry/navigationExtension.ts::raw-personal-org-type-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  },
+  "plugins/schemes/registry/navigationExtension.ts::raw-workspace-behavior-check": {
+    "count": 1,
+    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
+    "owner": "frontend-migration",
+    "priority": "P1",
+    "removeBy": "2026-10-31"
+  }
+}

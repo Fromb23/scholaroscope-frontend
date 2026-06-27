@@ -147,7 +147,7 @@ export interface LessonPlan {
 export interface LessonPlanCreatePayload {
     cohort_subject: number;
     term: number;
-    title?: string;
+    title: string;
     planned_outcomes: PlannedOutcome[];
     planned_date?: string | null;
     planned_start_time?: string | null;
