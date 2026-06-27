@@ -20,4 +20,16 @@ describe('freelance-first registration', () => {
     expect(source).toContain("disabled={disabled}");
     expect(source).toContain('Create Freelance Teacher Workspace');
   });
+
+  it('shows local validation summary and focuses invalid register/workspace fields', () => {
+    const pageSource = readFileSync(join(process.cwd(), 'app/core/components/auth/RegisterPage.tsx'), 'utf8');
+    const hookSource = readFileSync(join(process.cwd(), 'app/core/hooks/useRegister.ts'), 'utf8');
+
+    expect(pageSource).toContain('<FormValidationSummary');
+    expect(pageSource).toContain('focusFirstError(fieldErrors)');
+    expect(pageSource).toContain("ref={setFieldRef('workspace_name')}");
+    expect(pageSource).toContain("ref={setFieldRef('first_name')}");
+    expect(hookSource).toContain('createFormValidationAppError');
+    expect(hookSource).not.toContain('if (!validate()) return');
+  });
 });

@@ -12,7 +12,15 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import { AppErrorBanner } from '@/app/components/ui/errors';
+import {
+    getFormFieldErrorMessage,
+    hasFormFieldErrors,
+    normalizeFormFieldErrors,
+    useFormValidationFeedback,
+    type FormFieldErrors,
+} from '@/app/core/forms';
 import { resolveLearnerError, type AppError } from '@/app/core/errors';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { getLearnerCreateReturnTo } from '@/app/core/components/learners/learnerCreateNavigation';
@@ -28,6 +36,54 @@ const INITIAL_FORM_DATA = {
     email: '',
     phone: '',
 };
+
+type LearnerCreateField =
+    | 'admission_number'
+    | 'cohort'
+    | 'first_name'
+    | 'last_name'
+    | 'middle_name'
+    | 'date_of_birth'
+    | 'gender'
+    | 'email'
+    | 'phone';
+
+const LEARNER_FIELD_ORDER: LearnerCreateField[] = [
+    'admission_number',
+    'cohort',
+    'first_name',
+    'last_name',
+    'middle_name',
+    'date_of_birth',
+    'gender',
+    'email',
+    'phone',
+];
+
+const LEARNER_FIELD_LABELS: Record<LearnerCreateField, string> = {
+    admission_number: 'Admission number',
+    cohort: 'Cohort',
+    first_name: 'First name',
+    last_name: 'Last name',
+    middle_name: 'Middle name',
+    date_of_birth: 'Date of birth',
+    gender: 'Gender',
+    email: 'Email',
+    phone: 'Phone',
+};
+
+function validateLearnerCreateForm(
+    formData: typeof INITIAL_FORM_DATA,
+): FormFieldErrors<LearnerCreateField> {
+    const errors: FormFieldErrors<LearnerCreateField> = {};
+
+    if (!formData.admission_number.trim()) errors.admission_number = 'Admission number is required.';
+    if (!formData.cohort) errors.cohort = 'Cohort is required.';
+    if (!formData.first_name.trim()) errors.first_name = 'First name is required.';
+    if (!formData.last_name.trim()) errors.last_name = 'Last name is required.';
+
+    return errors;
+}
 
 interface CreatedLearnerState {
     cohortId: number;
@@ -57,6 +113,7 @@ export default function NewStudentPage() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<AppError | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<LearnerCreateField>>({});
     const [createdLearner, setCreatedLearner] = useState<CreatedLearnerState | null>(null);
 
     const { cohorts } = useCohorts();
@@ -70,12 +127,41 @@ export default function NewStudentPage() {
         () => cohorts.find((cohort) => cohort.id === selectedCohortId) ?? null,
         [cohorts, selectedCohortId]
     );
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<LearnerCreateField>({
+        fieldErrors,
+        fieldOrder: LEARNER_FIELD_ORDER,
+        fieldLabels: LEARNER_FIELD_LABELS,
+        summaryId: 'learner-create-validation-summary',
+    });
     const { cohort: createdCohort, loading: createdCohortLoading } = useCohortDetail(createdLearner?.cohortId ?? null);
     const quickActionSubjects = createdCohort?.subjects ?? [];
+
+    const setFormField = (field: LearnerCreateField, value: string) => {
+        setFormData((current) => ({ ...current, [field]: value }));
+        setFieldErrors((current) => {
+            const next = { ...current };
+            delete next[field];
+            return next;
+        });
+        if (error?.fieldErrors?.[field]) {
+            setError(null);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        const validationErrors = validateLearnerCreateForm(formData);
+        setFieldErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            focusFirstError(validationErrors);
+            return;
+        }
         setLoading(true);
 
         try {
@@ -113,13 +199,19 @@ export default function NewStudentPage() {
                 learnerName,
             });
         } catch (error) {
-            setError(resolveLearnerError(error, {
+            const resolvedError = resolveLearnerError(error, {
                 action: 'create',
                 entityLabel: 'learner record',
                 role: activeRole,
                 workspaceBehavior: capabilities.workspace_behavior,
                 capabilities,
-            }));
+            });
+            setError(resolvedError);
+            if (resolvedError.fieldErrors) {
+                const backendFieldErrors = normalizeFormFieldErrors(resolvedError.fieldErrors) as FormFieldErrors<LearnerCreateField>;
+                setFieldErrors(backendFieldErrors);
+                focusFirstError(backendFieldErrors);
+            }
         } finally {
             setLoading(false);
         }
@@ -167,6 +259,7 @@ export default function NewStudentPage() {
                                 onClick={() => {
                                     setCreatedLearner(null);
                                     setError(null);
+                                    setFieldErrors({});
                                     setFormData(INITIAL_FORM_DATA);
                                 }}
                             >
@@ -240,24 +333,36 @@ export default function NewStudentPage() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    <div ref={summaryRef}>
+                        <FormValidationSummary
+                            id="learner-create-validation-summary"
+                            title="Some fields need correction."
+                            fieldErrors={fieldErrors}
+                            fieldLabels={LEARNER_FIELD_LABELS}
+                            onFieldClick={focusField}
+                        />
+                    </div>
+
                     {/* Personal Information */}
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <Input
+                                ref={setFieldRef('admission_number')}
                                 label="Admission Number"
                                 required
                                 value={formData.admission_number}
-                                onChange={(e) => setFormData({ ...formData, admission_number: e.target.value })}
+                                onChange={(e) => setFormField('admission_number', e.target.value)}
                                 placeholder="2025001"
-                                error={error?.fieldErrors?.admission_number?.[0]}
+                                error={getFormFieldErrorMessage(fieldErrors.admission_number)}
                             />
                             <Select
+                                ref={setFieldRef('cohort')}
                                 label="Cohort"
                                 required
                                 value={formData.cohort}
-                                onChange={(e) => setFormData({ ...formData, cohort: e.target.value })}
-                                error={error?.fieldErrors?.cohort?.[0]}
+                                onChange={(e) => setFormField('cohort', e.target.value)}
+                                error={getFormFieldErrorMessage(fieldErrors.cohort)}
                                 options={[
                                     { value: '', label: 'Select cohort...' },
                                     ...cohorts.map(c => ({ value: c.id, label: c.name }))
@@ -268,42 +373,51 @@ export default function NewStudentPage() {
 
                     <div className="grid gap-4 sm:grid-cols-3">
                         <Input
+                            ref={setFieldRef('first_name')}
                             label="First Name"
                             required
                             value={formData.first_name}
-                            onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                            onChange={(e) => setFormField('first_name', e.target.value)}
                             placeholder="John"
-                            error={error?.fieldErrors?.first_name?.[0]}
+                            error={getFormFieldErrorMessage(fieldErrors.first_name)}
                         />
                         <Input
-                            label="Middle Name (Optional)"
+                            ref={setFieldRef('middle_name')}
+                            label="Middle Name"
                             value={formData.middle_name}
-                            onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })}
+                            onChange={(e) => setFormField('middle_name', e.target.value)}
                             placeholder="Kamau"
-                            error={error?.fieldErrors?.middle_name?.[0]}
+                            error={getFormFieldErrorMessage(fieldErrors.middle_name)}
+                            optional
                         />
                         <Input
+                            ref={setFieldRef('last_name')}
                             label="Last Name"
                             required
                             value={formData.last_name}
-                            onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                            onChange={(e) => setFormField('last_name', e.target.value)}
                             placeholder="Mwangi"
-                            error={error?.fieldErrors?.last_name?.[0]}
+                            error={getFormFieldErrorMessage(fieldErrors.last_name)}
                         />
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Input
-                            label="Date of Birth (Optional)"
+                            ref={setFieldRef('date_of_birth')}
+                            label="Date of Birth"
                             type="date"
                             value={formData.date_of_birth}
-                            onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                            error={error?.fieldErrors?.date_of_birth?.[0]}
+                            onChange={(e) => setFormField('date_of_birth', e.target.value)}
+                            error={getFormFieldErrorMessage(fieldErrors.date_of_birth)}
+                            optional
                         />
                         <Select
+                            ref={setFieldRef('gender')}
                             label="Gender"
                             value={formData.gender}
-                            onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                            onChange={(e) => setFormField('gender', e.target.value)}
+                            optional
+                            error={getFormFieldErrorMessage(fieldErrors.gender)}
                             options={[
                                 { value: '', label: 'Select gender...' },
                                 { value: 'Male', label: 'Male' },
@@ -317,20 +431,24 @@ export default function NewStudentPage() {
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <Input
-                                label="Email (Optional)"
+                                ref={setFieldRef('email')}
+                                label="Email"
                                 type="email"
                                 value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                onChange={(e) => setFormField('email', e.target.value)}
                                 placeholder="john.mwangi@student.school.com"
-                                error={error?.fieldErrors?.email?.[0]}
+                                error={getFormFieldErrorMessage(fieldErrors.email)}
+                                optional
                             />
                             <Input
-                                label="Phone (Optional)"
+                                ref={setFieldRef('phone')}
+                                label="Phone"
                                 type="tel"
                                 value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                onChange={(e) => setFormField('phone', e.target.value)}
                                 placeholder="+254712345678"
-                                error={error?.fieldErrors?.phone?.[0]}
+                                error={getFormFieldErrorMessage(fieldErrors.phone)}
+                                optional
                             />
                         </div>
                     </div>

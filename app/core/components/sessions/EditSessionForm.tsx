@@ -1,5 +1,6 @@
 'use client';
 
+import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarClock, Save } from 'lucide-react';
@@ -9,34 +10,58 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { FormValidationSummary } from '@/app/components/ui/forms';
+import {
+    getFormFieldErrorMessage,
+    hasFormFieldErrors,
+    useFormValidationFeedback,
+    type FormFieldErrors,
+} from '@/app/core/forms';
 import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOnMessage';
 import { useSessions } from '@/app/core/hooks/useSessions';
+import {
+    validateSessionEditForm,
+    type SessionEditField,
+    type SessionEditFormState,
+} from '@/app/core/components/sessions/sessionFormValidation';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { SessionDetail } from '@/app/core/types/session';
-
-interface EditFormState {
-    title: string;
-    description: string;
-    venue: string;
-}
 
 interface EditSessionFormProps {
     session: SessionDetail;
 }
 
+const EDIT_FIELD_ORDER: SessionEditField[] = ['title', 'venue'];
+const EDIT_FIELD_LABELS: Record<SessionEditField, string> = {
+    title: 'Session title',
+    venue: 'Venue',
+};
+
 export function EditSessionForm({ session }: EditSessionFormProps) {
     const router = useRouter();
     const { updateSession } = useSessions();
 
-    const [formData, setFormData] = useState<EditFormState>({
+    const [formData, setFormData] = useState<SessionEditFormState>({
         title: session.title ?? '',
         description: session.description ?? '',
         venue: session.venue ?? '',
     });
+    const [errors, setErrors] = useState<FormFieldErrors<SessionEditField>>({});
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const submitErrorRef = useScrollIntoViewOnMessage(submitError);
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<SessionEditField>({
+        fieldErrors: errors,
+        fieldOrder: EDIT_FIELD_ORDER,
+        fieldLabels: EDIT_FIELD_LABELS,
+        summaryId: 'edit-session-validation-summary',
+    });
 
     useEffect(() => {
         setFormData({
@@ -46,12 +71,25 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
         });
     }, [session.description, session.id, session.title, session.venue]);
 
-    const handleChange = (field: keyof EditFormState, value: string) => {
+    const handleChange = (field: keyof SessionEditFormState, value: string) => {
         setFormData((current) => ({ ...current, [field]: value }));
+        setErrors((current) => {
+            const next = { ...current };
+            delete next[field as SessionEditField];
+            return next;
+        });
         setSubmitError(null);
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (event: FormEvent) => {
+        event.preventDefault();
+        const validationErrors = validateSessionEditForm(formData);
+        setErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            focusFirstError(validationErrors);
+            return;
+        }
+
         setSaving(true);
         setSubmitError(null);
         try {
@@ -74,7 +112,7 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
     };
 
     return (
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <Card>
                 <div className="space-y-4 p-5">
                     <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -118,20 +156,36 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                 </div>
             </Card>
 
+            <div ref={summaryRef}>
+                <FormValidationSummary
+                    id="edit-session-validation-summary"
+                    title="Some fields need correction."
+                    fieldErrors={errors}
+                    fieldLabels={EDIT_FIELD_LABELS}
+                    onFieldClick={focusField}
+                />
+            </div>
+
             <Card>
                 <div className="space-y-5 p-5">
                     <Input
+                        ref={setFieldRef('title')}
                         label="Lesson Title"
                         value={formData.title}
                         onChange={(event) => handleChange('title', event.target.value)}
                         placeholder="e.g. Introduction to Algebra"
+                        required
+                        error={getFormFieldErrorMessage(errors.title)}
                     />
 
                     <Input
+                        ref={setFieldRef('venue')}
                         label="Venue"
                         value={formData.venue}
                         onChange={(event) => handleChange('venue', event.target.value)}
                         placeholder="e.g. Room 101, Lab 2"
+                        required
+                        error={getFormFieldErrorMessage(errors.venue)}
                     />
 
                     <div>
@@ -165,9 +219,7 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                     </Link>
                     <Button
                         variant="primary"
-                        onClick={() => {
-                            void handleSubmit();
-                        }}
+                        type="submit"
                         disabled={saving}
                         className="w-full sm:w-auto"
                     >
@@ -176,6 +228,6 @@ export function EditSessionForm({ session }: EditSessionFormProps) {
                     </Button>
                 </div>
             </div>
-        </div>
+        </form>
     );
 }

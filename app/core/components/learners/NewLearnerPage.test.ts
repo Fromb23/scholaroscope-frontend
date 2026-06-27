@@ -23,8 +23,20 @@ describe('new learner class-context save flow', () => {
   it('resolves creation failures through the learner error architecture', () => {
     expect(source).toContain('resolveLearnerError');
     expect(source).toContain('<AppErrorBanner error={error}');
-    expect(source).toContain("error={error?.fieldErrors?.admission_number?.[0]}");
-    expect(source).toContain("error={error?.fieldErrors?.cohort?.[0]}");
+    expect(source).toContain('normalizeFormFieldErrors(resolvedError.fieldErrors)');
+    expect(source).toContain("error={getFormFieldErrorMessage(fieldErrors.admission_number)}");
+    expect(source).toContain("error={getFormFieldErrorMessage(fieldErrors.cohort)}");
     expect(source).not.toContain('getLearnerCreationError');
+  });
+
+  it('owns local required-field validation with summary and first-error focus before API create', () => {
+    expect(source).toContain('validateLearnerCreateForm');
+    expect(source).toContain('<FormValidationSummary');
+    expect(source).toContain('focusFirstError(validationErrors)');
+    expect(source).toContain('Admission number is required.');
+    expect(source).toContain('Cohort is required.');
+    expect(source).toContain('First name is required.');
+    expect(source).toContain('Last name is required.');
+    expect(source).toContain('learnersAPI.createStudent(studentData)');
   });
 });

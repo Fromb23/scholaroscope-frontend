@@ -1,7 +1,7 @@
 // app/(auth)/register/page.tsx
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -18,9 +18,11 @@ import {
 import { useRegister } from '@/app/core/hooks/useRegister';
 import { Input } from '@/app/components/ui/Input';
 import { Button } from '@/app/components/ui/Button';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ButtonPendingContent } from '@/app/components/ui/loading';
+import { getFormFieldErrorMessage, hasFormFieldErrors, useFormValidationFeedback } from '@/app/core/forms';
 import { AuthFrame } from './AuthFrame';
 import { ENABLE_MULTI_WORKSPACE_SIGNUP, ORG_TYPE_LABELS, WORKSPACE_MODE_COPY } from '@/app/core/lib/workspaces';
 import { authAPI } from '@/app/core/api/auth';
@@ -30,6 +32,24 @@ import type { WorkspaceMode } from '@/app/core/types/auth';
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Administrator',
   INSTRUCTOR: 'Instructor',
+};
+
+type RegisterField = 'first_name' | 'last_name' | 'email' | 'password' | 'workspace_name';
+
+const REGISTER_FIELD_ORDER: RegisterField[] = [
+  'first_name',
+  'last_name',
+  'email',
+  'password',
+  'workspace_name',
+];
+
+const REGISTER_FIELD_LABELS: Record<RegisterField, string> = {
+  first_name: 'First name',
+  last_name: 'Last name',
+  email: 'Email address',
+  password: 'Password',
+  workspace_name: 'Workspace name',
 };
 
 function AuthBrand() {
@@ -67,6 +87,7 @@ function RegisterForm() {
     restoring,
     form,
     fieldErrors,
+    formValidationError,
     setField,
     submitting,
     apiError,
@@ -90,6 +111,25 @@ function RegisterForm() {
     loading: false,
     message: null,
   });
+  const {
+    summaryRef,
+    setFieldRef,
+    focusField,
+    focusFirstError,
+  } = useFormValidationFeedback<RegisterField>({
+    fieldErrors,
+    fieldOrder: REGISTER_FIELD_ORDER,
+    fieldLabels: REGISTER_FIELD_LABELS,
+    summaryId: 'register-validation-summary',
+  });
+
+  useEffect(() => {
+    if (formValidationError) {
+      focusFirstError(fieldErrors);
+    }
+  }, [fieldErrors, focusFirstError, formValidationError]);
+
+  const hasVisibleFieldErrors = hasFormFieldErrors(fieldErrors);
 
   if (inviteLoading) {
     return (
@@ -288,13 +328,25 @@ function RegisterForm() {
 
             <div className="space-y-4">
               <p className="text-sm font-medium theme-text">Create a new workspace</p>
+              {hasVisibleFieldErrors ? (
+                <div ref={summaryRef}>
+                  <FormValidationSummary
+                    id="register-validation-summary"
+                    fieldErrors={fieldErrors}
+                    fieldLabels={REGISTER_FIELD_LABELS}
+                    onFieldClick={focusField}
+                  />
+                </div>
+              ) : null}
               <Input
+                ref={setFieldRef('workspace_name')}
                 label="Workspace Name"
                 id="workspace_name"
                 value={form.workspace_name}
                 onChange={(e) => setField('workspace_name', e.target.value)}
                 placeholder="e.g. Sunrise Academy"
-                error={fieldErrors.workspace_name}
+                error={getFormFieldErrorMessage(fieldErrors.workspace_name)}
+                required
               />
               <p className="theme-subtle -mt-2 text-xs">This becomes your new organization name</p>
               <Button
@@ -405,6 +457,17 @@ function RegisterForm() {
             </div>
           )}
 
+          {hasVisibleFieldErrors && (
+            <div ref={summaryRef} className="mb-4">
+              <FormValidationSummary
+                id="register-validation-summary"
+                fieldErrors={fieldErrors}
+                fieldLabels={REGISTER_FIELD_LABELS}
+                onFieldClick={focusField}
+              />
+            </div>
+          )}
+
           <div className="space-y-4">
             {isWorkspaceSetupFlow && workspaceStep === 'mode' ? (
               <div className="space-y-3">
@@ -475,25 +538,30 @@ function RegisterForm() {
                     {!isExistingUser && (
                       <div className="grid grid-cols-2 gap-3">
                         <Input
+                          ref={setFieldRef('first_name')}
                           label="First Name"
                           id="first_name"
                           value={form.first_name}
                           onChange={(e) => setField('first_name', e.target.value)}
                           placeholder="Ada"
-                          error={fieldErrors.first_name}
+                          error={getFormFieldErrorMessage(fieldErrors.first_name)}
+                          required
                         />
                         <Input
+                          ref={setFieldRef('last_name')}
                           label="Last Name"
                           id="last_name"
                           value={form.last_name}
                           onChange={(e) => setField('last_name', e.target.value)}
                           placeholder="Lovelace"
-                          error={fieldErrors.last_name}
+                          error={getFormFieldErrorMessage(fieldErrors.last_name)}
+                          required
                         />
                       </div>
                     )}
 
                     <Input
+                      ref={setFieldRef('email')}
                       label="Email Address"
                       id="email"
                       type="email"
@@ -501,20 +569,23 @@ function RegisterForm() {
                       onChange={(e) => setField('email', e.target.value)}
                       placeholder="ada@example.com"
                       disabled={isInviteFlow && !!invite?.email}
-                      error={fieldErrors.email}
+                      error={getFormFieldErrorMessage(fieldErrors.email)}
+                      required
                     />
                     {isInviteFlow && !!invite?.email && (
                       <p className="theme-subtle -mt-2 text-xs">Email is fixed by the invite</p>
                     )}
 
                     <Input
+                      ref={setFieldRef('password')}
                       label="Password"
                       id="password"
                       type="password"
                       value={form.password}
                       onChange={(e) => setField('password', e.target.value)}
                       placeholder="Min. 8 characters"
-                      error={fieldErrors.password}
+                      error={getFormFieldErrorMessage(fieldErrors.password)}
+                      required
                     />
                   </>
                 )}
@@ -522,12 +593,14 @@ function RegisterForm() {
                 {(isWorkspaceSetupFlow || isSuspendedRecovery) && (
                   <>
                     <Input
+                      ref={setFieldRef('workspace_name')}
                       label="Workspace Name"
                       id="workspace_name"
                       value={form.workspace_name}
                       onChange={(e) => setField('workspace_name', e.target.value)}
                       placeholder={selectedWorkspace.placeholder}
-                      error={fieldErrors.workspace_name}
+                      error={getFormFieldErrorMessage(fieldErrors.workspace_name)}
+                      required
                     />
                     <p className="theme-subtle -mt-2 text-xs">
                       This becomes your workspace name on ScholaroScope.

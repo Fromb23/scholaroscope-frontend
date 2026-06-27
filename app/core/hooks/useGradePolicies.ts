@@ -11,6 +11,7 @@ import {
     ComputedGradeFilters,
 } from '@/app/core/types/gradePolicy';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { hasFormFieldErrors } from '@/app/core/forms';
 
 // ── useGradePolicies ──────────────────────────────────────────────────────
 
@@ -221,7 +222,7 @@ export function useCreatePolicyForm(
         );
     };
 
-    const validate = (): boolean => {
+    const validateForm = (): FormErrors => {
         const e: FormErrors = {};
         if (!form.name.trim()) e.name = 'Policy name is required';
         if (!form.aggregation_method) e.aggregation_method = 'Aggregation method is required';
@@ -253,12 +254,15 @@ export function useCreatePolicyForm(
             e.scope = scopeError;
         }
 
-        setErrors(e);
-        return Object.keys(e).length === 0;
+        return e;
     };
 
-    const submit = async (): Promise<void> => {
-        if (!validate()) return;
+    const submit = async (): Promise<{ validationErrors?: FormErrors }> => {
+        const validationErrors = validateForm();
+        setErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            return { validationErrors };
+        }
         setSaving(true);
         setSaveError(null);
 
@@ -295,8 +299,10 @@ export function useCreatePolicyForm(
                 result = await gradePolicyAPI.create(payload);
             }
             onSuccess(result);
+            return {};
         } catch (err) {
             setSaveError(extractErrorMessage(err as ApiError, 'Failed to save policy'));
+            return {};
         } finally {
             setSaving(false);
         }

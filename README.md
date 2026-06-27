@@ -162,6 +162,25 @@ Avoid:
 - flattening field errors before forms can use them
 - generic server error for lifecycle/setup/report-readiness problems
 
+## Form State Rule
+
+Forms must never fail silently.
+
+If frontend validation blocks submission, the form must:
+
+1. show inline errors,
+2. show a summary for long or multi-field forms,
+3. focus or scroll to the first invalid field or validation summary,
+4. preserve entered values,
+5. clearly distinguish required and optional fields,
+6. distinguish form validation errors from system state errors.
+
+Blocking form validation should not auto-dismiss. Transient non-blocking feedback may auto-dismiss.
+
+Use `FormValidationSummary`, `useFormValidationFeedback`, and the shared form error utilities for local field validation. Use `AppError` and domain resolvers for valid input blocked by workflow, permission, setup, workspace, report-readiness, or lifecycle state.
+
+Field errors must remain attached to fields. State errors must stay in `AppErrorBanner`, `ErrorState`, or a domain-specific state component with recovery copy.
+
 ## What Not To Do
 
 - Do not describe this app as “just a Next.js frontend”.

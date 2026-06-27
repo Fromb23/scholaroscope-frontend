@@ -1,4 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -86,6 +88,17 @@ describe('CBC report policy form modal', () => {
     expect(html).toContain('Class configuration');
     expect(html).not.toContain('Subject Profile');
     expect(html).not.toContain('Any subject profile');
+  });
+
+  it('uses shared form validation feedback instead of silent local validation returns', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/plugins/cbc/components/reportPolicies/CbcReportPolicyFormModal.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('<FormValidationSummary');
+    expect(source).toContain('focusFirstError(validationErrors)');
+    expect(source).not.toContain('if (!validate()) return');
   });
 
   it('keeps broad subject profile selection in institution governance mode', () => {

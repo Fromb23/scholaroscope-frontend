@@ -1,12 +1,19 @@
 'use client';
 
-import type { FormEvent, RefObject } from 'react';
-import { useMemo, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import Modal from '@/app/components/ui/Modal';
+import {
+    getFormFieldErrorMessage,
+    hasFormFieldErrors,
+    useFormValidationFeedback,
+    type FormFieldErrors,
+} from '@/app/core/forms';
 import { ASSESSMENT_TYPE_OPTIONS, getAssessmentTypeLabel } from '@/app/core/types/assessment';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import { extractFieldErrors, fieldErrorsToSummary } from '@/app/core/errors/fieldErrors';
@@ -66,16 +73,39 @@ interface CbcTermOption {
     label: string;
 }
 
-interface FormErrors {
-    name?: string;
-    subject_profile?: string;
-    cohort?: string;
-    cbc_cohort_subject?: string;
-    term?: string;
-    scope?: string;
-    assessment_weights?: string;
-    level_scale?: string;
-}
+type ReportPolicyFormField =
+    | 'name'
+    | 'subject_profile'
+    | 'cohort'
+    | 'cbc_cohort_subject'
+    | 'term'
+    | 'scope'
+    | 'assessment_weights'
+    | 'level_scale';
+
+type FormErrors = FormFieldErrors<ReportPolicyFormField>;
+
+const REPORT_POLICY_FIELD_ORDER: ReportPolicyFormField[] = [
+    'name',
+    'subject_profile',
+    'scope',
+    'cohort',
+    'cbc_cohort_subject',
+    'term',
+    'assessment_weights',
+    'level_scale',
+];
+
+const REPORT_POLICY_FIELD_LABELS: Record<ReportPolicyFormField, string> = {
+    name: 'Policy name',
+    subject_profile: 'Subject profile',
+    cohort: 'Class',
+    cbc_cohort_subject: 'Class subject',
+    term: 'Term',
+    scope: 'Policy scope',
+    assessment_weights: 'Assessment weights',
+    level_scale: 'CBC level scale',
+};
 
 export interface CbcPolicyFormState {
     name: string;
@@ -528,12 +558,17 @@ export function CbcReportPolicyFormModal({
     const [errors, setErrors] = useState<FormErrors>({});
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-    const nameRef = useRef<HTMLInputElement | null>(null);
-    const subjectProfileRef = useRef<HTMLSelectElement | null>(null);
-    const scopeRef = useRef<HTMLDivElement | null>(null);
-    const termRef = useRef<HTMLSelectElement | null>(null);
-    const assessmentWeightsRef = useRef<HTMLDivElement | null>(null);
-    const levelScaleRef = useRef<HTMLDivElement | null>(null);
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<ReportPolicyFormField>({
+        fieldErrors: errors,
+        fieldOrder: REPORT_POLICY_FIELD_ORDER,
+        fieldLabels: REPORT_POLICY_FIELD_LABELS,
+        summaryId: 'cbc-report-policy-validation-summary',
+    });
 
     const isClassMode = isClassAuthoringMode(authoringMode);
     const selectedClassLabel = useMemo(() => {
@@ -569,25 +604,6 @@ export function CbcReportPolicyFormModal({
             ?? lockedCohortSubjectLabel
             ?? 'Selected class subject';
     }, [classCohortSubjectOptions, form.cbc_cohort_subject, lockedCohortSubjectLabel]);
-
-    const focusInvalidTarget = (target: ReportPolicyInvalidTarget | null) => {
-        if (!target) return;
-
-        const refMap: Record<ReportPolicyInvalidTarget, RefObject<HTMLElement | null>> = {
-            name: nameRef,
-            subject_profile: subjectProfileRef,
-            scope: scopeRef,
-            term: termRef,
-            assessment_weights: assessmentWeightsRef,
-            level_scale: levelScaleRef,
-        };
-        const targetRef = refMap[target];
-
-        window.setTimeout(() => {
-            targetRef.current?.focus();
-            targetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 0);
-    };
 
     const setField = <K extends keyof CbcPolicyFormState>(field: K, value: CbcPolicyFormState[K]) => {
         setForm((previous) => ({ ...previous, [field]: value }));
@@ -758,7 +774,7 @@ export function CbcReportPolicyFormModal({
         setField('diagnostic_assessment_types', [...CBC_ENTRY_MIDTERM_PRESET.diagnostic_assessment_types]);
     };
 
-    const validate = (): boolean => {
+    const validateForm = (): FormErrors => {
         const nextErrors: FormErrors = {};
 
         if (!form.name.trim()) {
@@ -825,15 +841,18 @@ export function CbcReportPolicyFormModal({
             }
         }
 
-        setErrors(nextErrors);
-        focusInvalidTarget(getFirstReportPolicyInvalidTarget(nextErrors));
-        return Object.keys(nextErrors).length === 0;
+        return nextErrors;
     };
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
 
-        if (!validate()) return;
+        const validationErrors = validateForm();
+        setErrors(validationErrors);
+        if (hasFormFieldErrors(validationErrors)) {
+            focusFirstError(validationErrors);
+            return;
+        }
 
         setSaving(true);
         setSaveError(null);
@@ -855,7 +874,7 @@ export function CbcReportPolicyFormModal({
                     ? null
                     : extractErrorMessage(error as ApiError, 'Failed to save CBC report policy.')),
             );
-            focusInvalidTarget(mappedErrors.firstTarget);
+            focusFirstError(mappedErrors.fieldErrors);
         } finally {
             setSaving(false);
         }
@@ -873,16 +892,26 @@ export function CbcReportPolicyFormModal({
             <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
                 {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
 
+                <div ref={summaryRef}>
+                    <FormValidationSummary
+                        id="cbc-report-policy-validation-summary"
+                        title="Some fields need correction."
+                        fieldErrors={errors}
+                        fieldLabels={REPORT_POLICY_FIELD_LABELS}
+                        onFieldClick={focusField}
+                    />
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
                         <Input
-                            ref={nameRef}
+                            ref={setFieldRef('name')}
                             label="Policy Name"
                             value={form.name}
                             onChange={(event) => setField('name', event.target.value)}
                             placeholder="e.g., Grade 7 End Term CBC Policy"
                             required
-                            error={errors.name}
+                            error={getFormFieldErrorMessage(errors.name)}
                         />
                     </div>
                     <div className="md:col-span-2">
@@ -903,14 +932,14 @@ export function CbcReportPolicyFormModal({
                     {authoringMode === 'INSTITUTION_GOVERNANCE' ? (
                         <>
                             <Select
-                                ref={subjectProfileRef}
+                                ref={setFieldRef('subject_profile')}
                                 label="Subject Profile"
                                 value={form.subject_profile?.toString() ?? ''}
                                 onChange={(event) => setField(
                                     'subject_profile',
                                     event.target.value ? Number(event.target.value) : null,
                                 )}
-                                error={errors.subject_profile}
+                                error={getFormFieldErrorMessage(errors.subject_profile)}
                                 options={[
                                     { value: '', label: 'Any subject profile' },
                                     ...subjectProfiles.map((profile) => ({
@@ -926,7 +955,7 @@ export function CbcReportPolicyFormModal({
                                     'cohort',
                                     event.target.value ? Number(event.target.value) : null,
                                 )}
-                                error={errors.cohort}
+                                error={getFormFieldErrorMessage(errors.cohort)}
                                 options={[
                                     { value: '', label: 'Any cohort' },
                                     ...cohorts.map((cohort) => ({
@@ -952,7 +981,7 @@ export function CbcReportPolicyFormModal({
                                         setField('cohort', selectedOption.cohortId);
                                     }
                                 }}
-                                error={errors.cbc_cohort_subject}
+                                error={getFormFieldErrorMessage(errors.cbc_cohort_subject)}
                                 options={[
                                     { value: '', label: 'Any CBC cohort subject' },
                                     ...cohortSubjects.map((subject) => ({
@@ -964,7 +993,7 @@ export function CbcReportPolicyFormModal({
                         </>
                     ) : (
                         <div
-                            ref={scopeRef}
+                            ref={setFieldRef('scope')}
                             tabIndex={-1}
                             className={`space-y-3 rounded-lg border px-3 py-3 md:col-span-3 ${
                                 errors.scope
@@ -994,7 +1023,7 @@ export function CbcReportPolicyFormModal({
                                     onChange={(event) => setClassSubjectScope(
                                         event.target.value ? Number(event.target.value) : null,
                                     )}
-                                    error={errors.cbc_cohort_subject}
+                                    error={getFormFieldErrorMessage(errors.cbc_cohort_subject)}
                                     options={[
                                         {
                                             value: '',
@@ -1019,16 +1048,16 @@ export function CbcReportPolicyFormModal({
                                 <p className="text-xs text-gray-500">Selected subject: {selectedCohortSubjectLabel}</p>
                             ) : null}
                             {errors.scope ? (
-                                <p className="text-sm font-medium text-red-700">{errors.scope}</p>
+                                <p className="text-sm font-medium text-red-700">{getFormFieldErrorMessage(errors.scope)}</p>
                             ) : null}
                         </div>
                     )}
                     <Select
-                        ref={termRef}
+                        ref={setFieldRef('term')}
                         label="Term"
                         value={form.term?.toString() ?? ''}
                         onChange={(event) => setField('term', event.target.value ? Number(event.target.value) : null)}
-                        error={errors.term}
+                        error={getFormFieldErrorMessage(errors.term)}
                         options={[
                             { value: '', label: 'Any term' },
                             ...terms.map((term) => ({
@@ -1045,7 +1074,7 @@ export function CbcReportPolicyFormModal({
                         : 'Class configuration report setup is saved against this class workspace context.'}
                 </div>
 
-                <div ref={assessmentWeightsRef} tabIndex={-1} className="border-t border-gray-100 pt-4">
+                <div ref={setFieldRef('assessment_weights')} tabIndex={-1} className="border-t border-gray-100 pt-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <p className="text-sm font-medium text-gray-700">Preset</p>
                         <Button type="button" variant="secondary" size="sm" onClick={applyEntryMidtermPreset}>
@@ -1054,7 +1083,7 @@ export function CbcReportPolicyFormModal({
                     </div>
                     <CbcAssessmentWeightsEditor
                         entries={form.assessment_weights}
-                        error={errors.assessment_weights}
+                        error={getFormFieldErrorMessage(errors.assessment_weights)}
                         onAdd={addWeightEntry}
                         onRemove={removeWeightEntry}
                         onChange={updateWeightEntry}
@@ -1081,7 +1110,7 @@ export function CbcReportPolicyFormModal({
                     </div>
                 </div>
 
-                <div ref={levelScaleRef} tabIndex={-1} className="border-t border-gray-100 pt-4">
+                <div className="border-t border-gray-100 pt-4">
                     <p className="mb-2 text-sm font-medium text-gray-700">Diagnostic Assessment Types</p>
                     <div className="flex flex-wrap gap-2">
                         {ASSESSMENT_TYPE_OPTIONS.map((option) => (
@@ -1133,7 +1162,7 @@ export function CbcReportPolicyFormModal({
                     </div>
                 </div>
 
-                <div className="border-t border-gray-100 pt-4">
+                <div ref={setFieldRef('level_scale')} tabIndex={-1} className="border-t border-gray-100 pt-4">
                     <div className="grid gap-4 md:grid-cols-3">
                         <Select
                             label="Rounding Mode"
@@ -1170,7 +1199,7 @@ export function CbcReportPolicyFormModal({
                 <div className="border-t border-gray-100 pt-4">
                     <CbcLevelScaleEditor
                         rows={form.level_scale}
-                        error={errors.level_scale}
+                        error={getFormFieldErrorMessage(errors.level_scale)}
                         onAdd={addLevelScaleRow}
                         onRemove={removeLevelScaleRow}
                         onChange={updateLevelScale}
