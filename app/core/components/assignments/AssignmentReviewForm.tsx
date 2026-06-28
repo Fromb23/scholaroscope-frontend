@@ -3,8 +3,15 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { FormValidationSummary } from '@/app/components/ui/forms';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
+import {
+    getFormFieldErrorMessage,
+    hasFormFieldErrors,
+    type FormFieldErrors,
+    useFormValidationFeedback,
+} from '@/app/core/forms';
 import { useCreateAssignmentEvaluation, useUpdateAssignmentEvaluation } from '@/app/core/hooks/useAssignments';
 import type { RubricLevel } from '@/app/core/types/assessment';
 import type {
@@ -23,6 +30,15 @@ interface AssignmentReviewFormProps {
     rubricLevels?: RubricLevel[];
     onSaved?: () => void | Promise<void>;
 }
+
+type ReviewField = 'numericScore' | 'rubricLevel' | 'narrative' | 'competencyState';
+
+const REVIEW_FIELD_LABELS: Record<ReviewField, string> = {
+    numericScore: 'Numeric score',
+    rubricLevel: 'Rubric level',
+    narrative: 'Review notes',
+    competencyState: 'Competency state',
+};
 
 function buildRubricOptions(rubricLevels: RubricLevel[]) {
     return [
@@ -44,6 +60,32 @@ function buildCompetencyOptions() {
     ];
 }
 
+export function validateNumericAssignmentScore(
+    value: string,
+    totalMarks: number | null | undefined
+): string | null {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+        return 'Numeric score is required for this assignment.';
+    }
+
+    const score = Number(trimmedValue);
+    if (Number.isNaN(score)) {
+        return 'Numeric score must be a number.';
+    }
+
+    if (score < 0) {
+        return 'Numeric score cannot be negative.';
+    }
+
+    if (totalMarks != null && score > totalMarks) {
+        return `Numeric score cannot exceed ${totalMarks}.`;
+    }
+
+    return null;
+}
+
 export function AssignmentReviewForm({
     assignment,
     submission,
@@ -58,7 +100,19 @@ export function AssignmentReviewForm({
     const [narrative, setNarrative] = useState('');
     const [competencyState, setCompetencyState] = useState('');
     const [formError, setFormError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<ReviewField>>({});
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const {
+        summaryRef,
+        setFieldRef,
+        focusField,
+        focusFirstError,
+    } = useFormValidationFeedback<ReviewField>({
+        fieldErrors,
+        fieldOrder: ['numericScore', 'rubricLevel', 'competencyState', 'narrative'],
+        fieldLabels: REVIEW_FIELD_LABELS,
+        summaryId: 'assignment-review-validation-summary',
+    });
 
     useEffect(() => {
         setNumericScore(evaluation?.numeric_score != null ? String(evaluation.numeric_score) : '');
@@ -66,6 +120,7 @@ export function AssignmentReviewForm({
         setNarrative(evaluation?.narrative ?? '');
         setCompetencyState(evaluation?.competency_state ?? '');
         setFormError(null);
+        setFieldErrors({});
         setSuccessMessage(null);
     }, [evaluation]);
 
@@ -74,13 +129,18 @@ export function AssignmentReviewForm({
 
     const validate = (): AssignmentEvaluationCreatePayload | AssignmentEvaluationUpdatePayload | null => {
         setFormError(null);
+        const nextFieldErrors: FormFieldErrors<ReviewField> = {};
 
         if (evaluationType === 'NUMERIC') {
-            if (!numericScore) {
-                setFormError('Numeric score is required for this assignment.');
+            const numericError = validateNumericAssignmentScore(numericScore, assignment.total_marks);
+            if (numericError) {
+                nextFieldErrors.numericScore = numericError;
+                setFieldErrors(nextFieldErrors);
+                focusFirstError(nextFieldErrors);
                 return null;
             }
 
+            setFieldErrors({});
             return {
                 submission: submission.id,
                 evaluation_type: evaluationType,
@@ -91,10 +151,13 @@ export function AssignmentReviewForm({
 
         if (evaluationType === 'RUBRIC') {
             if (!rubricLevel) {
-                setFormError('Select a rubric level before saving the review.');
+                nextFieldErrors.rubricLevel = 'Select a rubric level before saving the review.';
+                setFieldErrors(nextFieldErrors);
+                focusFirstError(nextFieldErrors);
                 return null;
             }
 
+            setFieldErrors({});
             return {
                 submission: submission.id,
                 evaluation_type: evaluationType,
@@ -105,10 +168,13 @@ export function AssignmentReviewForm({
 
         if (evaluationType === 'DESCRIPTIVE') {
             if (!narrative.trim()) {
-                setFormError('Narrative feedback is required for descriptive assignments.');
+                nextFieldErrors.narrative = 'Narrative feedback is required for descriptive assignments.';
+                setFieldErrors(nextFieldErrors);
+                focusFirstError(nextFieldErrors);
                 return null;
             }
 
+            setFieldErrors({});
             return {
                 submission: submission.id,
                 evaluation_type: evaluationType,
@@ -116,6 +182,7 @@ export function AssignmentReviewForm({
             };
         }
 
+        setFieldErrors({});
         return {
             submission: submission.id,
             evaluation_type: evaluationType as AssignmentEvaluationType,
@@ -147,6 +214,12 @@ export function AssignmentReviewForm({
             setFormError(err instanceof Error ? err.message : 'Failed to save review.');
         }
     };
+    const totalMarksLabel = assignment.total_marks != null
+        ? ` out of ${assignment.total_marks}`
+        : '';
+    const numericHelperText = assignment.total_marks != null
+        ? `Maximum score: ${assignment.total_marks}`
+        : 'Enter a score of 0 or above.';
 
     return (
         <div className="space-y-4 rounded-lg border border-gray-200 p-4">
@@ -168,6 +241,16 @@ export function AssignmentReviewForm({
                 <ErrorBanner message={formError} onDismiss={() => setFormError(null)} />
             ) : null}
 
+            <div ref={summaryRef}>
+                <FormValidationSummary
+                    id="assignment-review-validation-summary"
+                    title="Review fields need correction."
+                    fieldErrors={fieldErrors}
+                    fieldLabels={REVIEW_FIELD_LABELS}
+                    onFieldClick={focusField}
+                />
+            </div>
+
             {successMessage ? (
                 <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                     {successMessage}
@@ -176,26 +259,40 @@ export function AssignmentReviewForm({
 
             {evaluationType === 'NUMERIC' ? (
                 <Input
-                    label="Numeric Score"
+                    ref={setFieldRef('numericScore')}
+                    label={`Numeric score${totalMarksLabel}`}
                     type="number"
                     min="0"
                     max={assignment.total_marks ?? undefined}
                     value={numericScore}
-                    onChange={(event) => setNumericScore(event.target.value)}
+                    helperText={numericHelperText}
+                    error={getFormFieldErrorMessage(fieldErrors.numericScore)}
+                    onChange={(event) => {
+                        setNumericScore(event.target.value);
+                        if (hasFormFieldErrors(fieldErrors)) {
+                            setFieldErrors((previous) => ({ ...previous, numericScore: undefined }));
+                        }
+                    }}
                 />
             ) : null}
 
             {evaluationType === 'RUBRIC' ? (
                 <Select
+                    ref={setFieldRef('rubricLevel')}
                     label="Rubric Level"
                     value={rubricLevel}
-                    onChange={(event) => setRubricLevel(event.target.value)}
+                    error={getFormFieldErrorMessage(fieldErrors.rubricLevel)}
+                    onChange={(event) => {
+                        setRubricLevel(event.target.value);
+                        setFieldErrors((previous) => ({ ...previous, rubricLevel: undefined }));
+                    }}
                     options={buildRubricOptions(rubricLevels)}
                 />
             ) : null}
 
             {evaluationType === 'COMPETENCY' ? (
                 <Select
+                    ref={setFieldRef('competencyState')}
                     label="Competency State"
                     value={competencyState}
                     onChange={(event) => setCompetencyState(event.target.value)}
@@ -209,12 +306,24 @@ export function AssignmentReviewForm({
                         {evaluationType === 'DESCRIPTIVE' ? 'Narrative Feedback' : 'Review Notes'}
                     </label>
                     <textarea
+                        ref={setFieldRef('narrative')}
                         value={narrative}
-                        onChange={(event) => setNarrative(event.target.value)}
+                        onChange={(event) => {
+                            setNarrative(event.target.value);
+                            setFieldErrors((previous) => ({ ...previous, narrative: undefined }));
+                        }}
                         rows={4}
                         placeholder="Add feedback for the learner."
-                        className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-invalid={fieldErrors.narrative ? true : undefined}
+                        className={`w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            fieldErrors.narrative ? 'theme-input-error' : ''
+                        }`}
                     />
+                    {fieldErrors.narrative ? (
+                        <p className="text-sm text-[color:var(--color-danger)]">
+                            {getFormFieldErrorMessage(fieldErrors.narrative)}
+                        </p>
+                    ) : null}
                 </div>
             ) : null}
 

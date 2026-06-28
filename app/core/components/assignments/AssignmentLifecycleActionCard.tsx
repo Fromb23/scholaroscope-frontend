@@ -19,7 +19,7 @@ const ACTION_LABELS: Record<AssignmentLifecycleAction, string> = {
     MARK_PARTICIPATION: 'Update participation',
     FINISH_LEARNER_WORK: 'Close learner work',
     REVIEW_WORK: 'Review learner work',
-    RECORD_EVIDENCE: 'Record evidence',
+    RECORD_EVIDENCE: 'Review evidence status',
     REOPEN_LEARNER_WORK: 'Reopen learner work',
     STORE_RECORD: 'Store assignment record',
     VIEW_RECORD: 'View record',
@@ -91,8 +91,8 @@ function getStageCopy(stage: AssignmentLifecycleState['stage'], deliveryMode: As
             return {
                 title: 'Review assignment',
                 description: deliveryMode === 'GROUP'
-                    ? 'Learner work is closed. Review group work, mark participation, and record evidence.'
-                    : 'Learner work is closed. Review work and record evidence before storing the record.',
+                    ? 'Learner work is closed. Review group work and participation; evidence is created automatically after review.'
+                    : 'Learner work is closed. Review work; evidence is created automatically before the record is stored.',
             };
         case 'STORED':
             return {

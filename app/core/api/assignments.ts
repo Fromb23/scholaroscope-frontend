@@ -49,6 +49,7 @@ import type {
     AssignmentSubmission,
     AssignmentSubmissionCreatePayload,
     AssignmentSubmissionListResponse,
+    AssignmentTeachingTodayResponse,
     AssignmentUpdatePayload,
 } from '@/app/core/types/assignments';
 
@@ -74,6 +75,13 @@ export const assignmentsAPI = {
     getLifecycleState: async (id: number): Promise<AssignmentLifecycleState> => {
         const response = await apiClient.get<AssignmentLifecycleState>(
             `${ASSIGNMENTS_BASE}/${id}/lifecycle-state/`
+        );
+        return response.data;
+    },
+
+    getTeachingToday: async (): Promise<AssignmentTeachingTodayResponse> => {
+        const response = await apiClient.get<AssignmentTeachingTodayResponse>(
+            `${ASSIGNMENTS_BASE}/teaching-today/`
         );
         return response.data;
     },

@@ -58,6 +58,8 @@ export const assignmentKeys = {
     lists: () => ['assignments', 'list'] as const,
     list: (filters: Record<string, unknown>) =>
         ['assignments', 'list', filters] as const,
+    teachingToday: () =>
+        ['assignments', 'teaching-today'] as const,
     detail: (assignmentId: number | null) =>
         ['assignments', 'detail', assignmentId] as const,
     lifecycleState: (assignmentId: number | null) =>

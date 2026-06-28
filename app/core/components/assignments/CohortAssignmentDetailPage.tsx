@@ -8,7 +8,6 @@ import {
     BookOpen,
     ClipboardList,
     Clock,
-    Eye,
     FileCheck2,
     Users,
 } from 'lucide-react';
@@ -52,7 +51,6 @@ import {
     useAssignmentLifecycleState,
     useAssignmentRecipients,
     useAssignmentSubmissions,
-    useBridgeAssignmentEvaluation,
     useCloseAssignment,
     useDeleteAssignment,
     useReopenLearnerWork,
@@ -144,7 +142,8 @@ export default function CohortAssignmentDetailPage() {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [recordResponsePanelOpen, setRecordResponsePanelOpen] = useState(false);
     const [selectedReviewSubmissionId, setSelectedReviewSubmissionId] = useState<number | null>(null);
-    const [reviewPanelManuallyHidden, setReviewPanelManuallyHidden] = useState(false);
+    const [openReviewAfterResponse, setOpenReviewAfterResponse] = useState(false);
+    const [advancedDetailsOpen, setAdvancedDetailsOpen] = useState(false);
     const responseWorkflowRef = useRef<HTMLDivElement | null>(null);
     const reviewWorkflowRef = useRef<HTMLDivElement | null>(null);
 
@@ -198,7 +197,6 @@ export default function CohortAssignmentDetailPage() {
     const reopenLearnerWorkMutation = useReopenLearnerWork();
     const restoreToReviewMutation = useRestoreAssignmentToReview();
     const deleteMutation = useDeleteAssignment();
-    const bridgeMutation = useBridgeAssignmentEvaluation();
     const assignmentsHref = useMemo(
         () => getSafeReturnHref(cohortId, searchParams.get('returnTo')),
         [cohortId, searchParams]
@@ -233,10 +231,8 @@ export default function CohortAssignmentDetailPage() {
     ), [evaluationBySubmissionId, reviewableSubmissions]);
     const selectedReviewSubmission = useMemo(() => (
         reviewableSubmissions.find((submission) => submission.id === selectedReviewSubmissionId)
-        ?? pendingReviewSubmissions[0]
-        ?? reviewableSubmissions[0]
         ?? null
-    ), [pendingReviewSubmissions, reviewableSubmissions, selectedReviewSubmissionId]);
+    ), [reviewableSubmissions, selectedReviewSubmissionId]);
     const selectedReviewEvaluation = selectedReviewSubmission
         ? evaluationBySubmissionId.get(selectedReviewSubmission.id) ?? null
         : null;
@@ -294,27 +290,20 @@ export default function CohortAssignmentDetailPage() {
         if (isGroupAssignment) {
             setSelectedReviewSubmissionId(null);
             setRecordResponsePanelOpen(false);
-            setReviewPanelManuallyHidden(false);
+            setOpenReviewAfterResponse(false);
             return;
         }
 
-        if (selectedReviewSubmissionId == null) {
-            if (!reviewPanelManuallyHidden && pendingReviewSubmissions.length > 0) {
-                setSelectedReviewSubmissionId(pendingReviewSubmissions[0].id);
-            }
-            return;
-        }
+        if (selectedReviewSubmissionId == null) return;
 
         const submissionStillExists = reviewableSubmissions.some(
             (submission) => submission.id === selectedReviewSubmissionId
         );
         if (!submissionStillExists) {
-            setSelectedReviewSubmissionId(pendingReviewSubmissions[0]?.id ?? null);
+            setSelectedReviewSubmissionId(null);
         }
     }, [
         isGroupAssignment,
-        pendingReviewSubmissions,
-        reviewPanelManuallyHidden,
         reviewableSubmissions,
         selectedReviewSubmissionId,
     ]);
@@ -354,6 +343,9 @@ export default function CohortAssignmentDetailPage() {
             </div>
         );
     }
+
+    const canChangeActiveAssignment = canManageAssignments && assignment.status !== 'ARCHIVED';
+    const assignmentAttachmentSlots = assignment.attachment_slots ?? [];
 
     const handleDelete = async () => {
         if (!confirm(`Delete draft assignment "${assignment.title}"?`)) {
@@ -413,26 +405,6 @@ export default function CohortAssignmentDetailPage() {
         }
     };
 
-    const handleBridge = async (evaluation: AssignmentEvaluation) => {
-        setActionError(null);
-        setSuccessMessage(null);
-        try {
-            const result = await bridgeMutation.mutateAsync({
-                assignmentId: assignment.id,
-                evaluationId: evaluation.id,
-            });
-
-            if (result.status === 'skipped') {
-                setActionError(result.detail || 'The evaluation could not be bridged to evidence.');
-                return;
-            }
-
-            setSuccessMessage(result.detail || 'Evaluation bridged to evidence.');
-        } catch (err) {
-            setActionError(err instanceof Error ? err.message : 'Failed to bridge evaluation.');
-        }
-    };
-
     const scrollWorkflowPanel = (panelRef: RefObject<HTMLDivElement | null>) => {
         window.setTimeout(() => {
             panelRef.current?.scrollIntoView({
@@ -442,17 +414,18 @@ export default function CohortAssignmentDetailPage() {
         }, 80);
     };
 
-    const openRecordResponsePanel = () => {
+    const openRecordResponsePanel = (options?: { reviewAfterSave?: boolean }) => {
         if (isGroupAssignment) {
             setActiveTab('group-submissions');
+            setAdvancedDetailsOpen(true);
             return;
         }
 
         setActionError(null);
         setSuccessMessage(null);
-        setActiveTab('submissions');
         setRecordResponsePanelOpen(true);
-        setReviewPanelManuallyHidden(false);
+        setSelectedReviewSubmissionId(null);
+        setOpenReviewAfterResponse(Boolean(options?.reviewAfterSave));
         scrollWorkflowPanel(responseWorkflowRef);
     };
 
@@ -470,9 +443,8 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         setSuccessMessage(null);
         setRecordResponsePanelOpen(false);
-        setReviewPanelManuallyHidden(false);
+        setOpenReviewAfterResponse(false);
         setSelectedReviewSubmissionId(nextSubmissionId);
-        setActiveTab('submissions');
         scrollWorkflowPanel(reviewWorkflowRef);
     };
 
@@ -485,11 +457,15 @@ export default function CohortAssignmentDetailPage() {
             evaluationsQuery.refetch(),
         ]);
         setRecordResponsePanelOpen(false);
-        setReviewPanelManuallyHidden(false);
-        setSelectedReviewSubmissionId(submissionId);
-        setSuccessMessage('Learner response recorded. Review it below.');
-        setActiveTab('submissions');
-        scrollWorkflowPanel(reviewWorkflowRef);
+        if (openReviewAfterResponse) {
+            setSelectedReviewSubmissionId(submissionId);
+            setSuccessMessage('Learner response recorded. Review it below.');
+            scrollWorkflowPanel(reviewWorkflowRef);
+        } else {
+            setSelectedReviewSubmissionId(null);
+            setSuccessMessage('Learner response recorded.');
+        }
+        setOpenReviewAfterResponse(false);
     };
 
     const handleReviewSaved = async () => {
@@ -556,6 +532,7 @@ export default function CohortAssignmentDetailPage() {
             case 'MANAGE_GROUPS':
             case 'MARK_PARTICIPATION':
                 setActiveTab('groups');
+                setAdvancedDetailsOpen(true);
                 break;
             case 'ADD_LEARNERS':
                 openPublishModal('add_learners');
@@ -568,9 +545,11 @@ export default function CohortAssignmentDetailPage() {
                 break;
             case 'RECORD_EVIDENCE':
                 setActiveTab(isGroupAssignment ? 'group-evaluations' : 'evaluations');
+                setAdvancedDetailsOpen(true);
                 break;
             case 'VIEW_RECORD':
                 setActiveTab('overview');
+                setAdvancedDetailsOpen(true);
                 break;
             case 'FINISH_LEARNER_WORK':
             case 'STORE_RECORD':
@@ -790,6 +769,148 @@ export default function CohortAssignmentDetailPage() {
                 </Card>
             ) : null}
 
+            {assignment.requires_attachments || assignmentAttachmentSlots.length > 0 ? (
+                <Card className="theme-info-surface">
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-base font-semibold theme-text">Attachment requirements</h2>
+                            <Badge variant={assignment.attachment_policy === 'REQUIRED' ? 'orange' : 'blue'} size="sm">
+                                {assignment.attachment_policy === 'REQUIRED' ? 'Required' : 'Optional'}
+                            </Badge>
+                        </div>
+                        {assignmentAttachmentSlots.length > 0 ? (
+                            <div className="grid gap-2 md:grid-cols-2">
+                                {assignmentAttachmentSlots.map((slot) => (
+                                    <div key={slot.key} className="rounded-lg border theme-border bg-white/70 px-3 py-2 text-sm">
+                                        <div className="font-medium theme-text">
+                                            {slot.label}{slot.required ? ' (required)' : ''}
+                                        </div>
+                                        <div className="mt-1 theme-muted">
+                                            {slot.accepted_types?.join(', ') || 'Any evidence type'}
+                                            {slot.max_files ? ` · Up to ${slot.max_files}` : ''}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm theme-muted">
+                                This assignment expects attachment evidence, but no specific slots are configured.
+                            </p>
+                        )}
+                    </div>
+                </Card>
+            ) : null}
+
+            {canChangeActiveAssignment && recordResponsePanelOpen && !isGroupAssignment ? (
+                <div ref={responseWorkflowRef}>
+                    <AssignmentRecordResponsePanel
+                        assignment={assignment}
+                        recipients={recipientsQuery.recipients}
+                        submissions={submissionsQuery.submissions}
+                        onClose={() => {
+                            setRecordResponsePanelOpen(false);
+                            setOpenReviewAfterResponse(false);
+                        }}
+                        onSaved={async (submission) => {
+                            await handleResponseSaved(submission.id);
+                        }}
+                    />
+                </div>
+            ) : null}
+
+            {canChangeActiveAssignment && selectedReviewSubmission && !isGroupAssignment ? (
+                <div ref={reviewWorkflowRef}>
+                    <Card className="theme-info-surface space-y-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="space-y-1">
+                                <h2 className="text-lg font-semibold theme-text">Review / mark response</h2>
+                                <p className="text-sm theme-muted">
+                                    {selectedReviewEvaluation
+                                        ? 'Update the saved review or feedback for this learner response.'
+                                        : 'This is the next safe step after recording learner work.'}
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={() => {
+                                    setSelectedReviewSubmissionId(null);
+                                    setOpenReviewAfterResponse(false);
+                                }}
+                            >
+                                Hide review panel
+                            </Button>
+                        </div>
+
+                        <div className="grid gap-4 lg:grid-cols-2">
+                            <Select
+                                label="Learner response"
+                                value={String(selectedReviewSubmission.id)}
+                                onChange={(event) => {
+                                    setSelectedReviewSubmissionId(Number(event.target.value));
+                                }}
+                                options={reviewableSubmissions.map((submission) => ({
+                                    value: String(submission.id),
+                                    label: `${submission.student_name} · ${
+                                        evaluationBySubmissionId.has(submission.id) ? 'Reviewed' : 'Needs review'
+                                    } · ${formatDateTime(submission.submitted_at)}`,
+                                }))}
+                            />
+                            <div className="rounded-lg border theme-border bg-white/80 px-4 py-3 text-sm">
+                                <div className="font-medium theme-text">
+                                    {selectedReviewEvaluation ? 'Reviewed response' : 'Awaiting review'}
+                                </div>
+                                <div className="mt-1 theme-muted">
+                                    {selectedReviewSubmission.student_name}
+                                    {selectedReviewSubmission.is_late ? ' · Late response' : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 rounded-lg border theme-border bg-white/80 p-4">
+                            <div className="text-sm font-medium theme-text">Recorded response</div>
+                            <p className="whitespace-pre-wrap text-sm leading-6 theme-muted">
+                                {selectedReviewSubmission.text_response || 'No text response submitted.'}
+                            </p>
+                            <p className="text-xs theme-muted">
+                                Submitted {formatDateTime(selectedReviewSubmission.submitted_at)} · Attachments {selectedReviewSubmission.attachment_metadata.length}
+                            </p>
+                        </div>
+
+                        <AssignmentReviewForm
+                            assignment={assignment}
+                            submission={selectedReviewSubmission}
+                            evaluation={selectedReviewEvaluation}
+                            rubricLevels={rubricScaleQuery.scale?.levels ?? []}
+                            onSaved={handleReviewSaved}
+                        />
+                    </Card>
+                </div>
+            ) : null}
+
+            <Card>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 className="text-base font-semibold theme-text">Advanced details</h2>
+                        <p className="text-sm theme-muted">
+                            Recipients, submissions, evaluations, groups, and evidence records are available when correction is needed.
+                        </p>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full sm:w-auto"
+                        onClick={() => setAdvancedDetailsOpen((open) => !open)}
+                    >
+                        {advancedDetailsOpen ? 'Hide assignment records' : 'Show assignment records'}
+                    </Button>
+                </div>
+            </Card>
+
+            {advancedDetailsOpen ? (
+                <>
             <Card>
                 <div className="flex flex-wrap gap-2">
                     {detailTabs.map((tab) => (
@@ -1018,93 +1139,6 @@ export default function CohortAssignmentDetailPage() {
 
             {activeTab === 'submissions' && !isGroupAssignment ? (
                 <div className="space-y-4">
-                    {canManageAssignments && recordResponsePanelOpen ? (
-                        <div ref={responseWorkflowRef}>
-                            <AssignmentRecordResponsePanel
-                                assignment={assignment}
-                                recipients={recipientsQuery.recipients}
-                                submissions={submissionsQuery.submissions}
-                                onClose={() => setRecordResponsePanelOpen(false)}
-                                onSaved={async (submission) => {
-                                    await handleResponseSaved(submission.id);
-                                }}
-                            />
-                        </div>
-                    ) : null}
-
-                    {canManageAssignments && !recordResponsePanelOpen && selectedReviewSubmission ? (
-                        <div ref={reviewWorkflowRef}>
-                            <Card className="theme-info-surface space-y-4">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="space-y-1">
-                                        <h2 className="text-lg font-semibold theme-text">Review / mark response</h2>
-                                        <p className="text-sm theme-muted">
-                                            {selectedReviewEvaluation
-                                                ? 'Update the saved review or feedback for this learner response.'
-                                                : 'This is the next safe step after recording learner work.'}
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="w-full sm:w-auto"
-                                        onClick={() => {
-                                            setReviewPanelManuallyHidden(true);
-                                            setSelectedReviewSubmissionId(null);
-                                        }}
-                                    >
-                                        Hide review panel
-                                    </Button>
-                                </div>
-
-                                <div className="grid gap-4 lg:grid-cols-2">
-                                    <Select
-                                        label="Learner response"
-                                        value={selectedReviewSubmission ? String(selectedReviewSubmission.id) : ''}
-                                        onChange={(event) => {
-                                            setReviewPanelManuallyHidden(false);
-                                            setSelectedReviewSubmissionId(Number(event.target.value));
-                                        }}
-                                        options={reviewableSubmissions.map((submission) => ({
-                                            value: String(submission.id),
-                                            label: `${submission.student_name} · ${
-                                                evaluationBySubmissionId.has(submission.id) ? 'Reviewed' : 'Needs review'
-                                            } · ${formatDateTime(submission.submitted_at)}`,
-                                        }))}
-                                    />
-                                    <div className="rounded-lg border theme-border bg-white/80 px-4 py-3 text-sm">
-                                        <div className="font-medium theme-text">
-                                            {selectedReviewEvaluation ? 'Reviewed response' : 'Awaiting review'}
-                                        </div>
-                                        <div className="mt-1 theme-muted">
-                                            {selectedReviewSubmission.student_name}
-                                            {selectedReviewSubmission.is_late ? ' · Late response' : ''}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 rounded-lg border theme-border bg-white/80 p-4">
-                                    <div className="text-sm font-medium theme-text">Recorded response</div>
-                                    <p className="whitespace-pre-wrap text-sm leading-6 theme-muted">
-                                        {selectedReviewSubmission.text_response || 'No text response submitted.'}
-                                    </p>
-                                    <p className="text-xs theme-muted">
-                                        Submitted {formatDateTime(selectedReviewSubmission.submitted_at)} · Attachments {selectedReviewSubmission.attachment_metadata.length}
-                                    </p>
-                                </div>
-
-                                <AssignmentReviewForm
-                                    assignment={assignment}
-                                    submission={selectedReviewSubmission}
-                                    evaluation={selectedReviewEvaluation}
-                                    rubricLevels={rubricScaleQuery.scale?.levels ?? []}
-                                    onSaved={handleReviewSaved}
-                                />
-                            </Card>
-                        </div>
-                    ) : null}
-
                     {submissionsQuery.loading ? (
                         <Card>
                             <LoadingSpinner fullScreen={false} message="Loading submissions..." />
@@ -1166,7 +1200,7 @@ export default function CohortAssignmentDetailPage() {
                                             </p>
                                         </div>
 
-                                        {canManageAssignments ? (
+                                        {canChangeActiveAssignment ? (
                                             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                                                 <Button
                                                     type="button"
@@ -1220,8 +1254,10 @@ export default function CohortAssignmentDetailPage() {
                                                     <Badge variant={getAssignmentEvaluationBadgeVariant(evaluation.evaluation_type)} size="sm">
                                                         {evaluation.evaluation_type}
                                                     </Badge>
-                                                    {evaluation.evidence_created ? (
+                                                    {evaluation.evidence_created || evaluation.evidence_status === 'CREATED' ? (
                                                         <Badge variant="green" size="sm">Evidence created</Badge>
+                                                    ) : evaluation.evidence_status === 'BLOCKED' ? (
+                                                        <Badge variant="red" size="sm">Evidence blocked</Badge>
                                                     ) : (
                                                         <Badge variant="yellow" size="sm">Evidence pending</Badge>
                                                     )}
@@ -1242,17 +1278,9 @@ export default function CohortAssignmentDetailPage() {
                                             </div>
                                         ) : null}
 
-                                        {hasCBCOutcome(assignment) && !evaluation.evidence_created && canManageAssignments ? (
-                                            <div className="flex justify-end">
-                                                <Button
-                                                    type="button"
-                                                    variant="secondary"
-                                                    onClick={() => handleBridge(evaluation)}
-                                                    disabled={bridgeMutation.isPending}
-                                                >
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    {bridgeMutation.isPending ? 'Bridging...' : 'Bridge to CBC Evidence'}
-                                                </Button>
+                                        {evaluation.evidence_status === 'BLOCKED' && evaluation.evidence_warning ? (
+                                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                                Evidence blocked: {evaluation.evidence_warning}
                                             </div>
                                         ) : null}
                                     </div>
@@ -1288,6 +1316,8 @@ export default function CohortAssignmentDetailPage() {
                     groupsLoading={groupsQuery.loading}
                     rubricLevels={rubricScaleQuery.scale?.levels ?? []}
                 />
+            ) : null}
+                </>
             ) : null}
 
             <AssignmentCreateModal

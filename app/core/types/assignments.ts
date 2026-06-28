@@ -3,6 +3,8 @@ import type { PaginatedResponse } from '@/app/core/types/api';
 export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
 export type AssignmentDeliveryMode = 'INDIVIDUAL' | 'GROUP';
 export type AssignmentEvaluationType = 'NUMERIC' | 'RUBRIC' | 'DESCRIPTIVE' | 'COMPETENCY';
+export type AssignmentAttachmentPolicy = 'NONE' | 'OPTIONAL' | 'REQUIRED';
+export type AssignmentEvidenceStatus = 'PENDING' | 'CREATED' | 'BLOCKED' | 'SKIPPED';
 export type AssignmentLifecycleStage = 'PREPARING' | 'ISSUED' | 'REVIEWING' | 'STORED';
 export type AssignmentLifecycleAction =
     | 'EDIT_ASSIGNMENT'
@@ -66,6 +68,13 @@ export interface AssignmentLifecycleSummary {
     group_members_count: number;
     unresolved_participation_count: number;
     evidence_pending_count: number;
+    evidence_blocked_count?: number;
+    requires_attachments?: boolean;
+    required_attachment_slots_count?: number;
+    attachment_blocked_count?: number;
+    attachment_blockers?: string[];
+    assigned_learners_count?: number;
+    not_applicable_joined_later_count?: number;
 }
 
 export interface AssignmentLifecycleState {
@@ -101,6 +110,15 @@ export interface AssignmentOutcomeCreatePayload {
     curriculum_context?: Record<string, unknown>;
 }
 
+export interface AssignmentAttachmentSlot {
+    key: string;
+    label: string;
+    required?: boolean;
+    accepted_types?: string[];
+    max_files?: number;
+    source?: string;
+}
+
 export interface Assignment {
     id: number;
     organization: number;
@@ -124,6 +142,11 @@ export interface Assignment {
     rubric_scale: number | null;
     rubric_scale_name: string | null;
     total_marks: number | null;
+    requires_attachments: boolean;
+    attachment_policy: AssignmentAttachmentPolicy;
+    attachment_slots: AssignmentAttachmentSlot[];
+    attachment_requirements_waived?: boolean;
+    attachment_waiver_reason?: string;
     created_from_session: number | null;
     created_from_session_title: string | null;
     created_from_session_date: string | null;
@@ -165,6 +188,9 @@ export interface AssignmentCreatePayload {
     recipient_mode?: AssignmentRecipientMode;
     student_ids?: number[];
     publish_now?: boolean;
+    requires_attachments?: boolean;
+    attachment_policy?: AssignmentAttachmentPolicy;
+    attachment_slots?: AssignmentAttachmentSlot[];
 }
 
 export interface PrepareAssignmentFromLessonPlanPayload {
@@ -175,6 +201,9 @@ export interface PrepareAssignmentFromLessonPlanPayload {
     evaluation_type?: AssignmentEvaluationType;
     total_marks?: number | null;
     rubric_scale?: number | null;
+    requires_attachments?: boolean;
+    attachment_policy?: AssignmentAttachmentPolicy;
+    attachment_slots?: AssignmentAttachmentSlot[];
 }
 
 export interface PrepareAssignmentFromLessonPlanResponse {
@@ -187,6 +216,59 @@ export interface PreparedAssignmentsForLessonPlanResponse {
     assignments: Assignment[];
     draft: Assignment | null;
     issued: Assignment[];
+}
+
+export type AssignmentTeachingTodaySource =
+    | 'lesson_preparation'
+    | 'session'
+    | 'manual_assignment'
+    | 'quick_follow_up';
+
+export type AssignmentTeachingTodayReminderType =
+    | 'ASSIGNMENT_DRAFT_READY_TO_ISSUE'
+    | 'ASSIGNMENT_DUE_SOON'
+    | 'ASSIGNMENT_OVERDUE_RESPONSES'
+    | 'ASSIGNMENT_PENDING_REVIEW'
+    | 'ASSIGNMENT_EVIDENCE_PENDING'
+    | 'ASSIGNMENT_READY_TO_STORE';
+
+export interface AssignmentTeachingTodayItem {
+    assignment_id: number;
+    title: string;
+    cohort: { id: number; name: string };
+    subject: { id: number; name: string };
+    lesson_plan: { id: number; title: string } | null;
+    source: AssignmentTeachingTodaySource;
+    lifecycle_stage: AssignmentLifecycleStage;
+    teacher_stage_label: string;
+    next_action: AssignmentLifecycleNextAction;
+    next_action_label: string;
+    next_action_href: string;
+    due_at: string | null;
+    starts_at: string | null;
+    urgency: 'normal' | 'due_soon' | 'overdue' | 'blocked';
+    reminder_type: AssignmentTeachingTodayReminderType | null;
+    counts: {
+        recipients: number;
+        submissions: number;
+        pending_reviews: number;
+        missing: number;
+        evidence_pending: number;
+        evidence_blocked?: number;
+        assigned_learners?: number;
+        not_applicable_joined_later?: number;
+    };
+    requires_attachments: boolean;
+    has_cbc_outcomes: boolean;
+    evidence_blocked: boolean;
+    evidence_blocked_reason: string;
+    ready_for_next_action: boolean;
+    blocking_items: string[];
+    warnings: string[];
+}
+
+export interface AssignmentTeachingTodayResponse {
+    items: AssignmentTeachingTodayItem[];
 }
 
 export interface AssignmentUpdatePayload {
@@ -203,6 +285,11 @@ export interface AssignmentUpdatePayload {
     created_from_session?: number | null;
     curriculum_context?: AssignmentCurriculumContext;
     outcomes?: AssignmentOutcomeCreatePayload[];
+    requires_attachments?: boolean;
+    attachment_policy?: AssignmentAttachmentPolicy;
+    attachment_slots?: AssignmentAttachmentSlot[];
+    attachment_requirements_waived?: boolean;
+    attachment_waiver_reason?: string;
 }
 
 export interface AssignmentFilters {
@@ -351,6 +438,8 @@ export interface AssignmentEvaluation {
     competency_state: string | null;
     evidence_created: boolean;
     evidence_record_id: number | null;
+    evidence_status?: AssignmentEvidenceStatus;
+    evidence_warning?: string;
     created_at: string;
     updated_at: string;
 }
@@ -585,6 +674,8 @@ export interface AssignmentGroupEvaluation {
     member_overrides?: AssignmentGroupMemberEvaluationOverride[];
     evidence_created?: boolean;
     evidence_record_ids?: number[];
+    evidence_status?: AssignmentEvidenceStatus;
+    evidence_warning?: string;
     created_at: string;
     updated_at: string;
 }

@@ -201,6 +201,16 @@ Field errors must remain attached to fields. State errors must stay in `AppError
 
 Lesson title is required for lesson plan generation and editing. Blank titles must block submission before API calls, show an inline field error, appear in the validation summary, preserve entered values, and focus or scroll to the first invalid field or summary.
 
+## Assignment Workflow Law
+
+Assignments are active teaching work until stored.
+The UI must show the current stage and next safe action first.
+Recipients, submissions, evaluations, groups, and evidence are internal workflow details and should be hidden behind progressive disclosure unless they are the current action.
+Evidence bridging is automatic after review finalization.
+Manual evidence bridge buttons should not be part of the normal teacher workflow.
+Late-admitted learners are not missing evidence for assignments issued before they joined.
+Attachment requirements are assignment slots, not only practical-lesson features.
+
 ## What Not To Do
 
 - Do not describe this app as “just a Next.js frontend”.

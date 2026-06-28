@@ -146,9 +146,11 @@ function buildContext(mode: 'MIDTERM_BREAK' | 'MIDTERM_EXAM'): TeachingTodayCont
                 severity: 'warning',
             },
         ],
+        assignmentWork: [],
         nextAction: null,
         afterTeaching: {
             pendingAssessmentReviewCount: 3,
+            assignmentWork: [],
             pendingReviewRows: [
                 {
                     id: 201,

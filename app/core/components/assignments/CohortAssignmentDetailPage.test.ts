@@ -1,0 +1,56 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+const source = () => readFileSync(
+  join(process.cwd(), 'app/core/components/assignments/CohortAssignmentDetailPage.tsx'),
+  'utf8',
+);
+
+describe('CohortAssignmentDetailPage behavioral workflow', () => {
+    it('does not auto-open the review panel for pending submissions', () => {
+        const pageSource = source();
+        const selectedReviewStart = pageSource.indexOf('const selectedReviewSubmission = useMemo');
+        const selectedReviewEnd = pageSource.indexOf('const selectedReviewEvaluation', selectedReviewStart);
+        const selectedReviewBlock = pageSource.slice(selectedReviewStart, selectedReviewEnd);
+
+        expect(pageSource).toContain('const selectedReviewSubmission = useMemo');
+        expect(selectedReviewBlock).not.toContain('pendingReviewSubmissions[0]');
+        expect(pageSource).not.toContain('setReviewPanelManuallyHidden');
+        expect(pageSource).not.toContain('reviewPanelManuallyHidden');
+    });
+
+  it('opens review intentionally through the lifecycle action', () => {
+    const pageSource = source();
+    const reviewCaseIndex = pageSource.indexOf("case 'REVIEW_WORK':");
+    const openReviewIndex = pageSource.indexOf('openReviewWorkflow();', reviewCaseIndex);
+
+    expect(reviewCaseIndex).toBeGreaterThan(-1);
+    expect(openReviewIndex).toBeGreaterThan(reviewCaseIndex);
+    expect(pageSource).toContain('Hide review panel');
+  });
+
+  it('keeps internal assignment records behind progressive disclosure', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('advancedDetailsOpen');
+    expect(pageSource).toContain('Show assignment records');
+    expect(pageSource).toContain('Hide assignment records');
+  });
+
+  it('hides edit and review workflow controls for stored assignments', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain("assignment.status !== 'ARCHIVED'");
+    expect(pageSource).toContain('canChangeActiveAssignment && selectedReviewSubmission');
+    expect(pageSource).toContain('canChangeActiveAssignment && recordResponsePanelOpen');
+  });
+
+  it('does not expose the manual CBC evidence bridge button', () => {
+    const pageSource = source();
+
+    expect(pageSource).not.toContain('Bridge to CBC Evidence');
+    expect(pageSource).toContain('Evidence pending');
+    expect(pageSource).toContain('Evidence blocked');
+  });
+});

@@ -30,12 +30,13 @@ export function TeachingTodayPage() {
         refresh,
     } = useTeachingToday();
     const [refreshing, setRefreshing] = useState(false);
+    const isTeachingActor = instructorAccess.isTeachingActor;
 
     useEffect(() => {
-        if (activeRole && activeRole !== 'INSTRUCTOR') {
+        if (activeRole && !isTeachingActor) {
             router.push('/dashboard');
         }
-    }, [activeRole, router]);
+    }, [activeRole, isTeachingActor, router]);
 
     const pageLoading = loading || instructorAccess.isLoading;
     const setupBlocked = context.learningDayState === 'SETUP_BLOCKED';
@@ -98,7 +99,7 @@ export function TeachingTodayPage() {
     };
 
     if (!user || activeRole === null) return null;
-    if (activeRole !== 'INSTRUCTOR') return null;
+    if (!isTeachingActor) return null;
     if (pageLoading) return <LoadingSpinner message="Opening Teaching Today..." />;
 
     if (academicBreakVariant) {

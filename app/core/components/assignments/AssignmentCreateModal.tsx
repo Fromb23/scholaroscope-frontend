@@ -25,6 +25,7 @@ import { useRubricScales } from '@/app/core/hooks/useAssessments';
 import type { CohortSubject } from '@/app/core/types/academic';
 import type {
     Assignment,
+    AssignmentAttachmentSlot,
     AssignmentDeliveryMode,
     AssignmentCreatePayload,
     AssignmentEvaluationType,
@@ -65,6 +66,12 @@ interface OutcomeDraft {
     weight: string;
 }
 
+interface AttachmentOption {
+    key: string;
+    label: string;
+    acceptedTypes: string[];
+}
+
 const EVALUATION_OPTIONS: Array<{ value: AssignmentEvaluationType; label: string }> = [
     { value: 'NUMERIC', label: 'Numeric' },
     { value: 'RUBRIC', label: 'Rubric' },
@@ -75,6 +82,15 @@ const EVALUATION_OPTIONS: Array<{ value: AssignmentEvaluationType; label: string
 const DELIVERY_MODE_OPTIONS: Array<{ value: AssignmentDeliveryMode; label: string }> = [
     { value: 'INDIVIDUAL', label: 'Individual learners' },
     { value: 'GROUP', label: 'Group work' },
+];
+
+const ATTACHMENT_OPTIONS: AttachmentOption[] = [
+    { key: 'photos_images', label: 'Photos/images', acceptedTypes: ['image'] },
+    { key: 'pdf_document', label: 'PDF/document', acceptedTypes: ['pdf', 'document'] },
+    { key: 'video', label: 'Video', acceptedTypes: ['video'] },
+    { key: 'audio', label: 'Audio', acceptedTypes: ['audio'] },
+    { key: 'portfolio_artifact', label: 'Portfolio/artifact', acceptedTypes: ['portfolio', 'artifact'] },
+    { key: 'other_evidence', label: 'Other', acceptedTypes: ['other'] },
 ];
 
 function toDateTimeLocalValue(value: string | null | undefined): string {
@@ -103,6 +119,29 @@ function buildInitialOutcomes(assignment?: Assignment | null): OutcomeDraft[] {
         plugin: outcome.plugin ?? '',
         weight: String(outcome.weight),
     }));
+}
+
+function buildInitialAttachmentOptionKeys(assignment?: Assignment | null): string[] {
+    if (!assignment?.attachment_slots?.length) return [];
+
+    return ATTACHMENT_OPTIONS
+        .filter((option) => assignment.attachment_slots.some((slot) => (
+            slot.key === option.key
+            || option.acceptedTypes.some((acceptedType) => slot.accepted_types?.includes(acceptedType))
+        )))
+        .map((option) => option.key);
+}
+
+function buildAttachmentSlots(selectedKeys: string[]): AssignmentAttachmentSlot[] {
+    return ATTACHMENT_OPTIONS
+        .filter((option) => selectedKeys.includes(option.key))
+        .map((option) => ({
+            key: option.key,
+            label: option.label,
+            required: true,
+            accepted_types: option.acceptedTypes,
+            max_files: option.key === 'photos_images' || option.key === 'portfolio_artifact' ? 3 : 1,
+        }));
 }
 
 export function AssignmentCreateModal({
@@ -166,6 +205,8 @@ export function AssignmentCreateModal({
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [learnerSearch, setLearnerSearch] = useState('');
     const [outcomes, setOutcomes] = useState<OutcomeDraft[]>([]);
+    const [requiresAttachments, setRequiresAttachments] = useState(false);
+    const [attachmentOptionKeys, setAttachmentOptionKeys] = useState<string[]>([]);
     const [formError, setFormError] = useState<AppError | null>(null);
 
     useEffect(() => {
@@ -191,6 +232,8 @@ export function AssignmentCreateModal({
         setSelectedStudentIds([]);
         setLearnerSearch('');
         setOutcomes(buildInitialOutcomes(assignment));
+        setRequiresAttachments(Boolean(assignment?.requires_attachments));
+        setAttachmentOptionKeys(buildInitialAttachmentOptionKeys(assignment));
         setFormError(null);
     }, [assignment, defaultCohortSubjectId, hasLinkedLesson, isOpen, sortedSubjects]);
 
@@ -243,6 +286,14 @@ export function AssignmentCreateModal({
 
     const removeOutcome = (index: number) => {
         setOutcomes((previous) => previous.filter((_, outcomeIndex) => outcomeIndex !== index));
+    };
+
+    const toggleAttachmentOption = (key: string) => {
+        setAttachmentOptionKeys((previous) => (
+            previous.includes(key)
+                ? previous.filter((value) => value !== key)
+                : [...previous, key]
+        ));
     };
 
     const validateAndBuildOutcomes = (): AssignmentOutcomeCreatePayload[] | null => {
@@ -313,6 +364,11 @@ export function AssignmentCreateModal({
             return;
         }
 
+        if (requiresAttachments && attachmentOptionKeys.length === 0) {
+            setFormError(makeAssignmentValidationError('Select at least one attachment or evidence type.'));
+            return;
+        }
+
         const normalizedOutcomes = validateAndBuildOutcomes();
         if (normalizedOutcomes === null) {
             return;
@@ -329,6 +385,9 @@ export function AssignmentCreateModal({
             total_marks: evaluationType === 'NUMERIC' && totalMarks ? Number(totalMarks) : null,
             rubric_scale: evaluationType === 'RUBRIC' && rubricScaleId ? Number(rubricScaleId) : null,
             outcomes: normalizedOutcomes,
+            requires_attachments: requiresAttachments,
+            attachment_policy: requiresAttachments ? 'REQUIRED' as const : 'NONE' as const,
+            attachment_slots: requiresAttachments ? buildAttachmentSlots(attachmentOptionKeys) : [],
             ...(assignment?.curriculum_context ? { curriculum_context: assignment.curriculum_context } : {}),
         };
 
@@ -520,6 +579,50 @@ export function AssignmentCreateModal({
                         Group assignments create a shared assignment workspace. Create or generate learner groups after saving the assignment.
                     </div>
                 ) : null}
+
+                <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+                    <label className="flex items-start gap-3">
+                        <input
+                            type="checkbox"
+                            checked={requiresAttachments}
+                            onChange={(event) => {
+                                const checked = event.target.checked;
+                                setRequiresAttachments(checked);
+                                if (checked && attachmentOptionKeys.length === 0) {
+                                    setAttachmentOptionKeys(['photos_images']);
+                                }
+                            }}
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div>
+                            <div className="text-sm font-medium text-gray-900">
+                                Learners need to attach files or evidence
+                            </div>
+                            <p className="text-sm text-gray-500">
+                                Use this for photos, documents, media, portfolios, or practical evidence that should be checked before the assignment is stored.
+                            </p>
+                        </div>
+                    </label>
+
+                    {requiresAttachments ? (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            {ATTACHMENT_OPTIONS.map((option) => (
+                                <label
+                                    key={option.key}
+                                    className="flex items-start gap-3 rounded-lg border border-gray-200 px-3 py-2"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={attachmentOptionKeys.includes(option.key)}
+                                        onChange={() => toggleAttachmentOption(option.key)}
+                                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-900">{option.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                    ) : null}
+                </div>
 
                 {!isEditMode && isFullMode ? (
                     <div className="space-y-4 rounded-lg border border-gray-200 p-4">
