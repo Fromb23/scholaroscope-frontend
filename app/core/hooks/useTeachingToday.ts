@@ -13,6 +13,7 @@ import {
     useAssessmentReviewSummary,
     useAssessmentScores,
 } from '@/app/core/hooks/useAssessments';
+import { useAssignmentTeachingToday } from '@/app/core/hooks/useAssignments';
 import type {
     AcademicSetupStatus,
     AcademicYear,
@@ -29,6 +30,7 @@ import type {
     SessionLifecycleReminder,
     SessionLifecycleReminderType,
 } from '@/app/core/types/session';
+import type { AssignmentTeachingTodayItem } from '@/app/core/types/assignments';
 
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -55,6 +57,7 @@ export interface TeachingTodayAction {
     secondaryHref?: string;
     tone: TeachingTodayActionTone;
     session?: Session;
+    assignmentWork?: AssignmentTeachingTodayItem;
 }
 
 export interface TeachingTodaySessionGroups {
@@ -99,10 +102,12 @@ export interface TeachingTodayContext {
     sessions: TeachingTodaySessionGroups;
     timeline: Session[];
     incomplete: TeachingTodayIncompleteItem[];
+    assignmentWork: AssignmentTeachingTodayItem[];
     nextAction: TeachingTodayAction | null;
     afterTeaching: {
         pendingAssessmentReviewCount: number;
         pendingReviewRows: AssessmentScore[];
+        assignmentWork: AssignmentTeachingTodayItem[];
         learnerAttentionCount?: number;
     };
     teachingLoad: TeachingAssignment[];
@@ -484,10 +489,108 @@ function hasUnreviewedLessonPlan(session: Session): boolean {
         && (status === 'DRAFT' || status === 'GENERATED');
 }
 
+function assignmentReminderTitle(item: AssignmentTeachingTodayItem): string {
+    if (item.evidence_blocked || item.reminder_type === 'ASSIGNMENT_EVIDENCE_PENDING') {
+        return item.evidence_blocked
+            ? 'Evidence blocked for reviewed assignment'
+            : 'Evidence pending for reviewed assignment';
+    }
+
+    switch (item.next_action) {
+        case 'ISSUE_ASSIGNMENT':
+            return 'Issue prepared learner task';
+        case 'RECORD_SUBMISSION':
+            return item.counts.submissions > 0 ? 'Record remaining learner responses' : 'Record learner responses';
+        case 'REVIEW_WORK':
+            return 'Review learner work';
+        case 'STORE_RECORD':
+            return 'Store reviewed assignment';
+        case 'MANAGE_GROUPS':
+            return 'Set up assignment groups';
+        case 'MARK_PARTICIPATION':
+            return 'Confirm group participation';
+        case 'FINISH_LEARNER_WORK':
+            return 'Close learner work';
+        default:
+            return item.next_action_label || item.teacher_stage_label;
+    }
+}
+
+function assignmentActionTone(item: AssignmentTeachingTodayItem): TeachingTodayActionTone {
+    if (item.evidence_blocked || item.urgency === 'blocked') return 'danger';
+    if (item.urgency === 'overdue' || item.counts.missing > 0 || item.counts.pending_reviews > 0) return 'warning';
+    if (item.next_action === 'STORE_RECORD') return 'success';
+    return 'info';
+}
+
+function assignmentSortValue(item: AssignmentTeachingTodayItem): number {
+    const urgencyPriority: Record<AssignmentTeachingTodayItem['urgency'], number> = {
+        blocked: 0,
+        overdue: 1,
+        due_soon: 2,
+        normal: 3,
+    };
+    const actionPriority: Partial<Record<string, number>> = {
+        REVIEW_WORK: 0,
+        STORE_RECORD: 1,
+        RECORD_SUBMISSION: 2,
+        FINISH_LEARNER_WORK: 3,
+        ISSUE_ASSIGNMENT: 4,
+        MANAGE_GROUPS: 5,
+        MARK_PARTICIPATION: 6,
+    };
+    return (
+        urgencyPriority[item.urgency] * 100
+        + (item.evidence_blocked ? 0 : 10)
+        + (actionPriority[item.next_action] ?? 50)
+    );
+}
+
+function sortAssignmentWork(items: AssignmentTeachingTodayItem[]): AssignmentTeachingTodayItem[] {
+    return [...items].sort((left, right) => (
+        assignmentSortValue(left) - assignmentSortValue(right)
+        || (left.due_at ?? '').localeCompare(right.due_at ?? '')
+        || left.title.localeCompare(right.title)
+    ));
+}
+
+function buildAssignmentAction(item: AssignmentTeachingTodayItem): TeachingTodayAction {
+    const subjectLabel = `${item.subject.name} with ${item.cohort.name}`;
+    const counts: string[] = [];
+    if (item.counts.pending_reviews > 0) {
+        counts.push(`${item.counts.pending_reviews} pending review${item.counts.pending_reviews === 1 ? '' : 's'}`);
+    }
+    if (item.counts.missing > 0) {
+        counts.push(`${item.counts.missing} missing response${item.counts.missing === 1 ? '' : 's'}`);
+    }
+    if (item.counts.evidence_pending > 0) {
+        counts.push(`${item.counts.evidence_pending} evidence item${item.counts.evidence_pending === 1 ? '' : 's'} pending`);
+    }
+
+    return {
+        key: `assignment-work-${item.assignment_id}`,
+        title: assignmentReminderTitle(item),
+        description: `${item.title} (${subjectLabel}) is in ${item.teacher_stage_label.toLowerCase()}. ${
+            item.evidence_blocked
+                ? item.evidence_blocked_reason || 'Evidence needs attention before this record can be stored.'
+                : counts.length > 0
+                    ? counts.join(', ') + '.'
+                    : item.next_action_label
+        }`,
+        primaryLabel: item.next_action_label || 'Open assignment',
+        primaryHref: item.next_action_href,
+        secondaryLabel: item.lesson_plan ? 'Open lesson plan' : undefined,
+        secondaryHref: item.lesson_plan ? `/lesson-plans/${item.lesson_plan.id}` : undefined,
+        tone: assignmentActionTone(item),
+        assignmentWork: item,
+    };
+}
+
 function buildNextAction(args: {
     groups: TeachingTodaySessionGroups;
     timeline: Session[];
     incomplete: TeachingTodayIncompleteItem[];
+    assignmentWork: AssignmentTeachingTodayItem[];
     learningDayState: LearningDayState;
     normalTeachingExpected: boolean;
     pendingAssessmentReviewCount: number;
@@ -497,6 +600,7 @@ function buildNextAction(args: {
         groups,
         timeline,
         incomplete,
+        assignmentWork,
         learningDayState,
         normalTeachingExpected,
         pendingAssessmentReviewCount,
@@ -531,6 +635,11 @@ function buildNextAction(args: {
             tone: 'warning',
             session: active,
         };
+    }
+
+    const activeAssignmentWork = sortAssignmentWork(assignmentWork)[0];
+    if (activeAssignmentWork) {
+        return buildAssignmentAction(activeAssignmentWork);
     }
 
     const ready = groups.ready[0];
@@ -756,6 +865,12 @@ export function useTeachingToday(): UseTeachingTodayResult {
         page_size: 50,
         enabled: Boolean(currentTerm?.id),
     });
+    const {
+        items: assignmentWorkItems,
+        loading: assignmentWorkLoading,
+        error: assignmentWorkError,
+        refetch: refetchAssignmentWork,
+    } = useAssignmentTeachingToday();
 
     const todayKey = useMemo(() => getDateKey(clock), [clock]);
     const teachingLoad = useMemo(
@@ -791,6 +906,10 @@ export function useTeachingToday(): UseTeachingTodayResult {
         () => buildIncompleteItems(reminders, todaySessions),
         [reminders, todaySessions]
     );
+    const assignmentWork = useMemo(
+        () => sortAssignmentWork(assignmentWorkItems),
+        [assignmentWorkItems]
+    );
     const pendingReviewRows = useMemo<AssessmentScore[]>(() => (
         scores
             .filter((score) => (
@@ -812,6 +931,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
             groups: sessionGroups,
             timeline,
             incomplete,
+            assignmentWork,
             learningDayState,
             normalTeachingExpected,
             pendingAssessmentReviewCount,
@@ -819,6 +939,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         }),
         [
             incomplete,
+            assignmentWork,
             learningDayState,
             normalTeachingExpected,
             pendingAssessmentReviewCount,
@@ -840,6 +961,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
             refetchScores(),
             refetchTeachingLoad(),
             refetchTodayMode(),
+            refetchAssignmentWork(),
         ]);
         const nextRefresh = new Date();
         setClock(nextRefresh);
@@ -855,6 +977,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         refetchTeachingLoad,
         refetchTodayMode,
         refetchTodaySessions,
+        refetchAssignmentWork,
     ]);
 
     useEffect(() => {
@@ -876,6 +999,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         || scoresLoading
         || teachingLoadLoading
         || todayModeLoading
+        || assignmentWorkLoading
     );
     const error = setupStatusError?.message
         ?? currentYearError
@@ -887,6 +1011,7 @@ export function useTeachingToday(): UseTeachingTodayResult {
         ?? scoresError
         ?? teachingLoadError?.message
         ?? todayModeError?.message
+        ?? assignmentWorkError
         ?? null;
 
     return {
@@ -904,10 +1029,12 @@ export function useTeachingToday(): UseTeachingTodayResult {
             sessions: sessionGroups,
             timeline,
             incomplete,
+            assignmentWork,
             nextAction,
             afterTeaching: {
                 pendingAssessmentReviewCount,
                 pendingReviewRows,
+                assignmentWork,
             },
             teachingLoad,
         },

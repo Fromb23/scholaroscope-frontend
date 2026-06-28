@@ -10,6 +10,7 @@ import { Select } from '@/app/components/ui/Select';
 import { useCreateAssignmentSubmission } from '@/app/core/hooks/useAssignments';
 import type {
     Assignment,
+    AssignmentAttachmentSlot,
     AssignmentRecipient,
     AssignmentSubmission,
 } from '@/app/core/types/assignments';
@@ -37,6 +38,11 @@ function toDateTimeLocalValue(value: Date): string {
     return new Date(value.getTime() - offset * 60_000).toISOString().slice(0, 16);
 }
 
+function slotAcceptedTypeLabel(slot: AssignmentAttachmentSlot): string {
+    if (!slot.accepted_types?.length) return 'Any evidence type';
+    return slot.accepted_types.join(', ');
+}
+
 export function AssignmentRecordResponsePanel({
     assignment,
     recipients,
@@ -49,6 +55,7 @@ export function AssignmentRecordResponsePanel({
     const [submittedAt, setSubmittedAt] = useState(() => toDateTimeLocalValue(new Date()));
     const [textResponse, setTextResponse] = useState('');
     const [attachmentNote, setAttachmentNote] = useState('');
+    const [attachmentSlotNotes, setAttachmentSlotNotes] = useState<Record<string, string>>({});
     const [formError, setFormError] = useState<string | null>(null);
 
     const defaultRecipient = useMemo(() => {
@@ -82,8 +89,12 @@ export function AssignmentRecordResponsePanel({
         setSubmittedAt(toDateTimeLocalValue(new Date()));
         setTextResponse('');
         setAttachmentNote('');
+        setAttachmentSlotNotes({});
         setFormError(null);
     }, [defaultRecipient, assignment.id]);
+
+    const attachmentSlots = assignment.attachment_slots ?? [];
+    const hasAttachmentSlots = attachmentSlots.length > 0;
 
     const handleSave = async () => {
         setFormError(null);
@@ -94,14 +105,26 @@ export function AssignmentRecordResponsePanel({
         }
 
         try {
+            const slotMetadata = attachmentSlots.flatMap((slot) => {
+                const note = attachmentSlotNotes[slot.key]?.trim();
+                if (!note) return [];
+                return [{
+                    slot_key: slot.key,
+                    slot_label: slot.label,
+                    note,
+                    accepted_types: slot.accepted_types ?? [],
+                    source: 'teacher_recorded_placeholder',
+                }];
+            });
+            const legacyMetadata = !hasAttachmentSlots && attachmentNote.trim()
+                ? [{ note: attachmentNote.trim(), source: 'teacher_recorded_placeholder' }]
+                : [];
             const submission = await createMutation.mutateAsync({
                 assignment: assignment.id,
                 student: Number(selectedStudent),
                 submitted_at: submittedAt ? new Date(submittedAt).toISOString() : undefined,
                 text_response: textResponse.trim(),
-                attachment_metadata: attachmentNote.trim()
-                    ? [{ note: attachmentNote.trim(), source: 'teacher_recorded_placeholder' }]
-                    : [],
+                attachment_metadata: [...slotMetadata, ...legacyMetadata],
             });
             await onSaved?.(submission);
         } catch (err) {
@@ -163,19 +186,58 @@ export function AssignmentRecordResponsePanel({
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium theme-text">
-                            <Paperclip className="h-4 w-4 theme-subtle" />
-                            Attachment note
-                        </label>
-                        <textarea
-                            value={attachmentNote}
-                            onChange={(event) => setAttachmentNote(event.target.value)}
-                            rows={2}
-                            placeholder="Optional placeholder for collected books, photos, files, or practical evidence."
-                            className="theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-4 py-3"
-                        />
-                    </div>
+                    {hasAttachmentSlots ? (
+                        <div className="space-y-3">
+                            <label className="flex items-center gap-2 text-sm font-medium theme-text">
+                                <Paperclip className="h-4 w-4 theme-subtle" />
+                                Expected attachment / evidence slots
+                            </label>
+                            <div className="grid gap-3 md:grid-cols-2">
+                                {attachmentSlots.map((slot) => (
+                                    <div key={slot.key} className="rounded-lg border theme-border p-3">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm font-semibold theme-text">
+                                                {slot.label}
+                                            </p>
+                                            {slot.required ? (
+                                                <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
+                                                    Required
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <p className="mt-1 text-xs theme-subtle">
+                                            {slotAcceptedTypeLabel(slot)}
+                                            {slot.max_files ? ` · Up to ${slot.max_files}` : ''}
+                                        </p>
+                                        <textarea
+                                            value={attachmentSlotNotes[slot.key] ?? ''}
+                                            onChange={(event) => setAttachmentSlotNotes((previous) => ({
+                                                ...previous,
+                                                [slot.key]: event.target.value,
+                                            }))}
+                                            rows={2}
+                                            placeholder="Record the collected file, book check, photo set, or evidence note."
+                                            className="theme-focus-ring theme-input theme-surface-elevated mt-2 w-full rounded-lg px-3 py-2"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium theme-text">
+                                <Paperclip className="h-4 w-4 theme-subtle" />
+                                Attachment note
+                            </label>
+                            <textarea
+                                value={attachmentNote}
+                                onChange={(event) => setAttachmentNote(event.target.value)}
+                                rows={2}
+                                placeholder="Optional placeholder for collected books, photos, files, or practical evidence."
+                                className="theme-focus-ring theme-input theme-surface-elevated w-full rounded-lg px-4 py-3"
+                            />
+                        </div>
+                    )}
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                         <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">

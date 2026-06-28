@@ -63,6 +63,25 @@ function getProgressSummary(assignment: Assignment): {
     };
 }
 
+function getWorkflowLabel(assignment: Assignment): string {
+    if (assignment.status === 'DRAFT') return 'Draft learner task';
+    if (assignment.status === 'ARCHIVED') return 'Stored';
+    if (assignment.status === 'CLOSED') {
+        const needsReview = assignment.delivery_mode === 'GROUP'
+            ? assignment.group_submission_count > assignment.group_evaluation_count
+            : assignment.submissions_count > assignment.reviewed_count;
+        return needsReview ? 'Needs review' : 'Ready to store';
+    }
+    if (assignment.delivery_mode === 'GROUP') {
+        return assignment.group_submission_count > assignment.group_evaluation_count
+            ? 'Needs review'
+            : 'Issued';
+    }
+    if (assignment.missing_count > 0) return 'Needs responses';
+    if (assignment.submissions_count > assignment.reviewed_count) return 'Needs review';
+    return 'Issued';
+}
+
 export function AssignmentCard({
     assignment,
     detailHref,
@@ -93,14 +112,22 @@ export function AssignmentCard({
             <div className="space-y-4">
                 <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                        {highlighted ? (
+                        {assignment.lesson_plan ? (
                             <Badge variant="blue" size="sm">
-                                Prepared from lesson
+                                Prepared from lesson plan
                             </Badge>
                         ) : null}
                         <Badge variant={getAssignmentStatusBadgeVariant(assignment.status)} size="sm">
                             {getAssignmentStatusLabel(assignment.status)}
                         </Badge>
+                        <Badge variant={dueState.variant} size="sm">
+                            {getWorkflowLabel(assignment)}
+                        </Badge>
+                        {assignment.requires_attachments ? (
+                            <Badge variant="orange" size="sm">
+                                Attachments required
+                            </Badge>
+                        ) : null}
                         <Badge variant={getAssignmentDeliveryBadgeVariant(assignment.delivery_mode)} size="sm">
                             {getAssignmentDeliveryLabel(assignment.delivery_mode)}
                         </Badge>

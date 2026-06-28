@@ -6,7 +6,6 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import {
-    useBridgeAssignmentGroupEvaluation,
     useCreateAssignmentGroupEvaluation,
     useUpdateAssignmentGroupEvaluation,
 } from '@/app/core/hooks/useAssignments';
@@ -109,7 +108,6 @@ export function AssignmentGroupReviewForm({
 }: AssignmentGroupReviewFormProps) {
     const createMutation = useCreateAssignmentGroupEvaluation();
     const updateMutation = useUpdateAssignmentGroupEvaluation();
-    const bridgeMutation = useBridgeAssignmentGroupEvaluation();
     const groupMembers = useMemo(() => group.members ?? [], [group.members]);
     const [localEvaluation, setLocalEvaluation] = useState<AssignmentGroupEvaluation | null>(evaluation);
     const [numericScore, setNumericScore] = useState('');
@@ -132,6 +130,8 @@ export function AssignmentGroupReviewForm({
                     ...evaluation,
                     evidence_created: previous.evidence_created ?? evaluation.evidence_created,
                     evidence_record_ids: previous.evidence_record_ids ?? evaluation.evidence_record_ids,
+                    evidence_status: previous.evidence_status ?? evaluation.evidence_status,
+                    evidence_warning: previous.evidence_warning ?? evaluation.evidence_warning,
                 };
             }
 
@@ -160,6 +160,7 @@ export function AssignmentGroupReviewForm({
     const evaluationType = assignment.evaluation_type;
     const cbcEnabled = hasCBCOutcome(assignment);
     const evidenceCreated = Boolean(activeEvaluation?.evidence_created);
+    const evidenceBlocked = activeEvaluation?.evidence_status === 'BLOCKED';
 
     const validateBasePayload = (): Omit<AssignmentGroupEvaluationCreatePayload, 'group_submission'> | null => {
         setFormError(null);
@@ -276,6 +277,8 @@ export function AssignmentGroupReviewForm({
                     ...updated,
                     evidence_created: previous?.evidence_created ?? updated.evidence_created,
                     evidence_record_ids: previous?.evidence_record_ids ?? updated.evidence_record_ids,
+                    evidence_status: previous?.evidence_status ?? updated.evidence_status,
+                    evidence_warning: previous?.evidence_warning ?? updated.evidence_warning,
                 }));
                 setSuccessMessage('Group review updated.');
                 return;
@@ -289,37 +292,6 @@ export function AssignmentGroupReviewForm({
             setSuccessMessage('Group review saved.');
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'Failed to save group review.');
-        }
-    };
-
-    const handleBridge = async () => {
-        if (!activeEvaluation) {
-            return;
-        }
-
-        setFormError(null);
-        setSuccessMessage(null);
-
-        try {
-            const result = await bridgeMutation.mutateAsync({
-                assignmentId: assignment.id,
-                groupId: group.id,
-                evaluationId: activeEvaluation.id,
-            });
-
-            if (result.status === 'skipped') {
-                setFormError(result.detail || 'The group evaluation could not be bridged to evidence.');
-                return;
-            }
-
-            setLocalEvaluation((previous) => previous ? {
-                ...previous,
-                evidence_created: true,
-                evidence_record_ids: result.evidence_record_ids,
-            } : previous);
-            setSuccessMessage(result.detail || 'Group evaluation bridged to CBC evidence.');
-        } catch (err) {
-            setFormError(err instanceof Error ? err.message : 'Failed to bridge group evaluation.');
         }
     };
 
@@ -595,15 +567,20 @@ export function AssignmentGroupReviewForm({
                     </div>
                 ) : null}
 
-                {cbcEnabled && activeEvaluation && !evidenceCreated && activeEvaluation.projection_mode !== 'RECORD_ONLY' ? (
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleBridge}
-                        disabled={bridgeMutation.isPending}
-                    >
-                        {bridgeMutation.isPending ? 'Bridging...' : 'Bridge to CBC evidence'}
-                    </Button>
+                {cbcEnabled && activeEvaluation && activeEvaluation.projection_mode !== 'RECORD_ONLY' ? (
+                    <div className={`rounded-lg border px-4 py-3 text-sm sm:mr-auto ${
+                        evidenceCreated
+                            ? 'theme-success-surface'
+                            : evidenceBlocked
+                                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                                : 'theme-surface-muted theme-muted'
+                    }`}>
+                        {evidenceCreated
+                            ? 'Evidence created'
+                            : evidenceBlocked
+                                ? `Evidence blocked: ${activeEvaluation.evidence_warning ?? 'Review the assignment evidence status.'}`
+                                : 'Evidence pending'}
+                    </div>
                 ) : null}
 
                 <Button

@@ -60,6 +60,7 @@ import type {
     AssignmentRecipientSelectionPayload,
     AssignmentSubmission,
     AssignmentSubmissionCreatePayload,
+    AssignmentTeachingTodayItem,
     AssignmentUpdatePayload,
 } from '@/app/core/types/assignments';
 import { extractErrorMessage } from '@/app/core/types/errors';
@@ -114,6 +115,7 @@ async function invalidateAssignmentDependencies(
 ) {
     await Promise.all([
         queryClient.invalidateQueries({ queryKey: assignmentKeys.all }),
+        queryClient.invalidateQueries({ queryKey: assignmentKeys.teachingToday() }),
         assignmentId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.detail(assignmentId) })
             : Promise.resolve(),
@@ -159,6 +161,32 @@ async function invalidateAssignmentGroupDependencies(
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.groupEvaluationDetail(evaluationId) })
             : Promise.resolve(),
     ]);
+}
+
+export function useAssignmentTeachingToday(options?: UseAssignmentsOptions) {
+    const enabled = options?.enabled ?? true;
+
+    const query = useQuery<AssignmentTeachingTodayItem[], Error>({
+        queryKey: assignmentKeys.teachingToday(),
+        queryFn: async () => {
+            try {
+                const response = await assignmentsAPI.getTeachingToday();
+                return response.items ?? [];
+            } catch (err) {
+                const message = extractErrorMessage(err as ApiError, 'Failed to load assignment workflow items.');
+                throw Object.assign(new Error(message), { cause: err });
+            }
+        },
+        enabled,
+        staleTime: 30_000,
+    });
+
+    return {
+        items: query.data ?? [],
+        loading: query.isLoading,
+        error: query.error?.message ?? null,
+        refetch: query.refetch,
+    };
 }
 
 export function useAssignments(filters?: AssignmentFilters, options?: UseAssignmentsOptions) {

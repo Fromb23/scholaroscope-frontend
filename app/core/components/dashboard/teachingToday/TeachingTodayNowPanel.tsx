@@ -103,6 +103,37 @@ export function TeachingTodayNowPanel({ action }: TeachingTodayNowPanelProps) {
                             </div>
                         </div>
                     ) : null}
+
+                    {action.assignmentWork ? (
+                        <div className="teaching-today-nested-card mt-4 grid gap-3 rounded-lg p-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium uppercase theme-subtle">Subject</p>
+                                <p className="mt-1 break-words text-sm font-semibold theme-text">
+                                    {action.assignmentWork.subject.name}
+                                </p>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium uppercase theme-subtle">Class</p>
+                                <p className="mt-1 break-words text-sm font-semibold theme-text">
+                                    {action.assignmentWork.cohort.name}
+                                </p>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium uppercase theme-subtle">Stage</p>
+                                <p className="mt-1 text-sm font-semibold theme-text">
+                                    {action.assignmentWork.teacher_stage_label}
+                                </p>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-xs font-medium uppercase theme-subtle">Due</p>
+                                <p className="mt-1 break-words text-sm font-semibold theme-text">
+                                    {action.assignmentWork.due_at
+                                        ? new Date(action.assignmentWork.due_at).toLocaleString()
+                                        : 'Not set'}
+                                </p>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
 
                 <div className="flex w-full flex-col gap-2 lg:w-auto lg:min-w-56">
