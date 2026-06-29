@@ -33,6 +33,8 @@ import {
     TodayScheduleCard,
     LearnersAtRisk,
     AssessmentsSummaryCard,
+    shouldRenderLearnerRiskMemory,
+    shouldRenderAssessmentsSummaryCard,
 } from '@/app/core/components/dashboard/InstructorDashboardWidgets';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import {
@@ -482,7 +484,7 @@ export function InstructorDashboard() {
     const isTeachingDashboardActor = instructorAccess.isTeachingActor;
 
     const {
-        metrics, alerts, sessions, teachingCohorts,
+        metrics, alerts, sessions, assessments, teachingCohorts,
         currentTerm, currentYear,
         lastRefresh, isLoading, refresh, teachingLoad,
         attendanceRiskLoading, attendanceRiskError,
@@ -507,6 +509,7 @@ export function InstructorDashboard() {
             sessions,
             sessionReminders: sessionReminderState.reminders,
             assignmentWork,
+            assessments,
             pendingAssessmentRows: pendingReviewRows,
             pendingAssessmentReviewCount: metrics.assessments.needsGrading,
             learnerSupportCount: metrics.performance.needsSupport,
@@ -523,6 +526,7 @@ export function InstructorDashboard() {
         }),
         [
             assignmentWork,
+            assessments,
             freelancePrimaryActions,
             instructorAccess.isSelfManagedTeachingAdmin,
             metrics.assessments.needsGrading,
@@ -538,6 +542,22 @@ export function InstructorDashboard() {
         () => teachingActionQueue.primaryAction?.secondaryActions.slice(1).map((action) => action.label) ?? [],
         [teachingActionQueue.primaryAction]
     );
+    const hasActiveAssignmentWork = useMemo(
+        () => teachingActionQueue.actions.some((action) => action.objectType === 'assignment'),
+        [teachingActionQueue.actions]
+    );
+    const showTodayScheduleMemory = sessions.length > 0;
+    const showLearnerRiskMemory = shouldRenderLearnerRiskMemory({
+        needsSupport: metrics.performance.needsSupport,
+        attendanceRiskCount: metrics.attendance.riskCount,
+        attendanceRiskLearnerCount: metrics.attendance.riskLearnerCount,
+    });
+    const showAssessmentMemory = shouldRenderAssessmentsSummaryCard({
+        needsGrading: metrics.assessments.needsGrading,
+        pendingReviewRows,
+        queue: teachingActionQueue,
+    });
+    const showMemoryGrid = showTodayScheduleMemory || showLearnerRiskMemory || showAssessmentMemory;
     const assistantContext = useMemo(() => ({
         pageKey: 'instructor_dashboard',
         pageTitle: 'Teaching Today',
@@ -628,29 +648,39 @@ export function InstructorDashboard() {
                 queue={teachingActionQueue}
             />
             <InstructorAlertsBanner alerts={alerts} />
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div className="xl:col-span-2 space-y-6">
-                    <TodayScheduleCard sessions={sessions} queue={teachingActionQueue} />
-                    <LearnersAtRisk
-                        needsSupport={metrics.performance.needsSupport}
-                        attendanceRiskCount={metrics.attendance.riskCount}
-                        attendanceRiskLearnerCount={metrics.attendance.riskLearnerCount}
-                        attendanceRiskLoading={attendanceRiskLoading}
-                        attendanceRiskError={attendanceRiskError}
-                    />
+            {showMemoryGrid ? (
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    {showTodayScheduleMemory || showLearnerRiskMemory ? (
+                        <div className="xl:col-span-2 space-y-6">
+                            {showTodayScheduleMemory ? (
+                                <TodayScheduleCard sessions={sessions} queue={teachingActionQueue} />
+                            ) : null}
+                            {showLearnerRiskMemory ? (
+                                <LearnersAtRisk
+                                    needsSupport={metrics.performance.needsSupport}
+                                    attendanceRiskCount={metrics.attendance.riskCount}
+                                    attendanceRiskLearnerCount={metrics.attendance.riskLearnerCount}
+                                    attendanceRiskLoading={attendanceRiskLoading}
+                                    attendanceRiskError={attendanceRiskError}
+                                />
+                            ) : null}
+                        </div>
+                    ) : null}
+                    {showAssessmentMemory ? (
+                        <AssessmentsSummaryCard
+                            needsGrading={metrics.assessments.needsGrading}
+                            upcomingAssessments={metrics.assessments.upcoming}
+                            pendingReviewRows={pendingReviewRows}
+                            queue={teachingActionQueue}
+                        />
+                    ) : null}
                 </div>
-                <AssessmentsSummaryCard
-                    needsGrading={metrics.assessments.needsGrading}
-                    upcomingAssessments={metrics.assessments.upcoming}
-                    pendingReviewRows={pendingReviewRows}
-                    queue={teachingActionQueue}
-                />
-            </div>
+            ) : null}
             {instructorAccess.isSelfManagedTeachingAdmin ? (
                 <TeachingWorkspaceCard
                     actions={freelancePrimaryActions}
                     moreActions={freelanceMoreActions}
-                    quiet={teachingActionQueue.quiet && assignmentWork.length === 0}
+                    quiet={teachingActionQueue.quiet && !hasActiveAssignmentWork}
                 />
             ) : null}
         </div>

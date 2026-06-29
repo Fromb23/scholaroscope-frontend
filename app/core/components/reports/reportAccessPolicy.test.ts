@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  canManageInstitutionReportPolicy,
   canRenderInstitutionReportOverview,
   shouldUseInstructorReportSurface,
 } from './reportAccessPolicy';
@@ -74,6 +75,29 @@ const selfManagedCapabilities = {
   },
 } satisfies WorkspaceCapabilities;
 
+const institutionReportPolicyCapabilities = {
+  ...institutionCapabilities,
+  can_manage_report_policy: true,
+  report_policy_mode: 'INSTITUTION_GOVERNANCE',
+  report_computation_class_scoped_only: false,
+  can_author_report_subject_profile: true,
+  report_configuration: {
+    report_policy_available: true,
+    report_policy_mode: 'INSTITUTION_GOVERNANCE',
+    report_computation_available: true,
+    report_computation_class_scoped_only: false,
+    subject_profile_authoring_allowed: true,
+    reporting_governance_routes_allowed: true,
+    allowed_policy_scopes: [
+      'WORKSPACE_DEFAULT',
+      'SUBJECT_PROFILE',
+      'COHORT',
+      'COHORT_SUBJECT',
+      'TERM',
+    ],
+  },
+} satisfies WorkspaceCapabilities;
+
 describe('report access policy', () => {
   it('does not allow raw admin role into institution reports for self-managed teaching workspaces', () => {
     expect(canRenderInstitutionReportOverview({
@@ -115,5 +139,23 @@ describe('report access policy', () => {
       activeOrg: institution,
       capabilities: { ...institutionCapabilities, can_teach: true },
     })).toBe(true);
+  });
+
+  it('does not allow raw admin role to manage institution report policy without policy capability', () => {
+    expect(canManageInstitutionReportPolicy({
+      user,
+      capabilities: institutionCapabilities,
+    })).toBe(false);
+  });
+
+  it('allows institution report policy management only with governance capability', () => {
+    expect(canManageInstitutionReportPolicy({
+      user,
+      capabilities: institutionReportPolicyCapabilities,
+    })).toBe(true);
+    expect(canManageInstitutionReportPolicy({
+      user,
+      capabilities: selfManagedCapabilities,
+    })).toBe(false);
   });
 });

@@ -29,18 +29,18 @@ import {
 import { GradePolicy } from '@/app/core/types/gradePolicy';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { canManageInstitutionReportPolicy } from '@/app/core/components/reports/reportAccessPolicy';
 
 const CBC_REJECTION_MESSAGE = 'CBC uses CbcReportPolicy. Use CBC report policy endpoints.';
 
 export function GradePoliciesPage() {
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, capabilities, loading: authLoading } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [editingPolicy, setEditingPolicy] = useState<GradePolicy | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
-    const canManagePolicies = isAdminOrAbove(user, activeRole);
+    const canManagePolicies = canManageInstitutionReportPolicy({ user, capabilities });
 
     const {
         policies, loading, error,

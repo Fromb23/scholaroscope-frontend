@@ -18,14 +18,19 @@ const instructorDashboard = read('app/core/components/dashboard/InstructorDashbo
 const teacherNextActionPanel = read('app/core/components/dashboard/TeacherNextActionPanel.tsx');
 const sessionReminderPanel = read('app/core/components/dashboard/SessionReminderPanel.tsx');
 const dashboardWidgets = read('app/core/components/dashboard/InstructorDashboardWidgets.tsx');
+const notificationBell = read('app/components/layout/NotificationBell.tsx');
 const assignmentLifecycleCard = read('app/core/components/assignments/AssignmentLifecycleActionCard.tsx');
 const assignmentProgressTracker = read('app/core/components/assignments/AssignmentProgressTracker.tsx');
 const cohortAssignmentDetail = read('app/core/components/assignments/CohortAssignmentDetailPage.tsx');
 const assessmentDetailPage = read('app/core/components/assessments/AssessmentDetailPage.tsx');
 const assessmentStageCard = read('app/core/components/assessments/AssessmentStageActionCard.tsx');
+const assessmentPolicyPreview = read('app/core/components/assessments/AssessmentPolicyPreviewCard.tsx');
 const teachingActionQueue = read('app/core/lib/teachingActionQueue.ts');
 const useInstructorDashboard = read('app/core/hooks/useInstructorDashboard.ts');
 const useAssignments = read('app/core/hooks/useAssignments.ts');
+const cbcAssessmentPolicyPreview = read('app/plugins/cbc/components/reportPolicies/CbcAssessmentPolicyPreview.tsx');
+const gradePoliciesPage = read('app/core/components/reports/GradePoliciesPage.tsx');
+const reportPoliciesHubPage = read('app/core/components/reports/ReportPoliciesHubPage.tsx');
 
 const primaryActionIndex = instructorDashboard.indexOf('<TeacherNextActionPanel');
 const assignmentWorkPanelIndex = instructorDashboard.indexOf('<TeachingAssignmentWorkPanel');
@@ -91,7 +96,7 @@ check(
     && workspaceIndex >= 0
     && primaryActionIndex < assignmentWorkPanelIndex
     && assignmentWorkPanelIndex < workspaceIndex
-    && instructorDashboard.includes('quiet={teachingActionQueue.quiet && assignmentWork.length === 0}'),
+    && instructorDashboard.includes('quiet={teachingActionQueue.quiet && !hasActiveAssignmentWork}'),
   'Workspace shortcuts should only become prominent when the dashboard queue is quiet and no assignment work is open.',
 );
 
@@ -101,6 +106,14 @@ check(
     && !teacherNextActionPanel.includes('schedule_state ===')
     && teacherNextActionPanel.includes('queue.primaryAction'),
   'TeacherNextActionPanel should render the queue primary action, not compute session priority itself.',
+);
+
+check(
+  'TeacherNextActionPanel must not show zero-value grading or support memory chips',
+  teacherNextActionPanel.includes('visible: metrics.assessments.needsGrading > 0')
+    && teacherNextActionPanel.includes('visible: supportCount > 0')
+    && teacherNextActionPanel.includes('summaryItems.length > 0 ? ('),
+  'The primary panel may stay visible in quiet mode, but zero grading/support chips should not become memory cards.',
 );
 
 check(
@@ -134,9 +147,95 @@ check(
   'TodayScheduleCard must be contextual, not another action engine',
   dashboardWidgets.includes('Action shown above')
     && dashboardWidgets.includes('getTodayScheduleStatusLabel')
+    && dashboardWidgets.includes('if (preview.length === 0) {')
     && !dashboardWidgets.includes('getTodayScheduleActionLabel')
     && !dashboardWidgets.includes('End lesson'),
   'TodayScheduleCard should show schedule context/status and avoid independent End/Continue/Start CTAs.',
+);
+
+check(
+  'Dashboard must gate learner-risk memory before rendering LearnersAtRisk',
+  instructorDashboard.includes('shouldRenderLearnerRiskMemory')
+    && instructorDashboard.includes('showLearnerRiskMemory ? (')
+    && dashboardWidgets.includes('export function shouldRenderLearnerRiskMemory')
+    && dashboardWidgets.includes('return null;'),
+  'LearnersAtRisk must not be mounted as a permanent empty attendance or academic-support shell.',
+);
+
+check(
+  'Dashboard must gate assessment memory before rendering AssessmentsSummaryCard',
+  instructorDashboard.includes('shouldRenderAssessmentsSummaryCard')
+    && instructorDashboard.includes('showAssessmentMemory ? (')
+    && dashboardWidgets.includes('export function shouldRenderAssessmentsSummaryCard')
+    && dashboardWidgets.includes('getAssessmentDashboardWorkItems'),
+  'AssessmentsSummaryCard must render only for pending review rows or unfinalized assessment work.',
+);
+
+check(
+  'Assessment memory must keep unfinalized lifecycle work and exact assessment routes',
+  teachingActionQueue.includes('assessments?: Assessment[]')
+    && teachingActionQueue.includes('AssessmentStatus.FINALIZED')
+    && teachingActionQueue.includes('?focus=score-entry')
+    && teachingActionQueue.includes('?focus=finalize')
+    && teachingActionQueue.includes('?focus=prepare')
+    && teachingActionQueue.includes('?focus=review'),
+  'Draft and active assessments must stay in the shared teaching queue until finalized and route to assessment detail focus targets.',
+);
+
+check(
+  'Assessment cards must not contain permanent zero-state grading copy',
+  !dashboardWidgets.includes('No learner rows are waiting for review right now')
+    && !dashboardWidgets.includes('No review queue right now')
+    && !dashboardWidgets.includes('Needs review 0')
+    && !dashboardWidgets.includes('Upcoming 0'),
+  'Assessment memory must not fill the dashboard with zero-count grading or empty review queue cards.',
+);
+
+check(
+  'Attendance risk memory must not contain permanent no-risk copy',
+  !dashboardWidgets.includes('No current attendance risk')
+    && dashboardWidgets.includes('hasAttendanceRisk ? (')
+    && dashboardWidgets.includes('hasAcademicSupportRisk ? ('),
+  'Learner-risk memory must hide zero attendance and academic support sides instead of rendering no-risk cards.',
+);
+
+check(
+  'NotificationBell must use mobile-safe panel behavior while preserving desktop dropdown',
+  notificationBell.includes('fixed left-3 right-3 top-16')
+    && notificationBell.includes('max-h-[70vh]')
+    && notificationBell.includes('sm:absolute')
+    && notificationBell.includes('sm:right-0')
+    && notificationBell.includes('sm:w-80')
+    && notificationBell.includes('sm:max-h-80'),
+  'NotificationBell must not open a fixed-width desktop dropdown that overflows mobile viewports.',
+);
+
+check(
+  'Assignment memory panel must still be present and exclude stored work',
+  instructorDashboard.includes('function TeachingAssignmentWorkPanel')
+    && instructorDashboard.includes("action.objectType === 'assignment'")
+    && instructorDashboard.includes("action.assignmentWork.lifecycle_stage !== 'STORED'")
+    && teachingActionQueue.includes("item.lifecycle_stage !== 'STORED'"),
+  'Open assignments must stay visible while stored/archived assignment work leaves active dashboard memory.',
+);
+
+check(
+  'CBC assessment policy preview must use target-page capability checks for policy authoring actions',
+  cbcAssessmentPolicyPreview.includes('canManageCbcReportPolicyAuthoring')
+    && cbcAssessmentPolicyPreview.includes("authoringMode: 'INSTITUTION_GOVERNANCE'")
+    && !cbcAssessmentPolicyPreview.includes('isAdminOrAbove'),
+  'Visible CBC report policy actions must match the target policy page authorization, not raw ADMIN role.',
+);
+
+check(
+  'Generic report policy actions must use report-policy capability checks',
+  assessmentPolicyPreview.includes('canManageInstitutionReportPolicy')
+    && gradePoliciesPage.includes('canManageInstitutionReportPolicy')
+    && reportPoliciesHubPage.includes('canManageInstitutionReportPolicy')
+    && !assessmentPolicyPreview.includes('isAdminOrAbove')
+    && !gradePoliciesPage.includes('isAdminOrAbove')
+    && !reportPoliciesHubPage.includes('isAdminOrAbove'),
+  'Visible generic report policy actions must not be authorized from raw ADMIN role.',
 );
 
 check(
@@ -174,6 +273,14 @@ check(
     && teachingActionQueue.includes('buildAssignmentTeachingActionItem')
     && teachingActionQueue.includes('rankActions'),
   'The central queue must own ranking, object/action dedupe, and assignment workflow action conversion.',
+);
+
+check(
+  'Teaching action queue must not promote workspace shortcuts to primary unfinished work',
+  teachingActionQueue.includes("unfinishedActions = actions.filter((action) => action.source !== 'workspace_shortcut')")
+    && teachingActionQueue.includes('primaryAction = unfinishedActions[0] ?? null')
+    && teachingActionQueue.includes('unfinishedWorkCount = unfinishedActions.length'),
+  'Quiet dashboards should show the no-action primary panel while workspace shortcuts remain available separately.',
 );
 
 const failures = checks.filter((item) => !item.passed);

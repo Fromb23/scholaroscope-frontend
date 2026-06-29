@@ -52,9 +52,9 @@ function NotificationItem({
         }`}
       />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium leading-snug theme-text">{notification.title}</p>
+        <p className="break-words text-sm font-medium leading-snug theme-text">{notification.title}</p>
         {notification.body && (
-          <p className="theme-muted mt-0.5 line-clamp-2 text-xs">{notification.body}</p>
+          <p className="theme-muted mt-0.5 line-clamp-3 break-words text-xs sm:line-clamp-2">{notification.body}</p>
         )}
         <p className="theme-subtle mt-1 text-xs">{timeAgo(notification.updated_at ?? notification.created_at)}</p>
       </div>
@@ -131,10 +131,10 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="theme-dropdown absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl">
+        <div className="theme-dropdown fixed left-3 right-3 top-16 z-50 max-h-[70vh] overflow-hidden rounded-xl sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 sm:max-h-none">
           {/* Header */}
-          <div className="flex items-center justify-between border-b theme-border px-4 py-3">
-            <h3 className="text-sm font-semibold theme-text">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b theme-border px-4 py-3">
+            <h3 className="min-w-0 text-sm font-semibold theme-text">
               Notifications
               {unreadCount > 0 && (
                 <span className="theme-danger-surface ml-2 px-1.5 py-0.5 text-xs rounded-full font-bold">
@@ -146,7 +146,7 @@ export function NotificationBell() {
               <button
                 onClick={handleMarkAllRead}
                 disabled={markingAll}
-                className="flex items-center gap-1 text-xs theme-link font-medium disabled:opacity-50"
+                className="flex shrink-0 items-center gap-1 text-xs theme-link font-medium disabled:opacity-50"
               >
                 {markingAll ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -159,7 +159,7 @@ export function NotificationBell() {
           </div>
 
           {/* Body */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+          <div className="max-h-[calc(70vh-4rem)] overflow-y-auto divide-y divide-gray-50 sm:max-h-80">
             {loading ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="h-5 w-5 animate-spin theme-icon-muted" />

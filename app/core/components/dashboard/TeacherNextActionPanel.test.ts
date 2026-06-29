@@ -25,4 +25,12 @@ describe('TeacherNextActionPanel teaching memory contract', () => {
     expect(panelSource).toContain('ActionMenu');
     expect(panelSource).toContain('buttonLabel="More"');
   });
+
+  it('filters zero-value summary chips from quiet dashboard memory', () => {
+    const panelSource = source();
+
+    expect(panelSource).toContain('visible: metrics.assessments.needsGrading > 0');
+    expect(panelSource).toContain('visible: supportCount > 0');
+    expect(panelSource).toContain('summaryItems.length > 0 ? (');
+  });
 });

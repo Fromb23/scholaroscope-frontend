@@ -53,6 +53,7 @@ export function AssessmentDetailPage() {
         exportError,
         searchQuery,
         downloadingPdf,
+        focusTarget,
         scoreEntryFocusRequest,
         visibleLearnerCount,
         totalLearnerCount,
@@ -83,6 +84,7 @@ export function AssessmentDetailPage() {
         isTrackedParticipation,
     } = useAssessmentDetailPage();
     const focusedScoreEntryRef = useRef<string | null>(null);
+    const focusedStageActionRef = useRef<string | null>(null);
     const unscoredCount = Math.max(totalLearnerCount - stats.scored, 0);
     const pendingMakeupCount = participationSummary?.pending_makeup_count ?? 0;
     const scrollToScoreEntry = useCallback(() => {
@@ -181,6 +183,28 @@ export function AssessmentDetailPage() {
             });
         });
     }, [assessment, loading, scoreEntryFocusRequest, scoresLoading]);
+    useEffect(() => {
+        if (!focusTarget || focusTarget === 'score-entry' || loading || !assessment) {
+            return;
+        }
+
+        if (!['finalize', 'prepare', 'review'].includes(focusTarget)) {
+            return;
+        }
+
+        const focusKey = `${assessmentId}:${focusTarget}`;
+        if (focusedStageActionRef.current === focusKey) {
+            return;
+        }
+
+        focusedStageActionRef.current = focusKey;
+        window.requestAnimationFrame(() => {
+            document.getElementById('assessment-stage-action')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        });
+    }, [assessment, assessmentId, focusTarget, loading]);
     const assistantContext = useMemo(() => ({
         pageKey: 'assessment_detail',
         pageTitle: assessment?.name ?? 'Assessment Detail',
@@ -293,33 +317,35 @@ export function AssessmentDetailPage() {
                 isFinalized={isFinalized}
             />
 
-            <AssessmentStageActionCard
-                assessment={assessment}
-                assessmentId={assessmentId}
-                isDraft={isDraft}
-                isActive={isActive}
-                isFinalized={isFinalized}
-                canUpdate={Boolean(canUpdate)}
-                canDelete={Boolean(canDelete)}
-                canActivate={Boolean(canActivate)}
-                canFinalize={Boolean(canFinalize)}
-                canScore={Boolean(canScore)}
-                canExportPdf={Boolean(canExportPdf)}
-                finalizing={finalizing}
-                deleting={deleting}
-                downloadingPdf={downloadingPdf}
-                saving={saving}
-                scoredCount={stats.scored}
-                unscoredCount={unscoredCount}
-                pendingMakeupCount={pendingMakeupCount}
-                onActivate={handleActivate}
-                onFinalize={handleFinalize}
-                onDownloadPdf={handleDownloadPdf}
-                onDelete={handleDelete}
-                onRecordScores={scrollToScoreEntry}
-                onViewResults={scrollToResultsSummary}
-                onReviewMissingLearners={scrollToParticipation}
-            />
+            <div id="assessment-stage-action">
+                <AssessmentStageActionCard
+                    assessment={assessment}
+                    assessmentId={assessmentId}
+                    isDraft={isDraft}
+                    isActive={isActive}
+                    isFinalized={isFinalized}
+                    canUpdate={Boolean(canUpdate)}
+                    canDelete={Boolean(canDelete)}
+                    canActivate={Boolean(canActivate)}
+                    canFinalize={Boolean(canFinalize)}
+                    canScore={Boolean(canScore)}
+                    canExportPdf={Boolean(canExportPdf)}
+                    finalizing={finalizing}
+                    deleting={deleting}
+                    downloadingPdf={downloadingPdf}
+                    saving={saving}
+                    scoredCount={stats.scored}
+                    unscoredCount={unscoredCount}
+                    pendingMakeupCount={pendingMakeupCount}
+                    onActivate={handleActivate}
+                    onFinalize={handleFinalize}
+                    onDownloadPdf={handleDownloadPdf}
+                    onDelete={handleDelete}
+                    onRecordScores={scrollToScoreEntry}
+                    onViewResults={scrollToResultsSummary}
+                    onReviewMissingLearners={scrollToParticipation}
+                />
+            </div>
 
             {/* Error banners */}
             {deleteError && <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />}
