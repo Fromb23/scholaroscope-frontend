@@ -53,4 +53,14 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('Evidence pending');
     expect(pageSource).toContain('Evidence blocked');
   });
+
+  it('exposes assignment stage memory to assistant page context', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain("pageKey: 'assignment_detail'");
+    expect(pageSource).toContain('current_stage');
+    expect(pageSource).toContain('primary_next_action');
+    expect(pageSource).toContain('hidden_secondary_actions');
+    expect(pageSource).toContain('unfinished_work_count');
+  });
 });

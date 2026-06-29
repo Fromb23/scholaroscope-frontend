@@ -3,10 +3,16 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, BookOpen, Calendar, Clock, Loader2 } from 'lucide-react';
+import { ActionMenu, type ActionMenuItem } from '@/app/components/ui/ActionMenu';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { useSessionLifecycleReminders } from '@/app/core/hooks/useSessionLifecycleReminders';
+import {
+    getSessionTeachingObjectKey,
+    type TeachingActionItem,
+    type TeachingActionQueue,
+} from '@/app/core/lib/teachingActionQueue';
 import type { SessionLifecycleReminder } from '@/app/core/types/session';
 
 function formatSessionDate(value: string): string {
@@ -62,19 +68,39 @@ function ReminderSummaryItem({ label, value }: ReminderSummaryItemProps) {
 
 interface SessionReminderCardProps {
     reminder: SessionLifecycleReminder;
-    onContinue: (sessionId: number) => void;
-    onReviewAttendance: (sessionId: number) => void;
-    onEndLesson: (sessionId: number) => void;
+    queueAction: TeachingActionItem | null;
+    isPrimaryActionObject: boolean;
+    onOpen: (href: string) => void;
 }
 
 function SessionReminderCard({
     reminder,
-    onContinue,
-    onReviewAttendance,
-    onEndLesson,
+    queueAction,
+    isPrimaryActionObject,
+    onOpen,
 }: SessionReminderCardProps) {
     const { session } = reminder;
     const attendance = session.attendance_count;
+    const fallbackHref = `/sessions/${session.id}?notice=session-current-step`;
+    const primaryLabel = queueAction?.primaryLabel ?? 'Open lesson';
+    const primaryHref = queueAction?.primaryHref ?? fallbackHref;
+    const menuItems: ActionMenuItem[] = [
+        ...(queueAction?.secondaryActions.map((action) => ({
+            label: action.label,
+            href: action.href,
+            destructive: action.destructive,
+        })) ?? []),
+        {
+            label: 'Open lesson',
+            href: fallbackHref,
+        },
+        {
+            label: 'Review attendance',
+            href: `${getReviewAttendancePath(session.id)}?section=attendance&notice=session-current-step`,
+        },
+    ].filter((item, index, items) => (
+        items.findIndex((candidate) => candidate.label === item.label && candidate.href === item.href) === index
+    ));
 
     return (
         <div className="p-4 sm:p-6">
@@ -125,61 +151,61 @@ function SessionReminderCard({
                 </div>
 
                 <div className="flex w-full flex-col gap-2 xl:w-auto xl:min-w-[220px]">
-                    <Button
-                        type="button"
+                    {isPrimaryActionObject ? (
+                        <div className="rounded-lg border theme-border bg-white/70 px-3 py-2 text-sm font-medium theme-text">
+                            Action shown above
+                        </div>
+                    ) : (
+                        <Button
+                            type="button"
+                            className="w-full"
+                            onClick={() => onOpen(primaryHref)}
+                        >
+                            {primaryLabel}
+                        </Button>
+                    )}
+                    <ActionMenu
+                        items={menuItems}
+                        buttonLabel="More"
+                        ariaLabel={`Open more actions for ${session.subject_name}`}
                         className="w-full"
-                        onClick={() => onContinue(session.id)}
-                    >
-                        Continue lesson
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        className="w-full"
-                        onClick={() => onReviewAttendance(session.id)}
-                    >
-                        Review attendance
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="danger"
-                        className="w-full"
-                        onClick={() => onEndLesson(session.id)}
-                    >
-                        End lesson
-                    </Button>
+                        menuClassName="w-full"
+                        hideLabelOnMobile={false}
+                    />
                 </div>
             </div>
         </div>
     );
 }
 
-export function SessionReminderPanel() {
+interface SessionReminderPanelContentProps {
+    reminders: SessionLifecycleReminder[];
+    needsClosingCount: number;
+    unfinishedCount: number;
+    loading: boolean;
+    error: string | null;
+    refetch: () => Promise<void>;
+    queue?: TeachingActionQueue;
+}
+
+export function SessionReminderPanelContent({
+    reminders,
+    needsClosingCount,
+    unfinishedCount,
+    loading,
+    error,
+    refetch,
+    queue,
+}: SessionReminderPanelContentProps) {
     const router = useRouter();
-    const {
-        reminders,
-        needsClosingCount,
-        unfinishedCount,
-        loading,
-        error,
-        refetch,
-    } = useSessionLifecycleReminders();
 
     const openCount = useMemo(
         () => reminders.filter((reminder) => reminder.type === 'OPEN_LESSON').length,
         [reminders]
     );
 
-    const handleContinue = (sessionId: number) => {
-        router.push(`/sessions/${sessionId}?notice=session-current-step`);
-    };
-
-    const handleReviewAttendance = (sessionId: number) => {
-        router.push(`${getReviewAttendancePath(sessionId)}?section=attendance&notice=session-current-step`);
-    };
-
-    const handleEndLesson = (sessionId: number) => {
-        router.push(`/sessions/${sessionId}?section=complete&notice=session-current-step`);
+    const handleOpen = (href: string) => {
+        router.push(href);
     };
 
     if (loading && reminders.length === 0) {
@@ -262,14 +288,32 @@ export function SessionReminderPanel() {
                         <div key={reminder.session.id} className={reminderStyles[reminder.severity]}>
                             <SessionReminderCard
                                 reminder={reminder}
-                                onContinue={handleContinue}
-                                onReviewAttendance={handleReviewAttendance}
-                                onEndLesson={handleEndLesson}
+                                queueAction={queue?.actions.find((action) => (
+                                    action.objectKey === getSessionTeachingObjectKey(reminder.session.id)
+                                )) ?? null}
+                                isPrimaryActionObject={queue?.primaryAction?.objectKey === getSessionTeachingObjectKey(reminder.session.id)}
+                                onOpen={handleOpen}
                             />
                         </div>
                     ))}
                 </div>
             </Card>
         </>
+    );
+}
+
+export function SessionReminderPanel({ queue }: { queue?: TeachingActionQueue }) {
+    const reminderState = useSessionLifecycleReminders();
+
+    return (
+        <SessionReminderPanelContent
+            reminders={reminderState.reminders}
+            needsClosingCount={reminderState.needsClosingCount}
+            unfinishedCount={reminderState.unfinishedCount}
+            loading={reminderState.loading}
+            error={reminderState.error}
+            refetch={reminderState.refetch}
+            queue={queue}
+        />
     );
 }

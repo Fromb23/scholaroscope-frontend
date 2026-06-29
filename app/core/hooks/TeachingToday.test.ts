@@ -18,7 +18,7 @@ describe('Teaching Today assignment workflow integration', () => {
 
   it('prioritizes active assignment work before ready sessions', () => {
     const hookSource = source();
-    const assignmentIndex = hookSource.indexOf('const activeAssignmentWork = sortAssignmentWork(assignmentWork)[0];');
+    const assignmentIndex = hookSource.indexOf('const activeAssignmentWork = sortAssignmentTeachingTodayItems(assignmentWork)[0];');
     const readyIndex = hookSource.indexOf('const ready = groups.ready[0];');
 
     expect(assignmentIndex).toBeGreaterThan(-1);
@@ -27,12 +27,15 @@ describe('Teaching Today assignment workflow integration', () => {
   });
 
   it('contains teacher-facing assignment reminder labels', () => {
-    const hookSource = source();
+    const helperSource = readFileSync(
+      join(process.cwd(), 'app/core/lib/teachingActionQueue.ts'),
+      'utf8',
+    );
 
-    expect(hookSource).toContain('Issue prepared learner task');
-    expect(hookSource).toContain('Record learner responses');
-    expect(hookSource).toContain('Review learner work');
-    expect(hookSource).toContain('Store reviewed assignment');
-    expect(hookSource).toContain('Evidence pending for reviewed assignment');
+    expect(helperSource).toContain('Issue prepared learner task');
+    expect(helperSource).toContain('Record learner responses');
+    expect(helperSource).toContain('Review learner work');
+    expect(helperSource).toContain('Store reviewed learner work');
+    expect(helperSource).toContain('Reviewed learner work is ready for evidence');
   });
 });

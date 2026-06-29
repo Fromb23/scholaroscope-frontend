@@ -42,8 +42,30 @@ describe('freelance dashboard quick actions', () => {
       'utf8',
     );
 
-    expect(source).toContain("index > 1 ? 'hidden sm:inline-flex' : 'inline-flex'");
+    expect(source).toContain("quiet || index <= 1 ? 'inline-flex' : 'hidden sm:inline-flex'");
     expect(source).toContain('buttonLabel="More"');
     expect(source).toContain('getFreelanceDashboardMoreActions');
+  });
+
+  it('renders the primary teaching action before workspace shortcuts', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source.indexOf('<TeacherNextActionPanel')).toBeGreaterThan(-1);
+    expect(source.indexOf('<TeachingWorkspaceCard')).toBeGreaterThan(-1);
+    expect(source.indexOf('<TeacherNextActionPanel')).toBeLessThan(source.indexOf('<TeachingWorkspaceCard'));
+  });
+
+  it('uses the central teaching action queue with assignment workflow memory', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('buildTeachingActionQueue');
+    expect(source).toContain('assignmentWork');
+    expect(source).toContain('sessionReminders: sessionReminderState.reminders');
   });
 });
