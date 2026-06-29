@@ -70,6 +70,14 @@ interface UseAssignmentsOptions {
     enabled?: boolean;
 }
 
+type AssignmentOrigin = Pick<Assignment, 'lesson_plan' | 'created_from_session'>;
+
+type DeleteAssignmentVariables = number | {
+    assignmentId: number;
+    lessonPlanId?: number | null;
+    createdFromSessionId?: number | null;
+};
+
 function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
     return Array.isArray(data) ? data : data.results ?? [];
 }
@@ -109,13 +117,55 @@ function ensureInstructorCohortSubjectAccess(
     }
 }
 
+function isValidId(value: number | null | undefined): value is number {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+function emitAssignmentOriginChanged(origin?: AssignmentOrigin | null) {
+    if (!origin) {
+        return;
+    }
+
+    if (isValidId(origin.lesson_plan)) {
+        emitLessonPlanDataChanged();
+    }
+
+    if (isValidId(origin.lesson_plan) || isValidId(origin.created_from_session)) {
+        emitSessionDataChanged();
+    }
+}
+
+function normalizeDeleteAssignmentVariables(variables: DeleteAssignmentVariables): {
+    assignmentId: number;
+    lessonPlanId: number | null;
+    createdFromSessionId: number | null;
+} {
+    if (typeof variables === 'number') {
+        return {
+            assignmentId: variables,
+            lessonPlanId: null,
+            createdFromSessionId: null,
+        };
+    }
+
+    return {
+        assignmentId: variables.assignmentId,
+        lessonPlanId: variables.lessonPlanId ?? null,
+        createdFromSessionId: variables.createdFromSessionId ?? null,
+    };
+}
+
 async function invalidateAssignmentDependencies(
     queryClient: ReturnType<typeof useQueryClient>,
-    assignmentId?: number | null
+    assignmentId?: number | null,
+    lessonPlanId?: number | null
 ) {
     await Promise.all([
         queryClient.invalidateQueries({ queryKey: assignmentKeys.all }),
         queryClient.invalidateQueries({ queryKey: assignmentKeys.teachingToday() }),
+        isValidId(lessonPlanId)
+            ? queryClient.invalidateQueries({ queryKey: assignmentKeys.preparedForLessonPlan(lessonPlanId) })
+            : Promise.resolve(),
         assignmentId
             ? queryClient.invalidateQueries({ queryKey: assignmentKeys.detail(assignmentId) })
             : Promise.resolve(),
@@ -763,7 +813,8 @@ export function useCreateAssignment() {
             }
         },
         onSuccess: async (assignment) => {
-            await invalidateAssignmentDependencies(queryClient, assignment.id);
+            await invalidateAssignmentDependencies(queryClient, assignment.id, assignment.lesson_plan);
+            emitAssignmentOriginChanged(assignment);
         },
     });
 }
@@ -791,12 +842,11 @@ export function usePrepareAssignmentFromLessonPlan() {
             }
         },
         onSuccess: async (result) => {
-            await Promise.all([
-                invalidateAssignmentDependencies(queryClient, result.assignment.id),
-                queryClient.invalidateQueries({
-                    queryKey: assignmentKeys.preparedForLessonPlan(result.assignment.lesson_plan),
-                }),
-            ]);
+            await invalidateAssignmentDependencies(
+                queryClient,
+                result.assignment.id,
+                result.assignment.lesson_plan
+            );
             emitLessonPlanDataChanged();
             emitSessionDataChanged();
         },
@@ -826,7 +876,8 @@ export function useUpdateAssignment(currentCohortSubjectId?: number | null) {
             }
         },
         onSuccess: async (assignment) => {
-            await invalidateAssignmentDependencies(queryClient, assignment.id);
+            await invalidateAssignmentDependencies(queryClient, assignment.id, assignment.lesson_plan);
+            emitAssignmentOriginChanged(assignment);
         },
     });
 }
@@ -835,16 +886,21 @@ export function useDeleteAssignment() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (assignmentId: number) => {
+        mutationFn: async (variables: DeleteAssignmentVariables) => {
+            const normalized = normalizeDeleteAssignmentVariables(variables);
             try {
-                await assignmentsAPI.delete(assignmentId);
-                return assignmentId;
+                await assignmentsAPI.delete(normalized.assignmentId);
+                return normalized;
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete assignment.'));
             }
         },
-        onSuccess: async (assignmentId) => {
-            await invalidateAssignmentDependencies(queryClient, assignmentId);
+        onSuccess: async ({ assignmentId, lessonPlanId, createdFromSessionId }) => {
+            await invalidateAssignmentDependencies(queryClient, assignmentId, lessonPlanId);
+            emitAssignmentOriginChanged({
+                lesson_plan: lessonPlanId,
+                created_from_session: createdFromSessionId,
+            });
         },
     });
 }
@@ -867,7 +923,12 @@ export function usePublishAssignment() {
             }
         },
         onSuccess: async (result) => {
-            await invalidateAssignmentDependencies(queryClient, result.assignment.id);
+            await invalidateAssignmentDependencies(
+                queryClient,
+                result.assignment.id,
+                result.assignment.lesson_plan
+            );
+            emitAssignmentOriginChanged(result.assignment);
         },
     });
 }
@@ -895,12 +956,11 @@ export function useIssuePreparedAssignment() {
             }
         },
         onSuccess: async (result) => {
-            await Promise.all([
-                invalidateAssignmentDependencies(queryClient, result.assignment.id),
-                queryClient.invalidateQueries({
-                    queryKey: assignmentKeys.preparedForLessonPlan(result.assignment.lesson_plan),
-                }),
-            ]);
+            await invalidateAssignmentDependencies(
+                queryClient,
+                result.assignment.id,
+                result.assignment.lesson_plan
+            );
             emitLessonPlanDataChanged();
             emitSessionDataChanged();
         },
@@ -919,7 +979,8 @@ export function useCloseAssignment() {
             }
         },
         onSuccess: async (assignment) => {
-            await invalidateAssignmentDependencies(queryClient, assignment.id);
+            await invalidateAssignmentDependencies(queryClient, assignment.id, assignment.lesson_plan);
+            emitAssignmentOriginChanged(assignment);
         },
     });
 }
@@ -936,7 +997,8 @@ export function useArchiveAssignment() {
             }
         },
         onSuccess: async (assignment) => {
-            await invalidateAssignmentDependencies(queryClient, assignment.id);
+            await invalidateAssignmentDependencies(queryClient, assignment.id, assignment.lesson_plan);
+            emitAssignmentOriginChanged(assignment);
         },
     });
 }
@@ -953,7 +1015,8 @@ export function useReopenAssignment() {
             }
         },
         onSuccess: async (assignment) => {
-            await invalidateAssignmentDependencies(queryClient, assignment.id);
+            await invalidateAssignmentDependencies(queryClient, assignment.id, assignment.lesson_plan);
+            emitAssignmentOriginChanged(assignment);
         },
     });
 }
@@ -976,7 +1039,8 @@ export function useRestoreAssignmentToReview() {
             }
         },
         onSuccess: async (assignment) => {
-            await invalidateAssignmentDependencies(queryClient, assignment.id);
+            await invalidateAssignmentDependencies(queryClient, assignment.id, assignment.lesson_plan);
+            emitAssignmentOriginChanged(assignment);
         },
     });
 }

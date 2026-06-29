@@ -58,6 +58,69 @@ describe('freelance dashboard quick actions', () => {
     expect(source.indexOf('<TeacherNextActionPanel')).toBeLessThan(source.indexOf('<TeachingWorkspaceCard'));
   });
 
+  it('renders active assignment work from the shared queue before generic follow-ups', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+    const primaryIndex = source.indexOf('<TeacherNextActionPanel');
+    const assignmentPanelIndex = source.indexOf('<TeachingAssignmentWorkPanel');
+    const followUpIndex = source.indexOf('<TeachingFollowUpQueue');
+    const workspaceIndex = source.indexOf('<TeachingWorkspaceCard');
+
+    expect(assignmentPanelIndex).toBeGreaterThan(primaryIndex);
+    expect(assignmentPanelIndex).toBeLessThan(followUpIndex);
+    expect(assignmentPanelIndex).toBeLessThan(workspaceIndex);
+    expect(source).toContain('queue.actions.filter((action) => (');
+    expect(source).toContain("action.objectType === 'assignment'");
+  });
+
+  it('does not rely on the sliced generic follow-up queue for assignment visibility', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain("filter((action) => action.objectType !== 'assignment')");
+    expect(source).toContain('ASSIGNMENT_WORK_VISIBLE_LIMIT = 5');
+    expect(source).toContain('View all assignment work');
+    expect(source).toContain('collapsedCount');
+  });
+
+  it('renders lesson-originated assignment work with teacher-facing labels', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('Prepared from lesson plan');
+    expect(source).toContain('Learner task from lesson preparation');
+    expect(source).toContain('Prepared learner task');
+    expect(source).toContain('Issued learner task');
+    expect(source).toContain('Evidence pending');
+    expect(source).toContain('Ready to store');
+  });
+
+  it('marks a primary assignment action as shown above instead of duplicating its CTA', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('isPrimaryActionObject ? (');
+    expect(source).toContain('Shown above');
+    expect(source).toContain('action.primaryLabel');
+  });
+
+  it('keeps workspace shortcuts muted while assignment work exists', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('quiet={teachingActionQueue.quiet && assignmentWork.length === 0}');
+  });
+
   it('uses the central teaching action queue with assignment workflow memory', () => {
     const source = readFileSync(
       join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
@@ -67,5 +130,17 @@ describe('freelance dashboard quick actions', () => {
     expect(source).toContain('buildTeachingActionQueue');
     expect(source).toContain('assignmentWork');
     expect(source).toContain('sessionReminders: sessionReminderState.reminders');
+  });
+
+  it('uses useInstructorDashboard assignmentWork from useAssignmentTeachingToday', () => {
+    const hookSource = readFileSync(
+      join(process.cwd(), 'app/core/hooks/useInstructorDashboard.ts'),
+      'utf8',
+    );
+
+    expect(hookSource).toContain('useAssignmentTeachingToday');
+    expect(hookSource).toContain('items: assignmentWork');
+    expect(hookSource).toContain('refetchAssignmentWork');
+    expect(hookSource).toContain('assignmentWork,');
   });
 });

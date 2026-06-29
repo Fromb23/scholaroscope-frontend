@@ -38,4 +38,23 @@ describe('Teaching Today assignment workflow integration', () => {
     expect(helperSource).toContain('Store reviewed learner work');
     expect(helperSource).toContain('Reviewed learner work is ready for evidence');
   });
+
+  it('invalidates assignment teaching-today memory after assignment stage changes', () => {
+    const assignmentHookSource = readFileSync(
+      join(process.cwd(), 'app/core/hooks/useAssignments.ts'),
+      'utf8',
+    );
+
+    expect(assignmentHookSource).toContain('assignmentKeys.teachingToday()');
+    expect(assignmentHookSource).toContain('assignmentKeys.preparedForLessonPlan(lessonPlanId)');
+    expect(assignmentHookSource).toContain('usePrepareAssignmentFromLessonPlan');
+    expect(assignmentHookSource).toContain('useIssuePreparedAssignment');
+    expect(assignmentHookSource).toContain('usePublishAssignment');
+    expect(assignmentHookSource).toContain('useCloseAssignment');
+    expect(assignmentHookSource).toContain('useArchiveAssignment');
+    expect(assignmentHookSource).toContain('useRestoreAssignmentToReview');
+    expect(assignmentHookSource).toContain('useCreateAssignmentSubmission');
+    expect(assignmentHookSource).toContain('useCreateAssignmentEvaluation');
+    expect(assignmentHookSource).toContain('useBridgeAssignmentEvaluation');
+  });
 });

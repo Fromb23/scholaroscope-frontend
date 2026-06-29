@@ -25,8 +25,11 @@ const assessmentDetailPage = read('app/core/components/assessments/AssessmentDet
 const assessmentStageCard = read('app/core/components/assessments/AssessmentStageActionCard.tsx');
 const teachingActionQueue = read('app/core/lib/teachingActionQueue.ts');
 const useInstructorDashboard = read('app/core/hooks/useInstructorDashboard.ts');
+const useAssignments = read('app/core/hooks/useAssignments.ts');
 
 const primaryActionIndex = instructorDashboard.indexOf('<TeacherNextActionPanel');
+const assignmentWorkPanelIndex = instructorDashboard.indexOf('<TeachingAssignmentWorkPanel');
+const followUpQueueIndex = instructorDashboard.indexOf('<TeachingFollowUpQueue');
 const workspaceIndex = instructorDashboard.indexOf('<TeachingWorkspaceCard');
 
 check(
@@ -44,11 +47,52 @@ check(
 );
 
 check(
+  'InstructorDashboard must render assignment work from the teaching action queue',
+  assignmentWorkPanelIndex >= 0
+    && instructorDashboard.includes('function TeachingAssignmentWorkPanel')
+    && instructorDashboard.includes('queue.actions.filter((action) => (')
+    && instructorDashboard.includes("action.objectType === 'assignment'"),
+  'Open assignment workflow items must be rendered from the central queue, not from a second dashboard action engine.',
+);
+
+check(
+  'Assignment work must not only exist inside a sliced generic follow-up queue',
+  assignmentWorkPanelIndex >= 0
+    && followUpQueueIndex >= 0
+    && assignmentWorkPanelIndex < followUpQueueIndex
+    && instructorDashboard.includes("filter((action) => action.objectType !== 'assignment')")
+    && instructorDashboard.includes('ASSIGNMENT_WORK_VISIBLE_LIMIT')
+    && instructorDashboard.includes('View all assignment work'),
+  'Assignment work needs a dedicated visible panel and collapsed count, not only supportingActions.slice(0, 5).',
+);
+
+check(
+  'Lesson-originated assignment labels must be present on the dashboard',
+  instructorDashboard.includes('Prepared from lesson plan')
+    && instructorDashboard.includes('Learner task from lesson preparation')
+    && instructorDashboard.includes('Prepared learner task')
+    && instructorDashboard.includes('Issued learner task')
+    && instructorDashboard.includes('Ready to store'),
+  'Lesson-originated learner tasks need teacher-facing labels instead of technical status codes.',
+);
+
+check(
   'assignment workflow memory must feed the instructor dashboard',
   useInstructorDashboard.includes('useAssignmentTeachingToday')
     && useInstructorDashboard.includes('assignmentWork')
     && instructorDashboard.includes('assignmentWork,'),
   'Self-managed/admin instructor dashboard must include assignment teaching-today workflow items.',
+);
+
+check(
+  'Workspace shortcuts must not render before primary teaching action or active assignment work',
+  primaryActionIndex >= 0
+    && assignmentWorkPanelIndex >= 0
+    && workspaceIndex >= 0
+    && primaryActionIndex < assignmentWorkPanelIndex
+    && assignmentWorkPanelIndex < workspaceIndex
+    && instructorDashboard.includes('quiet={teachingActionQueue.quiet && assignmentWork.length === 0}'),
+  'Workspace shortcuts should only become prominent when the dashboard queue is quiet and no assignment work is open.',
 );
 
 check(
@@ -66,6 +110,24 @@ check(
     && sessionReminderPanel.includes('ActionMenu')
     && !sessionReminderPanel.includes('onEndLesson'),
   'Session reminders should become supporting context when the queue already owns that lesson action.',
+);
+
+check(
+  'Assignment teaching-today query must be invalidated by assignment stage-changing mutations',
+  useAssignments.includes('assignmentKeys.teachingToday()')
+    && useAssignments.includes('assignmentKeys.preparedForLessonPlan(lessonPlanId)')
+    && useAssignments.includes('emitAssignmentOriginChanged')
+    && useAssignments.includes('usePrepareAssignmentFromLessonPlan')
+    && useAssignments.includes('useIssuePreparedAssignment')
+    && useAssignments.includes('useDeleteAssignment')
+    && useAssignments.includes('usePublishAssignment')
+    && useAssignments.includes('useCloseAssignment')
+    && useAssignments.includes('useArchiveAssignment')
+    && useAssignments.includes('useRestoreAssignmentToReview')
+    && useAssignments.includes('useCreateAssignmentSubmission')
+    && useAssignments.includes('useCreateAssignmentEvaluation')
+    && useAssignments.includes('useBridgeAssignmentEvaluation'),
+  'Prepare, issue, response, review, evidence, store, restore, and delete flows must refresh assignment teaching-today memory.',
 );
 
 check(

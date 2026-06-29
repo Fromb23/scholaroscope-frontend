@@ -3,7 +3,19 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BarChart3, BookOpen, CalendarCheck, ClipboardList, GraduationCap, Settings, Users } from 'lucide-react';
+import {
+    AlertCircle,
+    BarChart3,
+    BookOpen,
+    CalendarCheck,
+    CalendarDays,
+    ClipboardList,
+    FileText,
+    GraduationCap,
+    Paperclip,
+    Settings,
+    Users,
+} from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -28,6 +40,7 @@ import {
     type TeachingActionItem,
     type TeachingActionQueue,
 } from '@/app/core/lib/teachingActionQueue';
+import type { AssignmentTeachingTodayItem } from '@/app/core/types/assignments';
 
 export interface FreelanceDashboardAction {
     label: string;
@@ -67,7 +80,9 @@ const freelanceMoreActionIcons = {
 } satisfies Record<string, ReactNode>;
 
 function TeachingFollowUpQueue({ queue }: { queue: TeachingActionQueue }) {
-    const followUps = queue.supportingActions.slice(0, 5);
+    const followUps = queue.supportingActions
+        .filter((action) => action.objectType !== 'assignment')
+        .slice(0, 5);
 
     if (followUps.length === 0) {
         return null;
@@ -109,6 +124,303 @@ function TeachingFollowUpQueue({ queue }: { queue: TeachingActionQueue }) {
                     </Link>
                 ))}
             </div>
+        </Card>
+    );
+}
+
+const ASSIGNMENT_WORK_VISIBLE_LIMIT = 5;
+
+function isLessonOriginatedAssignment(item: AssignmentTeachingTodayItem): boolean {
+    return item.source === 'lesson_preparation' || item.lesson_plan !== null;
+}
+
+function getAssignmentSourceLabel(item: AssignmentTeachingTodayItem): string {
+    if (isLessonOriginatedAssignment(item)) {
+        return 'Prepared from lesson plan';
+    }
+
+    if (item.source === 'session') {
+        return 'Created from lesson';
+    }
+
+    if (item.source === 'quick_follow_up') {
+        return 'Quick follow-up';
+    }
+
+    return 'Assignment work';
+}
+
+function getAssignmentWorkStageLabel(item: AssignmentTeachingTodayItem): string {
+    if (item.evidence_blocked || item.next_action === 'RECORD_EVIDENCE') {
+        return 'Evidence pending';
+    }
+
+    if (item.next_action === 'STORE_RECORD') {
+        return 'Ready to store';
+    }
+
+    switch (item.next_action) {
+        case 'ISSUE_ASSIGNMENT':
+            return 'Prepared learner task';
+        case 'RECORD_SUBMISSION':
+            return item.counts.submissions > 0 ? 'Needs learner responses' : 'Issued learner task';
+        case 'REVIEW_WORK':
+            return 'Needs review';
+        case 'FINISH_LEARNER_WORK':
+            return 'Issued learner task';
+        default:
+            break;
+    }
+
+    switch (item.lifecycle_stage) {
+        case 'PREPARING':
+            return 'Prepared learner task';
+        case 'ISSUED':
+            return 'Issued learner task';
+        case 'REVIEWING':
+            return 'Needs review';
+        case 'STORED':
+            return 'Stored';
+        default:
+            return item.teacher_stage_label;
+    }
+}
+
+function getAssignmentWorkOpenReason(item: AssignmentTeachingTodayItem): string {
+    if (item.evidence_blocked || item.next_action === 'RECORD_EVIDENCE') {
+        return 'Evidence needs attention before this record can be stored.';
+    }
+
+    switch (item.next_action) {
+        case 'ISSUE_ASSIGNMENT':
+            return 'This learner task was prepared but has not been issued.';
+        case 'RECORD_SUBMISSION':
+            return 'Learners are expected to respond. Record responses when work is collected.';
+        case 'REVIEW_WORK':
+            return 'Learner responses are waiting for review.';
+        case 'STORE_RECORD':
+            return 'Reviewed learner work is ready to store as evidence.';
+        case 'MANAGE_GROUPS':
+            return 'Assignment groups need setup before learners can work.';
+        case 'MARK_PARTICIPATION':
+            return 'Group participation needs confirmation before review is complete.';
+        case 'FINISH_LEARNER_WORK':
+            return 'Learner work is still open. Close it when responses are collected.';
+        default:
+            return item.next_action_label
+                ? `${item.teacher_stage_label}: ${item.next_action_label}.`
+                : `${item.teacher_stage_label} still needs attention.`;
+    }
+}
+
+function formatAssignmentWorkDate(value: string | null): string | null {
+    if (!value) {
+        return null;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return value;
+    }
+
+    return parsed.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+function getAssignmentWorkListHref(actions: TeachingActionItem[]): string {
+    const cohortIds = new Set(
+        actions
+            .map((action) => action.assignmentWork?.cohort.id)
+            .filter((cohortId): cohortId is number => typeof cohortId === 'number')
+    );
+
+    if (cohortIds.size === 1) {
+        return `/academic/cohorts/${Array.from(cohortIds)[0]}/assignments`;
+    }
+
+    return '/academic/cohorts';
+}
+
+function TeachingAssignmentWorkPanel({ queue }: { queue: TeachingActionQueue }) {
+    const assignmentActions = queue.actions.filter((action) => (
+        action.objectType === 'assignment'
+        && action.assignmentWork
+        && action.assignmentWork.lifecycle_stage !== 'STORED'
+    ));
+
+    if (assignmentActions.length === 0) {
+        return null;
+    }
+
+    const visibleActions = assignmentActions.slice(0, ASSIGNMENT_WORK_VISIBLE_LIMIT);
+    const collapsedCount = Math.max(assignmentActions.length - visibleActions.length, 0);
+    const allAssignmentWorkHref = getAssignmentWorkListHref(assignmentActions);
+
+    return (
+        <Card className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <div className="flex items-center gap-2">
+                        <ClipboardList className="h-5 w-5 text-[color:var(--color-primary)]" />
+                        <h2 className="text-base font-semibold theme-text">Active learner tasks</h2>
+                    </div>
+                    <p className="mt-1 text-sm theme-muted">
+                        Open assignment work carried from preparation, issuing, responses, review, evidence, and storage.
+                    </p>
+                </div>
+                <Badge variant="blue">
+                    {assignmentActions.length} open
+                </Badge>
+            </div>
+
+            <div className="space-y-3">
+                {visibleActions.map((action) => {
+                    const item = action.assignmentWork;
+                    if (!item) {
+                        return null;
+                    }
+
+                    const isPrimaryActionObject = queue.primaryAction?.objectKey === action.objectKey;
+                    const lessonOriginated = isLessonOriginatedAssignment(item);
+                    const dueDate = formatAssignmentWorkDate(item.due_at);
+                    const sourceLabel = getAssignmentSourceLabel(item);
+                    const stageLabel = getAssignmentWorkStageLabel(item);
+                    const blocker = item.evidence_blocked
+                        ? item.evidence_blocked_reason || 'Evidence needs attention before this record can be stored.'
+                        : item.blocking_items[0] ?? null;
+                    const menuItems: ActionMenuItem[] = action.secondaryActions.map((secondaryAction) => ({
+                        label: secondaryAction.label,
+                        href: secondaryAction.href,
+                        destructive: secondaryAction.destructive,
+                    }));
+
+                    return (
+                        <div
+                            key={action.dedupeKey}
+                            className="rounded-lg border theme-border theme-surface-muted px-4 py-3"
+                        >
+                            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="min-w-0 flex-1 space-y-3">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0">
+                                            <p className="break-words text-sm font-semibold theme-text">{item.title}</p>
+                                            {lessonOriginated ? (
+                                                <p className="mt-1 text-sm theme-muted">
+                                                    Learner task from lesson preparation
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                        <Badge
+                                            variant={lessonOriginated ? 'green' : 'blue'}
+                                            size="sm"
+                                            className="shrink-0 self-start"
+                                        >
+                                            {sourceLabel}
+                                        </Badge>
+                                    </div>
+
+                                    <div className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Subject</p>
+                                            <p className="mt-1 break-words font-medium theme-text">{item.subject.name}</p>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Class</p>
+                                            <p className="mt-1 break-words font-medium theme-text">{item.cohort.name}</p>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Stage</p>
+                                            <p className="mt-1 break-words font-medium theme-text">{stageLabel}</p>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Next</p>
+                                            <p className="mt-1 break-words font-medium theme-text">{action.primaryLabel}</p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-sm theme-muted">
+                                        {getAssignmentWorkOpenReason(item)}
+                                    </p>
+
+                                    <div className="flex flex-col gap-2 text-xs theme-muted sm:flex-row sm:flex-wrap sm:items-center">
+                                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                                            <BookOpen className="h-3.5 w-3.5 shrink-0 theme-subtle" />
+                                            <span className="min-w-0 break-words">
+                                                {item.subject.name} with {item.cohort.name}
+                                            </span>
+                                        </span>
+                                        {dueDate ? (
+                                            <span className="inline-flex min-w-0 items-center gap-1.5">
+                                                <CalendarDays className="h-3.5 w-3.5 shrink-0 theme-subtle" />
+                                                <span>Due {dueDate}</span>
+                                            </span>
+                                        ) : null}
+                                        {item.lesson_plan ? (
+                                            <span className="inline-flex min-w-0 items-center gap-1.5">
+                                                <FileText className="h-3.5 w-3.5 shrink-0 theme-subtle" />
+                                                <span className="min-w-0 break-words">{item.lesson_plan.title}</span>
+                                            </span>
+                                        ) : null}
+                                        {item.requires_attachments ? (
+                                            <span className="inline-flex min-w-0 items-center gap-1.5">
+                                                <Paperclip className="h-3.5 w-3.5 shrink-0 theme-subtle" />
+                                                <span>Attachment evidence expected</span>
+                                            </span>
+                                        ) : null}
+                                    </div>
+
+                                    {blocker ? (
+                                        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                            <span>{blocker}</span>
+                                        </div>
+                                    ) : null}
+                                </div>
+
+                                <div className="flex w-full flex-col gap-2 lg:w-auto lg:min-w-[190px]">
+                                    {isPrimaryActionObject ? (
+                                        <div className="rounded-lg border theme-border bg-white/70 px-3 py-2 text-center text-sm font-medium theme-text">
+                                            Shown above
+                                        </div>
+                                    ) : (
+                                        <Link href={action.primaryHref} className="w-full">
+                                            <Button type="button" className="w-full">
+                                                {action.primaryLabel}
+                                            </Button>
+                                        </Link>
+                                    )}
+                                    {menuItems.length > 0 ? (
+                                        <ActionMenu
+                                            items={menuItems}
+                                            buttonLabel="More"
+                                            ariaLabel={`Open more actions for ${item.title}`}
+                                            className="w-full"
+                                            menuClassName="w-full"
+                                            hideLabelOnMobile={false}
+                                        />
+                                    ) : null}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {collapsedCount > 0 ? (
+                <div className="flex flex-col gap-3 rounded-lg border theme-border theme-surface-elevated px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm theme-muted">
+                        {collapsedCount} more learner task{collapsedCount === 1 ? '' : 's'} still need attention.
+                    </p>
+                    <Link href={allAssignmentWorkHref} className="w-full sm:w-auto">
+                        <Button type="button" variant="secondary" size="sm" className="w-full sm:w-auto">
+                            View all assignment work
+                        </Button>
+                    </Link>
+                </div>
+            ) : null}
         </Card>
     );
 }
@@ -304,6 +616,7 @@ export function InstructorDashboard() {
                 currentYear={currentYear}
                 todayLessonCount={sessions.length}
             />
+            <TeachingAssignmentWorkPanel queue={teachingActionQueue} />
             <TeachingFollowUpQueue queue={teachingActionQueue} />
             <SessionReminderPanelContent
                 reminders={sessionReminderState.reminders}
@@ -337,7 +650,7 @@ export function InstructorDashboard() {
                 <TeachingWorkspaceCard
                     actions={freelancePrimaryActions}
                     moreActions={freelanceMoreActions}
-                    quiet={teachingActionQueue.quiet}
+                    quiet={teachingActionQueue.quiet && assignmentWork.length === 0}
                 />
             ) : null}
         </div>

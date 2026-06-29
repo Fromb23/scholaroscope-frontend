@@ -455,7 +455,11 @@ export default function CohortAssignmentDetailPage() {
 
         setActionError(null);
         try {
-            await deleteMutation.mutateAsync(assignment.id);
+            await deleteMutation.mutateAsync({
+                assignmentId: assignment.id,
+                lessonPlanId: assignment.lesson_plan,
+                createdFromSessionId: assignment.created_from_session,
+            });
             router.push(assignmentsHref);
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to delete assignment.');
