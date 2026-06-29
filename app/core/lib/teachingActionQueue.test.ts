@@ -130,6 +130,75 @@ describe('teachingActionQueue', () => {
     expect(queue.primaryAction?.primaryLabel).toBe('Review learner work');
   });
 
+  it('includes lesson-originated assignment actions with lesson plan context', () => {
+    const queue = buildTeachingActionQueue({
+      assignmentWork: [buildAssignmentWork()],
+      teachingLoadCount: 1,
+      now: new Date('2026-06-29T10:00:00Z'),
+    });
+
+    expect(queue.primaryAction?.objectType).toBe('assignment');
+    expect(queue.primaryAction?.source).toBe('lesson_preparation');
+    expect(queue.primaryAction?.assignmentWork?.lesson_plan?.title).toBe('Soil care');
+    expect(queue.primaryAction?.secondaryActions).toEqual([
+      { label: 'Open lesson plan', href: '/lesson-plans/55' },
+    ]);
+  });
+
+  it('keeps preparing, issued, and reviewing assignment workflow items active', () => {
+    const queue = buildTeachingActionQueue({
+      assignmentWork: [
+        buildAssignmentWork({
+          assignment_id: 41,
+          lifecycle_stage: 'PREPARING',
+          next_action: 'ISSUE_ASSIGNMENT',
+          next_action_label: 'Issue learner task',
+          teacher_stage_label: 'Prepared',
+        }),
+        buildAssignmentWork({
+          assignment_id: 42,
+          lifecycle_stage: 'ISSUED',
+          next_action: 'RECORD_SUBMISSION',
+          next_action_label: 'Record learner responses',
+          teacher_stage_label: 'Issued',
+        }),
+        buildAssignmentWork({
+          assignment_id: 43,
+          lifecycle_stage: 'REVIEWING',
+          next_action: 'STORE_RECORD',
+          next_action_label: 'Store record',
+          teacher_stage_label: 'Ready to store',
+        }),
+      ],
+      teachingLoadCount: 1,
+      now: new Date('2026-06-29T10:00:00Z'),
+    });
+
+    expect(queue.actions.filter((action) => action.objectType === 'assignment')).toHaveLength(3);
+    expect(queue.actions.map((action) => action.objectKey)).toEqual(
+      expect.arrayContaining(['assignment:41', 'assignment:42', 'assignment:43'])
+    );
+  });
+
+  it('does not keep stored assignments in active teaching memory', () => {
+    const queue = buildTeachingActionQueue({
+      assignmentWork: [
+        buildAssignmentWork({
+          assignment_id: 46,
+          lifecycle_stage: 'STORED',
+          next_action: 'VIEW_RECORD',
+          next_action_label: 'View record',
+          teacher_stage_label: 'Stored',
+        }),
+      ],
+      teachingLoadCount: 1,
+      now: new Date('2026-06-29T10:00:00Z'),
+    });
+
+    expect(queue.actions.some((action) => action.objectKey === 'assignment:46')).toBe(false);
+    expect(queue.quiet).toBe(true);
+  });
+
   it('deduplicates the same session action across reminders and today sessions', () => {
     const openSession = buildSession({
       status: 'IN_PROGRESS',

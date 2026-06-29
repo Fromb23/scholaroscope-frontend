@@ -464,7 +464,7 @@ function buildAssignmentActions(
     now: Date,
 ): TeachingActionItem[] {
     return sortAssignmentTeachingTodayItems(items)
-        .filter((item) => item.next_action !== 'NONE')
+        .filter((item) => item.lifecycle_stage !== 'STORED' && item.next_action !== 'NONE')
         .map((item) => buildAssignmentTeachingActionItem(item, now));
 }
 

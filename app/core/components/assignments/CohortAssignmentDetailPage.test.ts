@@ -46,6 +46,13 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('canChangeActiveAssignment && recordResponsePanelOpen');
   });
 
+  it('passes lesson-origin metadata when deleting a draft assignment', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('lessonPlanId: assignment.lesson_plan');
+    expect(pageSource).toContain('createdFromSessionId: assignment.created_from_session');
+  });
+
   it('does not expose the manual CBC evidence bridge button', () => {
     const pageSource = source();
 

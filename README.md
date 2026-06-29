@@ -211,6 +211,18 @@ Manual evidence bridge buttons should not be part of the normal teacher workflow
 Late-admitted learners are not missing evidence for assignments issued before they joined.
 Attachment requirements are assignment slots, not only practical-lesson features.
 
+## Lesson-Originated Assignment Memory Law
+
+A learner task created from lesson preparation is active teaching work until stored, cancelled, or deleted. The dashboard must carry it visibly through preparation, issuing, response collection, review, evidence, and storage.
+
+## Assignment Visibility Law
+
+Open assignment workflow items must be visible on the teacher dashboard. They may be compact, but they must not disappear into a hidden assignment page or a sliced generic follow-up queue.
+
+## Dashboard Memory Law
+
+The dashboard is responsible for remembering unfinished teaching work. A teacher should not need to manually revisit assignment pages to know what remains open.
+
 ## Teaching Memory Law
 
 Scholaroscope must carry unfinished teaching work for the teacher. Lessons, learner tasks, assignments, assessments, grading, and evidence records should produce action items until they are completed, stored, finalized, cancelled, or intentionally dismissed.
