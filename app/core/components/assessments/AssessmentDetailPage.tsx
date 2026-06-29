@@ -20,6 +20,10 @@ import { AssessmentDetailHeader } from '@/app/core/components/assessments/Assess
 import { AssessmentInfoCard } from '@/app/core/components/assessments/AssessmentInfoCard';
 import { AssessmentParticipationSection } from '@/app/core/components/assessments/AssessmentParticipationSection';
 import { AssessmentScoreEntryCard } from '@/app/core/components/assessments/AssessmentScoreEntryCard';
+import {
+    AssessmentStageActionCard,
+    getAssessmentCurrentStage,
+} from '@/app/core/components/assessments/AssessmentStageActionCard';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { useAssessmentDetailPage } from '@/app/core/hooks/assessments/useAssessmentDetailPage';
 
@@ -93,6 +97,73 @@ export function AssessmentDetailPage() {
             block: 'start',
         });
     }, []);
+    const scrollToParticipation = useCallback(() => {
+        if (isTrackedParticipation && !participationLoaded && !participationLoading) {
+            void loadParticipationRoster();
+        }
+
+        document.getElementById('assessment-participation')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    }, [
+        isTrackedParticipation,
+        loadParticipationRoster,
+        participationLoaded,
+        participationLoading,
+    ]);
+    const currentAssessmentStage = useMemo(() => getAssessmentCurrentStage({
+        isDraft,
+        isActive,
+        isFinalized,
+        scoredCount: stats.scored,
+        unscoredCount,
+        canFinalize: Boolean(canFinalize),
+    }), [
+        canFinalize,
+        isActive,
+        isDraft,
+        isFinalized,
+        stats.scored,
+        unscoredCount,
+    ]);
+    const primaryAssessmentActionLabel = useMemo(() => {
+        if (isFinalized) return 'View finalized results';
+        if (pendingMakeupCount > 0 && canScore) return 'Review missing learners';
+        if (isActive && canScore && unscoredCount > 0) return 'Record scores';
+        if (isActive && canFinalize) return 'Finalize assessment';
+        if (isDraft && canActivate) return 'Prepare assessment';
+        if (!isFinalized && canScore) return 'Record scores';
+        return 'View results';
+    }, [
+        canActivate,
+        canFinalize,
+        canScore,
+        isActive,
+        isDraft,
+        isFinalized,
+        pendingMakeupCount,
+        unscoredCount,
+    ]);
+    const hiddenAssessmentActions = useMemo(() => ([
+        canExportPdf ? 'Download PDF' : null,
+        !isFinalized && canUpdate ? 'Edit assessment' : null,
+        isDraft && canActivate && primaryAssessmentActionLabel !== 'Prepare assessment' ? 'Prepare assessment' : null,
+        isActive && canScore && primaryAssessmentActionLabel !== 'Record scores' ? 'Record scores' : null,
+        isActive && canFinalize && primaryAssessmentActionLabel !== 'Finalize assessment' ? 'Finalize assessment' : null,
+        canDelete ? 'Delete assessment' : null,
+    ].filter((item): item is string => Boolean(item))), [
+        canActivate,
+        canDelete,
+        canExportPdf,
+        canFinalize,
+        canScore,
+        canUpdate,
+        isActive,
+        isDraft,
+        isFinalized,
+        primaryAssessmentActionLabel,
+    ]);
     useEffect(() => {
         if (!scoreEntryFocusRequest || loading || scoresLoading || !assessment) {
             return;
@@ -124,11 +195,15 @@ export function AssessmentDetailPage() {
             can_finalize: Boolean(canFinalize),
             has_results: totalLearnerCount > 0 && stats.scored > 0,
             is_loading: loading || scoresLoading,
+            current_stage: currentAssessmentStage,
+            primary_next_action: primaryAssessmentActionLabel,
+            hidden_secondary_actions: hiddenAssessmentActions,
+            unfinished_work_count: isFinalized ? 0 : 1,
         },
         visibleActions: [
             ...(!isFinalized && canScore
                 ? [{
-                    label: 'Grade learners',
+                    label: 'Record scores',
                     type: 'page_action' as const,
                     target: 'grade_assessment_learners',
                     handler: scrollToScoreEntry,
@@ -148,14 +223,27 @@ export function AssessmentDetailPage() {
                 href: '/assessments',
             },
         ],
-        nextSafeAction: !isFinalized && canScore
+        nextSafeAction: primaryAssessmentActionLabel === 'Record scores'
             ? {
-                label: 'Grade learners',
+                label: 'Record scores',
                 type: 'page_action' as const,
                 target: 'grade_assessment_learners',
                 handler: scrollToScoreEntry,
             }
-            : (totalLearnerCount > 0 && stats.scored > 0
+            : primaryAssessmentActionLabel === 'Review missing learners'
+                ? {
+                    label: 'Review missing learners',
+                    type: 'page_action' as const,
+                    target: 'review_missing_assessment_learners',
+                    handler: scrollToParticipation,
+                }
+                : primaryAssessmentActionLabel === 'Finalize assessment'
+                    ? {
+                        label: 'Finalize assessment',
+                        type: 'page_action' as const,
+                        target: 'finalize_assessment',
+                    }
+                    : (totalLearnerCount > 0 && stats.scored > 0
                 ? {
                     label: 'View results',
                     type: 'page_action' as const,
@@ -167,7 +255,7 @@ export function AssessmentDetailPage() {
                     type: 'navigate' as const,
                     href: '/assessments',
                 }),
-        workflowStep: isFinalized ? 'review_assessment_results' : 'grade_assessment',
+        workflowStep: `assessment_${currentAssessmentStage.toLowerCase()}`,
         emptyStateReason: !loading && !assessment
             ? 'This assessment could not be loaded.'
             : undefined,
@@ -176,9 +264,13 @@ export function AssessmentDetailPage() {
         assessmentId,
         canFinalize,
         canScore,
+        currentAssessmentStage,
+        hiddenAssessmentActions,
         isFinalized,
         loading,
+        primaryAssessmentActionLabel,
         scoresLoading,
+        scrollToParticipation,
         scrollToResultsSummary,
         scrollToScoreEntry,
         stats.scored,
@@ -196,6 +288,13 @@ export function AssessmentDetailPage() {
         <div className="space-y-6">
             <AssessmentDetailHeader
                 assessment={assessment}
+                isDraft={isDraft}
+                isActive={isActive}
+                isFinalized={isFinalized}
+            />
+
+            <AssessmentStageActionCard
+                assessment={assessment}
                 assessmentId={assessmentId}
                 isDraft={isDraft}
                 isActive={isActive}
@@ -204,14 +303,22 @@ export function AssessmentDetailPage() {
                 canDelete={Boolean(canDelete)}
                 canActivate={Boolean(canActivate)}
                 canFinalize={Boolean(canFinalize)}
+                canScore={Boolean(canScore)}
                 canExportPdf={Boolean(canExportPdf)}
                 finalizing={finalizing}
                 deleting={deleting}
                 downloadingPdf={downloadingPdf}
+                saving={saving}
+                scoredCount={stats.scored}
+                unscoredCount={unscoredCount}
+                pendingMakeupCount={pendingMakeupCount}
                 onActivate={handleActivate}
                 onFinalize={handleFinalize}
                 onDownloadPdf={handleDownloadPdf}
                 onDelete={handleDelete}
+                onRecordScores={scrollToScoreEntry}
+                onViewResults={scrollToResultsSummary}
+                onReviewMissingLearners={scrollToParticipation}
             />
 
             {/* Error banners */}

@@ -211,6 +211,22 @@ Manual evidence bridge buttons should not be part of the normal teacher workflow
 Late-admitted learners are not missing evidence for assignments issued before they joined.
 Attachment requirements are assignment slots, not only practical-lesson features.
 
+## Teaching Memory Law
+
+Scholaroscope must carry unfinished teaching work for the teacher. Lessons, learner tasks, assignments, assessments, grading, and evidence records should produce action items until they are completed, stored, finalized, cancelled, or intentionally dismissed.
+
+## Dashboard Single Action Law
+
+The dashboard must show one primary next action first. Supporting widgets may provide context, but they must not repeat the same primary action for the same object.
+
+## Stage Orientation Law
+
+Assignment and assessment pages must show the current stage, progress position, and one primary next safe action before exposing secondary actions.
+
+## More Actions Law
+
+Secondary and corrective actions must be hidden behind More on both desktop and mobile so the teacher is not forced to understand the whole lifecycle at once.
+
 ## What Not To Do
 
 - Do not describe this app as “just a Next.js frontend”.

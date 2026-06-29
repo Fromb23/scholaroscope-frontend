@@ -1,8 +1,9 @@
 'use client';
 
-import Link from 'next/link';
+import { ActionMenu, type ActionMenuItem } from '@/app/components/ui/ActionMenu';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { AssignmentProgressTracker } from '@/app/core/components/assignments/AssignmentProgressTracker';
 import type {
     AssignmentDeliveryMode,
     AssignmentLifecycleAction,
@@ -66,13 +67,6 @@ function getActionLabel(
     return ACTION_LABELS[action];
 }
 
-function getActionButtonVariant(action: AssignmentLifecycleAction): 'primary' | 'secondary' | 'danger' | 'ghost' {
-    if (action === 'DELETE_DRAFT') {
-        return 'danger';
-    }
-    return 'secondary';
-}
-
 function getStageCopy(stage: AssignmentLifecycleState['stage'], deliveryMode: AssignmentDeliveryMode) {
     switch (stage) {
         case 'PREPARING':
@@ -134,9 +128,25 @@ export function AssignmentLifecycleActionCard({
         lifecycleState.allowed_actions.includes(action)
         && action !== primaryAction
     ));
+    const moreActions: ActionMenuItem[] = [
+        ...secondaryActions.map((action) => ({
+            label: pendingAction === action
+                ? ACTION_PENDING_LABELS[action] ?? getActionLabel(action, deliveryMode)
+                : getActionLabel(action, deliveryMode),
+            onSelect: () => onAction(action),
+            disabled,
+            destructive: action === 'DELETE_DRAFT',
+        })),
+        ...supplementaryActions.map((action) => ({
+            label: action.label,
+            href: action.href,
+        })),
+    ];
 
     return (
         <Card className="space-y-5">
+            <AssignmentProgressTracker lifecycleState={lifecycleState} />
+
             <div className="space-y-2">
                 <div className="text-xs font-medium uppercase tracking-wide theme-subtle">
                     Current action
@@ -165,27 +175,12 @@ export function AssignmentLifecycleActionCard({
                     </Button>
                 ) : null}
 
-                {secondaryActions.map((action) => (
-                    <Button
-                        key={action}
-                        type="button"
-                        variant={getActionButtonVariant(action)}
-                        onClick={() => onAction(action)}
-                        disabled={disabled}
-                    >
-                        {pendingAction === action
-                            ? ACTION_PENDING_LABELS[action] ?? getActionLabel(action, deliveryMode)
-                            : getActionLabel(action, deliveryMode)}
-                    </Button>
-                ))}
-
-                {supplementaryActions.map((action) => (
-                    <Link key={action.key} href={action.href}>
-                        <Button type="button" variant="ghost">
-                            {action.label}
-                        </Button>
-                    </Link>
-                ))}
+                <ActionMenu
+                    items={moreActions}
+                    buttonLabel="More"
+                    ariaLabel="Open more assignment actions"
+                    hideLabelOnMobile={false}
+                />
             </div>
 
             {lifecycleState.blocking_items.length > 0 ? (

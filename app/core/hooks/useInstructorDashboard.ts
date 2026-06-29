@@ -13,6 +13,7 @@ import {
     useAssessmentReviewSummary,
     useAssessmentScores,
 } from '@/app/core/hooks/useAssessments';
+import { useAssignmentTeachingToday } from '@/app/core/hooks/useAssignments';
 import { useCurrentTerm, useCurrentAcademicYear } from '@/app/core/hooks/useAcademic';
 import { useInstructorAttendanceRisk } from '@/app/core/hooks/useInstructorAttendanceRisk';
 import type { Session } from '@/app/core/types/session';
@@ -264,6 +265,12 @@ export function useInstructorDashboard() {
         enabled: Boolean(currentTerm?.id),
     });
     const {
+        items: assignmentWork,
+        loading: assignmentWorkLoading,
+        error: assignmentWorkError,
+        refetch: refetchAssignmentWork,
+    } = useAssignmentTeachingToday();
+    const {
         count: attendanceRiskCount,
         uniqueLearnerCount: attendanceRiskLearnerCount,
         loading: attendanceRiskLoading,
@@ -275,7 +282,7 @@ export function useInstructorDashboard() {
 
     const isLoading = studentsLoading || sessionsLoading ||
         assessmentsLoading || scoresLoading || reviewSummaryLoading ||
-        termLoading || yearLoading || teachingLoadLoading;
+        termLoading || yearLoading || teachingLoadLoading || assignmentWorkLoading;
 
     const metrics = useMemo(
         () => computeInstructorMetrics(
@@ -357,6 +364,7 @@ export function useInstructorDashboard() {
             refetchAssessments(),
             refetchScores(),
             refetchReviewSummary(),
+            refetchAssignmentWork(),
             refetchAttendanceRisk(),
             loadTeachingLoad(),
         ]);
@@ -367,6 +375,7 @@ export function useInstructorDashboard() {
         refetchAssessments,
         refetchScores,
         refetchReviewSummary,
+        refetchAssignmentWork,
         refetchAttendanceRisk,
         loadTeachingLoad,
     ]);
@@ -391,5 +400,7 @@ export function useInstructorDashboard() {
         attendanceRiskLoading,
         attendanceRiskError,
         pendingReviewRows,
+        assignmentWork,
+        assignmentWorkError,
     };
 }

@@ -22,6 +22,7 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
 import { AssignmentLifecycleActionCard } from '@/app/core/components/assignments/AssignmentLifecycleActionCard';
 import { AssignmentLifecycleConfirmModal } from '@/app/core/components/assignments/AssignmentLifecycleConfirmModal';
+import { getAssignmentCurrentProgressStage } from '@/app/core/components/assignments/AssignmentProgressTracker';
 import { AssignmentGroupEvaluationsPanel } from '@/app/core/components/assignments/AssignmentGroupEvaluationsPanel';
 import { AssignmentGroupsPanel } from '@/app/core/components/assignments/AssignmentGroupsPanel';
 import { AssignmentPublishModal } from '@/app/core/components/assignments/AssignmentPublishModal';
@@ -59,6 +60,7 @@ import {
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useRubricScaleDetail } from '@/app/core/hooks/useAssessments';
 import { useAuth } from '@/app/context/AuthContext';
+import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import type {
     AssignmentEvaluation,
     AssignmentLifecycleAction,
@@ -120,6 +122,41 @@ function getReturnLabel(returnHref: string): string {
         return 'Back to Lesson';
     }
     return 'Back to Assignments';
+}
+
+function getAssistantAssignmentActionLabel(action: AssignmentLifecycleAction): string {
+    switch (action) {
+        case 'ISSUE_ASSIGNMENT':
+            return 'Issue learner task';
+        case 'RECORD_SUBMISSION':
+            return 'Record learner response';
+        case 'REVIEW_WORK':
+            return 'Review learner work';
+        case 'STORE_RECORD':
+            return 'Store assignment record';
+        case 'FINISH_LEARNER_WORK':
+            return 'Close learner work';
+        case 'ADD_LEARNERS':
+            return 'Add learners';
+        case 'MANAGE_GROUPS':
+            return 'Set up groups';
+        case 'MARK_PARTICIPATION':
+            return 'Update participation';
+        case 'RECORD_EVIDENCE':
+            return 'Review evidence status';
+        case 'VIEW_RECORD':
+            return 'View record';
+        case 'EDIT_ASSIGNMENT':
+            return 'Edit preparation';
+        case 'DELETE_DRAFT':
+            return 'Delete draft';
+        case 'REOPEN_LEARNER_WORK':
+            return 'Reopen learner work';
+        case 'RESTORE_TO_REVIEW':
+            return 'Restore to review';
+        default:
+            return action;
+    }
 }
 
 export default function CohortAssignmentDetailPage() {
@@ -257,6 +294,17 @@ export default function CohortAssignmentDetailPage() {
             href: lessonPlanReturnHref,
         }]
         : [];
+    const lifecycleState = lifecycleQuery.lifecycleState;
+    const assignmentPrimaryAction = lifecycleState?.next_action && lifecycleState.next_action !== 'NONE'
+        ? lifecycleState.next_action
+        : null;
+    const assignmentHiddenSecondaryActions = useMemo(() => (
+        lifecycleState
+            ? lifecycleState.allowed_actions
+                .filter((action) => action !== assignmentPrimaryAction)
+                .map(getAssistantAssignmentActionLabel)
+            : []
+    ), [assignmentPrimaryAction, lifecycleState]);
     const detailTabs = useMemo<Array<{ value: DetailTab; label: string }>>(() => (
         isGroupAssignment
             ? [
@@ -285,6 +333,59 @@ export default function CohortAssignmentDetailPage() {
 
         setActiveTab('overview');
     }, [activeTab, detailTabs]);
+
+    const assistantContext = useMemo(() => ({
+        pageKey: 'assignment_detail',
+        pageTitle: assignment?.title ?? 'Assignment Detail',
+        state: {
+            assignment_id: assignmentId,
+            current_stage: lifecycleState ? getAssignmentCurrentProgressStage(lifecycleState) : null,
+            primary_next_action: lifecycleState?.next_action_label ?? null,
+            hidden_secondary_actions: assignmentHiddenSecondaryActions,
+            unfinished_work_count: lifecycleState && lifecycleState.stage !== 'STORED' && lifecycleState.next_action !== 'NONE' ? 1 : 0,
+            dashboard_quiet: false,
+            stored: lifecycleState?.stage === 'STORED',
+        },
+        visibleActions: [
+            ...(lifecycleState && lifecycleState.next_action !== 'NONE'
+                ? [{
+                    label: lifecycleState.next_action_label,
+                    type: 'page_action' as const,
+                    target: `assignment_action_${lifecycleState.next_action.toLowerCase()}`,
+                }]
+                : []),
+            {
+                label: returnLabel,
+                type: 'navigate' as const,
+                href: assignmentsHref,
+            },
+        ],
+        nextSafeAction: lifecycleState && lifecycleState.next_action !== 'NONE'
+            ? {
+                label: lifecycleState.next_action_label,
+                type: 'page_action' as const,
+                target: `assignment_action_${lifecycleState.next_action.toLowerCase()}`,
+            }
+            : {
+                label: returnLabel,
+                type: 'navigate' as const,
+                href: assignmentsHref,
+            },
+        workflowStep: lifecycleState ? `assignment_${getAssignmentCurrentProgressStage(lifecycleState).toLowerCase()}` : 'assignment_loading',
+        emptyStateReason: !assignmentLoading && !assignment
+            ? 'This assignment could not be loaded.'
+            : undefined,
+    }), [
+        assignment,
+        assignmentHiddenSecondaryActions,
+        assignmentId,
+        assignmentLoading,
+        assignmentsHref,
+        lifecycleState,
+        returnLabel,
+    ]);
+
+    useAssistantPageContext(assistantContext);
 
     useEffect(() => {
         if (isGroupAssignment) {
@@ -497,7 +598,6 @@ export default function CohortAssignmentDetailPage() {
         setSuccessMessage('Learner response reviewed.');
     };
 
-    const lifecycleState = lifecycleQuery.lifecycleState;
     const pendingLifecycleAction: AssignmentLifecycleAction | null = deleteMutation.isPending
         ? 'DELETE_DRAFT'
         : closeMutation.isPending

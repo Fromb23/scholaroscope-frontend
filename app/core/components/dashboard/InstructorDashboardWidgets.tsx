@@ -24,6 +24,11 @@ import type {
 import type { InstructorMetrics } from '@/app/core/hooks/useInstructorDashboard';
 import type { AssessmentScore } from '@/app/core/types/assessment';
 import type { DashboardAlert } from '@/app/core/hooks/useAdminDashboard';
+import {
+    getAssessmentTeachingObjectKey,
+    getSessionTeachingObjectKey,
+    type TeachingActionQueue,
+} from '@/app/core/lib/teachingActionQueue';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 
 const dashboardHeaderCardClass = `${themeClasses.dashboardCard} rounded-3xl p-8`;
@@ -32,24 +37,28 @@ const dashboardMetricCardClass = `${themeClasses.dashboardMetricCard} cursor-poi
 const dashboardMutedPanelClass = `${themeClasses.dashboardMutedPanel} p-4`;
 const dashboardActionRowClass = `${themeClasses.dashboardActionRow} p-3`;
 
-function getTodayScheduleActionLabel(session: Session) {
+function getTodayScheduleStatusLabel(session: Session) {
     if (session.schedule_state === 'IN_PROGRESS_OVERDUE' || session.needs_completion) {
-        return 'End lesson';
+        return 'Needs closing';
     }
 
     if (session.status === 'IN_PROGRESS') {
-        return 'Continue lesson';
+        return 'Still open';
     }
 
     if (session.schedule_state === 'SCHEDULED_READY' || session.can_start_now) {
-        return 'Start lesson';
+        return 'Ready to start';
     }
 
     if (session.schedule_state === 'SCHEDULED_OVERDUE') {
-        return 'Start late';
+        return 'Needs attention';
     }
 
-    return 'Open lesson';
+    if (session.status === 'COMPLETED' || session.schedule_state === 'COMPLETED') {
+        return 'Completed';
+    }
+
+    return 'Scheduled';
 }
 
 // ── InstructorHeader ──────────────────────────────────────────────────────
@@ -254,9 +263,10 @@ export function InstructorKeyMetrics({ metrics }: InstructorKeyMetricsProps) {
 
 interface TodayScheduleCardProps {
     sessions: Session[];
+    queue?: TeachingActionQueue;
 }
 
-export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
+export function TodayScheduleCard({ sessions, queue }: TodayScheduleCardProps) {
     const router = useRouter();
     const preview = sessions.slice(0, 4);
 
@@ -279,32 +289,43 @@ export function TodayScheduleCard({ sessions }: TodayScheduleCardProps) {
 
             {preview.length > 0 ? (
                 <div className="space-y-3">
-                    {preview.map(session => (
-                        <div
-                            key={session.id}
-                            onClick={() => router.push(`/sessions/${session.id}`)}
-                            className="group cursor-pointer rounded-xl p-4 theme-success-surface transition-all hover:scale-[1.02] hover:shadow-md"
-                        >
-                            <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Clock className="w-4 h-4 text-[color:var(--color-success)]" />
-                                        <span className="font-bold theme-text">
-                                            {session.start_time ?? 'TBA'} - {session.end_time ?? 'TBA'}
-                                        </span>
+                    {preview.map((session) => {
+                        const objectKey = getSessionTeachingObjectKey(session.id);
+                        const isPrimaryActionObject = queue?.primaryAction?.objectKey === objectKey;
+                        const queueAction = queue?.actions.find((action) => action.objectKey === objectKey);
+
+                        return (
+                            <div
+                                key={session.id}
+                                onClick={() => router.push(`/sessions/${session.id}`)}
+                                className="group cursor-pointer rounded-xl p-4 theme-success-surface transition-all hover:scale-[1.02] hover:shadow-md"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Clock className="w-4 h-4 text-[color:var(--color-success)]" />
+                                            <span className="font-bold theme-text">
+                                                {session.start_time ?? 'TBA'} - {session.end_time ?? 'TBA'}
+                                            </span>
+                                        </div>
+                                        <p className="font-semibold theme-text">{session.subject_name}</p>
+                                        <p className="text-sm theme-muted">{session.cohort_name} - {session.venue || 'TBA'}</p>
                                     </div>
-                                    <p className="font-semibold theme-text">{session.subject_name}</p>
-                                    <p className="text-sm theme-muted">{session.cohort_name} - {session.venue || 'TBA'}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="hidden text-sm font-semibold text-[color:var(--color-success)] md:inline">
-                                        {getTodayScheduleActionLabel(session)}
-                                    </span>
-                                    <ChevronRight className="w-5 h-5 theme-subtle transition-colors group-hover:text-[color:var(--color-success)]" />
+                                    <div className="flex items-center gap-2">
+                                        <span className="hidden text-sm font-semibold text-[color:var(--color-success)] md:inline">
+                                            {isPrimaryActionObject
+                                                ? 'Action shown above'
+                                                : queueAction?.stageLabel ?? getTodayScheduleStatusLabel(session)}
+                                        </span>
+                                        <span className="text-sm font-semibold text-[color:var(--color-success)] md:hidden">
+                                            {isPrimaryActionObject ? 'Shown above' : 'Open'}
+                                        </span>
+                                        <ChevronRight className="w-5 h-5 theme-subtle transition-colors group-hover:text-[color:var(--color-success)]" />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="py-12 text-center">
@@ -558,15 +579,20 @@ interface AssessmentsSummaryCardProps {
     needsGrading: number;
     upcomingAssessments: number;
     pendingReviewRows: AssessmentScore[];
+    queue?: TeachingActionQueue;
 }
 
 export function AssessmentsSummaryCard({
     needsGrading,
     upcomingAssessments,
     pendingReviewRows,
+    queue,
 }: AssessmentsSummaryCardProps) {
     const router = useRouter();
     const previewRows = pendingReviewRows.slice(0, 4);
+    const primaryAssessmentObjectKey = queue?.primaryAction?.objectType === 'assessment'
+        ? queue.primaryAction.objectKey
+        : null;
 
     return (
         <div className={dashboardCardClass}>
@@ -628,7 +654,9 @@ export function AssessmentsSummaryCard({
                                         </p>
                                     </div>
                                     <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">
-                                        {score.status_display || 'Pending review'}
+                                        {primaryAssessmentObjectKey === getAssessmentTeachingObjectKey(score.assessment)
+                                            ? 'Action shown above'
+                                            : score.status_display || 'Pending review'}
                                     </span>
                                 </div>
                                 <p className="mt-2 text-xs theme-muted">
@@ -650,7 +678,10 @@ export function AssessmentsSummaryCard({
                     type="button"
                     onClick={() => {
                         const firstPendingRow = previewRows[0];
-                        if (firstPendingRow) {
+                        if (
+                            firstPendingRow
+                            && primaryAssessmentObjectKey !== getAssessmentTeachingObjectKey(firstPendingRow.assessment)
+                        ) {
                             router.push(`/assessments/${firstPendingRow.assessment}?focus=score-entry&student=${firstPendingRow.student}`);
                             return;
                         }
@@ -658,7 +689,7 @@ export function AssessmentsSummaryCard({
                     }}
                     className="theme-focus-ring theme-button-primary w-full rounded-lg px-4 py-2 text-sm font-semibold sm:w-auto"
                 >
-                    {previewRows.length > 0 ? 'Review now' : 'Open assessments'}
+                    {previewRows.length > 0 && !primaryAssessmentObjectKey ? 'Review now' : 'Open assessments'}
                 </button>
                 <button
                     type="button"
