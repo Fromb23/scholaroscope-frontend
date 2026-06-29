@@ -76,13 +76,6 @@
     "priority": "P2",
     "removeBy": "2026-12-31"
   },
-  "core/components/assessments/AssessmentPolicyPreviewCard.tsx::admin-or-above-workspace-ui": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P1",
-    "removeBy": "2026-10-31"
-  },
   "core/components/assessments/AssessmentsOverview.tsx::raw-admin-role-check": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
@@ -146,21 +139,7 @@
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "core/components/reports/GradePoliciesPage.tsx::admin-or-above-workspace-ui": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P0",
-    "removeBy": "2026-08-31"
-  },
   "core/components/reports/GradePolicyDetailPage.tsx::admin-or-above-workspace-ui": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P0",
-    "removeBy": "2026-08-31"
-  },
-  "core/components/reports/ReportPoliciesHubPage.tsx::admin-or-above-workspace-ui": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",
@@ -399,13 +378,6 @@
     "removeBy": "2026-10-31"
   },
   "plugins/cambridge/pages/CambridgeSubjectManagementPage.tsx::raw-admin-role-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P1",
-    "removeBy": "2026-10-31"
-  },
-  "plugins/cbc/components/reportPolicies/CbcAssessmentPolicyPreview.tsx::admin-or-above-workspace-ui": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",

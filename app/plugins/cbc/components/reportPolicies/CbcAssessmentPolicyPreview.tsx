@@ -10,7 +10,7 @@ import { cbcReportPolicyAPI } from '@/app/plugins/cbc/api/reportPolicies';
 import type { CbcReportPolicy } from '@/app/plugins/cbc/types/reportPolicy';
 import type { AssessmentPolicyPreviewContext } from '@/app/core/registry/assessmentPolicyPreviews';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
 
 type CbcPreviewState =
     | { status: 'loading' }
@@ -45,9 +45,13 @@ function resolveCbcSubjectId(context: AssessmentPolicyPreviewContext): number | 
 
 export function CbcAssessmentPolicyPreview(context: AssessmentPolicyPreviewContext) {
     const { termId, subject } = context;
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, capabilities, loading: authLoading } = useAuth();
     const [preview, setPreview] = useState<CbcPreviewState>({ status: 'loading' });
-    const canManagePolicyRoutes = !authLoading && isAdminOrAbove(user, activeRole);
+    const canManagePolicyRoutes = !authLoading && canManageCbcReportPolicyAuthoring({
+        user,
+        capabilities,
+        authoringMode: 'INSTITUTION_GOVERNANCE',
+    });
     const cbcSubjectId = resolveCbcSubjectId(context);
     const subjectProfileId = subject.subject_profile_id ?? null;
 

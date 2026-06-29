@@ -20,7 +20,7 @@ import type { AssessmentPolicyContext } from '@/app/core/types/assessment';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { canManageInstitutionReportPolicy } from '@/app/core/components/reports/reportAccessPolicy';
 
 type GenericPreviewState =
     | { status: 'idle' | 'loading'; surface: PolicySurfaceDefinition | null }
@@ -201,9 +201,9 @@ export function AssessmentPolicyPreviewCard({
     termId = null,
     assessmentContext = null,
 }: AssessmentPolicyPreviewCardProps) {
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, capabilities, loading: authLoading } = useAuth();
     const { plugins, loading: pluginsLoading } = usePlugins();
-    const canManagePolicyRoutes = !authLoading && isAdminOrAbove(user, activeRole);
+    const canManagePolicyRoutes = !authLoading && canManageInstitutionReportPolicy({ user, capabilities });
     const { subjects, loading: subjectsLoading } = useCohortSubjects(cohortId ?? undefined);
     const assessmentSubject = useMemo(
         () => buildAssessmentSubject(cohortId, cohortSubjectId, assessmentContext),

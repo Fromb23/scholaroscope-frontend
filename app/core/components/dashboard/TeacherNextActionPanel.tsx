@@ -178,6 +178,25 @@ function ActionContext({ action }: { action: TeachingActionItem }) {
         );
     }
 
+    if (action.assessment) {
+        return (
+            <div className={`${themeClasses.dashboardPanel} mt-4 grid gap-3 px-4 py-3 md:grid-cols-3`}>
+                <div>
+                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Assessment</p>
+                    <p className="mt-1 text-sm font-semibold theme-text">{action.assessment.name}</p>
+                </div>
+                <div>
+                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Class</p>
+                    <p className="mt-1 text-sm font-semibold theme-text">{action.assessment.cohort_name}</p>
+                </div>
+                <div>
+                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Stage</p>
+                    <p className="mt-1 text-sm font-semibold theme-text">{action.stageLabel}</p>
+                </div>
+            </div>
+        );
+    }
+
     return null;
 }
 
@@ -195,11 +214,11 @@ export function TeacherNextActionPanel({
     const tone = toneStyles[action?.urgency ?? 'success'];
     const supportCount = Math.max(metrics.performance.needsSupport, metrics.attendance.riskLearnerCount);
     const summaryItems = [
-        { label: 'Today', value: todayLessonCount, icon: Calendar },
-        { label: 'Classes', value: teachingCohorts.length, icon: BookOpen },
-        { label: 'Grading', value: metrics.assessments.needsGrading, icon: Award },
-        { label: 'Support', value: supportCount, icon: AlertCircle },
-    ];
+        { label: 'Today', value: todayLessonCount, icon: Calendar, visible: todayLessonCount > 0 },
+        { label: 'Classes', value: teachingCohorts.length, icon: BookOpen, visible: teachingCohorts.length > 0 },
+        { label: 'Grading', value: metrics.assessments.needsGrading, icon: Award, visible: metrics.assessments.needsGrading > 0 },
+        { label: 'Support', value: supportCount, icon: AlertCircle, visible: supportCount > 0 },
+    ].filter((item) => item.visible);
     const termLabel = [currentTerm?.name, currentYear?.name].filter(Boolean).join(' - ');
     const firstSecondary = action?.secondaryActions[0] ?? null;
     const moreActionItems = useMemo<ActionMenuItem[]>(() => {
@@ -243,17 +262,19 @@ export function TeacherNextActionPanel({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[420px]">
-                        {summaryItems.map((item) => (
-                            <div key={item.label} className={`${themeClasses.dashboardMutedPanel} px-3 py-3`}>
-                                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide theme-subtle">
-                                    <item.icon className="h-3.5 w-3.5" />
-                                    <span>{item.label}</span>
+                    {summaryItems.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[420px]">
+                            {summaryItems.map((item) => (
+                                <div key={item.label} className={`${themeClasses.dashboardMutedPanel} px-3 py-3`}>
+                                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide theme-subtle">
+                                        <item.icon className="h-3.5 w-3.5" />
+                                        <span>{item.label}</span>
+                                    </div>
+                                    <p className="mt-2 text-lg font-semibold theme-text">{item.value}</p>
                                 </div>
-                                <p className="mt-2 text-lg font-semibold theme-text">{item.value}</p>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             </div>
 

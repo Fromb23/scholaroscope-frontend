@@ -227,6 +227,18 @@ The dashboard is responsible for remembering unfinished teaching work. A teacher
 
 Scholaroscope must carry unfinished teaching work for the teacher. Lessons, learner tasks, assignments, assessments, grading, and evidence records should produce action items until they are completed, stored, finalized, cancelled, or intentionally dismissed.
 
+## No Empty Memory Card Law
+
+The teaching dashboard is a memory surface, not a statistics wall. It should show unfinished teaching work, risks, blockers, and next actions. If attendance risk, grading, learner support, alerts, assignments, or assessments have no actionable data, their cards should not render.
+
+## Quiet Dashboard Law
+
+When there is no active teaching work, the dashboard should become quiet and show workspace shortcuts. It should not fill the page with zero counts or empty review queues.
+
+## Mobile Notification Law
+
+Notifications must use a mobile-safe panel layout on small screens and a dropdown layout on desktop. The bell must not open a fixed-width desktop dropdown that overflows mobile viewports.
+
 ## Dashboard Single Action Law
 
 The dashboard must show one primary next action first. Supporting widgets may provide context, but they must not repeat the same primary action for the same object.

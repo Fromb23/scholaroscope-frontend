@@ -1,4 +1,8 @@
-import type { AssessmentScore } from '@/app/core/types/assessment';
+import {
+    AssessmentStatus,
+    type Assessment,
+    type AssessmentScore,
+} from '@/app/core/types/assessment';
 import type {
     AssignmentLifecycleNextAction,
     AssignmentTeachingTodayItem,
@@ -41,6 +45,7 @@ export interface TeachingActionItem {
     createdAt: string;
     session?: Session;
     assignmentWork?: AssignmentTeachingTodayItem;
+    assessment?: Assessment;
     assessmentScore?: AssessmentScore;
 }
 
@@ -48,6 +53,7 @@ export interface TeachingActionQueueInput {
     sessions?: Session[];
     sessionReminders?: SessionLifecycleReminder[];
     assignmentWork?: AssignmentTeachingTodayItem[];
+    assessments?: Assessment[];
     pendingAssessmentRows?: AssessmentScore[];
     pendingAssessmentReviewCount?: number;
     learnerSupportCount?: number;
@@ -81,6 +87,9 @@ const SESSION_ACTIVE_PRIORITY = 20;
 const ASSIGNMENT_BLOCKER_PRIORITY = 30;
 const ASSIGNMENT_REVIEW_PRIORITY = 40;
 const ASSESSMENT_REVIEW_PRIORITY = 50;
+const ASSESSMENT_FINALIZE_PRIORITY = 52;
+const ASSESSMENT_ACTIVE_PRIORITY = 54;
+const ASSESSMENT_DRAFT_PRIORITY = 56;
 const SESSION_READY_PRIORITY = 60;
 const LESSON_PREPARATION_PRIORITY = 70;
 const LEARNER_SUPPORT_PRIORITY = 80;
@@ -471,6 +480,7 @@ function buildAssignmentActions(
 function buildAssessmentActions(
     rows: AssessmentScore[],
     pendingAssessmentReviewCount: number,
+    assessments: Assessment[],
     now: Date,
 ): TeachingActionItem[] {
     const actions: TeachingActionItem[] = [];
@@ -528,6 +538,97 @@ function buildAssessmentActions(
             createdAt: now.toISOString(),
         });
     }
+
+    assessments
+        .filter((assessment) => assessment.status !== AssessmentStatus.FINALIZED)
+        .forEach((assessment) => {
+            const isDraft = assessment.status === AssessmentStatus.DRAFT;
+            const isActive = assessment.status === AssessmentStatus.ACTIVE;
+            const canFinalize = Boolean(assessment.can_finalize);
+            const canScore = assessment.can_score !== false;
+            const subjectLabel = `${assessment.subject_name} with ${assessment.cohort_name}`;
+            const hrefBase = `/assessments/${assessment.id}`;
+
+            // TODO: Use unscored learner counts here when the assessment list API exposes them.
+            const action = (() => {
+                if (isActive && canFinalize) {
+                    return {
+                        priority: ASSESSMENT_FINALIZE_PRIORITY,
+                        urgency: 'success' as const,
+                        title: 'Finalize active assessment',
+                        description: `${assessment.name} (${subjectLabel}) is active and ready to finalize.`,
+                        primaryLabel: 'Finalize assessment',
+                        primaryHref: `${hrefBase}?focus=finalize`,
+                        stageLabel: 'Ready to finalize',
+                    };
+                }
+
+                if (isActive && canScore) {
+                    return {
+                        priority: ASSESSMENT_ACTIVE_PRIORITY,
+                        urgency: 'warning' as const,
+                        title: 'Record assessment scores',
+                        description: `${assessment.name} (${subjectLabel}) is active. Keep learner scores current until it is finalized.`,
+                        primaryLabel: 'Record scores',
+                        primaryHref: `${hrefBase}?focus=score-entry`,
+                        stageLabel: 'Active assessment',
+                    };
+                }
+
+                if (isDraft) {
+                    return {
+                        priority: ASSESSMENT_DRAFT_PRIORITY,
+                        urgency: 'info' as const,
+                        title: 'Prepare draft assessment',
+                        description: `${assessment.name} (${subjectLabel}) is still draft and should be prepared or activated before learners need it.`,
+                        primaryLabel: assessment.can_activate === false ? 'Open assessment' : 'Prepare assessment',
+                        primaryHref: `${hrefBase}?focus=prepare`,
+                        stageLabel: 'Draft assessment',
+                    };
+                }
+
+                return {
+                    priority: ASSESSMENT_ACTIVE_PRIORITY + 1,
+                    urgency: 'info' as const,
+                    title: 'Review active assessment',
+                    description: `${assessment.name} (${subjectLabel}) is active and remains dashboard work until finalized.`,
+                    primaryLabel: 'Open assessment',
+                    primaryHref: `${hrefBase}?focus=review`,
+                    stageLabel: 'Active assessment',
+                };
+            })();
+
+            const secondaryActions: TeachingActionSecondaryAction[] = [
+                ...(assessment.can_update && !isActive
+                    ? [{ label: 'Edit assessment', href: `/assessments/${assessment.id}/edit` }]
+                    : []),
+                ...(isActive && canScore && action.primaryLabel !== 'Record scores'
+                    ? [{ label: 'Record scores', href: `${hrefBase}?focus=score-entry` }]
+                    : []),
+                ...(isActive && canFinalize && action.primaryLabel !== 'Finalize assessment'
+                    ? [{ label: 'Finalize assessment', href: `${hrefBase}?focus=finalize` }]
+                    : []),
+            ];
+
+            actions.push({
+                id: `assessment-${assessment.id}-${assessment.status.toLowerCase()}`,
+                objectType: 'assessment',
+                objectId: assessment.id,
+                dedupeKey: `${assessmentObjectKey(assessment.id)}:${assessment.status.toLowerCase()}`,
+                objectKey: assessmentObjectKey(assessment.id),
+                priority: action.priority,
+                urgency: action.urgency,
+                title: action.title,
+                description: action.description,
+                primaryLabel: action.primaryLabel,
+                primaryHref: action.primaryHref,
+                secondaryActions,
+                stageLabel: action.stageLabel,
+                source: 'assessment_lifecycle',
+                createdAt: safeIso(assessment.assessment_date ?? assessment.created_at, now),
+                assessment,
+            });
+        });
 
     return actions;
 }
@@ -642,6 +743,7 @@ export function buildTeachingActionQueue(input: TeachingActionQueueInput): Teach
         ...buildAssessmentActions(
             input.pendingAssessmentRows ?? [],
             input.pendingAssessmentReviewCount ?? 0,
+            input.assessments ?? [],
             now,
         ),
         ...buildLearnerSupportActions(input, now),
@@ -667,8 +769,9 @@ export function buildTeachingActionQueue(input: TeachingActionQueueInput): Teach
         seenObjectKeys.add(action.objectKey);
     });
 
-    const primaryAction = actions[0] ?? null;
-    const supportingActions = actions.slice(1).filter((action) => action.source !== 'workspace_shortcut');
+    const unfinishedActions = actions.filter((action) => action.source !== 'workspace_shortcut');
+    const primaryAction = unfinishedActions[0] ?? null;
+    const supportingActions = unfinishedActions.slice(1);
     const relatedPrimaryActions = primaryAction
         ? ranked.filter((action) => (
             action.objectKey === primaryAction.objectKey
@@ -683,7 +786,7 @@ export function buildTeachingActionQueue(input: TeachingActionQueueInput): Teach
         suppressedDedupeKeys.add(primaryAction.dedupeKey);
     }
 
-    const unfinishedWorkCount = actions.filter((action) => action.source !== 'workspace_shortcut').length;
+    const unfinishedWorkCount = unfinishedActions.length;
 
     return {
         actions,

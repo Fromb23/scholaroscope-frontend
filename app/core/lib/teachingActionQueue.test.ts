@@ -3,6 +3,15 @@ import {
   buildTeachingActionQueue,
   getSessionTeachingObjectKey,
 } from './teachingActionQueue';
+import {
+  AssessmentParticipationMode,
+  AssessmentScoreStatus,
+  AssessmentStatus,
+  AssessmentType,
+  EvaluationType,
+  type Assessment,
+  type AssessmentScore,
+} from '@/app/core/types/assessment';
 import type { AssignmentTeachingTodayItem } from '@/app/core/types/assignments';
 import type { Session, SessionLifecycleReminder } from '@/app/core/types/session';
 
@@ -94,6 +103,77 @@ function buildAssignmentWork(overrides: Partial<AssignmentTeachingTodayItem> = {
     ready_for_next_action: true,
     blocking_items: [],
     warnings: [],
+    ...overrides,
+  };
+}
+
+function buildAssessment(overrides: Partial<Assessment> = {}): Assessment {
+  return {
+    id: 91,
+    term: 1,
+    term_name: 'Term 1',
+    cohort_subject: 12,
+    cohort_id: 7,
+    cohort_name: 'Grade 7',
+    subject_id: 4,
+    subject_name: 'Integrated Science',
+    subject_code: 'SCI',
+    curriculum_id: 3,
+    curriculum_name: 'CBC',
+    curriculum_type: 'CBC',
+    cohort_curriculum_type: 'CBC',
+    subject_curriculum_type: 'CBC',
+    subject_source: 'kernel',
+    teaching_link_id: null,
+    cbc_cohort_subject_id: null,
+    subject_profile_id: null,
+    name: 'Matter quiz',
+    assessment_type: AssessmentType.CAT,
+    assessment_type_display: 'CAT',
+    evaluation_type: EvaluationType.NUMERIC,
+    evaluation_type_display: 'Numeric',
+    total_marks: 20,
+    rubric_scale: null,
+    rubric_scale_name: null,
+    assessment_date: '2026-06-30',
+    description: '',
+    participation_mode: AssessmentParticipationMode.NONE,
+    status: AssessmentStatus.DRAFT,
+    status_display: 'Draft',
+    scores_count: 0,
+    can_update: true,
+    can_delete: true,
+    can_activate: true,
+    can_finalize: false,
+    can_score: true,
+    created_at: '2026-06-29T08:00:00Z',
+    created_by: 5,
+    ...overrides,
+  };
+}
+
+function buildAssessmentScore(overrides: Partial<AssessmentScore> = {}): AssessmentScore {
+  return {
+    id: 101,
+    assessment: 91,
+    assessment_name: 'Matter quiz',
+    subject_name: 'Integrated Science',
+    student: 301,
+    student_name: 'Amina Otieno',
+    student_admission: 'ADM-301',
+    score: null,
+    total_marks: 20,
+    percentage: null,
+    rubric_level: null,
+    rubric_level_label: null,
+    rubric_level_code: null,
+    status: AssessmentScoreStatus.PENDING_REVIEW,
+    status_display: 'Pending review',
+    is_pending_review: true,
+    comments: '',
+    submitted_at: null,
+    graded_at: '2026-06-29T08:00:00Z',
+    graded_by: 'teacher@example.test',
     ...overrides,
   };
 }
@@ -197,6 +277,80 @@ describe('teachingActionQueue', () => {
 
     expect(queue.actions.some((action) => action.objectKey === 'assignment:46')).toBe(false);
     expect(queue.quiet).toBe(true);
+  });
+
+  it('does not promote workspace shortcuts to primary work on a quiet dashboard', () => {
+    const queue = buildTeachingActionQueue({
+      teachingLoadCount: 1,
+      workspaceShortcuts: [
+        { id: 'lesson-plans', label: 'Lesson preparations', href: '/lesson-plans' },
+      ],
+      now: new Date('2026-06-29T10:00:00Z'),
+    });
+
+    expect(queue.quiet).toBe(true);
+    expect(queue.unfinishedWorkCount).toBe(0);
+    expect(queue.primaryAction).toBeNull();
+    expect(queue.actions.some((action) => action.source === 'workspace_shortcut')).toBe(true);
+  });
+
+  it('routes pending assessment score rows to exact score entry with student focus', () => {
+    const queue = buildTeachingActionQueue({
+      pendingAssessmentRows: [buildAssessmentScore()],
+      pendingAssessmentReviewCount: 1,
+      teachingLoadCount: 1,
+      now: new Date('2026-06-29T10:00:00Z'),
+    });
+
+    expect(queue.primaryAction?.objectType).toBe('assessment');
+    expect(queue.primaryAction?.primaryHref).toBe('/assessments/91?focus=score-entry&student=301');
+  });
+
+  it('keeps draft and active assessments in teaching memory until finalized', () => {
+    const queue = buildTeachingActionQueue({
+      assessments: [
+        buildAssessment({
+          id: 91,
+          status: AssessmentStatus.DRAFT,
+          can_activate: true,
+          can_finalize: false,
+        }),
+        buildAssessment({
+          id: 92,
+          status: AssessmentStatus.ACTIVE,
+          can_score: true,
+          can_finalize: false,
+        }),
+        buildAssessment({
+          id: 93,
+          status: AssessmentStatus.ACTIVE,
+          can_score: true,
+          can_finalize: true,
+        }),
+        buildAssessment({
+          id: 94,
+          status: AssessmentStatus.FINALIZED,
+          can_score: false,
+          can_finalize: false,
+        }),
+      ],
+      teachingLoadCount: 1,
+      now: new Date('2026-06-29T10:00:00Z'),
+    });
+
+    const assessmentActions = queue.actions.filter((action) => action.objectType === 'assessment');
+
+    expect(assessmentActions.map((action) => action.objectKey)).toEqual(
+      expect.arrayContaining(['assessment:91', 'assessment:92', 'assessment:93'])
+    );
+    expect(assessmentActions.some((action) => action.objectKey === 'assessment:94')).toBe(false);
+    expect(assessmentActions.map((action) => action.primaryHref)).toEqual(
+      expect.arrayContaining([
+        '/assessments/91?focus=prepare',
+        '/assessments/92?focus=score-entry',
+        '/assessments/93?focus=finalize',
+      ])
+    );
   });
 
   it('deduplicates the same session action across reminders and today sessions', () => {

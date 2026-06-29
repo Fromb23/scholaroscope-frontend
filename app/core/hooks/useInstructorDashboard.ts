@@ -389,6 +389,7 @@ export function useInstructorDashboard() {
         metrics,
         alerts,
         sessions,
+        assessments,
         teachingCohorts,
         currentTerm,
         currentYear,

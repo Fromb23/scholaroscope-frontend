@@ -14,7 +14,7 @@ import {
 } from '@/app/core/lib/policySurfaces';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
+import { canManageInstitutionReportPolicy } from '@/app/core/components/reports/reportAccessPolicy';
 
 function SurfaceIcon({ surface }: { surface: PolicySurfaceDefinition }) {
     if (surface.key === 'cbc') {
@@ -29,10 +29,10 @@ function SurfaceIcon({ surface }: { surface: PolicySurfaceDefinition }) {
 }
 
 export function ReportPoliciesHubPage() {
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, capabilities, loading: authLoading } = useAuth();
     const { curricula, loading: curriculaLoading, error: curriculaError } = useCurricula();
     const { plugins, loading: pluginsLoading, error: pluginsError } = usePlugins();
-    const canManagePolicies = isAdminOrAbove(user, activeRole);
+    const canManagePolicies = canManageInstitutionReportPolicy({ user, capabilities });
 
     const surfaces = getAvailablePolicySurfaces({
         curricula,

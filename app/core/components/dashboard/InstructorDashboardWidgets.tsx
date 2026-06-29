@@ -270,6 +270,10 @@ export function TodayScheduleCard({ sessions, queue }: TodayScheduleCardProps) {
     const router = useRouter();
     const preview = sessions.slice(0, 4);
 
+    if (preview.length === 0) {
+        return null;
+    }
+
     return (
         <div className={dashboardCardClass}>
             <div className="flex items-center justify-between mb-6">
@@ -287,69 +291,45 @@ export function TodayScheduleCard({ sessions, queue }: TodayScheduleCardProps) {
                 </button>
             </div>
 
-            {preview.length > 0 ? (
-                <div className="space-y-3">
-                    {preview.map((session) => {
-                        const objectKey = getSessionTeachingObjectKey(session.id);
-                        const isPrimaryActionObject = queue?.primaryAction?.objectKey === objectKey;
-                        const queueAction = queue?.actions.find((action) => action.objectKey === objectKey);
+            <div className="space-y-3">
+                {preview.map((session) => {
+                    const objectKey = getSessionTeachingObjectKey(session.id);
+                    const isPrimaryActionObject = queue?.primaryAction?.objectKey === objectKey;
+                    const queueAction = queue?.actions.find((action) => action.objectKey === objectKey);
 
-                        return (
-                            <div
-                                key={session.id}
-                                onClick={() => router.push(`/sessions/${session.id}`)}
-                                className="group cursor-pointer rounded-xl p-4 theme-success-surface transition-all hover:scale-[1.02] hover:shadow-md"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Clock className="w-4 h-4 text-[color:var(--color-success)]" />
-                                            <span className="font-bold theme-text">
-                                                {session.start_time ?? 'TBA'} - {session.end_time ?? 'TBA'}
-                                            </span>
-                                        </div>
-                                        <p className="font-semibold theme-text">{session.subject_name}</p>
-                                        <p className="text-sm theme-muted">{session.cohort_name} - {session.venue || 'TBA'}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="hidden text-sm font-semibold text-[color:var(--color-success)] md:inline">
-                                            {isPrimaryActionObject
-                                                ? 'Action shown above'
-                                                : queueAction?.stageLabel ?? getTodayScheduleStatusLabel(session)}
+                    return (
+                        <div
+                            key={session.id}
+                            onClick={() => router.push(`/sessions/${session.id}`)}
+                            className="group cursor-pointer rounded-xl p-4 theme-success-surface transition-all hover:scale-[1.02] hover:shadow-md"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Clock className="w-4 h-4 text-[color:var(--color-success)]" />
+                                        <span className="font-bold theme-text">
+                                            {session.start_time ?? 'TBA'} - {session.end_time ?? 'TBA'}
                                         </span>
-                                        <span className="text-sm font-semibold text-[color:var(--color-success)] md:hidden">
-                                            {isPrimaryActionObject ? 'Shown above' : 'Open'}
-                                        </span>
-                                        <ChevronRight className="w-5 h-5 theme-subtle transition-colors group-hover:text-[color:var(--color-success)]" />
                                     </div>
+                                    <p className="font-semibold theme-text">{session.subject_name}</p>
+                                    <p className="text-sm theme-muted">{session.cohort_name} - {session.venue || 'TBA'}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="hidden text-sm font-semibold text-[color:var(--color-success)] md:inline">
+                                        {isPrimaryActionObject
+                                            ? 'Action shown above'
+                                            : queueAction?.stageLabel ?? getTodayScheduleStatusLabel(session)}
+                                    </span>
+                                    <span className="text-sm font-semibold text-[color:var(--color-success)] md:hidden">
+                                        {isPrimaryActionObject ? 'Shown above' : 'Open'}
+                                    </span>
+                                    <ChevronRight className="w-5 h-5 theme-subtle transition-colors group-hover:text-[color:var(--color-success)]" />
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
-            ) : (
-                <div className="py-12 text-center">
-                    <Calendar className="mx-auto mb-3 h-12 w-12 theme-subtle" />
-                    <p className="text-sm font-medium theme-text">No lessons scheduled today.</p>
-                    <p className="mt-1 text-sm theme-muted">
-                        Prepare a lesson or review your assigned classes before the next teaching day.
-                    </p>
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                        <button
-                            onClick={() => router.push('/lesson-plans/new')}
-                            className="theme-focus-ring theme-button-primary rounded-lg px-4 py-2 text-sm font-semibold"
-                        >
-                            Prepare a lesson
-                        </button>
-                        <button
-                            onClick={() => router.push('/academic/cohorts')}
-                            className="theme-focus-ring theme-button-secondary rounded-lg px-4 py-2 text-sm font-semibold"
-                        >
-                            View my classes
-                        </button>
-                    </div>
-                </div>
-            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -364,6 +344,14 @@ interface LearnersAtRiskProps {
     attendanceRiskError: string | null;
 }
 
+export function shouldRenderLearnerRiskMemory({
+    needsSupport,
+    attendanceRiskCount,
+    attendanceRiskLearnerCount,
+}: Pick<LearnersAtRiskProps, 'needsSupport' | 'attendanceRiskCount' | 'attendanceRiskLearnerCount'>): boolean {
+    return needsSupport > 0 || attendanceRiskCount > 0 || attendanceRiskLearnerCount > 0;
+}
+
 export function LearnersAtRisk({
     needsSupport,
     attendanceRiskCount,
@@ -376,7 +364,13 @@ export function LearnersAtRisk({
     const attendanceRiskValue = attendanceRiskLearnerCount > 0
         ? attendanceRiskLearnerCount
         : attendanceRiskCount;
+    const hasAttendanceRisk = attendanceRiskValue > 0;
+    const hasAcademicSupportRisk = needsSupport > 0;
     const attendanceRiskDisabled = attendanceRiskLoading || attendanceRiskError !== null;
+
+    if (!shouldRenderLearnerRiskMemory({ needsSupport, attendanceRiskCount, attendanceRiskLearnerCount })) {
+        return null;
+    }
 
     return (
         <div className={dashboardCardClass}>
@@ -386,65 +380,62 @@ export function LearnersAtRisk({
                 </div>
                 <h3 className="text-xl font-bold theme-text">Learners Requiring Attention</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (!attendanceRiskDisabled) {
-                            router.push(attendanceRiskPath);
-                        }
-                    }}
-                    disabled={attendanceRiskDisabled}
-                    className={`p-5 rounded-xl border text-left transition-all ${
-                        attendanceRiskDisabled
-                            ? 'theme-warning-surface cursor-default'
-                            : 'theme-warning-surface hover:scale-[1.02] hover:shadow-md'
-                    }`}
-                >
-                    <div className="flex items-center gap-3 mb-3">
-                        <UserX className="w-6 h-6 text-[color:var(--color-warning)]" />
-                        <p className="font-bold theme-text">Attendance Risk</p>
-                    </div>
-                    {attendanceRiskLoading ? (
-                        <div className="space-y-2">
-                            <div className="h-8 w-20 rounded bg-orange-200/70 animate-pulse" />
-                            <div className="h-3 w-40 rounded bg-orange-100 animate-pulse" />
+            <div className={`grid grid-cols-1 gap-4 ${hasAttendanceRisk && hasAcademicSupportRisk ? 'md:grid-cols-2' : ''}`}>
+                {hasAttendanceRisk ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!attendanceRiskDisabled) {
+                                router.push(attendanceRiskPath);
+                            }
+                        }}
+                        disabled={attendanceRiskDisabled}
+                        className={`p-5 rounded-xl border text-left transition-all ${
+                            attendanceRiskDisabled
+                                ? 'theme-warning-surface cursor-default'
+                                : 'theme-warning-surface hover:scale-[1.02] hover:shadow-md'
+                        }`}
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <UserX className="w-6 h-6 text-[color:var(--color-warning)]" />
+                            <p className="font-bold theme-text">Attendance Risk</p>
                         </div>
-                    ) : attendanceRiskError ? (
-                        <>
-                            <p className="text-sm font-medium theme-text">Could not load attendance risk</p>
-                            <p className="mt-1 text-xs theme-muted">
-                                Try refreshing the dashboard.
-                            </p>
-                        </>
-                    ) : attendanceRiskCount === 0 ? (
-                        <>
-                            <p className="text-sm font-medium theme-text">No current attendance risk</p>
-                            <p className="mt-1 text-xs theme-muted">
-                                Based on completed lessons
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <p className="mb-1 text-3xl font-bold text-[color:var(--color-warning)]">{attendanceRiskValue}</p>
-                            <p className="text-xs theme-muted">
-                                Missing your lessons frequently
-                            </p>
-                        </>
-                    )}
-                </button>
+                        {attendanceRiskLoading ? (
+                            <div className="space-y-2">
+                                <div className="h-8 w-20 rounded bg-orange-200/70 animate-pulse" />
+                                <div className="h-3 w-40 rounded bg-orange-100 animate-pulse" />
+                            </div>
+                        ) : attendanceRiskError ? (
+                            <>
+                                <p className="text-sm font-medium theme-text">Could not load attendance risk</p>
+                                <p className="mt-1 text-xs theme-muted">
+                                    Try refreshing the dashboard.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="mb-1 text-3xl font-bold text-[color:var(--color-warning)]">{attendanceRiskValue}</p>
+                                <p className="text-xs theme-muted">
+                                    Missing your lessons frequently
+                                </p>
+                            </>
+                        )}
+                    </button>
+                ) : null}
 
-                <button
-                    onClick={() => router.push('/learners?filter=struggling')}
-                    className="rounded-xl p-5 text-left theme-danger-surface transition-all hover:scale-[1.02] hover:shadow-md"
-                >
-                    <div className="flex items-center gap-3 mb-3">
-                        <TrendingDown className="w-6 h-6 text-[color:var(--color-danger)]" />
-                        <p className="font-bold theme-text">Academic Struggle</p>
-                    </div>
-                    <p className="text-3xl font-bold text-red-600 mb-1">{needsSupport}</p>
-                    <p className="text-xs theme-muted">Scoring below 50%</p>
-                </button>
+                {hasAcademicSupportRisk ? (
+                    <button
+                        onClick={() => router.push('/learners?filter=struggling')}
+                        className="rounded-xl p-5 text-left theme-danger-surface transition-all hover:scale-[1.02] hover:shadow-md"
+                    >
+                        <div className="flex items-center gap-3 mb-3">
+                            <TrendingDown className="w-6 h-6 text-[color:var(--color-danger)]" />
+                            <p className="font-bold theme-text">Academic Struggle</p>
+                        </div>
+                        <p className="text-3xl font-bold text-red-600 mb-1">{needsSupport}</p>
+                        <p className="text-xs theme-muted">Scoring below 50%</p>
+                    </button>
+                ) : null}
             </div>
         </div>
     );
@@ -582,6 +573,23 @@ interface AssessmentsSummaryCardProps {
     queue?: TeachingActionQueue;
 }
 
+export function getAssessmentDashboardWorkItems(queue?: TeachingActionQueue) {
+    return (queue?.actions ?? []).filter((action) => (
+        action.objectType === 'assessment'
+        && action.source !== 'workspace_shortcut'
+    ));
+}
+
+export function shouldRenderAssessmentsSummaryCard({
+    needsGrading,
+    pendingReviewRows,
+    queue,
+}: Pick<AssessmentsSummaryCardProps, 'needsGrading' | 'pendingReviewRows' | 'queue'>): boolean {
+    return needsGrading > 0
+        || pendingReviewRows.length > 0
+        || getAssessmentDashboardWorkItems(queue).length > 0;
+}
+
 export function AssessmentsSummaryCard({
     needsGrading,
     upcomingAssessments,
@@ -590,9 +598,17 @@ export function AssessmentsSummaryCard({
 }: AssessmentsSummaryCardProps) {
     const router = useRouter();
     const previewRows = pendingReviewRows.slice(0, 4);
+    const assessmentWorkItems = getAssessmentDashboardWorkItems(queue);
+    const lifecycleWorkItems = assessmentWorkItems.filter((action) => action.source !== 'assessment_review');
+    const reviewCount = Math.max(needsGrading, pendingReviewRows.length);
+    const firstLifecycleAction = lifecycleWorkItems[0] ?? null;
     const primaryAssessmentObjectKey = queue?.primaryAction?.objectType === 'assessment'
         ? queue.primaryAction.objectKey
         : null;
+
+    if (!shouldRenderAssessmentsSummaryCard({ needsGrading, pendingReviewRows, queue })) {
+        return null;
+    }
 
     return (
         <div className={dashboardCardClass}>
@@ -602,77 +618,132 @@ export function AssessmentsSummaryCard({
                 </div>
                 <h3 className="text-xl font-bold theme-text">Assessments &amp; Grading</h3>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                    type="button"
-                    onClick={() => router.push('/assessments?status=pending')}
-                    className="rounded-xl p-4 text-left theme-warning-surface transition-all hover:scale-[1.02] hover:shadow-md"
-                >
-                    <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Needs review</p>
-                    <p className="mt-2 text-3xl font-bold text-amber-700">{needsGrading}</p>
-                    <p className="mt-1 text-xs theme-muted">
-                        {needsGrading > 0 ? 'Open your review queue.' : 'No review queue right now.'}
-                    </p>
-                </button>
-                <button
-                    type="button"
-                    onClick={() => router.push('/assessments')}
-                    className="rounded-xl p-4 text-left theme-info-surface transition-all hover:scale-[1.02] hover:shadow-md"
-                >
-                    <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Upcoming</p>
-                    <p className="mt-2 text-3xl font-bold text-blue-700">{upcomingAssessments}</p>
-                    <p className="mt-1 text-xs theme-muted">
-                        Assessment{upcomingAssessments === 1 ? '' : 's'} due in the next week.
-                    </p>
-                </button>
+            <div className={`grid gap-3 ${reviewCount > 0 && lifecycleWorkItems.length > 0 ? 'sm:grid-cols-2' : ''}`}>
+                {reviewCount > 0 ? (
+                    <button
+                        type="button"
+                        onClick={() => router.push('/assessments?status=pending')}
+                        className="rounded-xl p-4 text-left theme-warning-surface transition-all hover:scale-[1.02] hover:shadow-md"
+                    >
+                        <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Needs review</p>
+                        <p className="mt-2 text-3xl font-bold text-amber-700">{reviewCount}</p>
+                        <p className="mt-1 text-xs theme-muted">Open learner score review.</p>
+                    </button>
+                ) : null}
+                {lifecycleWorkItems.length > 0 ? (
+                    <button
+                        type="button"
+                        onClick={() => router.push(firstLifecycleAction?.primaryHref ?? '/assessments')}
+                        className="rounded-xl p-4 text-left theme-info-surface transition-all hover:scale-[1.02] hover:shadow-md"
+                    >
+                        <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Active work</p>
+                        <p className="mt-2 text-3xl font-bold text-blue-700">{lifecycleWorkItems.length}</p>
+                        <p className="mt-1 text-xs theme-muted">
+                            {upcomingAssessments > 0
+                                ? `${upcomingAssessments} due in the next week.`
+                                : 'Draft or active until finalized.'}
+                        </p>
+                    </button>
+                ) : null}
             </div>
-            <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold theme-text">Review queue</p>
-                    {needsGrading > previewRows.length ? (
-                        <span className="text-xs theme-muted">
-                            Showing {previewRows.length} of {needsGrading}
-                        </span>
-                    ) : null}
+            {reviewCount > 0 ? (
+                <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold theme-text">Review queue</p>
+                        {reviewCount > previewRows.length && previewRows.length > 0 ? (
+                            <span className="text-xs theme-muted">
+                                Showing {previewRows.length} of {reviewCount}
+                            </span>
+                        ) : null}
+                    </div>
+                    {previewRows.length > 0 ? (
+                        <div className="space-y-2">
+                            {previewRows.map((score) => (
+                                <button
+                                    key={score.id}
+                                    type="button"
+                                    onClick={() => router.push(`/assessments/${score.assessment}?focus=score-entry&student=${score.student}`)}
+                                    className="w-full rounded-xl border theme-border bg-white/70 px-4 py-3 text-left transition-all hover:scale-[1.01] hover:shadow-sm"
+                                >
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold theme-text">
+                                                {score.student_name}
+                                            </p>
+                                            <p className="truncate text-xs theme-muted">
+                                                {score.assessment_name}
+                                            </p>
+                                        </div>
+                                        <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                                            {primaryAssessmentObjectKey === getAssessmentTeachingObjectKey(score.assessment)
+                                                ? 'Action shown above'
+                                                : score.status_display || 'Pending review'}
+                                        </span>
+                                    </div>
+                                    <p className="mt-2 text-xs theme-muted">
+                                        {score.score == null && score.rubric_level == null
+                                            ? 'Score, rubric level, or review status still needs to be recorded.'
+                                            : 'Open this learner row to finish the review.'}
+                                    </p>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => router.push('/assessments?status=pending')}
+                            className="w-full rounded-xl border theme-border bg-white/70 px-4 py-3 text-left transition-all hover:scale-[1.01] hover:shadow-sm"
+                        >
+                            <p className="text-sm font-semibold theme-text">Open assessment review queue</p>
+                            <p className="mt-1 text-xs theme-muted">
+                                {reviewCount} learner score{reviewCount === 1 ? '' : 's'} need review.
+                            </p>
+                        </button>
+                    )}
                 </div>
-                {previewRows.length > 0 ? (
+            ) : null}
+
+            {lifecycleWorkItems.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold theme-text">Assessment work</p>
+                        {lifecycleWorkItems.length > 4 ? (
+                            <span className="text-xs theme-muted">
+                                Showing 4 of {lifecycleWorkItems.length}
+                            </span>
+                        ) : null}
+                    </div>
                     <div className="space-y-2">
-                        {previewRows.map((score) => (
+                        {lifecycleWorkItems.slice(0, 4).map((action) => (
                             <button
-                                key={score.id}
+                                key={action.dedupeKey}
                                 type="button"
-                                onClick={() => router.push(`/assessments/${score.assessment}?focus=score-entry&student=${score.student}`)}
+                                onClick={() => router.push(action.primaryHref)}
                                 className="w-full rounded-xl border theme-border bg-white/70 px-4 py-3 text-left transition-all hover:scale-[1.01] hover:shadow-sm"
                             >
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-semibold theme-text">
-                                            {score.student_name}
+                                            {action.assessment?.name ?? action.title}
                                         </p>
                                         <p className="truncate text-xs theme-muted">
-                                            {score.assessment_name}
+                                            {action.description}
                                         </p>
                                     </div>
-                                    <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">
-                                        {primaryAssessmentObjectKey === getAssessmentTeachingObjectKey(score.assessment)
+                                    <span className="shrink-0 rounded-full bg-blue-100 px-2 py-1 text-[11px] font-semibold text-blue-700">
+                                        {primaryAssessmentObjectKey === action.objectKey
                                             ? 'Action shown above'
-                                            : score.status_display || 'Pending review'}
+                                            : action.stageLabel}
                                     </span>
                                 </div>
                                 <p className="mt-2 text-xs theme-muted">
-                                    {score.score == null && score.rubric_level == null
-                                        ? 'Score, rubric level, or review status still needs to be recorded.'
-                                        : 'Open this learner row to finish the review.'}
+                                    {action.primaryLabel}
                                 </p>
                             </button>
                         ))}
                     </div>
-                ) : (
-                    <div className="rounded-xl border theme-border bg-white/70 px-4 py-3 text-sm theme-muted">
-                        No learner rows are waiting for review right now.
-                    </div>
-                )}
-            </div>
+                </div>
+            ) : null}
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                 <button
                     type="button"
@@ -685,11 +756,17 @@ export function AssessmentsSummaryCard({
                             router.push(`/assessments/${firstPendingRow.assessment}?focus=score-entry&student=${firstPendingRow.student}`);
                             return;
                         }
+                        if (firstLifecycleAction) {
+                            router.push(firstLifecycleAction.primaryHref);
+                            return;
+                        }
                         router.push('/assessments');
                     }}
                     className="theme-focus-ring theme-button-primary w-full rounded-lg px-4 py-2 text-sm font-semibold sm:w-auto"
                 >
-                    {previewRows.length > 0 && !primaryAssessmentObjectKey ? 'Review now' : 'Open assessments'}
+                    {previewRows.length > 0 && !primaryAssessmentObjectKey
+                        ? 'Review now'
+                        : firstLifecycleAction?.primaryLabel ?? 'Open assessments'}
                 </button>
                 <button
                     type="button"

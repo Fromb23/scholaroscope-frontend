@@ -552,6 +552,7 @@ export function useAssessmentDetailPage() {
         exportError,
         searchQuery,
         downloadingPdf,
+        focusTarget,
         scoreEntryFocusRequest,
         focusedStudentId,
         visibleLearnerCount: filteredScores.length,

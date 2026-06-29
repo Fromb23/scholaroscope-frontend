@@ -118,7 +118,7 @@ describe('freelance dashboard quick actions', () => {
       'utf8',
     );
 
-    expect(source).toContain('quiet={teachingActionQueue.quiet && assignmentWork.length === 0}');
+    expect(source).toContain('quiet={teachingActionQueue.quiet && !hasActiveAssignmentWork}');
   });
 
   it('uses the central teaching action queue with assignment workflow memory', () => {
@@ -129,7 +129,32 @@ describe('freelance dashboard quick actions', () => {
 
     expect(source).toContain('buildTeachingActionQueue');
     expect(source).toContain('assignmentWork');
+    expect(source).toContain('assessments');
     expect(source).toContain('sessionReminders: sessionReminderState.reminders');
+  });
+
+  it('gates empty learner and assessment memory cards before mounting them', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('shouldRenderLearnerRiskMemory');
+    expect(source).toContain('shouldRenderAssessmentsSummaryCard');
+    expect(source).toContain('showMemoryGrid ? (');
+    expect(source).toContain('showLearnerRiskMemory ? (');
+    expect(source).toContain('showAssessmentMemory ? (');
+  });
+
+  it('lets quiet dashboards show workspace shortcuts without empty memory sections', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/dashboard/InstructorDashboard.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('showTodayScheduleMemory = sessions.length > 0');
+    expect(source).toContain('showMemoryGrid = showTodayScheduleMemory || showLearnerRiskMemory || showAssessmentMemory');
+    expect(source).toContain('<TeachingWorkspaceCard');
   });
 
   it('uses useInstructorDashboard assignmentWork from useAssignmentTeachingToday', () => {
