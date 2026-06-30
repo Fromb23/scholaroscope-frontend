@@ -8,6 +8,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { useToast } from '@/app/components/ui/toast/useToast';
 import { ButtonPendingContent, CardSkeleton, SectionLoading } from '@/app/components/ui/loading';
 import { useCurricula } from '@/app/core/hooks/useAcademic';
 import { useSubjectsPage } from '@/app/core/hooks/academic/useSubjectsPage';
@@ -87,6 +88,7 @@ function contentFilterLabel(filter: ContentFilter): string {
 }
 
 export function SubjectCataloguePage() {
+  const { showToast } = useToast();
   const searchParams = useSearchParams();
   const { curricula } = useCurricula();
   const { canManageSubjects } = useSubjectsPage();
@@ -103,7 +105,6 @@ export function SubjectCataloguePage() {
   const [catalog, setCatalog] = useState<SubjectCatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [actionId, setActionId] = useState<string | null>(null);
   const [search, setSearch] = useState(initialSubject);
@@ -167,7 +168,7 @@ export function SubjectCataloguePage() {
     if (!isContentReady(item)) {
       const message = contentMissingMessage(item);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
-      setToastMessage(message);
+      showToast({ message, severity: 'warning' });
       return;
     }
     setActionId(item.id);
@@ -179,11 +180,11 @@ export function SubjectCataloguePage() {
         level: item.level,
       });
       await loadCatalog();
-      setToastMessage(`${catalogRowLabel(item)} is now offered by this workspace.`);
+      showToast({ message: `${catalogRowLabel(item)} is now offered by this workspace.`, severity: 'success' });
     } catch (error) {
       const message = extractErrorMessage(error as ApiError, `Failed to offer ${catalogRowLabel(item)}.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
-      setToastMessage(message);
+      showToast({ message, severity: 'error' });
     } finally {
       setActionId(null);
     }
@@ -200,11 +201,11 @@ export function SubjectCataloguePage() {
     try {
       const result = await subjectOfferingAPI.remove(item.offering_id, activeCurriculum?.id);
       await loadCatalog();
-      setToastMessage(result.detail ?? `${label} was removed from this workspace.`);
+      showToast({ message: result.detail ?? `${label} was removed from this workspace.`, severity: 'success' });
     } catch (error) {
       const message = extractErrorMessage(error as ApiError, `Failed to remove ${label}.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
-      setToastMessage(message);
+      showToast({ message, severity: 'error' });
     } finally {
       setActionId(null);
     }
@@ -218,11 +219,11 @@ export function SubjectCataloguePage() {
     try {
       await subjectOfferingAPI.restore(item.offering_id, activeCurriculum.id);
       await loadCatalog();
-      setToastMessage(`${label} has been restored.`);
+      showToast({ message: `${label} has been restored.`, severity: 'success' });
     } catch (error) {
       const message = extractErrorMessage(error as ApiError, `Failed to restore ${label}.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
-      setToastMessage(message);
+      showToast({ message, severity: 'error' });
     } finally {
       setActionId(null);
     }
@@ -234,7 +235,7 @@ export function SubjectCataloguePage() {
     if (!isContentReady(item)) {
       const message = contentMissingMessage(item);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
-      setToastMessage(message);
+      showToast({ message, severity: 'warning' });
       return;
     }
     setActionId(item.id);
@@ -242,11 +243,11 @@ export function SubjectCataloguePage() {
     try {
       await subjectOfferingAPI.reoffer(item.offering_id, activeCurriculum.id);
       await loadCatalog();
-      setToastMessage(`${label} has been offered again.`);
+      showToast({ message: `${label} has been offered again.`, severity: 'success' });
     } catch (error) {
       const message = extractErrorMessage(error as ApiError, `Failed to offer ${label} again.`);
       setRowErrors((current) => ({ ...current, [item.id]: message }));
-      setToastMessage(message);
+      showToast({ message, severity: 'error' });
     } finally {
       setActionId(null);
     }
@@ -332,14 +333,6 @@ export function SubjectCataloguePage() {
       </div>
 
       {pageError ? <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} /> : null}
-      {toastMessage ? (
-        <ErrorBanner
-          message={toastMessage}
-          variant="info"
-          onDismiss={() => setToastMessage(null)}
-          autoDismissMs={3000}
-        />
-      ) : null}
 
       <Card>
         <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto_auto] lg:items-end">

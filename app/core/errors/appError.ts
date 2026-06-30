@@ -14,6 +14,7 @@ export type AppErrorKind =
   | 'unknown';
 
 export type AppErrorSeverity = 'info' | 'warning' | 'error';
+export type ErrorChannel = 'toast' | 'inline' | 'banner' | 'page';
 
 export interface AppError {
   kind: AppErrorKind;
@@ -22,6 +23,7 @@ export interface AppError {
   fieldErrors?: Record<string, string[]>;
   retryable: boolean;
   severity: AppErrorSeverity;
+  channel?: ErrorChannel;
   actionLabel?: string;
   supportCode?: string;
   rawStatus?: number;
@@ -37,6 +39,9 @@ export interface ResolveAppErrorContext {
     is_workspace_owner?: boolean;
     workspace_behavior?: string | null;
   };
+  channel?: ErrorChannel;
+  blocking?: boolean;
+  background?: boolean;
   domain:
     | 'auth'
     | 'workspace'
@@ -65,6 +70,9 @@ export interface ResolveAppErrorContext {
     | 'review'
     | 'compute'
     | 'export'
+    | 'refresh'
+    | 'logout'
+    | 'sync'
     | 'switch'
     | 'login'
     | 'verify'

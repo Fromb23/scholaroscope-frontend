@@ -74,4 +74,12 @@ describe('AuthContext local-first logout', () => {
     expect(source).toContain('bootWasSuperseded');
     expect(source).toContain('logoutLocalFirst');
   });
+
+  it('treats a denied boot refresh as unauthenticated local state', () => {
+    const source = read('app/context/AuthContext.tsx');
+
+    expect(source).toContain('const response = await authAPI.refresh();');
+    expect(source).toContain('clearAuthState();');
+    expect(source).toContain('setLoading(false);');
+  });
 });

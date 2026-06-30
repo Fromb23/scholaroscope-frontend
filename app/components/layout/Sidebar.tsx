@@ -21,6 +21,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
 import { useNavBadges } from '@/app/core/registry/navBadges';
+import { ReleaseBadge } from '@/app/core/release/ReleaseBadge';
 import { NavItem } from './NavItem';
 import {
   getSuperadminNav,
@@ -252,7 +253,9 @@ export default function Sidebar() {
           <div className="theme-card-muted border-t p-4">
             <div className="theme-subtle flex items-center justify-between text-xs">
               <div>
-                <p className="font-semibold theme-muted">ScholaroScope v0.5.4</p>
+                <p className="font-semibold theme-muted">
+                  <ReleaseBadge />
+                </p>
                 <p className="mt-0.5">{getRoleFooterLabel(resolvedRole, activeOrg?.org_type)}</p>
               </div>
               <Activity className="h-4 w-4 text-[color:var(--color-success)]" />

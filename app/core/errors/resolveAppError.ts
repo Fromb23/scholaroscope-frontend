@@ -1,5 +1,6 @@
 import type { AppError, AppErrorKind, ResolveAppErrorContext } from './appError';
 import { actionLabelForKind, defaultMessageForKind, severityForKind, titleForKind } from './errorCopy';
+import { resolveErrorChannel } from './errorChannels';
 import { getErrorCodeCopy } from './errorCodeCopy';
 import { extractFieldErrors } from './fieldErrors';
 import { sanitizeServerMessage } from './sanitizeServerMessage';
@@ -149,7 +150,7 @@ export function resolveAppError(err: unknown, context: ResolveAppErrorContext): 
     ? defaultMessage
     : safeServerMessage ?? defaultMessage);
 
-  return {
+  const resolvedError: AppError = {
     kind,
     title: registryCopy?.title ?? titleForKind(kind, context),
     message,
@@ -160,5 +161,10 @@ export function resolveAppError(err: unknown, context: ResolveAppErrorContext): 
     supportCode: getSupportCode(data),
     rawStatus,
     serverCode,
+  };
+
+  return {
+    ...resolvedError,
+    channel: resolveErrorChannel(resolvedError, context),
   };
 }

@@ -30,6 +30,7 @@ describe('resolveAppError', () => {
     expect(error.kind).toBe('validation');
     expect(error.title).toBe('Instructor account was not created.');
     expect(error.retryable).toBe(false);
+    expect(error.channel).toBe('inline');
     expect(error.fieldErrors?.email).toEqual(['A user with this email already exists.']);
   });
 
@@ -43,6 +44,7 @@ describe('resolveAppError', () => {
     expect(error.title).toContain('access');
     expect(error.message).toContain('permission');
     expect(error.retryable).toBe(false);
+    expect(error.channel).toBe('page');
   });
 
   it('classifies network and server failures as retryable', () => {
@@ -58,8 +60,22 @@ describe('resolveAppError', () => {
 
     expect(network.kind).toBe('network');
     expect(network.retryable).toBe(true);
+    expect(network.channel).toBe('page');
     expect(server.kind).toBe('server');
     expect(server.retryable).toBe(true);
+    expect(server.channel).toBe('banner');
+  });
+
+  it('routes background auth failures to toast channel', () => {
+    const error = resolveAppError(new TypeError('Failed to fetch'), {
+      domain: 'auth',
+      action: 'logout',
+      entityLabel: 'logout session revoke',
+      background: true,
+    });
+
+    expect(error.kind).toBe('network');
+    expect(error.channel).toBe('toast');
   });
 
   it('uses structured report readiness codes', () => {
