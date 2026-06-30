@@ -77,6 +77,23 @@ The academic core loads first. Curriculum and feature plugins load only when req
 
 Plugin registration must be idempotent. Loading a plugin twice must not duplicate navigation entries, route access rules, slots, providers, or dashboard extensions.
 
+### Server Shell / Client Island Law
+
+Scholaroscope uses Server Components for static, read-only, or shell-level UI where safe. Components become Client Components only when they need browser interaction, React state/effects, React Query, forms, modals, live workflow memory, or route interaction.
+
+Large route layouts and read-only pages should remain server-renderable when possible. Put browser-dependent behavior behind explicit client islands such as `*Client.tsx` or `*ClientShell.tsx`.
+
+Dashboard Exception:
+
+The main teaching dashboard may remain client-heavy because it is a live workflow surface. Optimization should focus first on read-only reports, policy previews, public/static pages, and plugin loading.
+
+Phase 6 boundary audit classification:
+
+- Must remain client: `app/context/AuthContext.tsx`, `app/context/SidebarContext.tsx`, `app/plugins/PluginRegistryProvider.tsx`, `app/components/layout/Header.tsx`, `app/components/layout/Sidebar.tsx`, `app/components/layout/NotificationBell.tsx`, assignment workflow components, assessment marking workflows, attendance/session recording screens, dashboard memory surfaces, and plugin hook/provider files.
+- Split into server shell plus client island: `app/(dashboard)/layout.tsx` now renders the explicit `app/(dashboard)/DashboardClientShell.tsx` island that owns auth redirects, workspace refresh, capability route protection, plugin loading, sidebar/header state, and notices.
+- Can be server shells: `app/(dashboard)/reports/**/page.tsx` route wrappers and existing CBC report-policy route wrappers. These files should import and render the relevant report client island without adding hooks or event handlers.
+- Needs later review: client-heavy report internals such as `ReportsPage`, `ReportPoliciesHubPage`, `GradePoliciesPage`, `GradePolicyDetailPage`, `CbcReportPolicyDetailPage`, and `CbcAssessmentPolicyPreview`; curriculum browser/progress pages; public landing/auth pages. These depend on auth hooks, React Query, route params, exports, modals, or live policy lookups and should only be split after their data and interaction boundaries are clear.
+
 ### Route File Rule
 
 `app/**/page.tsx` must only import and render a page component.

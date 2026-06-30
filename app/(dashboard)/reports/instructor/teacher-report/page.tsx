@@ -1,5 +1,3 @@
-'use client';
-
 import { TeacherPerformanceReportPage } from '@/app/core/components/reports/TeacherPerformanceReportPage';
 
 export default function Page() {

@@ -1,5 +1,3 @@
-'use client';
-
 import { StudentsReportPage } from '@/app/core/components/reports/StudentsReportPage';
 
 export default function Page() {
