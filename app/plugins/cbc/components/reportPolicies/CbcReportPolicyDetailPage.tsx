@@ -10,7 +10,6 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAuth } from '@/app/context/AuthContext';
-import { isAdminOrAbove } from '@/app/utils/permissions';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useTerms } from '@/app/core/hooks/useAcademic';
@@ -22,12 +21,17 @@ import {
     buildCbcSubjectProfileOptions,
 } from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
 
 export function CbcReportPolicyDetailPage() {
     const params = useParams();
     const policyId = Number(params.id);
-    const { user, activeRole, loading: authLoading } = useAuth();
-    const canManagePolicies = isAdminOrAbove(user, activeRole);
+    const { user, capabilities, loading: authLoading } = useAuth();
+    const canManagePolicies = canManageCbcReportPolicyAuthoring({
+        user,
+        capabilities,
+        authoringMode: 'INSTITUTION_GOVERNANCE',
+    });
     const [showEditModal, setShowEditModal] = useState(false);
 
     const { policy, loading, error, refetch } = useCbcReportPolicy(

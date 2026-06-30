@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import type { OrgType, Role } from '@/app/core/types/auth';
+import type { OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import type { Curriculum } from '@/app/core/types/academic';
 
 export interface NavItem {
@@ -32,6 +32,8 @@ export interface PluginNavigationContext {
     badges: Record<string, number>;
     curricula: Curriculum[];
     hasAnyReportPolicySurface?: boolean;
+    user?: User | null;
+    capabilities?: WorkspaceCapabilities | null;
     instructorAccess?: {
         hasCurriculumAccess: (curriculum: 'CBC' | 'CAMBRIDGE') => boolean;
     };

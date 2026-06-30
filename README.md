@@ -223,13 +223,25 @@ Open assignment workflow items must be visible on the teacher dashboard. They ma
 
 The dashboard is responsible for remembering unfinished teaching work. A teacher should not need to manually revisit assignment pages to know what remains open.
 
+## Assignment Memory Law
+
+Assignments remain dashboard-active while DRAFT, PUBLISHED, or CLOSED. They disappear only when stored, archived, deleted, or cancelled.
+
+## Assessment Memory Law
+
+DRAFT and ACTIVE assessments remain dashboard-active until FINALIZED. Finalized assessments leave the teacher's active work queue.
+
+## Capability Boundary Law
+
+Visible actions must use the same capability rule as the target page. Role opens the workspace; capability opens the action.
+
 ## Teaching Memory Law
 
 Scholaroscope must carry unfinished teaching work for the teacher. Lessons, learner tasks, assignments, assessments, grading, and evidence records should produce action items until they are completed, stored, finalized, cancelled, or intentionally dismissed.
 
 ## No Empty Memory Card Law
 
-The teaching dashboard is a memory surface, not a statistics wall. It should show unfinished teaching work, risks, blockers, and next actions. If attendance risk, grading, learner support, alerts, assignments, or assessments have no actionable data, their cards should not render.
+The teaching dashboard is a memory surface, not a statistics wall. It should show unfinished teaching work, risks, blockers, and next actions. It should not show zero-count memory cards. If attendance risk, grading, learner support, alerts, assignments, or assessments have no actionable data, their cards should not render.
 
 ## Quiet Dashboard Law
 
