@@ -21,11 +21,25 @@ export default function Header() {
   const { toggleSidebar } = useSidebar();
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [switching, setSwitching] = useState<number | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/login');
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    setDropdownOpen(false);
+    setOrgDropdownOpen(false);
+
+    try {
+      await logout();
+    } catch {
+      // Local auth state must still be cleared and the user must still leave the dashboard.
+    } finally {
+      router.replace('/login');
+    }
   };
   const handleToggleTheme = () => {
     const nextMode = themeMode === 'DARK' ? 'DEFAULT' : 'DARK';
@@ -205,10 +219,16 @@ export default function Header() {
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-3 px-4 py-2 text-sm text-[color:var(--color-danger)] theme-hover-danger"
+                    disabled={isLoggingOut}
+                    aria-busy={isLoggingOut}
+                    className="flex w-full items-center gap-3 px-4 py-2 text-sm text-[color:var(--color-danger)] theme-hover-danger disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <LogOut className="h-4 w-4" />
-                    Logout
+                    {isLoggingOut ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LogOut className="h-4 w-4" />
+                    )}
+                    {isLoggingOut ? 'Logging out...' : 'Logout'}
                   </button>
                 </div>
               </div>

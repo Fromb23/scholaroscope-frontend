@@ -31,8 +31,8 @@ const useAssignments = read('app/core/hooks/useAssignments.ts');
 const cbcAssessmentPolicyPreview = read('app/plugins/cbc/components/reportPolicies/CbcAssessmentPolicyPreview.tsx');
 const cbcReportPolicyDetailPage = read('app/plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage.tsx');
 const cbcNavigationExtension = read('app/plugins/cbc/registry/navigationExtension.ts');
-const gradePoliciesPage = read('app/core/components/reports/GradePoliciesPage.tsx');
-const reportPoliciesHubPage = read('app/core/components/reports/ReportPoliciesHubPage.tsx');
+const gradePoliciesPage = read('app/core/components/reports/GradePoliciesPageClient.tsx');
+const reportPoliciesHubPage = read('app/core/components/reports/ReportPoliciesHubPageClient.tsx');
 
 const primaryActionIndex = instructorDashboard.indexOf('<TeacherNextActionPanel');
 const assignmentWorkPanelIndex = instructorDashboard.indexOf('<TeachingAssignmentWorkPanel');

@@ -21,6 +21,10 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api';
 
+type LogoutOptions = {
+  timeoutMs?: number;
+};
+
 type RawActiveOrg = {
   id: number;
   name: string;
@@ -204,13 +208,28 @@ export const authAPI = {
     return response.json();
   },
 
-  logout: async (): Promise<void> => {
-    const response = await fetch(`${API_URL}/users/logout/`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (!response.ok) {
-      await parseError(response, 'Logout failed');
+  logout: async (options: LogoutOptions = {}): Promise<void> => {
+    const timeoutMs = options.timeoutMs;
+    const controller = typeof AbortController !== 'undefined' && timeoutMs != null && timeoutMs > 0
+      ? new AbortController()
+      : null;
+    const timeoutId = controller
+      ? globalThis.setTimeout(() => controller.abort(), timeoutMs)
+      : null;
+
+    try {
+      const response = await fetch(`${API_URL}/users/logout/`, {
+        method: 'POST',
+        credentials: 'include',
+        signal: controller?.signal,
+      });
+      if (!response.ok) {
+        await parseError(response, 'Logout failed');
+      }
+    } finally {
+      if (timeoutId !== null) {
+        globalThis.clearTimeout(timeoutId);
+      }
     }
   },
 

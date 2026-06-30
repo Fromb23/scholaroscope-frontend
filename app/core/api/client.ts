@@ -1,7 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 import { redirectToLogin } from '@/app/core/auth/navigation';
-import { clearAccessToken, getAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
+import {
+  clearAccessToken,
+  getAccessToken,
+  getAccessTokenVersion,
+  setAccessToken,
+} from '@/app/core/auth/tokenStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 let hasWarnedAboutApiBaseUrl = false;
@@ -19,6 +24,17 @@ interface RefreshPayload {
 
 let authFailureHandler: AuthFailureHandler | null = null;
 let refreshPromise: Promise<string> | null = null;
+
+class AuthRefreshSupersededError extends Error {
+  constructor() {
+    super('Auth refresh was superseded by a local auth state change.');
+    this.name = 'AuthRefreshSupersededError';
+  }
+}
+
+function isAuthRefreshSupersededError(error: unknown): error is AuthRefreshSupersededError {
+  return error instanceof AuthRefreshSupersededError;
+}
 
 function apiBaseUrlIncludesApiPath(baseURL: string): boolean {
   const normalized = baseURL.trim();
@@ -85,8 +101,14 @@ function handleAuthFailure(): void {
 }
 
 async function performRefreshRequest(): Promise<string> {
+  const tokenVersionAtStart = getAccessTokenVersion();
   const response = await refreshClient.post<RefreshPayload>('/users/refresh/');
   const accessToken = response.data.access;
+
+  if (getAccessTokenVersion() !== tokenVersionAtStart) {
+    throw new AuthRefreshSupersededError();
+  }
+
   setAccessToken(accessToken);
 
   if (typeof window !== 'undefined') {
@@ -160,6 +182,9 @@ apiClient.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${refreshedAccessToken}`;
       return apiClient(originalRequest);
     } catch (refreshError) {
+      if (isAuthRefreshSupersededError(refreshError)) {
+        return Promise.reject(refreshError);
+      }
       handleAuthFailure();
       return Promise.reject(refreshError);
     }

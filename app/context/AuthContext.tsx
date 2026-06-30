@@ -7,12 +7,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
 import { registerAuthFailureHandler } from '@/app/core/api/client';
+import { logoutLocalFirst } from '@/app/core/auth/logout';
 import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
 import type {
@@ -138,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [membershipVersion, setMembershipVersion] = useState<number>(0);
   const [accessNotices, setAccessNotices] = useState<AccessNotice[]>([]);
   const [loading, setLoading] = useState(true);
+  const authStateVersionRef = useRef(0);
 
   const activeRole = useMemo(
     () => resolveActiveRole(user, activeOrg, memberships),
@@ -145,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const clearAuthState = useCallback(() => {
+    authStateVersionRef.current += 1;
     clearAccessToken();
     clearStoredAuthState();
     setUser(null);
@@ -157,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const applyAuthState = useCallback((payload: AuthStatePayload) => {
+    authStateVersionRef.current += 1;
     setAccessToken(payload.access);
     setUser(payload.user);
     setActiveOrg(payload.active_org);
@@ -222,21 +227,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearLegacyTokenStorage();
 
     const boot = async () => {
+      const bootAuthStateVersion = authStateVersionRef.current;
+      const bootWasSuperseded = () => (
+        cancelled || authStateVersionRef.current !== bootAuthStateVersion
+      );
+
       try {
         const response = await authAPI.refresh();
-        if (cancelled) {
+        if (bootWasSuperseded()) {
           return;
         }
         applyAuthState(response);
+        setLoading(false);
       } catch {
-        if (cancelled) {
+        if (bootWasSuperseded()) {
           return;
         }
         clearAuthState();
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
@@ -272,14 +280,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return response;
   }, [applyAuthState]);
 
-  const logout = useCallback(async () => {
-    try {
-      await authAPI.logout();
-    } finally {
-      clearAuthState();
-      setLoading(false);
-    }
-  }, [clearAuthState]);
+  const logout = useCallback(() => logoutLocalFirst({
+    clearAuthState,
+    setLoading,
+  }), [clearAuthState]);
 
   const switchOrg = useCallback(async (organizationId: number) => {
     const response = await authAPI.switchOrg(organizationId);

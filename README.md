@@ -83,6 +83,10 @@ Scholaroscope uses Server Components for static, read-only, or shell-level UI wh
 
 Large route layouts and read-only pages should remain server-renderable when possible. Put browser-dependent behavior behind explicit client islands such as `*Client.tsx` or `*ClientShell.tsx`.
 
+Report Client Island Law:
+
+Report pages should expose a server-renderable shell and place data fetching, filters, modals, exports, and mutations inside explicit client islands. This allows report routes to benefit from Next.js server boundaries without breaking protected interactive report workflows.
+
 Dashboard Exception:
 
 The main teaching dashboard may remain client-heavy because it is a live workflow surface. Optimization should focus first on read-only reports, policy previews, public/static pages, and plugin loading.
@@ -91,8 +95,9 @@ Phase 6 boundary audit classification:
 
 - Must remain client: `app/context/AuthContext.tsx`, `app/context/SidebarContext.tsx`, `app/plugins/PluginRegistryProvider.tsx`, `app/components/layout/Header.tsx`, `app/components/layout/Sidebar.tsx`, `app/components/layout/NotificationBell.tsx`, assignment workflow components, assessment marking workflows, attendance/session recording screens, dashboard memory surfaces, and plugin hook/provider files.
 - Split into server shell plus client island: `app/(dashboard)/layout.tsx` now renders the explicit `app/(dashboard)/DashboardClientShell.tsx` island that owns auth redirects, workspace refresh, capability route protection, plugin loading, sidebar/header state, and notices.
+- Split report internals: `ReportsPage`, `ReportPoliciesHubPage`, and `GradePoliciesPage` are server shells over `ReportsPageClient`, `ReportPoliciesHubPageClient`, and `GradePoliciesPageClient`.
 - Can be server shells: `app/(dashboard)/reports/**/page.tsx` route wrappers and existing CBC report-policy route wrappers. These files should import and render the relevant report client island without adding hooks or event handlers.
-- Needs later review: client-heavy report internals such as `ReportsPage`, `ReportPoliciesHubPage`, `GradePoliciesPage`, `GradePolicyDetailPage`, `CbcReportPolicyDetailPage`, and `CbcAssessmentPolicyPreview`; curriculum browser/progress pages; public landing/auth pages. These depend on auth hooks, React Query, route params, exports, modals, or live policy lookups and should only be split after their data and interaction boundaries are clear.
+- Needs later review: client-heavy report internals such as `GradePolicyDetailPage`, `CbcReportPolicyDetailPage`, `CbcAssessmentPolicyPreview`, attendance reports, learner reports, subject reports, and teacher performance reports; curriculum browser/progress pages; public landing/auth pages. These depend on auth hooks, React Query, route params, exports, modals, URL mutation, or live policy lookups and should only be split after their data and interaction boundaries are clear.
 
 ### Route File Rule
 
