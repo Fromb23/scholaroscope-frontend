@@ -1,6 +1,5 @@
 'use client';
 
-import '@/app/plugins/cbc/registry/learnerExtension';
 import { CurriculumAccessGuard } from '@/app/core/guards/CurriculumAccessGuard';
 import { CBCProvider } from '@/app/plugins/cbc/context/CBCContext';
 
