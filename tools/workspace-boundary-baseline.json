@@ -146,7 +146,7 @@
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "core/components/reports/ReportsPage.tsx::freelance-risky-staff-admin-copy": {
+  "core/components/reports/ReportsPageClient.tsx::freelance-risky-staff-admin-copy": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",

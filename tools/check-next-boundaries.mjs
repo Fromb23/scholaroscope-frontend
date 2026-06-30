@@ -52,6 +52,38 @@ function importStatements(source) {
     }));
 }
 
+function disallowedClientHookImports(relativePath, source) {
+  const findings = [];
+  for (const statement of importStatements(source)) {
+    const { clause, specifier } = statement;
+    if (
+      specifier === 'next/navigation'
+      && /\buse(?:Router|Pathname|SearchParams|Params)\b/.test(clause)
+    ) {
+      findings.push(`${relativePath} imports ${specifier} client navigation hooks`);
+    }
+    if (
+      specifier === '@/app/context/AuthContext'
+      && /\buseAuth\b/.test(clause)
+    ) {
+      findings.push(`${relativePath} imports useAuth directly`);
+    }
+    if (
+      specifier === '@/app/context/SidebarContext'
+      && /\buseSidebar\b/.test(clause)
+    ) {
+      findings.push(`${relativePath} imports useSidebar directly`);
+    }
+    if (
+      specifier.startsWith('@/app/core/hooks/')
+      || /^@\/app\/plugins\/[^/]+\/hooks\//.test(specifier)
+    ) {
+      findings.push(`${relativePath} imports client hook module ${specifier}`);
+    }
+  }
+  return findings;
+}
+
 const dashboardLayoutPath = 'app/(dashboard)/layout.tsx';
 const dashboardClientShellPath = 'app/(dashboard)/DashboardClientShell.tsx';
 const reportsLoadingPath = 'app/(dashboard)/reports/loading.tsx';
@@ -100,6 +132,57 @@ if (
   fail('registerAll must remain a compatibility delegate to the selective plugin loader, not an unconditional registry importer.');
 }
 
+const selectedReportShells = [
+  {
+    shellPath: 'app/core/components/reports/ReportsPage.tsx',
+    shellName: 'ReportsPage',
+    clientPath: 'app/core/components/reports/ReportsPageClient.tsx',
+    clientName: 'ReportsPageClient',
+  },
+  {
+    shellPath: 'app/core/components/reports/ReportPoliciesHubPage.tsx',
+    shellName: 'ReportPoliciesHubPage',
+    clientPath: 'app/core/components/reports/ReportPoliciesHubPageClient.tsx',
+    clientName: 'ReportPoliciesHubPageClient',
+  },
+  {
+    shellPath: 'app/core/components/reports/GradePoliciesPage.tsx',
+    shellName: 'GradePoliciesPage',
+    clientPath: 'app/core/components/reports/GradePoliciesPageClient.tsx',
+    clientName: 'GradePoliciesPageClient',
+  },
+];
+
+for (const { shellPath, shellName, clientPath, clientName } of selectedReportShells) {
+  const shellSource = read(shellPath);
+  const clientSource = read(clientPath);
+
+  if (hasUseClientDirective(shellSource)) {
+    fail(`${shellPath} must remain a server-renderable report shell.`);
+  }
+  if (/\buse(?:State|Effect|Memo|Callback|Reducer|Ref|Params|SearchParams|Router|Pathname)\s*\(/.test(shellSource)) {
+    fail(`${shellPath} must not call React or Next client hooks directly.`);
+  }
+  for (const hookImport of disallowedClientHookImports(shellPath, shellSource)) {
+    fail(`${hookImport}; move report interaction into ${clientPath}.`);
+  }
+  if (!shellSource.includes(clientName) || !shellSource.includes(`<${clientName} />`)) {
+    fail(`${shellPath} must render ${clientName} as its explicit client island.`);
+  }
+  if (!new RegExp(`export\\s+function\\s+${shellName}\\s*\\(`).test(shellSource)) {
+    fail(`${shellPath} must export the ${shellName} server shell.`);
+  }
+  if (!clientPath.endsWith('Client.tsx')) {
+    fail(`${clientPath} must use the explicit *Client.tsx naming pattern.`);
+  }
+  if (!hasUseClientDirective(clientSource)) {
+    fail(`${clientPath} must be the explicit client island for protected report behavior.`);
+  }
+  if (!new RegExp(`export\\s+function\\s+${clientName}\\s*\\(`).test(clientSource)) {
+    fail(`${clientPath} must export ${clientName}.`);
+  }
+}
+
 const reportRoutePages = walk(path.join(root, 'app/(dashboard)/reports'))
   .filter((file) => path.basename(file) === 'page.tsx')
   .sort();
@@ -139,33 +222,7 @@ for (const file of walk(appRoot)) {
   const source = readFileSync(file, 'utf8');
   if (hasUseClientDirective(source)) continue;
 
-  for (const statement of importStatements(source)) {
-    const { clause, specifier } = statement;
-    if (
-      specifier === 'next/navigation'
-      && /\buse(?:Router|Pathname|SearchParams|Params)\b/.test(clause)
-    ) {
-      serverHookImports.push(`${relativePath} imports ${specifier} client navigation hooks`);
-    }
-    if (
-      specifier === '@/app/context/AuthContext'
-      && /\buseAuth\b/.test(clause)
-    ) {
-      serverHookImports.push(`${relativePath} imports useAuth directly`);
-    }
-    if (
-      specifier === '@/app/context/SidebarContext'
-      && /\buseSidebar\b/.test(clause)
-    ) {
-      serverHookImports.push(`${relativePath} imports useSidebar directly`);
-    }
-    if (
-      specifier.startsWith('@/app/core/hooks/')
-      || /^@\/app\/plugins\/[^/]+\/hooks\//.test(specifier)
-    ) {
-      serverHookImports.push(`${relativePath} imports client hook module ${specifier}`);
-    }
-  }
+  serverHookImports.push(...disallowedClientHookImports(relativePath, source));
 }
 
 for (const hookImport of serverHookImports) {

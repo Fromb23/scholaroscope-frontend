@@ -20,7 +20,7 @@ function priorityFor(relative, rule) {
     || /app\/core\/hooks\/useProfile\.ts$/.test(relative)
     || /app\/core\/components\/learners\/NewLearnerPage\.tsx$/.test(relative)
     || /app\/plugins\/cbc\/components\/reportPolicies\/routes\//.test(relative)
-    || /app\/core\/components\/reports\/(?:ComputePage|ReportPoliciesHubPage|GradePoliciesPage|GradePolicyDetailPage)\.tsx$/.test(relative)
+    || /app\/core\/components\/reports\/(?:ComputePage|ReportPoliciesHubPage(?:Client)?|GradePoliciesPage(?:Client)?|GradePolicyDetailPage)\.tsx$/.test(relative)
     || /workspace|Workspace|freelance|Freelance/.test(relative)
   ) {
     return 'P0';
@@ -794,21 +794,21 @@ const BASELINE = {
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "app/core/components/reports/GradePoliciesPage.tsx::direct-extract-error-message-display": {
+  "app/core/components/reports/GradePoliciesPageClient.tsx::direct-extract-error-message-display": {
     "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "app/core/components/reports/GradePoliciesPage.tsx::error-banner-without-title": {
+  "app/core/components/reports/GradePoliciesPageClient.tsx::error-banner-without-title": {
     "count": 2,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "app/core/components/reports/GradePoliciesPage.tsx::legacy-error-banner": {
+  "app/core/components/reports/GradePoliciesPageClient.tsx::legacy-error-banner": {
     "count": 2,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
@@ -913,14 +913,14 @@ const BASELINE = {
     "priority": "P1",
     "removeBy": "2026-10-31"
   },
-  "app/core/components/reports/ReportPoliciesHubPage.tsx::error-banner-without-title": {
+  "app/core/components/reports/ReportPoliciesHubPageClient.tsx::error-banner-without-title": {
     "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "app/core/components/reports/ReportPoliciesHubPage.tsx::legacy-error-banner": {
+  "app/core/components/reports/ReportPoliciesHubPageClient.tsx::legacy-error-banner": {
     "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",

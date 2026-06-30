@@ -15,4 +15,17 @@ describe('Header user dropdown', () => {
     expect(source).toContain('Scholaroscope Light');
     expect(source).toContain('Logout');
   });
+
+  it('routes logout locally to login and disables the logout button while processing', () => {
+    const source = readFileSync(join(process.cwd(), 'app/components/layout/Header.tsx'), 'utf8');
+
+    expect(source).toContain('const [isLoggingOut, setIsLoggingOut] = useState(false)');
+    expect(source).toContain('setDropdownOpen(false);');
+    expect(source).toContain('setOrgDropdownOpen(false);');
+    expect(source).toContain("router.replace('/login')");
+    expect(source).not.toContain("router.push('/login')");
+    expect(source).toContain('disabled={isLoggingOut}');
+    expect(source).toContain('aria-busy={isLoggingOut}');
+    expect(source).toContain("isLoggingOut ? 'Logging out...' : 'Logout'");
+  });
 });
