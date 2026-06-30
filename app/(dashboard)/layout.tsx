@@ -25,7 +25,12 @@ import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import { AssistantProvider } from '@/app/core/components/assistant/AssistantProvider';
 import { AssistantWidget } from '@/app/core/components/assistant/AssistantWidget';
 import { PermissionResolvingState } from '@/app/components/ui/loading';
-import '@/app/plugins/registerAll';
+import {
+  PluginLoadingErrorState,
+  PluginRegistryProvider,
+  PluginRouteLoadingState,
+  usePluginRegistryStatus,
+} from '@/app/plugins/PluginRegistryProvider';
 import { AlertTriangle } from 'lucide-react';
 import { AccessNotice } from '../core/types/auth';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
@@ -85,8 +90,9 @@ function DashboardContent({
   );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, activeOrg, activeRole, loading, accessNotices, clearAccessNotices, capabilities } = useAuth();
+  const pluginRegistry = usePluginRegistryStatus();
   const academicSetupQuery = useAcademicSetupStatus({
     enabled: (
       capabilities.can_manage_academic_setup
@@ -137,6 +143,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return;
     }
 
+    if (pluginRegistry.isRoutePluginLoading || pluginRegistry.error) {
+      return;
+    }
+
     const matchedRule = getRouteRules().find((rule) => rule.pattern.test(pathname));
     if (!matchedRule) return;
     if (!matchedRule.allowedRoles.includes(activeRole)) {
@@ -171,6 +181,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     capabilities,
     loading,
     pathname,
+    pluginRegistry.error,
+    pluginRegistry.isRoutePluginLoading,
     router,
     user,
   ]);
@@ -203,6 +215,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           : 'Checking your access...';
 
     return <PermissionResolvingState fullScreen message={resolvingMessage} />;
+  }
+
+  if (pluginRegistry.error) {
+    return <PluginLoadingErrorState error={pluginRegistry.error} />;
+  }
+
+  if (pluginRegistry.isRoutePluginLoading) {
+    return <PluginRouteLoadingState pluginIds={pluginRegistry.pendingRoutePluginIds} />;
   }
 
   if (showAcademicSetupAccessDenied) {
@@ -241,6 +261,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </RegistrySlotProvider>
       </NavBadgeProvider>
     </SidebarProvider>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <PluginRegistryProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </PluginRegistryProvider>
   );
 }
 

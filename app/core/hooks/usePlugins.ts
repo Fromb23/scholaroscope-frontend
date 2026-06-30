@@ -16,9 +16,14 @@ interface UsePluginsReturn {
     refetch: () => Promise<void>;
 }
 
-export const usePlugins = (): UsePluginsReturn => {
+interface UsePluginsOptions {
+    enabled?: boolean;
+}
+
+export const usePlugins = (options: UsePluginsOptions = {}): UsePluginsReturn => {
+    const enabled = options.enabled ?? true;
     const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(enabled);
     const [error, setError] = useState<string | null>(null);
     const requestIdRef = useRef(0);
     const pathname = usePathname();
@@ -26,9 +31,16 @@ export const usePlugins = (): UsePluginsReturn => {
     const { organizationId } = useOrganizationContext();
     const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
     const isOrgScopedSettingsRoute = pathname.includes('/superadmin/organizations/');
-    const shouldWaitForOrganization = isOrgScopedSettingsRoute && scopedOrganizationId === null;
+    const shouldWaitForOrganization = enabled && isOrgScopedSettingsRoute && scopedOrganizationId === null;
 
     const fetch = useCallback(async () => {
+        if (!enabled) {
+            setPlugins([]);
+            setError(null);
+            setLoading(false);
+            return;
+        }
+
         if (shouldWaitForOrganization) {
             setPlugins([]);
             setError(null);
@@ -53,7 +65,7 @@ export const usePlugins = (): UsePluginsReturn => {
                 setLoading(false);
             }
         }
-    }, [scopedOrganizationId, shouldWaitForOrganization]);
+    }, [enabled, scopedOrganizationId, shouldWaitForOrganization]);
 
     useEffect(() => { fetch(); }, [fetch]);
 

@@ -1,27 +1,10 @@
 'use client';
 
-import '@/app/plugins/cbc/registry/curriculumModalExtension';
-import '@/app/plugins/cbc/registry/assessmentPolicyPreviewExtension';
-import '@/app/plugins/cbc/registry/cohortSubjectPanelExtension';
-import '@/app/plugins/cbc/registry/navigationExtension';
-import '@/app/plugins/cbc/registry/providerExtension';
-import '@/app/plugins/cbc/registry/routeAccessExtension';
-import '@/app/plugins/cbc/registry/teachingRouteExtension';
-import '@/app/plugins/cbc/registry/fineArtsPracticalExtensions';
-import '@/app/plugins/cbc/registry/practicalExtensions';
-import '@/app/plugins/cbc/registry/learnerExtension';
-import '@/app/plugins/cambridge/registry/cohortSubjectPanelExtension';
-import '@/app/plugins/cambridge/registry/cohortExtensions';
-import '@/app/plugins/cambridge/registry/navigationExtension';
-import '@/app/plugins/cambridge/registry/providerExtension';
-import '@/app/plugins/cambridge/registry/routeAccessExtension';
-import '@/app/plugins/cambridge/registry/routeExtension';
-import '@/app/plugins/announcements/registry/navBadgeExtension';
-import '@/app/plugins/announcements/registry/navigationExtension';
-import '@/app/plugins/announcements/registry/routeAccessExtension';
-import '@/app/plugins/requests/registry/navigationExtension';
-import '@/app/plugins/requests/registry/routeAccessExtension';
-import '@/app/plugins/requests/registry/dashboardExtension';
-import '@/app/plugins/requests/registry/profileExtension';
-import '@/app/plugins/schemes/registry/navigationExtension';
-import '@/app/plugins/schemes/registry/routeAccessExtension';
+import { loadPluginIds } from './loadPlugin';
+import { pluginIds } from './manifest';
+
+export function registerAllPlugins(): Promise<void> {
+  return loadPluginIds(pluginIds);
+}
+
+void registerAllPlugins();

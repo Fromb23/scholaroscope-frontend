@@ -71,6 +71,12 @@ When adding or changing features:
 - Preserve organization scoping and role scoping in every new workflow.
 - Treat registry extension points as part of the architecture, not as a workaround.
 
+### Selective Plugin Loading Law
+
+The academic core loads first. Curriculum and feature plugins load only when required by the active workspace, curriculum, route, or feature capability.
+
+Plugin registration must be idempotent. Loading a plugin twice must not duplicate navigation entries, route access rules, slots, providers, or dashboard extensions.
+
 ### Route File Rule
 
 `app/**/page.tsx` must only import and render a page component.

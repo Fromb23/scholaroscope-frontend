@@ -349,9 +349,10 @@ export const useTermCalendarEvents = (termId: number | null) => {
 
 // ── useCurricula ──────────────────────────────────────────────────────────
 
-export const useCurricula = () => {
+export const useCurricula = (options: { enabled?: boolean } = {}) => {
   const { organizationId } = useOrganizationContext();
   const qc = useQueryClient();
+  const enabled = options.enabled ?? true;
   const query = useQuery<Curriculum[], Error>({
     queryKey: academicKeys.curricula.list(organizationId),
     queryFn: async () => {
@@ -362,6 +363,7 @@ export const useCurricula = () => {
         ? data
         : (data as { results?: Curriculum[] })?.results ?? [];
     },
+    enabled,
     staleTime: 60 * 1000,
   });
 
