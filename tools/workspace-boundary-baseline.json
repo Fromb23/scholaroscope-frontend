@@ -1,12 +1,12 @@
 {
-  "(dashboard)/layout.tsx::raw-admin-role-check": {
+  "(dashboard)/DashboardClientShell.tsx::raw-admin-role-check": {
     "count": 4,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "(dashboard)/layout.tsx::raw-workspace-behavior-check": {
+  "(dashboard)/DashboardClientShell.tsx::raw-workspace-behavior-check": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
     "owner": "frontend-migration",

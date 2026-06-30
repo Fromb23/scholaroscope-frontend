@@ -15,6 +15,7 @@ function check(name, passed, detail) {
 }
 
 const dashboardLayout = read('app/(dashboard)/layout.tsx');
+const dashboardClientShell = read('app/(dashboard)/DashboardClientShell.tsx');
 const registerAll = read('app/plugins/registerAll.ts');
 const manifest = read('app/plugins/manifest.ts');
 const loader = read('app/plugins/loadPlugin.ts');
@@ -24,13 +25,16 @@ const cambridgeRegister = read('app/plugins/cambridge/register.ts');
 
 check(
   'Dashboard layout must not import registerAll',
-  !dashboardLayout.includes("@/app/plugins/registerAll") && !dashboardLayout.includes("plugins/registerAll"),
+  !dashboardLayout.includes("@/app/plugins/registerAll")
+    && !dashboardLayout.includes("plugins/registerAll")
+    && !dashboardClientShell.includes("@/app/plugins/registerAll")
+    && !dashboardClientShell.includes("plugins/registerAll"),
   'Dashboard boot must go through PluginRegistryProvider so plugin registries are selected from context.',
 );
 
 check(
   'Dashboard layout must use the plugin registry provider',
-  dashboardLayout.includes('PluginRegistryProvider') && dashboardLayout.includes('usePluginRegistryStatus'),
+  dashboardClientShell.includes('PluginRegistryProvider') && dashboardClientShell.includes('usePluginRegistryStatus'),
   'Dashboard layout must load route-required plugin registries before route access and rendering.',
 );
 
@@ -79,9 +83,9 @@ check(
   'Route plugin loading must block unsafe route access while chunks are pending',
   provider.includes('pendingRoutePluginIds')
     && provider.includes('isRoutePluginLoading')
-    && dashboardLayout.includes('pluginRegistry.isRoutePluginLoading')
-    && dashboardLayout.includes('PluginRouteLoadingState')
-    && dashboardLayout.includes('PluginLoadingErrorState'),
+    && dashboardClientShell.includes('pluginRegistry.isRoutePluginLoading')
+    && dashboardClientShell.includes('PluginRouteLoadingState')
+    && dashboardClientShell.includes('PluginLoadingErrorState'),
   'Plugin routes must show loading/error states instead of rendering or authorizing before their registry loads.',
 );
 
