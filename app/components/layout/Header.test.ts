@@ -28,4 +28,12 @@ describe('Header user dropdown', () => {
     expect(source).toContain('aria-busy={isLoggingOut}');
     expect(source).toContain("isLoggingOut ? 'Logging out...' : 'Logout'");
   });
+
+  it('keeps mobile shell controls CSS-first and touch-friendly', () => {
+    const source = readFileSync(join(process.cwd(), 'app/components/layout/Header.tsx'), 'utf8');
+
+    expect(source).toContain('lg:hidden');
+    expect(source).toContain('min-h-11 min-w-11');
+    expect(source).toContain('toggleSidebar');
+  });
 });

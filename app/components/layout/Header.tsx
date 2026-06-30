@@ -80,7 +80,7 @@ export default function Header() {
     <header className="theme-header sticky top-0 z-30 flex h-16 items-center justify-between border-b theme-border px-4 lg:px-6">
       <button
         onClick={toggleSidebar}
-        className="theme-focus-ring rounded-lg p-2 theme-hover-surface lg:hidden"
+        className="theme-focus-ring flex min-h-11 min-w-11 items-center justify-center rounded-lg theme-hover-surface lg:hidden"
       >
         <Menu className="h-6 w-6 theme-muted" />
       </button>
@@ -91,7 +91,7 @@ export default function Header() {
           <div className="relative">
             <button
               onClick={() => setOrgDropdownOpen(!orgDropdownOpen)}
-              className="theme-focus-ring theme-card-muted flex items-center gap-2 rounded-lg px-3 py-2 text-sm theme-hover-surface"
+              className="theme-focus-ring theme-card-muted flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm theme-hover-surface"
             >
               <Building2 className="h-4 w-4 theme-subtle" />
               <span className="hidden max-w-[140px] truncate font-medium theme-text md:block">
@@ -175,7 +175,7 @@ export default function Header() {
         <div className="relative">
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="theme-focus-ring flex items-center gap-3 rounded-lg px-3 py-2 theme-hover-surface"
+            className="theme-focus-ring flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 theme-hover-surface"
           >
             <div className="theme-brand-icon h-8 w-8 rounded-full flex items-center justify-center">
               <User className="h-4 w-4" />

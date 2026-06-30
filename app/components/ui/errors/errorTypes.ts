@@ -5,6 +5,7 @@ export interface ErrorUiModel {
   fieldErrors?: Record<string, string[]>;
   retryable: boolean;
   severity: 'info' | 'warning' | 'error';
+  channel?: 'toast' | 'inline' | 'banner' | 'page';
   actionLabel?: string;
   supportCode?: string;
   rawStatus?: number;

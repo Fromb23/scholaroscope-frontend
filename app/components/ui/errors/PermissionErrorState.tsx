@@ -10,5 +10,12 @@ interface PermissionErrorStateProps {
 }
 
 export function PermissionErrorState({ error, onRetry, className }: PermissionErrorStateProps) {
-  return <ErrorState error={error} onRetry={onRetry} className={className} />;
+  return (
+    <ErrorState
+      error={error}
+      onRetry={onRetry}
+      fullScreen={error.channel === 'page'}
+      className={`mx-auto max-w-2xl ${className ?? ''}`}
+    />
+  );
 }

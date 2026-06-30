@@ -119,7 +119,7 @@ export function NotificationBell() {
     <div ref={ref} className="relative">
       <button
         onClick={handleOpen}
-        className="theme-focus-ring relative rounded-lg p-2 theme-icon transition-colors theme-hover-surface"
+        className="theme-focus-ring relative flex min-h-11 min-w-11 items-center justify-center rounded-lg theme-icon transition-colors theme-hover-surface"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />

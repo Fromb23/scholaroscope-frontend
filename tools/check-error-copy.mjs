@@ -186,14 +186,14 @@ const BASELINE = {
     "removeBy": "2026-10-31"
   },
   "app/core/components/academic/subjects/SubjectCataloguePage.tsx::error-banner-without-title": {
-    "count": 2,
+    "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
     "priority": "P1",
     "removeBy": "2026-10-31"
   },
   "app/core/components/academic/subjects/SubjectCataloguePage.tsx::legacy-error-banner": {
-    "count": 2,
+    "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
     "owner": "frontend-migration",
     "priority": "P1",
