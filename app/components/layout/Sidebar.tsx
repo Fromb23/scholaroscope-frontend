@@ -56,6 +56,7 @@ export default function Sidebar() {
   const pluginNavigationContext = useMemo<PluginNavigationContext>(
     () => ({
       role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
+      user,
       orgType: activeOrg?.org_type ?? null,
       workspaceBehavior: capabilities.workspace_behavior,
       canTeach: capabilities.can_teach,
@@ -69,6 +70,7 @@ export default function Sidebar() {
           curricula,
           installedPlugins: plugins,
         }).length > 0,
+      capabilities,
       instructorAccess: {
         hasCurriculumAccess: instructorAccess.hasCurriculumAccess,
       },
@@ -77,14 +79,12 @@ export default function Sidebar() {
       activeRole,
       activeOrg?.org_type,
       badges,
-      capabilities.workspace_behavior,
-      capabilities.can_teach,
-      capabilities.is_workspace_owner,
+      capabilities,
       curricula,
       hasPlugin,
       instructorAccess.hasCurriculumAccess,
       plugins,
-      user?.is_superadmin,
+      user,
     ],
   );
 

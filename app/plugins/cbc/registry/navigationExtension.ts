@@ -1,5 +1,6 @@
 import { Award, BarChart3, BookOpen, Layers, Target, TrendingUp } from 'lucide-react';
 import { registerPluginNavigationEntry } from '@/app/core/registry/pluginNavigation';
+import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
 
 registerPluginNavigationEntry({
     key: 'cbc-superadmin-authoring-nav',
@@ -20,20 +21,31 @@ registerPluginNavigationEntry({
     key: 'cbc-admin-nav',
     slot: 'admin.primary.afterAssessments',
     priority: 10,
-    resolve: ({ hasPlugin, hasCurriculumType }) => (hasPlugin('cbc') || hasCurriculumType('CBE'))
-        ? ({
+    resolve: ({ hasPlugin, hasCurriculumType, user, capabilities }) => {
+        if (!hasPlugin('cbc') && !hasCurriculumType('CBE')) {
+            return null;
+        }
+        const cbcReportPolicyChildren = canManageCbcReportPolicyAuthoring({
+            user,
+            capabilities,
+            authoringMode: 'INSTITUTION_GOVERNANCE',
+        })
+            ? [{ name: 'Report Policies', href: '/cbc/report-policies', icon: Award }]
+            : [];
+
+        return {
             name: 'CBC Management',
             href: '/cbc/progress',
             icon: Award,
             children: [
                 { name: 'Progress Tracking', href: '/cbc/progress', icon: TrendingUp },
                 { name: 'CBC Results', href: '/cbc/assessment-results', icon: BarChart3 },
-                { name: 'Report Policies', href: '/cbc/report-policies', icon: Award },
+                ...cbcReportPolicyChildren,
                 { name: 'Browser', href: '/cbc/browser', icon: BookOpen },
                 { name: 'Teaching', href: '/cbc/teaching', icon: Target },
             ],
-        })
-        : null,
+        };
+    },
 });
 
 registerPluginNavigationEntry({

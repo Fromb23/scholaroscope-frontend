@@ -384,13 +384,6 @@
     "priority": "P1",
     "removeBy": "2026-10-31"
   },
-  "plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage.tsx::admin-or-above-workspace-ui": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P1",
-    "removeBy": "2026-10-31"
-  },
   "plugins/cbc/context/CBCContext.tsx::raw-admin-role-check": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",

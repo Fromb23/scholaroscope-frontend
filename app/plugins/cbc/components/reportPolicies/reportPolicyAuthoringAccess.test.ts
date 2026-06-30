@@ -81,6 +81,14 @@ const institutionGovernanceCapabilities = {
 } satisfies WorkspaceCapabilities;
 
 describe('CBC report policy authoring access', () => {
+    it('does not treat raw admin-style workspace access as policy authoring permission', () => {
+        expect(canManageCbcReportPolicyAuthoring({
+            user,
+            capabilities: baseCapabilities,
+            authoringMode: 'INSTITUTION_GOVERNANCE',
+        })).toBe(false);
+    });
+
     it('does not allow class-configuration capability into institution governance routes', () => {
         expect(canManageCbcReportPolicyAuthoring({
             user,

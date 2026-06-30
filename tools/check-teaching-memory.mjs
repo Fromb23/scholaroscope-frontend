@@ -29,6 +29,8 @@ const teachingActionQueue = read('app/core/lib/teachingActionQueue.ts');
 const useInstructorDashboard = read('app/core/hooks/useInstructorDashboard.ts');
 const useAssignments = read('app/core/hooks/useAssignments.ts');
 const cbcAssessmentPolicyPreview = read('app/plugins/cbc/components/reportPolicies/CbcAssessmentPolicyPreview.tsx');
+const cbcReportPolicyDetailPage = read('app/plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage.tsx');
+const cbcNavigationExtension = read('app/plugins/cbc/registry/navigationExtension.ts');
 const gradePoliciesPage = read('app/core/components/reports/GradePoliciesPage.tsx');
 const reportPoliciesHubPage = read('app/core/components/reports/ReportPoliciesHubPage.tsx');
 
@@ -225,6 +227,23 @@ check(
     && cbcAssessmentPolicyPreview.includes("authoringMode: 'INSTITUTION_GOVERNANCE'")
     && !cbcAssessmentPolicyPreview.includes('isAdminOrAbove'),
   'Visible CBC report policy actions must match the target policy page authorization, not raw ADMIN role.',
+);
+
+check(
+  'CBC report policy detail page must use target-page capability checks',
+  cbcReportPolicyDetailPage.includes('canManageCbcReportPolicyAuthoring')
+    && cbcReportPolicyDetailPage.includes("authoringMode: 'INSTITUTION_GOVERNANCE'")
+    && !cbcReportPolicyDetailPage.includes('isAdminOrAbove'),
+  'CBC report policy pages must use the same capability rule as the visible actions that navigate to them.',
+);
+
+check(
+  'CBC report policy navigation must use target-page capability checks',
+  cbcNavigationExtension.includes('canManageCbcReportPolicyAuthoring')
+    && cbcNavigationExtension.includes("authoringMode: 'INSTITUTION_GOVERNANCE'")
+    && cbcNavigationExtension.includes('cbcReportPolicyChildren')
+    && !cbcNavigationExtension.includes('isAdminOrAbove'),
+  'CBC plugin navigation must not expose institution policy authoring from raw ADMIN role alone.',
 );
 
 check(
