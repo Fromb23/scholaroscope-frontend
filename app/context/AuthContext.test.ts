@@ -21,6 +21,7 @@ describe('AuthContext local-first logout', () => {
     }));
 
     await logoutLocalFirst({
+      markLogoutStarted: () => events.push('loggingOut:true'),
       clearAuthState: () => {
         clearAccessToken();
         events.push(`clear:${getAccessToken() ?? 'null'}`);
@@ -29,7 +30,7 @@ describe('AuthContext local-first logout', () => {
       revokeSession,
     });
 
-    expect(events).toEqual(['clear:null', 'loading:false', 'revoke:null']);
+    expect(events).toEqual(['loggingOut:true', 'clear:null', 'loading:false', 'revoke:null']);
     expect(getAccessToken()).toBeNull();
     expect(revokeSession).toHaveBeenCalledOnce();
     revokeControl.resolve!();
@@ -73,6 +74,7 @@ describe('AuthContext local-first logout', () => {
     expect(source).toContain('authStateVersionRef');
     expect(source).toContain('bootWasSuperseded');
     expect(source).toContain('logoutLocalFirst');
+    expect(source).toContain('loggingOut');
   });
 
   it('treats a denied boot refresh as unauthenticated local state', () => {

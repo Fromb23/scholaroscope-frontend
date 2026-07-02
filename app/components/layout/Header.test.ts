@@ -20,13 +20,17 @@ describe('Header user dropdown', () => {
     const source = readFileSync(join(process.cwd(), 'app/components/layout/Header.tsx'), 'utf8');
 
     expect(source).toContain('const [isLoggingOut, setIsLoggingOut] = useState(false)');
+    expect(source).toContain('const logoutPending = isLoggingOut || loggingOut');
     expect(source).toContain('setDropdownOpen(false);');
     expect(source).toContain('setOrgDropdownOpen(false);');
-    expect(source).toContain("router.replace('/login')");
+    expect(source).toContain("window.location.replace('/login')");
     expect(source).not.toContain("router.push('/login')");
-    expect(source).toContain('disabled={isLoggingOut}');
-    expect(source).toContain('aria-busy={isLoggingOut}');
-    expect(source).toContain("isLoggingOut ? 'Logging out...' : 'Logout'");
+    expect(source).not.toContain("router.replace('/login')");
+    expect(source).not.toContain('buildLoginPath');
+    expect(source).not.toContain('next=');
+    expect(source).toContain('disabled={logoutPending}');
+    expect(source).toContain('aria-busy={logoutPending}');
+    expect(source).toContain("logoutPending ? 'Logging out...' : 'Logout'");
   });
 
   it('keeps mobile shell controls CSS-first and touch-friendly', () => {

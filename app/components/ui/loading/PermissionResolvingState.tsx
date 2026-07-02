@@ -3,11 +3,13 @@ import { LoadingMessage } from './LoadingMessage';
 
 interface PermissionResolvingStateProps {
   message: string;
+  description?: string;
   fullScreen?: boolean;
 }
 
 export function PermissionResolvingState({
   message,
+  description = 'Scholaroscope is resolving your session, workspace, and access policy before opening this area.',
   fullScreen = false,
 }: PermissionResolvingStateProps) {
   return (
@@ -15,7 +17,7 @@ export function PermissionResolvingState({
       <div className="theme-card max-w-md rounded-lg p-6">
         <LoadingMessage
           title={message}
-          description="Scholaroscope is resolving your session, workspace, and access policy before opening this area."
+          description={description}
         />
         <ShieldCheck className="mt-4 h-5 w-5 theme-subtle" aria-hidden="true" />
       </div>

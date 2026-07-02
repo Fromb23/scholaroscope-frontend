@@ -37,6 +37,7 @@ interface AuthContextType {
   capabilities: WorkspaceCapabilities;
   activeRole: Role | null;
   loading: boolean;
+  loggingOut: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
@@ -140,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [membershipVersion, setMembershipVersion] = useState<number>(0);
   const [accessNotices, setAccessNotices] = useState<AccessNotice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
   const authStateVersionRef = useRef(0);
 
   const activeRole = useMemo(
@@ -162,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applyAuthState = useCallback((payload: AuthStatePayload) => {
     authStateVersionRef.current += 1;
+    setLoggingOut(false);
     setAccessToken(payload.access);
     setUser(payload.user);
     setActiveOrg(payload.active_org);
@@ -281,6 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applyAuthState]);
 
   const logout = useCallback(() => logoutLocalFirst({
+    markLogoutStarted: () => setLoggingOut(true),
     clearAuthState,
     setLoading,
   }), [clearAuthState]);
@@ -359,6 +363,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       capabilities,
       activeRole,
       loading,
+      loggingOut,
       isAuthenticated: !!user,
       login,
       logout,
