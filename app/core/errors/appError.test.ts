@@ -34,6 +34,25 @@ describe('resolveAppError', () => {
     expect(error.fieldErrors?.email).toEqual(['A user with this email already exists.']);
   });
 
+  it('uses non_field_errors as the message without attaching field errors', () => {
+    const error = resolveAppError(
+      {
+        response: {
+          status: 400,
+          data: {
+            non_field_errors: ['Invalid email or password.'],
+          },
+        },
+      },
+      { domain: 'auth', action: 'login', entityLabel: 'account access' },
+    );
+
+    expect(error.kind).toBe('validation');
+    expect(error.message).toBe('Invalid email or password.');
+    expect(error.fieldErrors).toBeUndefined();
+    expect(error.channel).toBe('banner');
+  });
+
   it('classifies permission errors with role-aware recovery copy', () => {
     const error = resolveAppError(
       { response: { status: 403, data: { detail: 'You do not have permission to perform this action.' } } },
@@ -259,6 +278,7 @@ describe('field errors', () => {
         message: 'Some fields need correction.',
         field_errors: {
           email: ['This email is already registered.'],
+          non_field_errors: ['The selected class is closed.'],
         },
       },
     })).toEqual({
@@ -271,6 +291,7 @@ describe('field errors', () => {
       error: {
         fieldErrors: {
           workspace_name: ['This name is already taken.'],
+          non_field_errors: ['Choose a different workspace.'],
         },
       },
     })).toEqual({
@@ -292,12 +313,21 @@ describe('field errors', () => {
     })).toEqual({});
   });
 
-  it('keeps non_field_errors as form-level errors', () => {
+  it('excludes non_field_errors from field errors', () => {
     expect(extractFieldErrors({
       non_field_errors: ['The selected class is closed.'],
       detail: 'Invalid request',
-    })).toEqual({
+    })).toEqual({});
+  });
+
+  it('excludes non_field_errors while preserving real field errors', () => {
+    expect(extractFieldErrors({
       non_field_errors: ['The selected class is closed.'],
+      email: ['Enter a valid email address.'],
+      password2: ['Passwords do not match.'],
+    })).toEqual({
+      email: ['Enter a valid email address.'],
+      password2: ['Passwords do not match.'],
     });
   });
 });

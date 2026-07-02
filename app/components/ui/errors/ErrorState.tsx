@@ -14,9 +14,10 @@ interface ErrorStateProps {
 
 export function ErrorState({ error, onRetry, fullScreen = false, className = '' }: ErrorStateProps) {
   const Icon = error.severity === 'info' ? Info : error.severity === 'warning' ? AlertTriangle : AlertCircle;
+  const role = error.severity === 'info' ? 'status' : 'alert';
   return (
     <div className={`flex items-center justify-center ${fullScreen ? 'h-screen' : 'py-10'} ${className}`}>
-      <div className="max-w-lg text-center">
+      <div className="max-w-lg text-center" role={role} aria-live={role === 'alert' ? 'assertive' : 'polite'}>
         <Icon className="mx-auto h-12 w-12 text-[color:var(--color-danger)]" />
         <h3 className="mt-3 text-base font-semibold theme-text">{error.title}</h3>
         <p className="theme-muted mt-2 text-sm">{error.message}</p>
