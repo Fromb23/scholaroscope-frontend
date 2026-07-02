@@ -15,7 +15,7 @@ import { themeAPI } from '@/app/core/api/theme';
 import { themeModeToAppearanceMode } from '@/app/core/theme/effectiveTheme';
 
 export default function Header() {
-  const { user, activeOrg, activeRole, memberships, logout, switchOrg } = useAuth();
+  const { user, activeOrg, activeRole, memberships, logout, loggingOut, switchOrg } = useAuth();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { toggleSidebar } = useSidebar();
@@ -24,8 +24,10 @@ export default function Header() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
-  const handleLogout = async () => {
-    if (isLoggingOut) {
+  const logoutPending = isLoggingOut || loggingOut;
+
+  const handleLogout = () => {
+    if (logoutPending) {
       return;
     }
 
@@ -34,11 +36,11 @@ export default function Header() {
     setOrgDropdownOpen(false);
 
     try {
-      await logout();
+      void logout().catch(() => undefined);
     } catch {
       // Local auth state must still be cleared and the user must still leave the dashboard.
     } finally {
-      router.replace('/login');
+      window.location.replace('/login');
     }
   };
   const handleToggleTheme = () => {
@@ -219,16 +221,16 @@ export default function Header() {
                   </button>
                   <button
                     onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    aria-busy={isLoggingOut}
+                    disabled={logoutPending}
+                    aria-busy={logoutPending}
                     className="flex w-full items-center gap-3 px-4 py-2 text-sm text-[color:var(--color-danger)] theme-hover-danger disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isLoggingOut ? (
+                    {logoutPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <LogOut className="h-4 w-4" />
                     )}
-                    {isLoggingOut ? 'Logging out...' : 'Logout'}
+                    {logoutPending ? 'Logging out...' : 'Logout'}
                   </button>
                 </div>
               </div>

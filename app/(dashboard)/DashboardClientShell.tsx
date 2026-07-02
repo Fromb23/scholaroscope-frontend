@@ -91,7 +91,7 @@ function DashboardContent({
 }
 
 function DashboardLayoutContent({ children }: { children: ReactNode }) {
-  const { user, activeOrg, activeRole, loading, accessNotices, clearAccessNotices, capabilities } = useAuth();
+  const { user, activeOrg, activeRole, loading, loggingOut, accessNotices, clearAccessNotices, capabilities } = useAuth();
   const pluginRegistry = usePluginRegistryStatus();
   const academicSetupQuery = useAcademicSetupStatus({
     enabled: (
@@ -115,6 +115,10 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (loggingOut) {
+      return;
+    }
+
     const nextOrganizationId = activeOrg?.id ?? null;
 
     if (shouldRefreshForOrganizationChange(previousOrganizationIdRef.current, nextOrganizationId)) {
@@ -122,11 +126,14 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     }
 
     previousOrganizationIdRef.current = nextOrganizationId;
-  }, [activeOrg?.id, router]);
+  }, [activeOrg?.id, loggingOut, router]);
 
   useEffect(() => {
-    const currentPath = getCurrentPath();
+    if (loggingOut) {
+      return;
+    }
     if (loading) return;
+    const currentPath = getCurrentPath();
     if (!user) {
       router.replace(buildLoginPath(currentPath));
       return;
@@ -180,6 +187,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     activeRole,
     capabilities,
     loading,
+    loggingOut,
     pathname,
     pluginRegistry.error,
     pluginRegistry.isRoutePluginLoading,
@@ -195,6 +203,16 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     && isAcademicSetupAdminPath(pathname)
     && !capabilities.can_manage_academic_setup
   );
+
+  if (loggingOut) {
+    return (
+      <PermissionResolvingState
+        fullScreen
+        message="Signing out..."
+        description="Returning to sign in."
+      />
+    );
+  }
 
   if (
     loading
