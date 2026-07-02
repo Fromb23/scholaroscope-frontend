@@ -5,11 +5,11 @@ const FIELD_LABELS: Record<string, string> = {
   password: 'Password',
   password2: 'Confirm password',
   workspace_name: 'Workspace name',
-  non_field_errors: 'Form',
   detail: 'Details',
 };
 
 const NON_FIELD_KEYS = new Set([
+  'non_field_errors',
   'detail',
   'message',
   'error',

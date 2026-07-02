@@ -5,7 +5,6 @@ const FIELD_LABELS: Record<string, string> = {
   password: 'Password',
   password2: 'Confirm password',
   workspace_name: 'Workspace name',
-  non_field_errors: 'Form',
   detail: 'Details',
 };
 
