@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
   Download,
   FileText,
+  Link2,
   NotebookPen,
   Save,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { useSchemeDetail } from '@/app/core/hooks/useSchemes';
 import type {
   SchemeEntry,
@@ -248,11 +250,17 @@ function EmptyLessonState({ week }: { week: SchemeWeek }) {
 
 export function SchemeDetailPage() {
   const params = useParams();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const safeReturnTo = useMemo(() => {
     const value = searchParams.get('returnTo');
     return value?.startsWith('/') ? value : null;
   }, [searchParams]);
+  const currentReturnTo = useMemo(() => {
+    const query = searchParams.toString();
+    const candidate = query ? `${pathname}?${query}` : pathname;
+    return isSafeNextPath(candidate) ? candidate : '/schemes';
+  }, [pathname, searchParams]);
   const { activeOrg } = useAuth();
   const schemeId = getSchemeId(params.id);
   const {
@@ -545,6 +553,14 @@ export function SchemeDetailPage() {
     );
   }
 
+  const filteredLessonPlansHref = scheme.cohort_subject && scheme.term
+    ? `/lesson-plans?${new URLSearchParams({
+        cohort_subject: String(scheme.cohort_subject),
+        term: String(scheme.term),
+        returnTo: currentReturnTo,
+      }).toString()}`
+    : null;
+
   return (
     <div className="space-y-6 pb-24 lg:pb-12">
       <div className="flex flex-wrap items-center gap-3">
@@ -597,6 +613,14 @@ export function SchemeDetailPage() {
             <Badge variant="default">{scheme.lesson_duration_minutes} min lessons</Badge>
             {scheme.exceptional_week_count > 0 ? (
               <Badge variant="warning">{scheme.exceptional_week_count} exceptional weeks</Badge>
+            ) : null}
+            {filteredLessonPlansHref ? (
+              <Link href={filteredLessonPlansHref}>
+                <Button type="button" variant="secondary">
+                  <Link2 className="h-4 w-4" />
+                  Lesson plans
+                </Button>
+              </Link>
             ) : null}
             <Button
               type="button"

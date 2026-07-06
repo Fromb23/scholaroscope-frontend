@@ -9,7 +9,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
     Users, Plus, GraduationCap, CheckCircle,
     UserCheck, UserX, BookOpen, LayoutGrid, List, Mail, Phone,
@@ -33,6 +33,9 @@ import { Input } from '@/app/components/ui/Input';
 import { UserCreatePayload } from '@/app/core/types/globalUsers';
 import { AppError, getAppError, resolveAppError } from '@/app/core/errors';
 import { InlineActionError, RecoverableErrorCard } from '@/app/components/ui/errors';
+import { useAuth } from '@/app/context/AuthContext';
+import { canRenderInstitutionReportOverview } from '@/app/core/components/reports/reportAccessPolicy';
+import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
 
 type ViewMode = 'table' | 'grid';
 
@@ -190,9 +193,11 @@ function CreateInstructorModal({
 // ── Grid card — display only ──────────────────────────────────────────────
 
 function InstructorGridCard({
-    instructor, onClick,
+    instructor, progressHref, reportHref, onClick,
 }: {
     instructor: GlobalUser;
+    progressHref: string;
+    reportHref: string | null;
     onClick: () => void;
 }) {
     return (
@@ -230,7 +235,16 @@ function InstructorGridCard({
                         <GraduationCap className="h-3.5 w-3.5 text-blue-400" />Instructor
                     </span>
                     <span>Joined {new Date(instructor.date_joined).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
-                    <span className="ml-auto text-blue-500 font-medium text-xs">View →</span>
+                    <span className="ml-auto flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                        <Link href={progressHref} className="font-medium text-blue-600 hover:underline">
+                            Progress
+                        </Link>
+                        {reportHref ? (
+                            <Link href={reportHref} className="font-medium text-blue-600 hover:underline">
+                                Report
+                            </Link>
+                        ) : null}
+                    </span>
                 </div>
             </Card>
         </div>
@@ -241,7 +255,9 @@ function InstructorGridCard({
 
 export function InstructorManagementPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
+    const { user, activeRole, activeOrg, capabilities } = useAuth();
     const { instructors, loading, error, refetch, createInstructor } = useInstructors();
 
     const [search, setSearch] = useState('');
@@ -278,11 +294,20 @@ export function InstructorManagementPage() {
     const returnTo = searchParams.get('returnTo');
     const hasTeachingContext = Boolean(selectedCohortSubjectId && selectedSubjectName && selectedCohortName);
     const preservedContextQuery = searchParams.toString();
+    const currentReturnTo = useMemo(() => {
+        const query = searchParams.toString();
+        return query ? `${pathname}?${query}` : pathname;
+    }, [pathname, searchParams]);
+    const canOpenInstructorReports = canRenderInstitutionReportOverview({
+        user,
+        activeRole,
+        activeOrg,
+        capabilities,
+    });
 
-    const navigateTo = (id: number) => {
+    const buildProgressHref = (id: number) => {
         if (!hasTeachingContext) {
-            router.push(`/admin/instructors/${id}/progress`);
-            return;
+            return `/admin/instructors/${id}/progress`;
         }
 
         const params = new URLSearchParams({
@@ -304,7 +329,17 @@ export function InstructorManagementPage() {
             params.set('back', preservedContextQuery);
         }
 
-        router.push(`/admin/instructors/${id}/progress?${params.toString()}`);
+        return `/admin/instructors/${id}/progress?${params.toString()}`;
+    };
+
+    const buildReportHref = (id: number) => (
+        canOpenInstructorReports
+            ? buildInstructorReportHref(id, { returnTo: currentReturnTo })
+            : null
+    );
+
+    const navigateTo = (id: number) => {
+        router.push(buildProgressHref(id));
     };
 
     const handleCreate = async (data: UserCreatePayload) => {
@@ -381,10 +416,26 @@ export function InstructorManagementPage() {
         },
         {
             key: 'id',
-            header: '',
-            render: () => (
-                <span className="text-xs text-blue-500 font-medium">View →</span>
-            ),
+            header: 'Actions',
+            render: row => {
+                const reportHref = buildReportHref(row.id);
+
+                return (
+                    <div
+                        className="flex flex-wrap items-center gap-2"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <Link href={buildProgressHref(row.id)} className="text-xs font-medium text-blue-600 hover:underline">
+                            Progress
+                        </Link>
+                        {reportHref ? (
+                            <Link href={reportHref} className="text-xs font-medium text-blue-600 hover:underline">
+                                Report
+                            </Link>
+                        ) : null}
+                    </div>
+                );
+            },
         },
     ];
 
@@ -509,7 +560,13 @@ export function InstructorManagementPage() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filtered.map(i => (
-                        <InstructorGridCard key={i.id} instructor={i} onClick={() => navigateTo(i.id)} />
+                        <InstructorGridCard
+                            key={i.id}
+                            instructor={i}
+                            progressHref={buildProgressHref(i.id)}
+                            reportHref={buildReportHref(i.id)}
+                            onClick={() => navigateTo(i.id)}
+                        />
                     ))}
                 </div>
             )}

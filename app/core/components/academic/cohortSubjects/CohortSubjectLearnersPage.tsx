@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle2, Download, Users, UserPlus, UserMinus, X } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
@@ -28,6 +28,8 @@ import {
     buildLearnerCreateHref,
 } from '@/app/core/components/learners/learnerCreateNavigation';
 import { buildClassSubjectLearnerProfileHref } from '@/app/core/components/learners/learnerProfileNavigation';
+import { buildLearnerSubjectReportHref } from '@/app/core/lib/learnerReportingRoutes';
+import { shouldUseInstructorReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
 import {
     Table,
     TableBody,
@@ -283,9 +285,11 @@ function buildUnenrollResultMessage(result: BulkSubjectUnenrollResponse) {
 
 export default function CohortSubjectLearnersPage() {
     const params = useParams<{ id: string }>();
+    const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const queryClient = useQueryClient();
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
     const instructorView = hasInstructorRole(activeRole);
     const canManageLearners = isAdminOrAbove(user, activeRole);
     const instructorAccess = useInstructorCohortAccess({ enabled: instructorView });
@@ -440,6 +444,16 @@ export default function CohortSubjectLearnersPage() {
     const pageSubtitle = instructorView
         ? 'Read-only learner list for your assigned cohort subject.'
         : 'This screen manages explicit subject participation. It does not add or remove learners from the parent cohort.';
+    const currentReturnTo = (() => {
+        const query = searchParams.toString();
+        return query ? `${pathname}?${query}` : pathname;
+    })();
+    const canOpenInstructorLearnerReports = shouldUseInstructorReportSurface({
+        user,
+        activeRole,
+        activeOrg,
+        capabilities,
+    });
 
     const toggleSelection = (
         setter: Dispatch<SetStateAction<Set<number>>>,
@@ -589,10 +603,14 @@ export default function CohortSubjectLearnersPage() {
             {instructorView ? (
                 <ReadOnlyLearnerTable
                     learners={learnerData.enrolled}
-                    buildLearnerHref={(learnerId) => buildClassSubjectLearnerProfileHref(
-                        learnerId,
-                        learnerData.cohort_id,
-                        cohortSubjectId,
+                    buildLearnerHref={(learnerId) => (
+                        canOpenInstructorLearnerReports
+                            ? buildLearnerSubjectReportHref(learnerId, cohortSubjectId, { returnTo: currentReturnTo })
+                            : buildClassSubjectLearnerProfileHref(
+                                learnerId,
+                                learnerData.cohort_id,
+                                cohortSubjectId,
+                            )
                     )}
                 />
             ) : (
