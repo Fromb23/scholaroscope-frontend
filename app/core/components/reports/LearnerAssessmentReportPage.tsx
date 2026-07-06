@@ -176,26 +176,14 @@ function FilterControls({
     <Card>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Select
-          label="Assessment Category"
-          value={assessmentType ?? ''}
-          onChange={(event) => onChange({ assessment_type: event.target.value || null })}
+          label="Academic Year"
+          value={academicYearId?.toString() ?? ''}
+          onChange={(event) => onChange({ academic_year: event.target.value ? Number(event.target.value) : null })}
           options={[
-            { value: '', label: 'All categories' },
-            ...(filters?.assessment_types ?? []).map((type) => ({
-              value: type.value,
-              label: `${type.label} (${type.count})`,
-            })),
-          ]}
-        />
-        <Select
-          label="Subject Scope"
-          value={cohortSubjectId?.toString() ?? ''}
-          onChange={(event) => onChange({ cohort_subject: event.target.value ? Number(event.target.value) : null })}
-          options={[
-            { value: '', label: 'All visible subjects' },
-            ...(filters?.subjects ?? []).map((subject) => ({
-              value: String(subject.cohort_subject_id),
-              label: `${subject.subject_code} - ${subject.subject_name} (${subject.cohort_name})`,
+            { value: '', label: 'All years' },
+            ...(filters?.academic_years ?? []).map((year) => ({
+              value: String(year.id),
+              label: year.name,
             })),
           ]}
         />
@@ -212,14 +200,26 @@ function FilterControls({
           ]}
         />
         <Select
-          label="Academic Year"
-          value={academicYearId?.toString() ?? ''}
-          onChange={(event) => onChange({ academic_year: event.target.value ? Number(event.target.value) : null })}
+          label="Subject Scope"
+          value={cohortSubjectId?.toString() ?? ''}
+          onChange={(event) => onChange({ cohort_subject: event.target.value ? Number(event.target.value) : null })}
           options={[
-            { value: '', label: 'All years' },
-            ...(filters?.academic_years ?? []).map((year) => ({
-              value: String(year.id),
-              label: year.name,
+            { value: '', label: 'All visible subjects' },
+            ...(filters?.subjects ?? []).map((subject) => ({
+              value: String(subject.cohort_subject_id),
+              label: `${subject.subject_code} - ${subject.subject_name} (${subject.cohort_name})`,
+            })),
+          ]}
+        />
+        <Select
+          label="Assessment Category"
+          value={assessmentType ?? ''}
+          onChange={(event) => onChange({ assessment_type: event.target.value || null })}
+          options={[
+            { value: '', label: 'All categories' },
+            ...(filters?.assessment_types ?? []).map((type) => ({
+              value: type.value,
+              label: `${type.label} (${type.count})`,
             })),
           ]}
         />

@@ -8,6 +8,29 @@ const source = () => readFileSync(
 );
 
 describe('LearnerAssessmentReportPage state handling', () => {
+  it('renders hierarchy filters in parent-to-child DOM order', () => {
+    const labels = Array.from(
+      source().matchAll(/<Select\s+label="([^"]+)"/g),
+      (match) => match[1],
+    );
+
+    expect(labels.slice(0, 4)).toEqual([
+      'Academic Year',
+      'Term',
+      'Subject Scope',
+      'Assessment Category',
+    ]);
+  });
+
+  it('keeps child filter params when academic year changes', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('const nextParams = new URLSearchParams(searchParams.toString())');
+    expect(pageSource).toContain("onChange={(event) => onChange({ academic_year: event.target.value ? Number(event.target.value) : null })}");
+    expect(pageSource).not.toContain("nextParams.delete('term')");
+    expect(pageSource).not.toContain("nextParams.delete('cohort_subject')");
+  });
+
   it('uses returnTo for the contextual back button', () => {
     const pageSource = source();
 
