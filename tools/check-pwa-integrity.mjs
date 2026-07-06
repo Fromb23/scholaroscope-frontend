@@ -22,6 +22,62 @@ function requireFile(relativePath) {
   return read(relativePath);
 }
 
+function extractFunctionBody(source, functionName) {
+  const declaration = `async function ${functionName}`;
+  const start = source.indexOf(declaration);
+  if (start === -1) {
+    return '';
+  }
+
+  const bodyStart = source.indexOf('{', start);
+  if (bodyStart === -1) {
+    return '';
+  }
+
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(bodyStart + 1, index);
+      }
+    }
+  }
+
+  return '';
+}
+
+function extractFetchHandlerBody(source) {
+  const start = source.indexOf("self.addEventListener('fetch'");
+  if (start === -1) {
+    return '';
+  }
+
+  const arrowStart = source.indexOf('=>', start);
+  const bodyStart = source.indexOf('{', arrowStart);
+  if (arrowStart === -1 || bodyStart === -1) {
+    return '';
+  }
+
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    const char = source[index];
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(bodyStart + 1, index);
+      }
+    }
+  }
+
+  return '';
+}
+
 const manifest = requireFile('app/manifest.ts');
 if (manifest) {
   if (!/MetadataRoute\.Manifest/.test(manifest) || !/export\s+default\s+function\s+manifest/.test(manifest)) {
@@ -89,8 +145,63 @@ if (serviceWorker) {
     fail('public/sw.js must return before cache handling for API traffic and non-GET requests.');
   }
 
+  const fetchHandlerBody = extractFetchHandlerBody(serviceWorker);
+  if (!fetchHandlerBody) {
+    fail('public/sw.js must register a fetch event handler.');
+  } else {
+    const apiBypassIndex = fetchHandlerBody.indexOf("if (request.method !== 'GET' || isApiRequest(url))");
+    const navigationIndex = fetchHandlerBody.indexOf("if (request.mode === 'navigate')");
+    const staticAssetIndex = fetchHandlerBody.indexOf('if (isCacheableStaticAsset(request, url))');
+
+    if (apiBypassIndex === -1) {
+      fail('public/sw.js fetch handler must keep the exact non-GET/API bypass guard.');
+    }
+
+    if (
+      apiBypassIndex === -1
+      || navigationIndex === -1
+      || staticAssetIndex === -1
+      || apiBypassIndex > navigationIndex
+      || apiBypassIndex > staticAssetIndex
+    ) {
+      fail('public/sw.js fetch handler must run the non-GET/API bypass before navigation or static cache handling.');
+    }
+  }
+
   if (/api/i.test(serviceWorker) && /cache\.put\([^)]*api/i.test(serviceWorker)) {
     fail('public/sw.js must never cache API traffic.');
+  }
+
+  if (!/const\s+APP_SHELL_URL\s*=\s*['"]\/['"]/.test(serviceWorker)) {
+    fail("public/sw.js must define the app shell fallback URL as '/'.");
+  }
+
+  const navigationHandlerBody = extractFunctionBody(serviceWorker, 'handleNavigationRequest');
+  if (!navigationHandlerBody) {
+    fail('public/sw.js must keep navigation request handling in handleNavigationRequest.');
+  } else {
+    const exactFallbackIndex = navigationHandlerBody.indexOf('cache.match(request)');
+    const appShellFallbackIndex = navigationHandlerBody.indexOf('cache.match(APP_SHELL_URL)');
+    const offlineFallbackIndex = navigationHandlerBody.indexOf('cache.match(OFFLINE_URL)');
+    const textFallbackIndex = navigationHandlerBody.indexOf("new Response('Scholaroscope is offline.'");
+
+    if (appShellFallbackIndex === -1) {
+      fail("public/sw.js navigation fallback must try the cached app shell '/' before /offline.");
+    }
+
+    if (
+      exactFallbackIndex === -1
+      || appShellFallbackIndex === -1
+      || offlineFallbackIndex === -1
+      || textFallbackIndex === -1
+      || !(exactFallbackIndex < appShellFallbackIndex && appShellFallbackIndex < offlineFallbackIndex && offlineFallbackIndex < textFallbackIndex)
+    ) {
+      fail("public/sw.js failed-navigation fallback order must be exact URL, app shell '/', /offline, then text 503.");
+    }
+  }
+
+  if (!/cacheSuccessfulNavigationDocument\(request,\s*response/.test(serviceWorker) || !/cache\.put\(request,\s*response\.clone\(\)\)/.test(serviceWorker)) {
+    fail('public/sw.js must cache successful same-origin navigation documents for offline revisits.');
   }
 
   if (!/BUILD_VERSION|APP_VERSION|GIT_SHA/.test(serviceWorker)) {
