@@ -1,10 +1,6 @@
 import { useCallback, useState } from 'react';
-import {
-  assessmentAPI,
-  type AssessmentBulkFinalizePayload,
-  type AssessmentBulkFinalizeResult,
-} from '@/app/core/api/assessments';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { assessmentAPI, type AssessmentBulkFinalizePayload, type AssessmentBulkFinalizeResult } from '@/app/core/api/assessments';
+import { resolveAssessmentError } from '@/app/core/errors';
 
 interface UseAdminBulkFinalizeOptions {
   onSuccess?: (result: AssessmentBulkFinalizeResult) => Promise<void> | void;
@@ -25,8 +21,11 @@ export function useAdminBulkFinalize(options?: UseAdminBulkFinalizeOptions) {
       await onSuccess?.(nextResult);
       return nextResult;
     } catch (err) {
-      const message = extractErrorMessage(err as ApiError, 'Failed to bulk finalize assessments');
-      setError(message);
+      const appError = resolveAssessmentError(err, {
+        action: 'update',
+        entityLabel: 'assessment finalization',
+      });
+      setError(appError.message);
       throw err;
     } finally {
       setLoading(false);

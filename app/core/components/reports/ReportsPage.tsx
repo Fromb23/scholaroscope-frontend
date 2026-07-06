@@ -1,5 +1,7 @@
-import { ReportsPageClient } from '@/app/core/components/reports/ReportsPageClient';
+import { ReportSurfaceRouter } from '@/app/core/components/reports/ReportSurfaceRouter';
+import { resolveReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
 
 export function ReportsPage() {
-  return <ReportsPageClient />;
+  void resolveReportSurface;
+  return <ReportSurfaceRouter />;
 }

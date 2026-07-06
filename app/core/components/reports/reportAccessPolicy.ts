@@ -1,5 +1,40 @@
 import type { ActiveOrg, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
-import { isSupervisionOnlyAdmin, isTeachingActorView } from '@/app/core/lib/workspaces';
+import {
+  isSelfManagedTeachingAdmin,
+  isSupervisionOnlyAdmin,
+  isTeachingActorView,
+} from '@/app/core/lib/workspaces';
+
+export type ReportSurface = 'institution' | 'freelance' | 'instructor' | 'none';
+
+export function resolveReportSurface(params: {
+  user?: User | null;
+  activeRole?: Role | null;
+  activeOrg?: ActiveOrg | null;
+  capabilities?: WorkspaceCapabilities | null;
+}): ReportSurface {
+  if (!params.user) {
+    return 'none';
+  }
+
+  if (params.user.is_superadmin) {
+    return 'institution';
+  }
+
+  if (isSelfManagedTeachingAdmin(params)) {
+    return 'freelance';
+  }
+
+  if (canRenderInstitutionReportOverview(params)) {
+    return 'institution';
+  }
+
+  if (shouldUseInstructorReportSurface(params)) {
+    return 'instructor';
+  }
+
+  return 'none';
+}
 
 export function canRenderInstitutionReportOverview(params: {
   user?: User | null;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { assessmentAPI } from '@/app/core/api/assessments';
+import { resolveAssessmentError } from '@/app/core/errors';
 import { useAssessmentDetail, useAssessmentScores } from '@/app/core/hooks/useAssessments';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { tracksAssessmentParticipation } from '@/app/core/lib/assessmentParticipation';
@@ -253,9 +254,11 @@ export function useAssessmentDetailPage() {
             setParticipationSummary(data.summary);
             setParticipationLoaded(true);
         } catch (error) {
-            setParticipationError(
-                extractErrorMessage(error as ApiError, 'Failed to load assessment participation')
-            );
+            const appError = resolveAssessmentError(error, {
+                action: 'load',
+                entityLabel: 'assessment participation roster',
+            });
+            setParticipationError(appError.message);
         } finally {
             setParticipationLoading(false);
         }

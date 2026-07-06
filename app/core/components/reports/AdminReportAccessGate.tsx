@@ -1,15 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import {
-  canRenderInstitutionReportOverview,
-  shouldUseInstructorReportSurface,
-} from '@/app/core/components/reports/reportAccessPolicy';
+import { resolveReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
 
 interface AdminReportAccessGateProps {
   children: ReactNode;
@@ -18,27 +13,13 @@ interface AdminReportAccessGateProps {
 export function AdminReportAccessGate({
   children,
 }: AdminReportAccessGateProps) {
-  const router = useRouter();
   const { user, activeRole, activeOrg, capabilities, loading } = useAuth();
-  const canRenderAdminReports = canRenderInstitutionReportOverview({
+  const surface = resolveReportSurface({
     user,
     activeRole,
     activeOrg,
     capabilities,
   });
-  const useInstructorReports = shouldUseInstructorReportSurface({
-    user,
-    activeRole,
-    activeOrg,
-    capabilities,
-  });
-
-  useEffect(() => {
-    if (loading || !user || canRenderAdminReports) return;
-    if (useInstructorReports) {
-      router.replace('/reports/instructor');
-    }
-  }, [canRenderAdminReports, loading, router, useInstructorReports, user]);
 
   if (loading) {
     return <LoadingSpinner message="Checking report access..." />;
@@ -48,12 +29,8 @@ export function AdminReportAccessGate({
     return null;
   }
 
-  if (canRenderAdminReports) {
+  if (surface === 'institution') {
     return <>{children}</>;
-  }
-
-  if (useInstructorReports) {
-    return <LoadingSpinner message="Redirecting to instructor reports..." />;
   }
 
   return (

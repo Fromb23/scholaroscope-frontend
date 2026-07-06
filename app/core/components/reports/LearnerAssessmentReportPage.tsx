@@ -18,7 +18,7 @@ import {
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { EntityLoadingState, ReportPreparingState } from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
@@ -36,14 +36,10 @@ import type {
   LearnerAssessmentTermTrendPoint,
   LearnerAvailableReportScope,
 } from '@/app/core/types/reporting';
+import type { AppError } from '@/app/core/errors';
 
 type AssessmentReportViewMode = 'summary' | 'terms' | 'academic_years' | 'subjects';
-
-const VIEW_OPTIONS: Array<{
-  value: AssessmentReportViewMode;
-  label: string;
-  icon: typeof Table2;
-}> = [
+const VIEW_OPTIONS: Array<{ value: AssessmentReportViewMode; label: string; icon: typeof Table2 }> = [
   { value: 'summary', label: 'Category', icon: Table2 },
   { value: 'terms', label: 'Terms', icon: LineChart },
   { value: 'academic_years', label: 'Years', icon: BarChart3 },
@@ -51,9 +47,7 @@ const VIEW_OPTIONS: Array<{
 ];
 
 function parsePositiveNumber(value: string | null): number | null {
-  if (!value) {
-    return null;
-  }
+  if (!value) return null;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
@@ -68,6 +62,15 @@ function metricValue(value: number | null): string {
   return value == null ? '-' : formatPercent(value);
 }
 
+const learnerAssessmentReportError = (message: string): AppError => ({
+  kind: 'report_not_ready',
+  title: 'This learner assessment report is not ready yet.',
+  message,
+  retryable: true,
+  severity: 'warning',
+  actionLabel: 'Try again',
+});
+
 function scoreValue(row: LearnerAssessmentReportRow): string {
   if (row.score != null && row.total_marks != null) {
     return `${row.score}/${row.total_marks}`;
@@ -79,21 +82,12 @@ function scoreValue(row: LearnerAssessmentReportRow): string {
 }
 
 function statusVariant(status: string): 'success' | 'warning' | 'default' {
-  if (status === 'FINALIZED' || status === 'GRADED') {
-    return 'success';
-  }
-  if (status === 'ACTIVE' || status === 'PENDING_REVIEW') {
-    return 'warning';
-  }
+  if (status === 'FINALIZED' || status === 'GRADED') return 'success';
+  if (status === 'ACTIVE' || status === 'PENDING_REVIEW') return 'warning';
   return 'default';
 }
 
-function SummaryCard({
-  title,
-  value,
-  helper,
-  icon: Icon,
-}: {
+function SummaryCard({ title, value, helper, icon: Icon }: {
   title: string;
   value: string;
   helper?: string;
@@ -115,14 +109,7 @@ function SummaryCard({
   );
 }
 
-function AccessState({
-  learnerId,
-  scopes,
-  returnTo,
-  assessmentId,
-  assessmentType,
-  termId,
-}: {
+function AccessState({ learnerId, scopes, returnTo, assessmentId, assessmentType, termId }: {
   learnerId: number;
   scopes: LearnerAvailableReportScope[];
   returnTo: string;
@@ -571,7 +558,7 @@ export function LearnerAssessmentReportPage() {
       </div>
 
       {scopesError ? (
-        <ErrorBanner message={scopesError} onDismiss={() => undefined} />
+        <AppErrorBanner error={learnerAssessmentReportError(scopesError)} />
       ) : null}
 
       {showAccessState ? (
@@ -599,7 +586,10 @@ export function LearnerAssessmentReportPage() {
       ) : null}
 
       {!showAccessState && reportError && !permissionDenied ? (
-        <ErrorBanner message={reportError} onDismiss={() => void refetch()} />
+        <AppErrorBanner
+          error={learnerAssessmentReportError(reportError)}
+          onAction={() => void refetch()}
+        />
       ) : null}
 
       {!showAccessState && report ? (
