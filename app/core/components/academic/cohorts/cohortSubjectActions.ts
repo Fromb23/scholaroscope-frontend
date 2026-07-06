@@ -1,6 +1,122 @@
 import type { CohortSubject } from '@/app/core/types/academic';
 import type { CohortSubjectAction } from '@/app/core/components/cohorts/CohortSubjectParticipationSection';
 
+export type CohortSubjectActionMobileGroup = 'daily' | 'setup';
+export type CohortSubjectActionMobileIcon =
+  | 'assignments'
+  | 'assessments'
+  | 'calculator'
+  | 'cbc-content'
+  | 'cbc-progress'
+  | 'instructor'
+  | 'learners'
+  | 'lesson'
+  | 'record'
+  | 'report'
+  | 'report-rules'
+  | 'scheme';
+
+export interface CohortSubjectActionMobilePresentation {
+  mobileGroup: CohortSubjectActionMobileGroup;
+  mobileIcon: CohortSubjectActionMobileIcon;
+  mobileLabel: string;
+}
+
+export const COHORT_SUBJECT_ACTION_MOBILE_PRESENTATION = {
+  'Manage learners': {
+    mobileGroup: 'daily',
+    mobileIcon: 'learners',
+    mobileLabel: 'Learners',
+  },
+  'Prepare scheme': {
+    mobileGroup: 'setup',
+    mobileIcon: 'scheme',
+    mobileLabel: 'Scheme',
+  },
+  'Prepare lesson': {
+    mobileGroup: 'daily',
+    mobileIcon: 'lesson',
+    mobileLabel: 'Lesson',
+  },
+  'Record lesson': {
+    mobileGroup: 'daily',
+    mobileIcon: 'record',
+    mobileLabel: 'Record',
+  },
+  Assignments: {
+    mobileGroup: 'daily',
+    mobileIcon: 'assignments',
+    mobileLabel: 'Assignments',
+  },
+  Assessments: {
+    mobileGroup: 'daily',
+    mobileIcon: 'assessments',
+    mobileLabel: 'Assessments',
+  },
+  'Set report rules': {
+    mobileGroup: 'setup',
+    mobileIcon: 'report-rules',
+    mobileLabel: 'Report rules',
+  },
+  'Calculate subject report': {
+    mobileGroup: 'setup',
+    mobileIcon: 'calculator',
+    mobileLabel: 'Calculate report',
+  },
+  'Open subject report': {
+    mobileGroup: 'daily',
+    mobileIcon: 'report',
+    mobileLabel: 'Report',
+  },
+  'View CBC content': {
+    mobileGroup: 'setup',
+    mobileIcon: 'cbc-content',
+    mobileLabel: 'CBC content',
+  },
+  'Check CBC progress': {
+    mobileGroup: 'daily',
+    mobileIcon: 'cbc-progress',
+    mobileLabel: 'CBC progress',
+  },
+  'Assign/Manage Instructor': {
+    mobileGroup: 'setup',
+    mobileIcon: 'instructor',
+    mobileLabel: 'Instructor',
+  },
+} as const satisfies Record<string, CohortSubjectActionMobilePresentation>;
+
+const DEFAULT_MOBILE_PRESENTATION: CohortSubjectActionMobilePresentation = {
+  mobileGroup: 'setup',
+  mobileIcon: 'scheme',
+  mobileLabel: 'Action',
+};
+
+export function getCohortSubjectActionMobilePresentation(label: string): CohortSubjectActionMobilePresentation {
+  return (COHORT_SUBJECT_ACTION_MOBILE_PRESENTATION as Record<string, CohortSubjectActionMobilePresentation>)[label]
+    ?? {
+      ...DEFAULT_MOBILE_PRESENTATION,
+      mobileLabel: label,
+    };
+}
+
+export function withCohortSubjectActionMobilePresentation<T extends { label: string }>(
+  action: T
+): T & CohortSubjectActionMobilePresentation {
+  return {
+    ...action,
+    ...getCohortSubjectActionMobilePresentation(action.label),
+  };
+}
+
+export function splitCohortSubjectMobileActions<T extends { mobileGroup?: CohortSubjectActionMobileGroup }>(
+  actions: T[],
+): { daily: T[]; setup: T[] } {
+  return {
+    daily: actions.filter((action) => action.mobileGroup === 'daily'),
+    setup: actions.filter((action) => action.mobileGroup !== 'daily'),
+  };
+}
+
 function buildScopedHref(path: string, params: Record<string, string | number | null | undefined>) {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -118,5 +234,5 @@ export function buildCohortSubjectTeachingActions(params: {
     actions.push(subjectReportAction);
   }
 
-  return actions;
+  return actions.map((action) => withCohortSubjectActionMobilePresentation(action));
 }

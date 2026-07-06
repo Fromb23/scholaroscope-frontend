@@ -29,8 +29,13 @@ const subjectActions: CohortSubjectAction[] = [
   { label: 'Prepare scheme', href: '/schemes?cohort_subject=26' },
   { label: 'Prepare lesson', href: '/lesson-plans?cohort_subject=26' },
   { label: 'Record lesson', href: '/sessions?cohort_subject=26' },
+  { label: 'Assignments', href: '/academic/cohorts/9/assignments?cohort_subject=26' },
+  { label: 'Assessments', href: '/assessments?cohort_subject=26' },
   { label: 'Set report rules', href: '/academic/cohorts/9/subjects/26/report-policy' },
   { label: 'Calculate subject report', href: '/academic/cohorts/9/subjects/26/report-computation' },
+  { label: 'Open subject report', href: '/reports/instructor/cohort-subjects/26' },
+  { label: 'View CBC content', href: '/cbc/browser?cohort_subject_id=26' },
+  { label: 'Check CBC progress', href: '/cbc/progress?cohort_subject_id=26' },
 ];
 
 function renderSubjectSection() {
@@ -57,7 +62,7 @@ function renderSubjectSection() {
 }
 
 describe('cohort subject participation section actions', () => {
-  it('builds mobile menu items from the same subject action list', () => {
+  it('builds mobile action items from the same subject action list', () => {
     const items = buildCohortSubjectActionMenuItems({
       subjectLearnersHref: '/academic/cohort-subjects/26/learners',
       subjectActions,
@@ -68,21 +73,33 @@ describe('cohort subject participation section actions', () => {
       'Prepare scheme',
       'Prepare lesson',
       'Record lesson',
+      'Assignments',
+      'Assessments',
       'Set report rules',
       'Calculate subject report',
+      'Open subject report',
+      'View CBC content',
+      'Check CBC progress',
     ]);
     expect(items.find((item) => item.label === 'Prepare scheme')?.href).toBe('/schemes?cohort_subject=26');
+    expect(items.find((item) => item.label === 'Manage learners')?.mobileGroup).toBe('daily');
+    expect(items.find((item) => item.label === 'Calculate subject report')?.mobileGroup).toBe('setup');
+    expect(items.find((item) => item.label === 'Calculate subject report')?.mobileLabel).toBe('Calculate report');
   });
 
-  it('renders a compact mobile More surface while preserving desktop actions', () => {
+  it('renders mobile action cards while preserving desktop actions at md and up', () => {
     const html = renderSubjectSection();
 
-    expect(html).toContain('Open Mathematics actions');
-    expect(html).toContain('More');
-    expect(html).toContain('sm:hidden');
-    expect(html).toContain('hidden flex-wrap gap-2 sm:flex');
+    expect(html).toContain('md:hidden');
+    expect(html).toContain('Class setup');
+    expect(html).toContain('hidden flex-wrap gap-2 md:flex');
     expect(html).toContain('Manage learners');
+    expect(html).toContain('Learners');
+    expect(html).toContain('Check CBC progress');
+    expect(html).toContain('CBC progress');
     expect(html).toContain('Set report rules');
+    expect(html).toContain('Calculate report');
     expect(html).toContain('/academic/cohorts/9/subjects/26/report-computation');
+    expect(html).not.toContain('More');
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildCohortSubjectTeachingActions,
+  splitCohortSubjectMobileActions,
   shouldShowCohortSubjectTeachingActions,
 } from './cohortSubjectActions';
 import type { CohortSubject } from '@/app/core/types/academic';
@@ -79,6 +80,34 @@ describe('cohort subject teaching actions', () => {
       'View CBC content',
       'Check CBC progress',
     ]);
+  });
+
+  it('tags mobile class actions by daily teaching versus setup work from one source', () => {
+    const actions = buildCohortSubjectTeachingActions({
+      cohortId: 9,
+      cohortReturnTo: '/academic/cohorts/9',
+      subject: cohortSubject,
+      isCBC: true,
+      hasCBCPlugin: true,
+      isClassConfigurationWorkspace: true,
+    });
+    const { daily, setup } = splitCohortSubjectMobileActions(actions);
+
+    expect(daily.map((action) => action.label)).toEqual([
+      'Prepare lesson',
+      'Record lesson',
+      'Assignments',
+      'Assessments',
+      'Open subject report',
+      'Check CBC progress',
+    ]);
+    expect(setup.map((action) => action.label)).toEqual([
+      'Prepare scheme',
+      'Set report rules',
+      'Calculate subject report',
+      'View CBC content',
+    ]);
+    expect(actions.find((action) => action.label === 'Calculate subject report')?.mobileLabel).toBe('Calculate report');
   });
 
   it('does not expose freelance class-configuration actions for institution subject cards', () => {
