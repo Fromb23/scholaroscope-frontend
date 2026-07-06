@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/app/components/ui/Table';
 import type { Column } from '@/app/components/ui/Table';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
+import { buildLearnerAssessmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import {
     AssessmentScore,
     AssessmentDetail,
@@ -49,6 +53,27 @@ const STATUS_OPTIONS = [
 export function AssessmentScoreTable({
     assessment, scores, draft, loading, readOnly, participationByStudentId, onScoreChange,
 }: Props) {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const returnTo = useMemo(() => {
+        const query = searchParams.toString();
+        const candidate = query ? `${pathname}?${query}` : pathname;
+        return isSafeNextPath(candidate) ? candidate : `/assessments/${assessment.id}`;
+    }, [assessment.id, pathname, searchParams]);
+
+    const buildLearnerHref = (learnerId: number) => buildLearnerAssessmentReportHref(
+        learnerId,
+        {
+            assessmentId: assessment.id,
+            cohortSubjectId: assessment.cohort_subject,
+            assessmentType: assessment.assessment_type,
+            termId: assessment.term,
+            subjectId: assessment.subject_id,
+            cohortId: assessment.cohort_id,
+            returnTo,
+        },
+    );
+
     const resolveRowValues = (row: AssessmentScore) => {
         const scoreDraft = draft[row.student];
         const currentScore = getAssessmentScoreDraftValue(scoreDraft, 'score', row.score);
@@ -218,7 +243,7 @@ export function AssessmentScoreTable({
             key: 'student_name', header: 'Student', sortable: true,
             render: row => (
                 <div>
-                    <Link href={`/learners/${row.student}`}
+                    <Link href={buildLearnerHref(row.student)}
                         className="font-medium text-blue-600 hover:underline">
                         {row.student_name}
                     </Link>
@@ -284,7 +309,7 @@ export function AssessmentScoreTable({
                         >
                             <div>
                                 <Link
-                                    href={`/learners/${row.student}`}
+                                    href={buildLearnerHref(row.student)}
                                     className="font-medium text-blue-600 hover:underline"
                                 >
                                     {row.student_name}

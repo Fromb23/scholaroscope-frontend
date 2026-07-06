@@ -8,6 +8,7 @@ import {
   buildInstructorReportHref,
   buildInstructorClassReportHref,
   buildInstructorCohortSubjectDetailHref,
+  buildLearnerAssessmentReportHref,
   buildLearnerReportHref,
   buildLearnerSubjectReportHref,
   buildReportReturnTo,
@@ -60,6 +61,17 @@ describe('report navigation helpers', () => {
       returnTo: '/reports/students/9?term=7',
     })).toBe(
       '/reports/learners/9/subject?cohort_subject=6&returnTo=%2Freports%2Fstudents%2F9%3Fterm%3D7',
+    );
+    expect(buildLearnerAssessmentReportHref(9, {
+      assessment: 22,
+      cohortSubjectId: 6,
+      assessmentType: 'CAT',
+      term: 7,
+      subjectId: 8,
+      cohortId: 4,
+      returnTo: '/assessments/22?tab=scores',
+    })).toBe(
+      '/reports/learners/9/assessments?assessment=22&cohort_subject=6&assessment_type=CAT&term=7&subject=8&cohort=4&returnTo=%2Fassessments%2F22%3Ftab%3Dscores',
     );
     expect(buildCohortReportHref(4, { term: 7, tab: 'subjects' })).toBe(
       '/reports/cohorts/4?term=7&tab=subjects',
