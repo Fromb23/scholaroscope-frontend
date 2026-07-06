@@ -36,11 +36,13 @@ describe('Sidebar shell architecture', () => {
   });
 
   it('preserves role-aware navigation dispatch', () => {
-    const source = read('app/components/layout/Sidebar.tsx');
+    const shell = read('app/(dashboard)/DashboardClientShell.tsx');
+    const navConfig = read('app/components/layout/navConfig.ts');
 
-    expect(source).toContain('getSuperadminNav');
-    expect(source).toContain('getAdminNav');
-    expect(source).toContain('getInstructorNav');
-    expect(source).toContain('getAvailablePolicySurfaces');
+    expect(shell).toContain('resolveNavConfig');
+    expect(shell).toContain('getAvailablePolicySurfaces');
+    expect(navConfig).toContain('getSuperadminNav');
+    expect(navConfig).toContain('getAdminNav');
+    expect(navConfig).toContain('getInstructorNav');
   });
 });

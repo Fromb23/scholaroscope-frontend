@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
@@ -18,8 +18,17 @@ import {
   roleHomeRoute,
 } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
+import MobileBottomNav from '@/app/components/layout/MobileBottomNav';
 import { SidebarProvider } from '@/app/context/SidebarContext';
 import Header from '@/app/components/layout/Header';
+import { usePlugins } from '@/app/core/hooks/usePlugins';
+import { useCurricula } from '@/app/core/hooks/useAcademic';
+import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
+import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
+import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
+import { useNavBadges } from '@/app/core/registry/navBadges';
+import { resolveNavConfig, type NavigationConfig } from '@/app/components/layout/navConfig';
 import { RegistrySlotProvider } from '@/app/core/registry/slots';
 import { NavBadgeProvider } from '@/app/core/registry/navBadges';
 import { AssistantProvider } from '@/app/core/components/assistant/AssistantProvider';
@@ -32,7 +41,8 @@ import {
   usePluginRegistryStatus,
 } from '@/app/plugins/PluginRegistryProvider';
 import { AlertTriangle } from 'lucide-react';
-import type { AccessNotice } from '@/app/core/types/auth';
+import type { AccessNotice, Role } from '@/app/core/types/auth';
+import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
@@ -68,9 +78,77 @@ function DashboardContent({
   notices: AccessNotice[];
   onDismissNotice: () => void;
 }) {
+  const { user, activeOrg, activeRole, capabilities } = useAuth();
+  const { plugins, hasPlugin } = usePlugins();
+  const { curricula } = useCurricula();
+  const academicSetupQuery = useAcademicSetupStatus({
+    enabled: capabilities.can_manage_academic_setup && Boolean(activeOrg),
+  });
+  const academicTodayModeQuery = useAcademicTodayMode({
+    enabled: activeRole === 'INSTRUCTOR' && Boolean(activeOrg),
+  });
+  const instructorAccess = useInstructorCohortAccess();
+  const badges = useNavBadges();
+
+  const pluginNavigationContext = useMemo<PluginNavigationContext>(
+    () => ({
+      role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
+      user,
+      orgType: activeOrg?.org_type ?? null,
+      workspaceBehavior: capabilities.workspace_behavior,
+      canTeach: capabilities.can_teach,
+      isWorkspaceOwner: capabilities.is_workspace_owner,
+      hasPlugin,
+      hasCurriculumType: (curriculumType: string) => Boolean(resolveCurriculumForType(curricula, curriculumType)),
+      badges,
+      curricula,
+      hasAnyReportPolicySurface:
+        getAvailablePolicySurfaces({
+          curricula,
+          installedPlugins: plugins,
+        }).length > 0,
+      capabilities,
+      instructorAccess: {
+        hasCurriculumAccess: instructorAccess.hasCurriculumAccess,
+      },
+    }),
+    [
+      activeRole,
+      activeOrg?.org_type,
+      badges,
+      capabilities,
+      curricula,
+      hasPlugin,
+      instructorAccess.hasCurriculumAccess,
+      plugins,
+      user,
+    ],
+  );
+
+  const navConfig = useMemo<NavigationConfig>(
+    () => resolveNavConfig({
+      user,
+      activeRole,
+      orgType: activeOrg?.org_type,
+      pluginNavigationContext,
+      academicSetup: academicSetupQuery.data ?? null,
+      capabilities,
+      academicTodayMode: academicTodayModeQuery.data?.mode ?? null,
+    }),
+    [
+      user,
+      activeRole,
+      activeOrg?.org_type,
+      pluginNavigationContext,
+      academicSetupQuery.data,
+      capabilities,
+      academicTodayModeQuery.data?.mode,
+    ],
+  );
+
   return (
     <div className="theme-app-bg pwa-safe-area-shell flex h-dvh overflow-hidden">
-      <Sidebar />
+      <Sidebar navConfig={navConfig} />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Header />
         {notices.length > 0 && (
@@ -81,11 +159,14 @@ function DashboardContent({
           className="pwa-safe-area-main min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6"
         >
           <AssistantProvider>
-            {children}
+            <div className="pb-16 lg:pb-0">
+              {children}
+            </div>
             {GUIDE_ENABLED ? <AssistantWidget /> : null}
           </AssistantProvider>
         </main>
       </div>
+      <MobileBottomNav navConfig={navConfig} />
     </div>
   );
 }
