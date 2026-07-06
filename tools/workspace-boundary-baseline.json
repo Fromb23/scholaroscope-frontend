@@ -27,13 +27,6 @@
     "priority": "P0",
     "removeBy": "2026-08-31"
   },
-  "components/layout/Sidebar.tsx::raw-admin-role-check": {
-    "count": 1,
-    "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",
-    "owner": "frontend-migration",
-    "priority": "P0",
-    "removeBy": "2026-08-31"
-  },
   "components/layout/Sidebar.tsx::raw-workspace-behavior-check": {
     "count": 1,
     "reason": "Existing workspace/capability boundary migration debt. Do not add raw role, workspace behavior, or staff-management assumptions.",

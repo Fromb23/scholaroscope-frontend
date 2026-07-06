@@ -1,4 +1,12 @@
+import type { ReactNode } from 'react';
+
 export type ToastSeverity = 'info' | 'warning' | 'error' | 'success';
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+  icon?: ReactNode;
+}
 
 export interface ToastMessage {
   id: string;
@@ -6,6 +14,7 @@ export interface ToastMessage {
   title?: string;
   severity: ToastSeverity;
   autoDismissMs: number | false;
+  action?: ToastAction;
 }
 
 export type ToastInput = {
@@ -14,6 +23,7 @@ export type ToastInput = {
   title?: string;
   severity?: ToastSeverity;
   autoDismissMs?: number | false;
+  action?: ToastAction;
 };
 
 export interface ToastContextValue {

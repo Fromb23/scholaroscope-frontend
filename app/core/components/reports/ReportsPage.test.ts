@@ -10,7 +10,7 @@ describe('ReportsPage surface router', () => {
   it('renders the report surface router inline without navigation redirects', () => {
     const source = read('app/core/components/reports/ReportsPage.tsx');
 
-    expect(source).toContain('ReportSurfaceRouter');
+    expect(source).toContain('ReportSurfaceRouterClient');
     expect(source).toContain('resolveReportSurface');
     expect(source).not.toContain('router.replace');
     expect(source).not.toContain('router.push');

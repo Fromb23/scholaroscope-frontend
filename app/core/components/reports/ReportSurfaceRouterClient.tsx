@@ -8,7 +8,7 @@ import { InstructorReportsOverviewPage } from '@/app/core/components/reports/Ins
 import { ReportsPageClient } from '@/app/core/components/reports/ReportsPageClient';
 import { resolveReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
 
-export function ReportSurfaceRouter() {
+export function ReportSurfaceRouterClient() {
   const { user, activeRole, activeOrg, capabilities, loading } = useAuth();
 
   if (loading) {

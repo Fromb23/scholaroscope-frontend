@@ -75,8 +75,8 @@ describe('next-boundaries architecture', () => {
       {
         shellPath: 'app/core/components/reports/ReportsPage.tsx',
         shellName: 'ReportsPage',
-        clientPath: 'app/core/components/reports/ReportSurfaceRouter.tsx',
-        clientName: 'ReportSurfaceRouter',
+        clientPath: 'app/core/components/reports/ReportSurfaceRouterClient.tsx',
+        clientName: 'ReportSurfaceRouterClient',
       },
       {
         shellPath: 'app/core/components/reports/ReportPoliciesHubPage.tsx',

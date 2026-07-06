@@ -29,7 +29,7 @@ import {
   CalendarDays,
   Puzzle,
 } from 'lucide-react';
-import type { OrgType, Role, WorkspaceCapabilities } from '@/app/core/types/auth';
+import type { OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import {
   getPluginNavigationItems,
   type NavItem as RegistryNavItem,
@@ -56,6 +56,20 @@ export type { NavItem } from '@/app/core/registry/pluginNavigation';
 export interface NavigationConfig {
   primary: RegistryNavItem[];
   secondary?: RegistryNavItem[];
+}
+
+type AdminAcademicSetupNavStatus =
+  Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'>
+  & Partial<AcademicSetupStatus>;
+
+export interface ResolveNavConfigInput {
+  user: User | null;
+  activeRole: Role | null;
+  orgType?: OrgType | null;
+  pluginNavigationContext: PluginNavigationContext;
+  academicSetup?: AdminAcademicSetupNavStatus | null;
+  capabilities?: WorkspaceCapabilities | null;
+  academicTodayMode?: AcademicTodayModeValue | null;
 }
 
 export interface RoleColorScheme {
@@ -119,6 +133,42 @@ export const ROLE_ICONS: Record<Role, LucideIcon> = {
   ADMIN: Building2,
   INSTRUCTOR: GraduationCap,
 };
+
+export function isNavHrefActive(pathname: string, href: string): boolean {
+  const hrefPath = href.split('?')[0];
+  const currentPath = pathname.split('?')[0];
+  if (!hrefPath) return false;
+  if (currentPath === hrefPath) return true;
+  if (hrefPath.startsWith('/dashboard/')) return false;
+  return currentPath.startsWith(`${hrefPath}/`);
+}
+
+export function resolveNavConfig({
+  user,
+  activeRole,
+  orgType,
+  pluginNavigationContext,
+  academicSetup = null,
+  capabilities = null,
+  academicTodayMode = null,
+}: ResolveNavConfigInput): NavigationConfig {
+  if (!user) return { primary: [] };
+  if (user.is_superadmin) return getSuperadminNav(pluginNavigationContext);
+
+  switch (activeRole) {
+    case 'ADMIN':
+      return getAdminNav(
+        pluginNavigationContext,
+        orgType,
+        academicSetup,
+        capabilities,
+      );
+    case 'INSTRUCTOR':
+      return getInstructorNav(pluginNavigationContext, academicTodayMode);
+    default:
+      return { primary: [] };
+  }
+}
 
 // ── Nav config builders ───────────────────────────────────────────────────
 

@@ -8,113 +8,33 @@
 // No any. No try/catch around hooks.
 // ============================================================================
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Activity } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useSidebar } from '@/app/context/SidebarContext';
-import { usePlugins } from '@/app/core/hooks/usePlugins';
-import { useCurricula } from '@/app/core/hooks/useAcademic';
-import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
-import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
-import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
-import { resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
-import { getAvailablePolicySurfaces } from '@/app/core/lib/policySurfaces';
-import { useNavBadges } from '@/app/core/registry/navBadges';
 import { ReleaseBadge } from '@/app/core/release/ReleaseBadge';
 import { NavItem } from './NavItem';
 import {
-  getSuperadminNav,
-  getAdminNav,
-  getInstructorNav,
   getRoleFooterLabel,
   getRoleColorScheme,
+  isNavHrefActive,
   ROLE_ICONS,
   AppLogoIcon,
   type NavigationConfig,
 } from './navConfig';
 import type { Role } from '@/app/core/types/auth';
-import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 
-export default function Sidebar() {
+interface SidebarProps {
+  navConfig: NavigationConfig;
+}
+
+export default function Sidebar({ navConfig }: SidebarProps) {
   const pathname = usePathname();
   const { user, activeOrg, activeRole, capabilities } = useAuth();
   const { isSidebarOpen, closeSidebar } = useSidebar();
 
-  const { plugins, hasPlugin } = usePlugins();
-  const { curricula } = useCurricula();
-  const academicSetupQuery = useAcademicSetupStatus({
-    enabled: capabilities.can_manage_academic_setup && Boolean(activeOrg),
-  });
-  const academicTodayModeQuery = useAcademicTodayMode({
-    enabled: activeRole === 'INSTRUCTOR' && Boolean(activeOrg),
-  });
-  const instructorAccess = useInstructorCohortAccess();
-  const badges = useNavBadges();
-
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-
-  const pluginNavigationContext = useMemo<PluginNavigationContext>(
-    () => ({
-      role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
-      user,
-      orgType: activeOrg?.org_type ?? null,
-      workspaceBehavior: capabilities.workspace_behavior,
-      canTeach: capabilities.can_teach,
-      isWorkspaceOwner: capabilities.is_workspace_owner,
-      hasPlugin,
-      hasCurriculumType: (curriculumType: string) => Boolean(resolveCurriculumForType(curricula, curriculumType)),
-      badges,
-      curricula,
-      hasAnyReportPolicySurface:
-        getAvailablePolicySurfaces({
-          curricula,
-          installedPlugins: plugins,
-        }).length > 0,
-      capabilities,
-      instructorAccess: {
-        hasCurriculumAccess: instructorAccess.hasCurriculumAccess,
-      },
-    }),
-    [
-      activeRole,
-      activeOrg?.org_type,
-      badges,
-      capabilities,
-      curricula,
-      hasPlugin,
-      instructorAccess.hasCurriculumAccess,
-      plugins,
-      user,
-    ],
-  );
-
-  // ── Build nav config ──────────────────────────────────────────────────
-
-  const navConfig = useMemo<NavigationConfig>(() => {
-    if (!user) return { primary: [] };
-    if (user.is_superadmin) return getSuperadminNav(pluginNavigationContext);
-    if (activeRole === 'ADMIN') {
-      return getAdminNav(
-        pluginNavigationContext,
-        activeOrg?.org_type,
-        academicSetupQuery.data ?? null,
-        capabilities,
-      );
-    }
-    if (activeRole === 'INSTRUCTOR') {
-      return getInstructorNav(pluginNavigationContext, academicTodayModeQuery.data?.mode ?? null);
-    }
-    return { primary: [] };
-  }, [
-    user,
-    activeOrg?.org_type,
-    activeRole,
-    pluginNavigationContext,
-    academicTodayModeQuery.data?.mode,
-    academicSetupQuery.data,
-    capabilities,
-  ]);
 
   const resolvedRole = (activeRole ?? 'ADMIN') as Role;
   const colors = getRoleColorScheme(resolvedRole, activeOrg?.org_type);
@@ -127,11 +47,7 @@ export default function Sidebar() {
   // ── Active path helpers ───────────────────────────────────────────────
 
   const isActive = (href: string): boolean => {
-    const hrefPath = href.split('?')[0];
-    const currentPath = pathname.split('?')[0];
-    if (currentPath === hrefPath) return true;
-    if (hrefPath.startsWith('/dashboard/')) return false;
-    return currentPath.startsWith(hrefPath + '/');
+    return isNavHrefActive(pathname, href);
   };
 
   // Auto-expand parent when a child route is active
@@ -166,7 +82,7 @@ export default function Sidebar() {
       )}
 
       <aside
-        className={`theme-sidebar fixed left-0 top-0 z-50 h-screen w-72 transform border-r theme-border transition-transform duration-300 ease-in-out ${
+        className={`theme-sidebar pwa-safe-area-sidebar fixed left-0 top-0 z-50 h-screen w-72 transform border-r theme-border transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:static lg:z-auto lg:translate-x-0`}
       >

@@ -136,8 +136,8 @@ const selectedReportShells = [
   {
     shellPath: 'app/core/components/reports/ReportsPage.tsx',
     shellName: 'ReportsPage',
-    clientPath: 'app/core/components/reports/ReportSurfaceRouter.tsx',
-    clientName: 'ReportSurfaceRouter',
+    clientPath: 'app/core/components/reports/ReportSurfaceRouterClient.tsx',
+    clientName: 'ReportSurfaceRouterClient',
   },
   {
     shellPath: 'app/core/components/reports/ReportPoliciesHubPage.tsx',
@@ -172,7 +172,7 @@ for (const { shellPath, shellName, clientPath, clientName } of selectedReportShe
   if (!new RegExp(`export\\s+function\\s+${shellName}\\s*\\(`).test(shellSource)) {
     fail(`${shellPath} must export the ${shellName} server shell.`);
   }
-  if (!clientPath.endsWith('Client.tsx') && clientPath !== 'app/core/components/reports/ReportSurfaceRouter.tsx') {
+  if (!clientPath.endsWith('Client.tsx')) {
     fail(`${clientPath} must use the explicit *Client.tsx naming pattern.`);
   }
   if (!hasUseClientDirective(clientSource)) {
