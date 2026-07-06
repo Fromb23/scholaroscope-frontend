@@ -2,7 +2,7 @@
 
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft,
     BookOpen,
@@ -61,6 +61,9 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import { useRubricScaleDetail } from '@/app/core/hooks/useAssessments';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
+import { resolveReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
+import { buildLearnerAssessmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import type {
     AssignmentEvaluation,
     AssignmentLifecycleAction,
@@ -161,9 +164,10 @@ function getAssistantAssignmentActionLabel(action: AssignmentLifecycleAction): s
 
 export default function CohortAssignmentDetailPage() {
     const params = useParams<{ id: string; assignmentId: string }>();
+    const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole, loading: authLoading } = useAuth();
+    const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const cohortId = Number(params.id);
     const assignmentId = Number(params.assignmentId);
@@ -242,6 +246,18 @@ export default function CohortAssignmentDetailPage() {
         () => getReturnLabel(assignmentsHref),
         [assignmentsHref]
     );
+    const currentReturnTo = useMemo(() => {
+        const query = searchParams.toString();
+        const candidate = query ? `${pathname}?${query}` : pathname;
+        return isSafeNextPath(candidate) ? candidate : `/academic/cohorts/${cohortId}/assignments/${assignmentId}`;
+    }, [assignmentId, cohortId, pathname, searchParams]);
+    const reportSurface = resolveReportSurface({
+        user,
+        activeRole,
+        activeOrg,
+        capabilities,
+    });
+    const canOpenLearnerReports = reportSurface !== 'none';
 
     const visibleCohortSubjects = useMemo(() => (
         isTeachingActor
@@ -447,6 +463,28 @@ export default function CohortAssignmentDetailPage() {
 
     const canChangeActiveAssignment = canManageAssignments && assignment.status !== 'ARCHIVED';
     const assignmentAttachmentSlots = assignment.attachment_slots ?? [];
+    const buildAssignmentLearnerReportHref = (learnerId: number) => buildLearnerAssessmentReportHref(
+        learnerId,
+        {
+            cohortSubjectId: assignment.cohort_subject,
+            subjectId: assignment.subject_id,
+            cohortId: assignment.cohort_id,
+            returnTo: currentReturnTo,
+        },
+    );
+    const renderLearnerReportLink = (
+        learnerId: number,
+        label: string,
+        className = 'theme-link font-semibold hover:underline',
+    ) => (
+        canOpenLearnerReports
+            ? (
+                <Link href={buildAssignmentLearnerReportHref(learnerId)} className={className}>
+                    {label}
+                </Link>
+            )
+            : <span className={className}>{label}</span>
+    );
 
     const handleDelete = async () => {
         if (!confirm(`Delete draft assignment "${assignment.title}"?`)) {
@@ -1191,7 +1229,9 @@ export default function CohortAssignmentDetailPage() {
                                 {recipientsQuery.recipients.map((recipient) => (
                                     <div key={recipient.id} className="rounded-lg border theme-border p-4">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <h2 className="text-sm font-semibold theme-text">{recipient.student_name}</h2>
+                                            <h2 className="text-sm font-semibold theme-text">
+                                                {renderLearnerReportLink(recipient.student, recipient.student_name)}
+                                            </h2>
                                             <Badge variant={getRecipientStatusBadgeVariant(recipient.status)} size="sm">
                                                 {recipient.status}
                                             </Badge>
@@ -1221,7 +1261,13 @@ export default function CohortAssignmentDetailPage() {
                                     <TableBody>
                                         {recipientsQuery.recipients.map((recipient) => (
                                             <TableRow key={recipient.id}>
-                                                <TableCell>{recipient.student_name}</TableCell>
+                                                <TableCell>
+                                                    {renderLearnerReportLink(
+                                                        recipient.student,
+                                                        recipient.student_name,
+                                                        'theme-link font-medium hover:underline',
+                                                    )}
+                                                </TableCell>
                                                 <TableCell>{recipient.admission_number}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={getRecipientStatusBadgeVariant(recipient.status)}>
@@ -1265,7 +1311,7 @@ export default function CohortAssignmentDetailPage() {
                                             <div className="space-y-1">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <h2 className="text-lg font-semibold theme-text">
-                                                        {submission.student_name}
+                                                        {renderLearnerReportLink(submission.student, submission.student_name)}
                                                     </h2>
                                                     {recipient ? (
                                                         <Badge variant="default" size="sm">
@@ -1348,7 +1394,10 @@ export default function CohortAssignmentDetailPage() {
                                             <div className="space-y-1">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <h2 className="text-lg font-semibold theme-text">
-                                                        {submission?.student_name ?? recipient?.student_name ?? `Learner ${evaluation.student}`}
+                                                        {renderLearnerReportLink(
+                                                            evaluation.student,
+                                                            submission?.student_name ?? recipient?.student_name ?? `Learner ${evaluation.student}`,
+                                                        )}
                                                     </h2>
                                                     {recipient ? (
                                                         <Badge variant="default" size="sm">

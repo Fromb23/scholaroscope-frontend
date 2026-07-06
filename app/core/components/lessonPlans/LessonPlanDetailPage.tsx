@@ -56,6 +56,7 @@ import {
 import { canCreateTeachingRecord } from '@/app/core/lib/workspaces';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 import {
     getLessonPlanDetailInitialSectionState,
     shouldOpenLearnerTaskFromQuery,
@@ -136,6 +137,18 @@ function formatLearnerCount(count: number): string {
     return `${count} learner${count === 1 ? '' : 's'}`;
 }
 
+function getOriginatingSchemeId(lessonPlan: LessonPlan): number | null {
+    const context = lessonPlan.generated_context;
+    const rawId = context?.scheme_id ?? context?.scheme;
+    const schemeId = typeof rawId === 'number'
+        ? rawId
+        : typeof rawId === 'string'
+            ? Number(rawId)
+            : Number.NaN;
+
+    return Number.isInteger(schemeId) && schemeId > 0 ? schemeId : null;
+}
+
 function buildLessonTaskTitle(lessonPlan: LessonPlan): string {
     const baseTitle = lessonPlan.title?.trim() || 'Lesson task';
     return `${baseTitle} Learner Task`;
@@ -214,6 +227,11 @@ export function LessonPlanDetailPage() {
         const value = searchParams.get('returnTo');
         return value?.startsWith('/') ? value : null;
     }, [searchParams]);
+    const currentReturnTo = useMemo(() => {
+        const query = searchParams.toString();
+        const candidate = query ? `${pathname}?${query}` : pathname;
+        return isSafeNextPath(candidate) ? candidate : '/lesson-plans';
+    }, [pathname, searchParams]);
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -1005,6 +1023,10 @@ export function LessonPlanDetailPage() {
         : generationMode === 'fallback'
             ? 'Rule-based draft after AI fallback'
             : 'Rule-based draft';
+    const originatingSchemeId = getOriginatingSchemeId(lessonPlan);
+    const originatingSchemeHref = originatingSchemeId
+        ? `/schemes/${originatingSchemeId}?${new URLSearchParams({ returnTo: currentReturnTo }).toString()}`
+        : null;
 
     return (
         <div className="space-y-6">
@@ -1472,6 +1494,17 @@ export function LessonPlanDetailPage() {
                             )}
                         </p>
                     </div>
+                    {originatingSchemeHref ? (
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Originating Scheme</p>
+                            <p className="mt-1 font-medium text-gray-900">
+                                <Link href={originatingSchemeHref} className="theme-link inline-flex items-center gap-1 hover:underline">
+                                    <Link2 className="h-3.5 w-3.5" />
+                                    Open scheme
+                                </Link>
+                            </p>
+                        </div>
+                    ) : null}
                 </div>
             </CollapsibleDetailSection>
 

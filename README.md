@@ -71,6 +71,40 @@ When adding or changing features:
 - Preserve organization scoping and role scoping in every new workflow.
 - Treat registry extension points as part of the architecture, not as a workaround.
 
+## System Navigation & Filter Laws
+
+### Desire Path Law
+
+A desire path is the route a user would naturally take from the entity they are looking at to that entity's next useful view, without backing out to a top-level index and rebuilding context. When a component renders a learner, instructor, class, or subject name inside a working context that already has the IDs needed for a report or profile link, it should offer one primary context-carrying link built through the shared `build*Href` helpers.
+
+Every desire path must preserve state with `returnTo`, so the user comes back to the same working URL with filters intact. Report targets must be role-gated through the existing report access predicates such as `resolveReportSurface`, `canRenderInstitutionReportOverview`, and `shouldUseInstructorReportSurface`; do not invent local permission checks for report links.
+
+This law is deliberately scope-limited. Do not fabricate missing IDs, do not add competing links to every cell, and do not add navigation inside transient forms or modals where leaving the page would discard in-progress work. New features must adopt desire paths where the entity name and required context already co-exist.
+
+Current desire-path baseline:
+
+- `app/core/components/academic/cohorts/CohortStudentsPage.tsx`: class learner profile helper still carries an implicit class return path; migrate to explicit `returnTo` when learner profile navigation is consolidated.
+- `app/core/components/academic/cohortSubjects/CohortSubjectLearnersPage.tsx`: admin enrolment-management branch still uses subject-anchor profile navigation; instructor report navigation is handled separately.
+- Lesson-plan to originating-scheme navigation is backend-dependent when the lesson plan payload does not expose a scheme id. The current frontend renders the path only when `generated_context.scheme_id` or `generated_context.scheme` is present.
+- Assignment learner report links use the assignment payload fields currently available (`cohort_subject`, `cohort_id`, `subject_id`) and must add `term` when the assignment payload exposes it.
+
+`npm run check:desire-paths` guards new learner/instructor report and profile href calls so they do not omit `returnTo`. A shared `NavLink` abstraction is intentionally deferred.
+
+### Hierarchy Filter Law
+
+When a filter bar exposes two or more hierarchy levels, those levels render parent-to-child:
+
+Academic Year -> Term -> Cohort/Class -> Subject/Class subject -> Instructor -> Learner -> Assessment.
+
+Non-hierarchy filters such as search, status, assessment category, and view-mode controls keep their local product position. Single-level filter bars are exempt. Changing a parent filter must preserve child selections through the existing preserve-and-mutate `updateQuery` pattern; invalid child scopes are handled by existing access or empty states, not by clearing URL state. Do not add hierarchy levels to pages that do not already expose them.
+
+Current hierarchy-filter baseline:
+
+- `app/core/components/lessonPlans/LessonPlansPage.tsx`: Subject/Class subject is ordered before Cohort; correcting it requires grouping-mode rework.
+- `app/plugins/schemes/components/SchemesPage.tsx`: mirrors the lesson-plan ordering and should be fixed alongside it.
+
+`npm run check:hierarchy-filters` guards the ordering of existing hierarchy filters. A shared `FilterBar` abstraction is intentionally deferred.
+
 ### Selective Plugin Loading Law
 
 The academic core loads first. Curriculum and feature plugins load only when required by the active workspace, curriculum, route, or feature capability.

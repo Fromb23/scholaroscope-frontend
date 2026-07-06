@@ -70,4 +70,15 @@ describe('CohortAssignmentDetailPage behavioral workflow', () => {
     expect(pageSource).toContain('hidden_secondary_actions');
     expect(pageSource).toContain('unfinished_work_count');
   });
+
+  it('links read-only learner records to assessment reports with return state', () => {
+    const pageSource = source();
+
+    expect(pageSource).toContain('resolveReportSurface');
+    expect(pageSource).toContain('buildLearnerAssessmentReportHref');
+    expect(pageSource).toContain('returnTo: currentReturnTo');
+    expect(pageSource).toContain('renderLearnerReportLink(recipient.student, recipient.student_name');
+    expect(pageSource).toContain('renderLearnerReportLink(submission.student, submission.student_name');
+    expect(pageSource).toContain('renderLearnerReportLink(');
+  });
 });

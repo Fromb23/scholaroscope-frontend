@@ -19,4 +19,10 @@ describe('cohort subject learner links', () => {
     expect(source).toContain('learnerData.cohort_id');
     expect(source).toContain('cohortSubjectId');
   });
+
+  it('uses instructor subject-report desire paths with return state', () => {
+    expect(source).toContain('shouldUseInstructorReportSurface');
+    expect(source).toContain('buildLearnerSubjectReportHref');
+    expect(source).toContain('{ returnTo: currentReturnTo }');
+  });
 });
