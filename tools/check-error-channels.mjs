@@ -54,6 +54,7 @@ for (const file of walk(appRoot)) {
   const relativePath = rel(file);
   if (/\.test\.(ts|tsx)$/.test(relativePath)) continue;
   const source = readFileSync(file, 'utf8');
+  const lines = source.split('\n');
 
   if (/useState\s*<\s*string\s*\|\s*null\s*>\s*\(\s*null\s*\)/.test(source) && /\btoastMessage\b/.test(source)) {
     if (!LOCAL_TOAST_STATE_BASELINE.has(relativePath)) {
@@ -70,6 +71,17 @@ for (const file of walk(appRoot)) {
     if (autoDismissCount > allowedCount) {
       failures.push(`${relativePath} adds ad hoc auto-dismiss message UI; use ToastProvider/useToast for toast channel messages.`);
     }
+  }
+
+  if (relativePath.startsWith('app/core/components/reports/')) {
+    lines.forEach((line, index) => {
+      if (/const\s+.*exportError.*=\s*useState\b/.test(line)) {
+        failures.push(`${relativePath}:${index + 1} defines local report export error state; use useReportExport and toast failures.`);
+      }
+      if (/const\s+.*handleExport.*=\s*useCallback\b/.test(line) && !source.includes('useReportExport')) {
+        failures.push(`${relativePath}:${index + 1} defines a report export handler without useReportExport.`);
+      }
+    });
   }
 }
 

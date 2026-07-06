@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -20,7 +20,6 @@ import {
   SectionLoading,
 } from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
-import { downloadBlob } from '@/app/core/api/downloads';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { AttendanceReportStats } from '@/app/core/components/reports/AttendanceReportStats';
@@ -33,10 +32,9 @@ import {
 } from '@/app/core/components/reports/reportNavigation';
 import { useCurrentTerm, useLearnerSubjectOptions, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useAdminAttendanceScopeReport } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
-import type { ReportExportFormat } from '@/app/core/types/reporting';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 function focusReportPanel(panelId: string) {
   if (typeof document === 'undefined') {
@@ -76,8 +74,6 @@ export function AttendanceReportPage() {
     fallbackState: { term: selectedTermId },
   });
   const backLabel = source === 'midterm' ? 'Back to Midterm Break' : 'Back';
-  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
-
   const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
   const { terms, loading: termsLoading } = useTerms();
   const { cohorts, loading: cohortsLoading } = useCohorts();
@@ -137,29 +133,15 @@ export function AttendanceReportPage() {
     }
   }, [report, selectedStudentId]);
 
-  const handleExport = useCallback(async (format: ReportExportFormat) => {
-    try {
-      setExporting(format);
-      const file = await adminReportsAPI.exportAttendanceScope(format, {
-        termId: selectedTermId,
-        studentId: selectedStudentId,
-        cohortId: selectedCohortId,
-        subjectId: selectedSubjectId,
-        cohortSubjectId: selectedCohortSubjectId,
-      });
-      downloadBlob(file.blob, file.fileName);
-    } catch (requestError) {
-      window.alert(extractErrorMessage(requestError as ApiError, 'Failed to export attendance report.'));
-    } finally {
-      setExporting(null);
-    }
-  }, [
-    selectedCohortId,
-    selectedCohortSubjectId,
-    selectedStudentId,
-    selectedSubjectId,
-    selectedTermId,
-  ]);
+  const { handleExport, exporting } = useReportExport((format) => (
+    adminReportsAPI.exportAttendanceScope(format, {
+      termId: selectedTermId,
+      studentId: selectedStudentId,
+      cohortId: selectedCohortId,
+      subjectId: selectedSubjectId,
+      cohortSubjectId: selectedCohortSubjectId,
+    })
+  ), 'attendance report');
 
   const noActiveTerm = !selectedTermId && !currentTermLoading && !currentTerm;
   const waitingForTerm = hasScope && !selectedTermId && currentTermLoading;
@@ -232,20 +214,20 @@ export function AttendanceReportPage() {
 
           {hasScope ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" size="sm" disabled={exporting !== null} onClick={() => void handleExport('pdf')}>
-                <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('pdf')}>
+                <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
                   <Download className="h-4 w-4" />
                   Export PDF
                 </ButtonPendingContent>
               </Button>
-              <Button variant="secondary" size="sm" disabled={exporting !== null} onClick={() => void handleExport('xlsx')}>
-                <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('xlsx')}>
+                <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
                   <Download className="h-4 w-4" />
                   Export Excel
                 </ButtonPendingContent>
               </Button>
-              <Button variant="ghost" size="sm" disabled={exporting !== null} onClick={() => void handleExport('csv')}>
-                <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+              <Button variant="ghost" size="sm" disabled={exporting} onClick={() => void handleExport('csv')}>
+                <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
                   <Download className="h-4 w-4" />
                   Export CSV
                 </ButtonPendingContent>

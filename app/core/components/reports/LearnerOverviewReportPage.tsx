@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -20,7 +20,6 @@ import {
   ReportPreparingState,
 } from '@/app/components/ui/loading';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
-import { downloadBlob } from '@/app/core/api/downloads';
 import {
   formatReportDate,
   formatReportPercent,
@@ -32,12 +31,9 @@ import {
   toneToBadgeVariant,
 } from '@/app/core/components/reports/ReportSummaryPrimitives';
 import { useLearnerOverviewReport } from '@/app/core/hooks/useReporting';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useStudent } from '@/app/core/hooks/useStudents';
-import type {
-  LearnerOverviewSubjectSummary,
-  ReportExportFormat,
-} from '@/app/core/types/reporting';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import type { LearnerOverviewSubjectSummary } from '@/app/core/types/reporting';
 
 function formatMasteryOrScore(subject: LearnerOverviewSubjectSummary): string {
   if (subject.mastery_percentage != null) {
@@ -106,32 +102,15 @@ export function LearnerOverviewReportPage() {
     error: reportError,
   } = useLearnerOverviewReport(Number.isFinite(learnerId) && learnerId > 0 ? learnerId : null);
 
-  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [exportReady, setExportReady] = useState<string | null>(null);
-
-  const handleExport = useCallback(async (format: ReportExportFormat) => {
+  const { handleExport, exporting } = useReportExport(async (format) => {
     if (!Number.isFinite(learnerId)) {
-      return;
+      throw new Error('Open a learner overview report before exporting.');
     }
 
-    try {
-      setExportError(null);
-      setExportReady(null);
-      setExporting(format);
-      const file = await learnerReportingAPI.exportLearnerOverviewReport(learnerId, format);
-      downloadBlob(file.blob, file.fileName);
-      setExportReady(`${format.toUpperCase()} download started.`);
-    } catch (error) {
-      setExportError(
-        extractErrorMessage(error as ApiError, 'Failed to export learner overview report'),
-      );
-    } finally {
-      setExporting(null);
-    }
-  }, [learnerId]);
+    return learnerReportingAPI.exportLearnerOverviewReport(learnerId, format);
+  }, 'learner overview report');
 
-  const visibleError = exportError ?? reportError ?? learnerError ?? null;
+  const visibleError = reportError ?? learnerError ?? null;
   const subjectSummaries = useMemo(
     () => report?.subject_summaries ?? [],
     [report?.subject_summaries],
@@ -163,10 +142,10 @@ export function LearnerOverviewReportPage() {
           <Button
             variant="secondary"
             size="sm"
-            disabled={exporting !== null}
+            disabled={exporting}
             onClick={() => void handleExport('pdf')}
           >
-            <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+            <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
               <Download className="h-4 w-4" />
               Export PDF
             </ButtonPendingContent>
@@ -174,10 +153,10 @@ export function LearnerOverviewReportPage() {
           <Button
             variant="secondary"
             size="sm"
-            disabled={exporting !== null}
+            disabled={exporting}
             onClick={() => void handleExport('xlsx')}
           >
-            <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+            <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
               <Download className="h-4 w-4" />
               Export Excel
             </ButtonPendingContent>
@@ -185,10 +164,10 @@ export function LearnerOverviewReportPage() {
           <Button
             variant="ghost"
             size="sm"
-            disabled={exporting !== null}
+            disabled={exporting}
             onClick={() => void handleExport('csv')}
           >
-            <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+            <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
               <Download className="h-4 w-4" />
               Export CSV
             </ButtonPendingContent>
@@ -199,11 +178,9 @@ export function LearnerOverviewReportPage() {
       {visibleError ? (
         <ErrorBanner
           message={visibleError}
-          onDismiss={() => setExportError(null)}
+          onDismiss={() => undefined}
         />
       ) : null}
-
-      {exportReady ? <p className="text-sm theme-muted">{exportReady}</p> : null}
 
       {reportLoading ? (
         <ReportPreparingState

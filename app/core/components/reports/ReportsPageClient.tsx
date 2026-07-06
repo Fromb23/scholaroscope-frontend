@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   ArrowRight,
   Briefcase,
@@ -15,17 +15,17 @@ import {
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { resolveReportError, type AppError } from '@/app/core/errors';
+import type { AppError } from '@/app/core/errors';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { downloadBlob } from '@/app/core/api/downloads';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import {
   getAdminReportLandingSections,
   REPORT_HIERARCHY_STEPS,
 } from '@/app/core/components/reports/reportHierarchy';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useDashboardOverview } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
 import type { ReportExportFormat } from '@/app/core/types/reporting';
@@ -42,7 +42,6 @@ const REPORT_CARD_ACCENTS: Record<string, string> = {
 
 export function ReportsPageClient() {
   const { overview, loading, error } = useDashboardOverview();
-  const [exportError, setExportError] = useState<AppError | null>(null);
   const hierarchy = getAdminReportLandingSections();
   const pageError = useMemo<AppError | null>(() => {
     if (!error) return null;
@@ -56,34 +55,22 @@ export function ReportsPageClient() {
     };
   }, [error]);
 
-  const handleExport = useCallback(async (format: ReportExportFormat) => {
-    try {
-      const file = await adminReportsAPI.exportOverview(format);
-      downloadBlob(file.blob, file.fileName);
-    } catch (requestError) {
-      setExportError(resolveReportError(requestError, {
-        action: 'export',
-        entityLabel: 'reporting overview',
-        role: 'ADMIN',
-      }));
-    }
-  }, []);
+  const { handleExport, exporting } = useReportExport(
+    (format) => adminReportsAPI.exportOverview(format),
+    'reporting overview',
+  );
   const organizationSummary = `${overview?.organization.name ?? '—'}${
     overview?.academic_year ? ` · ${overview.academic_year.name}` : ''
   }${overview?.current_term ? ` · ${overview.current_term.name}` : ' · No active term'}`;
 
   return (
     <AdminReportAccessGate>
-      {exportError ? (
-        <div className="mb-4">
-          <AppErrorBanner error={exportError} onDismiss={() => setExportError(null)} />
-        </div>
-      ) : null}
       {loading ? <LoadingSpinner message="Loading report workspace..." /> : pageError ? <AppErrorBanner error={pageError} onDismiss={() => {}} /> : (
         <div className="space-y-8 max-w-full">
           <ReportsOverviewHeader
             organizationSummary={organizationSummary}
             onExport={handleExport}
+            exporting={exporting}
           />
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -203,9 +190,11 @@ export function ReportsPageClient() {
 function ReportsOverviewHeader({
   organizationSummary,
   onExport,
+  exporting,
 }: {
   organizationSummary: string;
   onExport: (format: ReportExportFormat) => void;
+  exporting: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -220,15 +209,15 @@ function ReportsOverviewHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={() => void onExport('pdf')}>
+        <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void onExport('pdf')}>
           <Download className="h-4 w-4" />
           Export PDF
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => void onExport('xlsx')}>
+        <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void onExport('xlsx')}>
           <Download className="h-4 w-4" />
           Export Excel
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => void onExport('csv')}>
+        <Button variant="ghost" size="sm" disabled={exporting} onClick={() => void onExport('csv')}>
           <Download className="h-4 w-4" />
           Export CSV
         </Button>

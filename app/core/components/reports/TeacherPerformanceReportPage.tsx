@@ -22,7 +22,6 @@ import {
 } from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
-import { downloadBlob } from '@/app/core/api/downloads';
 import {
   formatReportDate,
   formatReportPercent,
@@ -37,11 +36,8 @@ import {
   useInstructorTeacherReport,
 } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
-import type {
-  ReportExportFormat,
-  TeacherPerformanceAssignedSubject,
-} from '@/app/core/types/reporting';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
+import type { TeacherPerformanceAssignedSubject } from '@/app/core/types/reporting';
 import {
   buildReflectionSubjectKey,
   getReflectionCardBodyText,
@@ -104,8 +100,6 @@ export function TeacherPerformanceReportPage({
   const loading = activeQuery.loading;
   const error = activeQuery.error;
 
-  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [selectedReflectionSubject, setSelectedReflectionSubject] = useState(
     ALL_REFLECTION_SUBJECTS,
   );
@@ -236,30 +230,20 @@ export function TeacherPerformanceReportPage({
     setExpandedReflectionKeys(new Set());
   }, [report?.reflection_summary.latest_reflections, selectedReflectionSubject]);
 
-  const handleExport = useCallback(async (format: ReportExportFormat) => {
-    try {
-      setExportError(null);
-      setExporting(format);
-      const params = {
-        termId: selectedTermId,
-        cohortSubjectId: selectedCohortSubjectId,
-      };
-      const file = mode === 'self'
-        ? await learnerReportingAPI.exportInstructorTeacherReport(format, params)
-        : await learnerReportingAPI.exportAdminInstructorTeacherReport(
-            instructorId ?? 0,
-            format,
-            params,
-          );
-      downloadBlob(file.blob, file.fileName);
-    } catch (requestError) {
-      setExportError(
-        extractErrorMessage(requestError as ApiError, 'Failed to export teacher report'),
-      );
-    } finally {
-      setExporting(null);
-    }
-  }, [instructorId, mode, selectedCohortSubjectId, selectedTermId]);
+  const { handleExport, exporting } = useReportExport((format) => {
+    const params = {
+      termId: selectedTermId,
+      cohortSubjectId: selectedCohortSubjectId,
+    };
+
+    return mode === 'self'
+      ? learnerReportingAPI.exportInstructorTeacherReport(format, params)
+      : learnerReportingAPI.exportAdminInstructorTeacherReport(
+          instructorId ?? 0,
+          format,
+          params,
+        );
+  }, 'teacher report');
 
   const toggleReflectionExpanded = useCallback((reflectionKey: string) => {
     setExpandedReflectionKeys((current) => {
@@ -345,10 +329,10 @@ export function TeacherPerformanceReportPage({
           <Button
             variant="secondary"
             size="sm"
-            disabled={!report || exporting !== null}
+            disabled={!report || exporting}
             onClick={() => void handleExport('pdf')}
           >
-            <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+            <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
               <Download className="h-4 w-4" />
               Export PDF
             </ButtonPendingContent>
@@ -356,10 +340,10 @@ export function TeacherPerformanceReportPage({
           <Button
             variant="secondary"
             size="sm"
-            disabled={!report || exporting !== null}
+            disabled={!report || exporting}
             onClick={() => void handleExport('xlsx')}
           >
-            <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+            <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
               <Download className="h-4 w-4" />
               Export Excel
             </ButtonPendingContent>
@@ -367,10 +351,10 @@ export function TeacherPerformanceReportPage({
           <Button
             variant="ghost"
             size="sm"
-            disabled={!report || exporting !== null}
+            disabled={!report || exporting}
             onClick={() => void handleExport('csv')}
           >
-            <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+            <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
               <Download className="h-4 w-4" />
               Export CSV
             </ButtonPendingContent>
@@ -378,10 +362,10 @@ export function TeacherPerformanceReportPage({
         </div>
       </div>
 
-      {exportError || error ? (
+      {error ? (
         <ErrorBanner
-          message={exportError ?? error ?? 'Teacher report is unavailable.'}
-          onDismiss={() => setExportError(null)}
+          message={error ?? 'Teacher report is unavailable.'}
+          onDismiss={() => undefined}
         />
       ) : null}
 

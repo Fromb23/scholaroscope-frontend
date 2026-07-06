@@ -50,10 +50,8 @@ import type {
   LearnerSubjectReportAttendanceTrendPoint,
   LearnerSubjectReportLearningTimelinePoint,
   LearnerSubjectReportMasteryDistributionPoint,
-  ReportExportFormat,
 } from '@/app/core/types/reporting';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
-import { downloadBlob } from '@/app/core/api/downloads';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { buildLearnerSubjectReportHref } from '@/app/core/lib/learnerReportingRoutes';
 
 type ReportViewMode = 'graph' | 'table';
@@ -222,9 +220,6 @@ export function LearnerSubjectReportPage() {
   );
 
   const [viewMode, setViewMode] = useState<ReportViewMode>('graph');
-  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [exportReady, setExportReady] = useState<string | null>(null);
 
   const subjectOptions = useMemo(() => {
     return allowedSubjectScopes.map((scope) => ({
@@ -253,29 +248,16 @@ export function LearnerSubjectReportPage() {
     }
   }, [requestedCohortSubjectId, scopesLoading, subjectOptions, updateCohortSubject]);
 
-  const handleExport = useCallback(async (format: ReportExportFormat) => {
+  const { handleExport, exporting } = useReportExport(async (format) => {
     if (!selectedCohortSubjectId || !Number.isFinite(learnerId) || !report) {
-      return;
+      throw new Error('Open a learner subject report before exporting.');
     }
 
-    try {
-      setExportError(null);
-      setExportReady(null);
-      setExporting(format);
-      const file = await learnerReportingAPI.exportLearnerSubjectReport(learnerId, {
-        format,
-        cohortSubjectId: selectedCohortSubjectId,
-      });
-      downloadBlob(file.blob, file.fileName);
-      setExportReady(`${format.toUpperCase()} download started.`);
-    } catch (error) {
-      setExportError(
-        extractErrorMessage(error as ApiError, 'Failed to export learner subject report'),
-      );
-    } finally {
-      setExporting(null);
-    }
-  }, [learnerId, report, selectedCohortSubjectId]);
+    return learnerReportingAPI.exportLearnerSubjectReport(learnerId, {
+      format,
+      cohortSubjectId: selectedCohortSubjectId,
+    });
+  }, 'learner subject report');
 
   const permissionDenied = selectedScopeAllowed && reportErrorStatus === 403;
   const showAccessState = (!scopesLoading && requestedCohortSubjectId != null && !selectedScopeAllowed) || permissionDenied;
@@ -308,10 +290,10 @@ export function LearnerSubjectReportPage() {
             <Button
               variant="secondary"
               size="sm"
-              disabled={exporting !== null}
+              disabled={exporting}
               onClick={() => void handleExport('pdf')}
             >
-              <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+              <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
                 <Download className="h-4 w-4" />
                 Export PDF
               </ButtonPendingContent>
@@ -319,10 +301,10 @@ export function LearnerSubjectReportPage() {
             <Button
               variant="secondary"
               size="sm"
-              disabled={exporting !== null}
+              disabled={exporting}
               onClick={() => void handleExport('xlsx')}
             >
-              <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+              <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
                 <Download className="h-4 w-4" />
                 Export Excel
               </ButtonPendingContent>
@@ -330,10 +312,10 @@ export function LearnerSubjectReportPage() {
             <Button
               variant="ghost"
               size="sm"
-              disabled={exporting !== null}
+              disabled={exporting}
               onClick={() => void handleExport('csv')}
             >
-              <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+              <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
                 <Download className="h-4 w-4" />
                 Export CSV
               </ButtonPendingContent>
@@ -349,12 +331,6 @@ export function LearnerSubjectReportPage() {
       {scopesError ? (
         <ErrorBanner message={scopesError} onDismiss={() => undefined} />
       ) : null}
-
-      {exportError ? (
-        <ErrorBanner message={exportError} onDismiss={() => setExportError(null)} />
-      ) : null}
-
-      {exportReady ? <p className="text-sm theme-muted">{exportReady}</p> : null}
 
       <Card>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
