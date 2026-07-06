@@ -30,6 +30,7 @@ import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
+import { CohortMobileCard } from '@/app/core/components/academic/cohorts/CohortMobileCard';
 import {
     getAcademicLevelLabel,
     getCurriculumLevelOptions,
@@ -444,7 +445,7 @@ export function AdminCohortsPageContent() {
                 setupMode={setupMode}
                 blockedNotice={blockedNotice}
             />
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Cohorts</h1>
                     <p className="mt-1 text-gray-500">
@@ -454,9 +455,14 @@ export function AdminCohortsPageContent() {
                     </p>
                 </div>
                 {!isHistoricalView && (
-                    <Button onClick={openCreate} disabled={!canCreateSelectedCurriculumWork}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Cohort
+                    <Button
+                        onClick={openCreate}
+                        disabled={!canCreateSelectedCurriculumWork}
+                        className="w-full whitespace-nowrap sm:w-auto"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span className="sm:hidden">Add</span>
+                        <span className="hidden sm:inline">Add Cohort</span>
                     </Button>
                 )}
             </div>
@@ -516,7 +522,7 @@ export function AdminCohortsPageContent() {
             </DesktopOnly>
 
             <Card>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
                     <Select
                         value={selectedYearId?.toString() ?? ''}
                         onChange={(event) => updateFilters({ academic_year: event.target.value })}
@@ -535,7 +541,7 @@ export function AdminCohortsPageContent() {
                         ]}
                     />
                     {isHistoricalView && (
-                        <div className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:whitespace-nowrap">
                             <History className="h-3.5 w-3.5 shrink-0" />
                             Historical view — records are read-only
                         </div>
@@ -543,10 +549,12 @@ export function AdminCohortsPageContent() {
                 </div>
             </Card>
 
-            <Card>
-                {loading ? (
+            {loading ? (
+                <Card>
                     <LoadingSpinner fullScreen={false} message="Loading cohort academic years..." />
-                ) : cohorts.length === 0 ? (
+                </Card>
+            ) : cohorts.length === 0 ? (
+                <Card>
                     <div className="py-12 text-center">
                         <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No cohorts found</h3>
@@ -558,24 +566,44 @@ export function AdminCohortsPageContent() {
                                     : 'Get started by creating a new cohort.'}
                         </p>
                         {!isHistoricalView && (
-                            <Button className="mt-4" onClick={openCreate} disabled={!canCreateSelectedCurriculumWork}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Cohort
+                            <Button
+                                className="mt-4 w-full whitespace-nowrap sm:w-auto"
+                                onClick={openCreate}
+                                disabled={!canCreateSelectedCurriculumWork}
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span className="sm:hidden">Add</span>
+                                <span className="hidden sm:inline">Add Cohort</span>
                             </Button>
                         )}
                     </div>
-                ) : (
-                    <DataTable
-                        data={cohorts as CohortWithIndex[]}
-                        columns={columns}
-                        enableSearch
-                        enableSort
-                        searchPlaceholder="Search cohorts..."
-                        emptyMessage="No cohorts found"
-                        onSort={() => {}}
-                    />
-                )}
-            </Card>
+                </Card>
+            ) : (
+                <>
+                    <div className="space-y-3 md:hidden">
+                        {cohorts.map((cohort) => (
+                            <CohortMobileCard
+                                key={cohort.id}
+                                cohort={cohort}
+                                onDelete={handleDelete}
+                                onEdit={openEdit}
+                                onRollover={setRolloverCohort}
+                            />
+                        ))}
+                    </div>
+                    <Card className="hidden md:block">
+                        <DataTable
+                            data={cohorts as CohortWithIndex[]}
+                            columns={columns}
+                            enableSearch
+                            enableSort
+                            searchPlaceholder="Search cohorts..."
+                            emptyMessage="No cohorts found"
+                            onSort={() => {}}
+                        />
+                    </Card>
+                </>
+            )}
 
             <CohortFormModal
                 isOpen={showFormModal}
