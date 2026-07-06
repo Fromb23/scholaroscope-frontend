@@ -5,13 +5,21 @@ import { BookOpen } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ActionMenu, type ActionMenuItem } from '@/app/components/ui/ActionMenu';
+import { ClassActionsMobile, type ClassActionsMobileItem } from '@/app/core/components/cohorts/ClassActionsMobile';
 import type { CohortSubject } from '@/app/core/types/academic';
 import type { CohortSubjectParticipationSummary } from '@/app/core/hooks/useCohortSubjectParticipation';
+import {
+    withCohortSubjectActionMobilePresentation,
+    type CohortSubjectActionMobileGroup,
+    type CohortSubjectActionMobileIcon,
+} from '@/app/core/components/academic/cohorts/cohortSubjectActions';
 
 export interface CohortSubjectAction {
     label: string;
     href: string;
+    mobileGroup?: CohortSubjectActionMobileGroup;
+    mobileIcon?: CohortSubjectActionMobileIcon;
+    mobileLabel?: string;
     variant?: 'primary' | 'secondary';
 }
 
@@ -68,20 +76,17 @@ export function buildCohortSubjectActionMenuItems({
     subjectLearnersHref: string;
     subjectActions: CohortSubjectAction[];
     instructorHref?: string | null;
-}): ActionMenuItem[] {
+}): ClassActionsMobileItem[] {
     return [
-        {
+        withCohortSubjectActionMobilePresentation({
             label: 'Manage learners',
             href: subjectLearnersHref,
-        },
-        ...subjectActions.map((action) => ({
-            label: action.label,
-            href: action.href,
-        })),
-        ...(instructorHref ? [{
+        }),
+        ...subjectActions.map((action) => withCohortSubjectActionMobilePresentation(action)),
+        ...(instructorHref ? [withCohortSubjectActionMobilePresentation({
             label: 'Assign/Manage Instructor',
             href: instructorHref,
-        }] : []),
+        })] : []),
     ];
 }
 
@@ -209,18 +214,12 @@ export function CohortSubjectParticipationSection({
                                             </div>
                                         </div>
 
-                                        <div className="sm:hidden">
-                                            <ActionMenu
-                                                items={mobileActionItems}
-                                                buttonLabel="More"
-                                                ariaLabel={`Open ${subject.subject_name} actions`}
-                                                align="left"
-                                                hideLabelOnMobile={false}
-                                                menuClassName="min-w-[16rem]"
-                                            />
-                                        </div>
+                                        <ClassActionsMobile
+                                            actions={mobileActionItems}
+                                            subjectName={subject.subject_name}
+                                        />
 
-                                        <div className="hidden flex-wrap gap-2 sm:flex">
+                                        <div className="hidden flex-wrap gap-2 md:flex">
                                             <Link
                                                 href={subjectLearnersHref}
                                                 className="w-auto"
