@@ -69,7 +69,7 @@ function DashboardContent({
   onDismissNotice: () => void;
 }) {
   return (
-    <div className="theme-app-bg flex h-dvh overflow-hidden">
+    <div className="theme-app-bg pwa-safe-area-shell flex h-dvh overflow-hidden">
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Header />
@@ -78,7 +78,7 @@ function DashboardContent({
         )}
         <main
           id="dashboard-scroll-root"
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6"
+          className="pwa-safe-area-main min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6"
         >
           <AssistantProvider>
             {children}

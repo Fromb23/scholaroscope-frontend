@@ -38,6 +38,7 @@ export function normalizeToast(input: ToastInput): ToastMessage {
     title: input.title,
     severity,
     autoDismissMs: input.autoDismissMs ?? DEFAULT_DURATION_BY_SEVERITY[severity],
+    action: input.action,
   };
 }
 

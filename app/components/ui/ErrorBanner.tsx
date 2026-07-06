@@ -1,8 +1,15 @@
 // app/components/ui/ErrorBanner.tsx
 'use client';
 
-import { forwardRef, useEffect } from 'react';
+import { forwardRef, useEffect, type ReactNode } from 'react';
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
+import { Button } from './Button';
+
+interface ErrorBannerAction {
+  label: string;
+  onClick: () => void;
+  icon?: ReactNode;
+}
 
 interface ErrorBannerProps {
   message: string;
@@ -12,6 +19,7 @@ interface ErrorBannerProps {
   autoDismissMs?: number | false;
   className?: string;
   compact?: boolean;
+  action?: ErrorBannerAction;
 }
 
 const VARIANT_STYLES = {
@@ -45,6 +53,7 @@ export const ErrorBanner = forwardRef<HTMLDivElement, ErrorBannerProps>(function
   autoDismissMs = false,
   className = '',
   compact = false,
+  action,
 }, ref) {
   useEffect(() => {
     if (typeof autoDismissMs !== 'number' || autoDismissMs <= 0) {
@@ -73,6 +82,18 @@ export const ErrorBanner = forwardRef<HTMLDivElement, ErrorBannerProps>(function
       <div className="min-w-0 flex-1 space-y-1">
         {title ? <p className="font-semibold theme-text">{title}</p> : null}
         <p className="whitespace-pre-wrap break-words theme-text">{message}</p>
+        {action ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={action.onClick}
+            className="mt-2"
+          >
+            {action.icon}
+            {action.label}
+          </Button>
+        ) : null}
       </div>
       <button
         onClick={onDismiss}
