@@ -23,6 +23,8 @@ function fail(message) {
 }
 
 const mobileNavPath = 'app/components/layout/MobileBottomNav.tsx';
+const navConfigPath = 'app/components/layout/navConfig.ts';
+const pluginNavigationPath = 'app/core/registry/pluginNavigation.ts';
 const routeTransitionPath = 'app/components/layout/RouteTransition.tsx';
 const packageJsonPath = 'package.json';
 
@@ -42,6 +44,18 @@ if (mobileNav) {
     fail(`${mobileNavPath} must import navigation helpers/types from navConfig.ts.`);
   }
 
+  if (!/resolveMobilePrimaryNav/.test(mobileNav) || !/resolveMobilePrimaryNav\(\s*navConfig\s*\)/.test(mobileNav)) {
+    fail(`${mobileNavPath} must resolve bottom-bar items through resolveMobilePrimaryNav(navConfig).`);
+  }
+
+  if (/navConfig\.primary\.slice\s*\(\s*0\s*,\s*4\s*\)/.test(mobileNav) || /\.primary\.slice\s*\(/.test(mobileNav)) {
+    fail(`${mobileNavPath} must not slice sidebar primary navigation for mobile priority.`);
+  }
+
+  if (!/shortName\s*\?\?\s*item\.name/.test(mobileNav)) {
+    fail(`${mobileNavPath} must render item.shortName ?? item.name for bottom-bar labels.`);
+  }
+
   if (/\[\s*\{[\s\S]*?\bname\s*:[\s\S]*?\bhref\s*:/.test(mobileNav)) {
     fail(`${mobileNavPath} must not define a hardcoded array of nav item literals.`);
   }
@@ -53,6 +67,26 @@ if (mobileNav) {
   if (!/env\(safe-area-inset-bottom\)/.test(mobileNav)) {
     fail(`${mobileNavPath} must include env(safe-area-inset-bottom) padding.`);
   }
+}
+
+const navConfig = requireFile(navConfigPath);
+if (navConfig) {
+  if (!/export\s+function\s+resolveMobilePrimaryNav/.test(navConfig)) {
+    fail(`${navConfigPath} must export resolveMobilePrimaryNav for behaviorally prioritized mobile navigation.`);
+  }
+
+  if (!/mobilePriority/.test(navConfig)) {
+    fail(`${navConfigPath} must mark role/lifecycle bottom-bar priorities in the nav config.`);
+  }
+
+  if (!/mobilePrimary/.test(navConfig)) {
+    fail(`${navConfigPath} must allow explicit mobile primary selections when sidebar structure differs from mobile priority.`);
+  }
+}
+
+const pluginNavigation = requireFile(pluginNavigationPath);
+if (pluginNavigation && !/shortName\?:\s*string/.test(pluginNavigation)) {
+  fail(`${pluginNavigationPath} NavItem must expose optional shortName for mobile labels.`);
 }
 
 const routeTransition = requireFile(routeTransitionPath);

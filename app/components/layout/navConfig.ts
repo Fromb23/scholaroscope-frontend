@@ -56,11 +56,14 @@ export type { NavItem } from '@/app/core/registry/pluginNavigation';
 export interface NavigationConfig {
   primary: RegistryNavItem[];
   secondary?: RegistryNavItem[];
+  mobilePrimary?: RegistryNavItem[];
 }
 
 type AdminAcademicSetupNavStatus =
   Pick<AcademicSetupStatus, 'complete' | 'current_step_label' | 'next_action'>
   & Partial<AcademicSetupStatus>;
+
+const MAX_MOBILE_PRIMARY_ITEMS = 4;
 
 export interface ResolveNavConfigInput {
   user: User | null;
@@ -143,6 +146,21 @@ export function isNavHrefActive(pathname: string, href: string): boolean {
   return currentPath.startsWith(`${hrefPath}/`);
 }
 
+export function resolveMobilePrimaryNav(navConfig: NavigationConfig): RegistryNavItem[] {
+  const mobileItems = navConfig.mobilePrimary
+    ?? navConfig.primary.filter((item) => typeof item.mobilePriority === 'number');
+
+  return mobileItems
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => {
+      const priorityDelta = (left.item.mobilePriority ?? Number.MAX_SAFE_INTEGER)
+        - (right.item.mobilePriority ?? Number.MAX_SAFE_INTEGER);
+      return priorityDelta === 0 ? left.index - right.index : priorityDelta;
+    })
+    .slice(0, MAX_MOBILE_PRIMARY_ITEMS)
+    .map(({ item }) => item);
+}
+
 export function resolveNavConfig({
   user,
   activeRole,
@@ -174,10 +192,10 @@ export function resolveNavConfig({
 
 export const SUPERADMIN_NAV: NavigationConfig = {
   primary: [
-    { name: 'System Overview', href: '/dashboard/superadmin', icon: LayoutDashboard },
-    { name: 'Organizations', href: '/superadmin/organizations', icon: Building2 },
-    { name: 'Global Users', href: '/superadmin/users', icon: UserCog },
-    { name: 'Plugin Registry', href: '/superadmin/plugins', icon: Puzzle },
+    { name: 'System Overview', shortName: 'Home', href: '/dashboard/superadmin', icon: LayoutDashboard, mobilePriority: 1 },
+    { name: 'Organizations', shortName: 'Orgs', href: '/superadmin/organizations', icon: Building2, mobilePriority: 2 },
+    { name: 'Global Users', shortName: 'Users', href: '/superadmin/users', icon: UserCog, mobilePriority: 3 },
+    { name: 'Plugin Registry', shortName: 'Plugins', href: '/superadmin/plugins', icon: Puzzle, mobilePriority: 4 },
     { name: 'Feedback Center', href: '/superadmin/feedback', icon: MessageCircle },
     { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },
     { name: 'System Settings', href: '/superadmin/settings', icon: Settings },
@@ -249,16 +267,26 @@ export function getAdminNav(
     const dashboardLabel = selfManagedTeachingWorkspace
       ? 'My teaching workspace'
       : 'Dashboard';
+    const dashboardNavItem: RegistryNavItem = {
+      name: dashboardLabel,
+      shortName: 'Home',
+      href: '/dashboard/admin',
+      icon: LayoutDashboard,
+      mobilePriority: 2,
+    };
+    const academicSetupNavItem: RegistryNavItem = {
+      name: 'Academic Setup',
+      shortName: 'Setup',
+      href: '/academic',
+      icon: GraduationCap,
+      mobilePriority: 1,
+      children: setupChildren,
+    };
 
     return {
       primary: [
-        { name: dashboardLabel, href: '/dashboard/admin', icon: LayoutDashboard },
-        {
-          name: 'Academic Setup',
-          href: '/academic',
-          icon: GraduationCap,
-          children: setupChildren,
-        },
+        dashboardNavItem,
+        academicSetupNavItem,
       ],
       secondary: [
         { name: 'Settings', href: '/admin/settings', icon: Settings },
@@ -267,11 +295,33 @@ export function getAdminNav(
   }
 
   if (selfManagedTeachingWorkspace) {
+    const teachingWorkspaceNavItem: RegistryNavItem = {
+      name: 'My teaching workspace',
+      shortName: 'Home',
+      href: '/dashboard/admin',
+      icon: LayoutDashboard,
+      mobilePriority: 1,
+    };
+    const lessonPreparationsNavItem: RegistryNavItem = {
+      name: 'Lesson preparations',
+      shortName: 'Prepare',
+      href: '/lesson-plans',
+      icon: FileText,
+      mobilePriority: 2,
+    };
+    const academicSetupNavItem = selfManagedAcademicSetupNav();
+
     return {
       primary: [
-        { name: 'My teaching workspace', href: '/dashboard/admin', icon: LayoutDashboard },
-        { name: 'Lesson preparations', href: '/lesson-plans', icon: FileText },
-        selfManagedAcademicSetupNav(),
+        teachingWorkspaceNavItem,
+        lessonPreparationsNavItem,
+        academicSetupNavItem,
+      ],
+      mobilePrimary: [
+        teachingWorkspaceNavItem,
+        lessonPreparationsNavItem,
+        { name: 'My classes', shortName: 'Classes', href: '/academic/cohorts', icon: Users, mobilePriority: 3 },
+        { name: 'Assessments', shortName: 'Assess', href: '/assessments', icon: ClipboardCheck, mobilePriority: 4 },
       ],
       secondary: [
         { name: 'Settings', href: '/admin/settings', icon: Settings },
@@ -282,15 +332,17 @@ export function getAdminNav(
   if (isSelfManagedWorkspace(orgType)) {
     return {
       primary: [
-        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
-        { name: 'Learners', href: '/learners', icon: Users },
+        { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
         { name: 'Teaching Sessions', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plans', href: '/lesson-plans', icon: FileText },
         {
           name: 'Assessments',
+          shortName: 'Assess',
           href: '/assessments',
           icon: ClipboardCheck,
+          mobilePriority: 3,
           children: [
             { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
             ...reportPoliciesChild,
@@ -298,8 +350,10 @@ export function getAdminNav(
         },
         {
           name: 'Reports',
+          shortName: 'Reports',
           href: '/reports',
           icon: FileBarChart,
+          mobilePriority: 4,
           children: reportNavigationChildren,
         },
         { name: 'Collaborators', href: '/admin/instructors', icon: UserCog },
@@ -314,16 +368,18 @@ export function getAdminNav(
   if (orgType === 'TUITION_CENTER') {
     return {
       primary: [
-        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
         { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
-        { name: 'Learners', href: '/learners', icon: Users },
+        { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
         {
           name: 'Assessment Overview',
+          shortName: 'Assess',
           href: '/assessments',
           icon: ClipboardCheck,
+          mobilePriority: 3,
           children: [
             { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
             ...reportPoliciesChild,
@@ -331,8 +387,10 @@ export function getAdminNav(
         },
         {
           name: 'Reports',
+          shortName: 'Reports',
           href: '/reports',
           icon: FileBarChart,
+          mobilePriority: 4,
           children: reportNavigationChildren,
         },
       ],
@@ -347,16 +405,18 @@ export function getAdminNav(
   if (isLearnerCenteredWorkspace(orgType)) {
     return {
       primary: [
-        { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
-        { name: 'Learners', href: '/learners', icon: Users },
+        { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
         { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
         {
           name: 'Reports',
+          shortName: 'Reports',
           href: '/reports',
           icon: FileBarChart,
+          mobilePriority: 3,
           children: reportNavigationChildren,
         },
       ],
@@ -369,17 +429,19 @@ export function getAdminNav(
 
   return {
     primary: [
-      { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+      { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
       ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
       ACADEMIC_SETUP_NAV,
       { name: 'Instructors', href: '/admin/instructors', icon: UserCog },
-      { name: 'Learners', href: '/learners', icon: Users },
+      { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
       { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
       { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
       {
         name: 'Assessment Overview',
+        shortName: 'Assess',
         href: '/assessments',
         icon: ClipboardCheck,
+        mobilePriority: 3,
         children: [
           { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
           ...reportPoliciesChild,
@@ -388,8 +450,10 @@ export function getAdminNav(
       ...getPluginNavigationItems('admin.primary.afterAssessments', pluginContext),
       {
         name: 'Reports',
+        shortName: 'Reports',
         href: '/reports',
         icon: FileBarChart,
+        mobilePriority: 4,
         children: reportNavigationChildren,
       },
     ],
@@ -418,17 +482,25 @@ export function getInstructorNav(
 ): NavigationConfig {
   return {
     primary: [
-      { name: getInstructorDashboardLabel(todayMode), href: '/dashboard/instructor', icon: LayoutDashboard },
+      {
+        name: getInstructorDashboardLabel(todayMode),
+        shortName: 'Home',
+        href: '/dashboard/instructor',
+        icon: LayoutDashboard,
+        mobilePriority: 1,
+      },
       ...getPluginNavigationItems('instructor.primary.afterDashboard', pluginContext),
-      { name: 'Lesson Preparation', href: '/lesson-plans', icon: FileText },
-      { name: 'My Lessons', href: '/sessions', icon: Calendar },
+      { name: 'Lesson Preparation', shortName: 'Prepare', href: '/lesson-plans', icon: FileText, mobilePriority: 2 },
+      { name: 'My Lessons', shortName: 'Lessons', href: '/sessions', icon: Calendar, mobilePriority: 3 },
       ...getPluginNavigationItems('instructor.primary.afterMySessions', pluginContext),
       { name: 'My Teaching Load', href: '/academic/cohorts', icon: Users },
       { name: 'My Learners', href: '/learners', icon: Users },
       {
         name: 'Assessments & Grading',
+        shortName: 'Assess',
         href: '/assessments',
         icon: ClipboardCheck,
+        mobilePriority: 4,
         children: [
           { name: 'All Assessments', href: '/assessments', icon: ClipboardCheck },
           { name: 'Needs Grading', href: '/assessments?status=pending', icon: AlertCircle },
@@ -466,11 +538,11 @@ export function getSuperadminNav(pluginContext: PluginNavigationContext): Naviga
   return {
     ...SUPERADMIN_NAV,
     primary: [
-      { name: 'System Overview', href: '/dashboard/superadmin', icon: LayoutDashboard },
-      { name: 'Organizations', href: '/superadmin/organizations', icon: Building2 },
+      { name: 'System Overview', shortName: 'Home', href: '/dashboard/superadmin', icon: LayoutDashboard, mobilePriority: 1 },
+      { name: 'Organizations', shortName: 'Orgs', href: '/superadmin/organizations', icon: Building2, mobilePriority: 2 },
       ...getPluginNavigationItems('superadmin.primary.afterOrganizations', pluginContext),
-      { name: 'Global Users', href: '/superadmin/users', icon: UserCog },
-      { name: 'Plugin Registry', href: '/superadmin/plugins', icon: Puzzle },
+      { name: 'Global Users', shortName: 'Users', href: '/superadmin/users', icon: UserCog, mobilePriority: 3 },
+      { name: 'Plugin Registry', shortName: 'Plugins', href: '/superadmin/plugins', icon: Puzzle, mobilePriority: 4 },
       { name: 'Feedback Center', href: '/superadmin/feedback', icon: MessageCircle },
       ...getPluginNavigationItems('superadmin.primary.afterPluginRegistry', pluginContext),
       { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },

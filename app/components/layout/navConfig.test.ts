@@ -31,9 +31,11 @@ const pluginContext = {
 
 let getAdminNav: typeof import('./navConfig').getAdminNav;
 let getInstructorNav: typeof import('./navConfig').getInstructorNav;
+let getSuperadminNav: typeof import('./navConfig').getSuperadminNav;
+let resolveMobilePrimaryNav: typeof import('./navConfig').resolveMobilePrimaryNav;
 
 beforeAll(async () => {
-  ({ getAdminNav, getInstructorNav } = await import('./navConfig'));
+  ({ getAdminNav, getInstructorNav, getSuperadminNav, resolveMobilePrimaryNav } = await import('./navConfig'));
 });
 
 describe('admin navigation config', () => {
@@ -132,6 +134,50 @@ describe('admin navigation config', () => {
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
   });
 
+  it('prioritizes freelance post-setup mobile navigation around daily teaching', () => {
+    const nav = getAdminNav(pluginContext, 'PERSONAL', {
+      complete: true,
+      current_step_label: null,
+      next_action: {
+        label: 'Open admin dashboard',
+        href: '/dashboard/admin',
+      },
+    }, {
+      can_teach: true,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: false,
+      is_workspace_owner: true,
+      workspace_mode: 'FREELANCE_TEACHER',
+      workspace_behavior: 'FREELANCE_TEACHER',
+    });
+
+    const mobileItems = resolveMobilePrimaryNav(nav);
+
+    expect(mobileItems.map((item) => item.name)).toEqual([
+      'My teaching workspace',
+      'Lesson preparations',
+      'My classes',
+      'Assessments',
+    ]);
+    expect(mobileItems.map((item) => item.shortName ?? item.name)).toEqual([
+      'Home',
+      'Prepare',
+      'Classes',
+      'Assess',
+    ]);
+    expect(mobileItems.some((item) => item.name === 'Academic Setup')).toBe(false);
+    expect(nav.primary.map((item) => item.name)).toEqual([
+      'My teaching workspace',
+      'Lesson preparations',
+      'Academic Setup',
+    ]);
+  });
+
   it('keeps personal workspaces in guided setup until schemes are ready', () => {
     const nav = getAdminNav(pluginContext, 'PERSONAL', {
       complete: false,
@@ -165,6 +211,38 @@ describe('admin navigation config', () => {
     expect(nav.primary.at(-1)?.children?.at(-1)?.href).toBe('/schemes?setup=1');
   });
 
+  it('leads mobile navigation with setup while freelance setup is incomplete', () => {
+    const nav = getAdminNav(pluginContext, 'PERSONAL', {
+      complete: false,
+      current_step_label: 'Set up schemes of work',
+      next_action: {
+        label: 'Set up schemes of work',
+        href: '/schemes?setup=1',
+      },
+    }, {
+      can_teach: true,
+      can_manage_academic_setup: true,
+      can_manage_learners: true,
+      can_manage_cohorts: true,
+      can_manage_subjects: true,
+      can_manage_assessments: true,
+      can_view_reports: true,
+      can_manage_staff: false,
+      is_workspace_owner: true,
+      workspace_mode: 'FREELANCE_TEACHER',
+      workspace_behavior: 'FREELANCE_TEACHER',
+    });
+
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.name)).toEqual([
+      'Academic Setup',
+      'My teaching workspace',
+    ]);
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.shortName ?? item.name)).toEqual([
+      'Setup',
+      'Home',
+    ]);
+  });
+
   it('removes create-new assessment child for tuition-center admins', () => {
     const nav = getAdminNav(pluginContext, 'TUITION_CENTER');
     const assessmentItem = nav.primary.find((item) => item.href === '/assessments');
@@ -191,7 +269,28 @@ describe('admin navigation config', () => {
       'Overview',
       'Set up academic year',
     ]);
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.name)).toEqual([
+      'Academic Setup',
+      'Dashboard',
+    ]);
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
+  });
+
+  it('prioritizes institution admin mobile navigation for daily oversight', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION');
+
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.name)).toEqual([
+      'Dashboard',
+      'Learners',
+      'Assessment Overview',
+      'Reports',
+    ]);
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.shortName ?? item.name)).toEqual([
+      'Home',
+      'Learners',
+      'Assess',
+      'Reports',
+    ]);
   });
 
   it('renames instructor dashboard navigation during midterm modes', () => {
@@ -207,5 +306,33 @@ describe('admin navigation config', () => {
       name: 'Teaching Today',
       href: '/dashboard/instructor',
     });
+  });
+
+  it('prioritizes instructor mobile navigation around teaching actions', () => {
+    const nav = getInstructorNav(pluginContext, 'MIDTERM_EXAM');
+
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.name)).toEqual([
+      'Midterm Exams',
+      'Lesson Preparation',
+      'My Lessons',
+      'Assessments & Grading',
+    ]);
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.shortName ?? item.name)).toEqual([
+      'Home',
+      'Prepare',
+      'Lessons',
+      'Assess',
+    ]);
+  });
+
+  it('keeps superadmin mobile navigation simple', () => {
+    const nav = getSuperadminNav(pluginContext);
+
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.name)).toEqual([
+      'System Overview',
+      'Organizations',
+      'Global Users',
+      'Plugin Registry',
+    ]);
   });
 });

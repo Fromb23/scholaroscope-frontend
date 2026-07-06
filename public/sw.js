@@ -3,8 +3,10 @@ const BUILD_VERSION = SERVICE_WORKER_URL.searchParams.get('v') || 'dev';
 const API_BASE_URL = SERVICE_WORKER_URL.searchParams.get('api') || '';
 const CACHE_PREFIX = 'scholaroscope-shell-';
 const SHELL_CACHE = `${CACHE_PREFIX}${BUILD_VERSION}`;
+const APP_SHELL_URL = '/';
 const OFFLINE_URL = '/offline';
-const PRECACHE_URLS = ['/', OFFLINE_URL];
+const PRECACHE_URLS = [APP_SHELL_URL, OFFLINE_URL];
+const MAX_NAVIGATION_CACHE_ENTRIES = 32;
 const STATIC_ASSET_EXTENSIONS = /\.(?:avif|css|gif|ico|jpg|jpeg|js|json|png|svg|webp|woff2?)$/i;
 const STATIC_DESTINATIONS = new Set(['font', 'image', 'manifest', 'script', 'style']);
 
@@ -66,24 +68,86 @@ async function purgeOldCaches() {
   );
 }
 
+function isSameOriginNavigationDocument(request, response, url) {
+  return (
+    request.method === 'GET'
+    && request.mode === 'navigate'
+    && url.origin === self.location.origin
+    && response.ok
+    && response.type === 'basic'
+  );
+}
+
+function isCachedNavigationRequest(request) {
+  const url = new URL(request.url);
+  const looksLikeRouteDocument = (
+    request.mode === 'navigate'
+    || (
+      !url.pathname.startsWith('/_next/')
+      && !STATIC_ASSET_EXTENSIONS.test(url.pathname)
+    )
+  );
+
+  return (
+    request.method === 'GET'
+    && looksLikeRouteDocument
+    && url.origin === self.location.origin
+    && !PRECACHE_URLS.includes(url.pathname)
+  );
+}
+
+async function trimNavigationCache(cache) {
+  const cachedRequests = await cache.keys();
+  const navigationRequests = cachedRequests.filter(isCachedNavigationRequest);
+  const excessCount = navigationRequests.length - MAX_NAVIGATION_CACHE_ENTRIES;
+  if (excessCount <= 0) {
+    return;
+  }
+
+  await Promise.all(
+    navigationRequests
+      .slice(0, excessCount)
+      .map((cachedRequest) => cache.delete(cachedRequest)),
+  );
+}
+
+async function cacheSuccessfulNavigationDocument(request, response, url) {
+  if (!isSameOriginNavigationDocument(request, response, url)) {
+    return;
+  }
+
+  const cache = await caches.open(SHELL_CACHE);
+  if (url.pathname === APP_SHELL_URL) {
+    await cache.put(APP_SHELL_URL, response.clone());
+    return;
+  }
+
+  await cache.put(request, response.clone());
+  await trimNavigationCache(cache);
+}
+
 async function handleNavigationRequest(request) {
   try {
     const response = await fetch(request);
     const url = new URL(request.url);
 
-    if (response.ok && response.type === 'basic' && url.origin === self.location.origin && url.pathname === '/') {
-      const cache = await caches.open(SHELL_CACHE);
-      await cache.put('/', response.clone());
-    }
+    await cacheSuccessfulNavigationDocument(request, response, url);
 
     return response;
   } catch {
-    const cachedResponse = await caches.match(request);
+    const cache = await caches.open(SHELL_CACHE);
+
+    const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
 
-    const offlineResponse = await caches.match(OFFLINE_URL);
+    const appShellResponse = await cache.match(APP_SHELL_URL);
+    if (appShellResponse) {
+      return appShellResponse;
+    }
+
+    const offlineResponse = await cache.match(OFFLINE_URL);
     if (offlineResponse) {
       return offlineResponse;
     }
