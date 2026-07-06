@@ -23,7 +23,6 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { downloadBlob } from '@/app/core/api/downloads';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
@@ -39,6 +38,7 @@ import {
   resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
 import { useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useStudentReportCard } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import {
@@ -47,8 +47,6 @@ import {
   resolveGenericStudentResult,
 } from '@/app/core/lib/reportingPresentation';
 import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
-import type { ReportExportFormat } from '@/app/core/types/reporting';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 function SearchResultSkeleton() {
   return (
@@ -155,22 +153,17 @@ export function StudentsReportPage({
     }
   }, [reportCard, selectedStudentId]);
 
-  const handleExport = async (format: ReportExportFormat) => {
+  const { handleExport, exporting } = useReportExport(async (format) => {
     if (!selectedStudentId) {
-      return;
+      throw new Error('Select a learner before exporting.');
     }
 
-    try {
-      const file = await adminReportsAPI.exportStudentReportCard(
-        selectedStudentId,
-        format,
-        selectedTermId,
-      );
-      downloadBlob(file.blob, file.fileName);
-    } catch (error) {
-      window.alert(extractErrorMessage(error as ApiError, 'Failed to export learner report.'));
-    }
-  };
+    return adminReportsAPI.exportStudentReportCard(
+      selectedStudentId,
+      format,
+      selectedTermId,
+    );
+  }, 'learner report');
 
   const noActiveTerm = !selectedTermId && !currentTermLoading && !currentTerm;
   const visibleError = reportError ?? searchError;
@@ -220,15 +213,15 @@ export function StudentsReportPage({
 
           {selectedStudentId ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={() => void handleExport('pdf')}>
+              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('pdf')}>
                 <Download className="h-4 w-4" />
                 Export PDF
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => void handleExport('xlsx')}>
+              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('xlsx')}>
                 <Download className="h-4 w-4" />
                 Export Excel
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => void handleExport('csv')}>
+              <Button variant="ghost" size="sm" disabled={exporting} onClick={() => void handleExport('csv')}>
                 <Download className="h-4 w-4" />
                 Export CSV
               </Button>

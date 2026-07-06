@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canManageInstitutionReportPolicy,
   canRenderInstitutionReportOverview,
+  resolveReportSurface,
   shouldUseInstructorReportSurface,
 } from './reportAccessPolicy';
 import type { ActiveOrg, User, WorkspaceCapabilities } from '@/app/core/types/auth';
@@ -99,6 +100,63 @@ const institutionReportPolicyCapabilities = {
 } satisfies WorkspaceCapabilities;
 
 describe('report access policy', () => {
+  it('resolves superadmins to the institution report surface', () => {
+    expect(resolveReportSurface({
+      user: { ...user, is_superadmin: true },
+      activeRole: 'SUPERADMIN',
+      activeOrg: institution,
+      capabilities: institutionCapabilities,
+    })).toBe('institution');
+  });
+
+  it('resolves supervision-only admins to the institution report surface', () => {
+    expect(resolveReportSurface({
+      user,
+      activeRole: 'ADMIN',
+      activeOrg: institution,
+      capabilities: institutionCapabilities,
+    })).toBe('institution');
+  });
+
+  it('resolves freelance workspace admins by workspace behavior', () => {
+    expect(resolveReportSurface({
+      user,
+      activeRole: 'ADMIN',
+      activeOrg: institution,
+      capabilities: selfManagedCapabilities,
+    })).toBe('freelance');
+  });
+
+  it('resolves personal workspace admins to the freelance report surface', () => {
+    expect(resolveReportSurface({
+      user,
+      activeRole: 'ADMIN',
+      activeOrg: personal,
+      capabilities: {
+        ...selfManagedCapabilities,
+        workspace_behavior: 'SELF_MANAGED',
+      },
+    })).toBe('freelance');
+  });
+
+  it('resolves instructors to the instructor report surface', () => {
+    expect(resolveReportSurface({
+      user,
+      activeRole: 'INSTRUCTOR',
+      activeOrg: institution,
+      capabilities: { ...institutionCapabilities, can_teach: true },
+    })).toBe('instructor');
+  });
+
+  it('resolves unauthenticated users to no report surface', () => {
+    expect(resolveReportSurface({
+      user: null,
+      activeRole: null,
+      activeOrg: null,
+      capabilities: null,
+    })).toBe('none');
+  });
+
   it('does not allow raw admin role into institution reports for self-managed teaching workspaces', () => {
     expect(canRenderInstitutionReportOverview({
       user,

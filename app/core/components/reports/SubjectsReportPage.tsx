@@ -19,7 +19,6 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { downloadBlob } from '@/app/core/api/downloads';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
@@ -34,10 +33,10 @@ import {
   resolveReportBackHref,
 } from '@/app/core/components/reports/reportNavigation';
 import { useCurrentTerm, useSubjects, useTerms } from '@/app/core/hooks/useAcademic';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useSubjectAnalysis } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
-import type { ReportAssignedInstructor, ReportExportFormat } from '@/app/core/types/reporting';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
+import type { ReportAssignedInstructor } from '@/app/core/types/reporting';
 
 function LinkedInstructorBadges({
   instructors,
@@ -134,22 +133,17 @@ export function SubjectsReportPage({
     router.push(buildSubjectReportHref(Number(value), { term: selectedTermId ?? currentTerm?.id ?? null }));
   }, [currentTerm?.id, router, selectedTermId]);
 
-  const handleExport = useCallback(async (format: ReportExportFormat) => {
+  const { handleExport, exporting } = useReportExport(async (format) => {
     if (!selectedSubjectId) {
-      return;
+      throw new Error('Select a subject before exporting.');
     }
 
-    try {
-      const file = await adminReportsAPI.exportSubjectOverview(
-        selectedSubjectId,
-        format,
-        selectedTermId,
-      );
-      downloadBlob(file.blob, file.fileName);
-    } catch (requestError) {
-      window.alert(extractErrorMessage(requestError as ApiError, 'Failed to export subject report.'));
-    }
-  }, [selectedSubjectId, selectedTermId]);
+    return adminReportsAPI.exportSubjectOverview(
+      selectedSubjectId,
+      format,
+      selectedTermId,
+    );
+  }, 'subject report');
 
   const noActiveTerm = !selectedTermId && !currentTermLoading && !currentTerm;
   const waitingForTerm = Boolean(selectedSubjectId) && !selectedTermId && currentTermLoading;
@@ -176,15 +170,15 @@ export function SubjectsReportPage({
 
           {selectedSubjectId ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={() => void handleExport('pdf')}>
+              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('pdf')}>
                 <Download className="h-4 w-4" />
                 Export PDF
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => void handleExport('xlsx')}>
+              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('xlsx')}>
                 <Download className="h-4 w-4" />
                 Export Excel
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => void handleExport('csv')}>
+              <Button variant="ghost" size="sm" disabled={exporting} onClick={() => void handleExport('csv')}>
                 <Download className="h-4 w-4" />
                 Export CSV
               </Button>

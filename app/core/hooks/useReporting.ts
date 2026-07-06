@@ -77,7 +77,7 @@ export const useDashboardOverview = () => {
       setOverview(await adminReportsAPI.getOverview());
       setError(null);
     } catch (err) {
-      setError(extractErrorMessage(err as ApiError, 'Failed to fetch overview'));
+      setError(extractErrorMessage(err as ApiError, 'Could not load reporting overview.'));
     } finally {
       setLoading(false);
     }

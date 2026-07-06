@@ -23,7 +23,6 @@ import {
   SectionLoading,
 } from '@/app/components/ui/loading';
 import { learnerReportingAPI } from '@/app/core/api/reporting';
-import { downloadBlob } from '@/app/core/api/downloads';
 import {
   formatReportDate,
   formatReportPercent,
@@ -38,6 +37,7 @@ import {
   useClassSubjectReport,
   useInstructorCohortSubjects,
 } from '@/app/core/hooks/useReporting';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useAuth } from '@/app/context/AuthContext';
 import { useClassSubjectIntelligence } from '@/app/core/hooks/useAcademicIntelligence';
@@ -45,12 +45,10 @@ import { ClassSubjectIntelligencePanel } from '@/app/core/components/reports/Aca
 import type {
   ClassSubjectLearnerRow,
   ClassSubjectReportPayload,
-  ReportExportFormat,
 } from '@/app/core/types/reporting';
 import type { ClassSubjectIntelligence } from '@/app/core/types/academicIntelligence';
 import type { Term } from '@/app/core/types/academic';
 import type { User } from '@/app/core/types/auth';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 import {
   buildAttendanceReportHref,
   buildCbcCohortProgressHref,
@@ -459,35 +457,22 @@ export function ClassSubjectReportPage({
   );
   const { terms } = useTerms();
 
-  const [exporting, setExporting] = useState<ReportExportFormat | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [fullSummaryOpen, setFullSummaryOpen] = useState(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
-  const handleExport = useCallback(async (format: ReportExportFormat) => {
+  const { handleExport, exporting } = useReportExport(async (format) => {
     if (!cohortId) {
-      return;
+      throw new Error('Open a class subject report before exporting.');
     }
 
-    try {
-      setExportError(null);
-      setExporting(format);
-      const file = await learnerReportingAPI.exportClassSubjectReport(cohortId, {
-        format,
-        cohortSubjectId,
-        termId: selectedTermId,
-      });
-      downloadBlob(file.blob, file.fileName);
-    } catch (requestError) {
-      setExportError(
-        extractErrorMessage(requestError as ApiError, 'Failed to export class subject report'),
-      );
-    } finally {
-      setExporting(null);
-    }
-  }, [cohortId, cohortSubjectId, selectedTermId]);
+    return learnerReportingAPI.exportClassSubjectReport(cohortId, {
+      format,
+      cohortSubjectId,
+      termId: selectedTermId,
+    });
+  }, 'class subject report');
 
-  const visibleError = exportError ?? error ?? (cohortIdOverride == null ? cohortSubjectsError : null) ?? null;
+  const visibleError = error ?? (cohortIdOverride == null ? cohortSubjectsError : null) ?? null;
   const reportSubjectName = report?.subject.name ?? cohortSubjectMeta?.subject_name ?? 'Class subject';
   const reportSubjectCode = report?.subject.code ?? cohortSubjectMeta?.subject_code ?? null;
   const reportCohortName = report?.cohort.name ?? cohortSubjectMeta?.cohort_name ?? null;
@@ -647,10 +632,10 @@ export function ClassSubjectReportPage({
                 variant="secondary"
                 size="sm"
                 className="w-full sm:w-auto"
-                disabled={!report || exporting !== null}
+                disabled={!report || exporting}
                 onClick={() => void handleExport('pdf')}
               >
-                <ButtonPendingContent pending={exporting === 'pdf'} pendingLabel="Preparing PDF...">
+                <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
                   <Download className="h-4 w-4" />
                   Export PDF
                 </ButtonPendingContent>
@@ -659,10 +644,10 @@ export function ClassSubjectReportPage({
                 variant="secondary"
                 size="sm"
                 className="w-full sm:w-auto"
-                disabled={!report || exporting !== null}
+                disabled={!report || exporting}
                 onClick={() => void handleExport('xlsx')}
               >
-                <ButtonPendingContent pending={exporting === 'xlsx'} pendingLabel="Preparing Excel...">
+                <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
                   <Download className="h-4 w-4" />
                   Export Excel
                 </ButtonPendingContent>
@@ -671,10 +656,10 @@ export function ClassSubjectReportPage({
                 variant="ghost"
                 size="sm"
                 className="w-full sm:w-auto"
-                disabled={!report || exporting !== null}
+                disabled={!report || exporting}
                 onClick={() => void handleExport('csv')}
               >
-                <ButtonPendingContent pending={exporting === 'csv'} pendingLabel="Preparing CSV...">
+                <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
                   <Download className="h-4 w-4" />
                   Export CSV
                 </ButtonPendingContent>
@@ -685,7 +670,7 @@ export function ClassSubjectReportPage({
       </div>
 
       {visibleError ? (
-        <ErrorBanner message={visibleError} onDismiss={() => setExportError(null)} />
+        <ErrorBanner message={visibleError} onDismiss={() => undefined} />
       ) : null}
 
       {!selectedTermId ? (
