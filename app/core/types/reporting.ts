@@ -1082,6 +1082,162 @@ export interface LearnerSubjectReportPayload {
   recommended_actions: string[];
 }
 
+export interface LearnerAssessmentReportQueryParams {
+  assessmentId?: number | null;
+  cohortSubjectId?: number | null;
+  assessmentType?: string | null;
+  termId?: number | null;
+  subjectId?: number | null;
+  cohortId?: number | null;
+  academicYearId?: number | null;
+}
+
+export interface LearnerAssessmentReportLearner {
+  id: number;
+  name: string;
+  admission_number: string;
+  primary_cohort_id: number | null;
+  primary_cohort_name: string | null;
+  status: string;
+}
+
+export interface LearnerAssessmentReportContext {
+  assessment_id: number | null;
+  assessment_name: string | null;
+  assessment_type: string | null;
+  assessment_type_display: string | null;
+  term_id: number | null;
+  term_name: string | null;
+  academic_year_id: number | null;
+  academic_year_name: string | null;
+  cohort_subject_id: number | null;
+  cohort_id: number | null;
+  cohort_name: string | null;
+  subject_id: number | null;
+  subject_name: string | null;
+  subject_code: string | null;
+}
+
+export interface LearnerAssessmentReportSummary {
+  assessment_count: number;
+  finalized_count: number;
+  active_count: number;
+  graded_count: number;
+  average_percentage: number | null;
+  best_percentage: number | null;
+  latest_percentage: number | null;
+  latest_assessment_date: string | null;
+}
+
+export interface LearnerAssessmentReportRow {
+  assessment_id: number;
+  assessment_name: string;
+  assessment_type: string;
+  assessment_type_display: string;
+  assessment_status: string;
+  assessment_date: string | null;
+  term_id: number | null;
+  term_name: string | null;
+  academic_year_id: number | null;
+  academic_year_name: string | null;
+  cohort_subject_id: number;
+  cohort_id: number;
+  cohort_name: string;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  score: number | null;
+  total_marks: number | null;
+  percentage: number | null;
+  rubric_level_id: number | null;
+  rubric_level_label: string | null;
+  rubric_level_code: string | null;
+  score_status: string;
+  score_status_display: string;
+  comments: string;
+}
+
+export interface LearnerAssessmentTermTrendPoint {
+  term_id: number | null;
+  term_name: string | null;
+  academic_year_id: number | null;
+  academic_year_name: string | null;
+  assessment_count: number;
+  average_percentage: number | null;
+  latest_assessment_date: string | null;
+}
+
+export interface LearnerAssessmentAcademicYearTrendPoint {
+  academic_year_id: number | null;
+  academic_year_name: string | null;
+  assessment_count: number;
+  average_percentage: number | null;
+}
+
+export interface LearnerAssessmentSubjectBreakdownPoint {
+  cohort_subject_id: number;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  cohort_id: number;
+  cohort_name: string;
+  assessment_count: number;
+  average_percentage: number | null;
+  latest_percentage: number | null;
+}
+
+export interface LearnerAssessmentTypeFilter {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface LearnerAssessmentSubjectFilter {
+  cohort_subject_id: number;
+  subject_id: number;
+  subject_name: string;
+  subject_code: string;
+  cohort_name: string;
+}
+
+export interface LearnerAssessmentTermFilter {
+  id: number;
+  name: string;
+  academic_year_id: number;
+  academic_year_name: string;
+}
+
+export interface LearnerAssessmentAcademicYearFilter {
+  id: number;
+  name: string;
+}
+
+export interface LearnerAssessmentAvailableFilters {
+  assessment_types: LearnerAssessmentTypeFilter[];
+  subjects: LearnerAssessmentSubjectFilter[];
+  terms: LearnerAssessmentTermFilter[];
+  academic_years: LearnerAssessmentAcademicYearFilter[];
+}
+
+export interface LearnerAssessmentVisibility {
+  scope: 'admin' | 'instructor';
+  can_compare_subjects: boolean;
+}
+
+export interface LearnerAssessmentReportPayload {
+  report_type: 'learner_assessment';
+  generated_at: string;
+  learner: LearnerAssessmentReportLearner;
+  context: LearnerAssessmentReportContext;
+  summary: LearnerAssessmentReportSummary;
+  assessment_rows: LearnerAssessmentReportRow[];
+  term_trend: LearnerAssessmentTermTrendPoint[];
+  academic_year_trend: LearnerAssessmentAcademicYearTrendPoint[];
+  subject_breakdown: LearnerAssessmentSubjectBreakdownPoint[];
+  available_filters: LearnerAssessmentAvailableFilters;
+  visibility: LearnerAssessmentVisibility;
+}
+
 export interface LearnerOverviewSubjectSummary {
   cohort_subject_id: number;
   cohort_id: number;

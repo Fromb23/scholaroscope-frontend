@@ -26,6 +26,8 @@ import {
   InstructorAttendanceRiskItem,
   InstructorAttendanceRiskResponse,
   LearnerOverviewReportPayload,
+  LearnerAssessmentReportPayload,
+  LearnerAssessmentReportQueryParams,
   LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
   TeacherPerformanceReflectionItem,
@@ -644,6 +646,27 @@ export const learnerReportingAPI = {
     return response.data;
   },
 
+  getLearnerAssessmentReport: async (
+    learnerId: number,
+    params: LearnerAssessmentReportQueryParams,
+  ) => {
+    const response = await apiClient.get<LearnerAssessmentReportPayload>(
+      `/reporting/learners/${learnerId}/assessment-report/`,
+      {
+        params: {
+          assessment_id: params.assessmentId ?? undefined,
+          cohort_subject_id: params.cohortSubjectId ?? undefined,
+          assessment_type: params.assessmentType ?? undefined,
+          term_id: params.termId ?? undefined,
+          subject_id: params.subjectId ?? undefined,
+          cohort_id: params.cohortId ?? undefined,
+          academic_year_id: params.academicYearId ?? undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+
   exportLearnerSubjectReport: async (
     learnerId: number,
     params: {
@@ -817,6 +840,7 @@ export const reportsAPI = {
   getInstructorCohortSubjectPerformance: instructorReportsAPI.getCohortSubjectPerformance,
   getInstructorCohortSubjectTeachingActivity: instructorReportsAPI.getCohortSubjectTeachingActivity,
   getLearnerSubjectReport: learnerReportingAPI.getLearnerSubjectReport,
+  getLearnerAssessmentReport: learnerReportingAPI.getLearnerAssessmentReport,
   getLearnerAvailableScopes: learnerReportingAPI.getLearnerAvailableScopes,
   exportLearnerSubjectReport: learnerReportingAPI.exportLearnerSubjectReport,
   getLearnerOverviewReport: learnerReportingAPI.getLearnerOverviewReport,

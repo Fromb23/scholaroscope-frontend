@@ -9,9 +9,12 @@ export interface ReportNavigationState {
   cohortSubject?: number | null;
   instructor?: number | null;
   assessment?: number | null;
+  assessmentType?: string | null;
   session?: number | null;
   q?: string | null;
   returnTo?: string | null;
+  academicYear?: number | null;
+  academicYearId?: number | null;
   cohortId?: number | null;
   cohortSubjectId?: number | null;
   studentId?: number | null;
@@ -146,6 +149,35 @@ export function buildLearnerSubjectReportHref(
   return query
     ? `/reports/learners/${learnerId}/subject?${query}`
     : `/reports/learners/${learnerId}/subject`;
+}
+
+export function buildLearnerAssessmentReportHref(
+  learnerId: number,
+  state?: ReportNavigationState,
+): string {
+  const params = new URLSearchParams();
+  setPositiveParam(params, 'assessment', state?.assessment ?? null);
+  setPositiveParam(
+    params,
+    'cohort_subject',
+    state?.cohortSubject ?? state?.cohortSubjectId ?? null,
+  );
+  setStringParam(params, 'assessment_type', state?.assessmentType ?? null);
+  setPositiveParam(params, 'term', state?.term ?? null);
+  setPositiveParam(params, 'subject', state?.subject ?? state?.subjectId ?? null);
+  setPositiveParam(params, 'cohort', state?.cohort ?? state?.cohortId ?? null);
+  setPositiveParam(
+    params,
+    'academic_year',
+    state?.academicYear ?? state?.academicYearId ?? null,
+  );
+  if (isSafeReturnTo(state?.returnTo)) {
+    params.set('returnTo', state.returnTo);
+  }
+  const query = params.toString();
+  return query
+    ? `/reports/learners/${learnerId}/assessments?${query}`
+    : `/reports/learners/${learnerId}/assessments`;
 }
 
 export function buildCohortReportHref(

@@ -24,6 +24,8 @@ import {
   ClassSummary,
   SubjectAnalysis,
   AttendanceScopeReportPayload,
+  LearnerAssessmentReportPayload,
+  LearnerAssessmentReportQueryParams,
   LearnerOverviewReportPayload,
   LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
@@ -673,6 +675,76 @@ export const useLearnerSubjectReport = (
       setLoading(false);
     }
   }, [cohortSubjectId, enabled, learnerId]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useLearnerAssessmentReport = (
+  learnerId: number | null,
+  params: LearnerAssessmentReportQueryParams,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<LearnerAssessmentReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const {
+    assessmentId,
+    cohortSubjectId,
+    assessmentType,
+    termId,
+    subjectId,
+    cohortId,
+    academicYearId,
+  } = params;
+
+  const fetchReport = useCallback(async () => {
+    if (!learnerId) {
+      setReport(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getLearnerAssessmentReport(learnerId, {
+        assessmentId,
+        cohortSubjectId,
+        assessmentType,
+        termId,
+        subjectId,
+        cohortId,
+        academicYearId,
+      }));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(extractErrorMessage(apiError, 'Failed to fetch learner assessment report'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    academicYearId,
+    assessmentId,
+    assessmentType,
+    cohortId,
+    cohortSubjectId,
+    enabled,
+    learnerId,
+    subjectId,
+    termId,
+  ]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };
