@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
     CheckCircle2,
@@ -9,12 +9,14 @@ import {
     Download,
     Edit,
     PlayCircle,
+    RefreshCw,
     SearchCheck,
     Trash2,
 } from 'lucide-react';
 import { ActionMenu, type ActionMenuItem } from '@/app/components/ui/ActionMenu';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import Modal from '@/app/components/ui/Modal';
 import type { AssessmentDetail } from '@/app/core/types/assessment';
 
 const ASSESSMENT_STAGES = [
@@ -69,9 +71,11 @@ interface AssessmentStageActionCardProps {
     canDelete: boolean;
     canActivate: boolean;
     canFinalize: boolean;
+    canReopen: boolean;
     canScore: boolean;
     canExportPdf: boolean;
     finalizing: boolean;
+    reopening: boolean;
     deleting: boolean;
     downloadingPdf: boolean;
     saving: boolean;
@@ -80,6 +84,7 @@ interface AssessmentStageActionCardProps {
     pendingMakeupCount: number;
     onActivate: () => void;
     onFinalize: () => void;
+    onReopen: () => Promise<void>;
     onDownloadPdf: () => void;
     onDelete: () => void;
     onRecordScores: () => void;
@@ -107,9 +112,11 @@ export function AssessmentStageActionCard({
     canDelete,
     canActivate,
     canFinalize,
+    canReopen,
     canScore,
     canExportPdf,
     finalizing,
+    reopening,
     deleting,
     downloadingPdf,
     saving,
@@ -118,6 +125,7 @@ export function AssessmentStageActionCard({
     pendingMakeupCount,
     onActivate,
     onFinalize,
+    onReopen,
     onDownloadPdf,
     onDelete,
     onRecordScores,
@@ -125,6 +133,7 @@ export function AssessmentStageActionCard({
     onReviewMissingLearners,
 }: AssessmentStageActionCardProps) {
     const searchParams = useSearchParams();
+    const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
         return value?.startsWith('/') ? value : null;
@@ -145,6 +154,16 @@ export function AssessmentStageActionCard({
 
     const primaryAction = useMemo(() => {
         if (isFinalized) {
+            if (canReopen) {
+                return {
+                    label: 'Reopen assessment',
+                    onSelect: () => setReopenConfirmOpen(true),
+                    icon: RefreshCw,
+                    disabled: reopening,
+                    pendingLabel: 'Reopening...',
+                };
+            }
+
             return {
                 label: 'View finalized results',
                 onSelect: onViewResults,
@@ -202,6 +221,7 @@ export function AssessmentStageActionCard({
     }, [
         canActivate,
         canFinalize,
+        canReopen,
         canScore,
         finalizing,
         isActive,
@@ -213,6 +233,7 @@ export function AssessmentStageActionCard({
         onReviewMissingLearners,
         onViewResults,
         pendingMakeupCount,
+        reopening,
         unscoredCount,
     ]);
 
@@ -258,6 +279,13 @@ export function AssessmentStageActionCard({
                 icon: <CheckCircle2 className="h-4 w-4" />,
             }]
             : []),
+        ...(isFinalized && canReopen
+            ? [{
+                label: 'View finalized results',
+                onSelect: onViewResults,
+                icon: <SearchCheck className="h-4 w-4" />,
+            }]
+            : []),
         ...(canDelete
             ? [{
                 label: deleting ? 'Deleting...' : 'Delete assessment',
@@ -269,77 +297,123 @@ export function AssessmentStageActionCard({
             : []),
     ];
 
+    const confirmReopen = async () => {
+        try {
+            await onReopen();
+            setReopenConfirmOpen(false);
+        } catch {
+            // The page hook owns the visible error state.
+        }
+    };
+
     return (
-        <Card className="space-y-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Assessment progress</p>
-                    <h2 className="mt-1 text-xl font-semibold theme-text">{currentStage}</h2>
-                    <p className="mt-1 text-sm theme-muted">
-                        {assessment.name} is at this stage. Choose the next safe action before using More.
-                    </p>
-                </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button
-                        type="button"
-                        onClick={primaryAction.onSelect}
-                        disabled={primaryAction.disabled || saving}
-                    >
-                        <PrimaryIcon className="h-4 w-4" />
-                        {primaryLabel}
-                    </Button>
-                    <ActionMenu
-                        items={secondaryActions}
-                        buttonLabel="More"
-                        ariaLabel="Open more assessment actions"
-                        hideLabelOnMobile={false}
-                    />
-                </div>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-6" aria-label="Assessment progress stages">
-                {ASSESSMENT_STAGES.map((stage, index) => {
-                    const complete = index < currentIndex || (isFinalized && stage === 'Finalized');
-                    const current = index === currentIndex;
-
-                    return (
-                        <div
-                            key={stage}
-                            className={`rounded-lg border px-3 py-2 text-sm ${
-                                complete
-                                    ? 'theme-success-surface border-green-200'
-                                    : current
-                                        ? 'theme-info-surface border-blue-200'
-                                        : 'theme-surface-elevated theme-border'
-                            }`}
+        <>
+            <Card className="space-y-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Assessment progress</p>
+                        <h2 className="mt-1 text-xl font-semibold theme-text">{currentStage}</h2>
+                        <p className="mt-1 text-sm theme-muted">
+                            {assessment.name} is at this stage. Choose the next safe action before using More.
+                        </p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                            type="button"
+                            onClick={primaryAction.onSelect}
+                            disabled={primaryAction.disabled || saving}
                         >
-                            <div className="flex items-center gap-2">
-                                {complete ? (
-                                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[color:var(--color-success)]" />
-                                ) : (
-                                    <Circle className="h-4 w-4 shrink-0 theme-subtle" />
-                                )}
-                                <span className="font-medium theme-text">{stage}</span>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+                            <PrimaryIcon className="h-4 w-4" />
+                            {primaryLabel}
+                        </Button>
+                        <ActionMenu
+                            items={secondaryActions}
+                            buttonLabel="More"
+                            ariaLabel="Open more assessment actions"
+                            hideLabelOnMobile={false}
+                        />
+                    </div>
+                </div>
 
-            <div className="grid gap-3 text-sm sm:grid-cols-3">
-                <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
-                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Scores recorded</p>
-                    <p className="mt-1 font-semibold theme-text">{scoredCount}</p>
+                <div className="grid gap-2 sm:grid-cols-6" aria-label="Assessment progress stages">
+                    {ASSESSMENT_STAGES.map((stage, index) => {
+                        const complete = index < currentIndex || (isFinalized && stage === 'Finalized');
+                        const current = index === currentIndex;
+
+                        return (
+                            <div
+                                key={stage}
+                                className={`rounded-lg border px-3 py-2 text-sm ${
+                                    complete
+                                        ? 'theme-success-surface border-green-200'
+                                        : current
+                                            ? 'theme-info-surface border-blue-200'
+                                            : 'theme-surface-elevated theme-border'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    {complete ? (
+                                        <CheckCircle2 className="h-4 w-4 shrink-0 text-[color:var(--color-success)]" />
+                                    ) : (
+                                        <Circle className="h-4 w-4 shrink-0 theme-subtle" />
+                                    )}
+                                    <span className="font-medium theme-text">{stage}</span>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-                <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
-                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Still to review</p>
-                    <p className="mt-1 font-semibold theme-text">{unscoredCount}</p>
+
+                <div className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
+                        <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Scores recorded</p>
+                        <p className="mt-1 font-semibold theme-text">{scoredCount}</p>
+                    </div>
+                    <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
+                        <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Still to review</p>
+                        <p className="mt-1 font-semibold theme-text">{unscoredCount}</p>
+                    </div>
+                    <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
+                        <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Missing learners</p>
+                        <p className="mt-1 font-semibold theme-text">{pendingMakeupCount}</p>
+                    </div>
                 </div>
-                <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
-                    <p className="text-xs font-medium uppercase tracking-wide theme-subtle">Missing learners</p>
-                    <p className="mt-1 font-semibold theme-text">{pendingMakeupCount}</p>
+            </Card>
+
+            <Modal
+                isOpen={reopenConfirmOpen}
+                onClose={() => {
+                    if (!reopening) {
+                        setReopenConfirmOpen(false);
+                    }
+                }}
+                title="Reopen assessment"
+                size="md"
+            >
+                <div className="space-y-5">
+                    <p className="text-sm theme-muted">
+                        This returns the assessment to Active, removes system absent marks created during finalization, clears the frozen policy version, and allows scores/participation to be edited again.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setReopenConfirmOpen(false)}
+                            disabled={reopening}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => void confirmReopen()}
+                            disabled={reopening}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${reopening ? 'animate-spin' : ''}`} />
+                            {reopening ? 'Reopening...' : 'Reopen assessment'}
+                        </Button>
+                    </div>
                 </div>
-            </div>
-        </Card>
+            </Modal>
+        </>
     );
 }

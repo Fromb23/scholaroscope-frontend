@@ -189,6 +189,10 @@ export const assessmentAPI = {
     const response = await apiClient.post<Assessment>(`/assessments/${id}/finalize/`, data ?? {});
     return response.data;
   },
+  reopen: async (id: number): Promise<Assessment> => {
+    const response = await apiClient.post<Assessment>(`/assessments/${id}/reopen/`);
+    return response.data;
+  },
   bulkFinalize: async (
     data: AssessmentBulkFinalizePayload
   ): Promise<AssessmentBulkFinalizeResult> => {

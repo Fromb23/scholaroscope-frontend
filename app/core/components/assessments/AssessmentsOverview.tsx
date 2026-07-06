@@ -25,7 +25,7 @@ import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
 import { useAdminBulkFinalize } from '@/app/core/hooks/assessments/useAdminBulkFinalize';
-import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
+import { useCurricula, useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -90,9 +90,50 @@ interface TeachingGroup {
     stalledCount: number;
 }
 
+interface AssessmentOverviewPersistedState {
+    selectedTerm?: number;
+    viewMode?: AdminWorkViewMode;
+    openCategories?: string[];
+    openSubjects?: string[];
+    openCohorts?: string[];
+}
+
 function parsePositiveId(value: string | null): number | undefined {
     const parsed = Number(value ?? '');
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parsePersistedPositiveId(value: unknown): number | undefined {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parsePersistedStringSet(value: unknown): Set<string> {
+    if (!Array.isArray(value)) {
+        return new Set();
+    }
+    return new Set(value.filter((entry): entry is string => typeof entry === 'string'));
+}
+
+function readAssessmentOverviewState(key: string): AssessmentOverviewPersistedState | null {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const raw = window.localStorage.getItem(key);
+        if (!raw) {
+            return null;
+        }
+        const parsed = JSON.parse(raw) as AssessmentOverviewPersistedState;
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function isOpenNonFrozenTerm(term: Term): boolean {
+    return term.status === 'OPEN' && !term.is_frozen;
 }
 
 function formatDate(value: string | null): string {
@@ -595,6 +636,7 @@ function TeachingAssessmentGroups({
 }
 
 export function AssessmentsOverview() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { activeOrg, user, activeRole, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
@@ -626,6 +668,9 @@ export function AssessmentsOverview() {
     const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
     const [openSubjects, setOpenSubjects] = useState<Set<string>>(new Set());
     const [openCohorts, setOpenCohorts] = useState<Set<string>>(new Set());
+    const [persistedTermCandidate, setPersistedTermCandidate] = useState<number | undefined>();
+    const [hydratedPersistenceKey, setHydratedPersistenceKey] = useState<string | null>(null);
+    const [hasPersistedAccordionState, setHasPersistedAccordionState] = useState(false);
     const instructorAccess = useInstructorCohortAccess();
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isSelfManagedTeachingAdmin = instructorAccess.isSelfManagedTeachingAdmin;
@@ -637,10 +682,20 @@ export function AssessmentsOverview() {
         return value?.startsWith('/') ? value : null;
     }, [searchParams]);
     const source = searchParams.get('source');
+    const queryTerm = useMemo(() => parsePositiveId(searchParams.get('term')), [searchParams]);
+    const activeOrgId = activeOrg?.id;
+    const userId = user?.id;
+    const persistenceKey = useMemo(() => {
+        if (!activeOrgId || !userId || !activeRole) {
+            return null;
+        }
+        return `scholaroscope:assessments:${activeOrgId}:${userId}:${activeRole}`;
+    }, [activeOrgId, activeRole, userId]);
     const { curricula } = useCurricula();
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
+    const { currentTerm } = useCurrentTerm();
     const { terms } = useTerms();
     const hasWritableAssessmentCurriculum = useMemo(() => {
         if (isAdminLike) {
@@ -662,6 +717,41 @@ export function AssessmentsOverview() {
         : 'Create assessment';
 
     useEffect(() => {
+        if (!persistenceKey) {
+            setPersistedTermCandidate(undefined);
+            setHydratedPersistenceKey(null);
+            setHasPersistedAccordionState(false);
+            setSelectedTerm(undefined);
+            return;
+        }
+
+        const persisted = readAssessmentOverviewState(persistenceKey);
+        const persistedViewMode = persisted?.viewMode;
+        setSelectedTerm(undefined);
+        if (
+            persistedViewMode === 'admin_supervision'
+            || persistedViewMode === 'my_teaching'
+        ) {
+            setViewMode(persistedViewMode);
+        } else {
+            setViewMode('admin_supervision');
+        }
+        setPersistedTermCandidate(parsePersistedPositiveId(persisted?.selectedTerm));
+        setOpenCategories(parsePersistedStringSet(persisted?.openCategories));
+        setOpenSubjects(parsePersistedStringSet(persisted?.openSubjects));
+        setOpenCohorts(parsePersistedStringSet(persisted?.openCohorts));
+        setHasPersistedAccordionState(Boolean(
+            persisted
+            && (
+                Array.isArray(persisted.openCategories)
+                || Array.isArray(persisted.openSubjects)
+                || Array.isArray(persisted.openCohorts)
+            )
+        ));
+        setHydratedPersistenceKey(persistenceKey);
+    }, [persistenceKey]);
+
+    useEffect(() => {
         if (isSelfManagedTeachingAdmin && viewMode !== 'my_teaching') {
             setViewMode('my_teaching');
             return;
@@ -671,14 +761,19 @@ export function AssessmentsOverview() {
         }
     }, [canUseMyTeaching, isSelfManagedTeachingAdmin, viewMode]);
 
+    const validTermIds = useMemo(
+        () => new Set(terms.map((term) => term.id)),
+        [terms]
+    );
+    const firstOpenTermId = useMemo(
+        () => terms.find(isOpenNonFrozenTerm)?.id,
+        [terms]
+    );
+
     useEffect(() => {
-        const queryTerm = parsePositiveId(searchParams.get('term'));
         const queryCohort = parsePositiveId(searchParams.get('cohort'));
         const queryCohortSubject = parsePositiveId(searchParams.get('cohort_subject'));
 
-        if (queryTerm !== undefined) {
-            setSelectedTerm(queryTerm);
-        }
         if (queryCohort !== undefined) {
             setSelectedCohort(queryCohort);
         }
@@ -686,6 +781,109 @@ export function AssessmentsOverview() {
             setSelectedCohortSubject(queryCohortSubject);
         }
     }, [searchParams]);
+
+    useEffect(() => {
+        if (!persistenceKey || hydratedPersistenceKey !== persistenceKey) {
+            return;
+        }
+
+        if (terms.length === 0) {
+            setSelectedTerm(undefined);
+            return;
+        }
+
+        if (queryTerm !== undefined && validTermIds.has(queryTerm)) {
+            setSelectedTerm(queryTerm);
+            return;
+        }
+
+        if (selectedTerm !== undefined && validTermIds.has(selectedTerm)) {
+            return;
+        }
+
+        const persistedTerm = (
+            persistedTermCandidate !== undefined
+            && validTermIds.has(persistedTermCandidate)
+        )
+            ? persistedTermCandidate
+            : undefined;
+        const currentTermId = (
+            currentTerm?.id !== undefined
+            && validTermIds.has(currentTerm.id)
+        )
+            ? currentTerm.id
+            : undefined;
+
+        if (isAdminSupervisionMode) {
+            setSelectedTerm(persistedTerm ?? currentTermId ?? firstOpenTermId);
+        } else {
+            setSelectedTerm(persistedTerm);
+        }
+    }, [
+        currentTerm?.id,
+        firstOpenTermId,
+        hydratedPersistenceKey,
+        isAdminSupervisionMode,
+        persistedTermCandidate,
+        persistenceKey,
+        queryTerm,
+        selectedTerm,
+        terms.length,
+        validTermIds,
+    ]);
+
+    useEffect(() => {
+        if (!isAdminSupervisionMode || !persistenceKey || hydratedPersistenceKey !== persistenceKey) {
+            return;
+        }
+
+        const params = new URLSearchParams(searchParams.toString());
+        const currentQueryTerm = parsePositiveId(params.get('term'));
+        if (selectedTerm !== undefined) {
+            if (currentQueryTerm === selectedTerm) {
+                return;
+            }
+            params.set('term', String(selectedTerm));
+        } else {
+            if (currentQueryTerm === undefined) {
+                return;
+            }
+            params.delete('term');
+        }
+
+        const nextQuery = params.toString();
+        router.replace(nextQuery ? `/assessments?${nextQuery}` : '/assessments', { scroll: false });
+    }, [
+        hydratedPersistenceKey,
+        isAdminSupervisionMode,
+        persistenceKey,
+        router,
+        searchParams,
+        selectedTerm,
+    ]);
+
+    useEffect(() => {
+        if (!persistenceKey || hydratedPersistenceKey !== persistenceKey || typeof window === 'undefined') {
+            return;
+        }
+
+        const payload: AssessmentOverviewPersistedState = {
+            selectedTerm,
+            viewMode,
+            openCategories: Array.from(openCategories),
+            openSubjects: Array.from(openSubjects),
+            openCohorts: Array.from(openCohorts),
+        };
+        window.localStorage.setItem(persistenceKey, JSON.stringify(payload));
+    }, [
+        hydratedPersistenceKey,
+        openCategories,
+        openCohorts,
+        openSubjects,
+        persistenceKey,
+        selectedTerm,
+        viewMode,
+    ]);
 
     const shouldFetchAssessments = !isAdminSupervisionMode || Boolean(selectedTerm);
     const {
@@ -872,14 +1070,14 @@ export function AssessmentsOverview() {
     }, [visibleAssessments]);
 
     useEffect(() => {
-        if (!isAdminSupervisionMode || hierarchy.length === 0) {
+        if (!isAdminSupervisionMode || hierarchy.length === 0 || hasPersistedAccordionState) {
             return;
         }
         setOpenCategories((previous) => {
             if (previous.size > 0) return previous;
             return new Set([hierarchy[0].key]);
         });
-    }, [hierarchy, isAdminSupervisionMode]);
+    }, [hasPersistedAccordionState, hierarchy, isAdminSupervisionMode]);
 
     const teachingGroups = useMemo<TeachingGroup[]>(() => {
         const groups = new Map<string, { label: string; description: string; items: Assessment[] }>();

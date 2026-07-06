@@ -52,7 +52,7 @@ function isRecordGraded(
 
 function getLateOrNotPartExplanation(record: Pick<AssessmentParticipationRecord, 'participation_status'>): string {
   if (record.participation_status === AssessmentParticipationStatus.LATE_ENROLLED) {
-    return 'Joined after assessment and stays excluded from this participation roster.';
+    return 'Late enrolled learners can be added to this assessment before finalization if they sat the assessment.';
   }
 
   if (record.participation_status === AssessmentParticipationStatus.NOT_ADMITTED_YET) {
@@ -582,7 +582,7 @@ export function AssessmentParticipationSection({
             <CollapsibleLearnerSection
               section="lateOrNotPart"
               title="Late enrolled / Not part"
-              description="Read-only explanations for learners who stay outside this assessment roster."
+              description="Late enrolled learners can be added if they sat the assessment. Other excluded learners stay read-only here."
               count={lateOrNotPartRecords.length}
               open={openSections.has('lateOrNotPart')}
               onToggle={() => toggleSection('lateOrNotPart')}
@@ -593,23 +593,45 @@ export function AssessmentParticipationSection({
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {lateOrNotPartRecords.map((record) => (
-                    <div
-                      key={record.id}
-                      className="flex flex-col gap-3 rounded-lg border border-gray-200 px-4 py-3 xl:flex-row xl:items-center xl:justify-between"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{record.student_name}</p>
-                        <p className="mt-1 text-sm text-gray-500">
-                          Admission No. {record.student_admission || '—'}
-                        </p>
-                        <p className="mt-2 text-sm text-gray-500">
-                          {getLateOrNotPartExplanation(record)}
-                        </p>
+                  {lateOrNotPartRecords.map((record) => {
+                    const canMarkLatePresent = (
+                      !readOnly
+                      && record.participation_status === AssessmentParticipationStatus.LATE_ENROLLED
+                    );
+
+                    return (
+                      <div
+                        key={record.id}
+                        className="flex flex-col gap-3 rounded-lg border border-gray-200 px-4 py-3 xl:flex-row xl:items-center xl:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{record.student_name}</p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Admission No. {record.student_admission || '—'}
+                          </p>
+                          <p className="mt-2 text-sm text-gray-500">
+                            {getLateOrNotPartExplanation(record)}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="default">{record.participation_status_display}</Badge>
+                          {canMarkLatePresent ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => onSave([{
+                                student_id: record.student,
+                                participation_status: AssessmentParticipationStatus.PRESENT,
+                              }])}
+                              disabled={saving}
+                            >
+                              {saving ? 'Saving…' : 'Sat assessment'}
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
-                      <Badge variant="default">{record.participation_status_display}</Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CollapsibleLearnerSection>
