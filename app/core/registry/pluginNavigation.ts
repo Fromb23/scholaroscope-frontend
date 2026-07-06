@@ -4,6 +4,7 @@ import type { Curriculum } from '@/app/core/types/academic';
 
 export interface NavItem {
     name: string;
+    shortName?: string;
     href: string;
     icon: LucideIcon;
     badge?: number;

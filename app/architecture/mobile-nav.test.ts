@@ -21,6 +21,7 @@ describe('mobile navigation shell architecture', () => {
     const mobileNav = read('app/components/layout/MobileBottomNav.tsx');
 
     expect(mobileNav).toContain('resolveMobilePrimaryNav(navConfig)');
+    expect(mobileNav).toContain('item.shortName ?? item.name');
     expect(mobileNav).not.toContain('navConfig.primary.slice(0, 4)');
   });
 });

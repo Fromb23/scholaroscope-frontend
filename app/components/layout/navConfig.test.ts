@@ -164,6 +164,12 @@ describe('admin navigation config', () => {
       'My classes',
       'Assessments',
     ]);
+    expect(mobileItems.map((item) => item.shortName ?? item.name)).toEqual([
+      'Home',
+      'Prepare',
+      'Classes',
+      'Assess',
+    ]);
     expect(mobileItems.some((item) => item.name === 'Academic Setup')).toBe(false);
     expect(nav.primary.map((item) => item.name)).toEqual([
       'My teaching workspace',
@@ -231,6 +237,10 @@ describe('admin navigation config', () => {
       'Academic Setup',
       'My teaching workspace',
     ]);
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.shortName ?? item.name)).toEqual([
+      'Setup',
+      'Home',
+    ]);
   });
 
   it('removes create-new assessment child for tuition-center admins', () => {
@@ -275,6 +285,12 @@ describe('admin navigation config', () => {
       'Assessment Overview',
       'Reports',
     ]);
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.shortName ?? item.name)).toEqual([
+      'Home',
+      'Learners',
+      'Assess',
+      'Reports',
+    ]);
   });
 
   it('renames instructor dashboard navigation during midterm modes', () => {
@@ -300,6 +316,12 @@ describe('admin navigation config', () => {
       'Lesson Preparation',
       'My Lessons',
       'Assessments & Grading',
+    ]);
+    expect(resolveMobilePrimaryNav(nav).map((item) => item.shortName ?? item.name)).toEqual([
+      'Home',
+      'Prepare',
+      'Lessons',
+      'Assess',
     ]);
   });
 
