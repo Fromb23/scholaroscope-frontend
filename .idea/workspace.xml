@@ -6,12 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/ui/errors/ErrorState.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/ui/errors/ErrorState.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/ui/errors/errorPrimitives.test.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/ui/errors/errorPrimitives.test.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/components/ui/errors/fieldErrorPresentation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/components/ui/errors/fieldErrorPresentation.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/auth/verifyEmailPage.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/auth/verifyEmailPage.test.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/errors/appError.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/errors/appError.test.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/errors/fieldErrors.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/errors/fieldErrors.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/api/assessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/assessments.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/hooks/useAssessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useAssessments.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/types/assessment.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/assessment.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -19,7 +17,6 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="963" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -43,23 +40,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.6923277596900304" />
-      <entry key="MS500" value="4.185824829894103" />
-      <entry key="S2" value="6.6640513817803395" />
-      <entry key="S5" value="10.384267861487848" />
-      <entry key="S10" value="13.800079063014179" />
-      <entry key="S30" value="17.505930702027186" />
-      <entry key="S60" value="18.693470782896796" />
-      <entry key="M2" value="19.499190136835605" />
-      <entry key="M5" value="21.92804178380601" />
-      <entry key="M10" value="28.51845216570305" />
-      <entry key="M15" value="35.45818895975959" />
-      <entry key="M30" value="49.562365729172626" />
-      <entry key="H1" value="61.934428242268346" />
-      <entry key="H2" value="74.74987368900757" />
-      <entry key="H4" value="102.98604369765863" />
-      <entry key="D1" value="521.082476063267" />
-      <entry key="W1" value="2108.2016410771494" />
+      <entry key="MS100" value="2.050342169086773" />
+      <entry key="MS500" value="4.44033758221158" />
+      <entry key="S2" value="6.536357333364691" />
+      <entry key="S5" value="8.809691697960666" />
+      <entry key="S10" value="10.70785110835611" />
+      <entry key="S30" value="12.69195818779993" />
+      <entry key="S60" value="13.315137610616226" />
+      <entry key="M2" value="13.66275235293178" />
+      <entry key="M5" value="15.044569622164326" />
+      <entry key="M10" value="20.563101175788702" />
+      <entry key="M15" value="27.364699872618402" />
+      <entry key="M30" value="44.458362831579485" />
+      <entry key="H1" value="62.55933658826774" />
+      <entry key="H2" value="80.19039730861651" />
+      <entry key="H4" value="110.91184287218124" />
+      <entry key="D1" value="529.8317003420768" />
+      <entry key="W1" value="2119.1538648825167" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -69,35 +66,35 @@
       <entry key="S10" value="0.0" />
       <entry key="S30" value="0.0" />
       <entry key="S60" value="0.0" />
-      <entry key="M2" value="6.678101364756344E-295" />
-      <entry key="M5" value="2.1372789218943784E-118" />
-      <entry key="M10" value="1.4619435426494371E-59" />
-      <entry key="M15" value="5.978887764098508E-40" />
-      <entry key="M30" value="2.4451764280105667E-20" />
-      <entry key="H1" value="1.5637059915514255E-10" />
-      <entry key="H2" value="1.250483700956029E-5" />
-      <entry key="H4" value="0.003541512376168022" />
-      <entry key="D1" value="0.8124561190832523" />
-      <entry key="W1" value="7.201150787509617" />
+      <entry key="M2" value="4.550701456588146E-298" />
+      <entry key="M5" value="1.1567282388934459E-119" />
+      <entry key="M10" value="3.4010707709388386E-60" />
+      <entry key="M15" value="2.261572142648895E-40" />
+      <entry key="M30" value="1.503852433800903E-20" />
+      <entry key="H1" value="1.226316612381528E-10" />
+      <entry key="H2" value="1.1073930436562608E-5" />
+      <entry key="H4" value="0.0033327339196518885" />
+      <entry key="D1" value="0.8042700447466377" />
+      <entry key="W1" value="7.19074050098182" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.6289514703057586" />
-      <entry key="MS500" value="4.151237421304812" />
-      <entry key="S2" value="6.645849177390129" />
-      <entry key="S5" value="10.364919588795779" />
-      <entry key="S10" value="13.784516913253606" />
-      <entry key="S30" value="17.49859692335085" />
-      <entry key="S60" value="18.689460152404365" />
-      <entry key="M2" value="19.497080569784526" />
-      <entry key="M5" value="21.92711624875011" />
-      <entry key="M10" value="28.517886385431204" />
-      <entry key="M15" value="35.45773880981079" />
-      <entry key="M30" value="49.56206601758059" />
-      <entry key="H1" value="61.934242920067085" />
-      <entry key="H2" value="74.74976125047756" />
-      <entry key="H4" value="102.98947359174542" />
-      <entry key="D1" value="521.8947877898433" />
-      <entry key="W1" value="2115.4027068869973" />
+      <entry key="MS100" value="1.980013527568091" />
+      <entry key="MS500" value="4.404904963107493" />
+      <entry key="S2" value="6.522136034776701" />
+      <entry key="S5" value="8.800975976447718" />
+      <entry key="S10" value="10.702161120988984" />
+      <entry key="S30" value="12.689590561829743" />
+      <entry key="S60" value="13.313879424032256" />
+      <entry key="M2" value="13.662101842276908" />
+      <entry key="M5" value="15.04425491764952" />
+      <entry key="M10" value="20.562836399063148" />
+      <entry key="M15" value="27.364440640712722" />
+      <entry key="M30" value="44.45813392632917" />
+      <entry key="H1" value="62.559168940784275" />
+      <entry key="H2" value="80.19028657482333" />
+      <entry key="H4" value="110.91506498571403" />
+      <entry key="D1" value="530.635826518601" />
+      <entry key="W1" value="2126.3445203957385" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -128,7 +125,7 @@
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/.next/standalone/node_modules/typescript/lib&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -150,7 +147,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.25134.101" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-WS-261.26222.58" />
       </set>
     </attachedChunks>
   </component>
@@ -264,7 +261,9 @@
       <workItem from="1782759993201" duration="4348000" />
       <workItem from="1782795617548" duration="603000" />
       <workItem from="1782801260851" duration="643000" />
-      <workItem from="1783004878679" duration="2513000" />
+      <workItem from="1783004878679" duration="3172000" />
+      <workItem from="1783316360209" duration="672000" />
+      <workItem from="1783317501268" duration="3081000" />
     </task>
     <servers />
   </component>

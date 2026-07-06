@@ -22,6 +22,37 @@ import {
 } from '../types/assessment';
 import type { PaginatedResponse } from '@/app/core/types/api';
 
+export interface AssessmentBulkFinalizePayload {
+  term_id: number;
+  assessment_type?: string;
+  cohort_id?: number;
+  subject_id?: number;
+  cohort_subject_id?: number;
+  finalize_unresolved_absent?: boolean;
+}
+
+export interface AssessmentBulkFinalizeResult {
+  detail: string;
+  requested: number;
+  finalized_count: number;
+  skipped_count: number;
+  finalized: Array<{
+    id: number;
+    name: string;
+    term: number | null;
+    assessment_type: string;
+    cohort_id: number;
+    cohort_name: string;
+    subject_id: number;
+    subject_name: string;
+  }>;
+  skipped: Array<{
+    id: number;
+    name: string;
+    reason: string;
+  }>;
+}
+
 // Rubric Scale API
 export const rubricScaleAPI = {
   getAll: async (params?: { curriculum?: number; is_active?: boolean }) => {
@@ -156,6 +187,15 @@ export const assessmentAPI = {
     data?: { finalize_unresolved_absent?: boolean }
   ): Promise<Assessment> => {
     const response = await apiClient.post<Assessment>(`/assessments/${id}/finalize/`, data ?? {});
+    return response.data;
+  },
+  bulkFinalize: async (
+    data: AssessmentBulkFinalizePayload
+  ): Promise<AssessmentBulkFinalizeResult> => {
+    const response = await apiClient.post<AssessmentBulkFinalizeResult>(
+      '/assessments/bulk_finalize/',
+      data
+    );
     return response.data;
   },
 

@@ -56,9 +56,11 @@ export const useAssessments = (params?: {
   assessment_type?: string;
   evaluation_type?: string;
   status?: AssessmentStatus;
+  enabled?: boolean;
 }) => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const enabled = params?.enabled ?? true;
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const instructorAccess = useInstructorCohortAccess();
   const cohortSubjectIdsKey = instructorAccess.cohortSubjectIdsKey;
@@ -84,6 +86,13 @@ export const useAssessments = (params?: {
   );
 
   const fetchAssessments = useCallback(async () => {
+    if (!enabled) {
+      setAssessments([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await assessmentAPI.getAll(assessmentFilters);
@@ -99,7 +108,7 @@ export const useAssessments = (params?: {
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortSubjectIds, assessmentFilters, instructorAccess.isTeachingActor]);
+  }, [allowedCohortSubjectIds, assessmentFilters, enabled, instructorAccess.isTeachingActor]);
 
   useEffect(() => {
     void fetchAssessments();

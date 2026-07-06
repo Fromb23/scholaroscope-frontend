@@ -132,6 +132,7 @@ export interface Assessment {
   status: AssessmentStatus;
   status_display: string;
   scores_count: number;
+  entered_score_evidence_count?: number;
   can_update?: boolean;
   can_delete?: boolean;
   can_activate?: boolean;

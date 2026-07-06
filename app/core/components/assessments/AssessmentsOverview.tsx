@@ -1,9 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Award, ClipboardList, FileText, Filter, Plus, TrendingUp } from 'lucide-react';
+import {
+    AlertTriangle,
+    Award,
+    BookOpen,
+    CheckCircle2,
+    ChevronDown,
+    ChevronRight,
+    ClipboardList,
+    Filter,
+    Layers,
+    Plus,
+    TrendingUp,
+} from 'lucide-react';
+import Modal from '@/app/components/ui/Modal';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -11,11 +24,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
+import { useAdminBulkFinalize } from '@/app/core/hooks/assessments/useAdminBulkFinalize';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
-import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import {
     canCreateTeachingRecord,
@@ -23,30 +36,58 @@ import {
     isSupervisionOnlyAdmin,
 } from '@/app/core/lib/workspaces';
 import { getReturnBackLabel } from '@/app/core/lib/workspaceReturn';
-import { ASSESSMENT_TYPE_OPTIONS, type Assessment } from '@/app/core/types/assessment';
+import {
+    ASSESSMENT_TYPE_OPTIONS,
+    AssessmentStatus,
+    getAssessmentTypeLabel,
+    type Assessment,
+} from '@/app/core/types/assessment';
 import type { AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
+import type { Term } from '@/app/core/types/academic';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
 type BadgeVariant = NonNullable<ComponentProps<typeof Badge>['variant']>;
-type GroupView = 'class' | 'subject' | 'instructor';
 
-interface AssessmentSubgroup {
+interface CohortOption {
+    id: number;
+    cohortId: number;
+    label: string;
+    cohortName: string;
+}
+
+interface CohortBucket {
+    key: string;
+    cohortId: number;
+    label: string;
+    items: Assessment[];
+    stalledCount: number;
+}
+
+interface SubjectBucket {
+    key: string;
+    subjectId: number;
+    label: string;
+    cohorts: CohortBucket[];
+    itemCount: number;
+    stalledCount: number;
+}
+
+interface CategoryBucket {
+    key: string;
+    assessmentType: string;
+    label: string;
+    subjects: SubjectBucket[];
+    itemCount: number;
+    stalledCount: number;
+}
+
+interface TeachingGroup {
     key: string;
     label: string;
     description: string;
     items: Assessment[];
-}
-
-interface AssessmentGroup {
-    key: string;
-    label: string;
-    description: string;
-    subgroups: AssessmentSubgroup[];
-}
-
-function normalizeText(value: string | null | undefined): string {
-    return (value ?? '').trim().toLowerCase();
+    stalledCount: number;
 }
 
 function parsePositiveId(value: string | null): number | undefined {
@@ -54,8 +95,506 @@ function parsePositiveId(value: string | null): number | undefined {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-export function AssessmentsOverview() {
+function formatDate(value: string | null): string {
+    return value ? new Date(value).toLocaleDateString() : '-';
+}
+
+function getEnteredEvidenceCount(assessment: Assessment): number {
+    return assessment.entered_score_evidence_count ?? assessment.scores_count ?? 0;
+}
+
+function isStalledAssessment(assessment: Assessment): boolean {
+    return assessment.status === AssessmentStatus.ACTIVE && getEnteredEvidenceCount(assessment) === 0;
+}
+
+function getEvaluationBadge(type: string): BadgeVariant {
+    const variants: Record<string, BadgeVariant> = {
+        NUMERIC: 'blue',
+        RUBRIC: 'purple',
+        DESCRIPTIVE: 'green',
+        COMPETENCY: 'orange',
+    };
+    return variants[type] || 'default';
+}
+
+function getStatusBadge(status: AssessmentStatus): BadgeVariant {
+    if (status === AssessmentStatus.FINALIZED) return 'green';
+    if (status === AssessmentStatus.ACTIVE) return 'blue';
+    return 'default';
+}
+
+function sortAssessments(items: Assessment[]): Assessment[] {
+    return [...items].sort((left, right) => {
+        const dateCompare = (right.assessment_date ?? '').localeCompare(left.assessment_date ?? '');
+        return dateCompare || left.name.localeCompare(right.name);
+    });
+}
+
+function toggleKey(setter: Dispatch<SetStateAction<Set<string>>>, key: string) {
+    setter((previous) => {
+        const next = new Set(previous);
+        if (next.has(key)) {
+            next.delete(key);
+        } else {
+            next.add(key);
+        }
+        return next;
+    });
+}
+
+function TermSelector({
+    terms,
+    selectedTerm,
+    onChange,
+    required,
+}: {
+    terms: Term[];
+    selectedTerm: number | undefined;
+    onChange: (termId: number | undefined) => void;
+    required: boolean;
+}) {
+    return (
+        <Select
+            label="Term"
+            required={required}
+            value={selectedTerm?.toString() || ''}
+            onChange={(event) => onChange(event.target.value ? Number(event.target.value) : undefined)}
+            options={[
+                { value: '', label: required ? 'Select term' : 'All terms' },
+                ...terms.map((term) => ({
+                    value: String(term.id),
+                    label: `${term.academic_year_name} - ${term.name}`,
+                })),
+            ]}
+        />
+    );
+}
+
+function BulkFinalizeAssessmentAction({
+    termId,
+    termName,
+    categoryType,
+    categoryLabel,
+    stalledCount,
+    onSuccess,
+}: {
+    termId: number;
+    termName: string;
+    categoryType: string;
+    categoryLabel: string;
+    stalledCount: number;
+    onSuccess: () => Promise<void> | void;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [finalizeUnresolvedAbsent, setFinalizeUnresolvedAbsent] = useState(false);
+    const { bulkFinalize, loading, error, result, reset } = useAdminBulkFinalize({ onSuccess });
+
+    const close = () => {
+        setIsOpen(false);
+        setFinalizeUnresolvedAbsent(false);
+        reset();
+    };
+
+    const confirm = async () => {
+        try {
+            await bulkFinalize({
+                term_id: termId,
+                assessment_type: categoryType,
+                finalize_unresolved_absent: finalizeUnresolvedAbsent,
+            });
+        } catch {
+            // Error state is owned by the hook and rendered in this modal.
+        }
+    };
+
+    return (
+        <>
+            <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={(event) => {
+                    event.stopPropagation();
+                    setIsOpen(true);
+                }}
+            >
+                <CheckCircle2 className="h-4 w-4" />
+                Finalize category
+            </Button>
+            <Modal isOpen={isOpen} onClose={close} title="Finalize assessment category" size="md">
+                <div className="space-y-5">
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <p className="text-sm font-medium text-gray-900">Scope</p>
+                        <p className="mt-1 text-sm text-gray-600">
+                            {termName} {' › '} {categoryLabel}
+                        </p>
+                        {stalledCount > 0 ? (
+                            <p className="mt-3 flex items-center gap-2 text-sm text-amber-700">
+                                <AlertTriangle className="h-4 w-4" />
+                                {stalledCount} active assessment{stalledCount === 1 ? '' : 's'} have no entered score evidence.
+                            </p>
+                        ) : null}
+                    </div>
+
+                    <label className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-sm text-gray-700">
+                        <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border-gray-300"
+                            checked={finalizeUnresolvedAbsent}
+                            onChange={(event) => setFinalizeUnresolvedAbsent(event.target.checked)}
+                        />
+                        <span>Finalize unresolved missed learners as absent</span>
+                    </label>
+
+                    {error ? (
+                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    ) : null}
+
+                    {result ? (
+                        <div className="space-y-3 rounded-lg border border-green-200 bg-green-50 p-4">
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <p className="text-green-700">Finalized</p>
+                                    <p className="text-lg font-semibold text-green-900">{result.finalized_count}</p>
+                                </div>
+                                <div>
+                                    <p className="text-green-700">Skipped</p>
+                                    <p className="text-lg font-semibold text-green-900">{result.skipped_count}</p>
+                                </div>
+                            </div>
+                            {result.skipped.length > 0 ? (
+                                <div className="max-h-40 space-y-2 overflow-y-auto text-sm">
+                                    {result.skipped.map((item) => (
+                                        <div key={item.id} className="rounded border border-green-200 bg-white px-3 py-2">
+                                            <p className="font-medium text-gray-900">{item.name}</p>
+                                            <p className="text-gray-600">{item.reason}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    <div className="flex justify-end gap-2">
+                        <Button type="button" variant="ghost" onClick={close}>
+                            {result ? 'Close' : 'Cancel'}
+                        </Button>
+                        {!result ? (
+                            <Button type="button" onClick={() => void confirm()} disabled={loading}>
+                                {loading ? 'Finalizing...' : 'Confirm finalization'}
+                            </Button>
+                        ) : null}
+                    </div>
+                </div>
+            </Modal>
+        </>
+    );
+}
+
+function AssessmentLeafRow({
+    assessment,
+    breadcrumb,
+}: {
+    assessment: Assessment;
+    breadcrumb: string;
+}) {
     const router = useRouter();
+    const stalled = isStalledAssessment(assessment);
+
+    return (
+        <TableRow
+            key={assessment.id}
+            onClick={() => router.push(`/assessments/${assessment.id}`)}
+            className={stalled ? 'bg-amber-50/60' : undefined}
+        >
+            <TableCell>
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-gray-900">{assessment.name}</span>
+                        {stalled ? (
+                            <Badge variant="orange">Stalled</Badge>
+                        ) : null}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">{breadcrumb}</p>
+                </div>
+            </TableCell>
+            <TableCell>
+                <Badge variant={getStatusBadge(assessment.status)}>{assessment.status_display}</Badge>
+            </TableCell>
+            <TableCell>
+                <Badge variant={getEvaluationBadge(assessment.evaluation_type)}>
+                    {assessment.evaluation_type_display}
+                </Badge>
+            </TableCell>
+            <TableCell>
+                <span className="text-sm text-gray-600">{formatDate(assessment.assessment_date)}</span>
+            </TableCell>
+            <TableCell>
+                <span className="text-sm text-gray-700">
+                    {getEnteredEvidenceCount(assessment)} / {assessment.scores_count}
+                </span>
+            </TableCell>
+            <TableCell>
+                <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        router.push(`/assessments/${assessment.id}`);
+                    }}
+                >
+                    View details
+                </Button>
+            </TableCell>
+        </TableRow>
+    );
+}
+
+function AssessmentCohortGroup({
+    cohort,
+    termName,
+    categoryLabel,
+    subjectLabel,
+    isOpen,
+    onToggle,
+}: {
+    cohort: CohortBucket;
+    termName: string;
+    categoryLabel: string;
+    subjectLabel: string;
+    isOpen: boolean;
+    onToggle: () => void;
+}) {
+    return (
+        <div className="overflow-hidden rounded-lg border border-gray-200">
+            <button
+                type="button"
+                onClick={onToggle}
+                className="flex w-full items-center justify-between gap-3 bg-gray-50 px-4 py-3 text-left"
+            >
+                <div className="flex min-w-0 items-center gap-3">
+                    {isOpen ? <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" /> : <ChevronRight className="h-4 w-4 shrink-0 text-gray-500" />}
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">{cohort.label}</p>
+                        <p className="text-xs text-gray-500">
+                            {cohort.items.length} assessment{cohort.items.length === 1 ? '' : 's'}
+                        </p>
+                    </div>
+                </div>
+                {cohort.stalledCount > 0 ? (
+                    <Badge variant="orange">{cohort.stalledCount} stalled</Badge>
+                ) : null}
+            </button>
+            {isOpen ? (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Assessment</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Evaluation</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Evidence</TableHead>
+                            <TableHead>Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {cohort.items.map((assessment) => (
+                            <AssessmentLeafRow
+                                key={assessment.id}
+                                assessment={assessment}
+                                breadcrumb={`${termName} › ${categoryLabel} › ${subjectLabel} › ${cohort.label}`}
+                            />
+                        ))}
+                    </TableBody>
+                </Table>
+            ) : null}
+        </div>
+    );
+}
+
+function AssessmentSubjectGroup({
+    subject,
+    termName,
+    categoryLabel,
+    openCohorts,
+    onToggleSubject,
+    onToggleCohort,
+    isOpen,
+}: {
+    subject: SubjectBucket;
+    termName: string;
+    categoryLabel: string;
+    openCohorts: Set<string>;
+    onToggleSubject: () => void;
+    onToggleCohort: (key: string) => void;
+    isOpen: boolean;
+}) {
+    return (
+        <div className="rounded-lg border border-gray-200">
+            <button
+                type="button"
+                onClick={onToggleSubject}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            >
+                <div className="flex min-w-0 items-center gap-3">
+                    {isOpen ? <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" /> : <ChevronRight className="h-4 w-4 shrink-0 text-gray-500" />}
+                    <BookOpen className="h-4 w-4 shrink-0 text-gray-500" />
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">{subject.label}</p>
+                        <p className="text-xs text-gray-500">
+                            {subject.itemCount} assessment{subject.itemCount === 1 ? '' : 's'} in {subject.cohorts.length} cohort{subject.cohorts.length === 1 ? '' : 's'}
+                        </p>
+                    </div>
+                </div>
+                {subject.stalledCount > 0 ? (
+                    <Badge variant="orange">{subject.stalledCount} stalled</Badge>
+                ) : null}
+            </button>
+            {isOpen ? (
+                <div className="space-y-3 border-t border-gray-200 p-3">
+                    {subject.cohorts.map((cohort) => (
+                        <AssessmentCohortGroup
+                            key={cohort.key}
+                            cohort={cohort}
+                            termName={termName}
+                            categoryLabel={categoryLabel}
+                            subjectLabel={subject.label}
+                            isOpen={openCohorts.has(cohort.key)}
+                            onToggle={() => onToggleCohort(cohort.key)}
+                        />
+                    ))}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
+function AssessmentCategoryAccordion({
+    category,
+    termId,
+    termName,
+    isOpen,
+    openSubjects,
+    openCohorts,
+    onToggleCategory,
+    onToggleSubject,
+    onToggleCohort,
+    onBulkSuccess,
+}: {
+    category: CategoryBucket;
+    termId: number;
+    termName: string;
+    isOpen: boolean;
+    openSubjects: Set<string>;
+    openCohorts: Set<string>;
+    onToggleCategory: () => void;
+    onToggleSubject: (key: string) => void;
+    onToggleCohort: (key: string) => void;
+    onBulkSuccess: () => Promise<void> | void;
+}) {
+    return (
+        <div className="overflow-hidden rounded-lg border border-gray-200">
+            <div className="flex flex-col gap-3 bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                <button
+                    type="button"
+                    onClick={onToggleCategory}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                    {isOpen ? <ChevronDown className="h-5 w-5 shrink-0 text-gray-500" /> : <ChevronRight className="h-5 w-5 shrink-0 text-gray-500" />}
+                    <Layers className="h-5 w-5 shrink-0 text-blue-600" />
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-sm font-semibold text-gray-900">{category.label}</h3>
+                            {category.stalledCount > 0 ? (
+                                <Badge variant="orange">{category.stalledCount} stalled</Badge>
+                            ) : null}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            {termName} {' › '} {category.label} - {category.itemCount} assessment{category.itemCount === 1 ? '' : 's'}
+                        </p>
+                    </div>
+                </button>
+                <BulkFinalizeAssessmentAction
+                    termId={termId}
+                    termName={termName}
+                    categoryType={category.assessmentType}
+                    categoryLabel={category.label}
+                    stalledCount={category.stalledCount}
+                    onSuccess={onBulkSuccess}
+                />
+            </div>
+            {isOpen ? (
+                <div className="space-y-3 border-t border-gray-200 bg-gray-50 p-3">
+                    {category.subjects.map((subject) => (
+                        <AssessmentSubjectGroup
+                            key={subject.key}
+                            subject={subject}
+                            termName={termName}
+                            categoryLabel={category.label}
+                            isOpen={openSubjects.has(subject.key)}
+                            openCohorts={openCohorts}
+                            onToggleSubject={() => onToggleSubject(subject.key)}
+                            onToggleCohort={onToggleCohort}
+                        />
+                    ))}
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
+function TeachingAssessmentGroups({
+    groups,
+}: {
+    groups: TeachingGroup[];
+}) {
+    if (groups.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="space-y-4 p-4">
+            {groups.map((group) => (
+                <div key={group.key} className="overflow-hidden rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between gap-3 bg-gray-50 px-4 py-3">
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900">{group.label}</h3>
+                            <p className="text-sm text-gray-500">{group.description}</p>
+                        </div>
+                        {group.stalledCount > 0 ? (
+                            <Badge variant="orange">{group.stalledCount} stalled</Badge>
+                        ) : null}
+                    </div>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Assessment</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Evidence</TableHead>
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {group.items.map((assessment) => (
+                                <AssessmentLeafRow
+                                    key={assessment.id}
+                                    assessment={assessment}
+                                    breadcrumb={`${assessment.term_name ?? 'No term'} › ${getAssessmentTypeLabel(assessment.assessment_type)} › ${assessment.subject_name} › ${assessment.cohort_name}`}
+                                />
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+export function AssessmentsOverview() {
     const searchParams = useSearchParams();
     const { activeOrg, user, activeRole, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
@@ -84,12 +623,15 @@ export function AssessmentsOverview() {
     const [selectedCohortSubject, setSelectedCohortSubject] = useState<number | undefined>();
     const [selectedType, setSelectedType] = useState<string | undefined>();
     const [selectedEvalType, setSelectedEvalType] = useState<string | undefined>();
-    const [selectedInstructorFilter, setSelectedInstructorFilter] = useState('');
-    const [groupView, setGroupView] = useState<GroupView>('class');
+    const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+    const [openSubjects, setOpenSubjects] = useState<Set<string>>(new Set());
+    const [openCohorts, setOpenCohorts] = useState<Set<string>>(new Set());
     const instructorAccess = useInstructorCohortAccess();
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isSelfManagedTeachingAdmin = instructorAccess.isSelfManagedTeachingAdmin;
     const showInstitutionSupervision = isAdminLike && !isSelfManagedTeachingAdmin;
+    const effectiveMyTeachingMode = isTeachingActor || (canUseMyTeaching && viewMode === 'my_teaching');
+    const isAdminSupervisionMode = showInstitutionSupervision && !effectiveMyTeachingMode;
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
         return value?.startsWith('/') ? value : null;
@@ -99,7 +641,6 @@ export function AssessmentsOverview() {
     const { cohorts } = useCohorts();
     const cohortIds = useMemo(() => cohorts.map((cohort) => cohort.id), [cohorts]);
     const { subjects: cohortSubjects } = useCohortSubjectsByCohorts(cohortIds);
-    const { instructors } = useInstructors({ enabled: showInstitutionSupervision });
     const { terms } = useTerms();
     const hasWritableAssessmentCurriculum = useMemo(() => {
         if (isAdminLike) {
@@ -116,7 +657,6 @@ export function AssessmentsOverview() {
     const canCreateAssessment = hasWritableAssessmentCurriculum && (
         canCreateTeachingRecords || (isTeachingActor && instructorAccess.hasAssignedCohortSubjects)
     );
-    const effectiveMyTeachingMode = isTeachingActor || (canUseMyTeaching && viewMode === 'my_teaching');
     const createButtonLabel = effectiveMyTeachingMode
         ? 'Create my assessment'
         : 'Create assessment';
@@ -132,9 +672,13 @@ export function AssessmentsOverview() {
     }, [canUseMyTeaching, isSelfManagedTeachingAdmin, viewMode]);
 
     useEffect(() => {
+        const queryTerm = parsePositiveId(searchParams.get('term'));
         const queryCohort = parsePositiveId(searchParams.get('cohort'));
         const queryCohortSubject = parsePositiveId(searchParams.get('cohort_subject'));
 
+        if (queryTerm !== undefined) {
+            setSelectedTerm(queryTerm);
+        }
         if (queryCohort !== undefined) {
             setSelectedCohort(queryCohort);
         }
@@ -143,12 +687,19 @@ export function AssessmentsOverview() {
         }
     }, [searchParams]);
 
-    const { assessments, loading } = useAssessments({
+    const shouldFetchAssessments = !isAdminSupervisionMode || Boolean(selectedTerm);
+    const {
+        assessments,
+        loading,
+        refetch: refetchAssessments,
+    } = useAssessments({
         term: selectedTerm,
-        cohort_subject: selectedCohortSubject,
-        assessment_type: selectedType,
-        evaluation_type: selectedEvalType,
+        cohort_subject: isAdminSupervisionMode ? undefined : selectedCohortSubject,
+        assessment_type: isAdminSupervisionMode ? undefined : selectedType,
+        evaluation_type: isAdminSupervisionMode ? undefined : selectedEvalType,
+        enabled: shouldFetchAssessments,
     });
+
     const createAssessmentHref = useMemo(() => {
         const params = new URLSearchParams();
         if (selectedCohort) {
@@ -169,13 +720,16 @@ export function AssessmentsOverview() {
         ? 'Back to workspace'
         : getReturnBackLabel(safeReturnTo);
 
-    const availableCohortSubjects = useMemo(() => {
+    const availableCohortSubjects = useMemo<CohortOption[]>(() => {
         if (isTeachingActor) {
             const items = instructorAccess.assignments
-                .filter((assignment) => typeof assignment.cohort_subject_id === 'number')
+                .filter((assignment) => (
+                    typeof assignment.cohort_subject_id === 'number'
+                    && typeof assignment.cohort_id === 'number'
+                ))
                 .map((assignment) => ({
                     id: assignment.cohort_subject_id as number,
-                    cohortId: assignment.cohort_id,
+                    cohortId: assignment.cohort_id as number,
                     label: `${assignment.subject_code ?? assignment.subject_name} - ${assignment.subject_name}`,
                     cohortName: assignment.cohort_name,
                 }));
@@ -186,9 +740,10 @@ export function AssessmentsOverview() {
         }
 
         return cohortSubjects
+            .filter((subject) => typeof subject.cohort_id === 'number')
             .map((subject) => ({
                 id: subject.id,
-                cohortId: subject.cohort_id,
+                cohortId: subject.cohort_id as number,
                 label: `${subject.subject_code} - ${subject.subject_name}`,
                 cohortName: subject.cohort_name,
             }))
@@ -196,51 +751,8 @@ export function AssessmentsOverview() {
             .sort((left, right) => left.label.localeCompare(right.label));
     }, [cohortSubjects, instructorAccess.assignments, isTeachingActor, selectedCohort]);
 
-    const creatorLabelById = useMemo(() => {
-        const labels = new Map<number, string>();
-        instructors.forEach((instructor) => {
-            labels.set(instructor.id, instructor.full_name || instructor.email);
-        });
-        return labels;
-    }, [instructors]);
-
-    const instructorOptions = useMemo(() => {
-        const options = new Map<string, { value: string; label: string }>();
-
-        instructors.forEach((instructor) => {
-            options.set(`id:${instructor.id}`, {
-                value: `id:${instructor.id}`,
-                label: instructor.full_name || instructor.email,
-            });
-        });
-
-        assessments.forEach((assessment) => {
-            if (typeof assessment.created_by !== 'number') {
-                return;
-            }
-
-            const key = `id:${assessment.created_by}`;
-            if (!options.has(key)) {
-                options.set(key, {
-                    value: key,
-                    label: creatorLabelById.get(assessment.created_by) ?? `Instructor #${assessment.created_by}`,
-                });
-            }
-        });
-
-        return Array.from(options.values()).sort((left, right) => left.label.localeCompare(right.label));
-    }, [assessments, creatorLabelById, instructors]);
-
-    const getCreatorLabel = useCallback((assessment: Assessment): string => {
-        if (typeof assessment.created_by === 'number') {
-            return creatorLabelById.get(assessment.created_by) ?? `Instructor #${assessment.created_by}`;
-        }
-
-        return 'Unknown instructor';
-    }, [creatorLabelById]);
-
     const visibleAssessments = useMemo(() => assessments.filter((assessment) => {
-        if (selectedCohort && assessment.cohort_id !== selectedCohort) {
+        if (!isAdminSupervisionMode && selectedCohort && assessment.cohort_id !== selectedCohort) {
             return false;
         }
 
@@ -248,126 +760,173 @@ export function AssessmentsOverview() {
             return assessment.created_by === user?.id;
         }
 
-        if (isAdminLike && !effectiveMyTeachingMode && selectedInstructorFilter) {
-            if (selectedInstructorFilter.startsWith('id:')) {
-                return String(assessment.created_by ?? '') === selectedInstructorFilter.slice(3);
-            }
-
-            if (selectedInstructorFilter.startsWith('name:')) {
-                return normalizeText(getCreatorLabel(assessment)) === selectedInstructorFilter.slice(5);
-            }
-        }
-
         return true;
-    }), [assessments, effectiveMyTeachingMode, getCreatorLabel, isAdminLike, selectedCohort, selectedInstructorFilter, user?.id]);
+    }), [assessments, effectiveMyTeachingMode, isAdminLike, isAdminSupervisionMode, selectedCohort, user?.id]);
+
+    const selectedTermRecord = useMemo(
+        () => terms.find((term) => term.id === selectedTerm),
+        [selectedTerm, terms]
+    );
+    const selectedTermName = selectedTermRecord
+        ? `${selectedTermRecord.academic_year_name} - ${selectedTermRecord.name}`
+        : 'Selected term';
+
+    const hierarchy = useMemo<CategoryBucket[]>(() => {
+        const categoryOrder = new Map<string, number>(
+            ASSESSMENT_TYPE_OPTIONS.map((option, index) => [option.value, index])
+        );
+        const categories = new Map<string, {
+            assessmentType: string;
+            label: string;
+            subjects: Map<string, {
+                subjectId: number;
+                label: string;
+                cohorts: Map<string, {
+                    cohortId: number;
+                    label: string;
+                    items: Assessment[];
+                }>;
+            }>;
+        }>();
+
+        visibleAssessments.forEach((assessment) => {
+            const categoryType = assessment.assessment_type;
+            const categoryLabel = getAssessmentTypeLabel(categoryType);
+            const subjectKey = `${categoryType}:subject:${assessment.subject_id}`;
+            const cohortKey = `${subjectKey}:cohort:${assessment.cohort_id}`;
+
+            if (!categories.has(categoryType)) {
+                categories.set(categoryType, {
+                    assessmentType: categoryType,
+                    label: categoryLabel,
+                    subjects: new Map(),
+                });
+            }
+            const category = categories.get(categoryType);
+            if (!category) return;
+
+            if (!category.subjects.has(subjectKey)) {
+                category.subjects.set(subjectKey, {
+                    subjectId: assessment.subject_id,
+                    label: `${assessment.subject_code} - ${assessment.subject_name}`,
+                    cohorts: new Map(),
+                });
+            }
+            const subject = category.subjects.get(subjectKey);
+            if (!subject) return;
+
+            if (!subject.cohorts.has(cohortKey)) {
+                subject.cohorts.set(cohortKey, {
+                    cohortId: assessment.cohort_id,
+                    label: assessment.cohort_name,
+                    items: [],
+                });
+            }
+            subject.cohorts.get(cohortKey)?.items.push(assessment);
+        });
+
+        return Array.from(categories.entries())
+            .map(([key, category]) => {
+                const subjects = Array.from(category.subjects.entries())
+                    .map(([subjectKey, subject]) => {
+                        const cohorts = Array.from(subject.cohorts.entries())
+                            .map(([cohortKey, cohort]) => {
+                                const items = sortAssessments(cohort.items);
+                                return {
+                                    key: cohortKey,
+                                    cohortId: cohort.cohortId,
+                                    label: cohort.label,
+                                    items,
+                                    stalledCount: items.filter(isStalledAssessment).length,
+                                };
+                            })
+                            .sort((left, right) => left.label.localeCompare(right.label));
+                        const itemCount = cohorts.reduce((sum, cohort) => sum + cohort.items.length, 0);
+                        const stalledCount = cohorts.reduce((sum, cohort) => sum + cohort.stalledCount, 0);
+                        return {
+                            key: subjectKey,
+                            subjectId: subject.subjectId,
+                            label: subject.label,
+                            cohorts,
+                            itemCount,
+                            stalledCount,
+                        };
+                    })
+                    .sort((left, right) => left.label.localeCompare(right.label));
+                const itemCount = subjects.reduce((sum, subject) => sum + subject.itemCount, 0);
+                const stalledCount = subjects.reduce((sum, subject) => sum + subject.stalledCount, 0);
+                return {
+                    key,
+                    assessmentType: category.assessmentType,
+                    label: category.label,
+                    subjects,
+                    itemCount,
+                    stalledCount,
+                };
+            })
+            .sort((left, right) => {
+                const leftOrder = categoryOrder.get(left.assessmentType) ?? Number.MAX_SAFE_INTEGER;
+                const rightOrder = categoryOrder.get(right.assessmentType) ?? Number.MAX_SAFE_INTEGER;
+                return leftOrder - rightOrder || left.label.localeCompare(right.label);
+            });
+    }, [visibleAssessments]);
+
+    useEffect(() => {
+        if (!isAdminSupervisionMode || hierarchy.length === 0) {
+            return;
+        }
+        setOpenCategories((previous) => {
+            if (previous.size > 0) return previous;
+            return new Set([hierarchy[0].key]);
+        });
+    }, [hierarchy, isAdminSupervisionMode]);
+
+    const teachingGroups = useMemo<TeachingGroup[]>(() => {
+        const groups = new Map<string, { label: string; description: string; items: Assessment[] }>();
+        visibleAssessments.forEach((assessment) => {
+            const key = `${assessment.cohort_id}:${assessment.subject_id}`;
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    label: `${assessment.cohort_name} - ${assessment.subject_code}`,
+                    description: assessment.subject_name,
+                    items: [],
+                });
+            }
+            groups.get(key)?.items.push(assessment);
+        });
+
+        return Array.from(groups.entries())
+            .map(([key, group]) => {
+                const items = sortAssessments(group.items);
+                return {
+                    key,
+                    label: group.label,
+                    description: group.description,
+                    items,
+                    stalledCount: items.filter(isStalledAssessment).length,
+                };
+            })
+            .sort((left, right) => left.label.localeCompare(right.label));
+    }, [visibleAssessments]);
 
     const assessmentTypes = [
-        { value: '', label: 'All Types' },
+        { value: '', label: 'All types' },
         ...ASSESSMENT_TYPE_OPTIONS,
     ];
 
     const evaluationTypes = [
-        { value: '', label: 'All Evaluation Types' },
+        { value: '', label: 'All evaluation types' },
         { value: 'NUMERIC', label: 'Numeric' },
         { value: 'RUBRIC', label: 'Rubric' },
         { value: 'DESCRIPTIVE', label: 'Descriptive' },
         { value: 'COMPETENCY', label: 'Competency' },
     ];
 
-    const getEvaluationBadge = (type: string) => {
-        const variants: Record<string, BadgeVariant> = {
-            NUMERIC: 'blue',
-            RUBRIC: 'purple',
-            DESCRIPTIVE: 'green',
-            COMPETENCY: 'orange',
-        };
-        return variants[type] || 'default';
-    };
-
     const totalAssessments = visibleAssessments.length;
-    const numericAssessments = visibleAssessments.filter((assessment) => assessment.evaluation_type === 'NUMERIC').length;
-    const rubricAssessments = visibleAssessments.filter((assessment) => assessment.evaluation_type === 'RUBRIC').length;
-    const totalScored = visibleAssessments.reduce((sum, assessment) => sum + assessment.scores_count, 0);
-    const supportsInstructorGrouping = isAdminLike && visibleAssessments.some((assessment) => typeof assessment.created_by === 'number');
-
-    const groupedAssessments = useMemo<AssessmentGroup[]>(() => {
-        const groups = new Map<string, {
-            label: string;
-            description: string;
-            subgroups: Map<string, AssessmentSubgroup>;
-        }>();
-
-        visibleAssessments.forEach((assessment) => {
-            const subjectLabel = `${assessment.subject_code} - ${assessment.subject_name}`;
-            const cohortLabel = assessment.cohort_name;
-            const instructorLabel = getCreatorLabel(assessment);
-
-            let majorKey = `cohort:${assessment.cohort_id}`;
-            let majorLabel = cohortLabel;
-            let majorDescription = "Class view starts from learners' classroom context.";
-            let subgroupKey = `subject:${assessment.subject_id}`;
-            let subgroupLabel = subjectLabel;
-            let subgroupDescription = 'Subject context within this class.';
-
-            if (groupView === 'subject') {
-                majorKey = `subject:${assessment.subject_id}`;
-                majorLabel = subjectLabel;
-                majorDescription = 'Subject view highlights assessment coverage across classes.';
-                subgroupKey = `cohort:${assessment.cohort_id}`;
-                subgroupLabel = cohortLabel;
-                subgroupDescription = 'Class context for this subject.';
-            } else if (groupView === 'instructor') {
-                majorKey = `instructor:${assessment.created_by ?? instructorLabel}`;
-                majorLabel = instructorLabel;
-                majorDescription = 'Instructor view starts from teacher workload.';
-                subgroupKey = `class-subject:${assessment.cohort_id}:${assessment.subject_id}`;
-                subgroupLabel = `${cohortLabel} - ${subjectLabel}`;
-                subgroupDescription = 'Class and subject context for this instructor.';
-            }
-
-            if (!groups.has(majorKey)) {
-                groups.set(majorKey, {
-                    label: majorLabel,
-                    description: majorDescription,
-                    subgroups: new Map<string, AssessmentSubgroup>(),
-                });
-            }
-
-            const group = groups.get(majorKey);
-            if (!group) {
-                return;
-            }
-
-            if (!group.subgroups.has(subgroupKey)) {
-                group.subgroups.set(subgroupKey, {
-                    key: subgroupKey,
-                    label: subgroupLabel,
-                    description: subgroupDescription,
-                    items: [],
-                });
-            }
-
-            group.subgroups.get(subgroupKey)?.items.push(assessment);
-        });
-
-        return Array.from(groups.entries())
-            .map(([key, group]) => ({
-                key,
-                label: group.label,
-                description: group.description,
-                subgroups: Array.from(group.subgroups.values())
-                    .map((subgroup) => ({
-                        ...subgroup,
-                        items: [...subgroup.items].sort((left, right) => {
-                            const leftDate = left.assessment_date ?? '';
-                            const rightDate = right.assessment_date ?? '';
-                            return rightDate.localeCompare(leftDate) || left.name.localeCompare(right.name);
-                        }),
-                    }))
-                    .sort((left, right) => left.label.localeCompare(right.label)),
-            }))
-            .sort((left, right) => left.label.localeCompare(right.label));
-    }, [getCreatorLabel, groupView, visibleAssessments]);
+    const activeAssessments = visibleAssessments.filter((assessment) => assessment.status === AssessmentStatus.ACTIVE).length;
+    const finalizedAssessments = visibleAssessments.filter((assessment) => assessment.status === AssessmentStatus.FINALIZED).length;
+    const stalledAssessments = visibleAssessments.filter(isStalledAssessment).length;
+    const totalEvidence = visibleAssessments.reduce((sum, assessment) => sum + getEnteredEvidenceCount(assessment), 0);
 
     const assistantContext = useMemo(() => ({
         pageKey: 'assessments_overview',
@@ -378,6 +937,7 @@ export function AssessmentsOverview() {
             no_results: !loading && visibleAssessments.length === 0,
             can_create_assessment: canCreateAssessment,
             has_assigned_cohort_subjects: instructorAccess.hasAssignedCohortSubjects,
+            selected_term: selectedTerm ?? null,
         },
         visibleActions: [
             ...(canCreateAssessment
@@ -397,15 +957,19 @@ export function AssessmentsOverview() {
             : undefined,
         workflowStep: 'assessment_overview',
         emptyStateReason: !loading && visibleAssessments.length === 0
-            ? 'No assessments are visible with the current filters.'
+            ? isAdminSupervisionMode && !selectedTerm
+                ? 'Select a term to view assessments.'
+                : 'No assessments are visible with the current filters.'
             : undefined,
     }), [
         canCreateAssessment,
         createAssessmentHref,
         createButtonLabel,
-        instructorAccess.hasAssignedCohortSubjects,
         effectiveMyTeachingMode,
+        instructorAccess.hasAssignedCohortSubjects,
+        isAdminSupervisionMode,
         loading,
+        selectedTerm,
         supervisionOnlyAdmin,
         totalAssessments,
         visibleAssessments.length,
@@ -415,177 +979,149 @@ export function AssessmentsOverview() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center gap-4">
+            <div className="flex items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900">
                         {isTeachingActor ? 'Assessments & Grading' : effectiveMyTeachingMode ? 'My Assessments' : 'Assessment Overview'}
                     </h1>
-                    <p className="text-gray-600 mt-1">
-                        {isTeachingActor
-                            ? 'Create, review, and grade class work.'
-                            : effectiveMyTeachingMode
-                                ? 'Use My Teaching to view only your own assessment work.'
-                                : 'Admin supervision shows organization work by class, instructor, and subject.'}
+                    <p className="mt-1 text-gray-600">
+                        {effectiveMyTeachingMode
+                            ? 'Create, review, and grade assigned assessment work.'
+                            : 'Supervise assessments by term, category, subject, and cohort.'}
                     </p>
                 </div>
-                {safeReturnTo ? (
-                    <Link href={safeReturnTo}>
-                        <Button variant="ghost" size="sm">{backLabel}</Button>
-                    </Link>
-                ) : null}
-                {canCreateAssessment ? (
-                    <Link href={createAssessmentHref}>
-                        <Button>
-                            <Plus className="w-4 h-4 mr-2" />
-                            {createButtonLabel}
-                        </Button>
-                    </Link>
-                ) : supervisionOnlyAdmin ? (
-                    <Link href="/admin/instructors">
-                        <Button variant="secondary">View instructor activity</Button>
-                    </Link>
-                ) : null}
+                <div className="flex items-center gap-2">
+                    {safeReturnTo ? (
+                        <Link href={safeReturnTo}>
+                            <Button variant="ghost" size="sm">{backLabel}</Button>
+                        </Link>
+                    ) : null}
+                    {canCreateAssessment ? (
+                        <Link href={createAssessmentHref}>
+                            <Button>
+                                <Plus className="h-4 w-4" />
+                                {createButtonLabel}
+                            </Button>
+                        </Link>
+                    ) : supervisionOnlyAdmin ? (
+                        <Link href="/admin/instructors">
+                            <Button variant="secondary">View instructor activity</Button>
+                        </Link>
+                    ) : null}
+                </div>
             </div>
 
             {showInstitutionSupervision ? (
                 <Card>
-                    <div className="space-y-5 p-4">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="space-y-2">
-                                <h2 className="text-base font-semibold text-gray-900">Workspace mode</h2>
-                                <p className="text-sm text-gray-500">
-                                    Admin supervision shows organization work by class, instructor, and subject.
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h2 className="text-base font-semibold text-gray-900">Workspace mode</h2>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Admin supervision uses the confirmed assessment hierarchy.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={viewMode === 'admin_supervision' ? 'secondary' : 'ghost'}
+                                onClick={() => setViewMode('admin_supervision')}
+                            >
+                                Admin supervision
+                            </Button>
+                            {canUseMyTeaching ? (
                                 <Button
                                     type="button"
                                     size="sm"
-                                    variant={viewMode === 'admin_supervision' ? 'secondary' : 'ghost'}
-                                    onClick={() => setViewMode('admin_supervision')}
+                                    variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
+                                    onClick={() => setViewMode('my_teaching')}
                                 >
-                                    Admin supervision
+                                    My Teaching
                                 </Button>
-                                {canUseMyTeaching ? (
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant={viewMode === 'my_teaching' ? 'secondary' : 'ghost'}
-                                        onClick={() => setViewMode('my_teaching')}
-                                    >
-                                        My Teaching
-                                    </Button>
-                                ) : null}
-                            </div>
-                        </div>
-
-                        <div className={`grid gap-3 ${canUseMyTeaching ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
-                            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                                Admin supervision shows organization work by class, instructor, and subject.
-                            </div>
-                            {canUseMyTeaching ? (
-                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                                    Use My Teaching to view only your own teaching work.
-                                </div>
                             ) : null}
                         </div>
                     </div>
                 </Card>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-                <StatsCard
-                    title="Total Assessments"
-                    value={totalAssessments}
-                    icon={ClipboardList}
-                    color="blue"
-                />
-                <StatsCard
-                    title="Numeric"
-                    value={numericAssessments}
-                    icon={TrendingUp}
-                    color="green"
-                />
-                <StatsCard
-                    title="Rubric-based"
-                    value={rubricAssessments}
-                    icon={Award}
-                    color="purple"
-                />
-                <StatsCard
-                    title="Total Scored"
-                    value={totalScored}
-                    icon={FileText}
-                    color="orange"
-                />
-            </div>
-
             <Card>
-                <div className="p-4 space-y-4">
+                <div className="space-y-4 p-4">
                     <div className="flex items-center gap-3 text-sm text-gray-500">
-                        <Filter className="w-5 h-5 text-gray-400" />
-                        <span>Class view starts from learners&apos; classroom context.</span>
+                        <Filter className="h-5 w-5 text-gray-400" />
+                        <span>{isAdminSupervisionMode ? 'Select a term to load the assessment hierarchy.' : 'Filter assessment work.'}</span>
                     </div>
-                    <div className={`grid grid-cols-1 gap-4 ${isAdminLike && !effectiveMyTeachingMode ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
-                        <Select
-                            label="Term"
-                            value={selectedTerm?.toString() || ''}
-                            onChange={(event) => setSelectedTerm(event.target.value ? Number(event.target.value) : undefined)}
-                            options={[
-                                { value: '', label: 'All terms' },
-                                ...terms.map((term) => ({ value: String(term.id), label: term.name })),
-                            ]}
-                        />
-                        <Select
-                            label="Class"
-                            value={selectedCohort?.toString() || ''}
-                            onChange={(event) => setSelectedCohort(event.target.value ? Number(event.target.value) : undefined)}
-                            options={[
-                                { value: '', label: 'All classes' },
-                                ...cohorts.map((cohort) => ({ value: String(cohort.id), label: cohort.name })),
-                            ]}
-                        />
-                        <Select
-                            label="Cohort subject"
-                            value={selectedCohortSubject?.toString() || ''}
-                            onChange={(event) => setSelectedCohortSubject(event.target.value ? Number(event.target.value) : undefined)}
-                            options={[
-                                { value: '', label: 'All cohort subjects' },
-                                ...availableCohortSubjects.map((subject) => ({
-                                    value: String(subject.id),
-                                    label: `${subject.label}${subject.cohortName ? ` (${subject.cohortName})` : ''}`,
-                                })),
-                            ]}
-                        />
-                        {showInstitutionSupervision && !effectiveMyTeachingMode ? (
+                    {isAdminSupervisionMode ? (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <TermSelector
+                                terms={terms}
+                                selectedTerm={selectedTerm}
+                                onChange={setSelectedTerm}
+                                required
+                            />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+                            <TermSelector
+                                terms={terms}
+                                selectedTerm={selectedTerm}
+                                onChange={setSelectedTerm}
+                                required={false}
+                            />
                             <Select
-                                label="Instructor"
-                                value={selectedInstructorFilter}
-                                onChange={(event) => setSelectedInstructorFilter(event.target.value)}
+                                label="Class"
+                                value={selectedCohort?.toString() || ''}
+                                onChange={(event) => setSelectedCohort(event.target.value ? Number(event.target.value) : undefined)}
                                 options={[
-                                    { value: '', label: 'All instructors' },
-                                    ...instructorOptions,
+                                    { value: '', label: 'All classes' },
+                                    ...cohorts.map((cohort) => ({ value: String(cohort.id), label: cohort.name })),
                                 ]}
                             />
-                        ) : null}
-                        <Select
-                            label="Assessment type"
-                            value={selectedType || ''}
-                            onChange={(event) => setSelectedType(event.target.value || undefined)}
-                            options={assessmentTypes}
-                        />
-                        <Select
-                            label="Evaluation"
-                            value={selectedEvalType || ''}
-                            onChange={(event) => setSelectedEvalType(event.target.value || undefined)}
-                            options={evaluationTypes}
-                        />
-                    </div>
+                            <Select
+                                label="Cohort subject"
+                                value={selectedCohortSubject?.toString() || ''}
+                                onChange={(event) => setSelectedCohortSubject(event.target.value ? Number(event.target.value) : undefined)}
+                                options={[
+                                    { value: '', label: 'All cohort subjects' },
+                                    ...availableCohortSubjects.map((subject) => ({
+                                        value: String(subject.id),
+                                        label: `${subject.label}${subject.cohortName ? ` (${subject.cohortName})` : ''}`,
+                                    })),
+                                ]}
+                            />
+                            <Select
+                                label="Assessment type"
+                                value={selectedType || ''}
+                                onChange={(event) => setSelectedType(event.target.value || undefined)}
+                                options={assessmentTypes}
+                            />
+                            <Select
+                                label="Evaluation"
+                                value={selectedEvalType || ''}
+                                onChange={(event) => setSelectedEvalType(event.target.value || undefined)}
+                                options={evaluationTypes}
+                            />
+                        </div>
+                    )}
                 </div>
             </Card>
 
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+                <StatsCard title="Total Assessments" value={totalAssessments} icon={ClipboardList} color="blue" />
+                <StatsCard title="Active" value={activeAssessments} icon={TrendingUp} color="green" />
+                <StatsCard title="Finalized" value={finalizedAssessments} icon={Award} color="purple" />
+                <StatsCard title="Stalled" value={stalledAssessments} icon={AlertTriangle} color="orange" />
+            </div>
+
             <Card>
-                {loading ? (
+                {isAdminSupervisionMode && !selectedTerm ? (
+                    <div className="py-12 text-center">
+                        <ClipboardList className="mx-auto h-12 w-12 text-gray-400" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">Select a term to view assessments.</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Assessment supervision is loaded term by term.
+                        </p>
+                    </div>
+                ) : loading ? (
                     <div className="py-12 text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
                         <p className="mt-2 text-gray-600">Loading assessments...</p>
@@ -599,144 +1135,53 @@ export function AssessmentsOverview() {
                         <p className="mt-1 text-sm text-gray-500">
                             {isTeachingActor && !instructorAccess.hasAssignedCohortSubjects
                                 ? 'Your teaching load is not assigned yet. Assessments will appear once your classes and subjects are assigned.'
-                                : selectedTerm || selectedCohort || selectedCohortSubject || selectedType || selectedEvalType || selectedInstructorFilter
-                                    ? 'Try adjusting your filters.'
-                                    : effectiveMyTeachingMode
-                                        ? 'Create or review assessments once learners have started class work.'
-                                        : 'No assessments are visible in this supervision view yet.'}
+                                : isAdminSupervisionMode
+                                    ? 'No assessments are visible for the selected term.'
+                                    : 'Try adjusting your filters.'}
                         </p>
-                        {canCreateAssessment && !selectedTerm && !selectedCohort && !selectedCohortSubject && !selectedType && !selectedEvalType && !selectedInstructorFilter && (
+                        {canCreateAssessment && !selectedTerm && !selectedCohort && !selectedCohortSubject && !selectedType && !selectedEvalType ? (
                             <Link href={createAssessmentHref}>
                                 <Button className="mt-4">
-                                    <Plus className="mr-2 h-4 w-4" />
+                                    <Plus className="h-4 w-4" />
                                     {createButtonLabel}
                                 </Button>
                             </Link>
-                        )}
+                        ) : null}
                     </div>
-                ) : (
-                    <div className="space-y-6 p-4">
+                ) : isAdminSupervisionMode && selectedTerm ? (
+                    <div className="space-y-4 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-base font-semibold text-gray-900">Assessment groups</h2>
+                                <h2 className="text-base font-semibold text-gray-900">Assessment hierarchy</h2>
                                 <p className="mt-1 text-sm text-gray-500">
-                                    {groupView === 'instructor'
-                                        ? 'Instructor view starts from teacher workload.'
-                                        : groupView === 'subject'
-                                            ? 'Subject view highlights assessment coverage across classes.'
-                                            : "Class view starts from learners' classroom context."}
+                                    {selectedTermName} {' › '} Assessment category {' › '} Subject {' › '} Cohort
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={groupView === 'class' ? 'secondary' : 'ghost'}
-                                    onClick={() => setGroupView('class')}
-                                >
-                                    Class view
-                                </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={groupView === 'subject' ? 'secondary' : 'ghost'}
-                                    onClick={() => setGroupView('subject')}
-                                >
-                                    Subject view
-                                </Button>
-                                {supportsInstructorGrouping ? (
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant={groupView === 'instructor' ? 'secondary' : 'ghost'}
-                                        onClick={() => setGroupView('instructor')}
-                                    >
-                                        Instructor view
-                                    </Button>
+                            <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                                <Badge variant="blue">{totalEvidence} entered evidence</Badge>
+                                {stalledAssessments > 0 ? (
+                                    <Badge variant="orange">{stalledAssessments} stalled</Badge>
                                 ) : null}
                             </div>
                         </div>
-
-                        {groupedAssessments.map((group) => (
-                            <div key={group.key} className="rounded-lg border border-gray-200">
-                                <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-                                    <h3 className="text-sm font-semibold text-gray-900">{group.label}</h3>
-                                    <p className="mt-1 text-sm text-gray-500">{group.description}</p>
-                                </div>
-
-                                <div className="space-y-4 p-4">
-                                    {group.subgroups.map((subgroup) => (
-                                        <div key={subgroup.key} className="overflow-hidden rounded-lg border border-gray-200">
-                                            <div className="bg-white px-4 py-3">
-                                                <p className="text-sm font-medium text-gray-900">{subgroup.label}</p>
-                                                <p className="mt-1 text-sm text-gray-500">{subgroup.description}</p>
-                                            </div>
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Assessment</TableHead>
-                                                        <TableHead>Term</TableHead>
-                                                        <TableHead>Type</TableHead>
-                                                        <TableHead>Evaluation</TableHead>
-                                                        <TableHead>Date</TableHead>
-                                                        <TableHead>Scores</TableHead>
-                                                        <TableHead>Actions</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {subgroup.items.map((assessment) => (
-                                                        <TableRow
-                                                            key={assessment.id}
-                                                            onClick={() => router.push(`/assessments/${assessment.id}`)}
-                                                        >
-                                                            <TableCell>
-                                                                <div className="font-medium text-gray-900">{assessment.name}</div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <span className="text-sm text-gray-600">
-                                                                    {assessment.term_name ?? '-'}
-                                                                </span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge variant="blue">{assessment.assessment_type_display}</Badge>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge variant={getEvaluationBadge(assessment.evaluation_type)}>
-                                                                    {assessment.evaluation_type_display}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <span className="text-sm text-gray-600">
-                                                                    {assessment.assessment_date
-                                                                        ? new Date(assessment.assessment_date).toLocaleDateString()
-                                                                        : '-'}
-                                                                </span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge variant="purple">{assessment.scores_count}</Badge>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Button
-                                                                    variant="primary"
-                                                                    size="sm"
-                                                                    onClick={(event) => {
-                                                                        event.stopPropagation();
-                                                                        router.push(`/assessments/${assessment.id}`);
-                                                                    }}
-                                                                >
-                                                                    View details
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                        {hierarchy.map((category) => (
+                            <AssessmentCategoryAccordion
+                                key={category.key}
+                                category={category}
+                                termId={selectedTerm}
+                                termName={selectedTermName}
+                                isOpen={openCategories.has(category.key)}
+                                openSubjects={openSubjects}
+                                openCohorts={openCohorts}
+                                onToggleCategory={() => toggleKey(setOpenCategories, category.key)}
+                                onToggleSubject={(key) => toggleKey(setOpenSubjects, key)}
+                                onToggleCohort={(key) => toggleKey(setOpenCohorts, key)}
+                                onBulkSuccess={refetchAssessments}
+                            />
                         ))}
                     </div>
+                ) : (
+                    <TeachingAssessmentGroups groups={teachingGroups} />
                 )}
             </Card>
 
