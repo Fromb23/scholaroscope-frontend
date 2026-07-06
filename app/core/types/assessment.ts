@@ -137,6 +137,7 @@ export interface Assessment {
   can_delete?: boolean;
   can_activate?: boolean;
   can_finalize?: boolean;
+  can_reopen?: boolean;
   can_score?: boolean;
   created_at: string;
   created_by: number | null;

@@ -194,6 +194,7 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const fetchAssessment = useCallback(async () => {
@@ -231,6 +232,17 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
     }
   };
 
+  const reopenAssessment = async (): Promise<void> => {
+    if (!assessmentId) return;
+    setReopening(true);
+    try {
+      const updated = await assessmentAPI.reopen(assessmentId);
+      setAssessment(prev => prev ? { ...prev, ...updated } : null);
+    } finally {
+      setReopening(false);
+    }
+  };
+
   const deleteAssessment = async (): Promise<void> => {
     if (!assessmentId) return;
     setDeleting(true);
@@ -243,10 +255,11 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
 
   return {
     assessment, loading, error,
-    finalizing, deleting,
+    finalizing, reopening, deleting,
     refetch: fetchAssessment,
     activateAssessment,
     finalizeAssessment,
+    reopenAssessment,
     deleteAssessment,
   };
 };

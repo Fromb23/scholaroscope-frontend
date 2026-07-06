@@ -34,6 +34,7 @@ export function AssessmentDetailPage() {
         loading,
         error,
         finalizing,
+        reopening,
         deleting,
         scores,
         scoresLoading,
@@ -65,6 +66,7 @@ export function AssessmentDetailPage() {
         canDelete,
         canActivate,
         canFinalize,
+        canReopen,
         canScore,
         canExportPdf,
         setSaveError,
@@ -81,6 +83,7 @@ export function AssessmentDetailPage() {
         handleDelete,
         handleActivate,
         handleFinalize,
+        handleReopenAssessment,
         isTrackedParticipation,
     } = useAssessmentDetailPage();
     const focusedScoreEntryRef = useRef<string | null>(null);
@@ -130,6 +133,7 @@ export function AssessmentDetailPage() {
         unscoredCount,
     ]);
     const primaryAssessmentActionLabel = useMemo(() => {
+        if (isFinalized && canReopen) return 'Reopen assessment';
         if (isFinalized) return 'View finalized results';
         if (pendingMakeupCount > 0 && canScore) return 'Review missing learners';
         if (isActive && canScore && unscoredCount > 0) return 'Record scores';
@@ -140,6 +144,7 @@ export function AssessmentDetailPage() {
     }, [
         canActivate,
         canFinalize,
+        canReopen,
         canScore,
         isActive,
         isDraft,
@@ -153,12 +158,14 @@ export function AssessmentDetailPage() {
         isDraft && canActivate && primaryAssessmentActionLabel !== 'Prepare assessment' ? 'Prepare assessment' : null,
         isActive && canScore && primaryAssessmentActionLabel !== 'Record scores' ? 'Record scores' : null,
         isActive && canFinalize && primaryAssessmentActionLabel !== 'Finalize assessment' ? 'Finalize assessment' : null,
+        isFinalized && canReopen ? 'View finalized results' : null,
         canDelete ? 'Delete assessment' : null,
     ].filter((item): item is string => Boolean(item))), [
         canActivate,
         canDelete,
         canExportPdf,
         canFinalize,
+        canReopen,
         canScore,
         canUpdate,
         isActive,
@@ -217,6 +224,7 @@ export function AssessmentDetailPage() {
             unscored_count: unscoredCount,
             can_grade: Boolean(canScore),
             can_finalize: Boolean(canFinalize),
+            can_reopen: Boolean(canReopen),
             has_results: totalLearnerCount > 0 && stats.scored > 0,
             is_loading: loading || scoresLoading,
             current_stage: currentAssessmentStage,
@@ -261,12 +269,18 @@ export function AssessmentDetailPage() {
                     target: 'review_missing_assessment_learners',
                     handler: scrollToParticipation,
                 }
-                : primaryAssessmentActionLabel === 'Finalize assessment'
+            : primaryAssessmentActionLabel === 'Finalize assessment'
                     ? {
                         label: 'Finalize assessment',
                         type: 'page_action' as const,
                         target: 'finalize_assessment',
                     }
+                    : primaryAssessmentActionLabel === 'Reopen assessment'
+                        ? {
+                            label: 'Reopen assessment',
+                            type: 'page_action' as const,
+                            target: 'reopen_assessment',
+                        }
                     : (totalLearnerCount > 0 && stats.scored > 0
                 ? {
                     label: 'View results',
@@ -287,6 +301,7 @@ export function AssessmentDetailPage() {
         assessment,
         assessmentId,
         canFinalize,
+        canReopen,
         canScore,
         currentAssessmentStage,
         hiddenAssessmentActions,
@@ -328,9 +343,11 @@ export function AssessmentDetailPage() {
                     canDelete={Boolean(canDelete)}
                     canActivate={Boolean(canActivate)}
                     canFinalize={Boolean(canFinalize)}
+                    canReopen={Boolean(canReopen)}
                     canScore={Boolean(canScore)}
                     canExportPdf={Boolean(canExportPdf)}
                     finalizing={finalizing}
+                    reopening={reopening}
                     deleting={deleting}
                     downloadingPdf={downloadingPdf}
                     saving={saving}
@@ -339,6 +356,7 @@ export function AssessmentDetailPage() {
                     pendingMakeupCount={pendingMakeupCount}
                     onActivate={handleActivate}
                     onFinalize={handleFinalize}
+                    onReopen={handleReopenAssessment}
                     onDownloadPdf={handleDownloadPdf}
                     onDelete={handleDelete}
                     onRecordScores={scrollToScoreEntry}

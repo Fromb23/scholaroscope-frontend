@@ -45,10 +45,12 @@ export function useAssessmentDetailPage() {
         loading,
         error,
         finalizing,
+        reopening,
         deleting,
         refetch,
         activateAssessment,
         finalizeAssessment,
+        reopenAssessment,
         deleteAssessment,
     } = useAssessmentDetail(assessmentId);
 
@@ -89,6 +91,7 @@ export function useAssessmentDetailPage() {
     const canDelete = assessment?.can_delete ?? (Boolean(assessment) && isAdminLike);
     const canActivate = assessment?.can_activate ?? (Boolean(assessment) && canManageAssessment && isDraft);
     const canFinalize = assessment?.can_finalize ?? (Boolean(assessment) && canManageAssessment && (isDraft || isActive));
+    const canReopen = assessment?.can_reopen ?? false;
     const canScore = assessment?.can_score ?? (Boolean(assessment) && canManageAssessment && !isFinalized);
     const canExportPdf = canManageAssessment;
     const sortedScores = useMemo(() => sortAssessmentScores(scores), [scores]);
@@ -527,12 +530,32 @@ export function useAssessmentDetailPage() {
         }
     };
 
+    const handleReopenAssessment = async () => {
+        if (!canReopen) {
+            setSaveError('You do not have permission to reopen this assessment.');
+            return;
+        }
+
+        try {
+            await reopenAssessment();
+            await Promise.all([
+                refetch(),
+                refetchScores(),
+                isTrackedParticipation ? loadParticipationRoster(true) : Promise.resolve(),
+            ]);
+        } catch (error) {
+            setSaveError(extractErrorMessage(error as ApiError, 'Failed to reopen assessment'));
+            throw error;
+        }
+    };
+
     return {
         assessmentId,
         assessment,
         loading,
         error,
         finalizing,
+        reopening,
         deleting,
         scores: filteredScores,
         scoresLoading,
@@ -565,6 +588,7 @@ export function useAssessmentDetailPage() {
         canDelete,
         canActivate,
         canFinalize,
+        canReopen,
         canScore,
         canExportPdf,
         setSaveError,
@@ -581,6 +605,7 @@ export function useAssessmentDetailPage() {
         handleDelete,
         handleActivate,
         handleFinalize,
+        handleReopenAssessment,
         isTrackedParticipation,
     };
 }
