@@ -19,6 +19,7 @@ import {
 } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
 import MobileBottomNav from '@/app/components/layout/MobileBottomNav';
+import { RouteTransition } from '@/app/components/layout/RouteTransition';
 import { SidebarProvider } from '@/app/context/SidebarContext';
 import Header from '@/app/components/layout/Header';
 import { usePlugins } from '@/app/core/hooks/usePlugins';
@@ -160,7 +161,7 @@ function DashboardContent({
         >
           <AssistantProvider>
             <div className="pb-16 lg:pb-0">
-              {children}
+              <RouteTransition>{children}</RouteTransition>
             </div>
             {GUIDE_ENABLED ? <AssistantWidget /> : null}
           </AssistantProvider>
