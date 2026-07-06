@@ -6,6 +6,7 @@ import { MoreHorizontal } from 'lucide-react';
 import { useSidebar } from '@/app/context/SidebarContext';
 import {
   isNavHrefActive,
+  resolveMobilePrimaryNav,
   type NavItem,
   type NavigationConfig,
 } from './navConfig';
@@ -26,7 +27,7 @@ function activeTabHref(pathname: string, tabs: NavItem[]): string | null {
 export default function MobileBottomNav({ navConfig }: MobileBottomNavProps) {
   const pathname = usePathname();
   const { openSidebar } = useSidebar();
-  const tabs = navConfig.primary.slice(0, 4);
+  const tabs = resolveMobilePrimaryNav(navConfig);
   const activeHref = activeTabHref(pathname, tabs);
 
   return (

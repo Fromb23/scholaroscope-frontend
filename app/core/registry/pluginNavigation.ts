@@ -7,6 +7,7 @@ export interface NavItem {
     href: string;
     icon: LucideIcon;
     badge?: number;
+    mobilePriority?: number;
     children?: NavItem[];
 }
 
