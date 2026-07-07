@@ -24,6 +24,7 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
 import { getAcademicLevelLabel } from '@/app/core/lib/curriculumLevels';
@@ -325,12 +326,12 @@ export function CBCProgressPage() {
 
                 <div className="lg:col-span-3 space-y-4">
                     {page.selectedCurriculumId && !page.error && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <StatsCard title="Strands" value={page.stats.strands} icon={BookOpen} color="blue" />
-                            <StatsCard title="Sub-Strands" value={page.stats.subStrands} icon={TrendingUp} color="green" />
-                            <StatsCard title="Learning Goals" value={page.stats.outcomes} icon={Target} color="purple" />
-                            <StatsCard title="Subjects" value={page.stats.subjects} icon={Users} color="orange" />
-                        </div>
+                        <StatStrip mdColumns={4} gap="tight">
+                            <StatsCard title="Strands" value={page.stats.strands} icon={BookOpen} color="blue" mobile="hide" />
+                            <StatsCard title="Sub-Strands" value={page.stats.subStrands} icon={TrendingUp} color="green" mobile="hide" />
+                            <StatsCard title="Learning Goals" value={page.stats.outcomes} icon={Target} color="purple" mobile="hide" />
+                            <StatsCard title="Subjects" value={page.stats.subjects} icon={Users} color="orange" mobile="compact" />
+                        </StatStrip>
                     )}
 
                     {page.error && <CBCError error={page.error} onRetry={page.refetch} />}

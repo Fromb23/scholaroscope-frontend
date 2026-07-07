@@ -7,6 +7,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ExportModal } from '@/app/components/export/ExportModal';
@@ -97,12 +98,12 @@ export default function InstructorCohortSubjectsReportPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatStrip mdColumns={2} xlColumns={4}>
         <StatsCard title="Cohort Subjects" value={cohortSubjects.length} icon={BookOpen} color="blue" />
         <StatsCard title="Learners" value={cohortSubjects.reduce((sum, item) => sum + item.active_learner_count, 0)} icon={Users} color="green" />
         <StatsCard title="Average Attendance" value={formatPercent(averageAttendance)} icon={Users} color="indigo" />
         <StatsCard title="CBC Subjects" value={reportingCounts.cbc ?? 0} icon={BookOpen} color="purple" />
-      </div>
+      </StatStrip>
 
       {cohortSubjects.length === 0 ? (
         <Card>

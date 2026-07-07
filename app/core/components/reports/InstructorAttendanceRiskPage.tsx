@@ -9,6 +9,7 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { useCurrentTerm } from '@/app/core/hooks/useAcademic';
 import { useInstructorAttendanceRisk } from '@/app/core/hooks/useInstructorAttendanceRisk';
@@ -153,7 +154,7 @@ export function InstructorAttendanceRiskPage() {
                 </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatStrip mdColumns={2} xlColumns={3}>
                 <StatsCard
                     title="Learners at Risk"
                     value={uniqueLearnerCount}
@@ -172,7 +173,7 @@ export function InstructorAttendanceRiskPage() {
                     icon={Target}
                     color="yellow"
                 />
-            </div>
+            </StatStrip>
 
             {groupedItems.length === 0 ? (
                 <Card>

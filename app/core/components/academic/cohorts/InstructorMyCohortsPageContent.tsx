@@ -17,7 +17,7 @@ import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
-import { DesktopOnly } from '@/app/core/components/DesktopOnly';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useAcademicYears } from '@/app/core/hooks/useAcademic';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
@@ -195,13 +195,11 @@ export function InstructorMyCohortsPageContent() {
                 <ErrorBanner message={error} onDismiss={() => setIsErrorDismissed(true)} />
             )}
 
-            <DesktopOnly>
-                <div className="grid gap-4 md:grid-cols-3">
-                    <StatsCard title="Assigned Classes" value={filteredGroups.length} icon={GraduationCap} color="blue" />
-                    <StatsCard title="Assigned Subjects" value={assignedSubjectCount} icon={BookOpen} color="green" />
-                    <StatsCard title="Current Year Classes" value={currentYearCohortCount} icon={Users} color="yellow" />
-                </div>
-            </DesktopOnly>
+            <StatStrip mdColumns={3}>
+                <StatsCard title="Assigned Classes" value={filteredGroups.length} icon={GraduationCap} color="blue" mobile="hide" />
+                <StatsCard title="Assigned Subjects" value={assignedSubjectCount} icon={BookOpen} color="green" mobile="hide" />
+                <StatsCard title="Current Year Classes" value={currentYearCohortCount} icon={Users} color="yellow" mobile="hide" />
+            </StatStrip>
 
             <Card>
                 <div className="space-y-3">

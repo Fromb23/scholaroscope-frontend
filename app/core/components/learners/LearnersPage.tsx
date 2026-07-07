@@ -19,6 +19,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -748,12 +749,12 @@ function LearnersPageInner() {
             </div>
 
             {stats ? (
-                <div className="grid gap-4 md:grid-cols-4">
-                    <StatsCard title="Total" value={stats.total} icon={Users} color="blue" />
-                    <StatsCard title="Active" value={stats.active} icon={Users} color="green" />
-                    <StatsCard title="Graduated" value={stats.graduated} icon={Users} color="yellow" />
-                    <StatsCard title="Transferred" value={stats.transferred} icon={Users} color="red" />
-                </div>
+                <StatStrip mdColumns={4}>
+                    <StatsCard title="Total" value={stats.total} icon={Users} color="blue" mobile="compact" />
+                    <StatsCard title="Active" value={stats.active} icon={Users} color="green" mobile="compact" />
+                    <StatsCard title="Graduated" value={stats.graduated} icon={Users} color="yellow" mobile="hide" />
+                    <StatsCard title="Transferred" value={stats.transferred} icon={Users} color="red" mobile="hide" />
+                </StatStrip>
             ) : null}
 
             {exportError ? (

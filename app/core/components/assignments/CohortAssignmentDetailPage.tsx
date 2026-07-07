@@ -19,6 +19,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
 import { AssignmentLifecycleActionCard } from '@/app/core/components/assignments/AssignmentLifecycleActionCard';
 import { AssignmentLifecycleConfirmModal } from '@/app/core/components/assignments/AssignmentLifecycleConfirmModal';
@@ -841,7 +842,7 @@ export default function CohortAssignmentDetailPage() {
                 ) : null
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatStrip mdColumns={2} xlColumns={4}>
                 {isGroupAssignment ? (
                     <>
                         <StatsCard
@@ -897,7 +898,7 @@ export default function CohortAssignmentDetailPage() {
                         />
                     </>
                 )}
-            </div>
+            </StatStrip>
 
             {showSessionScopeNote ? (
                 <Card className="theme-info-surface">

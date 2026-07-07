@@ -14,6 +14,7 @@ import { Card } from '@/app/components/ui/Card';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { getAdminReportLandingSections } from '@/app/core/components/reports/reportHierarchy';
 import { useInstructorOverview } from '@/app/core/hooks/useReporting';
 import { formatPercent } from '@/app/core/lib/reportingPresentation';
@@ -93,7 +94,7 @@ export function FreelanceReportLandingContent({
         <BarChart3 className="h-7 w-7 shrink-0 text-green-600" />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <StatStrip mdColumns={2} xlColumns={3}>
         <StatsCard
           title="Learners"
           value={overview?.total_visible_learners ?? 0}
@@ -112,7 +113,7 @@ export function FreelanceReportLandingContent({
           icon={Calendar}
           color="indigo"
         />
-      </div>
+      </StatStrip>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {

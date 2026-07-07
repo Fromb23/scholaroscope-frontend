@@ -7,6 +7,7 @@ import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ExportModal } from '@/app/components/export/ExportModal';
@@ -96,12 +97,12 @@ export function AssessmentsReportPage() {
         </div>
 
         {summaries.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatStrip mdColumns={2} xlColumns={4}>
             <StatsCard title="Assessment Records" value={summaries.length} icon={PieChart} color="blue" />
             <StatsCard title="Total Assessments" value={totalAssessments} icon={ClipboardCheck} color="green" />
             <StatsCard title="Subjects Covered" value={new Set(summaries.map((summary) => summary.subject_name)).size} icon={PieChart} color="purple" />
             <StatsCard title="Cohorts Covered" value={new Set(summaries.map((summary) => summary.cohort_name)).size} icon={PieChart} color="orange" />
-          </div>
+          </StatStrip>
         )}
 
         <Card>

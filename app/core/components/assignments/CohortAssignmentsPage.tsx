@@ -21,6 +21,7 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { AssignmentCard } from '@/app/core/components/assignments/AssignmentCard';
 import { AssignmentCreateModal } from '@/app/core/components/assignments/AssignmentCreateModal';
 import {
@@ -605,7 +606,7 @@ export default function CohortAssignmentsPage() {
                         </div>
                     </Card>
 
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <StatStrip mdColumns={2} xlColumns={4}>
                         <StatsCard
                             title="Total Assignments"
                             value={visibleAssignments.length}
@@ -632,7 +633,7 @@ export default function CohortAssignmentsPage() {
                             icon={CheckCircle2}
                             color="purple"
                         />
-                    </div>
+                    </StatStrip>
 
                     <Card>
                         <div className="space-y-4">

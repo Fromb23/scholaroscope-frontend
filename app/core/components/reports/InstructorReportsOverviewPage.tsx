@@ -14,6 +14,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ExportModal } from '@/app/components/export/ExportModal';
@@ -165,19 +166,19 @@ export function InstructorReportsOverviewPage() {
         })}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatStrip mdColumns={2} xlColumns={4}>
         <StatsCard title="Assigned Cohort Subjects" value={overview?.total_assigned_cohort_subjects ?? 0} icon={BookOpen} color="blue" />
         <StatsCard title="Visible Learners" value={overview?.total_visible_learners ?? 0} icon={Users} color="green" />
         <StatsCard title="Average Attendance" value={formatPercent(averageAttendance)} icon={Calendar} color="indigo" />
         <StatsCard title="Total Sessions" value={totalSessions} icon={Calendar} color="purple" />
-      </div>
+      </StatStrip>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <StatStrip mdColumns={2} xlColumns={4}>
         <StatsCard title="Generic Subjects" value={reportingCounts.generic ?? 0} icon={BookOpen} color="blue" />
         <StatsCard title="CBC Subjects" value={reportingCounts.cbc ?? 0} icon={BookOpen} color="green" />
         <StatsCard title="Pending" value={reportingCounts.cambridge_pending ?? 0} icon={BookOpen} color="yellow" />
         <StatsCard title="Unsupported" value={reportingCounts.unsupported ?? 0} icon={BookOpen} color="orange" />
-      </div>
+      </StatStrip>
 
       {!overview || overview.assigned_cohort_subjects.length === 0 ? (
         <Card>

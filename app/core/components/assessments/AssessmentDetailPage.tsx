@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { AssessmentDetailHeader } from '@/app/core/components/assessments/AssessmentDetailHeader';
 import { AssessmentInfoCard } from '@/app/core/components/assessments/AssessmentInfoCard';
@@ -24,7 +25,6 @@ import {
     AssessmentStageActionCard,
     getAssessmentCurrentStage,
 } from '@/app/core/components/assessments/AssessmentStageActionCard';
-import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import { useAssessmentDetailPage } from '@/app/core/hooks/assessments/useAssessmentDetailPage';
 
 export function AssessmentDetailPage() {
@@ -404,17 +404,15 @@ export function AssessmentDetailPage() {
                 </div>
             )}
 
-            {/* Stats — desktop only */}
+            {/* Stats */}
             {assessment.evaluation_type === 'NUMERIC' && (
-                <DesktopOnly>
-                    <div id="assessment-results-summary" className="grid gap-4 md:grid-cols-5">
-                        <StatsCard title="Scored" value={`${stats.scored}/${stats.total}`} icon={ClipboardList} color="blue" />
-                        <StatsCard title="Average" value={stats.average.toFixed(1)} icon={TrendingUp} color="green" />
-                        <StatsCard title="Highest" value={stats.highest} icon={Award} color="yellow" />
-                        <StatsCard title="Lowest" value={stats.lowest} icon={TrendingUp} color="red" />
-                        <StatsCard title="Completion" value={`${stats.completion}%`} icon={ClipboardList} color="purple" />
-                    </div>
-                </DesktopOnly>
+                <StatStrip id="assessment-results-summary" mdColumns={5}>
+                    <StatsCard title="Scored" value={`${stats.scored}/${stats.total}`} icon={ClipboardList} color="blue" mobile="compact" />
+                    <StatsCard title="Average" value={stats.average.toFixed(1)} icon={TrendingUp} color="green" mobile="hide" />
+                    <StatsCard title="Highest" value={stats.highest} icon={Award} color="yellow" mobile="hide" />
+                    <StatsCard title="Lowest" value={stats.lowest} icon={TrendingUp} color="red" mobile="hide" />
+                    <StatsCard title="Completion" value={`${stats.completion}%`} icon={ClipboardList} color="purple" mobile="compact" />
+                </StatStrip>
             )}
 
             {assessment.evaluation_type !== 'NUMERIC' && (

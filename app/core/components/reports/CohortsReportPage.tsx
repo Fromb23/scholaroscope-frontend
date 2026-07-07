@@ -18,6 +18,7 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
@@ -267,7 +268,7 @@ export function CohortsReportPage({
               </div>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatStrip mdColumns={2} xlColumns={4}>
               <StatsCard title="Learners" value={summary.learner_count} icon={Users} color="blue" />
               <StatsCard
                 title="Average Attendance"
@@ -287,7 +288,7 @@ export function CohortsReportPage({
                 icon={BookOpen}
                 color="purple"
               />
-            </div>
+            </StatStrip>
 
             {summary.cohort_subjects.length === 0 ? (
               <Card>

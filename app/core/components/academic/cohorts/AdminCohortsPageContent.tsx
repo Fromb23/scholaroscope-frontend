@@ -28,7 +28,7 @@ import { useAcademicYears, useCohorts, useCurricula } from '@/app/core/hooks/use
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
-import { DesktopOnly } from '@/app/core/components/DesktopOnly';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { CohortFormModal, RolloverModal } from '@/app/core/components/cohorts/CohortComponents';
 import { CohortMobileCard } from '@/app/core/components/academic/cohorts/CohortMobileCard';
 import {
@@ -508,18 +508,16 @@ export function AdminCohortsPageContent() {
                 />
             ) : null}
 
-            <DesktopOnly>
-                <div className="grid gap-4 md:grid-cols-3">
-                    <StatsCard title="Total Cohorts" value={cohorts.length} icon={GraduationCap} color="blue" />
-                    <StatsCard title="Total Students" value={totalStudents} icon={Users} color="green" />
-                    <StatsCard
-                        title="Avg per Cohort"
-                        value={cohorts.length > 0 ? Math.round(totalStudents / cohorts.length) : 0}
-                        icon={Users}
-                        color="yellow"
-                    />
-                </div>
-            </DesktopOnly>
+            <StatStrip mdColumns={3}>
+                <StatsCard title="Total Cohorts" value={cohorts.length} icon={GraduationCap} color="blue" />
+                <StatsCard title="Total Students" value={totalStudents} icon={Users} color="green" />
+                <StatsCard
+                    title="Avg per Cohort"
+                    value={cohorts.length > 0 ? Math.round(totalStudents / cohorts.length) : 0}
+                    icon={Users}
+                    color="yellow"
+                />
+            </StatStrip>
 
             <Card>
                 <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-center">
