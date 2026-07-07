@@ -9,6 +9,7 @@ import {
 } from '@/app/plugins/requests/types/requests';
 import { requestsAPI, type RequestListParams } from '@/app/plugins/requests/api/requests';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { buildContextualRequestKey, getCurrentApprovalRoute } from '@/app/plugins/requests/lib/approvalIntents';
 
 type PaginatedResponse<T> = { results?: T[] };
 type RequestApiError = {
@@ -148,10 +149,23 @@ export const useRequestDetail = (id: number | null) => {
         }
     };
 
+    const executeRequest = async (retry = false) => {
+        if (!id || !request) return;
+        try {
+            const updated = retry
+                ? await requestsAPI.retryExecution(id)
+                : await requestsAPI.execute(id);
+            setRequest(prev => prev ? { ...prev, ...updated } : prev);
+            return updated;
+        } catch (err: unknown) {
+            throw new Error(getApiError(err).response?.data?.detail || 'Failed to execute request');
+        }
+    };
+
     return {
         request, loading, error,
         refetch: fetchRequest,
-        addComment, reviewRequest,
+        addComment, reviewRequest, executeRequest,
         setRequest,
     };
 };
@@ -204,7 +218,16 @@ export const useMyRequests = () => {
                 title: titles[type],
                 description: reason,
                 request_type: type,
+                action_key: type,
                 priority: 'NORMAL' as const,
+                origin_route: getCurrentApprovalRoute(),
+                return_to: getCurrentApprovalRoute(),
+                target_type: type === 'ACCOUNT_DELETION' ? 'account' : 'organization',
+                request_key: buildContextualRequestKey(['profile', type.toLowerCase()]),
+                reference_data: {
+                    contextual_action: type === 'ACCOUNT_DELETION' ? 'account_deletion' : 'organization_deletion',
+                    reason,
+                },
             });
             setRequests(prev => [newRequest, ...prev]);
             return newRequest;

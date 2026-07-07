@@ -26,7 +26,7 @@ export function SuperAdminSupportPage() {
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
 
-    const { request: selectedDetail, loading: detailLoading, addComment, reviewRequest: reviewDetail } =
+    const { request: selectedDetail, loading: detailLoading, addComment, reviewRequest: reviewDetail, executeRequest } =
         useRequestDetail(selectedId);
 
     const filtered = useMemo(() => {
@@ -57,6 +57,14 @@ export function SuperAdminSupportPage() {
     const handleAddComment = async (content: string, is_internal: boolean) => {
         try { await addComment(content, is_internal); }
         catch (err: unknown) { setActionError(getErrorMessage(err)); }
+    };
+
+    const handleExecute = async (retry = false) => {
+        setActionError(null);
+        try {
+            await executeRequest(retry);
+            await refetch();
+        } catch (err: unknown) { setActionError(getErrorMessage(err)); }
     };
 
     if (loading) return (
@@ -168,6 +176,7 @@ export function SuperAdminSupportPage() {
                                 request={selectedDetail}
                                 onClose={() => setSelectedId(null)}
                                 onReview={handleReview}
+                                onExecute={handleExecute}
                                 onAddComment={handleAddComment}
                                 canReview
                                 reviewerRole="SUPERADMIN"

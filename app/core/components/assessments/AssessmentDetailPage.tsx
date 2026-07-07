@@ -10,6 +10,8 @@ import {
     TrendingUp,
     Award,
     CheckCircle,
+    UserPlus,
+    RotateCcw,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
@@ -26,6 +28,8 @@ import {
     getAssessmentCurrentStage,
 } from '@/app/core/components/assessments/AssessmentStageActionCard';
 import { useAssessmentDetailPage } from '@/app/core/hooks/assessments/useAssessmentDetailPage';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 
 export function AssessmentDetailPage() {
     const {
@@ -378,10 +382,71 @@ export function AssessmentDetailPage() {
             )}
 
             {!isFinalized && !canScore && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-                    This assessment is read-only for your account.
+                <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    <p>This assessment is read-only for your account.</p>
+                    <div className="flex flex-wrap gap-2">
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'RESOURCE_REQUEST',
+                                title: `Request missing learner be added to ${assessment.name}`,
+                                targetType: 'assessment',
+                                targetId: assessmentId,
+                                returnTo: `/assessments/${assessmentId}`,
+                                requestKey: buildContextualRequestKey(['assessment', assessmentId, 'missing-learner']),
+                                referenceData: {
+                                    contextual_action: 'missing_learner_marking_list',
+                                    assessment_id: assessmentId,
+                                    assessment_name: assessment.name,
+                                },
+                            }}
+                        >
+                            <UserPlus className="h-4 w-4" />
+                            Ask admin to add learner
+                        </ContextualApprovalRequestButton>
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'RESOURCE_REQUEST',
+                                title: `Request late score entry for ${assessment.name}`,
+                                targetType: 'assessment',
+                                targetId: assessmentId,
+                                returnTo: `/assessments/${assessmentId}`,
+                                requestKey: buildContextualRequestKey(['assessment', assessmentId, 'late-score-entry']),
+                                referenceData: {
+                                    contextual_action: 'late_score_entry',
+                                    assessment_id: assessmentId,
+                                    assessment_name: assessment.name,
+                                },
+                            }}
+                        >
+                            <ClipboardList className="h-4 w-4" />
+                            Ask admin for late score entry
+                        </ContextualApprovalRequestButton>
+                    </div>
                 </div>
             )}
+
+            {isFinalized && !canReopen ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                    <ContextualApprovalRequestButton
+                        intent={{
+                            actionKey: 'OTHER',
+                            title: `Request reopen finalized assessment ${assessment.name}`,
+                            targetType: 'assessment',
+                            targetId: assessmentId,
+                            returnTo: `/assessments/${assessmentId}`,
+                            requestKey: buildContextualRequestKey(['assessment', assessmentId, 'reopen-finalized']),
+                            referenceData: {
+                                contextual_action: 'reopen_finalized_assessment',
+                                assessment_id: assessmentId,
+                                assessment_name: assessment.name,
+                            },
+                        }}
+                    >
+                        <RotateCcw className="h-4 w-4" />
+                        Ask admin to reopen
+                    </ContextualApprovalRequestButton>
+                </div>
+            ) : null}
 
             <AssessmentInfoCard assessment={assessment} />
 

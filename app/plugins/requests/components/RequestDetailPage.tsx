@@ -20,7 +20,7 @@ export function RequestDetailPage() {
     const { user, activeRole } = useAuth();
     const id = Number(params.id);
 
-    const { request, loading, error, addComment, reviewRequest } = useRequestDetail(id);
+    const { request, loading, error, addComment, reviewRequest, executeRequest } = useRequestDetail(id);
 
     const isAdmin = activeRole === 'ADMIN';
     const isSuperAdmin = !!user?.is_superadmin;
@@ -36,6 +36,9 @@ export function RequestDetailPage() {
 
     const handleAddComment = async (content: string, is_internal: boolean) => {
         await addComment(content, is_internal);
+    };
+    const handleExecute = async (retry = false) => {
+        await executeRequest(retry);
     };
     const scrollToReviewSection = useCallback(() => {
         document.getElementById('request-review-section')?.scrollIntoView({
@@ -120,6 +123,7 @@ export function RequestDetailPage() {
                 request={request}
                 onClose={() => router.back()}
                 onReview={canReview ? handleReview : undefined}
+                onExecute={canReview ? handleExecute : undefined}
                 onAddComment={handleAddComment}
                 canReview={canReview}
                 reviewerRole={activeRole ?? ''}

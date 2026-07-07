@@ -7,6 +7,8 @@ import { DataTable } from '@/app/components/ui/Table';
 import type { Column } from '@/app/components/ui/Table';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
 import { buildLearnerAssessmentReportHref } from '@/app/core/lib/learnerReportingRoutes';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import {
     AssessmentScore,
     AssessmentDetail,
@@ -287,6 +289,37 @@ export function AssessmentScoreTable({
         render: row => renderCommentsInput(row),
     });
 
+    if (readOnly) {
+        columns.push({
+            key: 'id',
+            header: 'Requests',
+            render: row => (
+                <ContextualApprovalRequestButton
+                    variant="ghost"
+                    intent={{
+                        actionKey: 'RESOURCE_REQUEST',
+                        title: `Request score correction for ${row.student_name}`,
+                        targetType: 'assessment_score',
+                        targetId: row.id || row.student,
+                        returnTo,
+                        requestKey: buildContextualRequestKey(['assessment', assessment.id, 'score', row.id || row.student, 'correction']),
+                        referenceData: {
+                            contextual_action: 'wrong_score_correction',
+                            assessment_id: assessment.id,
+                            score_id: row.id,
+                            student_id: row.student,
+                            student_name: row.student_name,
+                            current_score: row.score,
+                            current_rubric_level: row.rubric_level,
+                        },
+                    }}
+                >
+                    Request correction
+                </ContextualApprovalRequestButton>
+            ),
+        });
+    }
+
     return (
         <div className="space-y-4">
             <div className="space-y-3 md:hidden">
@@ -350,6 +383,30 @@ export function AssessmentScoreTable({
                                     <p className={sectionLabelClasses}>Comments</p>
                                     {renderCommentsInput(row)}
                                 </div>
+
+                                {readOnly ? (
+                                    <ContextualApprovalRequestButton
+                                        intent={{
+                                            actionKey: 'RESOURCE_REQUEST',
+                                            title: `Request score correction for ${row.student_name}`,
+                                            targetType: 'assessment_score',
+                                            targetId: row.id || row.student,
+                                            returnTo,
+                                            requestKey: buildContextualRequestKey(['assessment', assessment.id, 'score', row.id || row.student, 'correction']),
+                                            referenceData: {
+                                                contextual_action: 'wrong_score_correction',
+                                                assessment_id: assessment.id,
+                                                score_id: row.id,
+                                                student_id: row.student,
+                                                student_name: row.student_name,
+                                                current_score: row.score,
+                                                current_rubric_level: row.rubric_level,
+                                            },
+                                        }}
+                                    >
+                                        Request correction
+                                    </ContextualApprovalRequestButton>
+                                ) : null}
                             </div>
                         </div>
                     ))

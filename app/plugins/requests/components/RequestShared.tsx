@@ -8,7 +8,7 @@ import { useState } from 'react';
 import {
     Clock, CheckCircle2, XCircle, Eye, Trash2, MessageCircle,
     FileText, Flame, ArrowUp, Minus, ArrowDown,
-    Send, StickyNote, AlertTriangle, Building2,
+    Send, StickyNote, AlertTriangle, Building2, RefreshCw, Play,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -163,6 +163,7 @@ export function RequestDetailPanel({
     request,
     onClose,
     onReview,
+    onExecute,
     onAddComment,
     canReview,
     reviewerRole,
@@ -170,6 +171,7 @@ export function RequestDetailPanel({
     request: RequestDetail;
     onClose: () => void;
     onReview?: (action: 'approve' | 'reject' | 'review', note: string) => Promise<void>;
+    onExecute?: (retry?: boolean) => Promise<void>;
     onAddComment: (content: string, is_internal: boolean) => Promise<void>;
     canReview: boolean;
     reviewerRole: string;
@@ -179,7 +181,8 @@ export function RequestDetailPanel({
     const [reviewNote, setReviewNote] = useState('');
     const [reviewing, setReviewing] = useState(false);
     const [submittingComment, setSubmittingComment] = useState(false);
-    const [localRequest] = useState(request);
+    const [executing, setExecuting] = useState(false);
+    const localRequest = request;
 
     const isPending = ['PENDING', 'IN_REVIEW'].includes(localRequest.status);
 
@@ -202,6 +205,16 @@ export function RequestDetailPanel({
             setComment('');
         } finally {
             setSubmittingComment(false);
+        }
+    };
+
+    const handleExecute = async (retry = false) => {
+        if (!onExecute) return;
+        setExecuting(true);
+        try {
+            await onExecute(retry);
+        } finally {
+            setExecuting(false);
         }
     };
 
@@ -260,6 +273,17 @@ export function RequestDetailPanel({
                         <span className="font-semibold">Resolution: </span>{localRequest.resolution_note}
                     </div>
                 )}
+                {localRequest.status === 'APPROVED' && (
+                    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold">Execution:</span>
+                            <span>{localRequest.execution_status_display ?? localRequest.execution_status}</span>
+                        </div>
+                        {localRequest.execution_error ? (
+                            <p className="mt-2 break-words text-red-700">{localRequest.execution_error}</p>
+                        ) : null}
+                    </div>
+                )}
             </div>
 
             {/* Review Actions — only for admin/superadmin on open requests */}
@@ -303,6 +327,35 @@ export function RequestDetailPanel({
                         >
                             <XCircle className="h-3.5 w-3.5" /> Reject
                         </Button>
+                    </div>
+                </div>
+            )}
+
+            {canReview && localRequest.status === 'APPROVED' && onExecute && (
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <p className="text-sm font-semibold text-gray-700 mb-3">Execution</p>
+                    <div className="flex gap-2">
+                        {localRequest.execution_status === 'FAILED' ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleExecute(true)}
+                                disabled={executing}
+                                className="gap-1.5"
+                            >
+                                <RefreshCw className="h-3.5 w-3.5" /> Retry
+                            </Button>
+                        ) : localRequest.execution_status === 'MANUAL_REQUIRED' || localRequest.execution_status === 'PENDING' ? (
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleExecute(false)}
+                                disabled={executing}
+                                className="gap-1.5"
+                            >
+                                <Play className="h-3.5 w-3.5" /> Execute
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
             )}

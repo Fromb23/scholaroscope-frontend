@@ -5,8 +5,21 @@
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
-export type RequestStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CLOSED';
+export type RequestStatus = 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'CLOSED';
 export type RequestPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type ApprovalExecutionPolicy =
+    | 'AUTO_ON_APPROVAL'
+    | 'MANUAL_AFTER_APPROVAL'
+    | 'UNLOCK_ACTION'
+    | 'RECORD_ONLY'
+    | 'EXTERNAL_SUPPORT';
+export type ApprovalExecutionStatus =
+    | 'NOT_REQUIRED'
+    | 'PENDING'
+    | 'EXECUTED'
+    | 'FAILED'
+    | 'MANUAL_REQUIRED'
+    | 'SKIPPED';
 
 // Instructor → Admin
 export type InstructorRequestType =
@@ -30,6 +43,8 @@ export type AdminRequestType =
     | 'OTHER';
 
 export type RequestType = InstructorRequestType | AdminRequestType;
+export type ApprovalActionKey = RequestType;
+export type RequestReferenceData = Record<string, string | number | boolean | object | null | undefined>;
 
 // ── Models ────────────────────────────────────────────────────────────────────
 
@@ -48,10 +63,20 @@ export interface Request {
     description: string;
     request_type: RequestType;
     request_type_display: string;
+    action_key: ApprovalActionKey;
+    category: string;
+    category_display: string;
     status: RequestStatus;
     status_display: string;
     priority: RequestPriority;
     priority_display: string;
+    execution_policy: ApprovalExecutionPolicy;
+    execution_policy_display: string;
+    execution_status: ApprovalExecutionStatus;
+    execution_status_display: string;
+    execution_error: string;
+    execution_attempted_at: string | null;
+    execution_completed_at: string | null;
     submitted_by_name: string;
     submitted_by_email: string;
     submitted_by_role: string;
@@ -60,10 +85,18 @@ export interface Request {
     organization_name: string;
     resolution_note: string;
     reviewed_at: string | null;
-    reference_data: Record<string, string | number | boolean | object>;
+    origin_route: string;
+    return_to: string;
+    target_type: string;
+    target_id: string;
+    request_key: string;
+    idempotency_key: string;
+    reference_data: RequestReferenceData;
     comment_count: number;
     created_at: string;
     updated_at: string;
+    duplicate?: boolean;
+    detail?: string;
 }
 
 export interface RequestDetail extends Request {
@@ -76,8 +109,15 @@ export interface RequestCreatePayload {
     title: string;
     description: string;
     request_type: RequestType;
+    action_key?: ApprovalActionKey;
     priority: RequestPriority;
-    reference_data?: Record<string, string | number | boolean | object>;
+    reference_data?: RequestReferenceData;
+    origin_route?: string;
+    return_to?: string;
+    target_type?: string;
+    target_id?: string | number;
+    request_key?: string;
+    idempotency_key?: string;
 }
 
 export interface RequestReviewPayload {
@@ -96,6 +136,7 @@ export interface RequestStats {
     in_review: number;
     approved: number;
     rejected: number;
+    cancelled?: number;
 }
 
 // ── Display helpers ───────────────────────────────────────────────────────────
@@ -105,6 +146,7 @@ export const STATUS_COLORS: Record<RequestStatus, 'warning' | 'info' | 'success'
     IN_REVIEW: 'info',
     APPROVED: 'success',
     REJECTED: 'danger',
+    CANCELLED: 'default',
     CLOSED: 'default',
 };
 
