@@ -11,6 +11,7 @@ interface StatsCardProps {
   };
   color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'indigo' | 'orange';
   subtitle?: string;
+  mobile?: 'show' | 'compact' | 'hide';
 }
 
 export function StatsCard({
@@ -20,6 +21,7 @@ export function StatsCard({
   trend,
   color = 'blue',
   subtitle,
+  mobile = 'compact',
 }: StatsCardProps) {
   const colorClasses = {
     blue: 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg',
@@ -31,7 +33,7 @@ export function StatsCard({
     orange: 'bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg',
   };
 
-  return (
+  const renderFullCard = () => (
     <Card className="rounded-2xl shadow-[var(--shadow-soft)]">
       <div className="p-6">
         <div className="flex items-center justify-between">
@@ -51,5 +53,24 @@ export function StatsCard({
         </div>
       </div>
     </Card>
+  );
+
+  return (
+    <>
+      {mobile === 'compact' ? (
+        <div className="md:hidden rounded-lg border theme-border theme-surface px-3 py-2">
+          <p className="break-words text-xl font-semibold leading-tight theme-text">{value}</p>
+          <p className="mt-1 break-words text-xs font-medium theme-muted">{title}</p>
+        </div>
+      ) : null}
+      {mobile === 'show' ? (
+        <div className="md:hidden">
+          {renderFullCard()}
+        </div>
+      ) : null}
+      <div className="hidden md:block">
+        {renderFullCard()}
+      </div>
+    </>
   );
 }
