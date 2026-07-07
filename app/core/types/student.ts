@@ -23,12 +23,15 @@ export interface StudentCohortEnrollment {
   curriculum_name: string;
   curriculum_type: string;
   enrolled_date: string;
+  effective_from?: string;
+  effective_to?: string | null;
   completion_date?: string;
   is_active: boolean;
   enrollment_type: 'PRIMARY' | 'ELECTIVE' | 'REMEDIAL' | 'ADVANCED' | 'TRANSFER';
   enrollment_type_display: string;
   notes: string;
   end_reason: 'COMPLETED' | 'GRADUATED' | 'TRANSFERRED' | 'WRONG_ASSIGNMENT' | 'WITHDRAWN' | 'PROMOTED' | null;
+  temporal_end_reason?: 'COMPLETION' | 'TRANSFER' | 'WITHDRAWAL' | 'GRADUATION' | 'CORRECTION' | 'PROMOTION' | null;
   subject_registration_status?: CbcRegistrationStatus;
   locked_at?: string | null;
   locked_by?: number | null;
@@ -82,7 +85,7 @@ export interface Student {
   cohort_count: number;
   current_subject_ids?: number[];
 
-  status: 'ACTIVE' | 'GRADUATED' | 'TRANSFERRED' | 'SUSPENDED' | 'WITHDRAWN';
+  status: 'ACTIVE' | 'GRADUATED' | 'TRANSFERRED' | 'SUSPENDED' | 'WITHDRAWN' | 'ARCHIVED';
   status_display: string;
   enrollment_date: string;
   email?: string;
@@ -148,13 +151,29 @@ export type StudentProfileUpdateData = Pick<
 export interface EnrollmentFormData {
   cohort_id: number;
   enrollment_type: 'PRIMARY' | 'ELECTIVE' | 'REMEDIAL' | 'ADVANCED' | 'TRANSFER';
+  effective_from: string;
+  start_reason?: 'INITIAL_ADMISSION' | 'TRANSFER_IN' | 'COHORT_MOVE' | 'RE_ENROLMENT' | 'CORRECTION';
   notes?: string;
 }
 
 export interface TransferFormData {
   new_cohort: number;
-  transfer_type: 'UPGRADE' | 'TRANSFER' | 'ADDITIONAL';
-  deactivate_current: boolean;
+  effective_from: string;
+  notes?: string;
+}
+
+export interface LearnerDeleteEligibility {
+  allowed: boolean;
+  blockers: Record<string, number>;
+  recommended_actions: Array<'withdraw' | 'archive' | 'transfer' | 'graduate'>;
+  detail: string;
+}
+
+export interface LearnerLifecyclePayload {
+  effective_date?: string;
+  effective_from?: string;
+  effective_to?: string;
+  reason?: string;
   notes?: string;
 }
 
@@ -173,6 +192,7 @@ export const StudentStatuses = [
   { value: 'TRANSFERRED', label: 'Transferred' },
   { value: 'SUSPENDED', label: 'Suspended' },
   { value: 'WITHDRAWN', label: 'Withdrawn' },
+  { value: 'ARCHIVED', label: 'Archived' },
 ];
 
 export const EnrollmentTypes = [

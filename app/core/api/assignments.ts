@@ -1,4 +1,5 @@
 import { apiClient } from '@/app/core/api/client';
+import { withClientMutationId } from '@/app/core/lib/clientMutationId';
 import type {
     Assignment,
     AssignmentCreatePayload,
@@ -6,6 +7,7 @@ import type {
     AssignmentAutoGenerateGroupsResponse,
     AssignmentEligibleLearnersParams,
     AssignmentEligibleLearnersResponse,
+    AssignmentEvidenceBridgePayload,
     AssignmentEvidenceBridgeResponse,
     AssignmentEvaluation,
     AssignmentEvaluationCreatePayload,
@@ -25,6 +27,7 @@ import type {
     AssignmentGroupCreateResponse,
     AssignmentGroupBulkMemberCreatePayload,
     AssignmentGroupBulkMemberCreateResponse,
+    AssignmentGroupEvidenceBridgePayload,
     AssignmentGroupEvidenceBridgeResponse,
     AssignmentGroupEvaluation,
     AssignmentGroupEvaluationCreatePayload,
@@ -98,7 +101,10 @@ export const assignmentsAPI = {
     },
 
     create: async (data: AssignmentCreatePayload): Promise<Assignment> => {
-        const response = await apiClient.post<Assignment>(`${ASSIGNMENTS_BASE}/`, data);
+        const response = await apiClient.post<Assignment>(
+            `${ASSIGNMENTS_BASE}/`,
+            withClientMutationId(data, 'assignment-create')
+        );
         return response.data;
     },
 
@@ -114,7 +120,7 @@ export const assignmentsAPI = {
     publish: async (id: number, data?: AssignmentPublishPayload): Promise<AssignmentPublishResponse> => {
         const response = await apiClient.post<AssignmentPublishResponse>(
             `${ASSIGNMENTS_BASE}/${id}/publish/`,
-            data
+            withClientMutationId(data ?? {}, 'assignment-publish')
         );
         return response.data;
     },
@@ -270,7 +276,10 @@ export const assignmentSubmissionAPI = {
     },
 
     create: async (data: AssignmentSubmissionCreatePayload): Promise<AssignmentSubmission> => {
-        const response = await apiClient.post<AssignmentSubmission>(`${ASSIGNMENT_SUBMISSIONS_BASE}/`, data);
+        const response = await apiClient.post<AssignmentSubmission>(
+            `${ASSIGNMENT_SUBMISSIONS_BASE}/`,
+            withClientMutationId(data, 'assignment-submission')
+        );
         return response.data;
     },
 };
@@ -290,7 +299,10 @@ export const assignmentEvaluationAPI = {
     },
 
     create: async (data: AssignmentEvaluationCreatePayload): Promise<AssignmentEvaluation> => {
-        const response = await apiClient.post<AssignmentEvaluation>(`${ASSIGNMENT_EVALUATIONS_BASE}/`, data);
+        const response = await apiClient.post<AssignmentEvaluation>(
+            `${ASSIGNMENT_EVALUATIONS_BASE}/`,
+            withClientMutationId(data, 'assignment-evaluation')
+        );
         return response.data;
     },
 
@@ -302,9 +314,13 @@ export const assignmentEvaluationAPI = {
         return response.data;
     },
 
-    bridgeToEvidence: async (id: number): Promise<AssignmentEvidenceBridgeResponse> => {
+    bridgeToEvidence: async (
+        id: number,
+        data?: AssignmentEvidenceBridgePayload
+    ): Promise<AssignmentEvidenceBridgeResponse> => {
         const response = await apiClient.post<AssignmentEvidenceBridgeResponse>(
-            `${ASSIGNMENT_EVALUATIONS_BASE}/${id}/bridge-to-evidence/`
+            `${ASSIGNMENT_EVALUATIONS_BASE}/${id}/bridge-to-evidence/`,
+            withClientMutationId(data ?? {}, 'assignment-evidence')
         );
         return response.data;
     },
@@ -385,7 +401,7 @@ export const assignmentGroupAPI = {
     ): Promise<AssignmentGroupSubmission> => {
         const response = await apiClient.post<AssignmentGroupSubmission>(
             `${ASSIGNMENT_GROUPS_BASE}/${groupId}/submissions/`,
-            data
+            withClientMutationId(data, 'assignment-group-submission')
         );
         return response.data;
     },
@@ -414,7 +430,7 @@ export const assignmentGroupEvaluationAPI = {
     ): Promise<AssignmentGroupEvaluation> => {
         const response = await apiClient.post<AssignmentGroupEvaluation>(
             `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/`,
-            data
+            withClientMutationId(data, 'assignment-group-evaluation')
         );
         return response.data;
     },
@@ -430,9 +446,13 @@ export const assignmentGroupEvaluationAPI = {
         return response.data;
     },
 
-    bridgeToEvidence: async (id: number): Promise<AssignmentGroupEvidenceBridgeResponse> => {
+    bridgeToEvidence: async (
+        id: number,
+        data?: AssignmentGroupEvidenceBridgePayload
+    ): Promise<AssignmentGroupEvidenceBridgeResponse> => {
         const response = await apiClient.post<AssignmentGroupEvidenceBridgeResponse>(
-            `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/${id}/bridge-to-evidence/`
+            `${ASSIGNMENT_GROUP_EVALUATIONS_BASE}/${id}/bridge-to-evidence/`,
+            withClientMutationId(data ?? {}, 'assignment-group-evidence')
         );
         return response.data;
     },

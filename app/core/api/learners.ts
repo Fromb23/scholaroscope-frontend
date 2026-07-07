@@ -11,7 +11,10 @@ import {
   StudentProfileUpdateData,
   StudentStats,
   TransferFormData,
-  StudentCohortEnrollment
+  StudentCohortEnrollment,
+  EnrollmentFormData,
+  LearnerDeleteEligibility,
+  LearnerLifecyclePayload,
 } from '../types/student';
 
 export const learnersAPI = {
@@ -144,9 +147,29 @@ export const learnersAPI = {
     await apiClient.delete(`/students/${id}/`);
   },
 
+  checkDeleteEligibility: async (id: number): Promise<LearnerDeleteEligibility> => {
+    const { data } = await apiClient.get<LearnerDeleteEligibility>(`/students/${id}/delete-eligibility/`);
+    return data;
+  },
+
   // Transfer student
   transferStudent: async (id: number, transferData: TransferFormData) => {
     const { data } = await apiClient.post(`/students/${id}/transfer/`, transferData);
+    return data;
+  },
+
+  withdrawStudent: async (id: number, payload?: LearnerLifecyclePayload) => {
+    const { data } = await apiClient.post(`/students/${id}/withdraw/`, payload ?? {});
+    return data;
+  },
+
+  graduateStudent: async (id: number, payload?: LearnerLifecyclePayload) => {
+    const { data } = await apiClient.post(`/students/${id}/graduate/`, payload ?? {});
+    return data;
+  },
+
+  archiveStudent: async (id: number, payload?: LearnerLifecyclePayload) => {
+    const { data } = await apiClient.post(`/students/${id}/archive/`, payload ?? {});
     return data;
   },
 
@@ -163,20 +186,35 @@ export const learnersAPI = {
   // Enroll student in a cohort
   enrollStudent: async (
     studentId: number,
-    data: {
-      cohort_id: number;
-      enrollment_type?: string;
-      notes?: string;
-      set_as_primary?: boolean;
-    }
+    data: EnrollmentFormData & { set_as_primary?: boolean }
   ) => {
     const response = await apiClient.post(
       `/students/${studentId}/enroll/`,
       {
         cohort_id: data.cohort_id,
-        enrollment_type: data.enrollment_type || 'REGULAR',
+        enrollment_type: data.enrollment_type || 'PRIMARY',
+        effective_from: data.effective_from,
+        start_reason: data.start_reason || 'INITIAL_ADMISSION',
         notes: data.notes || '',
-        set_as_primary: data.set_as_primary || false
+        set_as_primary: data.set_as_primary ?? true
+      }
+    );
+    return response.data;
+  },
+
+  reenrollStudent: async (
+    studentId: number,
+    data: EnrollmentFormData
+  ) => {
+    const response = await apiClient.post(
+      `/students/${studentId}/reenroll/`,
+      {
+        cohort_id: data.cohort_id,
+        enrollment_type: data.enrollment_type || 'PRIMARY',
+        effective_from: data.effective_from,
+        start_reason: data.start_reason || 'RE_ENROLMENT',
+        notes: data.notes || '',
+        set_as_primary: true
       }
     );
     return response.data;
@@ -188,6 +226,7 @@ export const learnersAPI = {
     cohortId: number,
     data: {
       end_reason: string;
+      effective_to: string;
       notes?: string;
     }
   ) => {
@@ -196,6 +235,7 @@ export const learnersAPI = {
       {
         cohort_id: cohortId,
         end_reason: data.end_reason,
+        effective_to: data.effective_to,
         notes: data.notes || ''
       }
     );

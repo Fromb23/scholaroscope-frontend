@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     ArrowLeft, Edit, Mail, Phone, User,
     ChevronDown, ChevronRight, ClipboardList, FileBarChart, FileText, GraduationCap,
-    Trash2, UserPlus, UserMinus, Users, BookOpen,
+    Archive, ArrowRightLeft, Trash2, UserPlus, UserMinus, Users, BookOpen,
 } from 'lucide-react';
 import { useStudent } from '@/app/core/hooks/useStudents';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
@@ -28,7 +28,7 @@ import { DataTable, Column } from '@/app/components/ui/Table';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import {
-    StatusModal, EnrollModal, UnenrollModal, DeleteStudentModal,
+    StatusModal, EnrollModal, TransferLearnerModal, UnenrollModal, DeleteStudentModal,
 } from '@/app/core/components/learners/LearnerModals';
 import { LearnerAssessmentPickerModal } from '@/app/core/components/learners/LearnerAssessmentPickerModal';
 import type { StudentCohortEnrollment } from '@/app/core/types/student';
@@ -38,7 +38,7 @@ import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success', GRADUATED: 'info', TRANSFERRED: 'warning',
-    SUSPENDED: 'danger', WITHDRAWN: 'danger',
+    SUSPENDED: 'danger', WITHDRAWN: 'danger', ARCHIVED: 'warning',
 };
 
 const ENROLLMENT_TYPE_VARIANTS: Record<string, 'default' | 'info' | 'warning' | 'success'> = {
@@ -189,7 +189,8 @@ export default function LearnerDetailPage() {
     const {
         student, loading, error,
         actionLoading, actionError, setActionError,
-        updateStatus, enroll, unenroll, deleteStudent,
+        updateStatus, reenroll, transfer, unenroll, deleteStudent,
+        checkDeleteEligibility, withdraw, graduate, archiveStudent,
     } = useStudent(studentId);
 
     const { data: attendanceData } = useStudentAttendanceHistory(studentId);
@@ -197,6 +198,7 @@ export default function LearnerDetailPage() {
 
     const [statusOpen, setStatusOpen] = useState(false);
     const [enrollOpen, setEnrollOpen] = useState(false);
+    const [transferOpen, setTransferOpen] = useState(false);
     const [unenrollTarget, setUnenrollTarget] = useState<StudentCohortEnrollment | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [assessmentPickerOpen, setAssessmentPickerOpen] = useState(false);
@@ -214,6 +216,7 @@ export default function LearnerDetailPage() {
     const canEdit = !!user && hasCapability(activeRole, 'EDIT_LEARNER', capabilities);
     const canManage = !!user && hasCapability(activeRole, 'MANAGE_ENROLLMENT', capabilities);
     const canManageSubjectParticipation = capabilities.can_manage_learners ?? isAdminOrAbove(user, activeRole);
+    const canUseDangerZone = canManageSubjectParticipation;
     const canGenerateOverviewReport = !!user && capabilities.can_view_reports;
     const canGenerateSubjectReport = !!user && capabilities.can_view_reports;
     const canRecordAssessment = capabilities.can_manage_assessments;
@@ -252,6 +255,15 @@ export default function LearnerDetailPage() {
     );
     const currentCohortId = currentEnrollment?.cohort ?? null;
     const currentCohortName = currentEnrollment?.cohort_name ?? null;
+    const hasActivePrimaryCohort = activeEnrollments.some(enrollment => (
+        enrollment.is_active
+        && enrollment.enrollment_type === 'PRIMARY'
+        && enrollment.cohort === student?.primary_cohort
+    ));
+    const activeSubjectNames = useMemo(
+        () => (student?.current_subjects ?? []).map(subject => `${subject.code} ${subject.name}`),
+        [student?.current_subjects]
+    );
     const { subjects: cohortSubjects, loading: cohortSubjectsLoading } = useCohortSubjectsByCohort(currentCohortId);
     const currentSubjectIds = useMemo(
         () => new Set((student?.current_subjects ?? []).map(subject => subject.id)),
@@ -570,29 +582,40 @@ export default function LearnerDetailPage() {
     const historySummary = hasHistory
         ? `${historyEnrollments.length} historical enrollment${historyEnrollments.length === 1 ? '' : 's'}`
         : 'No enrollment history';
-    const headerMenuItems = [
-        ...(canManage ? [
-            {
-                label: 'Enroll in Cohort',
-                onSelect: () => setEnrollOpen(true),
-                icon: <UserPlus className="h-4 w-4" />,
-            },
+    const cohortLifecycleItems = canManage
+        ? [
+            ...(hasActivePrimaryCohort ? [
+                {
+                    label: 'Transfer Learner',
+                    onSelect: () => setTransferOpen(true),
+                    icon: <ArrowRightLeft className="h-4 w-4" />,
+                },
+                {
+                    label: 'Unenroll Learner',
+                    onSelect: () => currentEnrollment ? setUnenrollTarget(currentEnrollment) : undefined,
+                    disabled: !currentEnrollment,
+                    icon: <UserMinus className="h-4 w-4" />,
+                },
+            ] : [
+                {
+                    label: 'Re-enroll Learner',
+                    onSelect: () => setEnrollOpen(true),
+                    icon: <UserPlus className="h-4 w-4" />,
+                },
+            ]),
             {
                 label: 'Update Status',
                 onSelect: () => setStatusOpen(true),
                 icon: <Users className="h-4 w-4" />,
             },
-        ] : []),
+        ]
+        : [];
+    const headerMenuItems = [
+        ...cohortLifecycleItems,
         ...(canEdit && !hasReportActions ? [] : canEdit ? [{
             label: 'Edit',
             href: `/learners/${studentId}/edit`,
             icon: <Edit className="h-4 w-4" />,
-        }] : []),
-        ...(canEdit ? [{
-            label: 'Delete',
-            onSelect: () => setDeleteOpen(true),
-            destructive: true,
-            icon: <Trash2 className="h-4 w-4" />,
         }] : []),
     ];
     const mobileMoreMenuItems = [
@@ -611,24 +634,7 @@ export default function LearnerDetailPage() {
             href: `/learners/${studentId}/edit`,
             icon: <Edit className="h-4 w-4" />,
         }] : []),
-        ...(canManage ? [
-            {
-                label: 'Enroll in Cohort',
-                onSelect: () => setEnrollOpen(true),
-                icon: <UserPlus className="h-4 w-4" />,
-            },
-            {
-                label: 'Update Status',
-                onSelect: () => setStatusOpen(true),
-                icon: <Users className="h-4 w-4" />,
-            },
-        ] : []),
-        ...(canEdit ? [{
-            label: 'Delete Learner',
-            onSelect: () => setDeleteOpen(true),
-            destructive: true,
-            icon: <Trash2 className="h-4 w-4" />,
-        }] : []),
+        ...cohortLifecycleItems,
     ];
 
     if (loading) return <LoadingSpinner message="Loading student..." />;
@@ -793,9 +799,15 @@ export default function LearnerDetailPage() {
                 <div className="space-y-4">
                     {canManage ? (
                         <div className="flex justify-end">
-                            <Button size="sm" onClick={() => setEnrollOpen(true)}>
-                                <UserPlus className="mr-2 h-4 w-4" />Add Cohort
-                            </Button>
+                            {hasActivePrimaryCohort ? (
+                                <Button size="sm" onClick={() => setTransferOpen(true)}>
+                                    <ArrowRightLeft className="mr-2 h-4 w-4" />Transfer Learner
+                                </Button>
+                            ) : (
+                                <Button size="sm" onClick={() => setEnrollOpen(true)}>
+                                    <UserPlus className="mr-2 h-4 w-4" />Re-enroll Learner
+                                </Button>
+                            )}
                         </div>
                     ) : null}
                     {activeEnrollments.length === 0 ? (
@@ -1129,6 +1141,45 @@ export default function LearnerDetailPage() {
                 </LearnerSectionCard>
             ) : null}
 
+            {canUseDangerZone ? (
+                <Card className="border border-red-200">
+                    <div className="space-y-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <h2 className="text-lg font-semibold text-red-700">Danger Zone</h2>
+                                <p className="mt-1 text-sm text-gray-600">
+                                    Use lifecycle actions to preserve academic history. Permanent delete is only for mistaken records with no evidence.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {canManage && hasActivePrimaryCohort ? (
+                                <Button variant="secondary" onClick={() => setTransferOpen(true)} disabled={actionLoading}>
+                                    <ArrowRightLeft className="h-4 w-4" />
+                                    Transfer Learner
+                                </Button>
+                            ) : null}
+                            <Button variant="secondary" onClick={() => withdraw()} disabled={actionLoading}>
+                                <UserMinus className="h-4 w-4" />
+                                Withdraw Learner
+                            </Button>
+                            <Button variant="secondary" onClick={() => graduate()} disabled={actionLoading}>
+                                <GraduationCap className="h-4 w-4" />
+                                Graduate Learner
+                            </Button>
+                            <Button variant="secondary" onClick={() => archiveStudent()} disabled={actionLoading}>
+                                <Archive className="h-4 w-4" />
+                                Archive Learner
+                            </Button>
+                            <Button variant="danger" onClick={() => setDeleteOpen(true)} disabled={actionLoading}>
+                                <Trash2 className="h-4 w-4" />
+                                Review Permanent Delete
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
+
             {showMobileReportBar ? (
                 <div className="theme-surface-elevated fixed inset-x-0 bottom-0 z-30 border-t px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] md:hidden theme-border">
                     <div className="flex items-center gap-3">
@@ -1155,8 +1206,18 @@ export default function LearnerDetailPage() {
             <EnrollModal
                 isOpen={enrollOpen}
                 onClose={() => setEnrollOpen(false)}
-                onSubmit={enroll}
+                onSubmit={reenroll}
                 availableCohorts={availableCohorts}
+                activeSubjectNames={activeSubjectNames}
+                loading={actionLoading}
+            />
+            <TransferLearnerModal
+                isOpen={transferOpen}
+                onClose={() => setTransferOpen(false)}
+                onSubmit={transfer}
+                currentEnrollment={currentEnrollment}
+                availableCohorts={availableCohorts}
+                activeSubjectNames={activeSubjectNames}
                 loading={actionLoading}
             />
             <UnenrollModal
@@ -1165,12 +1226,16 @@ export default function LearnerDetailPage() {
                 onSubmit={data => unenroll(unenrollTarget!.cohort, data)}
                 enrollment={unenrollTarget}
                 studentName={student.full_name}
+                activeSubjectNames={activeSubjectNames}
                 loading={actionLoading}
             />
             <DeleteStudentModal
                 isOpen={deleteOpen}
                 onClose={() => setDeleteOpen(false)}
                 onConfirm={handleDelete}
+                onCheckEligibility={checkDeleteEligibility}
+                onWithdraw={() => withdraw()}
+                onArchive={() => archiveStudent()}
                 studentName={student.full_name}
                 loading={actionLoading}
             />

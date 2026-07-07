@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { apiClient } from './client';
+import { withClientMutationId } from '@/app/core/lib/clientMutationId';
 import {
   AvailableSessionCohortSubjectsResponse,
   Session,
@@ -228,6 +229,7 @@ export const sessionAPI = {
   ): Promise<SessionAssignmentDraftResponse> => {
     const res = await apiClient.post<SessionAssignmentDraftResponse>(
       `/sessions/${id}/create_assignment_from_lesson/`,
+      withClientMutationId({}, 'session-assignment-draft'),
     );
     return res.data;
   },
@@ -237,7 +239,7 @@ export const sessionAPI = {
   ): Promise<SessionIssuePreparedAssignmentResponse> => {
     const res = await apiClient.post<SessionIssuePreparedAssignmentResponse>(
       `/sessions/${id}/issue-prepared-assignment/`,
-      data,
+      withClientMutationId(data, 'session-issue-assignment'),
     );
     return res.data;
   },

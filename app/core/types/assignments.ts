@@ -1,4 +1,5 @@
 import type { PaginatedResponse } from '@/app/core/types/api';
+import type { ClientMutationFields } from '@/app/core/lib/clientMutationId';
 
 export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
 export type AssignmentDeliveryMode = 'INDIVIDUAL' | 'GROUP';
@@ -171,7 +172,7 @@ export interface Assignment {
     group_evaluation_count: number;
 }
 
-export interface AssignmentCreatePayload {
+export interface AssignmentCreatePayload extends ClientMutationFields {
     cohort_subject: number;
     instructor?: number;
     title: string;
@@ -193,7 +194,7 @@ export interface AssignmentCreatePayload {
     attachment_slots?: AssignmentAttachmentSlot[];
 }
 
-export interface PrepareAssignmentFromLessonPlanPayload {
+export interface PrepareAssignmentFromLessonPlanPayload extends ClientMutationFields {
     title?: string;
     instructions?: string;
     delivery_mode?: AssignmentDeliveryMode;
@@ -345,7 +346,7 @@ export interface AssignmentRecipientSelectionPayload {
     catch_up?: boolean;
 }
 
-export interface AssignmentPublishPayload {
+export interface AssignmentPublishPayload extends ClientMutationFields {
     recipient_mode?: Exclude<AssignmentRecipientMode, 'none'>;
     student_ids?: number[];
 }
@@ -355,7 +356,7 @@ export interface AssignmentPublishResponse {
     recipients: AssignmentRecipientCreationResult;
 }
 
-export interface IssuePreparedAssignmentPayload {
+export interface IssuePreparedAssignmentPayload extends ClientMutationFields {
     assignment_id: number;
     recipient_mode?: Exclude<AssignmentRecipientMode, 'none'>;
     student_ids?: number[];
@@ -410,11 +411,12 @@ export interface AssignmentSubmission {
     attachment_metadata: unknown[];
     status: AssignmentSubmissionStatus;
     is_late: boolean;
+    is_current?: boolean;
     created_at: string;
     updated_at: string;
 }
 
-export interface AssignmentSubmissionCreatePayload {
+export interface AssignmentSubmissionCreatePayload extends ClientMutationFields {
     assignment: number;
     student: number;
     submitted_at?: string;
@@ -437,6 +439,7 @@ export interface AssignmentEvaluation {
     narrative: string;
     competency_state: string | null;
     evidence_created: boolean;
+    is_current?: boolean;
     evidence_record_id: number | null;
     evidence_status?: AssignmentEvidenceStatus;
     evidence_warning?: string;
@@ -444,7 +447,7 @@ export interface AssignmentEvaluation {
     updated_at: string;
 }
 
-export interface AssignmentEvaluationCreatePayload {
+export interface AssignmentEvaluationCreatePayload extends ClientMutationFields {
     submission: number;
     evaluation_type: AssignmentEvaluationType;
     numeric_score?: number | null;
@@ -467,6 +470,8 @@ export interface AssignmentEvidenceBridgeResponse {
     evidence_record_id: number | null;
     detail: string;
 }
+
+export type AssignmentEvidenceBridgePayload = ClientMutationFields;
 
 export interface AssignmentEvaluationFilters {
     assignment?: number;
@@ -614,12 +619,13 @@ export interface AssignmentGroupSubmission {
     text_response: string;
     attachment_metadata: unknown[];
     status: AssignmentGroupSubmissionStatus;
+    is_current?: boolean;
     created_at: string;
     updated_at: string;
     is_late?: boolean;
 }
 
-export interface AssignmentGroupSubmissionCreatePayload {
+export interface AssignmentGroupSubmissionCreatePayload extends ClientMutationFields {
     submitted_at?: string;
     text_response?: string;
     attachment_metadata?: unknown[];
@@ -671,6 +677,7 @@ export interface AssignmentGroupEvaluation {
     narrative: string;
     competency_state: string | null;
     projection_mode: AssignmentEvidenceProjectionMode;
+    is_current?: boolean;
     member_overrides?: AssignmentGroupMemberEvaluationOverride[];
     evidence_created?: boolean;
     evidence_record_ids?: number[];
@@ -680,7 +687,7 @@ export interface AssignmentGroupEvaluation {
     updated_at: string;
 }
 
-export interface AssignmentGroupEvaluationCreatePayload {
+export interface AssignmentGroupEvaluationCreatePayload extends ClientMutationFields {
     group_submission: number;
     evaluation_type?: AssignmentEvaluationType;
     numeric_score?: number | null;
@@ -722,6 +729,8 @@ export interface AssignmentGroupEvidenceBridgeResponse {
     skipped_member_ids: number[];
     detail: string;
 }
+
+export type AssignmentGroupEvidenceBridgePayload = ClientMutationFields;
 
 export type AssignmentListResponse = Assignment[] | PaginatedResponse<Assignment>;
 export type AssignmentRecipientListResponse =
