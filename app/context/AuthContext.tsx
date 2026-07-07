@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
 import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { logoutLocalFirst } from '@/app/core/auth/logout';
+import { isNetworkError } from '@/app/core/auth/networkDetection';
 import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
 import type {
@@ -38,6 +39,7 @@ interface AuthContextType {
   activeRole: Role | null;
   loading: boolean;
   loggingOut: boolean;
+  offline: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
   logout: () => Promise<void>;
@@ -142,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessNotices, setAccessNotices] = useState<AccessNotice[]>([]);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [offline, setOffline] = useState(false);
   const authStateVersionRef = useRef(0);
 
   const activeRole = useMemo(
@@ -165,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyAuthState = useCallback((payload: AuthStatePayload) => {
     authStateVersionRef.current += 1;
     setLoggingOut(false);
+    setOffline(false);
     setAccessToken(payload.access);
     setUser(payload.user);
     setActiveOrg(payload.active_org);
@@ -224,39 +228,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => registerAuthFailureHandler(null);
   }, [clearAuthState]);
 
+  const boot = useCallback(async (isCancelled: () => boolean = () => false) => {
+    const bootAuthStateVersion = authStateVersionRef.current;
+    const bootWasSuperseded = () => (
+      isCancelled() || authStateVersionRef.current !== bootAuthStateVersion
+    );
+
+    setLoading(true);
+
+    try {
+      const response = await authAPI.refresh();
+      if (bootWasSuperseded()) {
+        return;
+      }
+      applyAuthState(response);
+      setLoading(false);
+    } catch (error) {
+      if (bootWasSuperseded()) {
+        return;
+      }
+      if (isNetworkError(error)) {
+        setOffline(true);
+        setLoading(false);
+        return;
+      }
+      clearAuthState();
+      setLoading(false);
+    }
+  }, [applyAuthState, clearAuthState]);
+
   useEffect(() => {
     let cancelled = false;
 
     clearLegacyTokenStorage();
 
-    const boot = async () => {
-      const bootAuthStateVersion = authStateVersionRef.current;
-      const bootWasSuperseded = () => (
-        cancelled || authStateVersionRef.current !== bootAuthStateVersion
-      );
-
-      try {
-        const response = await authAPI.refresh();
-        if (bootWasSuperseded()) {
-          return;
-        }
-        applyAuthState(response);
-        setLoading(false);
-      } catch {
-        if (bootWasSuperseded()) {
-          return;
-        }
-        clearAuthState();
-        setLoading(false);
-      }
-    };
-
-    void boot();
+    void boot(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [applyAuthState, clearAuthState]);
+  }, [boot]);
 
   useEffect(() => {
     const handleMismatch = () => {
@@ -275,6 +286,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [syncContext]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      if (offline) {
+        setOffline(false);
+        void boot();
+      }
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [boot, offline]);
 
   const login = useCallback(async (email: string, password: string) => {
     const response = await authAPI.login({ email, password });
@@ -364,6 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activeRole,
       loading,
       loggingOut,
+      offline,
       isAuthenticated: !!user,
       login,
       logout,
