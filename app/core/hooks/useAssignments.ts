@@ -12,6 +12,7 @@ import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import { sessionAPI } from '@/app/core/api/sessions';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { assignmentKeys } from '@/app/core/lib/queryKeys';
+import { getStableClientMutationId } from '@/app/core/lib/clientMutationId';
 import { emitLessonPlanDataChanged } from '@/app/core/lib/lessonPlanEvents';
 import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import type { PaginatedResponse } from '@/app/core/types/api';
@@ -909,15 +910,17 @@ export function usePublishAssignment() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({
-            assignmentId,
-            data,
-        }: {
+        mutationFn: async (variables: {
             assignmentId: number;
             data?: AssignmentPublishPayload;
         }): Promise<AssignmentPublishResponse> => {
+            const { assignmentId, data } = variables;
             try {
-                return await assignmentsAPI.publish(assignmentId, data);
+                return await assignmentsAPI.publish(assignmentId, {
+                    ...(data ?? {}),
+                    clientMutationId: data?.clientMutationId
+                        ?? getStableClientMutationId(variables, 'assignment-publish'),
+                });
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to publish assignment.'));
             }
@@ -1504,7 +1507,9 @@ export function useBridgeAssignmentEvaluation() {
             evaluationId: number;
         }): Promise<AssignmentEvidenceBridgeResponse> => {
             try {
-                return await assignmentEvaluationAPI.bridgeToEvidence(variables.evaluationId);
+                return await assignmentEvaluationAPI.bridgeToEvidence(variables.evaluationId, {
+                    clientMutationId: getStableClientMutationId(variables, 'assignment-evidence'),
+                });
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to bridge evaluation to evidence.'));
             }
@@ -1528,7 +1533,9 @@ export function useBridgeAssignmentGroupEvaluation() {
             evaluationId: number;
         }): Promise<AssignmentGroupEvidenceBridgeResponse> => {
             try {
-                return await assignmentGroupEvaluationAPI.bridgeToEvidence(variables.evaluationId);
+                return await assignmentGroupEvaluationAPI.bridgeToEvidence(variables.evaluationId, {
+                    clientMutationId: getStableClientMutationId(variables, 'assignment-group-evidence'),
+                });
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to bridge group evaluation to evidence.'));
             }

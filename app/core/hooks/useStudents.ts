@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { learnersAPI } from '../api/learners';
-import { Student, StudentStats, StudentDetail } from '../types/student';
+import {
+  EnrollmentFormData,
+  LearnerDeleteEligibility,
+  LearnerLifecyclePayload,
+  Student,
+  StudentDetail,
+  StudentStats,
+  TransferFormData,
+} from '../types/student';
 import { ApiError, extractErrorMessage } from '../types/errors';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 
@@ -149,13 +157,35 @@ export function useStudent(id: number) {
     return result.data ?? null;
   };
 
-  const withAction = async (fn: () => Promise<void>) => {
+  const invalidateLearnerDependencies = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: academicKeys.students.all }),
+      queryClient.invalidateQueries({ queryKey: academicKeys.students.detail(id) }),
+      queryClient.invalidateQueries({ queryKey: academicKeys.cohorts.all }),
+      queryClient.invalidateQueries({ queryKey: ['academic', 'cohorts', 'students', 'enrolled'] }),
+      queryClient.invalidateQueries({ queryKey: ['academic', 'cohorts', 'students', 'available'] }),
+      queryClient.invalidateQueries({ queryKey: ['academic', 'cohorts', 'subject-participation'] }),
+      queryClient.invalidateQueries({ queryKey: academicKeys.cohortSubjects.learnersPrefix }),
+      queryClient.invalidateQueries({
+        predicate: queryCacheItem => {
+          const key = queryCacheItem.queryKey;
+          return Array.isArray(key)
+            && key.some(part => typeof part === 'string' && ['report', 'reports', 'reporting'].includes(part));
+        },
+      }),
+    ]);
+  };
+
+  const withAction = async <T,>(fn: () => Promise<T>, options?: { refetch?: boolean }): Promise<T> => {
     setActionLoading(true);
     setActionError(null);
     try {
-      await fn();
-      await queryClient.invalidateQueries({ queryKey: academicKeys.students.detail(id) });
-      await loadStudent();
+      const result = await fn();
+      await invalidateLearnerDependencies();
+      if (options?.refetch ?? true) {
+        await loadStudent();
+      }
+      return result;
     } catch (err) {
       const message = extractErrorMessage(err as ApiError, 'Action failed');
       setActionError(message);
@@ -168,14 +198,34 @@ export function useStudent(id: number) {
   const updateStatus = (status: string, deactivateEnrollments: boolean, notes: string) =>
     withAction(() => learnersAPI.updateStatus(id, status, deactivateEnrollments, notes));
 
-  const enroll = (data: { cohort_id: number; enrollment_type: string; notes: string }) =>
+  const enroll = (data: EnrollmentFormData) =>
     withAction(() => learnersAPI.enrollStudent(id, data));
 
-  const unenroll = (cohortId: number, data: { end_reason: string; notes: string }) =>
+  const reenroll = (data: EnrollmentFormData) =>
+    withAction(() => learnersAPI.reenrollStudent(id, data));
+
+  const transfer = (data: TransferFormData) =>
+    withAction(() => learnersAPI.transferStudent(id, data));
+
+  const unenroll = (cohortId: number, data: { end_reason: string; effective_to: string; notes: string }) =>
     withAction(() => learnersAPI.unenrollStudent(id, cohortId, data));
 
   const deleteStudent = () =>
-    withAction(() => learnersAPI.deleteStudent(id));
+    withAction(() => learnersAPI.deleteStudent(id), { refetch: false });
+
+  const checkDeleteEligibility = useCallback(
+    (): Promise<LearnerDeleteEligibility> => learnersAPI.checkDeleteEligibility(id),
+    [id]
+  );
+
+  const withdraw = (payload?: LearnerLifecyclePayload) =>
+    withAction(() => learnersAPI.withdrawStudent(id, payload));
+
+  const graduate = (payload?: LearnerLifecyclePayload) =>
+    withAction(() => learnersAPI.graduateStudent(id, payload));
+
+  const archiveStudent = (payload?: LearnerLifecyclePayload) =>
+    withAction(() => learnersAPI.archiveStudent(id, payload));
 
   return {
     student: query.data ?? null,
@@ -183,7 +233,8 @@ export function useStudent(id: number) {
     error: query.error?.message ?? null,
     actionLoading, actionError, setActionError,
     reload: loadStudent,
-    updateStatus, enroll, unenroll, deleteStudent,
+    updateStatus, enroll, reenroll, transfer, unenroll, deleteStudent,
+    checkDeleteEligibility, withdraw, graduate, archiveStudent,
   };
 }
 

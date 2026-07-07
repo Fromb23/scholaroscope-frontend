@@ -4,6 +4,7 @@ import {
     getDownloadFileName,
     normalizeBlobError,
 } from '@/app/core/api/downloads';
+import { withClientMutationId } from '@/app/core/lib/clientMutationId';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
     PrepareAssignmentFromLessonPlanPayload,
@@ -152,7 +153,8 @@ export const lessonPlanAPI = {
 
     createAssignmentDraft: async (id: number): Promise<PrepareAssignmentFromLessonPlanResponse> => {
         const response = await apiClient.post<PrepareAssignmentFromLessonPlanResponse>(
-            `${LESSON_PLANS_BASE_PATH}/${id}/create_assignment_draft/`
+            `${LESSON_PLANS_BASE_PATH}/${id}/create_assignment_draft/`,
+            withClientMutationId({}, 'lesson-plan-assignment-draft')
         );
         return response.data;
     },
@@ -163,7 +165,7 @@ export const lessonPlanAPI = {
     ): Promise<PrepareAssignmentFromLessonPlanResponse> => {
         const response = await apiClient.post<PrepareAssignmentFromLessonPlanResponse>(
             `${LESSON_PLANS_BASE_PATH}/${id}/prepare-assignment/`,
-            payload,
+            withClientMutationId(payload, 'lesson-plan-prepare-assignment'),
         );
         return response.data;
     },
