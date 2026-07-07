@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Download, Users, UserPlus, UserMinus, X } from 'lucide-react';
+import { CheckCircle2, Users, UserPlus, UserMinus, X } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import {
     bulkEnrollCohortSubjectLearners,
@@ -18,26 +17,27 @@ import { academicKeys } from '@/app/core/lib/queryKeys';
 import { isAdminOrAbove, isInstructor as hasInstructorRole } from '@/app/utils/permissions';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { Card } from '@/app/components/ui/Card';
-import { Button } from '@/app/components/ui/Button';
-import { Badge } from '@/app/components/ui/Badge';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { CohortSubjectLearnersHeader } from '@/app/core/components/academic/cohortSubjects/CohortSubjectLearnersHeader';
+import {
+    LearnerTable,
+    MobileLearnerSelectionList,
+    MobileReadOnlyLearnerList,
+    MobileSelectionActionBar,
+    ReadOnlyLearnerTable,
+} from '@/app/core/components/academic/cohortSubjects/CohortSubjectLearnerCards';
 import {
     buildClassSubjectReturnTo,
     buildLearnerCreateHref,
 } from '@/app/core/components/learners/learnerCreateNavigation';
-import { buildClassSubjectLearnerProfileHref } from '@/app/core/components/learners/learnerProfileNavigation';
+import {
+    buildClassSubjectLearnerProfileHref,
+    buildLearnerProfileHref,
+} from '@/app/core/components/learners/learnerProfileNavigation';
 import { buildLearnerSubjectReportHref } from '@/app/core/lib/learnerReportingRoutes';
 import { shouldUseInstructorReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/app/components/ui/Table';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type {
@@ -50,225 +50,6 @@ import type { StudentSummary } from '@/app/core/types/student';
 interface ResultBannerState {
     tone: 'success' | 'error';
     message: string;
-}
-
-interface LearnerTableProps {
-    title: string;
-    description: string;
-    icon: typeof Users;
-    learners: StudentSummary[];
-    selectedIds: Set<number>;
-    onToggle: (studentId: number) => void;
-    onToggleAll: () => void;
-    actionLabel: string;
-    actionVariant: 'primary' | 'danger';
-    onAction: () => void;
-    actionDisabled: boolean;
-    emptyMessage: string;
-}
-
-function getStudentName(student: StudentSummary) {
-    if (student.full_name?.trim()) return student.full_name.trim();
-
-    const parts = [
-        student.first_name,
-        student.middle_name,
-        student.last_name,
-    ].filter((value): value is string => Boolean(value?.trim()));
-
-    return parts.length > 0 ? parts.join(' ') : `Learner #${student.id}`;
-}
-
-function getStudentContact(student: StudentSummary) {
-    const contact = [student.email, student.phone]
-        .filter((value): value is string => Boolean(value?.trim()))
-        .join(' • ');
-
-    return contact || '—';
-}
-
-function LearnerTable({
-    title,
-    description,
-    icon: Icon,
-    learners,
-    selectedIds,
-    onToggle,
-    onToggleAll,
-    actionLabel,
-    actionVariant,
-    onAction,
-    actionDisabled,
-    emptyMessage,
-}: LearnerTableProps) {
-    const allSelected = learners.length > 0 && learners.every((learner) => selectedIds.has(learner.id));
-
-    return (
-        <Card>
-            <div className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                            <Icon className="h-5 w-5 text-blue-600" />
-                            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-                            <Badge variant="info">{learners.length}</Badge>
-                        </div>
-                        <p className="text-sm text-gray-500">{description}</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-500">{selectedIds.size} selected</span>
-                        <Button
-                            size="sm"
-                            variant={actionVariant === 'danger' ? 'danger' : 'primary'}
-                            disabled={actionDisabled}
-                            onClick={onAction}
-                        >
-                            {actionLabel}
-                        </Button>
-                    </div>
-                </div>
-
-                {learners.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
-                        {emptyMessage}
-                    </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <tr>
-                                <TableHead>
-                                    <input
-                                        type="checkbox"
-                                        checked={allSelected}
-                                        onChange={onToggleAll}
-                                        aria-label={`Select all ${title.toLowerCase()}`}
-                                    />
-                                </TableHead>
-                                <TableHead>Learner</TableHead>
-                                <TableHead>Admission No.</TableHead>
-                                <TableHead>Contact</TableHead>
-                            </tr>
-                        </TableHeader>
-                        <TableBody>
-                            {learners.map((learner) => (
-                                <TableRow key={learner.id}>
-                                    <TableCell>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.has(learner.id)}
-                                            onChange={() => onToggle(learner.id)}
-                                            aria-label={`Select ${getStudentName(learner)}`}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-gray-900">{getStudentName(learner)}</p>
-                                            {learner.primary_cohort_name ? (
-                                                <p className="text-xs text-gray-500">{learner.primary_cohort_name}</p>
-                                            ) : null}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="font-mono text-sm text-gray-700">{learner.admission_number}</span>
-                                    </TableCell>
-                                    <TableCell>{getStudentContact(learner)}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
-            </div>
-        </Card>
-    );
-}
-
-function getLearnerStatus(student: StudentSummary) {
-    return student.status_display?.trim() || student.status?.trim() || '—';
-}
-
-function getLearnerStatusVariant(student: StudentSummary): 'success' | 'warning' | 'danger' | 'info' | 'default' {
-    switch (student.status) {
-        case 'ACTIVE':
-            return 'success';
-        case 'TRANSFERRED':
-            return 'warning';
-        case 'GRADUATED':
-            return 'info';
-        case 'SUSPENDED':
-        case 'WITHDRAWN':
-            return 'danger';
-        default:
-            return 'default';
-    }
-}
-
-function ReadOnlyLearnerTable({
-    learners,
-    buildLearnerHref,
-}: {
-    learners: StudentSummary[];
-    buildLearnerHref: (learnerId: number) => string;
-}) {
-    if (learners.length === 0) {
-        return (
-            <Card>
-                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
-                    No learners are enrolled in this cohort subject yet.
-                </div>
-            </Card>
-        );
-    }
-
-    return (
-        <Card>
-            <div className="space-y-4">
-                <div className="space-y-1">
-                    <h2 className="text-lg font-semibold text-gray-900">Enrolled Learners</h2>
-                    <p className="text-sm text-gray-500">
-                        Read-only learner list for this assigned cohort subject.
-                    </p>
-                </div>
-
-                <Table>
-                    <TableHeader>
-                        <tr>
-                            <TableHead>Admission No.</TableHead>
-                            <TableHead>Learner Name</TableHead>
-                            <TableHead>Status</TableHead>
-                        </tr>
-                    </TableHeader>
-                    <TableBody>
-                        {learners.map((learner) => (
-                            <TableRow key={learner.id}>
-                                <TableCell>
-                                    <span className="font-mono text-sm text-gray-700">{learner.admission_number}</span>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="min-w-0">
-                                        <Link
-                                            href={buildLearnerHref(learner.id)}
-                                            className="font-medium text-blue-600 hover:underline"
-                                        >
-                                            {getStudentName(learner)}
-                                        </Link>
-                                        {learner.primary_cohort_name ? (
-                                            <p className="text-xs text-gray-500">{learner.primary_cohort_name}</p>
-                                        ) : null}
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={getLearnerStatusVariant(learner)}>
-                                        {getLearnerStatus(learner)}
-                                    </Badge>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        </Card>
-    );
 }
 
 function buildEnrollResultMessage(result: BulkSubjectEnrollResponse) {
@@ -438,6 +219,7 @@ export default function CohortSubjectLearnersPage() {
         returnTo: subjectReturnTo,
     });
     const canViewCohortStudents = canManageLearners;
+    const addLearnerActionLabel = 'Add learner to this class';
     const pageTitle = instructorView
         ? `${subjectLabel} Learners`
         : `Manage ${subjectLabel} Learners`;
@@ -455,29 +237,59 @@ export default function CohortSubjectLearnersPage() {
         capabilities,
     });
 
-    const toggleSelection = (
-        setter: Dispatch<SetStateAction<Set<number>>>,
-        studentId: number
-    ) => {
-        setter((current) => {
-            const next = new Set(current);
-            if (next.has(studentId)) {
-                next.delete(studentId);
-            } else {
-                next.add(studentId);
-            }
-            return next;
-        });
+    const toggleStudentId = (current: Set<number>, studentId: number) => {
+        const next = new Set(current);
+        if (next.has(studentId)) {
+            next.delete(studentId);
+        } else {
+            next.add(studentId);
+        }
+        return next;
+    };
+
+    const toggleEnrolledSelection = (studentId: number) => {
+        setSelectedAvailable(new Set());
+        setSelectedEnrolled((current) => toggleStudentId(current, studentId));
+    };
+
+    const toggleAvailableSelection = (studentId: number) => {
+        setSelectedEnrolled(new Set());
+        setSelectedAvailable((current) => toggleStudentId(current, studentId));
     };
 
     const toggleAllSelection = (
         learners: StudentSummary[],
         selectedIds: Set<number>,
-        setter: Dispatch<SetStateAction<Set<number>>>
+        setter: (value: Set<number>) => void
     ) => {
         const allSelected = learners.length > 0 && learners.every((learner) => selectedIds.has(learner.id));
         setter(allSelected ? new Set() : new Set(learners.map((learner) => learner.id)));
     };
+
+    const toggleAllEnrolledSelection = () => {
+        setSelectedAvailable(new Set());
+        toggleAllSelection(learnerData.enrolled, selectedEnrolled, setSelectedEnrolled);
+    };
+
+    const toggleAllAvailableSelection = () => {
+        setSelectedEnrolled(new Set());
+        toggleAllSelection(learnerData.available, selectedAvailable, setSelectedAvailable);
+    };
+
+    const buildAdminLearnerHref = (learnerId: number) => {
+        const returnTo = currentReturnTo;
+        return buildLearnerProfileHref(learnerId, returnTo);
+    };
+
+    const buildInstructorLearnerHref = (learnerId: number) => (
+        canOpenInstructorLearnerReports
+            ? buildLearnerSubjectReportHref(learnerId, cohortSubjectId, { returnTo: currentReturnTo })
+            : buildClassSubjectLearnerProfileHref(
+                learnerId,
+                learnerData.cohort_id,
+                cohortSubjectId,
+            )
+    );
 
     const handleDownloadClassList = async () => {
         setResultBanner(null);
@@ -495,8 +307,26 @@ export default function CohortSubjectLearnersPage() {
         }
     };
 
+    const mobileActionBar = selectedEnrolled.size > 0 ? (
+        <MobileSelectionActionBar
+            selectedCount={selectedEnrolled.size}
+            actionLabel={unenrollMutation.isPending ? 'Removing...' : 'Unenroll'}
+            actionVariant="danger"
+            onAction={() => unenrollMutation.mutate(Array.from(selectedEnrolled))}
+            disabled={Boolean(coreLockedSubject) || isMutating}
+        />
+    ) : (
+        <MobileSelectionActionBar
+            selectedCount={selectedAvailable.size}
+            actionLabel={enrollMutation.isPending ? 'Enrolling...' : 'Enroll'}
+            actionVariant="primary"
+            onAction={() => enrollMutation.mutate(Array.from(selectedAvailable))}
+            disabled={isMutating}
+        />
+    );
+
     return (
-        <div className="mx-auto max-w-7xl space-y-6">
+        <div className="mx-auto max-w-7xl space-y-6 pb-24 md:pb-0">
             {coreLockedSubject ? (
                 <ErrorBanner
                     message="Core CBC subjects are global curriculum requirements. Learners should not be removed from this subject through the normal subject participation flow."
@@ -504,83 +334,28 @@ export default function CohortSubjectLearnersPage() {
                 />
             ) : null}
 
-            <div className="space-y-3">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => router.push(cohortHref)}
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Cohort
-                    </Button>
-                    {canViewCohortStudents ? (
-                        <Link href={cohortStudentsHref} className="w-full sm:w-auto">
-                            <Button variant="secondary" size="sm" className="w-full sm:w-auto">
-                                View Cohort Students
-                            </Button>
-                        </Link>
-                    ) : null}
-                    {canManageLearners ? (
-                        <Link href={createLearnerHref} className="w-full sm:w-auto">
-                            <Button variant="primary" size="sm" className="w-full sm:w-auto">
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Add learner to this class
-                            </Button>
-                        </Link>
-                    ) : null}
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                        onClick={() => {
-                            void handleDownloadClassList();
-                        }}
-                        disabled={downloadingClassList}
-                    >
-                        <Download className="mr-2 h-4 w-4" />
-                        {downloadingClassList ? 'Downloading...' : 'Download Class List'}
-                    </Button>
-                </div>
-
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="info">{cohortLabel}</Badge>
-                            <Badge variant="default">Cohort Subject #{cohortSubjectId}</Badge>
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">{pageTitle}</h1>
-                            <p className="mt-1 text-sm text-gray-500">{pageSubtitle}</p>
-                        </div>
-                    </div>
-
-                    {instructorView ? (
-                        <Card className="min-w-[140px]">
-                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Enrolled</p>
-                            <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.enrolled}</p>
-                        </Card>
-                    ) : (
-                        <div className="grid grid-cols-3 gap-3">
-                            <Card className="min-w-[120px]">
-                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Enrolled</p>
-                                <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.enrolled}</p>
-                            </Card>
-                            <Card className="min-w-[120px]">
-                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Available</p>
-                                <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.available}</p>
-                            </Card>
-                            <Card className="min-w-[120px]">
-                                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Cohort Total</p>
-                                <p className="mt-2 text-2xl font-bold text-gray-900">{learnerData.counts.cohort_total}</p>
-                            </Card>
-                        </div>
-                    )}
-                </div>
-            </div>
+            <CohortSubjectLearnersHeader
+                cohortHref={cohortHref}
+                cohortStudentsHref={cohortStudentsHref}
+                createLearnerHref={createLearnerHref}
+                cohortLabel={cohortLabel}
+                cohortSubjectId={cohortSubjectId}
+                mobileTitle={subjectLabel}
+                pageTitle={pageTitle}
+                pageSubtitle={pageSubtitle}
+                enrolledCount={learnerData.counts.enrolled}
+                availableCount={learnerData.counts.available}
+                cohortTotalCount={learnerData.counts.cohort_total}
+                addLearnerActionLabel={addLearnerActionLabel}
+                instructorView={instructorView}
+                canManageLearners={canManageLearners}
+                canViewCohortStudents={canViewCohortStudents}
+                downloadingClassList={downloadingClassList}
+                onBack={() => router.push(cohortHref)}
+                onDownloadClassList={() => {
+                    void handleDownloadClassList();
+                }}
+            />
 
             {resultBanner?.tone === 'error' ? (
                 <ErrorBanner message={resultBanner.message} onDismiss={() => setResultBanner(null)} />
@@ -601,49 +376,79 @@ export default function CohortSubjectLearnersPage() {
             ) : null}
 
             {instructorView ? (
-                <ReadOnlyLearnerTable
-                    learners={learnerData.enrolled}
-                    buildLearnerHref={(learnerId) => (
-                        canOpenInstructorLearnerReports
-                            ? buildLearnerSubjectReportHref(learnerId, cohortSubjectId, { returnTo: currentReturnTo })
-                            : buildClassSubjectLearnerProfileHref(
-                                learnerId,
-                                learnerData.cohort_id,
-                                cohortSubjectId,
-                            )
-                    )}
-                />
+                <>
+                    <MobileReadOnlyLearnerList
+                        learners={learnerData.enrolled}
+                        buildLearnerHref={buildInstructorLearnerHref}
+                    />
+                    <div className="hidden md:block">
+                        <ReadOnlyLearnerTable
+                            learners={learnerData.enrolled}
+                            buildLearnerHref={buildInstructorLearnerHref}
+                        />
+                    </div>
+                </>
             ) : (
                 <div className="grid gap-6 xl:grid-cols-2">
-                    <LearnerTable
-                        title="Enrolled Learners"
-                        description="Learners currently participating in this cohort subject."
-                        icon={Users}
-                        learners={learnerData.enrolled}
-                        selectedIds={selectedEnrolled}
-                        onToggle={(studentId) => toggleSelection(setSelectedEnrolled, studentId)}
-                        onToggleAll={() => toggleAllSelection(learnerData.enrolled, selectedEnrolled, setSelectedEnrolled)}
-                        actionLabel={unenrollMutation.isPending ? 'Removing...' : 'Bulk Unenroll'}
-                        actionVariant="danger"
-                        onAction={() => unenrollMutation.mutate(Array.from(selectedEnrolled))}
-                        actionDisabled={coreLockedSubject || selectedEnrolled.size === 0 || isMutating}
-                        emptyMessage="No learners enrolled in this subject yet."
-                    />
+                    <div className="space-y-6">
+                        <MobileLearnerSelectionList
+                            title="Enrolled Learners"
+                            description="Learners currently participating in this cohort subject."
+                            icon={Users}
+                            learners={learnerData.enrolled}
+                            selectedIds={selectedEnrolled}
+                            buildLearnerHref={buildAdminLearnerHref}
+                            onToggle={toggleEnrolledSelection}
+                            emptyMessage="No learners enrolled in this subject yet."
+                        />
+                        <div className="hidden md:block">
+                            <LearnerTable
+                                title="Enrolled Learners"
+                                description="Learners currently participating in this cohort subject."
+                                icon={Users}
+                                learners={learnerData.enrolled}
+                                selectedIds={selectedEnrolled}
+                                buildLearnerHref={buildAdminLearnerHref}
+                                onToggle={toggleEnrolledSelection}
+                                onToggleAll={toggleAllEnrolledSelection}
+                                actionLabel={unenrollMutation.isPending ? 'Removing...' : 'Bulk Unenroll'}
+                                actionVariant="danger"
+                                onAction={() => unenrollMutation.mutate(Array.from(selectedEnrolled))}
+                                actionDisabled={Boolean(coreLockedSubject) || selectedEnrolled.size === 0 || isMutating}
+                                emptyMessage="No learners enrolled in this subject yet."
+                            />
+                        </div>
+                    </div>
 
-                    <LearnerTable
-                        title="Available Learners"
-                        description="Learners in the parent cohort who are not yet enrolled in this cohort subject."
-                        icon={UserPlus}
-                        learners={learnerData.available}
-                        selectedIds={selectedAvailable}
-                        onToggle={(studentId) => toggleSelection(setSelectedAvailable, studentId)}
-                        onToggleAll={() => toggleAllSelection(learnerData.available, selectedAvailable, setSelectedAvailable)}
-                        actionLabel={enrollMutation.isPending ? 'Enrolling...' : 'Bulk Enroll'}
-                        actionVariant="primary"
-                        onAction={() => enrollMutation.mutate(Array.from(selectedAvailable))}
-                        actionDisabled={selectedAvailable.size === 0 || isMutating}
-                        emptyMessage="No available cohort learners."
-                    />
+                    <div className="space-y-6">
+                        <MobileLearnerSelectionList
+                            title="Available Learners"
+                            description="Learners in the parent cohort who are not yet enrolled in this cohort subject."
+                            icon={UserPlus}
+                            learners={learnerData.available}
+                            selectedIds={selectedAvailable}
+                            buildLearnerHref={buildAdminLearnerHref}
+                            onToggle={toggleAvailableSelection}
+                            emptyMessage="No available cohort learners."
+                        />
+                        <div className="hidden md:block">
+                            <LearnerTable
+                                title="Available Learners"
+                                description="Learners in the parent cohort who are not yet enrolled in this cohort subject."
+                                icon={UserPlus}
+                                learners={learnerData.available}
+                                selectedIds={selectedAvailable}
+                                buildLearnerHref={buildAdminLearnerHref}
+                                onToggle={toggleAvailableSelection}
+                                onToggleAll={toggleAllAvailableSelection}
+                                actionLabel={enrollMutation.isPending ? 'Enrolling...' : 'Bulk Enroll'}
+                                actionVariant="primary"
+                                onAction={() => enrollMutation.mutate(Array.from(selectedAvailable))}
+                                actionDisabled={selectedAvailable.size === 0 || isMutating}
+                                emptyMessage="No available cohort learners."
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -664,6 +469,8 @@ export default function CohortSubjectLearnersPage() {
                     </div>
                 </div>
             </Card>
+
+            {canManageLearners ? mobileActionBar : null}
         </div>
     );
 }
