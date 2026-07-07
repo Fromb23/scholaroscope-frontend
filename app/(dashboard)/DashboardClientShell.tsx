@@ -45,6 +45,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { AccessNotice, Role } from '@/app/core/types/auth';
 import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
+import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
 
@@ -173,7 +174,7 @@ function DashboardContent({
 }
 
 function DashboardLayoutContent({ children }: { children: ReactNode }) {
-  const { user, activeOrg, activeRole, loading, loggingOut, accessNotices, clearAccessNotices, capabilities } = useAuth();
+  const { user, activeOrg, activeRole, loading, loggingOut, offline, accessNotices, clearAccessNotices, capabilities } = useAuth();
   const pluginRegistry = usePluginRegistryStatus();
   const academicSetupQuery = useAcademicSetupStatus({
     enabled: (
@@ -217,6 +218,9 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     if (loading) return;
     const currentPath = getCurrentPath();
     if (!user) {
+      if (offline) {
+        return;
+      }
       router.replace(buildLoginPath(currentPath));
       return;
     }
@@ -270,6 +274,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     capabilities,
     loading,
     loggingOut,
+    offline,
     pathname,
     pluginRegistry.error,
     pluginRegistry.isRoutePluginLoading,
@@ -294,6 +299,10 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
         description="Returning to sign in."
       />
     );
+  }
+
+  if (!loading && !user && offline) {
+    return <OfflineRetryState />;
   }
 
   if (

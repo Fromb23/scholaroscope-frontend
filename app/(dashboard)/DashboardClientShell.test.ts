@@ -27,3 +27,30 @@ describe('DashboardClientShell logout transition', () => {
     expect(logoutRenderIndex).toBeLessThan(unauthCopyIndex);
   });
 });
+
+describe('DashboardClientShell offline boot state', () => {
+  it('renders the offline retry state instead of redirecting to login when boot failed offline', () => {
+    const source = read('app/(dashboard)/DashboardClientShell.tsx');
+    const offlineRenderIndex = source.indexOf('if (!loading && !user && offline) {');
+    const offlineRetryIndex = source.indexOf('return <OfflineRetryState />;', offlineRenderIndex);
+    const resolvingStateIndex = source.indexOf('return <PermissionResolvingState fullScreen message={resolvingMessage} />;');
+
+    expect(source).toContain("import { OfflineRetryState } from '@/app/offline/OfflineRetryState';");
+    expect(source).toContain('offline,');
+    expect(offlineRenderIndex).toBeGreaterThan(-1);
+    expect(offlineRetryIndex).toBeGreaterThan(offlineRenderIndex);
+    expect(offlineRetryIndex).toBeLessThan(resolvingStateIndex);
+  });
+
+  it('does not issue the protected-route login redirect while offline is true', () => {
+    const source = read('app/(dashboard)/DashboardClientShell.tsx');
+    const unauthStart = source.indexOf('if (!user) {');
+    const offlineGuardIndex = source.indexOf('if (offline) {', unauthStart);
+    const offlineReturnIndex = source.indexOf('return;', offlineGuardIndex);
+    const redirectIndex = source.indexOf('router.replace(buildLoginPath(currentPath))', unauthStart);
+
+    expect(offlineGuardIndex).toBeGreaterThan(unauthStart);
+    expect(offlineReturnIndex).toBeGreaterThan(offlineGuardIndex);
+    expect(offlineReturnIndex).toBeLessThan(redirectIndex);
+  });
+});
