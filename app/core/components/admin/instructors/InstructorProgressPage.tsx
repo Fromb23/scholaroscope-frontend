@@ -12,6 +12,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { instructorsAPI } from '@/app/core/api/instructors';
 import {
@@ -38,7 +39,6 @@ import {
     membershipStatusVariant,
     resolveGlobalStatus,
 } from '@/app/core/types/globalUsers';
-import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 
 export default function InstructorProgressPage() {
     const params = useParams();
@@ -249,14 +249,12 @@ export default function InstructorProgressPage() {
             </div>
 
             {/* Stats */}
-            <DesktopOnly>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatsCard title="Total Sessions" value={sessionStats.total} icon={Calendar} color="blue" />
-                    <StatsCard title="This Month" value={sessionStats.thisMonth} icon={Calendar} color="purple" />
-                    <StatsCard title="Avg Attendance" value={`${attendanceStats.rate}%`} icon={Users} color="green" />
-                    <StatsCard title="Cohorts" value={instructor.cohort_assignments?.length ?? 0} icon={GraduationCap} color="orange" />
-                </div>
-            </DesktopOnly>
+            <StatStrip mdColumns={4}>
+                <StatsCard title="Total Sessions" value={sessionStats.total} icon={Calendar} color="blue" mobile="hide" />
+                <StatsCard title="This Month" value={sessionStats.thisMonth} icon={Calendar} color="purple" mobile="compact" />
+                <StatsCard title="Avg Attendance" value={`${attendanceStats.rate}%`} icon={Users} color="green" mobile="compact" />
+                <StatsCard title="Cohorts" value={instructor.cohort_assignments?.length ?? 0} icon={GraduationCap} color="orange" mobile="hide" />
+            </StatStrip>
 
             {/* Attendance */}
             <Card>

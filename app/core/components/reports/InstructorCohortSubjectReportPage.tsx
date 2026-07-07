@@ -31,6 +31,7 @@ import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ExportModal } from '@/app/components/export/ExportModal';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { AssessmentCompletionSummary } from '@/app/core/components/reports/AssessmentCompletionSummary';
 import { CbcPerformanceSummary } from '@/app/core/components/reports/CbcPerformanceSummary';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
@@ -38,7 +39,6 @@ import { GenericPerformanceSummary } from '@/app/core/components/reports/Generic
 import { ReportingSourceState } from '@/app/core/components/reports/ReportingSourceState';
 import {
   CompactReportGrid,
-  CompactStatsGrid,
   ReportPageShell,
 } from '@/app/core/components/reports/ReportLayouts';
 import {
@@ -621,7 +621,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
 
       {!activeQuery.loading && !activeQuery.error && activeTab === 'performance' && performanceQuery.report && (
         <div className="space-y-4">
-          <CompactStatsGrid>
+          <StatStrip mdColumns={2} xlColumns={4}>
             {reportingSource === 'generic' && (
               <>
                 <StatsCard title="Learners" value={performanceQuery.report.total_learners} icon={Users} color="blue" />
@@ -665,7 +665,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
                 />
               </>
             )}
-          </CompactStatsGrid>
+          </StatStrip>
 
           {performanceQuery.report.assessment_completion && (
             <AssessmentCompletionSummary completion={performanceQuery.report.assessment_completion} />
@@ -715,12 +715,12 @@ export default function InstructorCohortSubjectDetailReportPage() {
 
       {!activeQuery.loading && !activeQuery.error && activeTab === 'teaching-activity' && teachingActivityQuery.report && (
         <div className="space-y-4">
-          <CompactStatsGrid>
+          <StatStrip mdColumns={2} xlColumns={4}>
             <StatsCard title="Lessons Planned" value={teachingActivityQuery.report.sessions_created} icon={BookOpen} color="blue" />
             <StatsCard title="Lessons Completed" value={teachingActivityQuery.report.sessions_completed} icon={CheckCircle2} color="green" />
             <StatsCard title="Attendance Marked" value={teachingActivityQuery.report.attendance_marked} icon={Users} color="purple" />
             <StatsCard title="Attendance Completeness" value={formatPercent(teachingActivityQuery.report.attendance_completeness)} icon={Activity} color="indigo" />
-          </CompactStatsGrid>
+          </StatStrip>
 
           <Card className="p-4">
             <div className="grid gap-4 md:grid-cols-2">

@@ -20,6 +20,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import {
     AnnouncementCard,
     AnnouncementModal,
@@ -236,11 +237,11 @@ export function AnnouncementsPage() {
                 </div>
             </div>
 
-            <div className="hidden md:grid md:grid-cols-3 md:gap-4">
+            <StatStrip mdColumns={3}>
                 <StatsCard title="Total" value={announcements.length} icon={Megaphone} color="blue" />
                 <StatsCard title="Unread" value={unreadCount} icon={AlertCircle} color="yellow" />
                 <StatsCard title="Needs Response" value={needsFeedbackCount} icon={MessageSquare} color="red" />
-            </div>
+            </StatStrip>
 
             <div className="sm:hidden">
                 <Select

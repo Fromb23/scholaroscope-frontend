@@ -18,6 +18,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Input } from '@/app/components/ui/Input';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { buildLearnerCreateHref } from '@/app/core/components/learners/learnerCreateNavigation';
@@ -187,9 +188,9 @@ export function CohortStudentsPage() {
                 </div>
             </div>
 
-            <div className="max-w-xs">
+            <StatStrip mobileColumns={1} mdColumns={1} className="max-w-xs">
                 <StatsCard title="Enrolled Learners" value={enrolled.length} icon={Users} color="blue" />
-            </div>
+            </StatStrip>
 
             <Card>
                 <div className="space-y-4">

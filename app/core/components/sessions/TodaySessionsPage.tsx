@@ -15,6 +15,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { useAuth } from '@/app/context/AuthContext';
@@ -73,12 +74,12 @@ export function TodaySessionsPage() {
                 </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
-                <StatsCard title="Total Sessions" value={sessions.length} icon={Calendar} color="blue" />
-                <StatsCard title="Ongoing" value={ongoing.length} icon={CheckCircle} color="green" />
-                <StatsCard title="Attendance Marked" value={totalMarked} icon={Users} color="purple" />
-                <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
-            </div>
+            <StatStrip mdColumns={4}>
+                <StatsCard title="Total Sessions" value={sessions.length} icon={Calendar} color="blue" mobile="hide" />
+                <StatsCard title="Ongoing" value={ongoing.length} icon={CheckCircle} color="green" mobile="compact" />
+                <StatsCard title="Attendance Marked" value={totalMarked} icon={Users} color="purple" mobile="compact" />
+                <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" mobile="hide" />
+            </StatStrip>
 
             {sessions.length === 0 && (
                 <Card>

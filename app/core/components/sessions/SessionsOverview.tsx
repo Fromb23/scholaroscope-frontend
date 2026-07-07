@@ -23,6 +23,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useCohortSessions, useSessions, useTodaySessions } from '@/app/core/hooks/useSessions';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
@@ -35,7 +36,6 @@ import {
 } from '@/app/core/lib/workspaces';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { ErrorState } from '@/app/components/ui/ErrorState';
-import { DesktopOnly } from '@/app/core/components/DesktopOnly';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import { useAuth } from '@/app/context/AuthContext';
 import type { Session } from '@/app/core/types/session';
@@ -1330,14 +1330,12 @@ function SessionWorkspaceView() {
                 </Card>
             ) : null}
 
-            <DesktopOnly>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <StatsCard title={effectiveMyTeachingMode ? 'Total Lessons' : 'Scheduled Lessons'} value={totalSessions} icon={Calendar} color="blue" />
-                    <StatsCard title="Today's Lessons" value={todayCount} icon={Clock} color="green" />
-                    <StatsCard title="Combined Lessons" value={mergedSessionsCount} icon={Layers} color="purple" />
-                    <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
-                </div>
-            </DesktopOnly>
+            <StatStrip mdColumns={4} gap="wide">
+                <StatsCard title={effectiveMyTeachingMode ? 'Total Lessons' : 'Scheduled Lessons'} value={totalSessions} icon={Calendar} color="blue" />
+                <StatsCard title="Today's Lessons" value={todayCount} icon={Clock} color="green" />
+                <StatsCard title="Combined Lessons" value={mergedSessionsCount} icon={Layers} color="purple" />
+                <StatsCard title="Avg Attendance" value={`${avgAttendance.toFixed(1)}%`} icon={Users} color="orange" />
+            </StatStrip>
 
             {effectiveMyTeachingMode && priorityTodayAction ? (
                 <Card>

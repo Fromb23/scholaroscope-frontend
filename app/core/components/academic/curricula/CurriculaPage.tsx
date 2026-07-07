@@ -39,7 +39,7 @@ import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import type { Curriculum } from '@/app/core/types/academic';
 import type { CurriculumDisableImpactSnapshot } from '@/app/core/types/academic';
-import { DesktopOnly } from '@/app/core/components/DesktopOnly';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import {
     getCurriculumBridgeCode,
     getCurriculumBridgeName,
@@ -424,13 +424,11 @@ export function CurriculaPage() {
                 </Card>
             ) : null}
 
-            <DesktopOnly>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatsCard title="Total Curricula" value={curricula.length} icon={BookOpen} />
-                    <StatsCard title="Active Curricula" value={activeCurricula.length} icon={CheckCircle} />
-                    <StatsCard title="Inactive Curricula" value={inactiveCurricula.length} icon={BookOpen} />
-                </div>
-            </DesktopOnly>
+            <StatStrip mdColumns={3}>
+                <StatsCard title="Total Curricula" value={curricula.length} icon={BookOpen} />
+                <StatsCard title="Active Curricula" value={activeCurricula.length} icon={CheckCircle} />
+                <StatsCard title="Inactive Curricula" value={inactiveCurricula.length} icon={BookOpen} />
+            </StatStrip>
 
             {/* Active */}
             <Card>

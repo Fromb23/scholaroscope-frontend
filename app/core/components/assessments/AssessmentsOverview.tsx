@@ -23,6 +23,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useAssessments } from '@/app/core/hooks/useAssessments';
 import { useAdminBulkFinalize } from '@/app/core/hooks/assessments/useAdminBulkFinalize';
 import { useCurricula, useCurrentTerm, useTerms } from '@/app/core/hooks/useAcademic';
@@ -1303,12 +1304,12 @@ export function AssessmentsOverview() {
                 </div>
             </Card>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-                <StatsCard title="Total Assessments" value={totalAssessments} icon={ClipboardList} color="blue" />
-                <StatsCard title="Active" value={activeAssessments} icon={TrendingUp} color="green" />
-                <StatsCard title="Finalized" value={finalizedAssessments} icon={Award} color="purple" />
-                <StatsCard title="Stalled" value={stalledAssessments} icon={AlertTriangle} color="orange" />
-            </div>
+            <StatStrip mdColumns={4} gap="wide">
+                <StatsCard title="Total Assessments" value={totalAssessments} icon={ClipboardList} color="blue" mobile="hide" />
+                <StatsCard title="Active" value={activeAssessments} icon={TrendingUp} color="green" mobile="compact" />
+                <StatsCard title="Finalized" value={finalizedAssessments} icon={Award} color="purple" mobile="hide" />
+                <StatsCard title="Stalled" value={stalledAssessments} icon={AlertTriangle} color="orange" mobile="compact" />
+            </StatStrip>
 
             <Card>
                 {isAdminSupervisionMode && !selectedTerm ? (

@@ -19,6 +19,7 @@ import type { AppError } from '@/app/core/errors';
 import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
+import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import {
@@ -73,12 +74,12 @@ export function ReportsPageClient() {
             exporting={exporting}
           />
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatStrip mdColumns={2} xlColumns={4}>
             <StatsCard title="Learners" value={overview?.total_learners ?? 0} icon={Users} color="blue" />
             <StatsCard title="Classes" value={overview?.total_cohorts ?? 0} icon={GraduationCap} color="green" />
             <StatsCard title="Instructors" value={overview?.total_instructors ?? 0} icon={Briefcase} color="indigo" />
             <StatsCard title="Average Attendance" value={formatPercent(overview?.average_attendance)} icon={Calendar} color="purple" />
-          </div>
+          </StatStrip>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Card className="space-y-4">
