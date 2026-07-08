@@ -53,6 +53,22 @@ describe('report navigation helpers', () => {
     expect(parsePositiveReportParam(null)).toBeNull();
   });
 
+  it('builds the default learner assessment route without hard assessment filters', () => {
+    const href = buildLearnerAssessmentReportHref(74, {
+      cohortSubjectId: 3,
+      term: 1,
+      subjectId: 13,
+      cohortId: 5,
+      returnTo: '/assessments/10',
+    });
+
+    expect(href).toBe(
+      '/reports/learners/74/assessments?cohort_subject=3&term=1&subject=13&cohort=5&returnTo=%2Fassessments%2F10',
+    );
+    expect(href).not.toContain('assessment=');
+    expect(href).not.toContain('assessment_type=');
+  });
+
   it('builds canonical admin report hrefs with shared query state', () => {
     expect(buildLearnerReportHref(9, { term: 7, returnTo: '/reports/students' })).toBe(
       '/reports/students/9?term=7&returnTo=%2Freports%2Fstudents',
