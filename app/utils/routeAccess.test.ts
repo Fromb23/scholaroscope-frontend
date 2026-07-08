@@ -37,6 +37,22 @@ describe('route access', () => {
     expect(canAccess('/reports/instructor/teacher-report', 'INSTRUCTOR')).toBe(true);
   });
 
+  it('allows instructors to open learner assessment report routes without falling back', () => {
+    const route = '/reports/learners/9/assessments?assessment=22&cohort_subject=6&assessment_type=CAT&term=7&subject=8&cohort=4&returnTo=%2Fassessments%2F22%3Ftab%3Dscores';
+    const matchedRule = getMatchedRule(route);
+
+    expect(matchedRule).toBeDefined();
+    expect(matchedRule?.allowedRoles).toContain('INSTRUCTOR');
+    expect(matchedRule?.allowedRoles).toContain('ADMIN');
+    expect(canAccess(route, 'INSTRUCTOR')).toBe(true);
+
+    const resolvedRoute = canAccess(route, 'INSTRUCTOR')
+      ? route
+      : getUnauthorizedRouteFallback('INSTRUCTOR', route);
+    expect(resolvedRoute).toBe(route);
+    expect(resolvedRoute).not.toBe('/reports/instructor');
+  });
+
   it('allows admins to open instructor report routes so capability gates can resolve self-managed teaching', () => {
     expect(canAccess('/reports/instructor/cohort-subjects/3', 'ADMIN')).toBe(true);
   });

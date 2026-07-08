@@ -6,10 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="b0064340-fd73-41e2-872c-1c650a64fabd" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/api/assessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/api/assessments.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/assessments/AssessmentsOverview.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/hooks/useAssessments.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/hooks/useAssessments.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/core/types/assessment.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/types/assessment.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/cohorts/CohortDetailPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/cohorts/CohortDetailPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/cohorts/cohortSubjectActions.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/cohorts/cohortSubjectActions.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/components/academic/cohorts/cohortSubjectActions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/core/components/academic/cohorts/cohortSubjectActions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/routeAccess.test.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/routeAccess.test.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/utils/routeAccess.ts" beforeDir="false" afterPath="$PROJECT_DIR$/app/utils/routeAccess.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -17,6 +18,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="1025" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -40,23 +42,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="2.050342169086773" />
-      <entry key="MS500" value="4.44033758221158" />
-      <entry key="S2" value="6.536357333364691" />
-      <entry key="S5" value="8.809691697960666" />
-      <entry key="S10" value="10.70785110835611" />
-      <entry key="S30" value="12.69195818779993" />
-      <entry key="S60" value="13.315137610616226" />
-      <entry key="M2" value="13.66275235293178" />
-      <entry key="M5" value="15.044569622164326" />
-      <entry key="M10" value="20.563101175788702" />
-      <entry key="M15" value="27.364699872618402" />
-      <entry key="M30" value="44.458362831579485" />
-      <entry key="H1" value="62.55933658826774" />
-      <entry key="H2" value="80.19039730861651" />
-      <entry key="H4" value="110.91184287218124" />
-      <entry key="D1" value="529.8317003420768" />
-      <entry key="W1" value="2119.1538648825167" />
+      <entry key="MS100" value="1.5418076204150206" />
+      <entry key="MS500" value="5.013600315361983" />
+      <entry key="S2" value="15.538800257811891" />
+      <entry key="S5" value="31.10432296972666" />
+      <entry key="S10" value="44.276206164617435" />
+      <entry key="S30" value="64.52710494648494" />
+      <entry key="S60" value="81.16477813418672" />
+      <entry key="M2" value="99.28397792758663" />
+      <entry key="M5" value="122.22779678755498" />
+      <entry key="M10" value="135.13911319424338" />
+      <entry key="M15" value="140.4376678392941" />
+      <entry key="M30" value="146.35988471057138" />
+      <entry key="H1" value="149.59490389032072" />
+      <entry key="H2" value="153.11405713969708" />
+      <entry key="H4" value="178.30350430398337" />
+      <entry key="D1" value="645.6440633045032" />
+      <entry key="W1" value="2371.899895332966" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -66,35 +68,35 @@
       <entry key="S10" value="0.0" />
       <entry key="S30" value="0.0" />
       <entry key="S60" value="0.0" />
-      <entry key="M2" value="4.550701456588146E-298" />
-      <entry key="M5" value="1.1567282388934459E-119" />
-      <entry key="M10" value="3.4010707709388386E-60" />
-      <entry key="M15" value="2.261572142648895E-40" />
-      <entry key="M30" value="1.503852433800903E-20" />
-      <entry key="H1" value="1.226316612381528E-10" />
-      <entry key="H2" value="1.1073930436562608E-5" />
-      <entry key="H4" value="0.0033327339196518885" />
-      <entry key="D1" value="0.8042700447466377" />
-      <entry key="W1" value="7.19074050098182" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="1.0831841307877879E-181" />
+      <entry key="M10" value="3.291176280280055E-91" />
+      <entry key="M15" value="4.7668786497447515E-61" />
+      <entry key="M30" value="6.904258576954368E-31" />
+      <entry key="H1" value="8.3091868296263235E-16" />
+      <entry key="H2" value="2.8825692359848684E-8" />
+      <entry key="H4" value="1.700355066419734E-4" />
+      <entry key="D1" value="0.48980707796426637" />
+      <entry key="W1" value="6.698930879053289" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.980013527568091" />
-      <entry key="MS500" value="4.404904963107493" />
-      <entry key="S2" value="6.522136034776701" />
-      <entry key="S5" value="8.800975976447718" />
-      <entry key="S10" value="10.702161120988984" />
-      <entry key="S30" value="12.689590561829743" />
-      <entry key="S60" value="13.313879424032256" />
-      <entry key="M2" value="13.662101842276908" />
-      <entry key="M5" value="15.04425491764952" />
-      <entry key="M10" value="20.562836399063148" />
-      <entry key="M15" value="27.364440640712722" />
-      <entry key="M30" value="44.45813392632917" />
-      <entry key="H1" value="62.559168940784275" />
-      <entry key="H2" value="80.19028657482333" />
-      <entry key="H4" value="110.91506498571403" />
-      <entry key="D1" value="530.635826518601" />
-      <entry key="W1" value="2126.3445203957385" />
+      <entry key="MS100" value="1.4754321360129272" />
+      <entry key="MS500" value="4.966352568340716" />
+      <entry key="S2" value="15.500982184364737" />
+      <entry key="S5" value="31.07400623596019" />
+      <entry key="S10" value="44.25458541702373" />
+      <entry key="S30" value="64.51644025741345" />
+      <entry key="S60" value="81.15785056367775" />
+      <entry key="M2" value="99.27927233818544" />
+      <entry key="M5" value="122.22495671394498" />
+      <entry key="M10" value="135.137366919353" />
+      <entry key="M15" value="140.43640918073012" />
+      <entry key="M30" value="146.3592011512583" />
+      <entry key="H1" value="149.59454702980034" />
+      <entry key="H2" value="153.11387145436916" />
+      <entry key="H4" value="178.30355747285043" />
+      <entry key="D1" value="646.1337408537598" />
+      <entry key="W1" value="2378.5987393874266" />
     </decayedShown>
   </component>
   <component name="ProjectColorInfo">{
@@ -125,7 +127,7 @@
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMThirdPartyAiProvidersConfigurable&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/.next/standalone/node_modules/typescript/lib&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/home/rombo/WebstormProjects/scholaroscope-frontend/node_modules/typescript/lib&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -263,7 +265,12 @@
       <workItem from="1782801260851" duration="643000" />
       <workItem from="1783004878679" duration="3172000" />
       <workItem from="1783316360209" duration="672000" />
-      <workItem from="1783317501268" duration="3081000" />
+      <workItem from="1783317501268" duration="6003000" />
+      <workItem from="1783365760103" duration="1793000" />
+      <workItem from="1783376096590" duration="1426000" />
+      <workItem from="1783414786893" duration="462000" />
+      <workItem from="1783445443592" duration="5532000" />
+      <workItem from="1783498910678" duration="1475000" />
     </task>
     <servers />
   </component>

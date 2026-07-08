@@ -440,6 +440,7 @@ export default function CohortHubPage() {
         capabilities,
     });
     const isTeachingActor = instructorAccess.isTeachingActor;
+    const isInstitutionInstructorWorkspace = isTeachingActor && !isPersonalTeachingWorkspace;
     const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !isTeachingActor);
     const accessLoading = authLoading || pluginsLoading || (isTeachingActor && instructorAccess.isLoading);
     const allowed = !user
@@ -522,7 +523,9 @@ export default function CohortHubPage() {
     });
     const showSubjectTeachingActions = shouldShowCohortSubjectTeachingActions({
         isTeachingActor,
+        isSelfManagedTeachingWorkspace: isPersonalTeachingWorkspace,
     });
+    const showCohortActionsSection = canViewCohortLearners || showSubjectTeachingActions;
     const workflowSubjectCount = isTeachingActor ? visibleCohortSubjects.length : subjectCount;
     const buildSubjectReturnTo = useCallback(
         (subjectId: number) => buildCohortSubjectReturnTo(cohortReturnTo, subjectId),
@@ -534,7 +537,7 @@ export default function CohortHubPage() {
         }),
         [buildSubjectReturnTo]
     );
-    const buildSubjectActions = useCallback((subject: CohortSubject): CohortSubjectAction[] => {
+    const buildSubjectActions = (subject: CohortSubject): CohortSubjectAction[] => {
         return buildCohortSubjectTeachingActions({
             cohortId,
             cohortReturnTo,
@@ -543,7 +546,7 @@ export default function CohortHubPage() {
             hasCBCPlugin,
             isClassConfigurationWorkspace: isPersonalTeachingWorkspace,
         });
-    }, [cohortId, cohortReturnTo, hasCBCPlugin, isCBC, isPersonalTeachingWorkspace]);
+    };
     const linkSubjectsDisabledReason = !hasCBCPlugin && isCbcSeniorCohort
         ? 'CBC tools are not available for this organization yet.'
         : null;
@@ -630,7 +633,11 @@ export default function CohortHubPage() {
                     href: cbcBrowserHref,
                 }
                 : {
-                    label: showSubjectTeachingActions ? 'Open Sessions' : 'Review class subjects',
+                    label: showSubjectTeachingActions
+                        ? 'Open Sessions'
+                        : isInstitutionInstructorWorkspace
+                            ? 'Review assigned subjects'
+                            : 'Review class subjects',
                     type: 'navigate' as const,
                     href: showSubjectTeachingActions ? sessionsHref : cohortReturnTo,
                 },
@@ -655,6 +662,7 @@ export default function CohortHubPage() {
         cohortSetupReady,
         cohortReturnTo,
         backLabel,
+        isInstitutionInstructorWorkspace,
         setupContinueHref,
         setupContinueLabel,
         effectiveSetupMode,
@@ -745,7 +753,9 @@ export default function CohortHubPage() {
                     <p className="text-sm text-gray-500">
                         {canViewCohortLearners
                             ? 'Use this cohort control center to manage placement, create cohort subject offerings, and open subject-specific learner workflows.'
-                            : 'Use this cohort control center to open subject-specific learner workflows for your teaching assignments.'}
+                            : isInstitutionInstructorWorkspace
+                                ? 'View the cohort subjects assigned to you below. Use the sidebar for lesson plans, sessions, assignments, assessments, reports, CBC content, and progress.'
+                                : 'Use this cohort control center to open subject-specific learner workflows for your teaching assignments.'}
                     </p>
                 </div>
             </div>
@@ -802,13 +812,15 @@ export default function CohortHubPage() {
                 <div className="space-y-1">
                     <h2 className="text-xl font-semibold text-gray-900">Cohort Actions</h2>
                     <p className="text-sm text-gray-500">
-                        {isCbcSeniorCohort
-                            ? 'Use the class list and delivery tools after class subject setup.'
-                            : 'Choose the workflow you want to open for this cohort.'}
+                        {isInstitutionInstructorWorkspace
+                            ? 'Assigned cohort subjects are listed below. Use the sidebar for lesson plans, sessions, assignments, assessments, reports, CBC content, and progress.'
+                            : isCbcSeniorCohort
+                                ? 'Use the class list and delivery tools after class subject setup.'
+                                : 'Choose the workflow you want to open for this cohort.'}
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className={showCohortActionsSection ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4' : 'hidden'}>
                     {isCbcSeniorCohort ? (
                         <>
                             {canViewCohortLearners ? (
@@ -1023,7 +1035,9 @@ export default function CohortHubPage() {
                     <div className="space-y-1">
                         <h2 className="text-base font-semibold text-gray-900">Cohort Context</h2>
                         <p className="text-sm text-gray-600">
-                            Learners are only one part of this cohort. Use the actions above to move between cohort roster, scheduling, and curriculum delivery without losing context.
+                            {isInstitutionInstructorWorkspace
+                                ? 'Assigned cohort subjects stay visible here for context. Use the sidebar workflows for lesson plans, sessions, assignments, assessments, reports, CBC content, and progress.'
+                                : 'Learners are only one part of this cohort. Use the actions above to move between cohort roster, scheduling, and curriculum delivery without losing context.'}
                         </p>
                     </div>
                 </div>
