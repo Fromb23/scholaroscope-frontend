@@ -124,8 +124,24 @@ describe('cohort subject teaching actions', () => {
     expect(actions.some((action) => action.label === 'Calculate subject report')).toBe(false);
   });
 
-  it('shows teaching workflow actions only for teaching actors', () => {
-    expect(shouldShowCohortSubjectTeachingActions({ isTeachingActor: false })).toBe(false);
-    expect(shouldShowCohortSubjectTeachingActions({ isTeachingActor: true })).toBe(true);
+  it('hides teaching workflow shortcuts for institution instructors', () => {
+    expect(shouldShowCohortSubjectTeachingActions({
+      isTeachingActor: true,
+      isSelfManagedTeachingWorkspace: false,
+    })).toBe(false);
+  });
+
+  it('shows teaching workflow shortcuts for self-managed teaching actors', () => {
+    expect(shouldShowCohortSubjectTeachingActions({
+      isTeachingActor: true,
+      isSelfManagedTeachingWorkspace: true,
+    })).toBe(true);
+  });
+
+  it('hides teaching workflow shortcuts for non-teaching actors', () => {
+    expect(shouldShowCohortSubjectTeachingActions({
+      isTeachingActor: false,
+      isSelfManagedTeachingWorkspace: true,
+    })).toBe(false);
   });
 });

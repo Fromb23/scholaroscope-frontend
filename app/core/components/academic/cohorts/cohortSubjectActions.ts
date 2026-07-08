@@ -133,8 +133,9 @@ export function buildCohortSubjectReturnTo(cohortHref: string, cohortSubjectId: 
 
 export function shouldShowCohortSubjectTeachingActions(params: {
   isTeachingActor: boolean;
+  isSelfManagedTeachingWorkspace: boolean;
 }): boolean {
-  return params.isTeachingActor;
+  return params.isTeachingActor && params.isSelfManagedTeachingWorkspace;
 }
 
 export function buildCohortSubjectTeachingActions(params: {
