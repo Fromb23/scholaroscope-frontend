@@ -71,6 +71,7 @@ import {
 } from '@/app/core/components/sessions/sessionDetailVisibility';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
+import { buildSessionLearnerAttendanceReportHref } from '@/app/core/lib/learnerIntentRoutes';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 type SessionPageNotice = {
@@ -485,6 +486,20 @@ export function SessionDetailPage() {
         || isCompleted
         || needsCompletion
     );
+    const buildAttendanceLearnerHref = useCallback((record: { student: number }) => {
+        if (!session) {
+            return `/learners/${record.student}`;
+        }
+
+        return buildSessionLearnerAttendanceReportHref({
+            studentId: record.student,
+            sessionId: session.id,
+            termId: session.term,
+            cohortId: session.cohort_id,
+            subjectId: session.subject_id,
+            cohortSubjectId: session.cohort_subject,
+        });
+    }, [session]);
     const completionReturnTo = session ? `/sessions/${session.id}?section=complete` : '/sessions';
     const defaultTeachingWorkflowHref = teachingWorkflow
         ? withReturnTo(teachingWorkflow.href, completionReturnTo)
@@ -2553,6 +2568,7 @@ export function SessionDetailPage() {
                             );
                         }}
                         onDismissError={dismissError}
+                        learnerHrefBuilder={buildAttendanceLearnerHref}
                     />
                 </CollapsibleSection>
             ) : null}

@@ -39,6 +39,7 @@ interface AttendanceTableProps {
     onSave: () => Promise<void>;
     onDismissError: () => void;
     onPaginationChange?: (page: number, pageSize: number) => void;
+    learnerHrefBuilder?: (record: AttendanceRecord) => string;
 }
 
 type AttendanceWithIndex = { [key: string]: unknown } & AttendanceRecord;
@@ -47,7 +48,7 @@ export function AttendanceTable({
     records, draft, loading, saving, saveError,
     readOnly, pagination,
     onUpdateStatus, onUpdateNotes, onMarkAll, onSave,
-    onDismissError, onPaginationChange,
+    onDismissError, onPaginationChange, learnerHrefBuilder,
 }: AttendanceTableProps) {
     const [localSearch, setLocalSearch] = useState('');
     const filteredRecords = useMemo(() => {
@@ -79,17 +80,20 @@ export function AttendanceTable({
         {
             key: 'student_name',
             header: 'Learner',
-            render: r => (
-                <div>
-                    <Link
-                        href={`/learners/${r.student}`}
-                        className="font-medium text-blue-600 hover:underline"
-                    >
-                        {r.student_name}
-                    </Link>
-                    <div className="text-xs text-gray-500">{r.student_admission}</div>
-                </div>
-            ),
+            render: r => {
+                const learnerHref = learnerHrefBuilder?.(r) ?? `/learners/${r.student}`;
+                return (
+                    <div>
+                        <Link
+                            href={learnerHref}
+                            className="font-medium text-blue-600 hover:underline"
+                        >
+                            {r.student_name}
+                        </Link>
+                        <div className="text-xs text-gray-500">{r.student_admission}</div>
+                    </div>
+                );
+            },
         },
         {
             key: 'status',
