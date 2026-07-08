@@ -7,7 +7,7 @@ import { ArrowLeft, Edit } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAuth } from '@/app/context/AuthContext';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
@@ -15,13 +15,22 @@ import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { useCBCCatalog } from '@/app/plugins/cbc/hooks/useCBC';
 import { useCbcReportPolicy } from '@/app/plugins/cbc/hooks/useCbcReportPolicies';
+import { cbcReportPolicyAPI } from '@/app/plugins/cbc/api/reportPolicies';
 import { CbcReportPolicyFormModal } from '@/app/plugins/cbc/components/reportPolicies/CbcReportPolicyFormModal';
 import {
     buildCbcCohortSubjectOptions,
     buildCbcSubjectProfileOptions,
 } from '@/app/plugins/cbc/components/reportPolicies/policyScopeOptions';
+import { buildCbcPolicyRuleSummary } from '@/app/plugins/cbc/components/reportPolicies/policySummaries';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
 import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
+import {
+    InactivePolicyNotice,
+    PolicyHierarchyGuide,
+    PolicyScopeMeaningGuide,
+} from '@/app/core/components/reports/PolicyGuidance';
+import type { CbcReportPolicy } from '@/app/plugins/cbc/types/reportPolicy';
+import { resolveReportError, type AppError } from '@/app/core/errors';
 
 export function CbcReportPolicyDetailPage() {
     const params = useParams();
@@ -33,6 +42,9 @@ export function CbcReportPolicyDetailPage() {
         authoringMode: 'INSTITUTION_GOVERNANCE',
     });
     const [showEditModal, setShowEditModal] = useState(false);
+    const [templatePolicy, setTemplatePolicy] = useState<CbcReportPolicy | null>(null);
+    const [activating, setActivating] = useState(false);
+    const [actionError, setActionError] = useState<AppError | null>(null);
 
     const { policy, loading, error, refetch } = useCbcReportPolicy(
         Number.isFinite(policyId) ? policyId : null,
@@ -74,12 +86,33 @@ export function CbcReportPolicyDetailPage() {
 
     if (error || !policy) {
         return (
-            <ErrorBanner
-                message={error instanceof Error ? error.message : 'CBC report policy not found.'}
+            <AppErrorBanner
+                error={resolveReportError(error ?? new Error('CBC report policy not found.'), {
+                    action: 'load',
+                    entityLabel: 'CBC report policy',
+                    role: 'ADMIN',
+                })}
                 onDismiss={() => {}}
             />
         );
     }
+
+    const activatePolicy = async () => {
+        setActivating(true);
+        setActionError(null);
+        try {
+            await cbcReportPolicyAPI.update(policy.id, { is_active: true });
+            await refetch();
+        } catch (requestError) {
+            setActionError(resolveReportError(requestError, {
+                action: 'update',
+                entityLabel: 'CBC report policy',
+                role: 'ADMIN',
+            }));
+        } finally {
+            setActivating(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -104,18 +137,40 @@ export function CbcReportPolicyDetailPage() {
                     {policy.description && <p className="max-w-3xl text-sm text-gray-600">{policy.description}</p>}
                 </div>
                 {canManagePolicies && (
-                    <Button onClick={() => setShowEditModal(true)}>
+                    <Button onClick={() => {
+                        setTemplatePolicy(null);
+                        setShowEditModal(true);
+                    }}>
                         <Edit className="mr-1.5 h-4 w-4" />
                         Edit CBC Report Policy
                     </Button>
                 )}
             </div>
 
+            {actionError && <AppErrorBanner error={actionError} onDismiss={() => setActionError(null)} />}
+
+            {!policy.is_active && (
+                <InactivePolicyNotice
+                    activating={activating}
+                    onActivate={() => void activatePolicy()}
+                    onCreateActiveCopy={() => {
+                        setTemplatePolicy(policy);
+                        setShowEditModal(true);
+                    }}
+                    backHref="/cbc/report-policies"
+                />
+            )}
+
+            <div className="grid gap-4 lg:grid-cols-2">
+                <PolicyHierarchyGuide />
+                <PolicyScopeMeaningGuide />
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <h2 className="text-lg font-semibold text-gray-900">Scope</h2>
                     <div className="mt-4 space-y-2 text-sm text-gray-700">
-                        <p><span className="font-medium text-gray-900">Subject Profile:</span> {policy.subject_profile_name ?? 'Any'}</p>
+                        <p><span className="font-medium text-gray-900">Catalog fallback / reference:</span> {policy.subject_profile_name ?? 'None'}</p>
                         <p><span className="font-medium text-gray-900">CBC Cohort Subject:</span> {policy.cbc_cohort_subject_name ?? 'Any'}</p>
                         <p><span className="font-medium text-gray-900">Term:</span> {policy.term_name ?? 'Any'}</p>
                         <p><span className="font-medium text-gray-900">Rounding Mode:</span> {policy.rounding_mode}</p>
@@ -150,6 +205,15 @@ export function CbcReportPolicyDetailPage() {
                     </div>
                 </Card>
             </div>
+
+            <Card>
+                <h2 className="text-lg font-semibold text-gray-900">Policy summary</h2>
+                <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                    {buildCbcPolicyRuleSummary(policy).map((line) => (
+                        <li key={line}>{line}</li>
+                    ))}
+                </ul>
+            </Card>
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
@@ -203,15 +267,20 @@ export function CbcReportPolicyDetailPage() {
 
             {showEditModal && (
                 <CbcReportPolicyFormModal
-                    editingPolicy={policy}
+                    editingPolicy={templatePolicy ? null : policy}
+                    templatePolicy={templatePolicy}
                     subjectProfiles={subjectProfileOptions}
                     cohortSubjects={cohortSubjectOptions}
                     terms={termOptions}
                     onSuccess={async () => {
                         await refetch();
                         setShowEditModal(false);
+                        setTemplatePolicy(null);
                     }}
-                    onClose={() => setShowEditModal(false)}
+                    onClose={() => {
+                        setShowEditModal(false);
+                        setTemplatePolicy(null);
+                    }}
                 />
             )}
         </div>

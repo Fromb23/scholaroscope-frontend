@@ -13,7 +13,13 @@ import { PolicyWeightsEditor } from '@/app/core/components/gradePolicies/PolicyW
 import {
     useCreatePolicyForm,
     type PolicyFormState,
+    type WeightEntry,
 } from '@/app/core/hooks/useGradePolicies';
+import {
+    GuidedPolicySetup,
+    PolicyHierarchyGuide,
+    PolicyScopeMeaningGuide,
+} from '@/app/core/components/reports/PolicyGuidance';
 import { ASSESSMENT_TYPE_OPTIONS, getAssessmentTypeLabel } from '@/app/core/types/assessment';
 import type { Cohort, CohortSubject, Curriculum, Term } from '@/app/core/types/academic';
 import type { GradePolicy } from '@/app/core/types/gradePolicy';
@@ -27,6 +33,28 @@ const AGGREGATION_METHODS = [
 ];
 
 const ASSESSMENT_TYPES = ASSESSMENT_TYPE_OPTIONS.map(option => option.value);
+
+const POLICY_PRESETS: Array<{
+    label: string;
+    weights: Record<string, number>;
+    required: string[];
+}> = [
+    {
+        label: 'CAT 30 + Main Exam 70',
+        weights: { CAT: 30, MAIN_EXAM: 70 },
+        required: ['MAIN_EXAM'],
+    },
+    {
+        label: 'CAT 40 + Main Exam 60',
+        weights: { CAT: 40, MAIN_EXAM: 60 },
+        required: ['MAIN_EXAM'],
+    },
+    {
+        label: 'Main Exam only',
+        weights: { MAIN_EXAM: 100 },
+        required: ['MAIN_EXAM'],
+    },
+];
 
 type PolicyFormField =
     | 'name'
@@ -53,6 +81,7 @@ const POLICY_FIELD_LABELS: Record<PolicyFormField, string> = {
 
 interface PolicyFormModalProps {
     editingPolicy: GradePolicy | null;
+    templatePolicy?: GradePolicy | null;
     cohorts: Array<Pick<Cohort, 'id' | 'name' | 'level' | 'curriculum_type'>>;
     cohortSubjects: Array<Pick<CohortSubject, 'id' | 'subject_name' | 'subject_code' | 'is_compulsory' | 'curriculum_type'>>;
     curricula: Array<Pick<Curriculum, 'id' | 'name' | 'curriculum_type'>>;
@@ -66,6 +95,7 @@ interface PolicyFormModalProps {
 
 export function PolicyFormModal({
     editingPolicy,
+    templatePolicy = null,
     cohorts,
     cohortSubjects,
     curricula,
@@ -91,7 +121,7 @@ export function PolicyFormModal({
         toggleRequiredComponent,
         submit,
         dismissError,
-    } = useCreatePolicyForm(onSuccess, editingPolicy, { validateScope });
+    } = useCreatePolicyForm(onSuccess, editingPolicy, { templatePolicy, validateScope });
     const {
         summaryRef,
         setFieldRef,
@@ -115,6 +145,15 @@ export function PolicyFormModal({
     const showWeights = ['WEIGHTED', 'AVERAGE_PLUS_EXAM', 'PAPERS_AVERAGE'].includes(
         form.aggregation_method
     );
+    const applyPreset = (preset: typeof POLICY_PRESETS[number]) => {
+        const weightEntries: WeightEntry[] = Object.entries(preset.weights).map(([type, weight]) => ({
+            type,
+            weight: String(weight),
+        }));
+        setField('aggregation_method', 'WEIGHTED');
+        setField('weight_entries', weightEntries);
+        setField('required_components', [...preset.required]);
+    };
 
     return (
         <Modal
@@ -139,6 +178,9 @@ export function PolicyFormModal({
                 <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
                     Generic grade policies are kernel-owned. CBC/CBE reporting is managed in CBC Report Policies.
                 </div>
+
+                <GuidedPolicySetup />
+                <PolicyHierarchyGuide />
 
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
@@ -186,6 +228,9 @@ export function PolicyFormModal({
                     <p className="mb-3 text-sm text-gray-500">
                         Choose the narrowest scope that should own this rule. Leave all scope fields blank to make it the organization default.
                     </p>
+                    <div className="mb-4">
+                        <PolicyScopeMeaningGuide />
+                    </div>
                     <div className="grid gap-4 md:grid-cols-2">
                         <Select
                             label="Cohort override"
@@ -220,7 +265,7 @@ export function PolicyFormModal({
                                 },
                                 ...cohortSubjects.map((cohortSubject) => ({
                                     value: String(cohortSubject.id),
-                                    label: `${cohortSubject.subject_code} — ${cohortSubject.subject_name}`,
+                                    label: `Class subject: ${cohortSubject.subject_code} - ${cohortSubject.subject_name}`,
                                 })),
                             ]}
                         />
@@ -274,7 +319,12 @@ export function PolicyFormModal({
                                     onChange={(event) => setField('is_active', event.target.checked)}
                                     className="rounded border-gray-300"
                                 />
-                                <span className="text-sm text-gray-700">Active</span>
+                                <span className="text-sm text-gray-700">
+                                    Active
+                                    <span className="ml-1 text-xs text-gray-500">
+                                        Only active policies are used. Inactive policies are saved drafts or retired policies.
+                                    </span>
+                                </span>
                             </label>
                         </div>
                     </div>
@@ -286,6 +336,19 @@ export function PolicyFormModal({
 
                 {showWeights && (
                     <div ref={setFieldRef('weight_entries')} tabIndex={-1} className="border-t border-gray-100 pt-4">
+                        <div className="mb-3 flex flex-wrap gap-2">
+                            {POLICY_PRESETS.map((preset) => (
+                                <Button
+                                    key={preset.label}
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => applyPreset(preset)}
+                                >
+                                    {preset.label}
+                                </Button>
+                            ))}
+                        </div>
                         <PolicyWeightsEditor
                             entries={form.weight_entries}
                             error={errors.weight_entries}
@@ -300,7 +363,7 @@ export function PolicyFormModal({
                     <p className="mb-2 text-sm font-medium text-gray-700">
                         Required components
                         <span className="ml-1 text-xs font-normal text-gray-400">
-                            — missing required → PROVISIONAL grade
+                            These must exist before the learner&apos;s report can become final. If missing, the result stays provisional.
                         </span>
                     </p>
                     <div className="flex flex-wrap gap-2">

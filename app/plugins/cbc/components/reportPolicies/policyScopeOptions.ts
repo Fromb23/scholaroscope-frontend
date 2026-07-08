@@ -33,7 +33,7 @@ export function buildCbcSubjectProfileOptions(catalog?: CBCCatalog | null): CbcS
             seen.add(level.subject_profile_id);
             options.push({
                 id: level.subject_profile_id,
-                label: `${subject.code} · ${subject.name} · ${level.level}`,
+                label: `Catalog fallback: ${subject.code} · ${subject.name} · ${level.level} (Reference only)`,
             });
         });
     });
@@ -50,7 +50,7 @@ export function buildCbcCohortSubjectOptions(subjects: CohortSubject[]): CbcCoho
 
             return {
                 id: scopedSubject.cbc_cohort_subject_id ?? scopedSubject.id,
-                label: `${cohortName} · ${scopedSubject.subject_code} · ${scopedSubject.subject_name}`,
+                label: `Class subject: ${cohortName} · ${scopedSubject.subject_code} · ${scopedSubject.subject_name}`,
                 cohortId: scopedSubject.cohort_id ?? scopedSubject.cohort,
                 cohortSubjectId: scopedSubject.id,
                 subjectProfileId: scopedSubject.subject_profile_id ?? null,

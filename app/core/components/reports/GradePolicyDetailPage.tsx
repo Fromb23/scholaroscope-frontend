@@ -10,6 +10,7 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { PolicyFormModal } from '@/app/core/components/gradePolicies/PolicyFormModal';
+import { buildGradePolicyRuleSummary } from '@/app/core/components/gradePolicies/policySummaries';
 import { gradePolicyAPI } from '@/app/core/api/gradePolicy';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
@@ -24,6 +25,11 @@ import type { GradePolicy } from '@/app/core/types/gradePolicy';
 import type { ApiError } from '@/app/core/types/errors';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
+import {
+    InactivePolicyNotice,
+    PolicyHierarchyGuide,
+    PolicyScopeMeaningGuide,
+} from '@/app/core/components/reports/PolicyGuidance';
 
 const CBC_REJECTION_MESSAGE = 'CBC uses CbcReportPolicy. Use CBC report policy endpoints.';
 
@@ -36,7 +42,9 @@ export function GradePolicyDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [templatePolicy, setTemplatePolicy] = useState<GradePolicy | null>(null);
     const [selectedCohort, setSelectedCohort] = useState<number | null>(null);
+    const [activating, setActivating] = useState(false);
 
     const { curricula } = useCurricula();
     const { terms } = useTerms();
@@ -136,6 +144,21 @@ export function GradePolicyDetailPage() {
         }
     }, [policyId]);
 
+    const activatePolicy = useCallback(async () => {
+        if (!policy) return;
+
+        try {
+            setActivating(true);
+            const activated = await gradePolicyAPI.update(policy.id, { is_active: true });
+            setPolicy(activated);
+            setError(null);
+        } catch (requestError) {
+            setError(extractErrorMessage(requestError as ApiError, 'Failed to activate grade policy.'));
+        } finally {
+            setActivating(false);
+        }
+    }, [policy]);
+
     useEffect(() => {
         if (authLoading) {
             return;
@@ -204,11 +227,32 @@ export function GradePolicyDetailPage() {
                     {policy.description && <p className="max-w-3xl text-sm text-gray-600">{policy.description}</p>}
                 </div>
                 {canManagePolicies && (
-                    <Button onClick={() => setShowEditModal(true)}>
+                    <Button onClick={() => {
+                        setTemplatePolicy(null);
+                        setShowEditModal(true);
+                    }}>
                         <Edit className="mr-1.5 h-4 w-4" />
                         Edit Generic Grade Policy
                     </Button>
                 )}
+            </div>
+
+            {!policy.is_active && (
+                <InactivePolicyNotice
+                    activating={activating}
+                    onActivate={() => void activatePolicy()}
+                    onCreateActiveCopy={() => {
+                        setTemplatePolicy(policy);
+                        setSelectedCohort(policy.cohort ?? null);
+                        setShowEditModal(true);
+                    }}
+                    backHref="/reports/grade-policies"
+                />
+            )}
+
+            <div className="grid gap-4 lg:grid-cols-2">
+                <PolicyHierarchyGuide />
+                <PolicyScopeMeaningGuide />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -241,6 +285,15 @@ export function GradePolicyDetailPage() {
             </div>
 
             <Card>
+                <h2 className="text-lg font-semibold text-gray-900">Policy summary</h2>
+                <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                    {buildGradePolicyRuleSummary(policy).map((line) => (
+                        <li key={line}>{line}</li>
+                    ))}
+                </ul>
+            </Card>
+
+            <Card>
                 <h2 className="text-lg font-semibold text-gray-900">Generic Grading Scale</h2>
                 <div className="mt-4 overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -268,7 +321,8 @@ export function GradePolicyDetailPage() {
 
             {showEditModal && (
                 <PolicyFormModal
-                    editingPolicy={policy}
+                    editingPolicy={templatePolicy ? null : policy}
+                    templatePolicy={templatePolicy}
                     cohorts={genericCohorts}
                     cohortSubjects={genericScopedSubjects}
                     curricula={genericCurricula}
@@ -278,8 +332,12 @@ export function GradePolicyDetailPage() {
                     onSuccess={async () => {
                         await loadPolicy();
                         setShowEditModal(false);
+                        setTemplatePolicy(null);
                     }}
-                    onClose={() => setShowEditModal(false)}
+                    onClose={() => {
+                        setShowEditModal(false);
+                        setTemplatePolicy(null);
+                    }}
                     validateScope={validateScope}
                 />
             )}

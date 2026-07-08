@@ -169,11 +169,16 @@ export function useCreatePolicyForm(
     onSuccess: (policy: GradePolicy) => void,
     editingPolicy?: GradePolicy | null,
     options?: {
+        templatePolicy?: GradePolicy | null;
         validateScope?: (form: PolicyFormState) => string | null;
     },
 ) {
     const [form, setForm] = useState<PolicyFormState>(
-        editingPolicy ? policyToForm(editingPolicy) : DEFAULT_FORM
+        editingPolicy
+            ? policyToForm(editingPolicy)
+            : options?.templatePolicy
+                ? templatePolicyToForm(options.templatePolicy)
+                : DEFAULT_FORM
     );
     const [errors, setErrors] = useState<FormErrors>({});
     const [saving, setSaving] = useState(false);
@@ -309,7 +314,13 @@ export function useCreatePolicyForm(
     };
 
     const reset = () => {
-        setForm(editingPolicy ? policyToForm(editingPolicy) : DEFAULT_FORM);
+        setForm(
+            editingPolicy
+                ? policyToForm(editingPolicy)
+                : options?.templatePolicy
+                    ? templatePolicyToForm(options.templatePolicy)
+                    : DEFAULT_FORM
+        );
         setErrors({});
         setSaveError(null);
     };
@@ -394,5 +405,13 @@ function policyToForm(policy: GradePolicy): PolicyFormState {
         cap_exam_score: policy.cap_exam_score != null ? String(policy.cap_exam_score) : '',
         is_active: policy.is_active,
         is_default: policy.is_default,
+    };
+}
+
+function templatePolicyToForm(policy: GradePolicy): PolicyFormState {
+    return {
+        ...policyToForm(policy),
+        name: `${policy.name} active copy`,
+        is_active: true,
     };
 }
