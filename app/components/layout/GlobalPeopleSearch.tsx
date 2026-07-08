@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, Search } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react';
 import { apiClient } from '@/app/core/api/client';
 import { useAuth } from '@/app/context/AuthContext';
 import {
@@ -10,8 +10,15 @@ import {
     membershipStatusLabel,
 } from '@/app/core/types/globalUsers';
 
+interface PeopleSearchAction {
+    key: string;
+    label: string;
+    href: string;
+    description?: string;
+}
+
 interface PeopleSearchResult {
-    kind: 'student' | 'instructor' | 'admin' | 'user';
+    kind: 'student' | 'instructor' | 'admin' | 'superadmin' | 'user';
     id: number;
     display_name: string;
     secondary_label: string;
@@ -26,6 +33,7 @@ interface PeopleSearchResult {
         code: string | null;
     } | null;
     target_url: string;
+    actions?: PeopleSearchAction[];
 }
 
 function kindLabel(kind: PeopleSearchResult['kind']): string {
@@ -36,20 +44,59 @@ function kindLabel(kind: PeopleSearchResult['kind']): string {
             return 'Admin';
         case 'instructor':
             return 'Instructor';
+        case 'superadmin':
+            return 'Superadmin';
         default:
             return 'User';
     }
 }
 
+function safeRelativeUrl(href: string): URL | null {
+    if (!href.startsWith('/') || href.startsWith('//')) {
+        return null;
+    }
+
+    return new URL(href, 'https://scholaroscope.local');
+}
+
+function getOrganizationIdFromHref(href: string): number | null {
+    const url = safeRelativeUrl(href);
+    if (!url) {
+        return null;
+    }
+
+    const parsed = Number(url.searchParams.get('organization'));
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function stripOrganizationParam(href: string): string {
+    const url = safeRelativeUrl(href);
+    if (!url) {
+        return href;
+    }
+
+    url.searchParams.delete('organization');
+    return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export function GlobalPeopleSearch() {
     const router = useRouter();
-    const { user } = useAuth();
+    const pathname = usePathname();
+    const { activeOrg, switchOrg, user } = useAuth();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<PeopleSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [expandedResultKey, setExpandedResultKey] = useState<string | null>(null);
+    const isPlatformSearchContext = Boolean(
+        user?.is_superadmin
+        && (
+            pathname === '/dashboard/superadmin'
+            || pathname.startsWith('/superadmin')
+        ),
+    );
 
     useEffect(() => {
         const handlePointerDown = (event: MouseEvent) => {
@@ -72,6 +119,7 @@ export function GlobalPeopleSearch() {
             setResults([]);
             setLoading(false);
             setError(null);
+            setExpandedResultKey(null);
             return;
         }
 
@@ -83,7 +131,12 @@ export function GlobalPeopleSearch() {
             try {
                 const { data } = await apiClient.get<PeopleSearchResult[]>(
                     '/users/people-search/',
-                    { params: { q: trimmedQuery } },
+                    {
+                        params: {
+                            q: trimmedQuery,
+                            ...(isPlatformSearchContext ? { scope: 'platform' } : {}),
+                        },
+                    },
                 );
 
                 if (cancelled) {
@@ -91,6 +144,7 @@ export function GlobalPeopleSearch() {
                 }
 
                 setResults(data);
+                setExpandedResultKey(null);
             } catch (err) {
                 if (cancelled) {
                     return;
@@ -109,7 +163,7 @@ export function GlobalPeopleSearch() {
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, [query]);
+    }, [isPlatformSearchContext, query]);
 
     const shouldShowDropdown = open && (
         query.trim().length >= 2
@@ -130,6 +184,35 @@ export function GlobalPeopleSearch() {
 
         return result.target_url;
     };
+
+    const navigateToHref = async (href: string, result: PeopleSearchResult) => {
+        try {
+            let nextHref = href;
+            const organizationId = getOrganizationIdFromHref(href) ?? result.organization?.id ?? null;
+            if (
+                user?.is_superadmin
+                && organizationId
+                && !nextHref.startsWith('/superadmin/learners/')
+            ) {
+                if (activeOrg?.id !== organizationId) {
+                    await switchOrg(organizationId);
+                }
+                nextHref = stripOrganizationParam(nextHref);
+            }
+
+            setOpen(false);
+            setQuery('');
+            setExpandedResultKey(null);
+            router.push(nextHref);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Search navigation failed.');
+            setOpen(true);
+        }
+    };
+
+    const visibleResults = user?.is_superadmin
+        ? results
+        : results.filter((result) => result.kind !== 'superadmin');
 
     return (
         <div ref={containerRef} className="relative hidden md:block">
@@ -157,66 +240,107 @@ export function GlobalPeopleSearch() {
                         <div className="px-4 py-3 text-sm text-red-600">{error}</div>
                     ) : null}
 
-                    {!error && !loading && results.length === 0 ? (
+                    {!error && !loading && visibleResults.length === 0 ? (
                         <div className="px-4 py-3 text-sm theme-muted">
                             No matching people found.
                         </div>
                     ) : null}
 
-                    {!error && results.map((result) => (
-                        <button
-                            key={`${result.kind}:${result.id}`}
-                            type="button"
-                            onClick={() => {
-                                setOpen(false);
-                                setQuery('');
-                                router.push(buildTargetUrl(result));
-                            }}
-                            className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-[color:var(--color-surface-muted)]"
-                        >
-                            <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-sm font-medium theme-text">
-                                        {result.display_name}
-                                    </span>
-                                    <span className="rounded-full theme-card-muted px-2 py-0.5 text-[11px] font-medium theme-muted">
-                                        {kindLabel(result.kind)}
-                                    </span>
-                                </div>
-                                <p className="mt-1 truncate text-sm theme-muted">
-                                    {result.secondary_label}
-                                </p>
-                                {result.organization?.name ? (
-                                    <p className="mt-1 text-xs theme-subtle">
-                                        {result.organization.code
-                                            ? `${result.organization.name} (${result.organization.code})`
-                                            : result.organization.name}
-                                    </p>
-                                ) : null}
-                                {result.state_message ? (
-                                    <p className="mt-1 text-xs theme-subtle">
-                                        {result.state_message}
-                                    </p>
+                    {!error && visibleResults.map((result) => {
+                        const resultKey = `${result.kind}:${result.id}`;
+                        const learnerActions = result.kind === 'student'
+                            ? (result.actions ?? []).filter((action) => action.href && action.label)
+                            : [];
+                        const hasLearnerActions = learnerActions.length > 0;
+                        const isExpanded = expandedResultKey === resultKey;
+
+                        return (
+                            <div
+                                key={resultKey}
+                                className="border-t first:border-t-0 theme-border"
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (hasLearnerActions) {
+                                            setExpandedResultKey(isExpanded ? null : resultKey);
+                                            return;
+                                        }
+                                        void navigateToHref(buildTargetUrl(result), result);
+                                    }}
+                                    className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-[color:var(--color-surface-muted)]"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-medium theme-text">
+                                                {result.display_name}
+                                            </span>
+                                            <span className="rounded-full theme-card-muted px-2 py-0.5 text-[11px] font-medium theme-muted">
+                                                {kindLabel(result.kind)}
+                                            </span>
+                                        </div>
+                                        <p className="mt-1 truncate text-sm theme-muted">
+                                            {result.secondary_label}
+                                        </p>
+                                        {result.organization?.name ? (
+                                            <p className="mt-1 text-xs theme-subtle">
+                                                {result.organization.code
+                                                    ? `${result.organization.name} (${result.organization.code})`
+                                                    : result.organization.name}
+                                            </p>
+                                        ) : null}
+                                        {result.state_message ? (
+                                            <p className="mt-1 text-xs theme-subtle">
+                                                {result.state_message}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                    <div className="flex shrink-0 flex-col items-end gap-1">
+                                        {result.global_status ? (
+                                            <span className="rounded-full theme-badge-default px-2 py-0.5 text-[11px] font-medium">
+                                                {globalStatusLabel(result.global_status)}
+                                            </span>
+                                        ) : null}
+                                        {result.membership_status ? (
+                                            <span className="rounded-full theme-brand-badge px-2 py-0.5 text-[11px] font-medium">
+                                                {membershipStatusLabel(result.membership_status)}
+                                            </span>
+                                        ) : result.status ? (
+                                            <span className="shrink-0 text-xs uppercase tracking-wide theme-subtle">
+                                                {result.status}
+                                            </span>
+                                        ) : null}
+                                        {hasLearnerActions ? (
+                                            isExpanded
+                                                ? <ChevronDown className="mt-1 h-4 w-4 theme-subtle" />
+                                                : <ChevronRight className="mt-1 h-4 w-4 theme-subtle" />
+                                        ) : null}
+                                    </div>
+                                </button>
+                                {hasLearnerActions && isExpanded ? (
+                                    <div className="grid gap-2 px-4 pb-3 sm:grid-cols-2">
+                                        {learnerActions.map((action) => (
+                                            <button
+                                                key={action.key}
+                                                type="button"
+                                                onClick={() => {
+                                                    void navigateToHref(action.href, result);
+                                                }}
+                                                className="rounded-lg border px-3 py-2 text-left text-sm font-medium theme-border theme-hover-surface theme-text"
+                                            >
+                                                {action.label}
+                                                {action.description ? (
+                                                    <span className="mt-1 block text-xs font-normal theme-subtle">
+                                                        {action.description}
+                                                    </span>
+                                                ) : null}
+                                            </button>
+                                        ))}
+                                    </div>
                                 ) : null}
                             </div>
-                            <div className="flex shrink-0 flex-col items-end gap-1">
-                                {result.global_status ? (
-                                    <span className="rounded-full theme-badge-default px-2 py-0.5 text-[11px] font-medium">
-                                        {globalStatusLabel(result.global_status)}
-                                    </span>
-                                ) : null}
-                                {result.membership_status ? (
-                                    <span className="rounded-full theme-brand-badge px-2 py-0.5 text-[11px] font-medium">
-                                        {membershipStatusLabel(result.membership_status)}
-                                    </span>
-                                ) : result.status ? (
-                                    <span className="shrink-0 text-xs uppercase tracking-wide theme-subtle">
-                                        {result.status}
-                                    </span>
-                                ) : null}
-                            </div>
-                        </button>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : null}
         </div>
