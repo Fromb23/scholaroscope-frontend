@@ -40,6 +40,8 @@ import { buildLearnerSubjectReportHref } from '@/app/core/lib/learnerReportingRo
 import { shouldUseInstructorReportSurface } from '@/app/core/components/reports/reportAccessPolicy';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import type {
     BulkSubjectEnrollResponse,
     BulkSubjectUnenrollResponse,
@@ -373,6 +375,69 @@ export default function CohortSubjectLearnersPage() {
                         <X className="h-4 w-4" />
                     </button>
                 </div>
+            ) : null}
+
+            {instructorView ? (
+                <Card>
+                    <div className="flex flex-wrap gap-2">
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'ENROLLMENT_CHANGE',
+                                title: `Request learner added to ${subjectLabel}`,
+                                targetType: 'cohort_subject',
+                                targetId: cohortSubjectId,
+                                returnTo: currentReturnTo,
+                                requestKey: buildContextualRequestKey(['cohort-subject', cohortSubjectId, 'add-learner']),
+                                referenceData: {
+                                    contextual_action: 'add_to_cohort_subject',
+                                    cohort_subject_id: cohortSubjectId,
+                                    cohort_id: learnerData.cohort_id,
+                                    subject_name: subjectLabel,
+                                },
+                            }}
+                        >
+                            <UserPlus className="h-4 w-4" />
+                            Ask admin to add learner
+                        </ContextualApprovalRequestButton>
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'ENROLLMENT_CHANGE',
+                                title: `Request learner removed from ${subjectLabel}`,
+                                targetType: 'cohort_subject',
+                                targetId: cohortSubjectId,
+                                returnTo: currentReturnTo,
+                                requestKey: buildContextualRequestKey(['cohort-subject', cohortSubjectId, 'remove-learner']),
+                                referenceData: {
+                                    contextual_action: 'remove_from_cohort_subject',
+                                    cohort_subject_id: cohortSubjectId,
+                                    cohort_id: learnerData.cohort_id,
+                                    subject_name: subjectLabel,
+                                },
+                            }}
+                        >
+                            <UserMinus className="h-4 w-4" />
+                            Ask admin to remove learner
+                        </ContextualApprovalRequestButton>
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'RESOURCE_REQUEST',
+                                title: `Request teacher access for ${subjectLabel}`,
+                                targetType: 'cohort_subject',
+                                targetId: cohortSubjectId,
+                                returnTo: currentReturnTo,
+                                requestKey: buildContextualRequestKey(['cohort-subject', cohortSubjectId, 'teacher-access']),
+                                referenceData: {
+                                    contextual_action: 'teacher_access_assignment',
+                                    cohort_subject_id: cohortSubjectId,
+                                    cohort_id: learnerData.cohort_id,
+                                    subject_name: subjectLabel,
+                                },
+                            }}
+                        >
+                            Ask admin for access
+                        </ContextualApprovalRequestButton>
+                    </div>
+                </Card>
             ) : null}
 
             {instructorView ? (

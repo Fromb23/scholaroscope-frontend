@@ -70,6 +70,8 @@ import type {
     AssignmentLifecycleAction,
 } from '@/app/core/types/assignments';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 
 type DetailTab =
     | 'overview'
@@ -819,6 +821,104 @@ export default function CohortAssignmentDetailPage() {
                     {successMessage}
                 </div>
             ) : null}
+
+            <Card>
+                <div className="flex flex-wrap gap-2">
+                    <ContextualApprovalRequestButton
+                        intent={{
+                            actionKey: 'RESOURCE_REQUEST',
+                            title: `Request add late learner to ${assignment.title}`,
+                            targetType: 'assignment',
+                            targetId: assignment.id,
+                            returnTo: currentReturnTo,
+                            requestKey: buildContextualRequestKey(['assignment', assignment.id, 'add-late-learner']),
+                            referenceData: {
+                                contextual_action: 'add_late_learner',
+                                assignment_id: assignment.id,
+                                cohort_id: cohortId,
+                                assignment_title: assignment.title,
+                            },
+                        }}
+                    >
+                        <Users className="h-4 w-4" />
+                        Request add learner
+                    </ContextualApprovalRequestButton>
+                    <ContextualApprovalRequestButton
+                        intent={{
+                            actionKey: 'OTHER',
+                            title: `Request reopen closed assignment ${assignment.title}`,
+                            targetType: 'assignment',
+                            targetId: assignment.id,
+                            returnTo: currentReturnTo,
+                            requestKey: buildContextualRequestKey(['assignment', assignment.id, 'reopen']),
+                            referenceData: {
+                                contextual_action: 'reopen_closed_assignment',
+                                assignment_id: assignment.id,
+                                cohort_id: cohortId,
+                                assignment_title: assignment.title,
+                            },
+                        }}
+                    >
+                        <Clock className="h-4 w-4" />
+                        Request reopen
+                    </ContextualApprovalRequestButton>
+                    <ContextualApprovalRequestButton
+                        intent={{
+                            actionKey: 'RESOURCE_REQUEST',
+                            title: `Request evaluation revision for ${assignment.title}`,
+                            targetType: 'assignment',
+                            targetId: assignment.id,
+                            returnTo: currentReturnTo,
+                            requestKey: buildContextualRequestKey(['assignment', assignment.id, 'revise-evaluation']),
+                            referenceData: {
+                                contextual_action: 'revise_evaluation',
+                                assignment_id: assignment.id,
+                                cohort_id: cohortId,
+                                assignment_title: assignment.title,
+                            },
+                        }}
+                    >
+                        <FileCheck2 className="h-4 w-4" />
+                        Request evaluation revision
+                    </ContextualApprovalRequestButton>
+                    <ContextualApprovalRequestButton
+                        intent={{
+                            actionKey: 'RESOURCE_REQUEST',
+                            title: `Request group correction for ${assignment.title}`,
+                            targetType: 'assignment',
+                            targetId: assignment.id,
+                            returnTo: currentReturnTo,
+                            requestKey: buildContextualRequestKey(['assignment', assignment.id, 'group-correction']),
+                            referenceData: {
+                                contextual_action: 'group_membership_correction',
+                                assignment_id: assignment.id,
+                                cohort_id: cohortId,
+                                assignment_title: assignment.title,
+                            },
+                        }}
+                    >
+                        Request group correction
+                    </ContextualApprovalRequestButton>
+                    <ContextualApprovalRequestButton
+                        intent={{
+                            actionKey: 'RESOURCE_REQUEST',
+                            title: `Request response correction for ${assignment.title}`,
+                            targetType: 'assignment',
+                            targetId: assignment.id,
+                            returnTo: currentReturnTo,
+                            requestKey: buildContextualRequestKey(['assignment', assignment.id, 'response-correction']),
+                            referenceData: {
+                                contextual_action: 'learner_response_correction',
+                                assignment_id: assignment.id,
+                                cohort_id: cohortId,
+                                assignment_title: assignment.title,
+                            },
+                        }}
+                    >
+                        Request response correction
+                    </ContextualApprovalRequestButton>
+                </div>
+            </Card>
 
             {canManageAssignments ? (
                 lifecycleQuery.loading ? (

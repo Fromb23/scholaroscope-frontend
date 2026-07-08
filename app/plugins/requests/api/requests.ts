@@ -54,6 +54,18 @@ export const requestsAPI = {
         return response.data;
     },
 
+    // POST /api/requests/{id}/execute/
+    execute: async (id: number): Promise<Request> => {
+        const response = await apiClient.post<Request>(`/requests/${id}/execute/`);
+        return response.data;
+    },
+
+    // POST /api/requests/{id}/retry-execution/
+    retryExecution: async (id: number): Promise<Request> => {
+        const response = await apiClient.post<Request>(`/requests/${id}/retry-execution/`);
+        return response.data;
+    },
+
     // POST /api/requests/{id}/add_comment/
     addComment: async (id: number, data: AddCommentPayload): Promise<RequestComment> => {
         const response = await apiClient.post<RequestComment>(`/requests/${id}/add_comment/`, data);

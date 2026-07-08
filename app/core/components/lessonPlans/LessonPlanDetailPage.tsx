@@ -62,6 +62,8 @@ import {
     shouldOpenLearnerTaskFromQuery,
     shouldShowLearnerTaskSection,
 } from '@/app/core/components/lessonPlans/lessonPlanDetailVisibility';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 
 function getLessonPlanId(params: ReturnType<typeof useParams>): number | null {
     const rawId = params.id;
@@ -1137,6 +1139,75 @@ export function LessonPlanDetailPage() {
                     autoDismissMs={4000}
                 />
             ) : null}
+
+            <Card>
+                <div className="flex flex-wrap gap-2">
+                    {!canEditLessonPlan ? (
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'RESOURCE_REQUEST',
+                                title: `Request edit access for ${lessonPlan.title}`,
+                                targetType: 'lesson_plan',
+                                targetId: lessonPlan.id,
+                                returnTo: currentReturnTo,
+                                requestKey: buildContextualRequestKey(['lesson-plan', lessonPlan.id, 'edit-used']),
+                                referenceData: {
+                                    contextual_action: 'edit_used_lesson_plan',
+                                    lesson_plan_id: lessonPlan.id,
+                                    lesson_plan_title: lessonPlan.title,
+                                    status: lessonPlan.status,
+                                },
+                            }}
+                        >
+                            <Edit className="h-4 w-4" />
+                            Request edit
+                        </ContextualApprovalRequestButton>
+                    ) : null}
+                    {!canScheduleLesson(lessonPlan.status) || lessonPlan.session ? (
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'RESOURCE_REQUEST',
+                                title: `Request schedule exception for ${lessonPlan.title}`,
+                                targetType: 'lesson_plan',
+                                targetId: lessonPlan.id,
+                                returnTo: currentReturnTo,
+                                requestKey: buildContextualRequestKey(['lesson-plan', lessonPlan.id, 'schedule-exception']),
+                                referenceData: {
+                                    contextual_action: 'schedule_exception',
+                                    lesson_plan_id: lessonPlan.id,
+                                    lesson_plan_title: lessonPlan.title,
+                                    status: lessonPlan.status,
+                                    session_id: lessonPlan.session,
+                                },
+                            }}
+                        >
+                            <CalendarDays className="h-4 w-4" />
+                            Request schedule exception
+                        </ContextualApprovalRequestButton>
+                    ) : null}
+                    {!canArchiveLessonPlan(lessonPlan.status) ? (
+                        <ContextualApprovalRequestButton
+                            intent={{
+                                actionKey: 'RESOURCE_REQUEST',
+                                title: `Request archive or delete review for ${lessonPlan.title}`,
+                                targetType: 'lesson_plan',
+                                targetId: lessonPlan.id,
+                                returnTo: currentReturnTo,
+                                requestKey: buildContextualRequestKey(['lesson-plan', lessonPlan.id, 'archive-delete']),
+                                referenceData: {
+                                    contextual_action: 'delete_or_archive_reviewed_lesson_plan',
+                                    lesson_plan_id: lessonPlan.id,
+                                    lesson_plan_title: lessonPlan.title,
+                                    status: lessonPlan.status,
+                                },
+                            }}
+                        >
+                            <AlertTriangle className="h-4 w-4" />
+                            Request archive review
+                        </ContextualApprovalRequestButton>
+                    ) : null}
+                </div>
+            </Card>
 
             <Card>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

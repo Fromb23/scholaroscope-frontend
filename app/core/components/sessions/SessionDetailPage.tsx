@@ -69,6 +69,8 @@ import {
     shouldShowParticipatingCohorts,
     shouldShowPostLessonAssignmentActions,
 } from '@/app/core/components/sessions/sessionDetailVisibility';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 type SessionPageNotice = {
@@ -258,6 +260,10 @@ export function SessionDetailPage() {
     });
     const returnTo = searchParams.get('returnTo');
     const backHref = returnTo?.startsWith('/') ? returnTo : '/sessions';
+    const sessionReturnTo = useMemo(() => {
+        const query = searchParams.toString();
+        return query ? `${pathname}?${query}` : pathname;
+    }, [pathname, searchParams]);
 
     const [workflowError, setWorkflowError] = useState<string | null>(null);
     const [workflowNotice, setWorkflowNotice] = useState<string | null>(null);
@@ -1955,6 +1961,93 @@ export function SessionDetailPage() {
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
                         <p>This lesson time has passed and the lesson was not started.</p>
                         <p className="mt-1">You can start it late or reschedule it.</p>
+                    </div>
+                ) : null}
+
+                {!canCreateTeachingRecords || isCompleted ? (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                        <div className="flex flex-wrap gap-2">
+                            {!canReschedule ? (
+                                <ContextualApprovalRequestButton
+                                    intent={{
+                                        actionKey: 'SESSION_RESCHEDULE',
+                                        title: `Request reschedule for ${session.title || session.subject_name}`,
+                                        targetType: 'session',
+                                        targetId: session.id,
+                                        returnTo: sessionReturnTo,
+                                        requestKey: buildContextualRequestKey(['session', session.id, 'reschedule']),
+                                        referenceData: {
+                                            contextual_action: 'reschedule',
+                                            session_id: session.id,
+                                            session_title: session.title || session.subject_name,
+                                            session_date: session.session_date,
+                                            start_time: session.start_time,
+                                            end_time: session.end_time,
+                                        },
+                                    }}
+                                >
+                                    <Calendar className="h-4 w-4" />
+                                    Ask admin to reschedule
+                                </ContextualApprovalRequestButton>
+                            ) : null}
+                            {!isCancelled && !isCompleted ? (
+                                <ContextualApprovalRequestButton
+                                    intent={{
+                                        actionKey: 'SESSION_RESCHEDULE',
+                                        title: `Request cancellation for ${session.title || session.subject_name}`,
+                                        targetType: 'session',
+                                        targetId: session.id,
+                                        returnTo: sessionReturnTo,
+                                        requestKey: buildContextualRequestKey(['session', session.id, 'cancel']),
+                                        referenceData: {
+                                            contextual_action: 'cancel',
+                                            session_id: session.id,
+                                            session_title: session.title || session.subject_name,
+                                        },
+                                    }}
+                                >
+                                    <AlertCircle className="h-4 w-4" />
+                                    Ask admin to cancel
+                                </ContextualApprovalRequestButton>
+                            ) : null}
+                            {isCompleted ? (
+                                <ContextualApprovalRequestButton
+                                    intent={{
+                                        actionKey: 'OTHER',
+                                        title: `Request reopen completed lesson ${session.title || session.subject_name}`,
+                                        targetType: 'session',
+                                        targetId: session.id,
+                                        returnTo: sessionReturnTo,
+                                        requestKey: buildContextualRequestKey(['session', session.id, 'reopen-completed']),
+                                        referenceData: {
+                                            contextual_action: 'reopen_completed_session',
+                                            session_id: session.id,
+                                            session_title: session.title || session.subject_name,
+                                        },
+                                    }}
+                                >
+                                    Ask admin to reopen
+                                </ContextualApprovalRequestButton>
+                            ) : null}
+                            <ContextualApprovalRequestButton
+                                intent={{
+                                    actionKey: 'RESOURCE_REQUEST',
+                                    title: `Request attendance help for ${session.title || session.subject_name}`,
+                                    targetType: 'session',
+                                    targetId: session.id,
+                                    returnTo: sessionReturnTo,
+                                    requestKey: buildContextualRequestKey(['session', session.id, 'attendance-help']),
+                                    referenceData: {
+                                        contextual_action: 'attendance_correction_or_missing_learner',
+                                        session_id: session.id,
+                                        session_title: session.title || session.subject_name,
+                                    },
+                                }}
+                            >
+                                <ClipboardCheck className="h-4 w-4" />
+                                Ask admin about attendance
+                            </ContextualApprovalRequestButton>
+                        </div>
                     </div>
                 ) : null}
 

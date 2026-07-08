@@ -35,6 +35,8 @@ import type { StudentCohortEnrollment } from '@/app/core/types/student';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { getLearnerProfileBackTarget } from '@/app/core/components/learners/learnerProfileNavigation';
 import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success', GRADUATED: 'info', TRANSFERRED: 'warning',
@@ -298,6 +300,17 @@ export default function LearnerDetailPage() {
         [searchParams, studentId],
     );
     const requestedSection = parseLearnerSection(searchParams.get('section'));
+    const learnerReturnTo = useMemo(
+        () => buildLearnerDetailHref(studentId, searchParams),
+        [searchParams, studentId],
+    );
+    const learnerApprovalReference = useMemo(() => ({
+        student_id: studentId,
+        learner_id: studentId,
+        learner_name: student?.full_name ?? '',
+        current_cohort_id: currentCohortId,
+        current_cohort_name: currentCohortName,
+    }), [currentCohortId, currentCohortName, student?.full_name, studentId]);
 
 
     const curriculaTypes = activeEnrollments.map(
@@ -745,6 +758,87 @@ export default function LearnerDetailPage() {
                 </div>
             </Card>
 
+            {!canManage ? (
+                <Card>
+                    <div className="space-y-3">
+                        <h2 className="text-lg font-semibold text-gray-900">Requests</h2>
+                        <div className="flex flex-wrap gap-2">
+                            <ContextualApprovalRequestButton
+                                intent={{
+                                    actionKey: 'STUDENT_STATUS_UPDATE',
+                                    title: `Request learner transfer for ${student.full_name}`,
+                                    targetType: 'learner',
+                                    targetId: studentId,
+                                    returnTo: learnerReturnTo,
+                                    requestKey: buildContextualRequestKey(['learner', studentId, 'transfer']),
+                                    referenceData: {
+                                        ...learnerApprovalReference,
+                                        contextual_action: 'transfer',
+                                        status: 'TRANSFERRED',
+                                    },
+                                }}
+                            >
+                                <ArrowRightLeft className="h-4 w-4" />
+                                Ask admin to transfer
+                            </ContextualApprovalRequestButton>
+                            <ContextualApprovalRequestButton
+                                intent={{
+                                    actionKey: 'STUDENT_STATUS_UPDATE',
+                                    title: `Request learner withdrawal for ${student.full_name}`,
+                                    targetType: 'learner',
+                                    targetId: studentId,
+                                    returnTo: learnerReturnTo,
+                                    requestKey: buildContextualRequestKey(['learner', studentId, 'withdraw']),
+                                    referenceData: {
+                                        ...learnerApprovalReference,
+                                        contextual_action: 'withdraw',
+                                        status: 'WITHDRAWN',
+                                    },
+                                }}
+                            >
+                                <UserMinus className="h-4 w-4" />
+                                Ask admin to withdraw
+                            </ContextualApprovalRequestButton>
+                            <ContextualApprovalRequestButton
+                                intent={{
+                                    actionKey: 'STUDENT_STATUS_UPDATE',
+                                    title: `Request learner archive for ${student.full_name}`,
+                                    targetType: 'learner',
+                                    targetId: studentId,
+                                    returnTo: learnerReturnTo,
+                                    requestKey: buildContextualRequestKey(['learner', studentId, 'archive']),
+                                    referenceData: {
+                                        ...learnerApprovalReference,
+                                        contextual_action: 'archive',
+                                        status: 'ARCHIVED',
+                                    },
+                                }}
+                            >
+                                <Archive className="h-4 w-4" />
+                                Ask admin to archive
+                            </ContextualApprovalRequestButton>
+                            <ContextualApprovalRequestButton
+                                intent={{
+                                    actionKey: 'STUDENT_STATUS_UPDATE',
+                                    title: `Request learner status update for ${student.full_name}`,
+                                    targetType: 'learner',
+                                    targetId: studentId,
+                                    returnTo: learnerReturnTo,
+                                    requestKey: buildContextualRequestKey(['learner', studentId, 'status-update']),
+                                    referenceData: {
+                                        ...learnerApprovalReference,
+                                        contextual_action: 'status_update',
+                                    },
+                                }}
+                            >
+                                <Users className="h-4 w-4" />
+                                Ask admin to update status
+                            </ContextualApprovalRequestButton>
+                        </div>
+                    </div>
+                </Card>
+            ) : null}
+
             {canGenerateSubjectReport ? (
                 <LearnerSectionCard
                     sectionId="learner-section-reports"
@@ -1175,6 +1269,26 @@ export default function LearnerDetailPage() {
                                 <Trash2 className="h-4 w-4" />
                                 Review Permanent Delete
                             </Button>
+                            <ContextualApprovalRequestButton
+                                variant="danger"
+                                disabled={actionLoading}
+                                intent={{
+                                    actionKey: 'STUDENT_STATUS_UPDATE',
+                                    title: `Request permanent delete for ${student.full_name}`,
+                                    targetType: 'learner',
+                                    targetId: studentId,
+                                    returnTo: learnerReturnTo,
+                                    requestKey: buildContextualRequestKey(['learner', studentId, 'permanent-delete']),
+                                    referenceData: {
+                                        ...learnerApprovalReference,
+                                        contextual_action: 'permanent_delete',
+                                        confirmed_danger_zone: true,
+                                    },
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Request permanent delete
+                            </ContextualApprovalRequestButton>
                         </div>
                     </div>
                 </Card>

@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, Download, UserCheck, UserMinus, UserPlus, Users, ArrowRightLeft } from 'lucide-react';
 import { useCohortDetail } from '@/app/core/hooks/useAcademic';
 import { type EnrolledStudent, useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { Button } from '@/app/components/ui/Button';
@@ -31,6 +31,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/app/components/ui/Table';
+import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
+import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 
 type LearnerRow = EnrolledStudent & {
     email?: string | null;
@@ -212,6 +214,24 @@ export function CohortStudentsPage() {
                                     Create learner
                                 </Button>
                             </Link>
+                            <ContextualApprovalRequestButton
+                                intent={{
+                                    actionKey: 'ENROLLMENT_CHANGE',
+                                    title: `Request add learner to ${cohortName || 'cohort'}`,
+                                    targetType: 'cohort',
+                                    targetId: cohortId,
+                                    returnTo: `/academic/cohorts/${cohortId}/students`,
+                                    requestKey: buildContextualRequestKey(['cohort', cohortId, 'add-learner']),
+                                    referenceData: {
+                                        contextual_action: 'add_to_cohort',
+                                        cohort_id: cohortId,
+                                        cohort_name: cohortName,
+                                    },
+                                }}
+                            >
+                                <UserCheck className="h-4 w-4" />
+                                Request add learner
+                            </ContextualApprovalRequestButton>
                             <Button
                                 variant="secondary"
                                 size="sm"
@@ -245,6 +265,7 @@ export function CohortStudentsPage() {
                                     <TableHead>Learner</TableHead>
                                     <TableHead>Contact</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>Requests</TableHead>
                                 </tr>
                             </TableHeader>
                             <TableBody>
@@ -266,6 +287,69 @@ export function CohortStudentsPage() {
                                             <Badge variant={getLearnerStatusVariant(student)}>
                                                 {getLearnerStatus(student)}
                                             </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-2">
+                                                <ContextualApprovalRequestButton
+                                                    variant="ghost"
+                                                    intent={{
+                                                        actionKey: 'ENROLLMENT_CHANGE',
+                                                        title: `Request unenroll ${student.full_name}`,
+                                                        targetType: 'learner',
+                                                        targetId: student.id,
+                                                        returnTo: `/academic/cohorts/${cohortId}/students`,
+                                                        requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'unenroll']),
+                                                        referenceData: {
+                                                            contextual_action: 'unenroll',
+                                                            student_id: student.id,
+                                                            cohort_id: cohortId,
+                                                            cohort_name: cohortName,
+                                                        },
+                                                    }}
+                                                >
+                                                    <UserMinus className="h-4 w-4" />
+                                                    Unenroll
+                                                </ContextualApprovalRequestButton>
+                                                <ContextualApprovalRequestButton
+                                                    variant="ghost"
+                                                    intent={{
+                                                        actionKey: 'ENROLLMENT_CHANGE',
+                                                        title: `Request transfer ${student.full_name}`,
+                                                        targetType: 'learner',
+                                                        targetId: student.id,
+                                                        returnTo: `/academic/cohorts/${cohortId}/students`,
+                                                        requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'transfer']),
+                                                        referenceData: {
+                                                            contextual_action: 'transfer',
+                                                            student_id: student.id,
+                                                            cohort_id: cohortId,
+                                                            cohort_name: cohortName,
+                                                        },
+                                                    }}
+                                                >
+                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                    Transfer
+                                                </ContextualApprovalRequestButton>
+                                                <ContextualApprovalRequestButton
+                                                    variant="ghost"
+                                                    intent={{
+                                                        actionKey: 'ENROLLMENT_CHANGE',
+                                                        title: `Request cohort placement correction for ${student.full_name}`,
+                                                        targetType: 'learner',
+                                                        targetId: student.id,
+                                                        returnTo: `/academic/cohorts/${cohortId}/students`,
+                                                        requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'fix-placement']),
+                                                        referenceData: {
+                                                            contextual_action: 'fix_wrong_cohort_placement',
+                                                            student_id: student.id,
+                                                            cohort_id: cohortId,
+                                                            cohort_name: cohortName,
+                                                        },
+                                                    }}
+                                                >
+                                                    Fix placement
+                                                </ContextualApprovalRequestButton>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
