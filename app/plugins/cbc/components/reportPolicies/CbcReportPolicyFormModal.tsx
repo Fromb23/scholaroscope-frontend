@@ -9,12 +9,16 @@ import { Select } from '@/app/components/ui/Select';
 import { FormValidationSummary } from '@/app/components/ui/forms';
 import Modal from '@/app/components/ui/Modal';
 import {
+    GuidedPolicySetup,
+    PolicyHierarchyGuide,
+    PolicyScopeMeaningGuide,
+} from '@/app/core/components/reports/PolicyGuidance';
+import {
     getFormFieldErrorMessage,
     hasFormFieldErrors,
     useFormValidationFeedback,
     type FormFieldErrors,
 } from '@/app/core/forms';
-import { ASSESSMENT_TYPE_OPTIONS, getAssessmentTypeLabel } from '@/app/core/types/assessment';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import { extractFieldErrors, fieldErrorsToSummary } from '@/app/core/errors/fieldErrors';
 import {
@@ -29,6 +33,11 @@ import {
     CbcLevelScaleEditor,
     type CbcLevelScaleDraft,
 } from '@/app/plugins/cbc/components/reportPolicies/CbcLevelScaleEditor';
+import {
+    CbcPolicyPresetButtons,
+    type CbcPolicyPreset,
+} from '@/app/plugins/cbc/components/reportPolicies/CbcPolicyPresetButtons';
+import { CbcPolicySupportFields } from '@/app/plugins/cbc/components/reportPolicies/CbcPolicySupportFields';
 import type {
     CbcClassReportPolicyScope,
     CbcPolicyLevelCode,
@@ -45,8 +54,8 @@ const ROUNDING_OPTIONS = [
 ] as const;
 
 const CLASS_POLICY_SCOPE_OPTIONS: Array<{ value: CbcClassReportPolicyScope; label: string }> = [
-    { value: 'COHORT', label: 'Whole class' },
-    { value: 'COHORT_SUBJECT', label: 'Specific subject' },
+    { value: 'COHORT_SUBJECT', label: 'Class subject policy' },
+    { value: 'COHORT', label: 'Class policy' },
     { value: 'WORKSPACE_DEFAULT', label: 'Workspace default' },
 ];
 
@@ -98,7 +107,7 @@ const REPORT_POLICY_FIELD_ORDER: ReportPolicyFormField[] = [
 
 const REPORT_POLICY_FIELD_LABELS: Record<ReportPolicyFormField, string> = {
     name: 'Policy name',
-    subject_profile: 'Subject profile',
+    subject_profile: 'Catalog fallback subject profile',
     cohort: 'Class',
     cbc_cohort_subject: 'Class subject',
     term: 'Term',
@@ -130,6 +139,7 @@ export interface CbcPolicyFormState {
 interface CbcReportPolicyFormModalProps {
     editingPolicy: CbcReportPolicy | null;
     defaultPolicy?: CbcReportPolicy | null;
+    templatePolicy?: CbcReportPolicy | null;
     authoringMode?: PolicyAuthoringMode;
     lockedCohortId?: number | null;
     lockedCohortSubjectId?: number | null;
@@ -395,6 +405,14 @@ function templateToForm(policy?: CbcReportPolicy | null): CbcPolicyFormState {
     };
 }
 
+function copyPolicyToForm(policy: CbcReportPolicy): CbcPolicyFormState {
+    return {
+        ...payloadToForm(policy),
+        name: `${policy.name} active copy`,
+        is_active: true,
+    };
+}
+
 type ReportPolicyInvalidTarget =
     | 'name'
     | 'subject_profile'
@@ -527,6 +545,7 @@ export function mapCbcReportPolicyApiErrors(
 export function CbcReportPolicyFormModal({
     editingPolicy,
     defaultPolicy = null,
+    templatePolicy = null,
     authoringMode = 'INSTITUTION_GOVERNANCE',
     lockedCohortId = null,
     lockedCohortSubjectId = null,
@@ -543,6 +562,8 @@ export function CbcReportPolicyFormModal({
             applyAuthoringContext(
                 editingPolicy
                     ? payloadToForm(editingPolicy)
+                    : templatePolicy
+                        ? copyPolicyToForm(templatePolicy)
                     : templateToForm(defaultPolicy ?? null),
                 {
                     authoringMode,
@@ -552,7 +573,7 @@ export function CbcReportPolicyFormModal({
                 },
             )
         ),
-        [authoringMode, defaultPolicy, editingPolicy, lockedCohortId, lockedCohortSubjectId],
+        [authoringMode, defaultPolicy, editingPolicy, lockedCohortId, lockedCohortSubjectId, templatePolicy],
     );
     const [form, setForm] = useState<CbcPolicyFormState>(initialState);
     const [errors, setErrors] = useState<FormErrors>({});
@@ -762,16 +783,25 @@ export function CbcReportPolicyFormModal({
         });
     };
 
-    const applyEntryMidtermPreset = () => {
+    const applyPolicyPreset = (preset: CbcPolicyPreset) => {
         setField(
             'assessment_weights',
-            Object.entries(CBC_ENTRY_MIDTERM_PRESET.assessment_weights).map(([type, weight]) => ({
+            Object.entries(preset.assessmentWeights).map(([type, weight]) => ({
                 type,
                 weight: String(weight),
             })),
         );
-        setField('required_components', [...CBC_ENTRY_MIDTERM_PRESET.required_components]);
-        setField('diagnostic_assessment_types', [...CBC_ENTRY_MIDTERM_PRESET.diagnostic_assessment_types]);
+        setField('required_components', [...preset.requiredComponents]);
+        setField('diagnostic_assessment_types', [...preset.diagnosticAssessmentTypes]);
+        if (preset.includeAssignments !== undefined) {
+            setField('include_assignments', preset.includeAssignments);
+        }
+        if (preset.includeProjects !== undefined) {
+            setField('include_projects', preset.includeProjects);
+        }
+        if (preset.includePracticals !== undefined) {
+            setField('include_practicals', preset.includePracticals);
+        }
     };
 
     const validateForm = (): FormErrors => {
@@ -902,6 +932,9 @@ export function CbcReportPolicyFormModal({
                     />
                 </div>
 
+                <GuidedPolicySetup />
+                <PolicyHierarchyGuide />
+
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
                         <Input
@@ -932,24 +965,7 @@ export function CbcReportPolicyFormModal({
                     {authoringMode === 'INSTITUTION_GOVERNANCE' ? (
                         <>
                             <Select
-                                ref={setFieldRef('subject_profile')}
-                                label="Subject Profile"
-                                value={form.subject_profile?.toString() ?? ''}
-                                onChange={(event) => setField(
-                                    'subject_profile',
-                                    event.target.value ? Number(event.target.value) : null,
-                                )}
-                                error={getFormFieldErrorMessage(errors.subject_profile)}
-                                options={[
-                                    { value: '', label: 'Any subject profile' },
-                                    ...subjectProfiles.map((profile) => ({
-                                        value: String(profile.id),
-                                        label: profile.label,
-                                    })),
-                                ]}
-                            />
-                            <Select
-                                label="Cohort"
+                                label="Class policy"
                                 value={form.cohort?.toString() ?? ''}
                                 onChange={(event) => setField(
                                     'cohort',
@@ -957,15 +973,15 @@ export function CbcReportPolicyFormModal({
                                 )}
                                 error={getFormFieldErrorMessage(errors.cohort)}
                                 options={[
-                                    { value: '', label: 'Any cohort' },
+                                    { value: '', label: 'Any class' },
                                     ...cohorts.map((cohort) => ({
                                         value: String(cohort.id),
-                                        label: cohort.label,
+                                        label: `Class: ${cohort.label}`,
                                     })),
                                 ]}
                             />
                             <Select
-                                label="CBC Cohort Subject"
+                                label="Class subject policy"
                                 value={form.cbc_cohort_subject?.toString() ?? ''}
                                 onChange={(event) => {
                                     const selectedId = event.target.value ? Number(event.target.value) : null;
@@ -983,13 +999,33 @@ export function CbcReportPolicyFormModal({
                                 }}
                                 error={getFormFieldErrorMessage(errors.cbc_cohort_subject)}
                                 options={[
-                                    { value: '', label: 'Any CBC cohort subject' },
+                                    { value: '', label: 'Any class subject' },
                                     ...cohortSubjects.map((subject) => ({
                                         value: String(subject.id),
                                         label: subject.label,
                                     })),
                                 ]}
                             />
+                            <Select
+                                ref={setFieldRef('subject_profile')}
+                                label="Catalog fallback / reference"
+                                value={form.subject_profile?.toString() ?? ''}
+                                onChange={(event) => setField(
+                                    'subject_profile',
+                                    event.target.value ? Number(event.target.value) : null,
+                                )}
+                                error={getFormFieldErrorMessage(errors.subject_profile)}
+                                options={[
+                                    { value: '', label: 'No catalog fallback' },
+                                    ...subjectProfiles.map((profile) => ({
+                                        value: String(profile.id),
+                                        label: profile.label,
+                                    })),
+                                ]}
+                            />
+                            <p className="text-xs text-gray-500 md:col-span-3">
+                                Use registered class subjects for operational report policies. Catalog fallback profiles are reference only when no class subject policy can be authored.
+                            </p>
                         </>
                     ) : (
                         <div
@@ -1068,6 +1104,8 @@ export function CbcReportPolicyFormModal({
                     />
                 </div>
 
+                <PolicyScopeMeaningGuide />
+
                 <div className="rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800">
                     {authoringMode === 'INSTITUTION_GOVERNANCE'
                         ? 'CBC report policies are plugin-owned. Assessment pages only preview these rules and link back here for policy authoring.'
@@ -1075,12 +1113,7 @@ export function CbcReportPolicyFormModal({
                 </div>
 
                 <div ref={setFieldRef('assessment_weights')} tabIndex={-1} className="border-t border-gray-100 pt-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium text-gray-700">Preset</p>
-                        <Button type="button" variant="secondary" size="sm" onClick={applyEntryMidtermPreset}>
-                            ENTRY 30 + MIDTERM 70
-                        </Button>
-                    </div>
+                    <CbcPolicyPresetButtons onApply={applyPolicyPreset} />
                     <CbcAssessmentWeightsEditor
                         entries={form.assessment_weights}
                         error={getFormFieldErrorMessage(errors.assessment_weights)}
@@ -1090,77 +1123,15 @@ export function CbcReportPolicyFormModal({
                     />
                 </div>
 
-                <div className="border-t border-gray-100 pt-4">
-                    <p className="mb-2 text-sm font-medium text-gray-700">Required Components</p>
-                    <div className="flex flex-wrap gap-2">
-                        {ASSESSMENT_TYPE_OPTIONS.map((option) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => toggleArrayValue('required_components', option.value)}
-                                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                                    form.required_components.includes(option.value)
-                                        ? 'border-blue-600 bg-blue-600 text-white'
-                                        : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400'
-                                }`}
-                            >
-                                {getAssessmentTypeLabel(option.value)}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="border-t border-gray-100 pt-4">
-                    <p className="mb-2 text-sm font-medium text-gray-700">Diagnostic Assessment Types</p>
-                    <div className="flex flex-wrap gap-2">
-                        {ASSESSMENT_TYPE_OPTIONS.map((option) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => toggleArrayValue('diagnostic_assessment_types', option.value)}
-                                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                                    form.diagnostic_assessment_types.includes(option.value)
-                                        ? 'border-green-600 bg-green-600 text-white'
-                                        : 'border-gray-300 bg-white text-gray-600 hover:border-green-400'
-                                }`}
-                            >
-                                {getAssessmentTypeLabel(option.value)}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="border-t border-gray-100 pt-4">
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <label className="flex cursor-pointer items-center gap-2 pt-6">
-                            <input
-                                type="checkbox"
-                                checked={form.include_assignments}
-                                onChange={(event) => setField('include_assignments', event.target.checked)}
-                                className="rounded border-gray-300"
-                            />
-                            <span className="text-sm text-gray-700">Include assignments</span>
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2 pt-6">
-                            <input
-                                type="checkbox"
-                                checked={form.include_projects}
-                                onChange={(event) => setField('include_projects', event.target.checked)}
-                                className="rounded border-gray-300"
-                            />
-                            <span className="text-sm text-gray-700">Include projects</span>
-                        </label>
-                        <label className="flex cursor-pointer items-center gap-2 pt-6">
-                            <input
-                                type="checkbox"
-                                checked={form.include_practicals}
-                                onChange={(event) => setField('include_practicals', event.target.checked)}
-                                className="rounded border-gray-300"
-                            />
-                            <span className="text-sm text-gray-700">Include practicals</span>
-                        </label>
-                    </div>
-                </div>
+                <CbcPolicySupportFields
+                    requiredComponents={form.required_components}
+                    diagnosticAssessmentTypes={form.diagnostic_assessment_types}
+                    includeAssignments={form.include_assignments}
+                    includeProjects={form.include_projects}
+                    includePracticals={form.include_practicals}
+                    onToggleArrayValue={toggleArrayValue}
+                    onSetEvidenceSource={setField}
+                />
 
                 <div ref={setFieldRef('level_scale')} tabIndex={-1} className="border-t border-gray-100 pt-4">
                     <div className="grid gap-4 md:grid-cols-3">
@@ -1191,7 +1162,12 @@ export function CbcReportPolicyFormModal({
                                 onChange={(event) => setField('is_active', event.target.checked)}
                                 className="rounded border-gray-300"
                             />
-                            <span className="text-sm text-gray-700">Active</span>
+                            <span className="text-sm text-gray-700">
+                                Active
+                                <span className="ml-1 text-xs text-gray-500">
+                                    Only active policies are used. Inactive policies are saved drafts or retired policies.
+                                </span>
+                            </span>
                         </label>
                     </div>
                 </div>

@@ -11,6 +11,7 @@ import type { CbcReportPolicy } from '@/app/plugins/cbc/types/reportPolicy';
 import type { AssessmentPolicyPreviewContext } from '@/app/core/registry/assessmentPolicyPreviews';
 import { useAuth } from '@/app/context/AuthContext';
 import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
+import { buildCbcPolicyRuleSummary } from '@/app/plugins/cbc/components/reportPolicies/policySummaries';
 
 type CbcPreviewState =
     | { status: 'loading' }
@@ -266,6 +267,15 @@ export function CbcAssessmentPolicyPreview(context: AssessmentPolicyPreviewConte
                                     <Badge key={type} variant="blue">{type} {weight}%</Badge>
                                 ))}
                             </div>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Policy Summary</p>
+                            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                                {buildCbcPolicyRuleSummary(preview.policy).map((line) => (
+                                    <li key={line}>{line}</li>
+                                ))}
+                            </ul>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">

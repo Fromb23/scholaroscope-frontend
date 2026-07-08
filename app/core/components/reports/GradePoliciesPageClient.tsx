@@ -11,6 +11,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { useGradePolicies } from '@/app/core/hooks/useGradePolicies';
 import { GradePoliciesTable } from '@/app/core/components/gradePolicies/GradePoliciesTable';
 import { PolicyHelpWidget } from '@/app/core/components/gradePolicies/PolicyHelpWidget';
@@ -26,7 +27,7 @@ import {
     isGenericPolicyCurriculum,
 } from '@/app/core/lib/policySurfaces';
 import { GradePolicy } from '@/app/core/types/gradePolicy';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { resolveReportError, type AppError } from '@/app/core/errors';
 import { useAuth } from '@/app/context/AuthContext';
 import { PolicyAdminOnlyState } from '@/app/core/components/reports/PolicyAdminOnlyState';
 import { canManageInstitutionReportPolicy } from '@/app/core/components/reports/reportAccessPolicy';
@@ -37,13 +38,15 @@ export function GradePoliciesPageClient() {
     const { user, capabilities, loading: authLoading } = useAuth();
     const [showModal, setShowModal] = useState(false);
     const [editingPolicy, setEditingPolicy] = useState<GradePolicy | null>(null);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [templatePolicy, setTemplatePolicy] = useState<GradePolicy | null>(null);
+    const [deleteError, setDeleteError] = useState<AppError | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [activatingId, setActivatingId] = useState<number | null>(null);
     const canManagePolicies = canManageInstitutionReportPolicy({ user, capabilities });
 
     const {
         policies, loading, error,
-        refetch, deletePolicy,
+        refetch, updatePolicy, deletePolicy,
     } = useGradePolicies(undefined, { enabled: canManagePolicies });
 
     const { cohorts } = useCohorts();
@@ -142,14 +145,41 @@ export function GradePoliciesPageClient() {
     const handleOpen = (policy?: GradePolicy) => {
         if (!canManagePolicies) return;
         setEditingPolicy(policy ?? null);
-        if (policy?.cohort) setSelectedCohort(policy.cohort);
+        setTemplatePolicy(null);
+        setSelectedCohort(policy?.cohort ?? null);
+        setShowModal(true);
+    };
+
+    const handleCreateActiveCopy = (policy: GradePolicy) => {
+        if (!canManagePolicies) return;
+        setEditingPolicy(null);
+        setTemplatePolicy(policy);
+        setSelectedCohort(policy.cohort ?? null);
         setShowModal(true);
     };
 
     const handleClose = () => {
         setShowModal(false);
         setEditingPolicy(null);
+        setTemplatePolicy(null);
         setSelectedCohort(null);
+    };
+
+    const handleActivate = async (policy: GradePolicy) => {
+        setActivatingId(policy.id);
+        setDeleteError(null);
+        try {
+            await updatePolicy(policy.id, { is_active: true });
+            await refetch();
+        } catch (err) {
+            setDeleteError(resolveReportError(err, {
+                action: 'update',
+                entityLabel: 'grade policy',
+                role: 'ADMIN',
+            }));
+        } finally {
+            setActivatingId(null);
+        }
     };
 
     const handleDelete = async (id: number) => {
@@ -158,7 +188,11 @@ export function GradePoliciesPageClient() {
         try {
             await deletePolicy(id);
         } catch (err) {
-            setDeleteError(extractErrorMessage(err as ApiError, 'Failed to delete policy'));
+            setDeleteError(resolveReportError(err, {
+                action: 'delete',
+                entityLabel: 'grade policy',
+                role: 'ADMIN',
+            }));
         } finally {
             setDeletingId(null);
         }
@@ -202,7 +236,9 @@ export function GradePoliciesPageClient() {
             </div>
 
             {error && <ErrorBanner message={error} onDismiss={() => { }} />}
-            {deleteError && <ErrorBanner message={deleteError} onDismiss={() => setDeleteError(null)} />}
+            {deleteError && (
+                <AppErrorBanner error={deleteError} onDismiss={() => setDeleteError(null)} />
+            )}
 
             <GradePoliciesTable
                 policies={visiblePolicies}
@@ -210,12 +246,17 @@ export function GradePoliciesPageClient() {
                 canManage={canManagePolicies}
                 onCreate={() => handleOpen()}
                 onEdit={handleOpen}
+                onActivate={(policy) => {
+                    if (activatingId !== policy.id) void handleActivate(policy);
+                }}
+                onCreateActiveCopy={handleCreateActiveCopy}
                 onDelete={handleDelete}
             />
 
             {showModal && (
                 <PolicyFormModal
                     editingPolicy={editingPolicy}
+                    templatePolicy={templatePolicy}
                     cohorts={genericCohorts}
                     cohortSubjects={genericCohortSubjects}
                     curricula={genericCurricula}

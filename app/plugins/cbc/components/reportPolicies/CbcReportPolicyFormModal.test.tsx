@@ -53,9 +53,9 @@ function renderModal(authoringMode: 'CLASS_SUBJECT_SETUP' | 'CLASS_SETUP' | 'INS
       authoringMode={authoringMode}
       lockedCohortId={9}
       lockedCohortSubjectId={41}
-      lockedCohortSubjectLabel="Grade 7 · Mathematics"
+      lockedCohortSubjectLabel="Class subject: Grade 7 · Mathematics"
       subjectProfiles={[
-        { id: 12, label: 'Mathematics catalog profile' },
+        { id: 12, label: 'Catalog fallback: Mathematics catalog profile (Reference only)' },
       ]}
       cohorts={[
         { id: 9, label: 'Grade 7' },
@@ -63,7 +63,7 @@ function renderModal(authoringMode: 'CLASS_SUBJECT_SETUP' | 'CLASS_SETUP' | 'INS
       cohortSubjects={[
         {
           id: 41,
-          label: 'Grade 7 · Mathematics',
+          label: 'Class subject: Grade 7 · Mathematics',
           cohortId: 9,
           cohortSubjectId: 26,
           subjectProfileId: 12,
@@ -83,8 +83,8 @@ describe('CBC report policy form modal', () => {
     const html = renderModal('CLASS_SUBJECT_SETUP');
 
     expect(html).toContain('Policy applies to');
-    expect(html).toContain('Specific subject');
-    expect(html).toContain('Grade 7 · Mathematics');
+    expect(html).toContain('Class subject policy');
+    expect(html).toContain('Class subject: Grade 7 · Mathematics');
     expect(html).toContain('Class configuration');
     expect(html).not.toContain('Subject Profile');
     expect(html).not.toContain('Any subject profile');
@@ -101,12 +101,23 @@ describe('CBC report policy form modal', () => {
     expect(source).not.toContain('if (!validate()) return');
   });
 
-  it('keeps broad subject profile selection in institution governance mode', () => {
+  it('marks catalog subject profile selection as fallback reference in institution governance mode', () => {
     const html = renderModal('INSTITUTION_GOVERNANCE');
 
-    expect(html).toContain('Subject Profile');
-    expect(html).toContain('Any subject profile');
+    expect(html).toContain('Class subject policy');
+    expect(html).toContain('Catalog fallback / reference');
+    expect(html).toContain('No catalog fallback');
+    expect(html).toContain('Catalog fallback: Mathematics catalog profile (Reference only)');
     expect(html).toContain('CBC Report Policy');
+  });
+
+  it('renders academic helper text for policy authoring fields', () => {
+    const html = renderModal('INSTITUTION_GOVERNANCE');
+
+    expect(html).toContain('These decide how much each evidence category contributes to the final report. Positive weights must add up to 100.');
+    expect(html).toContain("These must exist before the learner&#x27;s report can become final. If missing, the result stays provisional.");
+    expect(html).toContain('These are used for baseline/context. They can appear in reports but do not have to contribute to the final score.');
+    expect(html).toContain('Only active policies are used. Inactive policies are saved drafts or retired policies.');
   });
 
   it('renders the class/cohort label instead of the raw cohort id when available', () => {

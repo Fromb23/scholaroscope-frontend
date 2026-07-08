@@ -66,6 +66,7 @@ export interface CbcReportPolicy {
     level_scale: CbcLevelScaleRow[];
     diagnostic_assessment_types: string[];
     required_components: string[];
+    flexible_config?: Record<string, unknown> | null;
     late_enrolment?: Partial<CbcLateEnrolmentPolicy>;
     include_assignments: boolean;
     include_projects: boolean;

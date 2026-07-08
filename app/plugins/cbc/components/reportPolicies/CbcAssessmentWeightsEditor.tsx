@@ -32,7 +32,8 @@ export function CbcAssessmentWeightsEditor({
                 <div>
                     <h3 className="text-sm font-medium text-gray-900">Assessment Weights</h3>
                     <p className="text-xs text-gray-500">
-                        Positive contributing weights must total 100. Zero keeps a component available without contributing.
+                        These decide how much each evidence category contributes to the final report. Positive weights must add up to 100.
+                        Zero keeps a component available without contributing.
                     </p>
                 </div>
                 <Button type="button" variant="secondary" size="sm" onClick={onAdd}>

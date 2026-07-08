@@ -7,6 +7,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import type { CbcReportPolicy, PolicyAuthoringMode } from '@/app/plugins/cbc/types/reportPolicy';
+import { buildCbcPolicyRuleSummary } from '@/app/plugins/cbc/components/reportPolicies/policySummaries';
 
 type ScopeBadgeVariant = 'blue' | 'green' | 'indigo' | 'orange' | 'purple' | 'default';
 
@@ -18,17 +19,17 @@ export function getCbcReportPolicyScopeBadges(policy: CbcReportPolicy): Array<{
 
     if (policy.cbc_cohort_subject_name) {
         badges.push({
-            label: `Subject policy: ${policy.cbc_cohort_subject_name}`,
+            label: `Class subject policy: ${policy.cbc_cohort_subject_name}`,
             variant: 'green',
         });
     } else if (policy.cohort_name) {
         badges.push({
-            label: `Whole class policy: ${policy.cohort_name}`,
+            label: `Class policy: ${policy.cohort_name}`,
             variant: 'blue',
         });
     } else if (policy.subject_profile_name) {
         badges.push({
-            label: `Subject profile: ${policy.subject_profile_name}`,
+            label: `Catalog fallback: ${policy.subject_profile_name} (Reference only)`,
             variant: 'purple',
         });
     }
@@ -64,6 +65,8 @@ interface CbcReportPoliciesTableProps {
     deletingId: number | null;
     onCreate: () => void;
     onEdit: (policy: CbcReportPolicy) => void;
+    onActivate?: (policy: CbcReportPolicy) => void;
+    onCreateActiveCopy?: (policy: CbcReportPolicy) => void;
     onDelete: (id: number) => void;
 }
 
@@ -74,6 +77,8 @@ export function CbcReportPoliciesTable({
     deletingId,
     onCreate,
     onEdit,
+    onActivate,
+    onCreateActiveCopy,
     onDelete,
 }: CbcReportPoliciesTableProps) {
     const showGlobalViewAction = authoringMode === 'INSTITUTION_GOVERNANCE';
@@ -116,6 +121,11 @@ export function CbcReportPoliciesTable({
                                         {policy.description && (
                                             <p className="mt-0.5 text-xs text-gray-500">{policy.description}</p>
                                         )}
+                                        <div className="mt-2 text-xs text-gray-500">
+                                            {buildCbcPolicyRuleSummary(policy).slice(0, 3).map((line) => (
+                                                <p key={line}>{line}</p>
+                                            ))}
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">
@@ -148,9 +158,14 @@ export function CbcReportPoliciesTable({
                                                 Inactive
                                             </Badge>
                                         )}
+                                        {!policy.is_active && (
+                                            <p className="mt-2 max-w-xs text-xs text-red-700">
+                                                This policy is inactive. It is saved but will not be used in report computation.
+                                            </p>
+                                        )}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex gap-1">
+                                        <div className="flex flex-wrap gap-1">
                                             {showGlobalViewAction && (
                                                 <Link href={`/cbc/report-policies/${policy.id}`}>
                                                     <Button size="sm" variant="ghost">
@@ -160,6 +175,16 @@ export function CbcReportPoliciesTable({
                                             )}
                                             {canManage && (
                                                 <>
+                                                    {!policy.is_active && onActivate ? (
+                                                        <Button size="sm" variant="secondary" onClick={() => onActivate(policy)}>
+                                                            Activate policy
+                                                        </Button>
+                                                    ) : null}
+                                                    {!policy.is_active && onCreateActiveCopy ? (
+                                                        <Button size="sm" variant="secondary" onClick={() => onCreateActiveCopy(policy)}>
+                                                            Create active copy
+                                                        </Button>
+                                                    ) : null}
                                                     <Button size="sm" variant="ghost" onClick={() => onEdit(policy)}>
                                                         <Edit className="h-4 w-4" />
                                                     </Button>

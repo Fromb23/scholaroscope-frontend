@@ -62,6 +62,8 @@ function renderTable(
       deletingId={null}
       onCreate={vi.fn()}
       onEdit={vi.fn()}
+      onActivate={vi.fn()}
+      onCreateActiveCopy={vi.fn()}
       onDelete={vi.fn()}
     />,
   );
@@ -101,10 +103,10 @@ describe('CBC report policies table', () => {
       }),
     ]);
 
-    expect(html).toContain('Whole class policy: Grade 7');
-    expect(html).toContain('Subject policy: Grade 7 - Mathematics');
+    expect(html).toContain('Class policy: Grade 7');
+    expect(html).toContain('Class subject policy: Grade 7 - Mathematics');
     expect(html).toContain('Workspace default policy');
-    expect(html).toContain('Subject profile: Mathematics');
+    expect(html).toContain('Catalog fallback: Mathematics (Reference only)');
     expect(html).toContain('Term: Term 1');
   });
 
@@ -117,8 +119,20 @@ describe('CBC report policies table', () => {
     }));
 
     expect(badges.map((badge) => badge.label)).toEqual([
-      'Subject policy: Grade 7 - Mathematics',
+      'Class subject policy: Grade 7 - Mathematics',
     ]);
+  });
+
+  it('shows inactive guidance and available actions for inactive policies', () => {
+    const html = renderTable([
+      basePolicy({
+        is_active: false,
+      }),
+    ]);
+
+    expect(html).toContain('This policy is inactive. It is saved but will not be used in report computation.');
+    expect(html).toContain('Activate policy');
+    expect(html).toContain('Create active copy');
   });
 
   it('keeps global view links in institution governance but hides them in class setup', () => {

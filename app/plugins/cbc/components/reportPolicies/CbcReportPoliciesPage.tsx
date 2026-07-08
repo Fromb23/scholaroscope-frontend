@@ -56,8 +56,10 @@ export function CbcReportPoliciesPage({
     });
     const [showModal, setShowModal] = useState(false);
     const [editingPolicy, setEditingPolicy] = useState<CbcReportPolicy | null>(null);
+    const [templatePolicy, setTemplatePolicy] = useState<CbcReportPolicy | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [activatingId, setActivatingId] = useState<number | null>(null);
 
     const { cohorts } = useCohorts();
     const { curricula } = useCurricula();
@@ -110,7 +112,7 @@ export function CbcReportPoliciesPage({
         }
         return undefined;
     }, [authoringMode]);
-    const { policies, loading, error, refetch, deletePolicy } = useCbcReportPolicies(
+    const { policies, loading, error, refetch, updatePolicy, deletePolicy } = useCbcReportPolicies(
         filters,
         {
             enabled: canManagePolicies
@@ -157,12 +159,35 @@ export function CbcReportPoliciesPage({
     const handleOpen = (policy?: CbcReportPolicy) => {
         if (!canManagePolicies) return;
         setEditingPolicy(policy ?? null);
+        setTemplatePolicy(null);
+        setShowModal(true);
+    };
+
+    const handleCreateActiveCopy = (policy: CbcReportPolicy) => {
+        if (!canManagePolicies) return;
+        setEditingPolicy(null);
+        setTemplatePolicy(policy);
         setShowModal(true);
     };
 
     const handleClose = () => {
         setEditingPolicy(null);
+        setTemplatePolicy(null);
         setShowModal(false);
+    };
+
+    const handleActivate = async (policy: CbcReportPolicy) => {
+        setActivatingId(policy.id);
+        setDeleteError(null);
+        try {
+            await updatePolicy(policy.id, { is_active: true });
+            await refetch();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to activate CBC report policy.';
+            setDeleteError(message);
+        } finally {
+            setActivatingId(null);
+        }
     };
 
     const handleDelete = async (id: number) => {
@@ -269,12 +294,17 @@ export function CbcReportPoliciesPage({
                 deletingId={deletingId}
                 onCreate={() => handleOpen()}
                 onEdit={handleOpen}
+                onActivate={(policy) => {
+                    if (activatingId !== policy.id) void handleActivate(policy);
+                }}
+                onCreateActiveCopy={handleCreateActiveCopy}
                 onDelete={handleDelete}
             />
 
             {showModal && (
                 <CbcReportPolicyFormModal
                     editingPolicy={editingPolicy}
+                    templatePolicy={templatePolicy}
                     defaultPolicy={editingPolicy ? null : defaultPolicy}
                     authoringMode={authoringMode}
                     lockedCohortId={cohortId}

@@ -24,6 +24,9 @@ export function PolicyWeightsEditor({ entries, error, onAdd, onRemove, onChange 
             <div className="flex items-center justify-between">
                 <div>
                     <span className="text-sm font-medium text-gray-700">Assessment Weights</span>
+                    <p className="mt-1 text-xs text-gray-500">
+                        These decide how much each evidence category contributes to the final report. Positive weights must add up to 100.
+                    </p>
                     <span className={`ml-2 text-xs font-semibold ${isValid ? 'text-green-600' : 'text-red-600'}`}>
                         Total: {total}% {isValid ? '✓' : '(must equal 100%)'}
                     </span>

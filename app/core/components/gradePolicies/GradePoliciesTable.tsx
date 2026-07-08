@@ -21,6 +21,8 @@ interface GradePoliciesTableProps {
     canManage?: boolean;
     onCreate: () => void;
     onEdit: (policy: GradePolicy) => void;
+    onActivate?: (policy: GradePolicy) => void;
+    onCreateActiveCopy?: (policy: GradePolicy) => void;
     onDelete: (id: number) => void;
 }
 
@@ -30,6 +32,8 @@ export function GradePoliciesTable({
     canManage = true,
     onCreate,
     onEdit,
+    onActivate,
+    onCreateActiveCopy,
     onDelete,
 }: GradePoliciesTableProps) {
     return (
@@ -105,10 +109,25 @@ export function GradePoliciesTable({
                                             Inactive
                                         </Badge>
                                     )}
+                                    {!policy.is_active && (
+                                        <p className="mt-2 max-w-xs text-xs text-red-700">
+                                            This policy is inactive. It is saved but will not be used in report computation.
+                                        </p>
+                                    )}
                                 </TableCell>
                                 {canManage && (
                                     <TableCell>
-                                        <div className="flex gap-1">
+                                        <div className="flex flex-wrap gap-1">
+                                            {!policy.is_active && onActivate ? (
+                                                <Button size="sm" variant="secondary" onClick={() => onActivate(policy)}>
+                                                    Activate policy
+                                                </Button>
+                                            ) : null}
+                                            {!policy.is_active && onCreateActiveCopy ? (
+                                                <Button size="sm" variant="secondary" onClick={() => onCreateActiveCopy(policy)}>
+                                                    Create active copy
+                                                </Button>
+                                            ) : null}
                                             <Button size="sm" variant="ghost" onClick={() => onEdit(policy)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
