@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { DataTable } from '@/app/components/ui/Table';
 import type { Column } from '@/app/components/ui/Table';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
@@ -323,7 +324,7 @@ export function AssessmentScoreTable({
             <div className="space-y-3 md:hidden">
                 {loading && scores.length === 0 ? (
                     <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-8 text-center">
-                        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                        <LoadingSpinner size="sm" fullScreen={false} message="Loading scores..." showMessage={false} />
                         <p className="mt-3 text-sm text-gray-500">Loading scores...</p>
                     </div>
                 ) : scores.length === 0 ? (

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Users, Plus, X, AlertTriangle, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useSessionCohorts } from '@/app/core/hooks/useSessions';
 import { clampDashboardScrollToContent } from '@/app/core/lib/dashboardScroll';
 import type { SessionCohort } from '@/app/core/types/session';
@@ -166,7 +167,7 @@ export function ParticipatingCohorts({
                     </span>
 
                     {loading ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                        <LoadingSpinner size="sm" fullScreen={false} message="Loading participating classes" showMessage={false} />
                     ) : (
                         <div className="flex items-center gap-2 text-xs theme-muted">
                             <Badge variant="info" size="sm">

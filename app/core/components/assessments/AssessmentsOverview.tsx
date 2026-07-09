@@ -20,6 +20,7 @@ import Modal from '@/app/components/ui/Modal';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/Table';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
@@ -1322,7 +1323,7 @@ export function AssessmentsOverview() {
                     </div>
                 ) : loading ? (
                     <div className="py-12 text-center">
-                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                        <LoadingSpinner size="md" fullScreen={false} message="Loading assessments..." showMessage={false} />
                         <p className="mt-2 text-gray-600">Loading assessments...</p>
                     </div>
                 ) : visibleAssessments.length === 0 ? (

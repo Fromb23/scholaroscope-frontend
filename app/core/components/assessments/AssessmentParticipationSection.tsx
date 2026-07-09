@@ -6,6 +6,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import {
   AssessmentParticipationDetailSection,
   getDefaultAssessmentParticipationDetailSection,
@@ -330,7 +331,7 @@ export function AssessmentParticipationSection({
           <div className="mt-6 space-y-4 border-t border-gray-200 pt-6">
             {loading ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center">
-                <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                <LoadingSpinner size="sm" fullScreen={false} message="Loading learner groups without blocking the rest of the page." showMessage={false} />
                 <p className="mt-3 text-sm text-gray-500">
                   Loading learner groups without blocking the rest of the page.
                 </p>

@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import {
-    Puzzle, Shield, Globe, Power, PowerOff,
+    Puzzle, Shield, Globe,
     RefreshCw, Building2, AlertTriangle,
     CheckCircle2, Eye, Download, Trash2,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import Modal from '@/app/components/ui/Modal';
 import type { Plugin, InstalledPlugin } from '@/app/core/types/plugins';
 import {
@@ -317,7 +318,7 @@ export function InstallationsModal({
             <div className="space-y-3">
                 {loading ? (
                     <div className="py-8 flex justify-center">
-                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
+                        <LoadingSpinner size="sm" fullScreen={false} message="Loading plugin installations" showMessage={false} />
                     </div>
                 ) : installations.length === 0 ? (
                     <div className="py-8 text-center">

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, ClipboardList, Save } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
@@ -339,7 +340,7 @@ export function EditAssessmentPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                <LoadingSpinner size="lg" fullScreen={false} message="Loading assessment editor" showMessage={false} />
             </div>
         );
     }
