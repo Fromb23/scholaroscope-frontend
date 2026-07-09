@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, Loader, Play, Settings } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader, Play, Settings } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
@@ -18,18 +18,35 @@ const COMPUTE_FIELD_LABELS = {
 };
 
 function engineBadgeVariant(engine: ReportComputeEngineReadiness) {
-    if (engine.blocked) return 'red' as const;
+    if (engine.blocked || Number(engine.conflict_count ?? engine.context?.conflict_count ?? 0) > 0) return 'red' as const;
+    if (Number(engine.missing_count ?? engine.context?.missing_count ?? 0) > 0) return 'orange' as const;
     return 'green' as const;
 }
 
+function engineStatusLabel(engine: ReportComputeEngineReadiness): string {
+    const status = engine.setup_status ?? engine.status;
+    const missing = Number(engine.missing_count ?? engine.context?.missing_count ?? 0);
+    const conflicts = Number(engine.conflict_count ?? engine.context?.conflict_count ?? 0);
+    if (conflicts > 0 || status === 'CONFLICTS') return 'Conflicts found';
+    if (missing > 0 || status === 'NEEDS_SETUP' || status === 'MISSING_POLICIES') return 'Needs setup';
+    if (status === 'NOT_INSTALLED') return 'Not installed';
+    return engine.blocked ? 'Not ready' : 'Ready';
+}
+
 function engineSummary(engine: ReportComputeEngineReadiness): string {
-    const missing = Number(engine.context?.missing_count ?? 0);
-    const conflicts = Number(engine.context?.conflict_count ?? 0);
-    const inactive = Number(engine.context?.inactive_count ?? 0);
+    const missing = Number(engine.missing_count ?? engine.context?.missing_count ?? 0);
+    const conflicts = Number(engine.conflict_count ?? engine.context?.conflict_count ?? 0);
+    const inactive = Number(engine.inactive_count ?? engine.context?.inactive_count ?? 0);
+    if (engine.summary_message) return engine.summary_message;
     if (missing > 0) return `Missing policies for ${missing} class subject${missing === 1 ? '' : 's'}`;
     if (conflicts > 0) return `${conflicts} policy conflict${conflicts === 1 ? '' : 's'} need review`;
     if (inactive > 0) return `${inactive} inactive policy selection${inactive === 1 ? '' : 's'} need review`;
     return engine.message;
+}
+
+function engineMetric(engine: ReportComputeEngineReadiness, key: 'covered_count' | 'missing_count' | 'exception_count' | 'official_result_estimate'): number {
+    const value = engine[key] ?? engine.context?.[key];
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
 export function ComputePage() {
@@ -38,9 +55,15 @@ export function ComputePage() {
         selectedTermRecord,
         selectedTermClosed,
         computing,
+        preparing,
+        applyingRecommendation,
         readiness,
         readinessLoading,
-        result,
+        job,
+        progressEvent,
+        streamFallback,
+        safeRecommendation,
+        computeDisabledReason,
         fieldErrors,
         globalError,
         termsLoading,
@@ -48,6 +71,8 @@ export function ComputePage() {
         manageCbcPoliciesHref,
         setGlobalError,
         handleTermChange,
+        handlePrepareTerm,
+        handleApplyRecommendation,
         handleComputeReports,
     } = useComputePage();
     const {
@@ -70,13 +95,29 @@ export function ComputePage() {
 
     const computeDisabled = Boolean(
         computing
+        || preparing
         || selectedTermClosed
         || readinessLoading
         || !selectedTerm
-        || readiness?.blocked
+        || computeDisabledReason
         || readiness?.engines.length === 0,
     );
-    const hasCbcReadiness = readiness?.engines.some((engine) => engine.key === 'cbc') ?? false;
+    const reportsReady = Boolean(readiness && (readiness.can_compute ?? readiness.ready));
+    const coveredCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'covered_count'), 0) ?? 0;
+    const missingCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'missing_count'), 0) ?? 0;
+    const exceptionCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'exception_count'), 0) ?? 0;
+    const officialEstimate = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'official_result_estimate'), 0) ?? 0;
+    const progressPercent = Math.max(0, Math.min(100, Number(progressEvent?.progress_percent ?? job?.progress_percent ?? 0)));
+    const jobComplete = job?.status === 'COMPLETED' || progressEvent?.event === 'complete';
+    const officialResults = progressEvent?.official_results
+        ?? job?.result_payload?.official_results
+        ?? job?.result_payload?.computed_count
+        ?? 0;
+    const summaryRows = progressEvent?.summary_rows_refreshed
+        ?? job?.result_payload?.summary_rows_refreshed
+        ?? job?.result_payload?.summary_count
+        ?? job?.result_payload?.summaries?.summary_count
+        ?? 0;
 
     return (
         <div className="space-y-6">
@@ -124,7 +165,7 @@ export function ComputePage() {
             <Card>
                 <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Readiness</h2>
+                        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Reporting Setup</h2>
                         <p className="mt-1 text-sm text-gray-600">
                             {selectedTermRecord
                                 ? `${selectedTermRecord.academic_year_name} - ${selectedTermRecord.name}`
@@ -134,8 +175,8 @@ export function ComputePage() {
                     {readinessLoading ? (
                         <Loader className="h-5 w-5 animate-spin text-gray-400" />
                     ) : readiness ? (
-                        <Badge variant={readiness.blocked ? 'red' : 'green'}>
-                            {readiness.blocked ? 'Blocked' : 'Ready'}
+                        <Badge variant={reportsReady ? 'green' : 'orange'}>
+                            {reportsReady ? 'Ready' : 'Needs setup'}
                         </Badge>
                     ) : null}
                 </div>
@@ -153,10 +194,16 @@ export function ComputePage() {
                                     <div>
                                         <p className="font-medium text-gray-900">{engine.label}</p>
                                         <p className="mt-0.5 text-sm text-gray-600">{engineSummary(engine)}</p>
+                                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                                            <span>{engineMetric(engine, 'covered_count')} covered</span>
+                                            <span>{engineMetric(engine, 'official_result_estimate')} results</span>
+                                            <span>{engineMetric(engine, 'exception_count')} exceptions</span>
+                                            <span>{engineMetric(engine, 'missing_count')} missing</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <Badge variant={engineBadgeVariant(engine)}>
-                                    {engine.blocked ? 'Not ready' : 'Ready'}
+                                    {engineStatusLabel(engine)}
                                 </Badge>
                             </div>
                         ))}
@@ -167,16 +214,72 @@ export function ComputePage() {
                     </p>
                 )}
 
-                {hasCbcReadiness && readiness?.blocked ? (
-                    <div className="mt-4">
-                        <Link href={manageCbcPoliciesHref}>
-                            <Button variant="secondary" size="sm">
-                                <Settings className="mr-1.5 h-4 w-4" />
-                                Manage CBC policies
-                            </Button>
-                        </Link>
+                {readiness ? (
+                    <div className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+                        reportsReady
+                            ? 'border-green-200 bg-green-50 text-green-800'
+                            : 'border-amber-200 bg-amber-50 text-amber-800'
+                    }`}>
+                        <p className="font-medium">
+                            {reportsReady ? 'Reports are ready.' : 'Reports are not ready.'}
+                        </p>
+                        <p className="mt-1">
+                            {coveredCount} class subject{coveredCount === 1 ? '' : 's'} covered. {officialEstimate} learner-subject result{officialEstimate === 1 ? '' : 's'} ready. {exceptionCount} exception{exceptionCount === 1 ? '' : 's'}. {missingCount} missing.
+                        </p>
                     </div>
                 ) : null}
+
+                {safeRecommendation ? (
+                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                        <p className="font-semibold">Recommended fix</p>
+                        <p className="mt-1">{safeRecommendation.summary ?? safeRecommendation.label}</p>
+                        <p className="mt-1 text-blue-800">
+                            This will cover {safeRecommendation.affected_class_subject_count} class subject{safeRecommendation.affected_class_subject_count === 1 ? '' : 's'} and {safeRecommendation.affected_result_estimate} learner-subject report{safeRecommendation.affected_result_estimate === 1 ? '' : 's'}.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleApplyRecommendation(safeRecommendation.id)}
+                                disabled={Boolean(applyingRecommendation)}
+                            >
+                                {applyingRecommendation === safeRecommendation.id ? (
+                                    <Loader className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <ClipboardCheck className="h-4 w-4" />
+                                )}
+                                Apply Recommended Fix
+                            </Button>
+                            <Link href={manageCbcPoliciesHref}>
+                                <Button type="button" variant="secondary" size="sm">Manage Manually</Button>
+                            </Link>
+                        </div>
+                    </div>
+                ) : readiness?.decision_items?.length ? (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        <p className="font-medium">Needs admin decision</p>
+                        <p className="mt-1">Multiple policy choices could apply. Review the setup before computing reports.</p>
+                    </div>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handlePrepareTerm}
+                        disabled={!selectedTerm || preparing || selectedTermClosed}
+                    >
+                        {preparing ? <Loader className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+                        Prepare Term for Reports
+                    </Button>
+                    <Link href={manageCbcPoliciesHref}>
+                        <Button type="button" variant="secondary" size="sm">
+                            <Settings className="h-4 w-4" />
+                            Manage Report Policies - {reportsReady ? 'Review setup' : 'Fix setup'}
+                        </Button>
+                    </Link>
+                </div>
             </Card>
 
             <Card>
@@ -191,7 +294,7 @@ export function ComputePage() {
                         {computing ? (
                             <>
                                 <Loader className="mr-1.5 h-4 w-4 animate-spin" />
-                                Computing...
+                                Computing Reports
                             </>
                         ) : (
                             <>
@@ -202,9 +305,39 @@ export function ComputePage() {
                     </Button>
                 </div>
 
-                {result ? (
+                {computeDisabled && computeDisabledReason && !computing ? (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        {computeDisabledReason}
+                    </div>
+                ) : null}
+
+                {(computing || job || progressEvent) && !jobComplete ? (
+                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                        <div className="flex items-center justify-between gap-4">
+                            <p className="font-medium">{progressEvent?.label ?? job?.label ?? 'Computing official reports'}</p>
+                            <span>{progressPercent}%</span>
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100">
+                            <div
+                                className="h-full rounded-full bg-blue-600 transition-all"
+                                style={{ width: `${progressPercent}%` }}
+                            />
+                        </div>
+                        <p className="mt-2 text-blue-800">
+                            {progressEvent?.completed_count ?? job?.completed_count ?? 0}
+                            {progressEvent?.total_count ?? job?.total_count
+                                ? ` of ${progressEvent?.total_count ?? job?.total_count}`
+                                : ''} complete
+                        </p>
+                        {streamFallback ? (
+                            <p className="mt-1 text-xs text-blue-700">Live stream unavailable. Polling the server for latest progress.</p>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {jobComplete ? (
                     <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                        {result.detail} {result.computed_count} official result{result.computed_count === 1 ? '' : 's'} computed; {result.summary_count} summary row{result.summary_count === 1 ? '' : 's'} refreshed.
+                        Reports computed successfully. {officialResults} official result{officialResults === 1 ? '' : 's'} computed; {summaryRows} summary row{summaryRows === 1 ? '' : 's'} refreshed.
                     </div>
                 ) : null}
             </Card>

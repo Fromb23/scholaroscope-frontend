@@ -316,8 +316,10 @@ export function AssignmentCreateModal({
         });
     }, [policyGuidance]);
     const selectedTaskTypeAllowed = taskTypeOptions.some((option) => option.value === taskType);
+    const policyDisabledReason = policyGuidance?.disabled_reason ?? policyGuidance?.blocked_reason ?? policyGuidanceCode ?? null;
+    const policyUserMessage = policyGuidance?.user_message ?? policyGuidance?.message ?? null;
     const assignmentPracticeOnly = policyGuidance?.reporting_mode === 'practice_only';
-    const officialAssignmentBlocked = policyGuidanceCode === 'assignment_not_counted_by_policy'
+    const officialAssignmentBlocked = policyDisabledReason === 'assignment_not_counted_by_policy'
         || Boolean(policyGuidanceError?.includes('does not count assignments'));
 
     useEffect(() => {
@@ -348,12 +350,13 @@ export function AssignmentCreateModal({
         }).then((guidance) => {
             if (!cancelled) {
                 setPolicyGuidance(guidance);
-                if (guidance.policy_ready === false) {
-                    setPolicyGuidanceCode(guidance.blocked_reason ?? 'policy_required');
+                const disabledReason = guidance.disabled_reason ?? guidance.blocked_reason ?? null;
+                if (guidance.policy_ready === false || disabledReason) {
+                    setPolicyGuidanceCode(disabledReason ?? 'policy_required');
                     setPolicyGuidanceError(
                         isAdminLike
-                            ? guidance.message ?? 'No effective report policy exists for this subject and term.'
-                            : 'Assignment creation is unavailable for this term because your school has not completed report policy setup. Contact your academic admin.',
+                            ? guidance.user_message ?? guidance.message ?? 'No effective report policy exists for this subject and term.'
+                            : guidance.user_message ?? 'Assignment creation is unavailable for this term because your school has not completed report policy setup. Contact your academic admin.',
                     );
                     return;
                 }
@@ -591,6 +594,25 @@ export function AssignmentCreateModal({
         }
     };
 
+    const submitDisabledReason = useMemo(() => {
+        if (saving) return null;
+        if (sortedSubjects.length === 0) return 'Select an assigned subject group before creating an assignment.';
+        if (isCbcPolicyContext && Boolean(termId) && policyGuidanceLoading) {
+            return 'Loading active policy guidance.';
+        }
+        if (isCbcPolicyContext && Boolean(termId) && policyGuidanceError) {
+            return policyGuidanceError;
+        }
+        return null;
+    }, [
+        isCbcPolicyContext,
+        policyGuidanceError,
+        policyGuidanceLoading,
+        saving,
+        sortedSubjects.length,
+        termId,
+    ]);
+
     return (
         <Modal
             isOpen={isOpen}
@@ -695,6 +717,13 @@ export function AssignmentCreateModal({
                                 {officialAssignmentBlocked ? (
                                     <p className="mt-1">Create this as practice only, or update the policy.</p>
                                 ) : null}
+                                {policyGuidance?.possible_next_steps?.length ? (
+                                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                                        {policyGuidance.possible_next_steps.map((step) => (
+                                            <li key={step}>{step}</li>
+                                        ))}
+                                    </ul>
+                                ) : null}
                                 {isAdminLike && policyGuidanceCode === 'policy_required' ? (
                                     <Link href={policySetupHref} className="mt-3 inline-flex">
                                         <Button type="button" variant="secondary" size="sm">
@@ -706,7 +735,7 @@ export function AssignmentCreateModal({
                         ) : policyGuidance ? (
                             <>
                                 <p className="font-medium">
-                                    {policyGuidance.message
+                                    {policyUserMessage
                                         ?? (assignmentPracticeOnly
                                             ? 'Assignments are practice-only under this policy.'
                                             : 'Assignments count in this policy.')}
@@ -717,6 +746,13 @@ export function AssignmentCreateModal({
                                 <p>
                                     Projects: {policyGuidance.include_projects ? 'counted' : 'not counted'}; Practicals: {policyGuidance.include_practicals ? 'counted' : 'not counted'}
                                 </p>
+                                {policyGuidance.possible_next_steps?.length ? (
+                                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                                        {policyGuidance.possible_next_steps.map((step) => (
+                                            <li key={step}>{step}</li>
+                                        ))}
+                                    </ul>
+                                ) : null}
                             </>
                         ) : policyGuidanceLoading ? (
                             <p>Loading active policy guidance...</p>
@@ -1038,6 +1074,12 @@ export function AssignmentCreateModal({
                 </div>
                 ) : null}
 
+                {submitDisabledReason ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        {submitDisabledReason}
+                    </div>
+                ) : null}
+
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <Button type="button" variant="ghost" onClick={onClose}>
                         {isLessonPreparationMode ? 'Not for this lesson' : 'Cancel'}
@@ -1045,11 +1087,7 @@ export function AssignmentCreateModal({
                     <Button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={
-                            saving
-                            || sortedSubjects.length === 0
-                            || (isCbcPolicyContext && Boolean(termId) && (policyGuidanceLoading || Boolean(policyGuidanceError)))
-                        }
+                        disabled={saving || Boolean(submitDisabledReason)}
                     >
                         {saving
                             ? (isEditMode ? 'Saving...' : 'Creating...')

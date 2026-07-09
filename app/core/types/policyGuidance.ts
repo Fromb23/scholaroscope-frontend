@@ -35,6 +35,9 @@ export interface AcademicPolicyBrief {
     task_type?: string;
     reporting_mode?: 'counts' | 'practice_only' | string;
     blocked_reason?: string | null;
+    disabled_reason?: string | null;
+    user_message?: string | null;
+    possible_next_steps?: string[];
     message?: string | null;
 }
 
