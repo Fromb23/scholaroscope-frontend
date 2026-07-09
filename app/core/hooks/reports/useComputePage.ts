@@ -1,209 +1,168 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { reportsAPI } from '@/app/core/api/reporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
-import {
-    useAssessmentTypeSummaries,
-    useAttendanceSummaries,
-    useCohortSummaries,
-    useGradeSummaries,
-    useSubjectSummaries,
-} from '@/app/core/hooks/useReporting';
-import { useComputedGrades } from '@/app/core/hooks/useGradePolicies';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
-import type { FormFieldErrors } from '@/app/core/forms';
 import { resolveReportError } from '@/app/core/errors';
-
-export interface ComputeResult {
-    success: boolean;
-    message: string;
-    title?: string;
-    serverCode?: string;
-}
+import type { FormFieldErrors } from '@/app/core/forms';
+import type {
+    ReportComputeReadiness,
+    ReportComputeResult,
+} from '@/app/core/types/reporting';
 
 export interface ComputeOption {
     id: string;
     title: string;
     description: string;
-    run: () => Promise<void>;
+}
+
+export interface ComputeResult {
+    success: boolean;
+    title?: string;
+    message: string;
+    serverCode?: string;
 }
 
 export function useComputePage() {
-    const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
-    const [computing, setComputing] = useState<string | null>(null);
-    const [results, setResults] = useState<Record<string, ComputeResult>>({});
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+    const initialTerm = Number(searchParams.get('term') ?? '');
+    const [selectedTerm, setSelectedTerm] = useState<number | null>(
+        Number.isFinite(initialTerm) && initialTerm > 0 ? initialTerm : null,
+    );
+    const [computing, setComputing] = useState(false);
+    const [readiness, setReadiness] = useState<ReportComputeReadiness | null>(null);
+    const [readinessLoading, setReadinessLoading] = useState(false);
+    const [result, setResult] = useState<ReportComputeResult | null>(null);
     const [globalError, setGlobalError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<'term'>>({});
 
     const { terms, loading: termsLoading } = useTerms();
-    const { computeSummaries: computeAttendance } = useAttendanceSummaries();
-    const { computeSummaries: computeGrades } = useGradeSummaries();
-    const { computeSummaries: computeCohorts } = useCohortSummaries();
-    const { computeSummaries: computeSubjects } = useSubjectSummaries();
-    const { computeSummaries: computeAssessmentTypes } = useAssessmentTypeSummaries();
-    const { computeWithPolicy } = useComputedGrades();
     const selectedTermRecord = terms.find((term) => term.id === selectedTerm) ?? null;
     const selectedTermClosed = Boolean(
         selectedTermRecord?.is_frozen || selectedTermRecord?.status === 'CLOSED_HISTORICAL',
     );
 
-    const requireSelectedTerm = () => {
-        if (selectedTerm) {
-            if (selectedTermClosed) {
-                setGlobalError('This term is closed. Policies and reports are historical.');
-                return false;
-            }
-            return true;
-        }
-
-        setFieldErrors({ term: 'Select a term before computing.' });
-        return false;
-    };
-
-    const run = async (id: string, fn: () => Promise<void>) => {
-        if (!requireSelectedTerm()) return;
-
-        setComputing(id);
-        setFieldErrors({});
+    const fetchReadiness = useCallback(async (termId: number) => {
+        setReadinessLoading(true);
         try {
-            await fn();
-            setResults((previous) => ({
-                ...previous,
-                [id]: { success: true, message: 'Completed successfully' },
-            }));
+            setReadiness(await reportsAPI.getComputeReadiness(termId));
+            setGlobalError(null);
         } catch (error) {
             const resolved = resolveReportError(error, {
-                action: 'compute',
-                entityLabel: id === 'policy' ? 'official report' : 'report summary',
+                action: 'load',
+                entityLabel: 'report compute readiness',
                 role: 'ADMIN',
             });
-            setResults((previous) => ({
-                ...previous,
-                [id]: {
-                    success: false,
-                    title: resolved.title,
-                    message: resolved.serverCode === 'policy_required'
-                        ? 'Reports are blocked because no active organization policy exists for this class subject and term.'
-                        : resolved.message ?? extractErrorMessage(error as ApiError, 'Computation failed'),
-                    serverCode: resolved.serverCode,
-                },
-            }));
+            setReadiness(null);
+            setGlobalError(resolved.message ?? 'Could not load report compute readiness.');
         } finally {
-            setComputing(null);
+            setReadinessLoading(false);
         }
-    };
+    }, []);
 
-    const computeOptions = useMemo<ComputeOption[]>(
-        () => [
-            {
-                id: 'attendance',
-                title: 'Attendance Summaries',
-                description: 'Recompute from session records',
-                run: () => computeAttendance(selectedTerm!),
-            },
-            {
-                id: 'grades',
-                title: 'Grade Summaries',
-                description: 'Recompute from assessment scores',
-                run: () => computeGrades(selectedTerm!),
-            },
-            {
-                id: 'cohorts',
-                title: 'Cohort Summaries',
-                description: 'Recompute cohort-level aggregates',
-                run: () => computeCohorts(selectedTerm!),
-            },
-            {
-                id: 'subjects',
-                title: 'Subject Summaries',
-                description: 'Recompute subject statistics',
-                run: () => computeSubjects(selectedTerm!),
-            },
-            {
-                id: 'assessments',
-                title: 'Assessment Type Summaries',
-                description: 'Recompute assessment breakdowns',
-                run: () => computeAssessmentTypes(selectedTerm!),
-            },
-        ],
-        [
-            computeAssessmentTypes,
-            computeAttendance,
-            computeCohorts,
-            computeGrades,
-            computeSubjects,
-            selectedTerm,
-        ]
-    );
-
-    const handleComputeAll = async () => {
-        if (!requireSelectedTerm()) return;
-
-        setComputing('all');
-        setFieldErrors({});
-        for (const option of computeOptions) {
-            try {
-                await option.run();
-                setResults((previous) => ({
-                    ...previous,
-                    [option.id]: { success: true, message: 'Completed' },
-                }));
-            } catch (error) {
-                const resolved = resolveReportError(error, {
-                    action: 'compute',
-                    entityLabel: 'report summary',
-                    role: 'ADMIN',
-                });
-                setResults((previous) => ({
-                    ...previous,
-                    [option.id]: {
-                        success: false,
-                        title: resolved.title,
-                        message: resolved.serverCode === 'policy_required'
-                            ? 'Reports are blocked because no active organization policy exists for this class subject and term.'
-                            : resolved.message ?? extractErrorMessage(error as ApiError, 'Failed'),
-                        serverCode: resolved.serverCode,
-                    },
-                }));
-            }
+    useEffect(() => {
+        if (!selectedTerm) {
+            setReadiness(null);
+            return;
         }
-        setComputing(null);
+        void fetchReadiness(selectedTerm);
+    }, [fetchReadiness, selectedTerm]);
+
+    const requireSelectedTerm = () => {
+        if (!selectedTerm) {
+            setFieldErrors({ term: 'Select a term before computing.' });
+            return false;
+        }
+        if (selectedTermClosed) {
+            setGlobalError('This term is closed. Policies and reports are historical.');
+            return false;
+        }
+        return true;
     };
 
     const handleTermChange = (value: string) => {
-        setSelectedTerm(value ? Number(value) : null);
+        const nextTerm = value ? Number(value) : null;
+        setSelectedTerm(nextTerm);
         setFieldErrors({});
-        setResults({});
         setGlobalError(null);
+        setResult(null);
+
+        const params = new URLSearchParams(searchParams.toString());
+        if (nextTerm) {
+            params.set('term', String(nextTerm));
+        } else {
+            params.delete('term');
+        }
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     };
 
-    const successCount = Object.values(results).filter((result) => result.success).length;
-    const failCount = Object.values(results).filter((result) => !result.success).length;
+    const handleComputeReports = async () => {
+        if (!requireSelectedTerm()) return;
+        const termId = selectedTerm;
+        if (!termId) return;
+        if (readiness?.blocked) {
+            setGlobalError(readiness.message || 'Report computation is blocked until policies are ready.');
+            return;
+        }
+
+        setComputing(true);
+        setFieldErrors({});
+        setGlobalError(null);
+        try {
+            const payload = await reportsAPI.computeReports(termId);
+            setResult(payload);
+            setReadiness(payload.readiness);
+        } catch (error) {
+            const resolved = resolveReportError(error, {
+                action: 'compute',
+                entityLabel: 'official reports',
+                role: 'ADMIN',
+            });
+            setGlobalError(
+                resolved.serverCode === 'report_compute_blocked'
+                    ? 'Reports are blocked because one or more curricula are missing required report policies.'
+                    : resolved.message ?? 'Report computation failed.',
+            );
+        } finally {
+            setComputing(false);
+        }
+    };
+
     const termOptions = [
-        { value: '', label: 'Select a term…' },
+        { value: '', label: 'Select a term...' },
         ...terms.map((term) => ({
             value: String(term.id),
-            label: `${term.academic_year_name} — ${term.name}`,
+            label: `${term.academic_year_name} - ${term.name}`,
         })),
     ];
 
+    const manageCbcPoliciesHref = useMemo(() => {
+        const returnTo = selectedTerm
+            ? `/reports/compute?term=${selectedTerm}`
+            : '/reports/compute';
+        return `/reports/policies/cbc?returnTo=${encodeURIComponent(returnTo)}`;
+    }, [selectedTerm]);
+
     return {
         selectedTerm,
+        selectedTermRecord,
         selectedTermClosed,
         computing,
-        results,
+        readiness,
+        readinessLoading,
+        result,
         fieldErrors,
         globalError,
         termsLoading,
-        computeOptions,
-        successCount,
-        failCount,
         termOptions,
-        run,
+        manageCbcPoliciesHref,
         setGlobalError,
-        setFieldErrors,
         handleTermChange,
-        handleComputeAll,
-        computeWithPolicy,
+        handleComputeReports,
+        refetchReadiness: selectedTerm ? () => fetchReadiness(selectedTerm) : undefined,
     };
 }

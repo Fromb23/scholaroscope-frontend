@@ -1,12 +1,8 @@
 'use client';
 
-// ============================================================================
-// app/(dashboard)/reports/compute/page.tsx — render only
-// ============================================================================
-
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { Settings, Play, Loader, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader, Play, Settings } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
@@ -14,32 +10,45 @@ import { FormValidationSummary } from '@/app/components/ui/forms';
 import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { getFormFieldErrorMessage, useFormValidationFeedback } from '@/app/core/forms';
-import { ComputeOptionCard } from '@/app/core/components/reports/ComputeOptionCard';
-import { ComputeResultBanner } from '@/app/core/components/reports/ComputeResultBanner';
 import { useComputePage } from '@/app/core/hooks/reports/useComputePage';
+import type { ReportComputeEngineReadiness } from '@/app/core/types/reporting';
 
 const COMPUTE_FIELD_LABELS = {
     term: 'Term',
 };
 
+function engineBadgeVariant(engine: ReportComputeEngineReadiness) {
+    if (engine.blocked) return 'red' as const;
+    return 'green' as const;
+}
+
+function engineSummary(engine: ReportComputeEngineReadiness): string {
+    const missing = Number(engine.context?.missing_count ?? 0);
+    const conflicts = Number(engine.context?.conflict_count ?? 0);
+    const inactive = Number(engine.context?.inactive_count ?? 0);
+    if (missing > 0) return `Missing policies for ${missing} class subject${missing === 1 ? '' : 's'}`;
+    if (conflicts > 0) return `${conflicts} policy conflict${conflicts === 1 ? '' : 's'} need review`;
+    if (inactive > 0) return `${inactive} inactive policy selection${inactive === 1 ? '' : 's'} need review`;
+    return engine.message;
+}
+
 export function ComputePage() {
     const {
         selectedTerm,
+        selectedTermRecord,
         selectedTermClosed,
         computing,
-        results,
+        readiness,
+        readinessLoading,
+        result,
         fieldErrors,
         globalError,
         termsLoading,
-        computeOptions,
-        successCount,
-        failCount,
         termOptions,
-        run,
+        manageCbcPoliciesHref,
         setGlobalError,
         handleTermChange,
-        handleComputeAll,
-        computeWithPolicy,
+        handleComputeReports,
     } = useComputePage();
     const {
         summaryRef,
@@ -59,21 +68,29 @@ export function ComputePage() {
         }
     }, [fieldErrors, focusFirstError]);
 
+    const computeDisabled = Boolean(
+        computing
+        || selectedTermClosed
+        || readinessLoading
+        || !selectedTerm
+        || readiness?.blocked
+        || readiness?.engines.length === 0,
+    );
+    const hasCbcReadiness = readiness?.engines.some((engine) => engine.key === 'cbc') ?? false;
+
     return (
         <div className="space-y-6">
-
-            {/* Header */}
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Compute Controls</h1>
-                    <p className="text-gray-500 mt-1">
-                        Trigger grade computation and recompute summaries for a term.
+                    <h1 className="text-2xl font-semibold text-gray-900">Compute Reports</h1>
+                    <p className="mt-1 text-gray-500">
+                        Run official report computation for a selected term.
                     </p>
                 </div>
                 <Settings className="h-7 w-7 text-gray-500" />
             </div>
 
-            {globalError && <ErrorBanner message={globalError} onDismiss={() => setGlobalError(null)} />}
+            {globalError ? <ErrorBanner message={globalError} onDismiss={() => setGlobalError(null)} /> : null}
 
             <div ref={summaryRef}>
                 <FormValidationSummary
@@ -85,17 +102,16 @@ export function ComputePage() {
                 />
             </div>
 
-            {/* Term selector */}
             <Card>
                 <Select
                     ref={setFieldRef('term')}
-                    label="Select Term"
+                    label="Term"
                     value={selectedTerm?.toString() ?? ''}
                     onChange={(event) => handleTermChange(event.target.value)}
                     disabled={termsLoading}
                     required
                     error={getFormFieldErrorMessage(fieldErrors.term)}
-                    helperText="Choose the reporting term before running any computation."
+                    helperText="Required for official report computation."
                     options={termOptions}
                 />
                 {selectedTermClosed ? (
@@ -105,89 +121,93 @@ export function ComputePage() {
                 ) : null}
             </Card>
 
-            {/* Policy-based computation */}
-            <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-purple-50
-                            border border-blue-200 p-5">
-                <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600">
-                        <Zap className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                            Policy-Based Grade Computation
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-3">
-                            Compute grades using your configured policies — weighted averages,
-                            custom scales, required components, and grading bands.
-                        </p>
-                        <div className="flex items-center gap-3">
-                            <Button
-                                onClick={() => run('policy', () => computeWithPolicy(selectedTerm!))}
-                                disabled={computing === 'policy' || selectedTermClosed}
-                            >
-                                {computing === 'policy'
-                                    ? <><Loader className="h-4 w-4 mr-1.5 animate-spin" />Computing…</>
-                                    : <><Zap className="h-4 w-4 mr-1.5" />Compute with Policies</>
-                                }
-                            </Button>
-                            <Link href="/reports/policies">
-                                <Button variant="secondary" size="sm">
-                                    <Settings className="h-4 w-4 mr-1.5" />Manage Report Policies
-                                </Button>
-                            </Link>
-                        </div>
-                        {results.policy && <ComputeResultBanner result={results.policy} />}
-                    </div>
-                </div>
-            </div>
-
-            {/* Individual compute options */}
-            <div>
-                <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-                    Summary Recomputation
-                </h2>
-                <div className="grid gap-3 md:grid-cols-2">
-                    {computeOptions.map((option) => (
-                        <ComputeOptionCard
-                            key={option.id}
-                            option={option}
-                            result={results[option.id]}
-                            computing={computing === option.id}
-                            disabled={computing === option.id || computing === 'all' || selectedTermClosed}
-                            onCompute={() => run(option.id, option.run)}
-                        />
-                    ))}
-                </div>
-            </div>
-
-            {/* Batch all */}
             <Card>
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
-                        <h3 className="font-semibold text-gray-900">Compute All Summaries</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            Runs all five summary computations in sequence.
+                        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Readiness</h2>
+                        <p className="mt-1 text-sm text-gray-600">
+                            {selectedTermRecord
+                                ? `${selectedTermRecord.academic_year_name} - ${selectedTermRecord.name}`
+                                : 'Select a term to check curriculum readiness.'}
                         </p>
                     </div>
-                    {Object.keys(results).length > 0 && (
-                        <div className="flex gap-2">
-                            {successCount > 0 && <Badge variant="green">{successCount} ok</Badge>}
-                            {failCount > 0 && <Badge variant="red">{failCount} failed</Badge>}
-                        </div>
-                    )}
+                    {readinessLoading ? (
+                        <Loader className="h-5 w-5 animate-spin text-gray-400" />
+                    ) : readiness ? (
+                        <Badge variant={readiness.blocked ? 'red' : 'green'}>
+                            {readiness.blocked ? 'Blocked' : 'Ready'}
+                        </Badge>
+                    ) : null}
                 </div>
-                <Button
-                    onClick={handleComputeAll}
-                    disabled={computing !== null || selectedTermClosed}
-                    className="w-full md:w-auto"
-                >
-                    {computing === 'all'
-                        ? <><Loader className="h-4 w-4 mr-1.5 animate-spin" />Computing All…</>
-                        : <><Play className="h-4 w-4 mr-1.5" />Compute All</>
-                    }
-                </Button>
+
+                {readiness && readiness.engines.length > 0 ? (
+                    <div className="divide-y divide-gray-100">
+                        {readiness.engines.map((engine) => (
+                            <div key={engine.key} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                                <div className="flex items-start gap-3">
+                                    {engine.blocked ? (
+                                        <AlertTriangle className="mt-0.5 h-5 w-5 text-red-500" />
+                                    ) : (
+                                        <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
+                                    )}
+                                    <div>
+                                        <p className="font-medium text-gray-900">{engine.label}</p>
+                                        <p className="mt-0.5 text-sm text-gray-600">{engineSummary(engine)}</p>
+                                    </div>
+                                </div>
+                                <Badge variant={engineBadgeVariant(engine)}>
+                                    {engine.blocked ? 'Not ready' : 'Ready'}
+                                </Badge>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm text-gray-500">
+                        {selectedTerm ? 'No reportable curriculum engines were found for this term.' : 'Readiness appears after term selection.'}
+                    </p>
+                )}
+
+                {hasCbcReadiness && readiness?.blocked ? (
+                    <div className="mt-4">
+                        <Link href={manageCbcPoliciesHref}>
+                            <Button variant="secondary" size="sm">
+                                <Settings className="mr-1.5 h-4 w-4" />
+                                Manage CBC policies
+                            </Button>
+                        </Link>
+                    </div>
+                ) : null}
             </Card>
 
+            <Card>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 className="font-semibold text-gray-900">Official Computation</h2>
+                        <p className="mt-1 text-sm text-gray-600">
+                            Compute enforces policy readiness and refreshes report summaries from official results.
+                        </p>
+                    </div>
+                    <Button onClick={handleComputeReports} disabled={computeDisabled} className="w-full sm:w-auto">
+                        {computing ? (
+                            <>
+                                <Loader className="mr-1.5 h-4 w-4 animate-spin" />
+                                Computing...
+                            </>
+                        ) : (
+                            <>
+                                <Play className="mr-1.5 h-4 w-4" />
+                                Compute Reports
+                            </>
+                        )}
+                    </Button>
+                </div>
+
+                {result ? (
+                    <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                        {result.detail} {result.computed_count} official result{result.computed_count === 1 ? '' : 's'} computed; {result.summary_count} summary row{result.summary_count === 1 ? '' : 's'} refreshed.
+                    </div>
+                ) : null}
+            </Card>
         </div>
     );
 }

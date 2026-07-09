@@ -151,6 +151,15 @@ export interface CbcReportPolicyPayload {
     is_active?: boolean;
 }
 
+export interface CbcReportPolicyApplyScopePayload {
+    term_id?: number | null;
+    cbc_cohort_subject_id?: number | null;
+    cohort_id?: number | null;
+    subject_profile_id?: number | null;
+    is_default?: boolean;
+    name?: string;
+}
+
 export interface CbcTermPolicyPlan {
     id: number;
     organization?: number;

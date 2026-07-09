@@ -42,6 +42,10 @@ function entryLabel(entry: CbcPolicyCoverageEntry): string {
         ?? 'Class subject';
 }
 
+function entryKey(entry: CbcPolicyCoverageEntry): string {
+    return String(entry.cbc_cohort_subject_id ?? entry.cohort_subject_id ?? entry.label ?? 'row');
+}
+
 function policyForEntry(entry: CbcPolicyCoverageEntry): CbcReportPolicy | null {
     return entry.effective_policy ?? entry.resolved_policy ?? null;
 }
@@ -61,6 +65,8 @@ export function CbcTermPolicyPlanSection({
     const [selectedPolicyIds, setSelectedPolicyIds] = useState<number[]>([]);
     const [actionError, setActionError] = useState<AppError | null>(null);
     const [reusingId, setReusingId] = useState<number | null>(null);
+    const [applyingKey, setApplyingKey] = useState<string | null>(null);
+    const [applyPolicyIdsByEntry, setApplyPolicyIdsByEntry] = useState<Record<string, string>>({});
     const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const {
@@ -216,6 +222,32 @@ export function CbcTermPolicyPlanSection({
         }
     };
 
+    const handleApplyExistingToEntry = async (entry: CbcPolicyCoverageEntry) => {
+        if (!selectedTermId || !activePolicies.length) return;
+        const key = entryKey(entry);
+        const selectedPolicyId = Number(applyPolicyIdsByEntry[key] || activePolicies[0]?.id);
+        const sourcePolicy = activePolicies.find((policy) => policy.id === selectedPolicyId) ?? activePolicies[0];
+        if (!sourcePolicy) return;
+        setActionError(null);
+        setApplyingKey(key);
+        try {
+            await cbcReportPolicyAPI.applyToScope(sourcePolicy.id, {
+                term_id: selectedTermId,
+                cbc_cohort_subject_id: entry.cbc_cohort_subject_id ?? null,
+                name: `${sourcePolicy.name} - ${entryLabel(entry)}`,
+            });
+            await refreshAll();
+        } catch (caught) {
+            setActionError(resolveReportError(caught, {
+                action: 'create',
+                entityLabel: 'scoped policy copy',
+                role: 'ADMIN',
+            }));
+        } finally {
+            setApplyingKey(null);
+        }
+    };
+
     const handleDeactivate = async (policy: CbcReportPolicy) => {
         setActionError(null);
         setDeactivatingId(policy.id);
@@ -339,12 +371,13 @@ export function CbcTermPolicyPlanSection({
                                         <th className="px-3 py-2 text-left font-medium text-gray-500">Class subject</th>
                                         <th className="px-3 py-2 text-left font-medium text-gray-500">Report policy</th>
                                         <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-500">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                     {entries.length === 0 ? (
                                         <tr>
-                                            <td className="px-3 py-6 text-center text-gray-500" colSpan={3}>
+                                            <td className="px-3 py-6 text-center text-gray-500" colSpan={4}>
                                                 No class subjects are configured for this term.
                                             </td>
                                         </tr>
@@ -352,11 +385,12 @@ export function CbcTermPolicyPlanSection({
                                         const effectivePolicy = policyForEntry(entry);
                                         const entryStatus = entry.status ?? entry.policy_status ?? (entry.computation_allowed ? 'READY' : 'MISSING');
                                         const rowNeedsPolicy = entryStatus === 'MISSING' || Boolean(entry.missing_policy_warning);
+                                        const rowKey = entryKey(entry);
                                         const rowMessage = rowNeedsPolicy
                                             ? `${entry.cohort?.name ?? 'Class subject'} - ${entry.subject?.name ?? 'Subject'} needs a report policy for ${selectedTermLabel}.`
                                             : entry.conflict_warning ?? entry.message ?? 'Ready for computation.';
                                         return (
-                                            <tr key={entry.cbc_cohort_subject_id ?? entry.cohort_subject_id ?? entry.label}>
+                                            <tr key={rowKey}>
                                                 <td className="px-3 py-3 font-medium text-gray-900">{entryLabel(entry)}</td>
                                                 <td className="px-3 py-3">{policyLabel(effectivePolicy)}</td>
                                                 <td className="px-3 py-3">
@@ -364,6 +398,56 @@ export function CbcTermPolicyPlanSection({
                                                         {entryStatus === 'READY' ? 'Ready' : entryStatus === 'CONFLICT' ? 'Conflict' : 'Missing'}
                                                     </Badge>
                                                     <p className="mt-1 text-xs text-gray-600">{rowMessage}</p>
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    {rowNeedsPolicy && canManage ? (
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {activePolicies.length ? (
+                                                                <select
+                                                                    aria-label={`Existing policy for ${entryLabel(entry)}`}
+                                                                    value={applyPolicyIdsByEntry[rowKey] ?? String(activePolicies[0]?.id ?? '')}
+                                                                    onChange={(event) => setApplyPolicyIdsByEntry((current) => ({
+                                                                        ...current,
+                                                                        [rowKey]: event.target.value,
+                                                                    }))}
+                                                                    className="theme-input theme-select rounded-lg px-3 py-1.5 text-sm"
+                                                                >
+                                                                    {activePolicies.map((policy) => (
+                                                                        <option key={policy.id} value={policy.id}>
+                                                                            {policy.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            ) : null}
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                onClick={() => void handleApplyExistingToEntry(entry)}
+                                                                disabled={!activePolicies.length || applyingKey === rowKey}
+                                                            >
+                                                                {applyingKey === rowKey ? 'Applying...' : 'Apply existing policy'}
+                                                            </Button>
+                                                            <Button type="button" size="sm" variant="ghost" onClick={onCreatePolicy}>
+                                                                Create policy for this class subject
+                                                            </Button>
+                                                            <Button type="button" size="sm" variant="ghost" onClick={onCreatePolicy}>
+                                                                Create policy for this cohort
+                                                            </Button>
+                                                            <Button type="button" size="sm" variant="ghost" onClick={onCreatePolicy}>
+                                                                Create policy for this subject
+                                                            </Button>
+                                                            <Button type="button" size="sm" variant="ghost" onClick={onCreatePolicy}>
+                                                                Create workspace default policy
+                                                            </Button>
+                                                        </div>
+                                                    ) : effectivePolicy && !entry.computation_allowed && canManage ? (
+                                                        <p className="text-xs text-amber-700">
+                                                            Active but not effective for this subject/term.
+                                                        </p>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400">No action needed</span>
+                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -397,7 +481,9 @@ export function CbcTermPolicyPlanSection({
                                     {plan ? (
                                         <div className="flex flex-wrap gap-2 text-xs text-gray-600">
                                             <Badge variant="default">Saved plan {coverage?.status ?? plan.status}</Badge>
-                                            <Badge variant="default">Selected policy ids {plan.selected_policy_ids.length}</Badge>
+                                            {!plan.use_all_active_policies ? (
+                                                <Badge variant="default">Selected policies {plan.selected_policy_ids.length}</Badge>
+                                            ) : null}
                                         </div>
                                     ) : null}
                                     <div className="grid gap-4 lg:grid-cols-2">
