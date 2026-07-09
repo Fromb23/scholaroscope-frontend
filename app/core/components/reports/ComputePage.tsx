@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader, Play, Settings } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
@@ -9,13 +9,21 @@ import { Select } from '@/app/components/ui/Select';
 import { FormValidationSummary } from '@/app/components/ui/forms';
 import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { ActionProgress, ActionStateBanner, ResponsiveActionSheet } from '@/app/components/ui/actions';
+import { ReportPrepareTermSheet } from '@/app/core/components/reports/ReportPrepareTermSheet';
 import { getFormFieldErrorMessage, useFormValidationFeedback } from '@/app/core/forms';
 import { useComputePage } from '@/app/core/hooks/reports/useComputePage';
-import type { ReportComputeEngineReadiness } from '@/app/core/types/reporting';
+import type {
+    ReportComputeEngineReadiness,
+    ReportComputeJob,
+    ReportComputeProgressEvent,
+} from '@/app/core/types/reporting';
 
 const COMPUTE_FIELD_LABELS = {
     term: 'Term',
 };
+
+type ComputeActionStatus = 'idle' | 'loading' | 'blocked' | 'success' | 'error';
 
 function engineBadgeVariant(engine: ReportComputeEngineReadiness) {
     if (engine.blocked || Number(engine.conflict_count ?? engine.context?.conflict_count ?? 0) > 0) return 'red' as const;
@@ -50,30 +58,34 @@ function engineMetric(engine: ReportComputeEngineReadiness, key: 'covered_count'
 }
 
 export function ComputePage() {
+    const [prepareSheetOpen, setPrepareSheetOpen] = useState(false);
+    const [prepareAutoRunKey, setPrepareAutoRunKey] = useState(0);
     const {
         selectedTerm,
         selectedTermRecord,
         selectedTermClosed,
         computing,
-        preparing,
-        applyingRecommendation,
         readiness,
         readinessLoading,
         job,
         progressEvent,
         streamFallback,
         safeRecommendation,
+        computeSheetOpen,
+        computeActionStatus,
+        computeActionError,
         computeDisabledReason,
         fieldErrors,
         globalError,
         termsLoading,
         termOptions,
         manageCbcPoliciesHref,
+        setReadiness,
         setGlobalError,
+        setComputeSheetOpen,
         handleTermChange,
-        handlePrepareTerm,
-        handleApplyRecommendation,
         handleComputeReports,
+        refreshReadinessInBackground,
     } = useComputePage();
     const {
         summaryRef,
@@ -95,7 +107,6 @@ export function ComputePage() {
 
     const computeDisabled = Boolean(
         computing
-        || preparing
         || selectedTermClosed
         || readinessLoading
         || !selectedTerm
@@ -108,7 +119,6 @@ export function ComputePage() {
     const exceptionCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'exception_count'), 0) ?? 0;
     const officialEstimate = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'official_result_estimate'), 0) ?? 0;
     const progressPercent = Math.max(0, Math.min(100, Number(progressEvent?.progress_percent ?? job?.progress_percent ?? 0)));
-    const jobComplete = job?.status === 'COMPLETED' || progressEvent?.event === 'complete';
     const officialResults = progressEvent?.official_results
         ?? job?.result_payload?.official_results
         ?? job?.result_payload?.computed_count
@@ -118,6 +128,12 @@ export function ComputePage() {
         ?? job?.result_payload?.summary_count
         ?? job?.result_payload?.summaries?.summary_count
         ?? 0;
+    const completionMessage = `Reports computed successfully. ${officialResults} official result${officialResults === 1 ? '' : 's'} computed; ${summaryRows} summary row${summaryRows === 1 ? '' : 's'} refreshed.`;
+
+    const openPrepareSheet = (autoRun = false) => {
+        setPrepareSheetOpen(true);
+        if (autoRun) setPrepareAutoRunKey((key) => key + 1);
+    };
 
     return (
         <div className="space-y-6">
@@ -240,15 +256,10 @@ export function ComputePage() {
                             <Button
                                 type="button"
                                 size="sm"
-                                onClick={() => handleApplyRecommendation(safeRecommendation.id)}
-                                disabled={Boolean(applyingRecommendation)}
+                                onClick={() => openPrepareSheet(false)}
                             >
-                                {applyingRecommendation === safeRecommendation.id ? (
-                                    <Loader className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <ClipboardCheck className="h-4 w-4" />
-                                )}
-                                Apply Recommended Fix
+                                <ClipboardCheck className="h-4 w-4" />
+                                Review Recommended Fix
                             </Button>
                             <Link href={manageCbcPoliciesHref}>
                                 <Button type="button" variant="secondary" size="sm">Manage Manually</Button>
@@ -267,10 +278,10 @@ export function ComputePage() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        onClick={handlePrepareTerm}
-                        disabled={!selectedTerm || preparing || selectedTermClosed}
+                        onClick={() => openPrepareSheet(true)}
+                        disabled={!selectedTerm || selectedTermClosed}
                     >
-                        {preparing ? <Loader className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+                        <ClipboardCheck className="h-4 w-4" />
                         Prepare Term for Reports
                     </Button>
                     <Link href={manageCbcPoliciesHref}>
@@ -311,36 +322,173 @@ export function ComputePage() {
                     </div>
                 ) : null}
 
-                {(computing || job || progressEvent) && !jobComplete ? (
-                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                        <div className="flex items-center justify-between gap-4">
-                            <p className="font-medium">{progressEvent?.label ?? job?.label ?? 'Computing official reports'}</p>
-                            <span>{progressPercent}%</span>
-                        </div>
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100">
-                            <div
-                                className="h-full rounded-full bg-blue-600 transition-all"
-                                style={{ width: `${progressPercent}%` }}
-                            />
-                        </div>
-                        <p className="mt-2 text-blue-800">
-                            {progressEvent?.completed_count ?? job?.completed_count ?? 0}
-                            {progressEvent?.total_count ?? job?.total_count
-                                ? ` of ${progressEvent?.total_count ?? job?.total_count}`
-                                : ''} complete
-                        </p>
-                        {streamFallback ? (
-                            <p className="mt-1 text-xs text-blue-700">Live stream unavailable. Polling the server for latest progress.</p>
+            </Card>
+
+            <ReportPrepareTermSheet
+                open={prepareSheetOpen}
+                onOpenChange={setPrepareSheetOpen}
+                termId={selectedTerm}
+                readiness={readiness}
+                onReadinessChange={setReadiness}
+                managePoliciesHref={manageCbcPoliciesHref}
+                autoPrepareKey={prepareAutoRunKey}
+                onAfterMutation={refreshReadinessInBackground}
+            />
+
+            <ComputeReportsSheet
+                open={computeSheetOpen}
+                onOpenChange={setComputeSheetOpen}
+                status={computeActionStatus}
+                error={computeActionError}
+                computing={computing}
+                job={job}
+                progressEvent={progressEvent}
+                progressLabel={progressEvent?.label ?? job?.label ?? 'Computing official reports'}
+                progressPercent={progressPercent}
+                streamFallback={streamFallback}
+                completedMessage={completionMessage}
+                blockedReason={computeDisabledReason ?? 'Reports are not ready. Resolve report setup before computing official reports.'}
+                managePoliciesHref={manageCbcPoliciesHref}
+                onRetry={handleComputeReports}
+            />
+        </div>
+    );
+}
+
+function ComputeReportsSheet({
+    open,
+    onOpenChange,
+    status,
+    error,
+    computing,
+    job,
+    progressEvent,
+    progressLabel,
+    progressPercent,
+    streamFallback,
+    completedMessage,
+    blockedReason,
+    managePoliciesHref,
+    onRetry,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    status: ComputeActionStatus;
+    error: string | null;
+    computing: boolean;
+    job: ReportComputeJob | null;
+    progressEvent: ReportComputeProgressEvent | null;
+    progressLabel: string;
+    progressPercent: number;
+    streamFallback: boolean;
+    completedMessage: string;
+    blockedReason: string;
+    managePoliciesHref: string;
+    onRetry: () => void;
+}) {
+    const progressStatus = job?.status ?? (computing ? 'QUEUED' : status === 'success' ? 'COMPLETED' : undefined);
+
+    return (
+        <ResponsiveActionSheet
+            open={open}
+            onOpenChange={onOpenChange}
+            title="Compute Reports"
+            description="Official report computation progress and results stay here until you close this action."
+            size="lg"
+            state={status}
+            closeDisabled={computing}
+            preventBackdropClose={computing}
+            footer={
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={computing}>
+                        Close
+                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                        {status === 'blocked' ? (
+                            <Link href={managePoliciesHref}>
+                                <Button type="button" variant="secondary" disabled={computing} className="w-full sm:w-auto">
+                                    Manage Report Policies
+                                </Button>
+                            </Link>
+                        ) : null}
+                        {status === 'error' ? (
+                            <Button type="button" onClick={onRetry} disabled={computing} className="w-full sm:w-auto">
+                                Retry Compute
+                            </Button>
                         ) : null}
                     </div>
+                </div>
+            }
+        >
+            <div className="space-y-4">
+                {status === 'loading' && !job ? (
+                    <ActionStateBanner
+                        variant="loading"
+                        title="Queueing compute job"
+                        message="Starting official report computation for the selected term."
+                    />
                 ) : null}
 
-                {jobComplete ? (
-                    <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                        Reports computed successfully. {officialResults} official result{officialResults === 1 ? '' : 's'} computed; {summaryRows} summary row{summaryRows === 1 ? '' : 's'} refreshed.
-                    </div>
+                {(job || progressEvent || computing) ? (
+                    <ActionProgress
+                        label={progressLabel}
+                        stage={progressEvent?.stage ?? job?.stage}
+                        progressPercent={progressPercent}
+                        completedCount={progressEvent?.completed_count ?? job?.completed_count}
+                        totalCount={progressEvent?.total_count ?? job?.total_count}
+                        status={progressStatus}
+                        fallbackMessage={
+                            streamFallback
+                                ? 'Live stream unavailable. Polling the server for latest progress.'
+                                : null
+                        }
+                    />
                 ) : null}
-            </Card>
-        </div>
+
+                {status === 'blocked' ? (
+                    <ActionStateBanner
+                        variant="blocked"
+                        title="Computation blocked"
+                        message={error ?? blockedReason}
+                        action={
+                            <Link href={managePoliciesHref}>
+                                <Button type="button" size="sm" variant="secondary">
+                                    Manage Report Policies
+                                </Button>
+                            </Link>
+                        }
+                    />
+                ) : null}
+
+                {status === 'error' && error ? (
+                    <ActionStateBanner
+                        variant="error"
+                        title="Computation failed"
+                        message={error}
+                        action={
+                            <Button type="button" size="sm" onClick={onRetry}>
+                                Retry Compute
+                            </Button>
+                        }
+                    />
+                ) : null}
+
+                {status === 'success' ? (
+                    <ActionStateBanner
+                        variant="success"
+                        title="Reports computed successfully"
+                        message={completedMessage}
+                    />
+                ) : null}
+
+                {status === 'idle' ? (
+                    <ActionStateBanner
+                        variant="info"
+                        title="Ready to compute"
+                        message="Start report computation to see queued, progress, and result states here."
+                    />
+                ) : null}
+            </div>
+        </ResponsiveActionSheet>
     );
 }

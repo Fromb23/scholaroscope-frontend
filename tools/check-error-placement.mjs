@@ -26,6 +26,18 @@ const SUSPECT_ERROR_STATE_NAMES = [
   'pageError',
 ];
 
+function readRepoFile(relativePath) {
+  return readFileSync(path.join(cwd, relativePath), 'utf8');
+}
+
+function assertContains(relativePath, source, pattern, message, failures) {
+  if (!pattern.test(source)) failures.push(`${relativePath}: ${message}`);
+}
+
+function assertNotContains(relativePath, source, pattern, message, failures) {
+  if (pattern.test(source)) failures.push(`${relativePath}: ${message}`);
+}
+
 function toPosix(filePath) {
   return filePath.split(path.sep).join('/');
 }
@@ -158,6 +170,132 @@ const baseline = readBaseline();
 const failures = [];
 const suggestions = [];
 const today = new Date();
+
+const modalPath = 'app/components/ui/Modal.tsx';
+const modalSource = readRepoFile(modalPath);
+assertContains(
+  modalPath,
+  modalSource,
+  /<ResponsiveActionSheet[\s\S]*closeDisabled=\{closeDisabled\}/,
+  'shared Modal must delegate to ResponsiveActionSheet and preserve closeDisabled for active saves.',
+  failures,
+);
+
+const actionStateBannerPath = 'app/components/ui/actions/ActionStateBanner.tsx';
+const actionStateBannerSource = readRepoFile(actionStateBannerPath);
+assertContains(
+  actionStateBannerPath,
+  actionStateBannerSource,
+  /persist = true/,
+  'ActionStateBanner must default foreground action messages to persistent display.',
+  failures,
+);
+assertNotContains(
+  actionStateBannerPath,
+  actionStateBannerSource,
+  /autoDismissMs|setTimeout\(/,
+  'ActionStateBanner must not auto-dismiss blocking foreground action state.',
+  failures,
+);
+
+const computePagePath = 'app/core/components/reports/ComputePage.tsx';
+const computePageSource = readRepoFile(computePagePath);
+assertContains(
+  computePagePath,
+  computePageSource,
+  /<ComputeReportsSheet[\s\S]*status=\{computeActionStatus\}/,
+  'Compute Reports must render foreground job state inside ComputeReportsSheet.',
+  failures,
+);
+assertContains(
+  computePagePath,
+  computePageSource,
+  /<ActionProgress[\s\S]*progressPercent=\{progressPercent\}/,
+  'Compute progress must render inside the foreground sheet with ActionProgress.',
+  failures,
+);
+assertContains(
+  computePagePath,
+  computePageSource,
+  /<ReportPrepareTermSheet[\s\S]*autoPrepareKey=\{prepareAutoRunKey\}/,
+  'Prepare Term must render foreground setup state inside ReportPrepareTermSheet.',
+  failures,
+);
+
+const computeHookPath = 'app/core/hooks/reports/useComputePage.ts';
+const computeHookSource = readRepoFile(computeHookPath);
+assertContains(
+  computeHookPath,
+  computeHookSource,
+  /setComputeActionError\(/,
+  'Active compute failures must be stored in compute action state.',
+  failures,
+);
+assertNotContains(
+  computeHookPath,
+  computeHookSource,
+  /setGlobalError\(\s*resolved\.serverCode === 'report_compute_blocked'/,
+  'Active compute failures must not be routed to the page-level globalError banner.',
+  failures,
+);
+
+const assessmentCreatePath = 'app/core/components/assessments/CreateAssessmentPage.tsx';
+const assessmentCreateSource = readRepoFile(assessmentCreatePath);
+assertContains(
+  assessmentCreatePath,
+  assessmentCreateSource,
+  /saveError \? \(\s*<ActionStateBanner[\s\S]*variant="error"/,
+  'Assessment create saveError must render as a persistent foreground ActionStateBanner.',
+  failures,
+);
+assertContains(
+  assessmentCreatePath,
+  assessmentCreateSource,
+  /ALL_COMPONENTS_CREATED_MESSAGE/,
+  'Assessment create must show the full all-components-created foreground reason.',
+  failures,
+);
+assertNotContains(
+  assessmentCreatePath,
+  assessmentCreateSource,
+  /autoDismissMs=\{?5000\}?/,
+  'Assessment create critical save errors must not auto-dismiss.',
+  failures,
+);
+assertContains(
+  assessmentCreatePath,
+  assessmentCreateSource,
+  /submitDisabledReason \? \(\s*<ActionStateBanner/,
+  'Assessment create submitDisabledReason must be visible near the submit action.',
+  failures,
+);
+
+const assignmentModalPath = 'app/core/components/assignments/AssignmentCreateModal.tsx';
+const assignmentModalSource = readRepoFile(assignmentModalPath);
+assertContains(
+  assignmentModalPath,
+  assignmentModalSource,
+  /<Modal[\s\S]*closeDisabled=\{saving\}[\s\S]*footer=\{/,
+  'AssignmentCreateModal must use the responsive modal sheet with close protection and sticky footer actions.',
+  failures,
+);
+
+const cbcPoliciesPath = 'app/plugins/cbc/components/reportPolicies/CbcReportPoliciesPage.tsx';
+const cbcPoliciesSource = readRepoFile(cbcPoliciesPath);
+assertContains(
+  cbcPoliciesPath,
+  cbcPoliciesSource,
+  /<ReportPrepareTermSheet[\s\S]*autoPrepareKey=\{prepareAutoRunKey\}/,
+  'CBC policy recommendation actions must use the foreground prepare sheet.',
+  failures,
+);
+assertNotContains(
+  cbcPoliciesPath,
+  cbcPoliciesSource,
+  /setSetupError\(resolveReportError\(caught,[\s\S]*recommended report setup fix/,
+  'CBC policy recommendation action errors must not route to the page-level setup banner.',
+  failures,
+);
 
 for (const [key, entry] of Object.entries(baseline)) {
   failures.push(...validateBaselineEntry(key, entry, today));

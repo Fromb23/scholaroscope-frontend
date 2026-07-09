@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
+import { ActionStateBanner } from '@/app/components/ui/actions';
 import { resolveAssignmentError, type AppError } from '@/app/core/errors';
 import { InlineActionError } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
@@ -625,6 +626,36 @@ export function AssignmentCreateModal({
                         ? 'Prepare Quick Follow-up Task'
                         : 'Create Assignment'}
             size="xl"
+            closeDisabled={saving}
+            footer={
+                <div className="space-y-3">
+                    {submitDisabledReason ? (
+                        <ActionStateBanner
+                            variant="warning"
+                            compact
+                            message={submitDisabledReason}
+                        />
+                    ) : null}
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
+                            {isLessonPreparationMode ? 'Not for this lesson' : 'Cancel'}
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={saving || Boolean(submitDisabledReason)}
+                        >
+                            {saving
+                                ? (isEditMode ? 'Saving...' : 'Creating...')
+                                : isLessonPreparationMode
+                                    ? 'Save learner task'
+                                    : isQuickFollowUpMode
+                                        ? 'Save quick follow-up task'
+                                        : (isEditMode ? 'Save Changes' : 'Create Assignment')}
+                        </Button>
+                    </div>
+                </div>
+            }
         >
             <div className="space-y-6">
                 {formError ? (
@@ -1074,30 +1105,6 @@ export function AssignmentCreateModal({
                 </div>
                 ) : null}
 
-                {submitDisabledReason ? (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        {submitDisabledReason}
-                    </div>
-                ) : null}
-
-                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <Button type="button" variant="ghost" onClick={onClose}>
-                        {isLessonPreparationMode ? 'Not for this lesson' : 'Cancel'}
-                    </Button>
-                    <Button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={saving || Boolean(submitDisabledReason)}
-                    >
-                        {saving
-                            ? (isEditMode ? 'Saving...' : 'Creating...')
-                            : isLessonPreparationMode
-                                ? 'Save learner task'
-                                : isQuickFollowUpMode
-                                    ? 'Save quick follow-up task'
-                                    : (isEditMode ? 'Save Changes' : 'Create Assignment')}
-                    </Button>
-                </div>
             </div>
         </Modal>
     );

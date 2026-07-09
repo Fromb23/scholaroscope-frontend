@@ -41,4 +41,41 @@ describe('report compute form validation', () => {
     expect(hookSource).toContain('streamComputeJobEvents');
     expect(hookSource).toContain('computeReports');
   });
+
+  it('keeps compute progress and terminal states in a foreground sheet', () => {
+    const pageSource = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/ComputePage.tsx'),
+      'utf8',
+    );
+    const hookSource = readFileSync(
+      join(process.cwd(), 'app/core/hooks/reports/useComputePage.ts'),
+      'utf8',
+    );
+
+    expect(pageSource).toContain('function ComputeReportsSheet');
+    expect(pageSource).toContain('<ResponsiveActionSheet');
+    expect(pageSource).toContain('<ActionProgress');
+    expect(pageSource).toContain('Reports computed successfully');
+    expect(pageSource).toContain('Computation blocked');
+    expect(hookSource).toContain('setComputeSheetOpen(true)');
+    expect(hookSource).toContain('setComputeActionError(');
+    expect(hookSource).not.toContain("setGlobalError(\n                resolved.serverCode === 'report_compute_blocked'");
+  });
+
+  it('opens prepare term in a foreground sheet with recommendations', () => {
+    const pageSource = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/ComputePage.tsx'),
+      'utf8',
+    );
+    const sheetSource = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/ReportPrepareTermSheet.tsx'),
+      'utf8',
+    );
+
+    expect(pageSource).toContain('<ReportPrepareTermSheet');
+    expect(pageSource).toContain('autoPrepareKey={prepareAutoRunKey}');
+    expect(sheetSource).toContain('Recommendations');
+    expect(sheetSource).toContain('Apply Recommended Fix');
+    expect(sheetSource).toContain('Preparation failed');
+  });
 });

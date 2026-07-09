@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ClipboardCheck, Layers3, Loader, Plus } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ClipboardCheck, Layers3, Plus } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAuth } from '@/app/context/AuthContext';
 import { reportsAPI } from '@/app/core/api/reporting';
 import { resolveReportError, type AppError } from '@/app/core/errors';
+import { ReportPrepareTermSheet } from '@/app/core/components/reports/ReportPrepareTermSheet';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useCohortSubjectsByCohorts } from '@/app/core/hooks/useCohortSubjects';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
@@ -115,8 +116,8 @@ export function CbcReportPoliciesPage({
     const [readiness, setReadiness] = useState<ReportComputeReadiness | null>(null);
     const [readinessLoading, setReadinessLoading] = useState(false);
     const [setupError, setSetupError] = useState<AppError | null>(null);
-    const [preparingTerm, setPreparingTerm] = useState(false);
-    const [applyingRecommendation, setApplyingRecommendation] = useState<string | null>(null);
+    const [prepareSheetOpen, setPrepareSheetOpen] = useState(false);
+    const [prepareAutoRunKey, setPrepareAutoRunKey] = useState(0);
     const [advancedPolicyListOpen, setAdvancedPolicyListOpen] = useState(false);
 
     const { cohorts } = useCohorts();
@@ -352,40 +353,9 @@ export function CbcReportPoliciesPage({
         };
     }, [canManagePolicies, effectiveTermId, isInstitutionGovernance]);
 
-    const handlePrepareTermForReports = async () => {
-        if (!effectiveTermId) return;
-        setPreparingTerm(true);
-        setSetupError(null);
-        try {
-            setReadiness(await reportsAPI.prepareTermForReports(effectiveTermId));
-            await refetch();
-        } catch (caught) {
-            setSetupError(resolveReportError(caught, {
-                action: 'load',
-                entityLabel: 'report setup recommendations',
-                role: 'ADMIN',
-            }));
-        } finally {
-            setPreparingTerm(false);
-        }
-    };
-
-    const handleApplyRecommendation = async (recommendationId: string) => {
-        if (!effectiveTermId) return;
-        setApplyingRecommendation(recommendationId);
-        setSetupError(null);
-        try {
-            setReadiness(await reportsAPI.applyRecommendedFix(effectiveTermId, recommendationId));
-            await refetch();
-        } catch (caught) {
-            setSetupError(resolveReportError(caught, {
-                action: 'update',
-                entityLabel: 'recommended report setup fix',
-                role: 'ADMIN',
-            }));
-        } finally {
-            setApplyingRecommendation(null);
-        }
+    const openPrepareSheet = (autoRun = false) => {
+        setPrepareSheetOpen(true);
+        if (autoRun) setPrepareAutoRunKey((key) => key + 1);
     };
 
     if (authLoading) {
@@ -473,14 +443,10 @@ export function CbcReportPoliciesPage({
                                     type="button"
                                     variant="secondary"
                                     size="sm"
-                                    onClick={handlePrepareTermForReports}
-                                    disabled={!effectiveTermId || preparingTerm}
+                                    onClick={() => openPrepareSheet(true)}
+                                    disabled={!effectiveTermId}
                                 >
-                                    {preparingTerm ? (
-                                        <Loader className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <ClipboardCheck className="h-4 w-4" />
-                                    )}
+                                    <ClipboardCheck className="h-4 w-4" />
                                     Prepare Term for Reports
                                 </Button>
                                 <Button
@@ -588,10 +554,9 @@ export function CbcReportPoliciesPage({
                                                                     <Button
                                                                         type="button"
                                                                         size="sm"
-                                                                        onClick={() => handleApplyRecommendation(safeRecommendation.id)}
-                                                                        disabled={Boolean(applyingRecommendation)}
+                                                                        onClick={() => openPrepareSheet(false)}
                                                                     >
-                                                                        {applyingRecommendation === safeRecommendation.id ? 'Applying...' : 'Apply to all in group'}
+                                                                        Review recommended fixes
                                                                     </Button>
                                                                 ) : null}
                                                                 <Button type="button" variant="secondary" size="sm" onClick={() => handleOpen()}>
@@ -701,6 +666,18 @@ export function CbcReportPoliciesPage({
                     onClose={handleClose}
                 />
             )}
+            {isInstitutionGovernance ? (
+                <ReportPrepareTermSheet
+                    open={prepareSheetOpen}
+                    onOpenChange={setPrepareSheetOpen}
+                    termId={effectiveTermId}
+                    readiness={readiness}
+                    onReadinessChange={setReadiness}
+                    managePoliciesHref="/reports/grade-policies"
+                    autoPrepareKey={prepareAutoRunKey}
+                    onAfterMutation={refetch}
+                />
+            ) : null}
         </div>
     );
 }

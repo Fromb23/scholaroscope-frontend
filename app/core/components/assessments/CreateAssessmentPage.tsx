@@ -10,7 +10,7 @@ import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { ActionStateBanner } from '@/app/components/ui/actions';
 import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
 import { assessmentAPI } from '@/app/core/api/assessments';
 import { useCreateAssessmentForm, useRubricScales } from '@/app/core/hooks/useAssessments';
@@ -31,6 +31,8 @@ const EVALUATION_TYPES = [
     { value: 'DESCRIPTIVE', label: 'Descriptive' },
     { value: 'COMPETENCY', label: 'Competency' },
 ];
+
+const ALL_COMPONENTS_CREATED_MESSAGE = 'All official assessment components have already been created for this subject and term. Edit an existing assessment or create practice work.';
 
 function parsePositiveId(value: string | null): number | null {
     const parsed = Number(value ?? '');
@@ -360,13 +362,13 @@ export function CreateAssessmentPage() {
             return policyGuidanceError;
         }
         if (isCbcPolicyContext && form.term && form.cohort_subject && policyDisabledReason === 'all_components_created') {
-            return policyUserMessage ?? 'All official assessment components have already been created for this subject and term.';
+            return ALL_COMPONENTS_CREATED_MESSAGE;
         }
         if (isCbcPolicyContext && form.term && form.cohort_subject && !policyReady) {
             return policyUserMessage ?? 'Official assessment creation is blocked by report policy setup.';
         }
         if (isCbcPolicyContext && form.term && form.cohort_subject && cbcComponentsExhausted) {
-            return 'All official assessment components have already been created for this subject and term.';
+            return ALL_COMPONENTS_CREATED_MESSAGE;
         }
         if (unsupportedAssessmentType) return `This term policy allows ${allowedAssessmentTypes.join(', ')} only.`;
         return null;
@@ -637,11 +639,14 @@ export function CreateAssessmentPage() {
                                 </p>
                             ) : null}
                             {isCbcPolicyContext && (policyGuidanceError || cbcComponentsExhausted) ? (
-                                <p className={`text-sm ${policyGuidanceError ? 'text-red-600' : 'text-amber-700'}`}>
-                                    {policyGuidanceError
-                                        ?? policyUserMessage
-                                        ?? 'All official assessment components have already been created for this subject and term.'}
-                                </p>
+                                <div className="md:col-span-2">
+                                    <ActionStateBanner
+                                        variant={policyGuidanceError ? 'error' : 'blocked'}
+                                        compact
+                                        title={policyGuidanceError ? 'Policy guidance unavailable' : 'No official components remain'}
+                                        message={policyGuidanceError ?? ALL_COMPONENTS_CREATED_MESSAGE}
+                                    />
+                                </div>
                             ) : null}
                             {unsupportedAssessmentType ? (
                                 <p className="text-sm text-red-600">
@@ -706,7 +711,7 @@ export function CreateAssessmentPage() {
                                             </p>
                                             {cbcComponentsExhausted ? (
                                                 <p className="mt-2 font-medium text-amber-800">
-                                                    {policyUserMessage ?? 'All official assessment components have already been created for this subject and term.'}
+                                                    {ALL_COMPONENTS_CREATED_MESSAGE}
                                                 </p>
                                             ) : null}
                                             {availableAssessmentComponents.length === 1 && !cbcComponentsExhausted ? (
@@ -869,18 +874,21 @@ export function CreateAssessmentPage() {
                 </Card>
 
                 {saveError ? (
-                    <ErrorBanner
+                    <ActionStateBanner
                         ref={saveErrorRef}
+                        variant="error"
+                        title="Assessment not created"
                         message={saveError}
                         onDismiss={dismissError}
-                        autoDismissMs={5000}
                     />
                 ) : null}
 
                 {submitDisabledReason ? (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        {submitDisabledReason}
-                    </div>
+                    <ActionStateBanner
+                        variant={cbcComponentsExhausted ? 'blocked' : 'warning'}
+                        compact
+                        message={submitDisabledReason}
+                    />
                 ) : null}
 
                 <div className="flex items-center justify-end gap-4">
