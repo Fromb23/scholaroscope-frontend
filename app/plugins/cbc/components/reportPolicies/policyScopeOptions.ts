@@ -33,7 +33,7 @@ export function buildCbcSubjectProfileOptions(catalog?: CBCCatalog | null): CbcS
             seen.add(level.subject_profile_id);
             options.push({
                 id: level.subject_profile_id,
-                label: `Catalog fallback: ${subject.code} · ${subject.name} · ${level.level} (Reference only)`,
+                label: `Catalog reference only: ${subject.code} · ${subject.name} · ${level.level}`,
             });
         });
     });

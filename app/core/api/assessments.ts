@@ -21,6 +21,7 @@ import {
   AssessmentReviewSummary,
 } from '../types/assessment';
 import type { PaginatedResponse } from '@/app/core/types/api';
+import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 
 export interface AssessmentBulkFinalizePayload {
   term_id: number;
@@ -141,6 +142,14 @@ export const assessmentAPI = {
 
   getById: async (id: number) => {
     const response = await apiClient.get<AssessmentDetail>(`/assessments/${id}/`);
+    return response.data;
+  },
+
+  getPolicyGuidance: async (params: {
+    term: number;
+    cohort_subject: number;
+  }): Promise<AcademicPolicyBrief> => {
+    const response = await apiClient.get<AcademicPolicyBrief>('/assessments/policy-guidance/', { params });
     return response.data;
   },
 

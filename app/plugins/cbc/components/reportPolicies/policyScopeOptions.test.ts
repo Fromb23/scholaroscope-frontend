@@ -31,7 +31,7 @@ describe('CBC report policy scope options', () => {
     expect(options[0].label).toBe('Class subject: Grade 7 · MATH · Mathematics');
   });
 
-  it('labels catalog profiles as fallback reference options', () => {
+  it('labels catalog profiles as reference-only options', () => {
     const options = buildCbcSubjectProfileOptions({
       curriculum_id: 1,
       curriculum_name: 'CBC',
@@ -61,6 +61,6 @@ describe('CBC report policy scope options', () => {
       ],
     } satisfies CBCCatalog);
 
-    expect(options[0].label).toBe('Catalog fallback: MATH · Mathematics · Grade 7 (Reference only)');
+    expect(options[0].label).toBe('Catalog reference only: MATH · Mathematics · Grade 7');
   });
 });

@@ -85,14 +85,14 @@ describe('CBC plugin navigation capability boundaries', () => {
     it('does not leak institution report policy authoring into raw admin navigation', () => {
         const children = cbcManagementChildren(baseCapabilities);
 
-        expect(children.map((item) => item.name)).not.toContain('Report Policies');
-        expect(children.map((item) => item.href)).not.toContain('/cbc/report-policies');
+        expect(children.map((item) => item.name)).not.toContain('Academic Policies');
+        expect(children.map((item) => item.href)).not.toContain('/reports/policies/cbc');
     });
 
-    it('shows CBC report policies only when the target capability allows governance authoring', () => {
+    it('bridges to CBC academic policies only when the target capability allows governance authoring', () => {
         const children = cbcManagementChildren(governanceCapabilities);
 
-        expect(children.map((item) => item.name)).toContain('Report Policies');
-        expect(children.map((item) => item.href)).toContain('/cbc/report-policies');
+        expect(children.map((item) => item.name)).toContain('Academic Policies');
+        expect(children.map((item) => item.href)).toContain('/reports/policies/cbc');
     });
 });

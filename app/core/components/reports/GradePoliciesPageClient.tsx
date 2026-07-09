@@ -232,7 +232,7 @@ export function GradePoliciesPageClient() {
             />
 
             <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                CBC/CBE reporting is managed separately in CBC Report Policies. This page only handles the generic kernel policy surface.
+                CBC/CBE reporting is managed separately in CBC Academic Policies. This page only handles the generic report policy surface.
             </div>
 
             {error && <ErrorBanner message={error} onDismiss={() => { }} />}
@@ -281,7 +281,7 @@ function GenericPolicyUnavailableState({ cbcHref }: { cbcHref: string | null }) 
                         This organization does not currently use the generic policy surface.
                     </h2>
                     <p className="mt-1 text-sm text-gray-600">
-                        CBC/CBE reporting is owned by the CBC module. Open the policy hub to choose an
+                        CBC/CBE reporting is governed by CBC Academic Policies. Open the policy hub to choose an
                         available reporting surface for this organization.
                     </p>
                 </div>
@@ -291,7 +291,7 @@ function GenericPolicyUnavailableState({ cbcHref }: { cbcHref: string | null }) 
                     </Link>
                     {cbcHref ? (
                         <Link href={cbcHref}>
-                            <Button>Open CBC Report Policies</Button>
+                            <Button>Open CBC Academic Policies</Button>
                         </Link>
                     ) : null}
                 </div>
@@ -314,7 +314,7 @@ function GenericPoliciesHeader({
                     Generic Grade Policies
                 </h1>
                 <p className="text-gray-500 mt-1">
-                    Kernel-owned policy authoring for generic-compatible reporting flows.
+                    Core report policy authoring for generic-compatible reporting flows.
                 </p>
             </div>
             <div className="flex items-center gap-3">

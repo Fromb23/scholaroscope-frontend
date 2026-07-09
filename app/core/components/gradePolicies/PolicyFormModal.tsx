@@ -176,7 +176,7 @@ export function PolicyFormModal({
                 </div>
 
                 <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                    Generic grade policies are kernel-owned. CBC/CBE reporting is managed in CBC Report Policies.
+                    Generic grade policies govern the core report surface. CBC/CBE reporting is managed in CBC Academic Policies.
                 </div>
 
                 <GuidedPolicySetup />

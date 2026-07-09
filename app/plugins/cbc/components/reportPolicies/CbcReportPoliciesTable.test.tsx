@@ -106,7 +106,7 @@ describe('CBC report policies table', () => {
     expect(html).toContain('Class policy: Grade 7');
     expect(html).toContain('Class subject policy: Grade 7 - Mathematics');
     expect(html).toContain('Workspace default policy');
-    expect(html).toContain('Catalog fallback: Mathematics (Reference only)');
+    expect(html).toContain('Catalog reference only: Mathematics');
     expect(html).toContain('Term: Term 1');
   });
 
@@ -138,7 +138,7 @@ describe('CBC report policies table', () => {
   it('keeps global view links in institution governance but hides them in class setup', () => {
     const policy = basePolicy({ id: 99, cohort: 9, cohort_name: 'Grade 7' });
 
-    expect(renderTable([policy], 'INSTITUTION_GOVERNANCE')).toContain('/cbc/report-policies/99');
-    expect(renderTable([policy], 'CLASS_SETUP')).not.toContain('/cbc/report-policies/99');
+    expect(renderTable([policy], 'INSTITUTION_GOVERNANCE')).toContain('/reports/policies/cbc/99');
+    expect(renderTable([policy], 'CLASS_SETUP')).not.toContain('/reports/policies/cbc/99');
   });
 });

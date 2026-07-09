@@ -38,6 +38,12 @@ import {
     type CbcPolicyPreset,
 } from '@/app/plugins/cbc/components/reportPolicies/CbcPolicyPresetButtons';
 import { CbcPolicySupportFields } from '@/app/plugins/cbc/components/reportPolicies/CbcPolicySupportFields';
+import {
+    CbcInstitutionPolicyScopeFields,
+    type CbcCohortOption,
+    type CbcCohortSubjectOption,
+    type CbcSubjectProfileOption,
+} from '@/app/plugins/cbc/components/reportPolicies/CbcInstitutionPolicyScopeFields';
 import type {
     CbcClassReportPolicyScope,
     CbcPolicyLevelCode,
@@ -58,24 +64,6 @@ const CLASS_POLICY_SCOPE_OPTIONS: Array<{ value: CbcClassReportPolicyScope; labe
     { value: 'COHORT', label: 'Class policy' },
     { value: 'WORKSPACE_DEFAULT', label: 'Workspace default' },
 ];
-
-interface CbcSubjectProfileOption {
-    id: number;
-    label: string;
-}
-
-interface CbcCohortSubjectOption {
-    id: number;
-    label: string;
-    cohortId?: number | null;
-    cohortSubjectId?: number | null;
-    subjectProfileId?: number | null;
-}
-
-interface CbcCohortOption {
-    id: number;
-    label: string;
-}
 
 interface CbcTermOption {
     id: number;
@@ -107,7 +95,7 @@ const REPORT_POLICY_FIELD_ORDER: ReportPolicyFormField[] = [
 
 const REPORT_POLICY_FIELD_LABELS: Record<ReportPolicyFormField, string> = {
     name: 'Policy name',
-    subject_profile: 'Catalog fallback subject profile',
+    subject_profile: 'Catalog reference subject profile',
     cohort: 'Class',
     cbc_cohort_subject: 'Class subject',
     term: 'Term',
@@ -576,6 +564,9 @@ export function CbcReportPolicyFormModal({
         [authoringMode, defaultPolicy, editingPolicy, lockedCohortId, lockedCohortSubjectId, templatePolicy],
     );
     const [form, setForm] = useState<CbcPolicyFormState>(initialState);
+    const [showAdvancedReference, setShowAdvancedReference] = useState(
+        authoringMode === 'INSTITUTION_GOVERNANCE' && Boolean(initialState.subject_profile),
+    );
     const [errors, setErrors] = useState<FormErrors>({});
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -625,6 +616,21 @@ export function CbcReportPolicyFormModal({
             ?? lockedCohortSubjectLabel
             ?? 'Selected class subject';
     }, [classCohortSubjectOptions, form.cbc_cohort_subject, lockedCohortSubjectLabel]);
+    const institutionCohortSubjectOptions = useMemo(() => {
+        const options = form.cohort
+            ? cohortSubjects.filter((subject) => subject.cohortId === form.cohort)
+            : cohortSubjects;
+        const hasSelected = form.cbc_cohort_subject
+            ? options.some((subject) => subject.id === form.cbc_cohort_subject)
+            : true;
+
+        if (hasSelected || !form.cbc_cohort_subject) {
+            return options;
+        }
+
+        const selected = cohortSubjects.find((subject) => subject.id === form.cbc_cohort_subject);
+        return selected ? [...options, selected] : options;
+    }, [cohortSubjects, form.cbc_cohort_subject, form.cohort]);
 
     const setField = <K extends keyof CbcPolicyFormState>(field: K, value: CbcPolicyFormState[K]) => {
         setForm((previous) => ({ ...previous, [field]: value }));
@@ -760,6 +766,48 @@ export function CbcReportPolicyFormModal({
             delete next.scope;
             delete next.cohort;
             delete next.cbc_cohort_subject;
+            return next;
+        });
+    };
+
+    const setInstitutionClassScope = (selectedId: number | null) => {
+        setForm((previous) => {
+            const selectedSubject = previous.cbc_cohort_subject
+                ? cohortSubjects.find((subject) => subject.id === previous.cbc_cohort_subject)
+                : null;
+            const keepSubject = !selectedId || selectedSubject?.cohortId === selectedId;
+
+            return {
+                ...previous,
+                cohort: selectedId,
+                cbc_cohort_subject: keepSubject ? previous.cbc_cohort_subject : null,
+                subject_profile: null,
+                is_default: selectedId ? false : previous.is_default,
+            };
+        });
+        setErrors((previous) => {
+            const next = { ...previous };
+            delete next.cohort;
+            delete next.cbc_cohort_subject;
+            delete next.scope;
+            return next;
+        });
+    };
+
+    const setInstitutionClassSubjectScope = (selectedId: number | null) => {
+        const selectedOption = institutionCohortSubjectOptions.find((option) => option.id === selectedId);
+        setForm((previous) => ({
+            ...previous,
+            cbc_cohort_subject: selectedId,
+            cohort: selectedOption?.cohortId ?? previous.cohort,
+            subject_profile: selectedOption?.subjectProfileId ?? previous.subject_profile,
+            is_default: selectedId ? false : previous.is_default,
+        }));
+        setErrors((previous) => {
+            const next = { ...previous };
+            delete next.cbc_cohort_subject;
+            delete next.cohort;
+            delete next.scope;
             return next;
         });
     };
@@ -963,70 +1011,23 @@ export function CbcReportPolicyFormModal({
 
                 <div className="grid gap-4 md:grid-cols-4">
                     {authoringMode === 'INSTITUTION_GOVERNANCE' ? (
-                        <>
-                            <Select
-                                label="Class policy"
-                                value={form.cohort?.toString() ?? ''}
-                                onChange={(event) => setField(
-                                    'cohort',
-                                    event.target.value ? Number(event.target.value) : null,
-                                )}
-                                error={getFormFieldErrorMessage(errors.cohort)}
-                                options={[
-                                    { value: '', label: 'Any class' },
-                                    ...cohorts.map((cohort) => ({
-                                        value: String(cohort.id),
-                                        label: `Class: ${cohort.label}`,
-                                    })),
-                                ]}
-                            />
-                            <Select
-                                label="Class subject policy"
-                                value={form.cbc_cohort_subject?.toString() ?? ''}
-                                onChange={(event) => {
-                                    const selectedId = event.target.value ? Number(event.target.value) : null;
-                                    setField('cbc_cohort_subject', selectedId);
-
-                                    if (!selectedId) return;
-
-                                    const selectedOption = cohortSubjects.find((option) => option.id === selectedId);
-                                    if (selectedOption?.subjectProfileId) {
-                                        setField('subject_profile', selectedOption.subjectProfileId);
-                                    }
-                                    if (selectedOption?.cohortId) {
-                                        setField('cohort', selectedOption.cohortId);
-                                    }
-                                }}
-                                error={getFormFieldErrorMessage(errors.cbc_cohort_subject)}
-                                options={[
-                                    { value: '', label: 'Any class subject' },
-                                    ...cohortSubjects.map((subject) => ({
-                                        value: String(subject.id),
-                                        label: subject.label,
-                                    })),
-                                ]}
-                            />
-                            <Select
-                                ref={setFieldRef('subject_profile')}
-                                label="Catalog fallback / reference"
-                                value={form.subject_profile?.toString() ?? ''}
-                                onChange={(event) => setField(
-                                    'subject_profile',
-                                    event.target.value ? Number(event.target.value) : null,
-                                )}
-                                error={getFormFieldErrorMessage(errors.subject_profile)}
-                                options={[
-                                    { value: '', label: 'No catalog fallback' },
-                                    ...subjectProfiles.map((profile) => ({
-                                        value: String(profile.id),
-                                        label: profile.label,
-                                    })),
-                                ]}
-                            />
-                            <p className="text-xs text-gray-500 md:col-span-3">
-                                Use registered class subjects for operational report policies. Catalog fallback profiles are reference only when no class subject policy can be authored.
-                            </p>
-                        </>
+                        <CbcInstitutionPolicyScopeFields
+                            cohortId={form.cohort}
+                            cohortSubjectId={form.cbc_cohort_subject}
+                            subjectProfileId={form.subject_profile}
+                            subjectProfiles={subjectProfiles}
+                            cohorts={cohorts}
+                            cohortSubjects={institutionCohortSubjectOptions}
+                            cohortError={getFormFieldErrorMessage(errors.cohort)}
+                            cohortSubjectError={getFormFieldErrorMessage(errors.cbc_cohort_subject)}
+                            subjectProfileError={getFormFieldErrorMessage(errors.subject_profile)}
+                            subjectProfileRef={setFieldRef('subject_profile')}
+                            showAdvancedReference={showAdvancedReference}
+                            onToggleAdvancedReference={() => setShowAdvancedReference((current) => !current)}
+                            onSelectCohort={setInstitutionClassScope}
+                            onSelectCohortSubject={setInstitutionClassSubjectScope}
+                            onSelectSubjectProfile={(value) => setField('subject_profile', value)}
+                        />
                     ) : (
                         <div
                             ref={setFieldRef('scope')}
@@ -1108,7 +1109,7 @@ export function CbcReportPolicyFormModal({
 
                 <div className="rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800">
                     {authoringMode === 'INSTITUTION_GOVERNANCE'
-                        ? 'CBC report policies are plugin-owned. Assessment pages only preview these rules and link back here for policy authoring.'
+                        ? 'CBC report engine uses this academic policy for official report computation.'
                         : 'Class configuration report setup is saved against this class workspace context.'}
                 </div>
 

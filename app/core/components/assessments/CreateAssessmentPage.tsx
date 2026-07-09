@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, CheckSquare, ClipboardList, Save, Users } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Input } from '@/app/components/ui/Input';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { AssessmentPolicyPreviewCard } from '@/app/core/components/assessments/AssessmentPolicyPreviewCard';
+import { assessmentAPI } from '@/app/core/api/assessments';
 import { useCreateAssessmentForm, useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useCurricula, useTerms } from '@/app/core/hooks/useAcademic';
 import { useCohorts, useCohortSubjects } from '@/app/core/hooks/useCohorts';
@@ -20,6 +21,8 @@ import { useScrollIntoViewOnMessage } from '@/app/core/hooks/useScrollIntoViewOn
 import { tracksAssessmentParticipation } from '@/app/core/lib/assessmentParticipation';
 import { canCreateCurriculumWork, resolveCurriculumForType } from '@/app/core/lib/curriculumLifecycle';
 import { ASSESSMENT_TYPE_OPTIONS, AssessmentParticipationMode } from '@/app/core/types/assessment';
+import { resolveReportError } from '@/app/core/errors';
+import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import { useAuth } from '@/app/context/AuthContext';
 
 const EVALUATION_TYPES = [
@@ -52,6 +55,9 @@ export function CreateAssessmentPage() {
     const { curricula } = useCurricula();
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const [policyGuidance, setPolicyGuidance] = useState<AcademicPolicyBrief | null>(null);
+    const [policyGuidanceLoading, setPolicyGuidanceLoading] = useState(false);
+    const [policyGuidanceError, setPolicyGuidanceError] = useState<string | null>(null);
 
     const assignedSubjectOptions = useMemo<InstructorSubjectOption[]>(() => {
         const options = instructorAccess.assignments
@@ -120,6 +126,9 @@ export function CreateAssessmentPage() {
         const value = searchParams.get('returnTo');
         return value?.startsWith('/') ? value : null;
     }, [searchParams]);
+    const policyTermName = typeof policyGuidance?.term === 'string'
+        ? policyGuidance.term
+        : policyGuidance?.term?.name ?? null;
 
     const assignedCohorts = useMemo(() => (
         Array.from(
@@ -190,6 +199,73 @@ export function CreateAssessmentPage() {
         return resolveCurriculumForType(curricula, selectedCohort.curriculum_type);
     }, [availableCohorts, curricula, selectedCohortId]);
     const isSelectedCurriculumWritable = selectedCurriculum ? canCreateCurriculumWork(selectedCurriculum) : true;
+    const isCbcPolicyContext = selectedCurriculum?.curriculum_type === 'CBE' || selectedCurriculum?.curriculum_type === 'CBC';
+    const allowedAssessmentTypes = useMemo(
+        () => policyGuidance?.allowed_assessment_types ?? [],
+        [policyGuidance],
+    );
+    const assessmentTypeOptions = useMemo(() => {
+        if (!allowedAssessmentTypes.length) {
+            return ASSESSMENT_TYPE_OPTIONS;
+        }
+
+        const allowed = new Set(allowedAssessmentTypes.map((type) => type.toUpperCase()));
+        return ASSESSMENT_TYPE_OPTIONS.filter((option) => allowed.has(String(option.value).toUpperCase()));
+    }, [allowedAssessmentTypes]);
+    const unsupportedAssessmentType = Boolean(
+        allowedAssessmentTypes.length
+        && form.assessment_type
+        && !allowedAssessmentTypes
+            .map((type) => type.toUpperCase())
+            .includes(form.assessment_type.toUpperCase()),
+    );
+
+    useEffect(() => {
+        if (!isCbcPolicyContext || !form.term || !form.cohort_subject) {
+            setPolicyGuidance(null);
+            setPolicyGuidanceError(null);
+            setPolicyGuidanceLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        setPolicyGuidanceLoading(true);
+        setPolicyGuidanceError(null);
+
+        assessmentAPI.getPolicyGuidance({
+            term: form.term,
+            cohort_subject: form.cohort_subject,
+        }).then((guidance) => {
+            if (cancelled) return;
+            setPolicyGuidance(guidance);
+        }).catch((error) => {
+            if (cancelled) return;
+            const resolved = resolveReportError(error, {
+                action: 'load',
+                entityLabel: 'assessment policy guidance',
+                role: isTeachingActor ? 'INSTRUCTOR' : 'ADMIN',
+            });
+            setPolicyGuidance(null);
+            setPolicyGuidanceError(
+                resolved.serverCode === 'policy_required'
+                    ? 'Create or activate a policy before creating assessments for this term.'
+                    : resolved.message,
+            );
+        }).finally(() => {
+            if (!cancelled) {
+                setPolicyGuidanceLoading(false);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        form.cohort_subject,
+        form.term,
+        isCbcPolicyContext,
+        isTeachingActor,
+    ]);
 
     useEffect(() => {
         if (!isTeachingActor) return;
@@ -243,6 +319,12 @@ export function CreateAssessmentPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isSelectedCurriculumWritable) {
+            return;
+        }
+        if (isCbcPolicyContext && form.term && form.cohort_subject && (policyGuidanceError || policyGuidanceLoading)) {
+            return;
+        }
+        if (unsupportedAssessmentType) {
             return;
         }
         const result = await submit();
@@ -385,11 +467,22 @@ export function CreateAssessmentPage() {
 
                             <Select
                                 label="Assessment Type"
-                                value={form.assessment_type}
+                                value={unsupportedAssessmentType ? '' : form.assessment_type}
                                 onChange={e => setField('assessment_type', e.target.value)}
                                 required
-                                options={ASSESSMENT_TYPE_OPTIONS}
+                                disabled={policyGuidanceLoading || Boolean(policyGuidanceError)}
+                                options={[
+                                    ...(allowedAssessmentTypes.length
+                                        ? [{ value: '', label: 'Select policy allowed type', disabled: true }]
+                                        : []),
+                                    ...assessmentTypeOptions,
+                                ]}
                             />
+                            {unsupportedAssessmentType ? (
+                                <p className="text-sm text-red-600">
+                                    This assessment type is not allowed by the active policy.
+                                </p>
+                            ) : null}
 
                             <div>
                                 <Select
@@ -407,6 +500,56 @@ export function CreateAssessmentPage() {
                                 />
                                 <p className="mt-1 text-xs text-gray-500">Optional for year-round assessment flows.</p>
                             </div>
+
+                            {isCbcPolicyContext && form.term && form.cohort_subject ? (
+                                <div className="md:col-span-2">
+                                    {policyGuidanceError ? (
+                                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                            <p className="font-medium">
+                                                Create or activate a policy before creating assessments for this term.
+                                            </p>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                <Link href="/reports/policies/cbc">
+                                                    <Button type="button" variant="secondary" size="sm">Create policy</Button>
+                                                </Link>
+                                                <Link href="/reports/policies/cbc">
+                                                    <Button type="button" variant="secondary" size="sm">Activate existing policy</Button>
+                                                </Link>
+                                                <Link href="/reports/policies/cbc">
+                                                    <Button type="button" variant="secondary" size="sm">Reuse previous term policy</Button>
+                                                </Link>
+                                                <Link href="/reports/policies/cbc">
+                                                    <Button type="button" variant="secondary" size="sm">View policy plan</Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ) : policyGuidance ? (
+                                        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                                            <p className="font-medium">
+                                                This term uses {policyGuidance.policy_name ?? 'the active report policy'}{policyTermName ? ` for ${policyTermName}` : ''}.
+                                            </p>
+                                            <p className="mt-1">
+                                                Allowed: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
+                                            </p>
+                                            <p>
+                                                Required: {(policyGuidance.required_components ?? []).join(', ') || 'None'}
+                                            </p>
+                                            <p>
+                                                Assignments: {policyGuidance.assignment_inclusion === 'practice_only' ? 'practice only' : 'count in reports'}
+                                            </p>
+                                            {policyGuidance.updated_by || policyGuidance.last_updated ? (
+                                                <p className="mt-1 text-xs text-green-700">
+                                                    Updated by {policyGuidance.updated_by ?? 'admin'}{policyGuidance.last_updated ? ` on ${new Date(policyGuidance.last_updated).toLocaleDateString()}` : ''}.
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    ) : policyGuidanceLoading ? (
+                                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                                            Loading active policy guidance...
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ) : null}
 
                             <Input
                                 label="Assessment Date"
@@ -554,7 +697,16 @@ export function CreateAssessmentPage() {
                     <Link href={safeReturnTo ?? '/assessments'}>
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>
-                    <Button type="submit" disabled={saving || (!isAdminLike && !isTeachingActor) || !isSelectedCurriculumWritable}>
+                    <Button
+                        type="submit"
+                        disabled={
+                            saving
+                            || (!isAdminLike && !isTeachingActor)
+                            || !isSelectedCurriculumWritable
+                            || (isCbcPolicyContext && form.term && form.cohort_subject && (policyGuidanceLoading || Boolean(policyGuidanceError)))
+                            || unsupportedAssessmentType
+                        }
+                    >
                         <Save className="w-4 h-4 mr-2" />
                         {saving ? 'Creating…' : 'Create Assessment'}
                     </Button>

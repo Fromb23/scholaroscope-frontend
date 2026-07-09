@@ -6,6 +6,7 @@ import type {
     CbcReportPolicy,
     CbcReportPolicyFilters,
     CbcReportPolicyPayload,
+    CbcTermPolicyCoverage,
 } from '@/app/plugins/cbc/types/reportPolicy';
 
 type ListResponse<T> = T[] | PaginatedResponse<T>;
@@ -39,6 +40,34 @@ export const cbcReportPolicyAPI = {
 
     delete: async (id: number): Promise<void> => {
         await apiClient.delete(`/cbc/report-policies/${id}/`);
+    },
+
+    getTermPlan: async (termId: number): Promise<CbcTermPolicyCoverage> => {
+        const { data } = await apiClient.get<CbcTermPolicyCoverage>('/cbc/report-policies/term-plan/', {
+            params: { term_id: termId },
+        });
+        return data;
+    },
+
+    saveTermPlan: async (payload: {
+        term_id: number;
+        selected_policy_ids?: number[];
+        use_all_active_policies?: boolean;
+        status?: 'DRAFT' | 'ACTIVE' | 'FROZEN';
+    }): Promise<CbcTermPolicyCoverage> => {
+        const { data } = await apiClient.post<CbcTermPolicyCoverage>('/cbc/report-policies/term-plan/', payload);
+        return data;
+    },
+
+    reuseForTerm: async (
+        id: number,
+        payload: { term_id: number; activate?: boolean },
+    ): Promise<CbcReportPolicy> => {
+        const { data } = await apiClient.post<CbcReportPolicy>(
+            `/cbc/report-policies/${id}/reuse-for-term/`,
+            payload,
+        );
+        return data;
     },
 
     getAssessmentReportResults: async (

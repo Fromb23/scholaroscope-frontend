@@ -46,7 +46,13 @@ function baseForm(overrides: Partial<CbcPolicyFormState> = {}): CbcPolicyFormSta
   };
 }
 
-function renderModal(authoringMode: 'CLASS_SUBJECT_SETUP' | 'CLASS_SETUP' | 'INSTITUTION_GOVERNANCE') {
+function renderModal(
+  authoringMode: 'CLASS_SUBJECT_SETUP' | 'CLASS_SETUP' | 'INSTITUTION_GOVERNANCE',
+  overrides: {
+    cohorts?: Array<{ id: number; label: string }>;
+    subjectProfiles?: Array<{ id: number; label: string }>;
+  } = {},
+) {
   return renderToStaticMarkup(
     <CbcReportPolicyFormModal
       editingPolicy={null}
@@ -54,10 +60,10 @@ function renderModal(authoringMode: 'CLASS_SUBJECT_SETUP' | 'CLASS_SETUP' | 'INS
       lockedCohortId={9}
       lockedCohortSubjectId={41}
       lockedCohortSubjectLabel="Class subject: Grade 7 · Mathematics"
-      subjectProfiles={[
-        { id: 12, label: 'Catalog fallback: Mathematics catalog profile (Reference only)' },
+      subjectProfiles={overrides.subjectProfiles ?? [
+        { id: 12, label: 'Catalog reference only: Mathematics catalog profile' },
       ]}
-      cohorts={[
+      cohorts={overrides.cohorts ?? [
         { id: 9, label: 'Grade 7' },
       ]}
       cohortSubjects={[
@@ -101,14 +107,21 @@ describe('CBC report policy form modal', () => {
     expect(source).not.toContain('if (!validate()) return');
   });
 
-  it('marks catalog subject profile selection as fallback reference in institution governance mode', () => {
+  it('keeps catalog subject profile selection behind an advanced reference section in institution governance mode', () => {
     const html = renderModal('INSTITUTION_GOVERNANCE');
 
     expect(html).toContain('Class subject policy');
-    expect(html).toContain('Catalog fallback / reference');
-    expect(html).toContain('No catalog fallback');
-    expect(html).toContain('Catalog fallback: Mathematics catalog profile (Reference only)');
-    expect(html).toContain('CBC Report Policy');
+    expect(html).toContain('Advanced reference/template');
+    expect(html).not.toContain('Catalog fallback / reference');
+    expect(html).not.toContain('Catalog fallback: Mathematics catalog profile (Reference only)');
+    expect(html).toContain('Report Policy');
+  });
+
+  it('renders a clear empty state when no organization classes exist', () => {
+    const html = renderModal('INSTITUTION_GOVERNANCE', { cohorts: [] });
+
+    expect(html).toContain('No classes are registered for this organization.');
+    expect(html).not.toContain('Any class');
   });
 
   it('renders academic helper text for policy authoring fields', () => {

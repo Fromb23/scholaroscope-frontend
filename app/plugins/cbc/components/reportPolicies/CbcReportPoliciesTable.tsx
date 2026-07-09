@@ -29,7 +29,7 @@ export function getCbcReportPolicyScopeBadges(policy: CbcReportPolicy): Array<{
         });
     } else if (policy.subject_profile_name) {
         badges.push({
-            label: `Catalog fallback: ${policy.subject_profile_name} (Reference only)`,
+            label: `Catalog reference only: ${policy.subject_profile_name}`,
             variant: 'purple',
         });
     }
@@ -87,14 +87,14 @@ export function CbcReportPoliciesTable({
         <Card>
             {policies.length === 0 ? (
                 <div className="py-16 text-center">
-                    <p className="text-sm font-medium text-gray-900">No CBC report policies yet</p>
+                    <p className="text-sm font-medium text-gray-900">No report policies yet</p>
                     <p className="mt-1 text-sm text-gray-500">
-                        Create a CBC report policy to define performance level interpretation.
+                        Create an academic report policy before official CBC report computation.
                     </p>
                     {canManage && (
                         <Button className="mt-4" onClick={onCreate}>
                             <Plus className="mr-1.5 h-4 w-4" />
-                            New CBC Report Policy
+                            New Report Policy
                         </Button>
                     )}
                 </div>
@@ -167,7 +167,7 @@ export function CbcReportPoliciesTable({
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">
                                             {showGlobalViewAction && (
-                                                <Link href={`/cbc/report-policies/${policy.id}`}>
+                                                <Link href={`/reports/policies/cbc/${policy.id}`}>
                                                     <Button size="sm" variant="ghost">
                                                         <Eye className="h-4 w-4" />
                                                     </Button>

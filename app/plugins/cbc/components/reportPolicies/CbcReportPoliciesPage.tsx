@@ -18,6 +18,7 @@ import {
     CbcReportPolicyFormModal,
 } from '@/app/plugins/cbc/components/reportPolicies/CbcReportPolicyFormModal';
 import { CbcReportPoliciesTable } from '@/app/plugins/cbc/components/reportPolicies/CbcReportPoliciesTable';
+import { CbcTermPolicyPlanSection } from '@/app/plugins/cbc/components/reportPolicies/CbcTermPolicyPlanSection';
 import {
     buildCbcCohortSubjectOptions,
     buildCbcSubjectProfileOptions,
@@ -143,6 +144,8 @@ export function CbcReportPoliciesPage({
         () => terms.map((term) => ({
             id: term.id,
             label: `${term.academic_year_name} · ${term.name}`,
+            status: term.status,
+            is_frozen: term.is_frozen,
         })),
         [terms],
     );
@@ -151,9 +154,9 @@ export function CbcReportPoliciesPage({
         [policies],
     );
     const isInstitutionGovernance = authoringMode === 'INSTITUTION_GOVERNANCE';
-    const createButtonLabel = isInstitutionGovernance ? 'New CBC Report Policy' : 'New Report Setup';
+    const createButtonLabel = isInstitutionGovernance ? 'New Report Policy' : 'New Report Setup';
     const authoringNotice = isInstitutionGovernance
-        ? 'Assessment pages preview CBC policy context and link here for policy authoring. They do not create or edit CBC policies inline.'
+        ? 'CBC report engine uses these academic policies for official report computation.'
         : 'Class report setup is saved against this class workspace context.';
 
     const handleOpen = (policy?: CbcReportPolicy) => {
@@ -214,7 +217,7 @@ export function CbcReportPoliciesPage({
     }
 
     if (!canManagePolicies) {
-        return <PolicyAdminOnlyState title={title ?? 'CBC Report Policies'} />;
+        return <PolicyAdminOnlyState title={title ?? 'Report Policies'} />;
     }
 
     if (loading && !policies.length) {
@@ -225,9 +228,9 @@ export function CbcReportPoliciesPage({
         return (
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">{title ?? 'CBC Report Policies'}</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">{title ?? 'CBC Academic Policies'}</h1>
                     <p className="mt-1 text-gray-500">
-                        {description ?? 'CBC report policies are only available when the CBC plugin and CBC curriculum are active.'}
+                        {description ?? 'Academic report policies are only available when the CBC report engine and CBC curriculum are active.'}
                     </p>
                 </div>
                 <Card className="max-w-3xl">
@@ -262,9 +265,9 @@ export function CbcReportPoliciesPage({
             ) : null}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">{title ?? 'CBC Report Policies'}</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">{title ?? 'CBC Academic Policies'}</h1>
                     <p className="mt-1 text-gray-500">
-                        {description ?? 'Plugin-owned policy authoring for CBC report interpretation.'}
+                        {description ?? 'Report governance for CBC class subjects and terms.'}
                     </p>
                 </div>
                 {canManagePolicies && (
@@ -278,6 +281,16 @@ export function CbcReportPoliciesPage({
             <div className="rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-800">
                 {authoringNotice}
             </div>
+
+            {isInstitutionGovernance ? (
+                <CbcTermPolicyPlanSection
+                    policies={policies}
+                    terms={termOptions}
+                    canManage={canManagePolicies}
+                    onCreatePolicy={() => handleOpen()}
+                    onRefreshPolicies={refetch}
+                />
+            ) : null}
 
             {error && (
                 <ErrorBanner

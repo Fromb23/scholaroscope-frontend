@@ -28,6 +28,15 @@ export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
     retryable: false,
     severity: 'warning',
   },
+  policy_required: {
+    kind: 'setup_required',
+    title: 'No active policy is available for this class subject and term.',
+    message:
+      'No active report policy is available for this class subject and term.',
+    actionLabel: 'View policy plan',
+    retryable: false,
+    severity: 'warning',
+  },
   report_policy_scope_not_allowed: {
     kind: 'permission',
     title: 'These report rules cannot be used here.',

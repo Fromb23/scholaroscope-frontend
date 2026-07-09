@@ -70,6 +70,14 @@ export function resolveCbcComputeFailure(
         role: 'INSTRUCTOR',
     });
 
+    if (resolved.serverCode === 'policy_required') {
+        return {
+            ...resolved,
+            message: 'No active policy is available for this class subject and term.',
+            actionHref: '/reports/policies/cbc',
+        };
+    }
+
     if (resolved.serverCode === 'class_report_policy_required') {
         return {
             ...resolved,
@@ -154,6 +162,7 @@ export function CohortReportComputationRoutePage({ scope }: { scope: ReportSetup
             setComputing(false);
         }
     };
+    const policyRequired = error?.serverCode === 'policy_required';
 
     return (
         <div className="mx-auto max-w-4xl space-y-6">
@@ -198,6 +207,22 @@ export function CohortReportComputationRoutePage({ scope }: { scope: ReportSetup
                                     {error.actionLabel ?? 'Open setup'}
                                 </Button>
                             </Link>
+                        ) : null}
+                        {policyRequired ? (
+                            <div className="flex flex-wrap gap-2">
+                                <Link href="/reports/policies/cbc">
+                                    <Button type="button" variant="secondary" size="sm">Create policy</Button>
+                                </Link>
+                                <Link href="/reports/policies/cbc">
+                                    <Button type="button" variant="secondary" size="sm">Activate existing policy</Button>
+                                </Link>
+                                <Link href="/reports/policies/cbc">
+                                    <Button type="button" variant="secondary" size="sm">Reuse previous term policy</Button>
+                                </Link>
+                                <Link href="/reports/policies/cbc">
+                                    <Button type="button" variant="secondary" size="sm">View policy plan</Button>
+                                </Link>
+                            </div>
                         ) : null}
                     </div>
                 ) : null}

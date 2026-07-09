@@ -25,6 +25,7 @@ const COMPUTE_FIELD_LABELS = {
 export function ComputePage() {
     const {
         selectedTerm,
+        selectedTermClosed,
         computing,
         results,
         fieldErrors,
@@ -97,6 +98,11 @@ export function ComputePage() {
                     helperText="Choose the reporting term before running any computation."
                     options={termOptions}
                 />
+                {selectedTermClosed ? (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        This term is closed. Policies and reports are historical.
+                    </div>
+                ) : null}
             </Card>
 
             {/* Policy-based computation */}
@@ -117,7 +123,7 @@ export function ComputePage() {
                         <div className="flex items-center gap-3">
                             <Button
                                 onClick={() => run('policy', () => computeWithPolicy(selectedTerm!))}
-                                disabled={computing === 'policy'}
+                                disabled={computing === 'policy' || selectedTermClosed}
                             >
                                 {computing === 'policy'
                                     ? <><Loader className="h-4 w-4 mr-1.5 animate-spin" />Computing…</>
@@ -147,7 +153,7 @@ export function ComputePage() {
                             option={option}
                             result={results[option.id]}
                             computing={computing === option.id}
-                            disabled={computing === option.id || computing === 'all'}
+                            disabled={computing === option.id || computing === 'all' || selectedTermClosed}
                             onCompute={() => run(option.id, option.run)}
                         />
                     ))}
@@ -172,7 +178,7 @@ export function ComputePage() {
                 </div>
                 <Button
                     onClick={handleComputeAll}
-                    disabled={computing !== null}
+                    disabled={computing !== null || selectedTermClosed}
                     className="w-full md:w-auto"
                 >
                     {computing === 'all'

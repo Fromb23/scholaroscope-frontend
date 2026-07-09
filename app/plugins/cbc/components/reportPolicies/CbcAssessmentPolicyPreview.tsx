@@ -180,14 +180,14 @@ export function CbcAssessmentPolicyPreview(context: AssessmentPolicyPreviewConte
         preview.status === 'ready'
         && preview.policy?.id
     )
-        ? `/cbc/report-policies/${preview.policy.id}`
-        : '/cbc/report-policies';
+        ? `/reports/policies/cbc/${preview.policy.id}`
+        : '/reports/policies/cbc';
     const actionLabel = (
         preview.status === 'ready'
         && preview.policy?.id
     )
-        ? 'View CBC Report Policy'
-        : 'Manage CBC Report Policies';
+        ? 'View Report Policy'
+        : 'Manage Report Policies';
 
     const renderPolicyAction = () => {
         if (authLoading) {
@@ -219,10 +219,10 @@ export function CbcAssessmentPolicyPreview(context: AssessmentPolicyPreviewConte
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
                             <Puzzle className="h-5 w-5 text-green-600" />
-                            <h2 className="text-base font-semibold text-gray-900">CBC Report Policy</h2>
+                            <h2 className="text-base font-semibold text-gray-900">Report Policy</h2>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Badge variant="green">Plugin-owned</Badge>
+                            <Badge variant="green">CBC report engine</Badge>
                             {preview.status === 'ready' && preview.source === 'term_fallback' && (
                                 <Badge variant="indigo">Term fallback policy</Badge>
                             )}
