@@ -40,6 +40,7 @@ import {
     useAvailableLessonPlanParticipatingCohortSubjects,
     useLessonPlanDetail,
 } from '@/app/core/hooks/useLessonPlans';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import {
     canArchiveLessonPlan,
     canMarkLessonPlanReviewed,
@@ -253,6 +254,10 @@ export function LessonPlanDetailPage() {
         scheduleLesson,
         exportPdf,
     } = useLessonPlanDetail(lessonPlanId);
+    const { handleExport: handleLessonPlanExport, exporting } = useReportExport(
+        () => exportPdf(),
+        'lesson plan PDF',
+    );
     const prepareAssignmentMutation = usePrepareAssignmentFromLessonPlan();
     const {
         assignments: preparedAssignments,
@@ -692,28 +697,6 @@ export function LessonPlanDetailPage() {
         }
     };
 
-    const handleExportPdf = async () => {
-        if (!lessonPlan) {
-            return;
-        }
-
-        setPendingActionKey(actionKey(lessonPlan.id, 'export-pdf'));
-        setActionError(null);
-        setActionSuccess(null);
-
-        try {
-            await exportPdf();
-        } catch (err) {
-            setActionError(
-                err instanceof Error
-                    ? err.message
-                    : 'Could not export the lesson plan PDF.'
-            );
-        } finally {
-            setPendingActionKey(null);
-        }
-    };
-
     const handleSubmitMarkUsed = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
@@ -1069,15 +1052,15 @@ export function LessonPlanDetailPage() {
                                     icon: <Edit className="h-4 w-4" />,
                                 }] : []),
                                 {
-                                    label: pendingActionKey === actionKey(lessonPlan.id, 'export-pdf')
+                                    label: exporting
                                         ? 'Downloading...'
                                         : isInstructor
                                             ? 'Download lesson plan'
                                             : 'Download PDF',
                                     onSelect: () => {
-                                        void handleExportPdf();
+                                        void handleLessonPlanExport('pdf');
                                     },
-                                    disabled: pendingActionKey === actionKey(lessonPlan.id, 'export-pdf'),
+                                    disabled: exporting,
                                     icon: <Download className="h-4 w-4" />,
                                 },
                                 ...(canMarkLessonPlanReviewed(lessonPlan.status) ? [{

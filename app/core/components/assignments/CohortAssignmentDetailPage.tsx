@@ -45,6 +45,7 @@ import {
     usesExpandedSessionScope,
 } from '@/app/core/components/assignments/assignmentUtils';
 import { useCohortDetail, useCohortSubjects } from '@/app/core/hooks/useAcademic';
+import { useConfirmAction } from '@/app/core/hooks/useConfirmAction';
 import {
     useArchiveAssignment,
     useAssignmentDetail,
@@ -181,7 +182,7 @@ export default function CohortAssignmentDetailPage() {
     const [editOpen, setEditOpen] = useState(false);
     const [publishOpen, setPublishOpen] = useState(false);
     const [publishMode, setPublishMode] = useState<'issue' | 'add_learners'>('issue');
-    const [confirmAction, setConfirmAction] = useState<AssignmentLifecycleAction | null>(null);
+    const confirmAction = useConfirmAction<AssignmentLifecycleAction>();
     const [actionError, setActionError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [recordResponsePanelOpen, setRecordResponsePanelOpen] = useState(false);
@@ -511,7 +512,7 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         try {
             await closeMutation.mutateAsync(assignment.id);
-            setConfirmAction(null);
+            confirmAction.cancel();
             setSuccessMessage('Learner work closed.');
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to close learner work.');
@@ -522,7 +523,7 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         try {
             await archiveMutation.mutateAsync(assignment.id);
-            setConfirmAction(null);
+            confirmAction.cancel();
             setSuccessMessage('Assignment record stored.');
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to store assignment record.');
@@ -533,7 +534,7 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         try {
             await restoreToReviewMutation.mutateAsync(assignment.id);
-            setConfirmAction(null);
+            confirmAction.cancel();
             setSuccessMessage('Assignment restored to review.');
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to restore assignment to review.');
@@ -544,7 +545,7 @@ export default function CohortAssignmentDetailPage() {
         setActionError(null);
         try {
             await reopenLearnerWorkMutation.mutateAsync(assignment.id);
-            setConfirmAction(null);
+            confirmAction.cancel();
             setSuccessMessage('Learner work reopened.');
         } catch (err) {
             setActionError(err instanceof Error ? err.message : 'Failed to reopen learner work.');
@@ -700,60 +701,60 @@ export default function CohortAssignmentDetailPage() {
             case 'STORE_RECORD':
             case 'REOPEN_LEARNER_WORK':
             case 'RESTORE_TO_REVIEW':
-                setConfirmAction(action);
+                confirmAction.requestConfirm(action);
                 break;
             default:
                 break;
         }
     };
 
-    const confirmTitle = confirmAction === 'FINISH_LEARNER_WORK'
+    const confirmTitle = confirmAction.pending === 'FINISH_LEARNER_WORK'
         ? 'Close learner work?'
-        : confirmAction === 'STORE_RECORD'
+        : confirmAction.pending === 'STORE_RECORD'
             ? 'Store assignment record?'
-            : confirmAction === 'RESTORE_TO_REVIEW'
+            : confirmAction.pending === 'RESTORE_TO_REVIEW'
                 ? 'Restore to review?'
-                : confirmAction === 'REOPEN_LEARNER_WORK'
+                : confirmAction.pending === 'REOPEN_LEARNER_WORK'
                     ? 'Reopen learner work?'
                     : '';
-    const confirmMessage = confirmAction === 'FINISH_LEARNER_WORK'
+    const confirmMessage = confirmAction.pending === 'FINISH_LEARNER_WORK'
         ? 'Learners will no longer submit normally. You can still review work, mark participation, and record evidence.'
-        : confirmAction === 'STORE_RECORD'
+        : confirmAction.pending === 'STORE_RECORD'
             ? 'This assignment will leave the active workflow and be stored for records. You can restore it to review later.'
-            : confirmAction === 'RESTORE_TO_REVIEW'
+            : confirmAction.pending === 'RESTORE_TO_REVIEW'
                 ? 'This brings the assignment back to the review list. Learner submissions remain closed.'
-                : confirmAction === 'REOPEN_LEARNER_WORK'
+                : confirmAction.pending === 'REOPEN_LEARNER_WORK'
                     ? 'Learners may continue submitting or participating. Use this only if the work period was closed too early.'
                     : '';
-    const confirmLabel = confirmAction === 'FINISH_LEARNER_WORK'
+    const confirmLabel = confirmAction.pending === 'FINISH_LEARNER_WORK'
         ? 'Close learner work'
-        : confirmAction === 'STORE_RECORD'
+        : confirmAction.pending === 'STORE_RECORD'
             ? 'Store assignment record'
-            : confirmAction === 'RESTORE_TO_REVIEW'
+            : confirmAction.pending === 'RESTORE_TO_REVIEW'
                 ? 'Restore to review'
-                : confirmAction === 'REOPEN_LEARNER_WORK'
+                : confirmAction.pending === 'REOPEN_LEARNER_WORK'
                     ? 'Reopen learner work'
                     : '';
-    const confirmPendingLabel = confirmAction === 'FINISH_LEARNER_WORK'
+    const confirmPendingLabel = confirmAction.pending === 'FINISH_LEARNER_WORK'
         ? 'Closing learner work...'
-        : confirmAction === 'STORE_RECORD'
+        : confirmAction.pending === 'STORE_RECORD'
             ? 'Storing record...'
-            : confirmAction === 'RESTORE_TO_REVIEW'
+            : confirmAction.pending === 'RESTORE_TO_REVIEW'
                 ? 'Restoring to review...'
-                : confirmAction === 'REOPEN_LEARNER_WORK'
+                : confirmAction.pending === 'REOPEN_LEARNER_WORK'
                     ? 'Reopening learner work...'
                     : '';
     const confirmWarnings = lifecycleState
         ? (
-            confirmAction === 'FINISH_LEARNER_WORK'
+            confirmAction.pending === 'FINISH_LEARNER_WORK'
                 ? lifecycleState.warnings
-                : confirmAction === 'STORE_RECORD'
+                : confirmAction.pending === 'STORE_RECORD'
                     ? lifecycleState.warnings
                     : []
         )
         : [];
     const confirmBlockingItems = lifecycleState
-        ? (confirmAction === 'STORE_RECORD' ? lifecycleState.blocking_items : [])
+        ? (confirmAction.pending === 'STORE_RECORD' ? lifecycleState.blocking_items : [])
         : [];
 
     return (
@@ -1602,14 +1603,14 @@ export default function CohortAssignmentDetailPage() {
             />
 
             <AssignmentLifecycleConfirmModal
-                isOpen={confirmAction != null}
-                onClose={() => setConfirmAction(null)}
+                isOpen={confirmAction.isOpen}
+                onClose={confirmAction.cancel}
                 onConfirm={
-                    confirmAction === 'FINISH_LEARNER_WORK'
+                    confirmAction.pending === 'FINISH_LEARNER_WORK'
                         ? handleClose
-                        : confirmAction === 'STORE_RECORD'
+                        : confirmAction.pending === 'STORE_RECORD'
                             ? handleArchive
-                            : confirmAction === 'RESTORE_TO_REVIEW'
+                            : confirmAction.pending === 'RESTORE_TO_REVIEW'
                                 ? handleRestoreToReview
                                 : handleReopenLearnerWork
                 }

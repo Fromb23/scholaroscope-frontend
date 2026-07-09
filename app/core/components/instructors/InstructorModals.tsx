@@ -12,6 +12,7 @@ import { AlertCircle, Check, ChevronDown, Plus, X } from 'lucide-react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { cohortAPI } from '@/app/core/api/academic';
 import { useInstructorDetail } from '@/app/core/hooks/useInstructors';
@@ -898,7 +899,7 @@ export function CohortAssignModal({
                     </p>
                     {loading ? (
                         <div className="h-12 flex items-center justify-center">
-                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                            <LoadingSpinner size="sm" fullScreen={false} message="Loading teaching assignments" showMessage={false} />
                         </div>
                     ) : activeTeachingAssignments.length === 0 ? (
                         <p className="text-sm text-gray-400 py-3 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">

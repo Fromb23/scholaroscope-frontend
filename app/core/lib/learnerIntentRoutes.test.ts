@@ -45,4 +45,16 @@ describe('learner intent routes', () => {
       '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
     );
   });
+
+  it('includes session fallback when a session link has no cohort-subject scope', () => {
+    expect(buildSessionLearnerAttendanceReportHref({
+      studentId: 74,
+      sessionId: 22,
+      termId: 3,
+      cohortId: 9,
+      subjectId: 5,
+    })).toBe(
+      '/reports/attendance?student=74&term=3&cohort=9&subject=5&session=22&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance',
+    );
+  });
 });

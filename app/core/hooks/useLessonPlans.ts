@@ -391,13 +391,13 @@ export const useLessonPlanDetail = (lessonPlanId: number | null) => {
         }
     };
 
-    const exportPdf = async (): Promise<void> => {
+    const exportPdf = async (): Promise<{ blob: Blob; fileName: string }> => {
         if (!lessonPlanId) {
             throw new Error('This lesson plan could not be found.');
         }
 
         try {
-            await lessonPlanAPI.exportPdf(lessonPlanId);
+            return await lessonPlanAPI.exportPdf(lessonPlanId);
         } catch (err) {
             throw new Error(getLessonPlanExportMessage(err as ApiError));
         }

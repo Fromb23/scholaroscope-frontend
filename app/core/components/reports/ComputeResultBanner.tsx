@@ -33,13 +33,10 @@ export function ComputeResultBanner({ result }: { result: ComputeResult }) {
                         <Button type="button" variant="secondary" size="sm">Create policy</Button>
                     </Link>
                     <Link href="/reports/policies">
-                        <Button type="button" variant="secondary" size="sm">Activate existing policy</Button>
-                    </Link>
-                    <Link href="/reports/policies">
                         <Button type="button" variant="secondary" size="sm">Reuse previous term policy</Button>
                     </Link>
                     <Link href="/reports/policies">
-                        <Button type="button" variant="secondary" size="sm">View policy plan</Button>
+                        <Button type="button" variant="secondary" size="sm">Open term report setup</Button>
                     </Link>
                 </div>
             ) : null}

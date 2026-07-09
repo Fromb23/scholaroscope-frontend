@@ -20,6 +20,7 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/app/components/ui/Table';
 import { Select } from '@/app/components/ui/Select';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
@@ -899,7 +900,7 @@ function SessionWorkspaceView() {
                     <ErrorState message={error} onRetry={refetch} />
                 ) : loading ? (
                     <div className="py-12 text-center">
-                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                        <LoadingSpinner size="md" fullScreen={false} message="Loading pending lesson records..." showMessage={false} />
                         <p className="mt-2 theme-muted">Loading pending lesson records...</p>
                     </div>
                 ) : visibleSessions.length === 0 ? (
@@ -1537,7 +1538,7 @@ function SessionWorkspaceView() {
                 <ErrorState message={error} onRetry={refetch} />
             ) : loading ? (
                 <div className="py-12 text-center">
-                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                    <LoadingSpinner size="md" fullScreen={false} message="Loading sessions..." showMessage={false} />
                     <p className="mt-2 theme-muted">Loading sessions...</p>
                 </div>
             ) : visibleSessions.length === 0 ? (
@@ -1787,7 +1788,7 @@ function CohortSessionsView({
           <ErrorState message={error} onRetry={refetch} />
         ) : loading ? (
           <div className="py-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+            <LoadingSpinner size="md" fullScreen={false} message="Loading cohort sessions..." showMessage={false} />
             <p className="mt-2 theme-muted">Loading cohort sessions...</p>
           </div>
         ) : filteredSessions.length === 0 ? (

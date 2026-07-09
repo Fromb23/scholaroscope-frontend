@@ -1,6 +1,5 @@
 import { apiClient } from './client';
 import {
-  downloadBlob,
   getDownloadFileName,
   normalizeBlobError,
 } from './downloads';
@@ -101,7 +100,7 @@ export const learnersAPI = {
     name?: string;
     ordering?: string;
     format: 'xlsx' | 'pdf';
-  }) => {
+  }): Promise<{ blob: Blob; fileName: string }> => {
     try {
       const response = await apiClient.get<Blob>('/students/export/', {
         params,
@@ -112,9 +111,12 @@ export const learnersAPI = {
         response.headers['content-disposition'],
         fallbackFileName,
       );
-      downloadBlob(response.data, fileName);
+      return {
+        blob: response.data,
+        fileName,
+      };
     } catch (error) {
-      await normalizeBlobError(error);
+      return normalizeBlobError(error);
     }
   },
 

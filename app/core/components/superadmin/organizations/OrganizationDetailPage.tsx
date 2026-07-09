@@ -26,7 +26,7 @@ import type { SuspensionReason } from '@/app/core/types/organization';
 
 const loader = () => (
     <div className="flex items-center justify-center py-16">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
+        <LoadingSpinner size="md" fullScreen={false} message="Loading organization academic section" showMessage={false} />
     </div>
 );
 

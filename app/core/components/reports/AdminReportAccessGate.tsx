@@ -8,10 +8,12 @@ import { resolveReportSurface } from '@/app/core/components/reports/reportAccess
 
 interface AdminReportAccessGateProps {
   children: ReactNode;
+  allowInstructorScopedAccess?: boolean;
 }
 
 export function AdminReportAccessGate({
   children,
+  allowInstructorScopedAccess = false,
 }: AdminReportAccessGateProps) {
   const { user, activeRole, activeOrg, capabilities, loading } = useAuth();
   const surface = resolveReportSurface({
@@ -30,6 +32,10 @@ export function AdminReportAccessGate({
   }
 
   if (surface === 'institution') {
+    return <>{children}</>;
+  }
+
+  if (allowInstructorScopedAccess && surface === 'instructor') {
     return <>{children}</>;
   }
 

@@ -83,7 +83,7 @@ export function useComputePage() {
                     success: false,
                     title: resolved.title,
                     message: resolved.serverCode === 'policy_required'
-                        ? 'No active policy is available for this class subject and term.'
+                        ? 'Reports are blocked because no active organization policy exists for this class subject and term.'
                         : resolved.message ?? extractErrorMessage(error as ApiError, 'Computation failed'),
                     serverCode: resolved.serverCode,
                 },
@@ -160,7 +160,7 @@ export function useComputePage() {
                         success: false,
                         title: resolved.title,
                         message: resolved.serverCode === 'policy_required'
-                            ? 'No active policy is available for this class subject and term.'
+                            ? 'Reports are blocked because no active organization policy exists for this class subject and term.'
                             : resolved.message ?? extractErrorMessage(error as ApiError, 'Failed'),
                         serverCode: resolved.serverCode,
                     },

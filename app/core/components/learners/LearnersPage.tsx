@@ -11,6 +11,7 @@ import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortA
 import { learnersAPI } from '@/app/core/api/learners';
 import type { ApiError } from '@/app/core/types/errors';
 import { extractErrorMessage } from '@/app/core/types/errors';
+import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import type { Student } from '@/app/core/types/student';
 import { useAuth } from '@/app/context/AuthContext';
 import { hasCapability } from '@/app/utils/permissions';
@@ -20,7 +21,6 @@ import { Badge } from '@/app/components/ui/Badge';
 import { DataTable, type Column } from '@/app/components/ui/Table';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 
@@ -169,7 +169,6 @@ function LearnersPageInner() {
         staleKeys: ['admission_number', 'name'],
     });
     const [exportingFormat, setExportingFormat] = useState<'xlsx' | 'pdf' | null>(null);
-    const [exportError, setExportError] = useState<string | null>(null);
     const [instructorStudents, setInstructorStudents] = useState<Student[]>([]);
     const [instructorStudentsLoading, setInstructorStudentsLoading] = useState(false);
     const [instructorStudentsError, setInstructorStudentsError] = useState<string | null>(null);
@@ -197,6 +196,19 @@ function LearnersPageInner() {
     const adminStudentsQuery = useStudentsByCohort(
         isAdmin ? (filters.cohort ?? undefined) : undefined
     );
+    const { handleExport: runExport, exporting } = useReportExport((format) => {
+        if (format !== 'xlsx' && format !== 'pdf') {
+            throw new Error('Learner exports support Excel and PDF only.');
+        }
+
+        return learnersAPI.exportStudents({
+            cohort: filters.cohort ?? undefined,
+            cohort_subject: filters.cohort_subject ?? undefined,
+            status: filters.status || undefined,
+            q: filters.q || undefined,
+            format,
+        });
+    }, 'learners');
 
     const instructorCohortOptions = useMemo<Array<{ id: number; label: string }>>(() => (
         Array.from(
@@ -520,20 +532,8 @@ function LearnersPageInner() {
 
     const handleExport = async (format: 'xlsx' | 'pdf') => {
         setExportingFormat(format);
-        setExportError(null);
-
         try {
-            await learnersAPI.exportStudents({
-                cohort: filters.cohort ?? undefined,
-                cohort_subject: filters.cohort_subject ?? undefined,
-                status: filters.status || undefined,
-                q: filters.q || undefined,
-                format,
-            });
-        } catch (err) {
-            setExportError(
-                extractErrorMessage(err as ApiError, `Failed to export learners as ${format.toUpperCase()}.`)
-            );
+            await runExport(format);
         } finally {
             setExportingFormat(null);
         }
@@ -720,7 +720,7 @@ function LearnersPageInner() {
                                 type="button"
                                 variant="secondary"
                                 onClick={() => void handleExport('xlsx')}
-                                disabled={currentVisibleCount === 0 || exportingFormat !== null}
+                                disabled={currentVisibleCount === 0 || exporting}
                             >
                                 <FileSpreadsheet className="mr-2 h-4 w-4" />
                                 {exportingFormat === 'xlsx' ? 'Exporting...' : 'Export Excel'}
@@ -729,7 +729,7 @@ function LearnersPageInner() {
                                 type="button"
                                 variant="secondary"
                                 onClick={() => void handleExport('pdf')}
-                                disabled={currentVisibleCount === 0 || exportingFormat !== null}
+                                disabled={currentVisibleCount === 0 || exporting}
                             >
                                 <FileText className="mr-2 h-4 w-4" />
                                 {exportingFormat === 'pdf' ? 'Preparing...' : 'Download PDF'}
@@ -755,10 +755,6 @@ function LearnersPageInner() {
                     <StatsCard title="Graduated" value={stats.graduated} icon={Users} color="yellow" mobile="hide" />
                     <StatsCard title="Transferred" value={stats.transferred} icon={Users} color="red" mobile="hide" />
                 </StatStrip>
-            ) : null}
-
-            {exportError ? (
-                <ErrorBanner message={exportError} onDismiss={() => setExportError(null)} />
             ) : null}
 
             {displayedError ? (

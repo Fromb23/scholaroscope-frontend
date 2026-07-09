@@ -1,8 +1,15 @@
 export type RouteAccessRole = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
 
+export interface RouteAccessContext {
+    role: RouteAccessRole;
+    pathname: string;
+    url: URL;
+}
+
 export interface RouteAccessRule {
     pattern: RegExp;
     allowedRoles: RouteAccessRole[];
+    isAllowed?: (context: RouteAccessContext) => boolean;
 }
 
 interface PluginRouteAccessEntry {

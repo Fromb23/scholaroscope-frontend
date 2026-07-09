@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getRouteRules, getUnauthorizedRouteFallback } from './routeAccess';
+import { getRouteRules, getUnauthorizedRouteFallback, routeAllowedForRole } from './routeAccess';
 
 function getMatchedRule(path: string) {
   const pathname = new URL(path, 'https://example.test').pathname;
@@ -8,8 +8,7 @@ function getMatchedRule(path: string) {
 }
 
 function canAccess(path: string, role: 'ADMIN' | 'INSTRUCTOR') {
-  const matchedRule = getMatchedRule(path);
-  return matchedRule ? matchedRule.allowedRoles.includes(role) : true;
+  return routeAllowedForRole(path, role);
 }
 
 describe('route access', () => {
@@ -51,6 +50,20 @@ describe('route access', () => {
       : getUnauthorizedRouteFallback('INSTRUCTOR', route);
     expect(resolvedRoute).toBe(route);
     expect(resolvedRoute).not.toBe('/reports/instructor');
+  });
+
+  it('allows scoped instructor learner attendance reports', () => {
+    const route = '/reports/attendance?student=74&term=3&cohort=9&cohortSubject=11&returnTo=%2Fsessions%2F22%3Fsection%3Dattendance';
+
+    expect(canAccess(route, 'INSTRUCTOR')).toBe(true);
+    expect(canAccess(route, 'ADMIN')).toBe(true);
+  });
+
+  it('blocks broad instructor attendance reports', () => {
+    expect(canAccess('/reports/attendance', 'INSTRUCTOR')).toBe(false);
+    expect(canAccess('/reports/attendance?student=74', 'INSTRUCTOR')).toBe(false);
+    expect(getUnauthorizedRouteFallback('INSTRUCTOR', '/reports/attendance')).toBe('/reports/instructor');
+    expect(canAccess('/reports/attendance', 'ADMIN')).toBe(true);
   });
 
   it('allows admins to open instructor report routes so capability gates can resolve self-managed teaching', () => {

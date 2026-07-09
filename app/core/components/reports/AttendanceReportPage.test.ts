@@ -14,4 +14,15 @@ describe('AttendanceReportPage exports', () => {
     expect(source).not.toContain('exportError');
     expect(source).not.toContain('window.alert');
   });
+
+  it('allows scoped instructor attendance reports through the page gate', () => {
+    const source = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/AttendanceReportPage.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('isScopedInstructorAttendanceReport');
+    expect(source).toContain('allowInstructorScopedAccess={scopedInstructorAccess}');
+    expect(source).toContain('Learner attendance report');
+  });
 });

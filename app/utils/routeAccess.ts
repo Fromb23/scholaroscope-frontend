@@ -5,6 +5,24 @@ import { getPluginRouteAccessRules, type RouteAccessRole, type RouteAccessRule }
 type Role = RouteAccessRole;
 type RouteRule = RouteAccessRule;
 
+function hasPositiveParam(url: URL, key: string): boolean {
+    const value = Number(url.searchParams.get(key));
+    return Number.isInteger(value) && value > 0;
+}
+
+export function isScopedInstructorAttendanceReport(path: string): boolean {
+    const url = new URL(path, 'https://scholaroscope.local');
+    const hasLearner = hasPositiveParam(url, 'student');
+    const hasClassSubject = (
+        hasPositiveParam(url, 'cohortSubject')
+        || hasPositiveParam(url, 'cohort_subject')
+        || hasPositiveParam(url, 'session')
+        || (hasPositiveParam(url, 'cohort') && hasPositiveParam(url, 'subject'))
+    );
+
+    return hasLearner && hasClassSubject;
+}
+
 const kernelRouteRules: RouteRule[] = [
     // SUPERADMIN ONLY
     { pattern: /^\/superadmin/, allowedRoles: ['SUPERADMIN'] },
@@ -32,8 +50,16 @@ const kernelRouteRules: RouteRule[] = [
     { pattern: /^\/reports\/learners\/[^/]+\/assessments$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/reports\/learners\/[^/]+\/overview$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports\/instructors(?:\/|$)/, allowedRoles: ['ADMIN'] },
+    {
+        pattern: /^\/reports\/attendance$/,
+        allowedRoles: ['ADMIN', 'INSTRUCTOR'],
+        isAllowed: ({ role, url }) => (
+            role !== 'INSTRUCTOR'
+            || isScopedInstructorAttendanceReport(`${url.pathname}${url.search}`)
+        ),
+    },
     { pattern: /^\/reports$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/reports\/(students|cohorts|subjects|assessments|attendance|policies|compute)(\/.*)?$/, allowedRoles: ['ADMIN'] },
+    { pattern: /^\/reports\/(students|cohorts|subjects|assessments|policies|compute)(\/.*)?$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports\/grade-policies(\/.*)?$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/reports/, allowedRoles: ['ADMIN'] },
 
@@ -55,6 +81,18 @@ export const routeRules: RouteRule[] = kernelRouteRules;
 
 export function getRouteRules(): RouteRule[] {
     return [...kernelRouteRules, ...getPluginRouteAccessRules()];
+}
+
+export function routeAllowedForRole(path: string, role: Role): boolean {
+    const url = new URL(path, 'https://scholaroscope.local');
+    const matchedRule = getRouteRules().find((rule) => rule.pattern.test(url.pathname));
+    if (!matchedRule) {
+        return true;
+    }
+    if (!matchedRule.allowedRoles.includes(role)) {
+        return false;
+    }
+    return matchedRule.isAllowed?.({ role, pathname: url.pathname, url }) ?? true;
 }
 
 const platformContextBlockedPatterns: RegExp[] = [

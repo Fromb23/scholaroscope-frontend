@@ -6,6 +6,7 @@
 // ============================================================================
 
 import { apiClient } from './client';
+import { unwrapPaginated } from './unwrap';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import {
     AvailableCohort,
@@ -60,14 +61,7 @@ export const instructorsAPI = {
         const response = await apiClient.get<GlobalUser[]>('/users/', {
             params: { role: 'INSTRUCTOR' },
         });
-        const data = response.data;
-        if (Array.isArray(data)) {
-            return data;
-        } else if (data && typeof data === 'object' && 'results' in data) {
-            return (data as { results: GlobalUser[] }).results ?? [];
-        } else {
-            return [];
-        }
+        return unwrapPaginated(response.data);
     },
 
     // GET /api/users/{id}/
@@ -129,19 +123,11 @@ export const instructorsAPI = {
     // GET /api/cohorts/ — for the assign-to-cohort dropdown
     getCohorts: async (): Promise<AvailableCohort[]> => {
         const response = await apiClient.get('/cohorts/');
-        const data = response.data;
-        if (Array.isArray(data)) {
-            return data as AvailableCohort[];
-        } else if (data && typeof data === 'object' && 'results' in data) {
-            return (data as { results: AvailableCohort[] }).results ?? [];
-        } else {
-            return [];
-        }
+        return unwrapPaginated<AvailableCohort>(response.data);
     },
     getCohortSubjects: async (): Promise<AvailableCohortSubject[]> => {
         const response = await apiClient.get(`${KERNEL_COHORT_SUBJECTS_BASE}/`);
-        const data = response.data;
-        return Array.isArray(data) ? data : (data as { results: AvailableCohortSubject[] }).results ?? [];
+        return unwrapPaginated<AvailableCohortSubject>(response.data);
     },
 
     assignCohort: async (instructorId: number, cohortId: number): Promise<void> => {
@@ -187,17 +173,7 @@ export const instructorsAPI = {
     },
   getAssignableSubjects: async (instructorId: number): Promise<AvailableCohortSubject[]> => {
     const response = await apiClient.get(`/users/${instructorId}/assignable_subjects/`);
-    const data = response.data;
-
-    if (Array.isArray(data)) {
-      return data as AvailableCohortSubject[];
-    }
-
-    if (data && typeof data === 'object' && 'results' in data) {
-      return (data as { results: AvailableCohortSubject[] }).results ?? [];
-    }
-
-    return [];
+    return unwrapPaginated<AvailableCohortSubject>(response.data);
   },
     getInstructorHistory: async (cohortSubjectId: number) => {
         const response = await apiClient.get(

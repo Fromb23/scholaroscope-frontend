@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { CheckSquare, Square, AlertCircle, UserPlus, UserMinus } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
@@ -116,7 +117,7 @@ export function EnrolledPanel({
             <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
                 {loading ? (
                     <div className="py-10 text-center">
-                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto" />
+                        <LoadingSpinner size="sm" fullScreen={false} message="Loading enrolled learners" showMessage={false} />
                     </div>
                 ) : students.length === 0 ? (
                     <div className="py-10 text-center">
@@ -195,7 +196,7 @@ export function AvailablePanel({
             <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
                 {loading ? (
                     <div className="py-10 text-center">
-                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto" />
+                        <LoadingSpinner size="sm" fullScreen={false} message="Loading available learners" showMessage={false} />
                     </div>
                 ) : students.length === 0 ? (
                     <div className="py-10 text-center">

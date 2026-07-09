@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { apiClient } from './client';
+import { unwrapPaginated } from './unwrap';
 import type {
     Plugin, InstalledPlugin, InstalledPluginToggleResponse, CurriculumCatalog, SeedCurriculumPayload,
     SeedCurriculumResult, RegisterSubjectPayload,
@@ -14,9 +15,7 @@ export const pluginAPI = {
 
     getAll: async (): Promise<Plugin[]> => {
         const response = await apiClient.get<Plugin[]>('/plugins/');
-        return Array.isArray(response.data)
-            ? response.data
-            : (response.data as { results: Plugin[] }).results ?? [];
+        return unwrapPaginated(response.data);
     },
 
     getById: async (id: number): Promise<Plugin> => {
@@ -46,9 +45,7 @@ export const pluginAPI = {
 
     getInstallations: async (id: number): Promise<InstalledPlugin[]> => {
         const response = await apiClient.get<InstalledPlugin[]>(`/plugins/${id}/installations/`);
-        return Array.isArray(response.data)
-            ? response.data
-            : (response.data as { results: InstalledPlugin[] }).results ?? [];
+        return unwrapPaginated(response.data);
     },
 
     // ── Installed plugins (org-scoped, used by admins) ────────────────────
@@ -58,9 +55,7 @@ export const pluginAPI = {
             '/installed-plugins/',
             { params: organizationId !== undefined ? { organization: organizationId } : {} }
         );
-        return Array.isArray(response.data)
-            ? response.data
-            : (response.data as { results: InstalledPlugin[] }).results ?? [];
+        return unwrapPaginated(response.data);
     },
     getUninstallImpact: async (id: number): Promise<{
         plugin_name: string;

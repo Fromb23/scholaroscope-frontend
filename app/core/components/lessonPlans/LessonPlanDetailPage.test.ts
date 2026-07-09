@@ -15,4 +15,9 @@ describe('LessonPlanDetailPage scheme desire path', () => {
     expect(source).toContain("returnTo: currentReturnTo");
     expect(source).toContain('Open scheme');
   });
+
+  it('uses the shared report export hook for PDF downloads', () => {
+    expect(source).toContain('useReportExport');
+    expect(source).not.toContain('handleExportPdf');
+  });
 });

@@ -35,6 +35,7 @@ import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useAdminAttendanceScopeReport } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
+import { isScopedInstructorAttendanceReport } from '@/app/utils/routeAccess';
 
 function focusReportPanel(panelId: string) {
   if (typeof document === 'undefined') {
@@ -62,6 +63,8 @@ export function AttendanceReportPage() {
   const selectedCohortSubjectId = parsePositiveReportParam(searchParams.get('cohortSubject'));
   const source = searchParams.get('source');
   const learnerQuery = searchParams.get('q') ?? '';
+  const currentReportPath = `${pathname}?${searchParams.toString()}`;
+  const scopedInstructorAccess = isScopedInstructorAttendanceReport(currentReportPath);
   const hasScope = Boolean(
     selectedStudentId
     || selectedCohortId
@@ -193,7 +196,7 @@ export function AttendanceReportPage() {
   ]);
 
   return (
-    <AdminReportAccessGate>
+    <AdminReportAccessGate allowInstructorScopedAccess={scopedInstructorAccess}>
       <div className="space-y-6 max-w-full">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -204,7 +207,9 @@ export function AttendanceReportPage() {
               </Button>
             </Link>
             <div className="mt-3">
-              <h1 className="text-2xl font-semibold text-gray-900">Attendance Explorer</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                {scopedInstructorAccess ? 'Learner attendance report' : 'Attendance Explorer'}
+              </h1>
               <p className="mt-1 max-w-3xl text-sm text-gray-500">
                 Attendance belongs under a learner, class, subject, or class-subject investigation.
                 Start from a scope, not from a whole-school table.

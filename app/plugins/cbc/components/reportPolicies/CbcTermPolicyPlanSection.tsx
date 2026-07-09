@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle, Copy, FilePlus2, RefreshCw } from 'lucide-react';
+import { CheckCircle, Copy, FilePlus2, RefreshCw } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -62,6 +62,7 @@ export function CbcTermPolicyPlanSection({
     const [actionError, setActionError] = useState<AppError | null>(null);
     const [reusingId, setReusingId] = useState<number | null>(null);
     const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
+    const [advancedOpen, setAdvancedOpen] = useState(false);
     const {
         coverage,
         loading,
@@ -100,6 +101,47 @@ export function CbcTermPolicyPlanSection({
             ? policies.filter((policy) => policy.term && policy.term !== selectedTermId)
             : []
     ), [policies, selectedTargetTermAllowsReuse, selectedTermId]);
+    const firstReusablePolicy = reusablePolicies[0] ?? null;
+    const missingCount = coverage?.missing_count ?? missingEntries.length;
+    const conflictCount = coverage?.conflict_count ?? conflictEntries.length;
+    const readinessStatus = coverage?.readiness_status
+        ?? (
+            conflictCount
+                ? 'CONFLICTS'
+                : missingCount
+                    ? 'MISSING_POLICIES'
+                    : entries.length
+                        ? 'READY'
+                        : 'NOT_CONFIGURED'
+        );
+    const topState = readinessStatus === 'READY'
+        ? {
+            label: 'Ready',
+            title: 'Ready for computation',
+            description: 'Every class subject in this term has one active organization policy.',
+            badge: 'green' as const,
+        }
+        : readinessStatus === 'CONFLICTS'
+            ? {
+                label: 'Conflict',
+                title: `Conflict: ${conflictCount} policy conflict${conflictCount === 1 ? '' : 's'} need review`,
+                description: 'Resolve duplicate active policies before reports are computed.',
+                badge: 'red' as const,
+            }
+            : missingCount > 0
+                ? {
+                    label: 'Not ready',
+                    title: `Not ready: ${missingCount} subject${missingCount === 1 ? '' : 's'} need a policy`,
+                    description: 'Before reports are computed, every class subject in this term must have one active organization policy.',
+                    badge: 'orange' as const,
+                }
+                : {
+                    label: 'No active organization policies',
+                    title: 'No active organization policies',
+                    description: 'Create or reuse a policy before reports are computed.',
+                    badge: 'default' as const,
+                };
+    const selectedTermLabel = selectedTermOption?.label ?? coverage?.term?.name ?? 'this term';
 
     useEffect(() => {
         if (!coverage) return;
@@ -204,10 +246,9 @@ export function CbcTermPolicyPlanSection({
             <div className="space-y-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Term Policy Plan</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">Term report setup</h2>
                         <p className="mt-1 text-sm text-gray-600">
-                            {coverage?.manual_selection_notice
-                                ?? 'If you do not manually select policies, Scholaroscope will intentionally use all active policies according to specificity rules.'}
+                            Before reports are computed, every class subject in this term must have one active organization policy.
                         </p>
                     </div>
                     <div className="w-full max-w-xs">
@@ -244,20 +285,21 @@ export function CbcTermPolicyPlanSection({
                     <LoadingSpinner message="Loading term policy plan..." />
                 ) : (
                     <>
-                        <div className="flex flex-wrap gap-2">
-                            <Badge variant={coverage?.computation_allowed ? 'green' : 'red'}>
-                                {coverage?.computation_allowed ? 'Computation allowed' : 'Computation blocked'}
-                            </Badge>
-                            <Badge variant={missingEntries.length ? 'orange' : 'default'}>
-                                Missing {coverage?.missing_count ?? missingEntries.length}
-                            </Badge>
-                            <Badge variant={conflictEntries.length ? 'red' : 'default'}>
-                                Conflicts {coverage?.conflict_count ?? conflictEntries.length}
-                            </Badge>
-                            <Badge variant={shadowedPolicies.length ? 'orange' : 'default'}>
-                                Shadowed {shadowedPolicies.length}
-                            </Badge>
-                            {plan ? <Badge variant="blue">Plan {plan.status}</Badge> : null}
+                        <div className="rounded-lg border border-gray-200 p-4">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <Badge variant={topState.badge}>{topState.label}</Badge>
+                                    <h3 className="mt-3 text-base font-semibold text-gray-900">{topState.title}</h3>
+                                    <p className="mt-1 text-sm text-gray-600">{topState.description}</p>
+                                </div>
+                                <Button type="button" variant="ghost" onClick={() => void refreshAll()}>
+                                    <RefreshCw className="mr-1.5 h-4 w-4" />
+                                    Refresh
+                                </Button>
+                            </div>
+                            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                This curriculum uses a plugin report engine. Scholaroscope default policy is only a template. Your organization must create or reuse a policy before reports can compute.
+                            </div>
                         </div>
 
                         {canManage ? (
@@ -265,175 +307,183 @@ export function CbcTermPolicyPlanSection({
                                 <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => void handleUseAllActive()}
+                                    onClick={onCreatePolicy}
                                     disabled={!selectedTermId || saving}
                                 >
                                     <CheckCircle className="mr-1.5 h-4 w-4" />
-                                    Use all active policies by specificity
+                                    Create one policy for all subjects
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => void handleSaveManualSelection()}
-                                    disabled={!selectedTermId || saving}
+                                    onClick={() => firstReusablePolicy ? void handleReuse(firstReusablePolicy) : undefined}
+                                    disabled={!selectedTermId || !firstReusablePolicy || reusingId === firstReusablePolicy.id}
                                 >
-                                    Save selected policies
-                                </Button>
-                                <Button type="button" variant="ghost" onClick={() => void refreshAll()}>
-                                    <RefreshCw className="mr-1.5 h-4 w-4" />
-                                    Refresh plan
+                                    <Copy className="mr-1.5 h-4 w-4" />
+                                    {firstReusablePolicy && reusingId === firstReusablePolicy.id ? 'Reusing...' : 'Reuse previous term policy'}
                                 </Button>
                                 <Button type="button" variant="ghost" onClick={onCreatePolicy}>
+                                    Create policies for missing subjects
+                                </Button>
+                                <Button type="button" variant="ghost" onClick={() => setAdvancedOpen(true)}>
                                     <FilePlus2 className="mr-1.5 h-4 w-4" />
-                                    Create missing policy
+                                    Review active policies
                                 </Button>
                             </div>
                         ) : null}
 
-                        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                            <div className="overflow-x-auto rounded-lg border border-gray-200">
-                                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                    <thead className="bg-gray-50">
+                        <div className="overflow-x-auto rounded-lg border border-gray-200">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-500">Class subject</th>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-500">Report policy</th>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {entries.length === 0 ? (
                                         <tr>
-                                            <th className="px-3 py-2 text-left font-medium text-gray-500">Class subject</th>
-                                            <th className="px-3 py-2 text-left font-medium text-gray-500">Effective policy</th>
-                                            <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
-                                            <th className="px-3 py-2 text-left font-medium text-gray-500">Resolution path</th>
+                                            <td className="px-3 py-6 text-center text-gray-500" colSpan={3}>
+                                                No class subjects are configured for this term.
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {entries.length === 0 ? (
-                                            <tr>
-                                                <td className="px-3 py-6 text-center text-gray-500" colSpan={4}>
-                                                    No class subjects are registered for this term.
+                                    ) : entries.map((entry) => {
+                                        const effectivePolicy = policyForEntry(entry);
+                                        const entryStatus = entry.status ?? entry.policy_status ?? (entry.computation_allowed ? 'READY' : 'MISSING');
+                                        const rowNeedsPolicy = entryStatus === 'MISSING' || Boolean(entry.missing_policy_warning);
+                                        const rowMessage = rowNeedsPolicy
+                                            ? `${entry.cohort?.name ?? 'Class subject'} - ${entry.subject?.name ?? 'Subject'} needs a report policy for ${selectedTermLabel}.`
+                                            : entry.conflict_warning ?? entry.message ?? 'Ready for computation.';
+                                        return (
+                                            <tr key={entry.cbc_cohort_subject_id ?? entry.cohort_subject_id ?? entry.label}>
+                                                <td className="px-3 py-3 font-medium text-gray-900">{entryLabel(entry)}</td>
+                                                <td className="px-3 py-3">{policyLabel(effectivePolicy)}</td>
+                                                <td className="px-3 py-3">
+                                                    <Badge variant={entryStatus === 'READY' ? 'green' : entryStatus === 'CONFLICT' ? 'red' : 'orange'}>
+                                                        {entryStatus === 'READY' ? 'Ready' : entryStatus === 'CONFLICT' ? 'Conflict' : 'Missing'}
+                                                    </Badge>
+                                                    <p className="mt-1 text-xs text-gray-600">{rowMessage}</p>
                                                 </td>
                                             </tr>
-                                        ) : entries.map((entry) => {
-                                            const effectivePolicy = policyForEntry(entry);
-                                            return (
-                                                <tr key={entry.cbc_cohort_subject_id ?? entry.cohort_subject_id ?? entry.label}>
-                                                    <td className="px-3 py-3 font-medium text-gray-900">{entryLabel(entry)}</td>
-                                                    <td className="px-3 py-3">{policyLabel(effectivePolicy)}</td>
-                                                    <td className="px-3 py-3">
-                                                        <Badge variant={entry.computation_allowed ? 'green' : 'red'}>
-                                                            {entry.policy_status ?? 'Unknown'}
-                                                        </Badge>
-                                                        {entry.missing_policy_warning ? (
-                                                            <p className="mt-1 text-xs text-red-700">{entry.missing_policy_warning}</p>
-                                                        ) : null}
-                                                        {entry.conflict_warning ? (
-                                                            <p className="mt-1 text-xs text-red-700">{entry.conflict_warning}</p>
-                                                        ) : null}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-xs text-gray-500">
-                                                        {entry.resolution_path.join(' > ') || 'No resolution path'}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {activePolicies.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-sm text-gray-600">
+                                No active organization policies are available for this term.
                             </div>
+                        ) : null}
 
-                            <div className="space-y-4">
-                                <div className="rounded-lg border border-gray-200 p-3">
-                                    <h3 className="text-sm font-semibold text-gray-900">Active policies</h3>
-                                    <div className="mt-3 space-y-2">
-                                        {activePolicies.length === 0 ? (
-                                            <p className="text-sm text-gray-500">No active policies for this organization.</p>
-                                        ) : activePolicies.map((policy) => (
-                                            <label key={policy.id} className="flex items-start gap-2 text-sm text-gray-700">
-                                                <input
-                                                    type="checkbox"
-                                                    className="mt-1 rounded border-gray-300"
-                                                    checked={selectedPolicyIds.includes(policy.id)}
-                                                    onChange={() => toggleSelectedPolicy(policy.id)}
-                                                    disabled={!canManage}
-                                                />
-                                                <span>
-                                                    <span className="font-medium text-gray-900">{policy.name}</span>
-                                                    <span className="ml-1 text-xs text-gray-500">
-                                                        {policy.term_name ?? 'Any term'}
-                                                    </span>
-                                                </span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {missingEntries.length ? (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                                        <h3 className="flex items-center gap-2 text-sm font-semibold text-red-800">
-                                            <AlertTriangle className="h-4 w-4" />
-                                            Missing policy scopes
-                                        </h3>
-                                        <ul className="mt-2 space-y-1 text-sm text-red-700">
-                                            {missingEntries.slice(0, 5).map((entry) => (
-                                                <li key={entry.cbc_cohort_subject_id ?? entry.label}>{entryLabel(entry)}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                ) : null}
-
-                                {conflictEntries.length ? (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                                        <h3 className="text-sm font-semibold text-red-800">Resolve conflict</h3>
-                                        <p className="mt-1 text-sm text-red-700">
-                                            Multiple active policies exist at the same specificity for at least one class subject.
-                                        </p>
-                                    </div>
-                                ) : null}
-
-                                {shadowedPolicies.length ? (
-                                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                                        <h3 className="text-sm font-semibold text-amber-900">Shadowed active policies</h3>
-                                        <div className="mt-2 space-y-2">
-                                            {shadowedPolicies.map((item) => (
-                                                <div key={item.policy.id} className="text-sm text-amber-800">
-                                                    <p className="font-medium">{item.policy.name}</p>
-                                                    <p>{item.warning}</p>
-                                                    {canManage ? (
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => void handleDeactivate(item.policy)}
-                                                            disabled={deactivatingId === item.policy.id}
-                                                            className="mt-1"
-                                                        >
-                                                            Deactivate unused policy
-                                                        </Button>
-                                                    ) : null}
+                        <div className="rounded-lg border border-gray-200">
+                            <button
+                                type="button"
+                                onClick={() => setAdvancedOpen((current) => !current)}
+                                className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold text-gray-900"
+                            >
+                                Advanced details
+                                <span className="text-xs font-normal text-gray-500">
+                                    {advancedOpen ? 'Hide' : 'Show'}
+                                </span>
+                            </button>
+                            {advancedOpen ? (
+                                <div className="space-y-4 border-t border-gray-200 p-4">
+                                    <p className="text-sm text-gray-600">
+                                        Scholaroscope will use active policies according to the most specific match.
+                                    </p>
+                                    {plan ? (
+                                        <div className="flex flex-wrap gap-2 text-xs text-gray-600">
+                                            <Badge variant="default">Saved plan {coverage?.status ?? plan.status}</Badge>
+                                            <Badge variant="default">Selected policy ids {plan.selected_policy_ids.length}</Badge>
+                                        </div>
+                                    ) : null}
+                                    <div className="grid gap-4 lg:grid-cols-2">
+                                        <div className="rounded-lg border border-gray-200 p-3">
+                                            <h3 className="text-sm font-semibold text-gray-900">Active policies</h3>
+                                            <div className="mt-3 space-y-2">
+                                                {activePolicies.length === 0 ? (
+                                                    <p className="text-sm text-gray-500">No active policies for this organization.</p>
+                                                ) : activePolicies.map((policy) => (
+                                                    <label key={policy.id} className="flex items-start gap-2 text-sm text-gray-700">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="mt-1 rounded border-gray-300"
+                                                            checked={selectedPolicyIds.includes(policy.id)}
+                                                            onChange={() => toggleSelectedPolicy(policy.id)}
+                                                            disabled={!canManage}
+                                                        />
+                                                        <span>
+                                                            <span className="font-medium text-gray-900">{policy.name}</span>
+                                                            <span className="ml-1 text-xs text-gray-500">
+                                                                {policy.term_name ?? 'Any term'}
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            {canManage ? (
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                        onClick={() => void handleUseAllActive()}
+                                                        disabled={!selectedTermId || saving}
+                                                    >
+                                                        Use active policies
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        onClick={() => void handleSaveManualSelection()}
+                                                        disabled={!selectedTermId || saving}
+                                                    >
+                                                        Save selected policies
+                                                    </Button>
                                                 </div>
-                                            ))}
+                                            ) : null}
+                                        </div>
+                                        <div className="rounded-lg border border-gray-200 p-3">
+                                            <h3 className="text-sm font-semibold text-gray-900">Resolution path</h3>
+                                            <div className="mt-3 space-y-2 text-xs text-gray-600">
+                                                {entries.slice(0, 6).map((entry) => (
+                                                    <div key={entry.cbc_cohort_subject_id ?? entry.cohort_subject_id ?? entry.label}>
+                                                        <p className="font-medium text-gray-800">{entryLabel(entry)}</p>
+                                                        <p>{entry.resolution_path.join(' > ') || 'No resolution path'}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                ) : null}
-
-                                {reusablePolicies.length ? (
-                                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                                        <h3 className="text-sm font-semibold text-blue-900">Reuse policy for new term</h3>
-                                        <p className="mt-1 text-sm text-blue-800">
-                                            Old policy remains historical. New copy will govern the new term.
-                                        </p>
-                                        <div className="mt-2 space-y-2">
-                                            {reusablePolicies.slice(0, 3).map((policy) => (
-                                                <Button
-                                                    key={policy.id}
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    onClick={() => void handleReuse(policy)}
-                                                    disabled={!selectedTermId || reusingId === policy.id}
-                                                >
-                                                    <Copy className="mr-1.5 h-4 w-4" />
-                                                    {reusingId === policy.id ? 'Reusing...' : `Reuse ${policy.name}`}
-                                                </Button>
-                                            ))}
+                                    {shadowedPolicies.length ? (
+                                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                                            <h3 className="text-sm font-semibold text-amber-900">Unused active policies</h3>
+                                            <div className="mt-2 space-y-2">
+                                                {shadowedPolicies.map((item) => (
+                                                    <div key={item.policy.id} className="text-sm text-amber-800">
+                                                        <p className="font-medium">{item.policy.name}</p>
+                                                        <p>{item.warning}</p>
+                                                        {canManage ? (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => void handleDeactivate(item.policy)}
+                                                                disabled={deactivatingId === item.policy.id}
+                                                                className="mt-1"
+                                                            >
+                                                                Deactivate unused policy
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : null}
-                            </div>
+                                    ) : null}
+                                </div>
+                            ) : null}
                         </div>
                     </>
                 )}

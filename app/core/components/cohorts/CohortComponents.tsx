@@ -13,6 +13,7 @@ import { Check, X, BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
@@ -189,7 +190,7 @@ function KernelSubjectPanel({
   if (loading) {
     return (
       <div className="py-6 text-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mx-auto" />
+        <LoadingSpinner size="sm" fullScreen={false} message="Loading linked subjects" showMessage={false} />
       </div>
     );
   }

@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react';
 import { Users, Plus, X, AlertTriangle, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useSessionCohorts } from '@/app/core/hooks/useSessions';
+import { useConfirmAction } from '@/app/core/hooks/useConfirmAction';
 import { clampDashboardScrollToContent } from '@/app/core/lib/dashboardScroll';
 import type { SessionCohort } from '@/app/core/types/session';
 import { AddCohortModal } from './AddCohortModal';
@@ -61,7 +63,11 @@ export function ParticipatingCohorts({
 }: ParticipatingCohortsProps) {
     const [open, setOpen] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [confirmUnlink, setConfirmUnlink] = useState<number | null>(null);
+    const {
+        pending: confirmUnlink,
+        requestConfirm: requestConfirmUnlink,
+        cancel: cancelConfirmUnlink,
+    } = useConfirmAction<number>();
     const [actionError, setActionError] = useState<string | null>(null);
 
     const {
@@ -136,7 +142,7 @@ export function ParticipatingCohorts({
             } catch (refreshError) {
                 console.error('Participating class unlinked, but session refresh failed:', refreshError);
             }
-            setConfirmUnlink(null);
+            cancelConfirmUnlink();
         } catch (err: unknown) {
             setActionError(getActionErrorMessage(err, 'Failed to unlink class.'));
         }
@@ -166,7 +172,7 @@ export function ParticipatingCohorts({
                     </span>
 
                     {loading ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                        <LoadingSpinner size="sm" fullScreen={false} message="Loading participating classes" showMessage={false} />
                     ) : (
                         <div className="flex items-center gap-2 text-xs theme-muted">
                             <Badge variant="info" size="sm">
@@ -298,7 +304,7 @@ export function ParticipatingCohorts({
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    onClick={() => setConfirmUnlink(null)}
+                                                                    onClick={cancelConfirmUnlink}
                                                                 >
                                                                     Cancel
                                                                 </Button>
@@ -307,7 +313,7 @@ export function ParticipatingCohorts({
                                                     ) : (
                                                         <button
                                                             type="button"
-                                                            onClick={() => setConfirmUnlink(link.cohort)}
+                                                            onClick={() => requestConfirmUnlink(link.cohort)}
                                                             className="rounded p-1.5 theme-subtle transition-colors theme-hover-danger"
                                                             title="Unlink class"
                                                         >

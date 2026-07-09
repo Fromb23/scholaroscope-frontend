@@ -73,7 +73,7 @@ export function resolveCbcComputeFailure(
     if (resolved.serverCode === 'policy_required') {
         return {
             ...resolved,
-            message: 'No active policy is available for this class subject and term.',
+            message: 'Reports are blocked because no active organization policy exists for this class subject and term.',
             actionHref: '/reports/policies/cbc',
         };
     }
@@ -214,13 +214,10 @@ export function CohortReportComputationRoutePage({ scope }: { scope: ReportSetup
                                     <Button type="button" variant="secondary" size="sm">Create policy</Button>
                                 </Link>
                                 <Link href="/reports/policies/cbc">
-                                    <Button type="button" variant="secondary" size="sm">Activate existing policy</Button>
-                                </Link>
-                                <Link href="/reports/policies/cbc">
                                     <Button type="button" variant="secondary" size="sm">Reuse previous term policy</Button>
                                 </Link>
                                 <Link href="/reports/policies/cbc">
-                                    <Button type="button" variant="secondary" size="sm">View policy plan</Button>
+                                    <Button type="button" variant="secondary" size="sm">Open term report setup</Button>
                                 </Link>
                             </div>
                         ) : null}

@@ -27,6 +27,7 @@ import {
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { DataTable, Column } from '@/app/components/ui/Table';
 import Modal from '@/app/components/ui/Modal';
 import { Input } from '@/app/components/ui/Input';
@@ -442,7 +443,7 @@ export function InstructorManagementPage() {
     if (loading) return (
         <div className="flex items-center justify-center h-64">
             <div className="text-center">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto" />
+                <LoadingSpinner size="lg" fullScreen={false} message="Loading instructors..." showMessage={false} />
                 <p className="mt-3 text-sm text-gray-500">Loading instructors...</p>
             </div>
         </div>

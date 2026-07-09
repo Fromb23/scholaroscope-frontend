@@ -12,6 +12,7 @@ import {
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/Card';
@@ -169,7 +170,7 @@ export function UsersTable({ users, loading }: UsersTableProps) {
     if (loading) {
         return (
             <div className="py-8 text-center">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-purple-600 border-t-transparent mx-auto" />
+                <LoadingSpinner size="sm" fullScreen={false} message="Loading organization users" showMessage={false} />
             </div>
         );
     }

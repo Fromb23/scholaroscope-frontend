@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, ClipboardList, Save } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
+import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { CurriculumLifecycleAccessState } from '@/app/core/components/curriculum/CurriculumLifecycleAccessState';
 import { CurriculumLifecycleNotice } from '@/app/core/components/curriculum/CurriculumLifecycleNotice';
 import { Input } from '@/app/components/ui/Input';
@@ -263,7 +264,7 @@ export function EditAssessmentPage() {
             setPolicyGuidance(null);
             setPolicyGuidanceError(
                 resolved.serverCode === 'policy_required'
-                    ? 'Create or activate a policy before creating assessments for this term.'
+                    ? 'Create or activate a term policy before creating official assessments.'
                     : resolved.message,
             );
         }).finally(() => {
@@ -317,7 +318,7 @@ export function EditAssessmentPage() {
             return;
         }
         if (unsupportedAssessmentType) {
-            setSaveError('This assessment type is not allowed by the active policy.');
+            setSaveError(`This term policy allows ${allowedAssessmentTypes.join(', ')} only.`);
             return;
         }
         if (!validateForm()) return;
@@ -339,7 +340,7 @@ export function EditAssessmentPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen">
-                <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+                <LoadingSpinner size="lg" fullScreen={false} message="Loading assessment editor" showMessage={false} />
             </div>
         );
     }
@@ -473,7 +474,7 @@ export function EditAssessmentPage() {
                             />
                             {unsupportedAssessmentType ? (
                                 <p className="text-sm text-red-600">
-                                    This assessment type is not allowed by the active policy.
+                                    This term policy allows {allowedAssessmentTypes.join(', ')} only.
                                 </p>
                             ) : null}
 
@@ -497,7 +498,7 @@ export function EditAssessmentPage() {
                                 <div className="md:col-span-2">
                                     {policyGuidanceError ? (
                                         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                            Create or activate a policy before creating assessments for this term.
+                                            {policyGuidanceError}
                                         </div>
                                     ) : policyGuidance ? (
                                         <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
@@ -505,7 +506,7 @@ export function EditAssessmentPage() {
                                                 This term uses {policyGuidance.policy_name ?? 'the active report policy'}.
                                             </p>
                                             <p className="mt-1">
-                                                Allowed: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
+                                                Allowed this term: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
                                             </p>
                                             <p>
                                                 Required: {(policyGuidance.required_components ?? []).join(', ') || 'None'}
