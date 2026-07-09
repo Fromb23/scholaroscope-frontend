@@ -25,4 +25,14 @@ describe('AssignmentCreateModal attachment slots', () => {
     expect(modalSource).toContain('attachment_slots: requiresAttachments ? buildAttachmentSlots');
     expect(modalSource).toContain('Select at least one attachment or evidence type.');
   });
+
+  it('uses the responsive modal sheet footer for active assignment state', () => {
+    const modalSource = source();
+
+    expect(modalSource).toContain('closeDisabled={saving}');
+    expect(modalSource).toContain('footer={');
+    expect(modalSource).toContain('<ActionStateBanner');
+    expect(modalSource).toContain('submitDisabledReason');
+    expect(modalSource).toContain("disabled={saving || Boolean(submitDisabledReason)}");
+  });
 });

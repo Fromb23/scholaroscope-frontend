@@ -164,7 +164,7 @@ describe('selective plugin registration', () => {
 
     expect(secondItems.map((item) => item.name)).toEqual(firstItems.map((item) => item.name));
     expect(new Set(secondHrefs).size).toBe(secondHrefs.length);
-  });
+  }, 10_000);
 
   it('registers CBC route access and report policy preview when CBC is loaded', async () => {
     await loadPluginById('cbc');

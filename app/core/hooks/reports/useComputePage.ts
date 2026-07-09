@@ -26,6 +26,8 @@ export interface ComputeResult {
     serverCode?: string;
 }
 
+type ComputeActionStatus = 'idle' | 'loading' | 'blocked' | 'success' | 'error';
+
 const TERMINAL_JOB_STATUSES = new Set(['COMPLETED', 'FAILED', 'BLOCKED']);
 
 function sleep(milliseconds: number) {
@@ -46,6 +48,27 @@ function readinessBlocked(readiness: ReportComputeReadiness | null): boolean {
     if (readiness.blocked) return true;
     if ((readiness.blocking_count ?? 0) > 0) return true;
     return readiness.overall_status === 'NEEDS_SETUP' || readiness.overall_status === 'CONFLICTS';
+}
+
+function readinessBlockedMessage(readiness: ReportComputeReadiness | null): string {
+    if (!readiness) return 'Load report readiness before computing official reports.';
+    if (readiness.message) return readiness.message;
+    const missing = readiness.missing?.length ?? 0;
+    const conflicts = readiness.conflicts?.length ?? 0;
+    if (conflicts > 0) return `${conflicts} policy conflict${conflicts === 1 ? '' : 's'} need admin review.`;
+    if (missing > 0) return `${missing} class subject${missing === 1 ? '' : 's'} missing report policy coverage.`;
+    return 'Reports are not ready. Resolve report setup before computing official reports.';
+}
+
+function computeJobErrorMessage(job: ReportComputeJob | null): string | null {
+    const payload = job?.error_payload;
+    if (payload && typeof payload === 'object') {
+        for (const key of ['detail', 'message', 'error', 'reason']) {
+            const value = (payload as Record<string, unknown>)[key];
+            if (typeof value === 'string' && value.trim()) return value;
+        }
+    }
+    return job?.label ?? null;
 }
 
 function progressFromJob(job: ReportComputeJob): ReportComputeProgressEvent {
@@ -69,8 +92,6 @@ export function useComputePage() {
         Number.isFinite(initialTerm) && initialTerm > 0 ? initialTerm : null,
     );
     const [computing, setComputing] = useState(false);
-    const [preparing, setPreparing] = useState(false);
-    const [applyingRecommendation, setApplyingRecommendation] = useState<string | null>(null);
     const [readiness, setReadiness] = useState<ReportComputeReadiness | null>(null);
     const [readinessLoading, setReadinessLoading] = useState(false);
     const [job, setJob] = useState<ReportComputeJob | null>(null);
@@ -78,6 +99,9 @@ export function useComputePage() {
     const [streamFallback, setStreamFallback] = useState(false);
     const [globalError, setGlobalError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<'term'>>({});
+    const [computeSheetOpen, setComputeSheetOpen] = useState(false);
+    const [computeActionStatus, setComputeActionStatus] = useState<ComputeActionStatus>('idle');
+    const [computeActionError, setComputeActionError] = useState<string | null>(null);
     const streamAbortRef = useRef<AbortController | null>(null);
 
     const { terms, loading: termsLoading } = useTerms();
@@ -86,19 +110,25 @@ export function useComputePage() {
         selectedTermRecord?.is_frozen || selectedTermRecord?.status === 'CLOSED_HISTORICAL',
     );
 
-    const fetchReadiness = useCallback(async (termId: number) => {
+    const fetchReadiness = useCallback(async (
+        termId: number,
+        options: { showPageError?: boolean } = {},
+    ) => {
+        const showPageError = options.showPageError ?? true;
         setReadinessLoading(true);
         try {
             setReadiness(await reportsAPI.getComputeReadiness(termId));
-            setGlobalError(null);
+            if (showPageError) setGlobalError(null);
         } catch (error) {
             const resolved = resolveReportError(error, {
                 action: 'load',
                 entityLabel: 'report compute readiness',
                 role: 'ADMIN',
             });
-            setReadiness(null);
-            setGlobalError(resolved.message ?? 'Could not load report compute readiness.');
+            if (showPageError) {
+                setReadiness(null);
+                setGlobalError(resolved.message ?? 'Could not load report compute readiness.');
+            }
         } finally {
             setReadinessLoading(false);
         }
@@ -136,6 +166,8 @@ export function useComputePage() {
         setJob(null);
         setProgressEvent(null);
         setStreamFallback(false);
+        setComputeActionStatus('idle');
+        setComputeActionError(null);
 
         const params = new URLSearchParams(searchParams.toString());
         if (nextTerm) {
@@ -161,56 +193,18 @@ export function useComputePage() {
         return latest;
     }, []);
 
-    const handlePrepareTerm = async () => {
-        if (!requireSelectedTerm()) return;
-        const termId = selectedTerm;
-        if (!termId) return;
-
-        setPreparing(true);
-        setFieldErrors({});
-        setGlobalError(null);
-        try {
-            setReadiness(await reportsAPI.prepareTermForReports(termId));
-        } catch (error) {
-            const resolved = resolveReportError(error, {
-                action: 'load',
-                entityLabel: 'report setup recommendations',
-                role: 'ADMIN',
-            });
-            setGlobalError(resolved.message ?? 'Could not prepare this term for reports.');
-        } finally {
-            setPreparing(false);
-        }
-    };
-
-    const handleApplyRecommendation = async (recommendationId: string) => {
-        if (!requireSelectedTerm()) return;
-        const termId = selectedTerm;
-        if (!termId) return;
-
-        setApplyingRecommendation(recommendationId);
-        setFieldErrors({});
-        setGlobalError(null);
-        try {
-            setReadiness(await reportsAPI.applyRecommendedFix(termId, recommendationId));
-        } catch (error) {
-            const resolved = resolveReportError(error, {
-                action: 'update',
-                entityLabel: 'recommended report setup fix',
-                role: 'ADMIN',
-            });
-            setGlobalError(resolved.message ?? 'Could not apply the recommended report setup fix.');
-        } finally {
-            setApplyingRecommendation(null);
-        }
-    };
-
     const handleComputeReports = async () => {
         if (!requireSelectedTerm()) return;
         const termId = selectedTerm;
         if (!termId) return;
+
+        setComputeSheetOpen(true);
+        setComputeActionStatus('loading');
+        setComputeActionError(null);
+
         if (readinessBlocked(readiness)) {
-            setGlobalError(readiness?.message || 'Reports are not ready. Resolve report setup before computing official reports.');
+            setComputeActionStatus('blocked');
+            setComputeActionError(readinessBlockedMessage(readiness));
             return;
         }
 
@@ -234,41 +228,67 @@ export function useComputePage() {
 
             if (createdJob.status === 'BLOCKED') {
                 setReadiness(createdJob.readiness ?? readiness);
-                setGlobalError('Reports are blocked because one or more curricula are missing required report policies.');
+                setComputeActionStatus('blocked');
+                setComputeActionError(
+                    computeJobErrorMessage(createdJob)
+                    ?? 'Reports are blocked because one or more curricula are missing required report policies.',
+                );
                 return;
             }
+
+            let finalJob: ReportComputeJob | null = null;
 
             if (!createdJob.events_url) {
                 setStreamFallback(true);
-                await pollComputeJob(createdJob.job_id);
-                return;
+                finalJob = await pollComputeJob(createdJob.job_id);
+            } else {
+                const controller = new AbortController();
+                streamAbortRef.current?.abort();
+                streamAbortRef.current = controller;
+
+                try {
+                    await reportsAPI.streamComputeJobEvents(createdJob.events_url, (event) => {
+                        setProgressEvent(event);
+                        setJob((current) => (
+                            current
+                                ? {
+                                    ...current,
+                                    status: event.status ?? current.status,
+                                    stage: event.stage ?? current.stage,
+                                    label: event.label ?? current.label,
+                                    progress_percent: event.progress_percent ?? current.progress_percent,
+                                    completed_count: event.completed_count ?? current.completed_count,
+                                    total_count: event.total_count ?? current.total_count,
+                                }
+                                : current
+                        ));
+                    }, controller.signal);
+                    finalJob = await reportsAPI.getComputeJob(createdJob.job_id);
+                    setJob(finalJob);
+                    setProgressEvent(progressFromJob(finalJob));
+                } catch {
+                    if (controller.signal.aborted) return;
+                    setStreamFallback(true);
+                    finalJob = await pollComputeJob(createdJob.job_id);
+                }
             }
 
-            const controller = new AbortController();
-            streamAbortRef.current?.abort();
-            streamAbortRef.current = controller;
+            if (!finalJob) {
+                throw new Error('Report computation did not finish in time.');
+            }
 
-            try {
-                await reportsAPI.streamComputeJobEvents(createdJob.events_url, (event) => {
-                    setProgressEvent(event);
-                    setJob((current) => (
-                        current
-                            ? {
-                                ...current,
-                                status: event.status ?? current.status,
-                                stage: event.stage ?? current.stage,
-                                label: event.label ?? current.label,
-                                progress_percent: event.progress_percent ?? current.progress_percent,
-                                completed_count: event.completed_count ?? current.completed_count,
-                                total_count: event.total_count ?? current.total_count,
-                            }
-                            : current
-                    ));
-                }, controller.signal);
-            } catch {
-                if (controller.signal.aborted) return;
-                setStreamFallback(true);
-                await pollComputeJob(createdJob.job_id);
+            if (finalJob.status === 'COMPLETED') {
+                setComputeActionStatus('success');
+            } else if (finalJob.status === 'BLOCKED') {
+                setReadiness(finalJob.readiness ?? readiness);
+                setComputeActionStatus('blocked');
+                setComputeActionError(
+                    computeJobErrorMessage(finalJob)
+                    ?? 'Reports are blocked because one or more curricula are missing required report policies.',
+                );
+            } else if (finalJob.status === 'FAILED') {
+                setComputeActionStatus('error');
+                setComputeActionError(computeJobErrorMessage(finalJob) ?? 'Report computation failed.');
             }
         } catch (error) {
             const resolved = resolveReportError(error, {
@@ -277,9 +297,10 @@ export function useComputePage() {
                 role: 'ADMIN',
             });
             if (resolved.serverCode === 'report_compute_blocked' && termId) {
-                await fetchReadiness(termId);
+                await fetchReadiness(termId, { showPageError: false });
             }
-            setGlobalError(
+            setComputeActionStatus(resolved.serverCode === 'report_compute_blocked' ? 'blocked' : 'error');
+            setComputeActionError(
                 resolved.serverCode === 'report_compute_blocked'
                     ? 'Reports are blocked because one or more curricula are missing required report policies.'
                     : resolved.message ?? 'Report computation failed.',
@@ -287,7 +308,7 @@ export function useComputePage() {
         } finally {
             streamAbortRef.current = null;
             setComputing(false);
-            await fetchReadiness(termId);
+            await fetchReadiness(termId, { showPageError: false });
         }
     };
 
@@ -331,25 +352,27 @@ export function useComputePage() {
         selectedTermRecord,
         selectedTermClosed,
         computing,
-        preparing,
-        applyingRecommendation,
         readiness,
         readinessLoading,
         job,
         progressEvent,
         streamFallback,
         safeRecommendation,
+        computeSheetOpen,
+        computeActionStatus,
+        computeActionError,
         computeDisabledReason,
         fieldErrors,
         globalError,
         termsLoading,
         termOptions,
         manageCbcPoliciesHref,
+        setReadiness,
         setGlobalError,
+        setComputeSheetOpen,
         handleTermChange,
-        handlePrepareTerm,
-        handleApplyRecommendation,
         handleComputeReports,
         refetchReadiness: selectedTerm ? () => fetchReadiness(selectedTerm) : undefined,
+        refreshReadinessInBackground: selectedTerm ? () => fetchReadiness(selectedTerm, { showPageError: false }) : undefined,
     };
 }

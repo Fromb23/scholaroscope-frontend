@@ -966,6 +966,7 @@ export function CbcReportPolicyFormModal({
                 ? (editingPolicy ? 'Edit CBC Report Policy' : 'New CBC Report Policy')
                 : (editingPolicy ? 'Edit Report Setup' : 'New Report Setup')}
             size="xl"
+            closeDisabled={saving}
         >
             <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
                 {saveError && <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />}
