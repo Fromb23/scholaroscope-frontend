@@ -1,6 +1,5 @@
 import { apiClient } from '@/app/core/api/client';
 import {
-    downloadBlob,
     getDownloadFileName,
     normalizeBlobError,
 } from '@/app/core/api/downloads';
@@ -42,7 +41,7 @@ export const lessonPlanAPI = {
         return response.data;
     },
 
-    exportPdf: async (id: number): Promise<void> => {
+    exportPdf: async (id: number): Promise<{ blob: Blob; fileName: string }> => {
         try {
             const response = await apiClient.get<Blob>(
                 `${LESSON_PLANS_BASE_PATH}/${id}/export_pdf/`,
@@ -54,9 +53,12 @@ export const lessonPlanAPI = {
                 response.headers['content-disposition'],
                 `lesson-plan-${id}.pdf`
             );
-            downloadBlob(response.data, fileName);
+            return {
+                blob: response.data,
+                fileName,
+            };
         } catch (error) {
-            await normalizeBlobError(error);
+            return normalizeBlobError(error);
         }
     },
 
