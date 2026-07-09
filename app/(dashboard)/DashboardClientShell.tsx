@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
@@ -379,7 +379,17 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
 export function DashboardClientShell({ children }: { children: ReactNode }) {
   return (
     <PluginRegistryProvider>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      <Suspense
+        fallback={
+          <PermissionResolvingState
+            fullScreen
+            message="Loading workspace..."
+            description="Preparing your dashboard."
+          />
+        }
+      >
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </Suspense>
     </PluginRegistryProvider>
   );
 }
