@@ -117,9 +117,13 @@ describe('ResponsiveActionSheet shell contract', () => {
   });
 
   it('uses a true full-width mobile bottom sheet and desktop overrides', () => {
+    expect(source).toContain('h-dvh min-h-dvh w-screen w-dvw max-w-none overflow-hidden');
     expect(source).toContain('fixed inset-x-0 bottom-0');
+    expect(source).toContain('md:inset-0');
     expect(source).toContain('w-screen');
+    expect(source).toContain('w-dvw');
     expect(source).toContain('max-w-none');
+    expect(source).toContain('mx-0');
     expect(source).toContain('max-h-[92dvh]');
     expect(source).toContain('rounded-t-3xl rounded-b-none');
     expect(source).toContain('md:items-center md:justify-center');
@@ -130,13 +134,31 @@ describe('ResponsiveActionSheet shell contract', () => {
     expect(source).toContain('preventBackdropClose = true');
     expect(source).toContain('const allowBackdropClose = !closeDisabled && !preventBackdropClose');
     expect(source).toContain('disabled={!allowBackdropClose}');
+    expect(source).toContain("document.addEventListener('wheel', preventBackgroundScroll");
+    expect(source).toContain("document.addEventListener('touchmove', preventBackgroundScroll");
+    expect(source).toContain("document.addEventListener('pointermove', preventBackgroundScroll");
+    expect(source).toContain('bodyRef.current?.contains(target)');
+    expect(source).toContain('event.preventDefault()');
+    expect(source).toContain('overscroll-contain overflow-x-auto overflow-y-auto');
     expect(source).toContain('overflow-x-auto overflow-y-auto');
   });
 
   it('renders a drag handle, header close button, scroll body, and sticky footer', () => {
     expect(source).toContain('md:hidden');
     expect(source).toContain('aria-label={closeLabel}');
-    expect(source).toContain('min-h-0 flex-1 overflow-x-auto overflow-y-auto');
+    expect(source).toContain('min-h-0 flex-1 overscroll-contain overflow-x-auto overflow-y-auto');
     expect(source).toContain('sticky bottom-0');
+  });
+
+  it('supports mobile drag-to-dismiss without allowing disabled drags', () => {
+    expect(source).toContain('handleDragPointerDown');
+    expect(source).toContain('handleDragPointerMove');
+    expect(source).toContain('handleDragPointerEnd');
+    expect(source).toContain('if (closeDisabled || !isMobileViewport() || isInteractiveDragTarget(event.target))');
+    expect(source).toContain('const deltaY = Math.max(0, event.clientY - dragState.startY)');
+    expect(source).toContain('passedDistanceThreshold');
+    expect(source).toContain('passedVelocityThreshold');
+    expect(source).toContain('requestClose()');
+    expect(source).toContain('transform: dragOffset > 0 ? `translate3d(0, ${dragOffset}px, 0)` : undefined');
   });
 });

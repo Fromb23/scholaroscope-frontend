@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Button } from '@/app/components/ui/Button';
+import { ResponsiveActionSheet } from '@/app/components/ui/actions';
 
 export interface ActionMenuItem {
   label: string;
@@ -36,11 +37,16 @@ interface ActionMenuProps {
 function ActionMenuItemButton({
   item,
   onSelect,
+  surface = 'dropdown',
 }: {
   item: ActionMenuItem;
   onSelect: () => void;
+  surface?: 'dropdown' | 'sheet';
 }) {
-  const itemClassName = `flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+  const sizeClassName = surface === 'sheet'
+    ? 'min-h-12 rounded-lg px-4 py-3 text-base'
+    : 'rounded-md px-3 py-2 text-sm';
+  const itemClassName = `flex w-full items-center gap-2 text-left transition-colors ${sizeClassName} ${
     item.disabled
       ? 'cursor-not-allowed opacity-50'
       : item.destructive
@@ -50,7 +56,7 @@ function ActionMenuItemButton({
 
   if (item.href && !item.disabled) {
     return (
-      <Link href={item.href} className={itemClassName} onClick={onSelect}>
+      <Link href={item.href} role={surface === 'dropdown' ? 'menuitem' : undefined} className={itemClassName} onClick={onSelect}>
         {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
         <span className="min-w-0 flex-1">{item.label}</span>
       </Link>
@@ -68,12 +74,43 @@ function ActionMenuItemButton({
         onSelect();
       }}
       disabled={item.disabled}
+      role={surface === 'dropdown' ? 'menuitem' : undefined}
       className={itemClassName}
     >
       {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
       <span className="min-w-0 flex-1">{item.label}</span>
     </button>
   );
+}
+
+function useMobileActionSheet(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const handleChange = () => setIsMobile(mediaQuery.matches);
+
+    handleChange();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener?.(handleChange);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.removeListener?.(handleChange);
+      }
+    };
+  }, []);
+
+  return isMobile;
 }
 
 export function ActionMenu({
@@ -90,13 +127,14 @@ export function ActionMenu({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
+  const isMobileSheet = useMobileActionSheet();
   const visibleItems = useMemo(
     () => items.filter((item) => Boolean(item.label) && (item.href || item.onSelect)),
     [items]
   );
 
   useEffect(() => {
-    if (!open) {
+    if (!open || isMobileSheet) {
       return;
     }
 
@@ -119,7 +157,7 @@ export function ActionMenu({
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [open]);
+  }, [isMobileSheet, open]);
 
   if (visibleItems.length === 0) {
     return null;
@@ -131,7 +169,7 @@ export function ActionMenu({
         type="button"
         variant={variant}
         size={size}
-        aria-haspopup="menu"
+        aria-haspopup={isMobileSheet ? 'dialog' : 'menu'}
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={ariaLabel}
@@ -143,7 +181,7 @@ export function ActionMenu({
         </span>
       </Button>
 
-      {open ? (
+      {open && !isMobileSheet ? (
         <div
           id={menuId}
           role="menu"
@@ -161,6 +199,28 @@ export function ActionMenu({
             ))}
           </div>
         </div>
+      ) : null}
+
+      {isMobileSheet ? (
+        <ResponsiveActionSheet
+          open={open}
+          onOpenChange={setOpen}
+          title={buttonLabel.trim() || 'Actions'}
+          size="sm"
+          preventBackdropClose={false}
+          bodyClassName="px-4"
+        >
+          <div className="space-y-2">
+            {visibleItems.map((item) => (
+              <ActionMenuItemButton
+                key={`${item.label}:${item.href ?? 'action'}`}
+                item={item}
+                surface="sheet"
+                onSelect={() => setOpen(false)}
+              />
+            ))}
+          </div>
+        </ResponsiveActionSheet>
       ) : null}
     </div>
   );

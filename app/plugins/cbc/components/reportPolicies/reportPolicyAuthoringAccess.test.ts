@@ -105,6 +105,14 @@ describe('CBC report policy authoring access', () => {
         })).toBe(true);
     });
 
+    it('allows direct class-configuration authoring capability checks', () => {
+        expect(canManageCbcReportPolicyAuthoring({
+            user,
+            capabilities: classConfigurationCapabilities,
+            authoringMode: 'CLASS_CONFIGURATION',
+        })).toBe(true);
+    });
+
     it('allows institution policy governance only with governance-route capability', () => {
         expect(canManageCbcReportPolicyAuthoring({
             user,

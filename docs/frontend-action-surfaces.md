@@ -38,12 +38,14 @@ On mobile, `ResponsiveActionSheet` renders as a bottom sheet with:
 - Inactive, inert-feeling background with body/document scroll locked and restored on close.
 - Full viewport width; the sheet touches the left and right screen edges.
 - Rounded top corners.
-- Drag handle.
+- Drag handle with downward drag-to-dismiss when closing is allowed.
+- Background wheel/touch/pointer scroll blocked outside the sheet body.
 - Internal vertical scroll.
 - Preserved internal horizontal overflow for wide/content-heavy sheets.
 - Sticky footer.
 
 On desktop, the same component renders as a centered modal by default, or as a panel with `desktopMode="panel"`.
+`ActionMenu` keeps its desktop dropdown behavior and renders the same actions in a mobile `ResponsiveActionSheet`.
 
 ## Current Examples
 

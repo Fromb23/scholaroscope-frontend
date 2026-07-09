@@ -28,6 +28,10 @@ import { useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { assignmentsAPI } from '@/app/core/api/assignments';
 import { useAuth } from '@/app/context/AuthContext';
+import {
+    canManageReportPolicyAuthoring,
+    getReportPolicyAuthoringMode,
+} from '@/app/core/lib/workspaces';
 import type { CohortSubject } from '@/app/core/types/academic';
 import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import type {
@@ -174,7 +178,7 @@ export function AssignmentCreateModal({
 }: AssignmentCreateModalProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { user, activeRole } = useAuth();
+    const { user, capabilities } = useAuth();
     const createMutation = useCreateAssignment();
     const updateMutation = useUpdateAssignment(assignment?.cohort_subject ?? null);
     const { rubricScales, loading: rubricScalesLoading } = useRubricScales(
@@ -204,7 +208,15 @@ export function AssignmentCreateModal({
     const isLessonPreparationMode = mode === 'lesson_preparation';
     const isQuickFollowUpMode = mode === 'quick_follow_up';
     const isFullMode = mode === 'full';
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const reportPolicyAuthoringMode = useMemo(
+        () => getReportPolicyAuthoringMode(capabilities),
+        [capabilities]
+    );
+    const canManageReportPolicySetup = canManageReportPolicyAuthoring({
+        user,
+        capabilities,
+        authoringMode: reportPolicyAuthoringMode,
+    });
     const policySetupHref = useMemo(() => {
         const query = searchParams.toString();
         const returnTo = query ? `${pathname}?${query}` : pathname;
@@ -355,7 +367,7 @@ export function AssignmentCreateModal({
                 if (guidance.policy_ready === false || disabledReason) {
                     setPolicyGuidanceCode(disabledReason ?? 'policy_required');
                     setPolicyGuidanceError(
-                        isAdminLike
+                        canManageReportPolicySetup
                             ? guidance.user_message ?? guidance.message ?? 'No effective report policy exists for this subject and term.'
                             : guidance.user_message ?? 'Assignment creation is unavailable for this term because your school has not completed report policy setup. Contact your academic admin.',
                     );
@@ -371,14 +383,14 @@ export function AssignmentCreateModal({
             const resolved = resolveAssignmentError(error, {
                 action: 'load',
                 entityLabel: 'assignment policy guidance',
-                role: isAdminLike ? 'ADMIN' : 'INSTRUCTOR',
+                role: canManageReportPolicySetup ? 'ADMIN' : 'INSTRUCTOR',
             });
             setPolicyGuidance(null);
             setPolicyGuidanceCode(resolved.serverCode);
             setPolicyGuidanceError(
                 resolved.serverCode === 'policy_required'
                     ? (
-                        isAdminLike
+                        canManageReportPolicySetup
                             ? 'No effective report policy exists for this subject and term.'
                             : 'Assignment creation is unavailable for this term because your school has not completed report policy setup. Contact your academic admin.'
                     )
@@ -395,7 +407,7 @@ export function AssignmentCreateModal({
         };
     }, [
         cohortSubjectId,
-        isAdminLike,
+        canManageReportPolicySetup,
         isCbcPolicyContext,
         isOpen,
         reportCounting,
@@ -590,7 +602,7 @@ export function AssignmentCreateModal({
             setFormError(resolveAssignmentError(err, {
                 action: isEditMode ? 'update' : 'create',
                 entityLabel: isLessonPreparationMode ? 'learner task' : 'assignment',
-                role: isAdminLike ? 'ADMIN' : 'INSTRUCTOR',
+                role: canManageReportPolicySetup ? 'ADMIN' : 'INSTRUCTOR',
             }));
         }
     };
@@ -755,7 +767,7 @@ export function AssignmentCreateModal({
                                         ))}
                                     </ul>
                                 ) : null}
-                                {isAdminLike && policyGuidanceCode === 'policy_required' ? (
+                                {canManageReportPolicySetup && policyGuidanceCode === 'policy_required' ? (
                                     <Link href={policySetupHref} className="mt-3 inline-flex">
                                         <Button type="button" variant="secondary" size="sm">
                                             Open policy setup

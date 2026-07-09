@@ -1,6 +1,14 @@
 'use client';
 
-import { ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -78,7 +86,29 @@ interface ScrollLockRecord {
   win: Window;
 }
 
+interface DragState {
+  pointerId: number;
+  startY: number;
+  lastY: number;
+  lastTime: number;
+  velocity: number;
+}
+
 const scrollLocks = new WeakMap<Document, ScrollLockRecord>();
+
+function isMobileViewport(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return true;
+  }
+
+  return !window.matchMedia('(min-width: 768px)').matches;
+}
+
+function isInteractiveDragTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && Boolean(target.closest(
+    'a,button,input,textarea,select,[role="button"],[data-action-sheet-no-drag]',
+  ));
+}
 
 export function lockDocumentScroll(doc: Document, win: Window): () => void {
   const { body, documentElement } = doc;
@@ -199,13 +229,23 @@ export function ResponsiveActionSheet({
   const titleId = labelledById ?? generatedTitleId;
   const descriptionId = describedById ?? (description ? generatedDescriptionId : undefined);
   const panelRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
 
   const requestClose = useCallback(() => {
     if (closeDisabled) return;
     onOpenChange?.(false);
     onClose?.();
   }, [closeDisabled, onClose, onOpenChange]);
+
+  const resetDrag = useCallback(() => {
+    dragStateRef.current = null;
+    setDragging(false);
+    setDragOffset(0);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -227,6 +267,42 @@ export function ResponsiveActionSheet({
     return () => {
       unlockScroll();
       previouslyFocusedRef.current?.focus?.();
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      resetDrag();
+    }
+  }, [open, resetDrag]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const preventBackgroundScroll = (event: WheelEvent | TouchEvent | PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && bodyRef.current?.contains(target)) {
+        return;
+      }
+
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+    };
+
+    const listenerOptions: AddEventListenerOptions = {
+      capture: true,
+      passive: false,
+    };
+
+    document.addEventListener('wheel', preventBackgroundScroll, listenerOptions);
+    document.addEventListener('touchmove', preventBackgroundScroll, listenerOptions);
+    document.addEventListener('pointermove', preventBackgroundScroll, listenerOptions);
+
+    return () => {
+      document.removeEventListener('wheel', preventBackgroundScroll, listenerOptions);
+      document.removeEventListener('touchmove', preventBackgroundScroll, listenerOptions);
+      document.removeEventListener('pointermove', preventBackgroundScroll, listenerOptions);
     };
   }, [open]);
 
@@ -266,6 +342,72 @@ export function ResponsiveActionSheet({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [closeOnEscape, open, requestClose]);
 
+  const handleDragPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    if (closeDisabled || !isMobileViewport() || isInteractiveDragTarget(event.target)) {
+      return;
+    }
+
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      lastY: event.clientY,
+      lastTime: event.timeStamp,
+      velocity: 0,
+    };
+    setDragging(true);
+    setDragOffset(0);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  }, [closeDisabled]);
+
+  const handleDragPointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaY = Math.max(0, event.clientY - dragState.startY);
+    const elapsed = Math.max(1, event.timeStamp - dragState.lastTime);
+    dragState.velocity = Math.max(0, (event.clientY - dragState.lastY) / elapsed);
+    dragState.lastY = event.clientY;
+    dragState.lastTime = event.timeStamp;
+    setDragOffset(deltaY);
+    event.preventDefault();
+  }, []);
+
+  const handleDragPointerEnd = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    const deltaY = Math.max(0, event.clientY - dragState.startY);
+    const panelHeight = panelRef.current?.offsetHeight ?? 0;
+    const passedDistanceThreshold = deltaY >= Math.max(96, panelHeight * 0.24);
+    const passedVelocityThreshold = deltaY >= 32 && dragState.velocity >= 0.55;
+
+    resetDrag();
+
+    if (!closeDisabled && (passedDistanceThreshold || passedVelocityThreshold)) {
+      requestClose();
+    }
+  }, [closeDisabled, requestClose, resetDrag]);
+
+  const handleDragPointerCancel = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    resetDrag();
+  }, [resetDrag]);
+
   if (!open) return null;
 
   const desktopPlacement = desktopMode === 'panel'
@@ -278,17 +420,17 @@ export function ResponsiveActionSheet({
   const bodySafeAreaClass = footer ? '' : 'pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-4';
 
   const sheet = (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 h-dvh min-h-dvh w-screen w-dvw max-w-none overflow-hidden">
       <button
         type="button"
         aria-label={allowBackdropClose ? 'Close action surface' : 'Action surface backdrop'}
-        className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 h-full w-full touch-none bg-black/60 backdrop-blur-sm"
         onClick={allowBackdropClose ? requestClose : undefined}
         disabled={!allowBackdropClose}
         tabIndex={-1}
       />
 
-      <div className={`pointer-events-none relative flex min-h-[100dvh] w-full items-end justify-center ${desktopPlacement}`}>
+      <div className={`pointer-events-none fixed inset-x-0 bottom-0 flex w-screen w-dvw max-w-none items-end md:inset-0 ${desktopPlacement}`}>
         <div
           ref={panelRef}
           role="dialog"
@@ -298,15 +440,25 @@ export function ResponsiveActionSheet({
           tabIndex={-1}
           data-action-surface-state={state}
           className={[
-            'theme-dropdown pointer-events-auto fixed inset-x-0 bottom-0 flex max-h-[92dvh] w-screen max-w-none min-w-0 flex-col overflow-hidden rounded-t-3xl rounded-b-none outline-none shadow-2xl md:relative md:inset-auto md:w-full',
+            'theme-dropdown pointer-events-auto mx-0 flex max-h-[92dvh] w-screen w-dvw max-w-none min-w-0 flex-col overflow-hidden rounded-t-3xl rounded-b-none outline-none shadow-2xl transition-transform duration-200 ease-out md:w-full md:transition-none',
             sizeClasses[size],
             desktopShape,
             stateRingClasses[state],
             panelClassName,
           ].join(' ')}
+          style={{
+            transform: dragOffset > 0 ? `translate3d(0, ${dragOffset}px, 0)` : undefined,
+            transition: dragging ? 'none' : undefined,
+          }}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="shrink-0 border-b theme-border px-5 pb-4 pt-3 md:px-6 md:pt-5">
+          <div
+            className="shrink-0 touch-none border-b theme-border px-5 pb-4 pt-3 md:px-6 md:pt-5"
+            onPointerDown={handleDragPointerDown}
+            onPointerMove={handleDragPointerMove}
+            onPointerUp={handleDragPointerEnd}
+            onPointerCancel={handleDragPointerCancel}
+          >
             <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[color:var(--color-border-strong)] md:hidden" />
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -331,7 +483,11 @@ export function ResponsiveActionSheet({
             </div>
           </div>
 
-          <div className={`min-h-0 flex-1 overflow-x-auto overflow-y-auto px-5 py-4 md:px-6 ${bodySafeAreaClass} ${bodyClassName}`}>
+          <div
+            ref={bodyRef}
+            className={`min-h-0 flex-1 overscroll-contain overflow-x-auto overflow-y-auto px-5 py-4 md:px-6 ${bodySafeAreaClass} ${bodyClassName}`}
+            style={{ touchAction: 'pan-x pan-y' }}
+          >
             {children}
           </div>
 
