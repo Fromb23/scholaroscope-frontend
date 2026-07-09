@@ -7,11 +7,11 @@
 // Clicking any row navigates to /admin/instructors/[id]/progress.
 // ============================================================================
 
-import { useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-    Users, Plus, GraduationCap, CheckCircle,
+    Users, Plus, GraduationCap,
     UserCheck, UserX, BookOpen, LayoutGrid, List, Mail, Phone,
 } from 'lucide-react';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
@@ -34,6 +34,7 @@ import { Input } from '@/app/components/ui/Input';
 import { UserCreatePayload } from '@/app/core/types/globalUsers';
 import { AppError, getAppError, resolveAppError } from '@/app/core/errors';
 import { InlineActionError, RecoverableErrorCard } from '@/app/components/ui/errors';
+import { ActionStateBanner } from '@/app/components/ui/actions';
 import { useAuth } from '@/app/context/AuthContext';
 import { canRenderInstitutionReportOverview } from '@/app/core/components/reports/reportAccessPolicy';
 import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
@@ -95,13 +96,34 @@ function CreateInstructorModal({
     const [form, setForm] = useState<CreateForm>(EMPTY_CREATE);
     const [errors, setErrors] = useState<Partial<CreateForm>>({});
     const [apiError, setApiError] = useState<AppError | null>(null);
+    const [createSuccess, setCreateSuccess] = useState<string | null>(null);
     const [showPw, setShowPw] = useState(false);
 
     const set = (f: keyof CreateForm, v: string) => {
         setForm(p => ({ ...p, [f]: v }));
         if (errors[f]) setErrors(p => ({ ...p, [f]: '' }));
         if (apiError?.fieldErrors?.[f]) setApiError(null);
+        if (createSuccess) setCreateSuccess(null);
     };
+
+    const resetLocalState = useCallback(() => {
+        setForm(EMPTY_CREATE);
+        setErrors({});
+        setApiError(null);
+        setCreateSuccess(null);
+        setShowPw(false);
+    }, []);
+
+    const handleClose = () => {
+        if (submitting) return;
+        onClose();
+    };
+
+    useEffect(() => {
+        if (!isOpen) {
+            resetLocalState();
+        }
+    }, [isOpen, resetLocalState]);
 
     const validate = () => {
         const e: Partial<CreateForm> = {};
@@ -118,6 +140,8 @@ function CreateInstructorModal({
 
     const handleSubmit = async () => {
         if (!validate()) return;
+        setApiError(null);
+        setCreateSuccess(null);
         try {
             await onSubmit({
                 email: form.email, first_name: form.first_name, last_name: form.last_name,
@@ -126,6 +150,8 @@ function CreateInstructorModal({
                 password: form.password, password2: form.password2,
             });
             setForm(EMPTY_CREATE);
+            setErrors({});
+            setCreateSuccess('Instructor created successfully.');
         } catch (err: unknown) {
             const appError = getAppError(err) ?? resolveAppError(err, {
                 domain: 'instructors',
@@ -148,9 +174,40 @@ function CreateInstructorModal({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Instructor" size="lg">
+        <Modal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title="Add Instructor"
+            size="lg"
+            closeDisabled={submitting}
+            closeOnBackdrop={false}
+            footer={
+                createSuccess ? (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <Button variant="primary" onClick={handleClose}>
+                            Done
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <Button variant="secondary" onClick={handleClose} disabled={submitting}>Cancel</Button>
+                        <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
+                            {submitting ? 'Creating...' : 'Create Instructor'}
+                        </Button>
+                    </div>
+                )
+            }
+        >
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                {createSuccess ? (
+                    <ActionStateBanner
+                        variant="success"
+                        title="Instructor created"
+                        message={createSuccess}
+                    />
+                ) : null}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Input label="First Name *" value={form.first_name}
                         onChange={e => set('first_name', e.target.value)} error={errors.first_name} />
                     <Input label="Last Name *" value={form.last_name}
@@ -160,7 +217,7 @@ function CreateInstructorModal({
                     onChange={e => set('email', e.target.value)} error={errors.email} />
                 <Input label="Phone (optional)" value={form.phone}
                     onChange={e => set('phone', e.target.value)} placeholder="+254 700 000 000" />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="relative">
                         <Input label="Password *" type={showPw ? 'text' : 'password'} value={form.password}
                             onChange={e => set('password', e.target.value)} error={errors.password} />
@@ -179,13 +236,6 @@ function CreateInstructorModal({
                         onDismiss={() => setApiError(null)}
                     />
                 )}
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                    <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
-                    <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
-                        {submitting ? 'Creating...' : 'Create Instructor'}
-                    </Button>
-                </div>
             </div>
         </Modal>
     );
@@ -266,13 +316,6 @@ export function InstructorManagementPage() {
     const [viewMode, setViewMode] = useState<ViewMode>('table');
     const [createOpen, setCreateOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [actionError, setActionError] = useState<AppError | null>(null);
-    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-
-    const flash = (msg: string) => {
-        setActionSuccess(msg);
-        setTimeout(() => setActionSuccess(null), 3000);
-    };
 
     const filtered = useMemo(() => {
         return instructors.filter(i => {
@@ -344,11 +387,9 @@ export function InstructorManagementPage() {
     };
 
     const handleCreate = async (data: UserCreatePayload) => {
-        setSubmitting(true); setActionError(null);
+        setSubmitting(true);
         try {
             await createInstructor(data);
-            setCreateOpen(false);
-            flash('Instructor created successfully');
         } catch (err: unknown) {
             throw err;
         } finally {
@@ -463,7 +504,7 @@ export function InstructorManagementPage() {
                         {instructors.length} instructor{instructors.length !== 1 ? 's' : ''} — click any row to view details and manage
                     </p>
                 </div>
-                <Button variant="primary" onClick={() => { setActionError(null); setCreateOpen(true); }} className="gap-2">
+                <Button variant="primary" onClick={() => { setCreateOpen(true); }} className="gap-2">
                     <Plus className="h-4 w-4" />Add Instructor
                 </Button>
             </div>
@@ -487,19 +528,6 @@ export function InstructorManagementPage() {
                         ) : null}
                     </div>
                 </Card>
-            )}
-
-            {/* Feedback */}
-            {actionError && (
-                <InlineActionError
-                    error={actionError}
-                    onDismiss={() => setActionError(null)}
-                />
-            )}
-            {actionSuccess && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                    <CheckCircle className="h-4 w-4 shrink-0" />{actionSuccess}
-                </div>
             )}
 
             {/* Filter + view toggle */}

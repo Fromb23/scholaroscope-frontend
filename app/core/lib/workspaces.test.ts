@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canCreateTeachingRecord,
+  canManageReportPolicyAuthoring,
   canManageWorkspaceUsers,
   canShowFreelanceTeachingWorkspace,
   canShowInstitutionGovernance,
   canShowStaffManagement,
   canShowAdminMyTeaching,
   canUseTeachingMode,
+  getReportPolicyAuthoringMode,
   isSelfManagedTeachingWorkspace,
   isSupervisionOnlyAdmin,
   normalizeRegisterOrgType,
@@ -15,6 +17,33 @@ import {
   WORKSPACE_MODE_COPY,
   workspaceAllowsSelfManagedTeaching,
 } from './workspaces';
+
+const policyUser = {
+  id: 1,
+  email: 'teacher@example.test',
+  first_name: 'Test',
+  last_name: 'Teacher',
+  full_name: 'Test Teacher',
+  is_superadmin: false,
+  is_active: true,
+  phone: '',
+  date_joined: '2026-01-01T00:00:00Z',
+  last_login: '2026-01-01T00:00:00Z',
+};
+
+const basePolicyCapabilities = {
+  can_teach: true,
+  can_manage_academic_setup: true,
+  can_manage_learners: true,
+  can_manage_cohorts: true,
+  can_manage_subjects: true,
+  can_manage_assessments: true,
+  can_view_reports: true,
+  can_manage_staff: false,
+  is_workspace_owner: true,
+  workspace_mode: 'FREELANCE_TEACHER',
+  workspace_behavior: 'FREELANCE_TEACHER',
+};
 
 describe('workspace teaching capabilities', () => {
   it('treats institution admins as supervision-only', () => {
@@ -191,5 +220,78 @@ describe('workspace teaching capabilities', () => {
 
   it('does not offer independent teacher as a new organization type option', () => {
     expect(ORG_TYPE_OPTIONS.map((option) => option.value)).not.toContain('INDEPENDENT_TEACHER');
+  });
+});
+
+describe('workspace report-policy capabilities', () => {
+  it('derives report authoring mode from report configuration', () => {
+    expect(getReportPolicyAuthoringMode({
+      ...basePolicyCapabilities,
+      report_policy_mode: 'INSTITUTION_GOVERNANCE',
+      report_configuration: {
+        report_policy_available: true,
+        report_policy_mode: 'CLASS_CONFIGURATION',
+        report_computation_available: true,
+        report_computation_class_scoped_only: true,
+        subject_profile_authoring_allowed: false,
+        reporting_governance_routes_allowed: false,
+        allowed_policy_scopes: ['WORKSPACE_DEFAULT'],
+      },
+    })).toBe('CLASS_CONFIGURATION');
+
+    expect(getReportPolicyAuthoringMode({
+      ...basePolicyCapabilities,
+      report_policy_mode: 'INSTITUTION_GOVERNANCE',
+    })).toBe('INSTITUTION_GOVERNANCE');
+  });
+
+  it('does not treat raw admin-style workspace access as policy authoring permission', () => {
+    expect(canManageReportPolicyAuthoring({
+      user: policyUser,
+      capabilities: basePolicyCapabilities,
+      authoringMode: 'INSTITUTION_GOVERNANCE',
+    })).toBe(false);
+  });
+
+  it('allows class-configuration policy setup only for class-configuration workspaces', () => {
+    expect(canManageReportPolicyAuthoring({
+      user: policyUser,
+      capabilities: {
+        ...basePolicyCapabilities,
+        can_manage_report_policy: true,
+        report_policy_mode: 'CLASS_CONFIGURATION',
+        report_configuration: {
+          report_policy_available: true,
+          report_policy_mode: 'CLASS_CONFIGURATION',
+          report_computation_available: true,
+          report_computation_class_scoped_only: true,
+          subject_profile_authoring_allowed: false,
+          reporting_governance_routes_allowed: false,
+          allowed_policy_scopes: ['WORKSPACE_DEFAULT', 'COHORT', 'COHORT_SUBJECT'],
+        },
+      },
+      authoringMode: 'CLASS_CONFIGURATION',
+    })).toBe(true);
+  });
+
+  it('allows institution policy governance only with governance-route capability', () => {
+    expect(canManageReportPolicyAuthoring({
+      user: policyUser,
+      capabilities: {
+        ...basePolicyCapabilities,
+        can_manage_report_policy: true,
+        report_policy_mode: 'INSTITUTION_GOVERNANCE',
+        report_configuration: {
+          report_policy_available: true,
+          report_policy_mode: 'INSTITUTION_GOVERNANCE',
+          report_computation_available: true,
+          report_computation_class_scoped_only: false,
+          subject_profile_authoring_allowed: true,
+          reporting_governance_routes_allowed: true,
+          allowed_policy_scopes: ['WORKSPACE_DEFAULT', 'SUBJECT_PROFILE'],
+        },
+      },
+      authoringMode: 'INSTITUTION_GOVERNANCE',
+    })).toBe(true);
   });
 });

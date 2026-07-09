@@ -166,6 +166,63 @@ export interface TeachingCapabilityParams {
   capabilities?: WorkspaceCapabilities | null;
 }
 
+export type ReportPolicyAuthoringMode =
+  | 'CLASS_SUBJECT_SETUP'
+  | 'CLASS_SETUP'
+  | 'CLASS_CONFIGURATION'
+  | 'WORKSPACE_POLICY'
+  | 'INSTITUTION_GOVERNANCE';
+
+export function getReportPolicyAuthoringMode(
+  capabilities?: WorkspaceCapabilities | null,
+): Extract<ReportPolicyAuthoringMode, 'CLASS_CONFIGURATION' | 'INSTITUTION_GOVERNANCE'> {
+  const reportPolicyMode = capabilities?.report_configuration?.report_policy_mode
+    ?? capabilities?.report_policy_mode
+    ?? null;
+
+  return reportPolicyMode === 'CLASS_CONFIGURATION'
+    ? 'CLASS_CONFIGURATION'
+    : 'INSTITUTION_GOVERNANCE';
+}
+
+export function canManageReportPolicyAuthoring(params: {
+  user?: User | null;
+  capabilities?: WorkspaceCapabilities | null;
+  authoringMode: ReportPolicyAuthoringMode;
+}): boolean {
+  const { user, capabilities, authoringMode } = params;
+  if (!user) {
+    return false;
+  }
+  if (user.is_superadmin) {
+    return true;
+  }
+
+  const reportConfiguration = capabilities?.report_configuration;
+  const reportPolicyAvailable = Boolean(
+    reportConfiguration?.report_policy_available
+    ?? capabilities?.can_manage_report_policy
+  );
+  const reportPolicyMode = (
+    reportConfiguration?.report_policy_mode
+    ?? capabilities?.report_policy_mode
+    ?? null
+  );
+
+  if (!reportPolicyAvailable) {
+    return false;
+  }
+
+  if (authoringMode === 'INSTITUTION_GOVERNANCE') {
+    return Boolean(
+      reportPolicyMode === 'INSTITUTION_GOVERNANCE'
+      && reportConfiguration?.reporting_governance_routes_allowed
+    );
+  }
+
+  return reportPolicyMode === 'CLASS_CONFIGURATION';
+}
+
 export function canUseTeachingMode({
   role,
   orgType,

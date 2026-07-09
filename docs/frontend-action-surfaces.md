@@ -25,20 +25,27 @@ Use `ResponsiveActionSheet` for foreground actions that need mobile bottom-sheet
 - `ActionStateBanner` for info, warning, blocked, loading, success, and error messages.
 - `ActionProgress` for long-running jobs.
 
-Foreground action errors are persistent by default with `ActionStateBanner`. Avoid `autoDismissMs` for blocking form or action errors. When an action is actively saving or computing, pass `closeDisabled` or an equivalent local guard so backdrop, escape, and close buttons cannot drop the foreground state accidentally.
+Foreground action errors are persistent by default with `ActionStateBanner`. Avoid `autoDismissMs` for blocking form or action errors. Action success also stays inside the foreground sheet until the user closes it or intentionally starts/resets another action. Background pages may refresh silently, but they should not be the first place a create, update, reset, compute, prepare, or assignment success appears.
+
+When an action is actively saving, computing, or preparing, pass `closeDisabled` or an equivalent local guard so escape and close buttons cannot drop the foreground state accidentally. Backdrop dismissal is opt-in only; active action surfaces should be closed through X, Cancel, Close, Done, or an explicit action button.
 
 ## Mobile Behavior
 
 On mobile, `ResponsiveActionSheet` renders as a bottom sheet with:
 
+- Portal mounting to `document.body` so parent layout and stacking contexts cannot constrain the sheet.
 - Dimmed scrim.
+- Inactive, inert-feeling background with body/document scroll locked and restored on close.
+- Full viewport width; the sheet touches the left and right screen edges.
 - Rounded top corners.
-- Drag handle.
-- Internal scroll.
+- Drag handle with downward drag-to-dismiss when closing is allowed.
+- Background wheel/touch/pointer scroll blocked outside the sheet body.
+- Internal vertical scroll.
+- Preserved internal horizontal overflow for wide/content-heavy sheets.
 - Sticky footer.
-- Body scroll lock.
 
 On desktop, the same component renders as a centered modal by default, or as a panel with `desktopMode="panel"`.
+`ActionMenu` keeps its desktop dropdown behavior and renders the same actions in a mobile `ResponsiveActionSheet`.
 
 ## Current Examples
 

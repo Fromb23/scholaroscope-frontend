@@ -13,6 +13,7 @@ export type CbcRoundingMode = 'ROUND_HALF_UP' | 'ROUND_DOWN' | 'ROUND_UP';
 export type PolicyAuthoringMode =
     | 'CLASS_SUBJECT_SETUP'
     | 'CLASS_SETUP'
+    | 'CLASS_CONFIGURATION'
     | 'WORKSPACE_POLICY'
     | 'INSTITUTION_GOVERNANCE';
 export type CbcClassReportPolicyScope =
