@@ -21,6 +21,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Input } from '@/app/components/ui/Input';
 import Modal from '@/app/components/ui/Modal';
 import type { ProfileData } from '@/app/core/hooks/useProfile';
+import { useConfirmAction } from '@/app/core/hooks/useConfirmAction';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -590,7 +591,11 @@ interface DeletionModalProps {
 
 export function DeletionRequestModal({ isOpen, onClose, type, orgName, onConfirm }: DeletionModalProps) {
     const [reason, setReason] = useState('');
-    const [confirmed, setConfirmed] = useState(false);
+    const {
+        isOpen: confirmed,
+        requestConfirm: confirmDeletionAcknowledgement,
+        cancel: resetDeletionAcknowledgement,
+    } = useConfirmAction();
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -614,7 +619,7 @@ export function DeletionRequestModal({ isOpen, onClose, type, orgName, onConfirm
 
     const handleClose = () => {
         setReason('');
-        setConfirmed(false);
+        resetDeletionAcknowledgement();
         setApiError(null);
         setSuccess(false);
         onClose();
@@ -674,7 +679,13 @@ export function DeletionRequestModal({ isOpen, onClose, type, orgName, onConfirm
                         <input
                             type="checkbox"
                             checked={confirmed}
-                            onChange={e => setConfirmed(e.target.checked)}
+                            onChange={e => {
+                                if (e.target.checked) {
+                                    confirmDeletionAcknowledgement(true);
+                                } else {
+                                    resetDeletionAcknowledgement();
+                                }
+                            }}
                             className="mt-0.5 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                         <span className="text-sm text-gray-700">

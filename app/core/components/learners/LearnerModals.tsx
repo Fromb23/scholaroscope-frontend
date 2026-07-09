@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
+import { useTypeToConfirm } from '@/app/core/hooks/useTypeToConfirm';
 import {
     LearnerDeleteEligibility,
     StudentCohortEnrollment,
@@ -426,13 +427,18 @@ export function DeleteStudentModal({
     const [eligibility, setEligibility] = useState<LearnerDeleteEligibility | null>(null);
     const [checking, setChecking] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [confirmation, setConfirmation] = useState('');
+    const {
+        input: confirmation,
+        setInput: setConfirmation,
+        isConfirmed,
+        reset: resetConfirmation,
+    } = useTypeToConfirm('DELETE');
 
     useEffect(() => {
         if (!isOpen) {
             setEligibility(null);
             setError(null);
-            setConfirmation('');
+            resetConfirmation();
             return;
         }
 
@@ -459,7 +465,7 @@ export function DeleteStudentModal({
         return () => {
             cancelled = true;
         };
-    }, [isOpen, onCheckEligibility]);
+    }, [isOpen, onCheckEligibility, resetConfirmation]);
 
     const blockerEntries = Object.entries(eligibility?.blockers ?? {});
     const hardDeleteAllowed = Boolean(eligibility?.allowed);
@@ -542,7 +548,7 @@ export function DeleteStudentModal({
                             <Button
                                 variant="danger"
                                 onClick={handleConfirm}
-                                disabled={loading || checking || confirmation !== 'DELETE'}
+                                disabled={loading || checking || !isConfirmed}
                             >
                                 {loading ? 'Deleting...' : 'Permanently Delete'}
                             </Button>
