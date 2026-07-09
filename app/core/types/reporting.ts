@@ -782,6 +782,63 @@ export interface ComputeResponse {
   term?: string;
 }
 
+export interface ReportComputeTerm {
+  id: number;
+  name: string;
+  status: string;
+  is_frozen: boolean;
+}
+
+export interface ReportComputeEngineReadiness {
+  key: string;
+  engine: string;
+  label: string;
+  status: string;
+  blocked: boolean;
+  ready: boolean;
+  message: string;
+  context?: {
+    missing_count?: number;
+    conflict_count?: number;
+    inactive_count?: number;
+    coverage?: unknown;
+    missing_policy_rows?: unknown[];
+    [key: string]: unknown;
+  };
+}
+
+export interface ReportComputeReadiness {
+  term: ReportComputeTerm;
+  engines: ReportComputeEngineReadiness[];
+  blocked: boolean;
+  ready: boolean;
+  status: string;
+  message: string;
+}
+
+export interface ReportComputeEngineResult {
+  engine: string;
+  computed_count: number;
+  skipped_count?: number;
+}
+
+export interface ReportComputeResult {
+  detail: string;
+  term: ReportComputeTerm;
+  engines: ReportComputeEngineReadiness[];
+  engine_results: ReportComputeEngineResult[];
+  computed_count: number;
+  summary_count: number;
+  summaries?: {
+    source: string;
+    summary_count: number;
+    subject_summary_count?: number;
+    assessment_type_summary_count?: number;
+    cohort_summary_count?: number;
+  };
+  readiness: ReportComputeReadiness;
+}
+
 export interface ReportFilters {
   student?: number;
   term?: number;

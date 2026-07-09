@@ -7,6 +7,8 @@ export interface AcademicPolicyOrigin {
 }
 
 export interface AcademicPolicyBrief {
+    policy_ready?: boolean;
+    engine?: string | null;
     policy_id?: number | null;
     policy_name?: string | null;
     term?: { id: number; name: string } | string | null;
@@ -14,6 +16,9 @@ export interface AcademicPolicyBrief {
     policy_origin?: AcademicPolicyOrigin | null;
     resolution_path?: string[];
     allowed_assessment_types?: string[];
+    assessment_components?: AcademicPolicyAssessmentComponent[];
+    available_assessment_components?: AcademicPolicyAssessmentComponent[];
+    completed_components?: string[];
     required_components?: string[];
     optional_components?: string[];
     include_assignments?: boolean;
@@ -29,5 +34,18 @@ export interface AcademicPolicyBrief {
     updated_by?: string | null;
     task_type?: string;
     reporting_mode?: 'counts' | 'practice_only' | string;
+    blocked_reason?: string | null;
     message?: string | null;
+}
+
+export interface AcademicPolicyAssessmentComponent {
+    component_key: string;
+    key?: string;
+    label: string;
+    assessment_type: string;
+    default_name?: string;
+    weight?: number;
+    required?: boolean;
+    max_count?: number;
+    sequence?: number;
 }

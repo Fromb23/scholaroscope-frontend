@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { resolveAssignmentError, type AppError } from '@/app/core/errors';
@@ -24,6 +26,7 @@ import { useCreateAssignment, useUpdateAssignment } from '@/app/core/hooks/useAs
 import { useRubricScales } from '@/app/core/hooks/useAssessments';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { assignmentsAPI } from '@/app/core/api/assignments';
+import { useAuth } from '@/app/context/AuthContext';
 import type { CohortSubject } from '@/app/core/types/academic';
 import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import type {
@@ -168,6 +171,9 @@ export function AssignmentCreateModal({
     mode = 'full',
     onSaved,
 }: AssignmentCreateModalProps) {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const { user, activeRole } = useAuth();
     const createMutation = useCreateAssignment();
     const updateMutation = useUpdateAssignment(assignment?.cohort_subject ?? null);
     const { rubricScales, loading: rubricScalesLoading } = useRubricScales(
@@ -197,6 +203,12 @@ export function AssignmentCreateModal({
     const isLessonPreparationMode = mode === 'lesson_preparation';
     const isQuickFollowUpMode = mode === 'quick_follow_up';
     const isFullMode = mode === 'full';
+    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const policySetupHref = useMemo(() => {
+        const query = searchParams.toString();
+        const returnTo = query ? `${pathname}?${query}` : pathname;
+        return `/reports/policies/cbc?returnTo=${encodeURIComponent(returnTo)}`;
+    }, [pathname, searchParams]);
 
     const sortedSubjects = useMemo(() => (
         [...cohortSubjects].sort((left, right) => left.subject_name.localeCompare(right.subject_name))
@@ -336,20 +348,36 @@ export function AssignmentCreateModal({
         }).then((guidance) => {
             if (!cancelled) {
                 setPolicyGuidance(guidance);
+                if (guidance.policy_ready === false) {
+                    setPolicyGuidanceCode(guidance.blocked_reason ?? 'policy_required');
+                    setPolicyGuidanceError(
+                        isAdminLike
+                            ? guidance.message ?? 'No effective report policy exists for this subject and term.'
+                            : 'Assignment creation is unavailable for this term because your school has not completed report policy setup. Contact your academic admin.',
+                    );
+                    return;
+                }
                 setPolicyGuidanceCode(undefined);
+                if (guidance.reporting_mode === 'practice_only' && reportCounting) {
+                    setReportCounting(false);
+                }
             }
         }).catch((error) => {
             if (cancelled) return;
             const resolved = resolveAssignmentError(error, {
                 action: 'load',
                 entityLabel: 'assignment policy guidance',
-                role: 'INSTRUCTOR',
+                role: isAdminLike ? 'ADMIN' : 'INSTRUCTOR',
             });
             setPolicyGuidance(null);
             setPolicyGuidanceCode(resolved.serverCode);
             setPolicyGuidanceError(
                 resolved.serverCode === 'policy_required'
-                    ? 'Create or activate a term policy before creating official assignments.'
+                    ? (
+                        isAdminLike
+                            ? 'No effective report policy exists for this subject and term.'
+                            : 'Assignment creation is unavailable for this term because your school has not completed report policy setup. Contact your academic admin.'
+                    )
                     : resolved.message,
             );
         }).finally(() => {
@@ -363,6 +391,7 @@ export function AssignmentCreateModal({
         };
     }, [
         cohortSubjectId,
+        isAdminLike,
         isCbcPolicyContext,
         isOpen,
         reportCounting,
@@ -460,6 +489,11 @@ export function AssignmentCreateModal({
             return;
         }
 
+        if (isCbcPolicyContext && reportCounting && !termId) {
+            setFormError(makeAssignmentValidationError('Select a term before creating an official report-counting assignment.'));
+            return;
+        }
+
         if (!title.trim()) {
             setFormError(makeAssignmentValidationError('Assignment title is required.'));
             return;
@@ -552,7 +586,7 @@ export function AssignmentCreateModal({
             setFormError(resolveAssignmentError(err, {
                 action: isEditMode ? 'update' : 'create',
                 entityLabel: isLessonPreparationMode ? 'learner task' : 'assignment',
-                role: 'INSTRUCTOR',
+                role: isAdminLike ? 'ADMIN' : 'INSTRUCTOR',
             }));
         }
     };
@@ -632,7 +666,8 @@ export function AssignmentCreateModal({
                         <input
                             type="checkbox"
                             checked={reportCounting}
-                            onChange={(event) => setReportCounting(event.target.checked)}
+                            onChange={(event) => setReportCounting(assignmentPracticeOnly ? false : event.target.checked)}
+                            disabled={assignmentPracticeOnly || policyGuidanceLoading}
                             className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                         <span>
@@ -659,6 +694,13 @@ export function AssignmentCreateModal({
                                 </p>
                                 {officialAssignmentBlocked ? (
                                     <p className="mt-1">Create this as practice only, or update the policy.</p>
+                                ) : null}
+                                {isAdminLike && policyGuidanceCode === 'policy_required' ? (
+                                    <Link href={policySetupHref} className="mt-3 inline-flex">
+                                        <Button type="button" variant="secondary" size="sm">
+                                            Open policy setup
+                                        </Button>
+                                    </Link>
                                 ) : null}
                             </>
                         ) : policyGuidance ? (

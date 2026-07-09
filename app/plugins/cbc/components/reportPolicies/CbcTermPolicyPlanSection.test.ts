@@ -34,6 +34,7 @@ describe('CbcTermPolicyPlanSection', () => {
     expect(component).toContain('Advanced details');
     expect(component).toContain('advancedOpen ?');
     expect(component).toContain('Resolution path');
-    expect(component).toContain('Selected policy ids');
+    expect(component).toContain('Selected policies');
+    expect(component).not.toContain('Selected policy ids');
   });
 });

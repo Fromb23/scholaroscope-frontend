@@ -33,6 +33,8 @@ import {
   TeacherPerformanceReflectionItem,
   TeacherPerformanceReportPayload,
   ComputeResponse,
+  ReportComputeReadiness,
+  ReportComputeResult,
   ReportExportFormat,
   ReportFilters,
 } from '@/app/core/types/reporting';
@@ -830,6 +832,20 @@ export const learnerReportingAPI = {
 };
 
 export const reportsAPI = {
+  getComputeReadiness: async (termId: number): Promise<ReportComputeReadiness> => {
+    const response = await apiClient.get<ReportComputeReadiness>(
+      '/reporting/reports/compute/readiness/',
+      { params: { term: termId } },
+    );
+    return response.data;
+  },
+  computeReports: async (termId: number): Promise<ReportComputeResult> => {
+    const response = await apiClient.post<ReportComputeResult>(
+      '/reporting/reports/compute/',
+      { term: termId },
+    );
+    return response.data;
+  },
   getAdminOverview: adminReportsAPI.getOverview,
   getAdminCohortSummary: adminReportsAPI.getCohortSummary,
   getAdminSubjectOverview: adminReportsAPI.getSubjectOverview,

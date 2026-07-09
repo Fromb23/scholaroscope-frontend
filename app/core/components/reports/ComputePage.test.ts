@@ -19,4 +19,24 @@ describe('report compute form validation', () => {
     expect(hookSource).toContain('Select a term before computing.');
     expect(hookSource).not.toContain('if (!selectedTerm) return;');
   });
+
+  it('uses one readiness-driven official compute action', () => {
+    const pageSource = readFileSync(
+      join(process.cwd(), 'app/core/components/reports/ComputePage.tsx'),
+      'utf8',
+    );
+    const hookSource = readFileSync(
+      join(process.cwd(), 'app/core/hooks/reports/useComputePage.ts'),
+      'utf8',
+    );
+
+    expect(pageSource).toContain('Compute Reports');
+    expect(pageSource).toContain('Readiness');
+    expect(pageSource).toContain('Manage CBC policies');
+    expect(pageSource).not.toContain('Policy-Based Grade Computation');
+    expect(pageSource).not.toContain('Compute All Summaries');
+    expect(pageSource).not.toContain('Summary Recomputation');
+    expect(hookSource).toContain('getComputeReadiness');
+    expect(hookSource).toContain('computeReports');
+  });
 });

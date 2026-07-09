@@ -504,6 +504,7 @@ interface AssessmentFormState {
   term: number | null;
   name: string;
   assessment_type: string;
+  report_component_key: string | null;
   evaluation_type: string;
   total_marks: number | null;
   rubric_scale: number | null;
@@ -532,6 +533,7 @@ export const useCreateAssessmentForm = (options?: {
     term: null,
     name: '',
     assessment_type: 'CAT',
+    report_component_key: null,
     evaluation_type: 'NUMERIC',
     total_marks: 100,
     rubric_scale: null,
@@ -543,7 +545,7 @@ export const useCreateAssessmentForm = (options?: {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const setField = <K extends keyof AssessmentFormState>(
+  const setField = useCallback(<K extends keyof AssessmentFormState>(
     field: K,
     value: AssessmentFormState[K]
   ) => {
@@ -555,16 +557,19 @@ export const useCreateAssessmentForm = (options?: {
       }
       return updated;
     });
-    if (field in errors) {
-      setErrors(prev => { const e = { ...prev }; delete e[field as keyof FormErrors]; return e; });
-    }
-  };
+    setErrors(prev => {
+      if (!(field in prev)) return prev;
+      const e = { ...prev };
+      delete e[field as keyof FormErrors];
+      return e;
+    });
+  }, []);
 
-  const selectCohort = (cohortId: number) => {
+  const selectCohort = useCallback((cohortId: number) => {
     setSelectedCohortId(cohortId);
     setForm(prev => ({ ...prev, cohort_subject: 0 }));
     setErrors(prev => { const e = { ...prev }; delete e.cohort; return e; });
-  };
+  }, []);
 
   const validate = (): boolean => {
     const e: FormErrors = {};

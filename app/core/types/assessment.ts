@@ -120,6 +120,7 @@ export interface Assessment {
   subject_profile_id: number | null;
   name: string;
   assessment_type: string;
+  report_component_key?: string | null;
   assessment_type_display: string;
   evaluation_type: string;
   evaluation_type_display: string;

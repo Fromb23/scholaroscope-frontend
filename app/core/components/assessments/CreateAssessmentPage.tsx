@@ -122,10 +122,22 @@ export function CreateAssessmentPage() {
         () => parsePositiveId(searchParams.get('cohort_subject')),
         [searchParams]
     );
+    const requestedTermId = useMemo(
+        () => parsePositiveId(searchParams.get('term')),
+        [searchParams]
+    );
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
         return value?.startsWith('/') ? value : null;
     }, [searchParams]);
+    const policySetupHref = useMemo(() => {
+        const returnTo = `/assessments/new?${new URLSearchParams({
+            ...(form.term ? { term: String(form.term) } : {}),
+            ...(form.cohort_subject ? { cohort_subject: String(form.cohort_subject) } : {}),
+            ...(safeReturnTo ? { returnTo: safeReturnTo } : {}),
+        }).toString()}`;
+        return `/reports/policies/cbc?returnTo=${encodeURIComponent(returnTo)}`;
+    }, [form.cohort_subject, form.term, safeReturnTo]);
     const policyTermName = typeof policyGuidance?.term === 'string'
         ? policyGuidance.term
         : policyGuidance?.term?.name ?? null;
@@ -204,21 +216,55 @@ export function CreateAssessmentPage() {
         () => policyGuidance?.allowed_assessment_types ?? [],
         [policyGuidance],
     );
+    const availableAssessmentComponents = useMemo(
+        () => policyGuidance?.available_assessment_components ?? [],
+        [policyGuidance],
+    );
+    const policyReady = policyGuidance?.policy_ready !== false && !policyGuidance?.blocked_reason;
+    const cbcComponentsExhausted = Boolean(
+        isCbcPolicyContext
+        && form.term
+        && form.cohort_subject
+        && policyReady
+        && policyGuidance
+        && availableAssessmentComponents.length === 0
+    );
     const assessmentTypeOptions = useMemo(() => {
+        if (isCbcPolicyContext && policyGuidance) {
+            return availableAssessmentComponents.map((component) => ({
+                value: component.component_key,
+                label: component.label,
+            }));
+        }
         if (!allowedAssessmentTypes.length) {
             return ASSESSMENT_TYPE_OPTIONS;
         }
 
         const allowed = new Set(allowedAssessmentTypes.map((type) => type.toUpperCase()));
         return ASSESSMENT_TYPE_OPTIONS.filter((option) => allowed.has(String(option.value).toUpperCase()));
-    }, [allowedAssessmentTypes]);
+    }, [allowedAssessmentTypes, availableAssessmentComponents, isCbcPolicyContext, policyGuidance]);
     const unsupportedAssessmentType = Boolean(
-        allowedAssessmentTypes.length
+        !isCbcPolicyContext
+        && allowedAssessmentTypes.length
         && form.assessment_type
         && !allowedAssessmentTypes
             .map((type) => type.toUpperCase())
             .includes(form.assessment_type.toUpperCase()),
     );
+
+    const selectedPolicyComponent = useMemo(() => (
+        availableAssessmentComponents.find((component) => component.component_key === form.report_component_key) ?? null
+    ), [availableAssessmentComponents, form.report_component_key]);
+
+    const selectPolicyComponent = (componentKey: string) => {
+        const component = availableAssessmentComponents.find((entry) => entry.component_key === componentKey);
+        if (!component) return;
+        setField('report_component_key', component.component_key);
+        setField('assessment_type', component.assessment_type);
+        if (!form.name.trim()) {
+            setField('name', component.default_name || component.label);
+        }
+    };
 
     useEffect(() => {
         if (!isCbcPolicyContext || !form.term || !form.cohort_subject) {
@@ -238,6 +284,27 @@ export function CreateAssessmentPage() {
         }).then((guidance) => {
             if (cancelled) return;
             setPolicyGuidance(guidance);
+            if (guidance.policy_ready === false) {
+                setPolicyGuidanceError(
+                    isTeachingActor
+                        ? 'Assessment creation is unavailable for this term because your school has not completed report policy setup for this subject. Contact your academic admin.'
+                        : guidance.message ?? 'No effective report policy exists for this subject and term.',
+                );
+                return;
+            }
+            const selectedStillAvailable = guidance.available_assessment_components?.some(
+                (component) => component.component_key === form.report_component_key,
+            );
+            const nextComponent = guidance.available_assessment_components?.[0];
+            if (nextComponent && (!form.report_component_key || !selectedStillAvailable)) {
+                setField('report_component_key', nextComponent.component_key);
+                setField('assessment_type', nextComponent.assessment_type);
+                if (!form.name.trim()) {
+                    setField('name', nextComponent.default_name || nextComponent.label);
+                }
+            } else if (!nextComponent) {
+                setField('report_component_key', null);
+            }
         }).catch((error) => {
             if (cancelled) return;
             const resolved = resolveReportError(error, {
@@ -248,7 +315,11 @@ export function CreateAssessmentPage() {
             setPolicyGuidance(null);
             setPolicyGuidanceError(
                 resolved.serverCode === 'policy_required'
-                    ? 'Create or activate a term policy before creating official assessments.'
+                    ? (
+                        isTeachingActor
+                            ? 'Assessment creation is unavailable for this term because your school has not completed report policy setup for this subject. Contact your academic admin.'
+                            : 'No effective report policy exists for this subject and term.'
+                    )
                     : resolved.message,
             );
         }).finally(() => {
@@ -262,9 +333,12 @@ export function CreateAssessmentPage() {
         };
     }, [
         form.cohort_subject,
+        form.name,
+        form.report_component_key,
         form.term,
         isCbcPolicyContext,
         isTeachingActor,
+        setField,
     ]);
 
     useEffect(() => {
@@ -316,6 +390,13 @@ export function CreateAssessmentPage() {
         selectedCohortId,
     ]);
 
+    useEffect(() => {
+        if (requestedTermId && form.term !== requestedTermId) {
+            setField('term', requestedTermId);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requestedTermId, form.term]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isSelectedCurriculumWritable) {
@@ -325,6 +406,12 @@ export function CreateAssessmentPage() {
             return;
         }
         if (unsupportedAssessmentType) {
+            return;
+        }
+        if (isCbcPolicyContext && form.term && form.cohort_subject && (!policyReady || cbcComponentsExhausted)) {
+            return;
+        }
+        if (isCbcPolicyContext && !form.term) {
             return;
         }
         const result = await submit();
@@ -466,18 +553,37 @@ export function CreateAssessmentPage() {
                             </div>
 
                             <Select
-                                label="Assessment Type"
-                                value={unsupportedAssessmentType ? '' : form.assessment_type}
-                                onChange={e => setField('assessment_type', e.target.value)}
+                                label={isCbcPolicyContext ? 'Assessment Component' : 'Assessment Type'}
+                                value={
+                                    isCbcPolicyContext
+                                        ? (form.report_component_key ?? '')
+                                        : (unsupportedAssessmentType ? '' : form.assessment_type)
+                                }
+                                onChange={e => (
+                                    isCbcPolicyContext
+                                        ? selectPolicyComponent(e.target.value)
+                                        : setField('assessment_type', e.target.value)
+                                )}
                                 required
-                                disabled={policyGuidanceLoading || Boolean(policyGuidanceError)}
+                                disabled={
+                                    policyGuidanceLoading
+                                    || Boolean(policyGuidanceError)
+                                    || cbcComponentsExhausted
+                                }
                                 options={[
-                                    ...(allowedAssessmentTypes.length
-                                        ? [{ value: '', label: 'Select policy allowed type', disabled: true }]
-                                        : []),
+                                    ...(isCbcPolicyContext
+                                        ? [{ value: '', label: 'Select policy component', disabled: true }]
+                                        : allowedAssessmentTypes.length
+                                            ? [{ value: '', label: 'Select policy allowed type', disabled: true }]
+                                            : []),
                                     ...assessmentTypeOptions,
                                 ]}
                             />
+                            {selectedPolicyComponent ? (
+                                <p className="text-xs text-gray-500">
+                                    Uses internal type {selectedPolicyComponent.assessment_type}.
+                                </p>
+                            ) : null}
                             {unsupportedAssessmentType ? (
                                 <p className="text-sm text-red-600">
                                     This term policy allows {allowedAssessmentTypes.join(', ')} only.
@@ -486,19 +592,27 @@ export function CreateAssessmentPage() {
 
                             <div>
                                 <Select
-                                    label="Term (Optional)"
+                                    label={isCbcPolicyContext ? 'Term' : 'Term (Optional)'}
                                     value={form.term?.toString() ?? ''}
                                     onChange={e => setField('term', e.target.value ? Number(e.target.value) : null)}
                                     disabled={!form.cohort_subject}
                                     options={[
-                                        { value: '', label: 'No Term (Year-round)' },
+                                        {
+                                            value: '',
+                                            label: isCbcPolicyContext ? 'Select Term' : 'No Term (Year-round)',
+                                            disabled: isCbcPolicyContext,
+                                        },
                                         ...terms.map((term) => ({
                                             value: String(term.id),
                                             label: `${term.academic_year_name} — ${term.name}`,
                                         })),
                                     ]}
                                 />
-                                <p className="mt-1 text-xs text-gray-500">Optional for year-round assessment flows.</p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    {isCbcPolicyContext
+                                        ? 'Required for official CBC assessment.'
+                                        : 'Optional for year-round assessment flows.'}
+                                </p>
                             </div>
 
                             {isCbcPolicyContext && form.term && form.cohort_subject ? (
@@ -508,17 +622,13 @@ export function CreateAssessmentPage() {
                                             <p className="font-medium">
                                                 {policyGuidanceError}
                                             </p>
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                <Link href="/reports/policies/cbc">
-                                                    <Button type="button" variant="secondary" size="sm">Create policy</Button>
-                                                </Link>
-                                                <Link href="/reports/policies/cbc">
-                                                    <Button type="button" variant="secondary" size="sm">Reuse previous term policy</Button>
-                                                </Link>
-                                                <Link href="/reports/policies/cbc">
-                                                    <Button type="button" variant="secondary" size="sm">Open term report setup</Button>
-                                                </Link>
-                                            </div>
+                                            {isAdminLike ? (
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    <Link href={policySetupHref}>
+                                                        <Button type="button" variant="secondary" size="sm">Open policy setup</Button>
+                                                    </Link>
+                                                </div>
+                                            ) : null}
                                         </div>
                                     ) : policyGuidance ? (
                                         <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
@@ -534,6 +644,11 @@ export function CreateAssessmentPage() {
                                             <p>
                                                 Assignments: {policyGuidance.assignment_inclusion === 'practice_only' ? 'practice only' : 'count in reports'}
                                             </p>
+                                            {cbcComponentsExhausted ? (
+                                                <p className="mt-2 font-medium text-amber-800">
+                                                    All required policy components have already been created for this subject and term.
+                                                </p>
+                                            ) : null}
                                             {policyGuidance.updated_by || policyGuidance.last_updated ? (
                                                 <p className="mt-1 text-xs text-green-700">
                                                     Updated by {policyGuidance.updated_by ?? 'admin'}{policyGuidance.last_updated ? ` on ${new Date(policyGuidance.last_updated).toLocaleDateString()}` : ''}.
@@ -700,7 +815,9 @@ export function CreateAssessmentPage() {
                             saving
                             || (!isAdminLike && !isTeachingActor)
                             || !isSelectedCurriculumWritable
+                            || (isCbcPolicyContext && !form.term)
                             || (isCbcPolicyContext && form.term && form.cohort_subject && (policyGuidanceLoading || Boolean(policyGuidanceError)))
+                            || (isCbcPolicyContext && form.term && form.cohort_subject && (!policyReady || cbcComponentsExhausted))
                             || unsupportedAssessmentType
                         }
                     >

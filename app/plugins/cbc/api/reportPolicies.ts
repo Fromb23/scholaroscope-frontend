@@ -4,6 +4,7 @@ import type {
     CbcAssessmentReportResult,
     CbcAssessmentReportResultFilters,
     CbcReportPolicy,
+    CbcReportPolicyApplyScopePayload,
     CbcReportPolicyFilters,
     CbcReportPolicyPayload,
     CbcTermPolicyCoverage,
@@ -65,6 +66,17 @@ export const cbcReportPolicyAPI = {
     ): Promise<CbcReportPolicy> => {
         const { data } = await apiClient.post<CbcReportPolicy>(
             `/cbc/report-policies/${id}/reuse-for-term/`,
+            payload,
+        );
+        return data;
+    },
+
+    applyToScope: async (
+        id: number,
+        payload: CbcReportPolicyApplyScopePayload,
+    ): Promise<CbcReportPolicy> => {
+        const { data } = await apiClient.post<CbcReportPolicy>(
+            `/cbc/report-policies/${id}/apply-to-scope/`,
             payload,
         );
         return data;
