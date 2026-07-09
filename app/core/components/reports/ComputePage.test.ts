@@ -31,12 +31,14 @@ describe('report compute form validation', () => {
     );
 
     expect(pageSource).toContain('Compute Reports');
-    expect(pageSource).toContain('Readiness');
-    expect(pageSource).toContain('Manage CBC policies');
+    expect(pageSource).toContain('Reporting Setup');
+    expect(pageSource).toContain('Prepare Term for Reports');
+    expect(pageSource).toContain('Manage Report Policies');
     expect(pageSource).not.toContain('Policy-Based Grade Computation');
     expect(pageSource).not.toContain('Compute All Summaries');
     expect(pageSource).not.toContain('Summary Recomputation');
     expect(hookSource).toContain('getComputeReadiness');
+    expect(hookSource).toContain('streamComputeJobEvents');
     expect(hookSource).toContain('computeReports');
   });
 });

@@ -787,6 +787,48 @@ export interface ReportComputeTerm {
   name: string;
   status: string;
   is_frozen: boolean;
+  academic_year_id?: number;
+  academic_year_name?: string;
+}
+
+export type ReportSetupStatus =
+  | 'READY'
+  | 'NEEDS_SETUP'
+  | 'CONFLICTS'
+  | 'COMPUTING'
+  | 'ERROR'
+  | 'MISSING_POLICIES'
+  | 'NOT_CONFIGURED'
+  | string;
+
+export interface ReportPolicyReference {
+  id: number;
+  name: string;
+  label?: string;
+  is_default?: boolean;
+  term_id?: number | null;
+  cohort_id?: number | null;
+  cohort_name?: string | null;
+  subject_profile_id?: number | null;
+  subject_name?: string | null;
+  cbc_cohort_subject_id?: number | null;
+  origin?: string;
+  [key: string]: unknown;
+}
+
+export interface ReportReadinessRow {
+  cbc_cohort_subject_id?: number;
+  cohort_subject_id?: number;
+  label?: string;
+  cohort?: { id: number; name: string };
+  subject?: { id: number; name: string; code?: string };
+  effective_policy?: ReportPolicyReference | null;
+  resolved_policy?: ReportPolicyReference | null;
+  status?: string;
+  message?: string;
+  policy_scope?: string | null;
+  conflicting_policies?: ReportPolicyReference[];
+  [key: string]: unknown;
 }
 
 export interface ReportComputeEngineReadiness {
@@ -794,9 +836,28 @@ export interface ReportComputeEngineReadiness {
   engine: string;
   label: string;
   status: string;
+  setup_status?: ReportSetupStatus;
   blocked: boolean;
   ready: boolean;
   message: string;
+  covered_count?: number;
+  missing_count?: number;
+  conflict_count?: number;
+  inactive_count?: number;
+  exception_count?: number;
+  official_result_estimate?: number;
+  default_policy?: ReportPolicyReference | null;
+  summary_message?: string;
+  coverage?: {
+    default_policy?: ReportPolicyReference | null;
+    coverage_by_scope?: Record<string, Array<Record<string, unknown>>>;
+    exceptions?: ReportReadinessRow[];
+    missing?: ReportReadinessRow[];
+    conflicts?: ReportReadinessRow[];
+    active_but_not_effective?: Array<Record<string, unknown>>;
+    advanced_resolution_rows?: ReportReadinessRow[];
+    [key: string]: unknown;
+  };
   context?: {
     missing_count?: number;
     conflict_count?: number;
@@ -814,6 +875,38 @@ export interface ReportComputeReadiness {
   ready: boolean;
   status: string;
   message: string;
+  overall_status?: ReportSetupStatus;
+  can_compute?: boolean;
+  blocking_count?: number;
+  recommendations?: ReportReadinessRecommendation[];
+  decision_items?: Array<Record<string, unknown>>;
+  exceptions?: ReportReadinessRow[];
+  missing?: ReportReadinessRow[];
+  conflicts?: ReportReadinessRow[];
+  advanced?: { resolution_rows?: ReportReadinessRow[] };
+  prepared?: boolean;
+  detail?: string;
+  applied?: {
+    recommendation_id: string;
+    policy: ReportPolicyReference;
+  };
+}
+
+export interface ReportReadinessRecommendation {
+  id: string;
+  engine: string;
+  label: string;
+  summary?: string;
+  scope: string;
+  policy_id: number;
+  source?: string;
+  cohort_id?: number | null;
+  cohort_name?: string | null;
+  subject_profile_id?: number | null;
+  cbc_cohort_subject_id?: number | null;
+  affected_class_subject_count: number;
+  affected_result_estimate: number;
+  safe_to_apply: boolean;
 }
 
 export interface ReportComputeEngineResult {
@@ -837,6 +930,41 @@ export interface ReportComputeResult {
     cohort_summary_count?: number;
   };
   readiness: ReportComputeReadiness;
+}
+
+export interface ReportComputeProgressEvent {
+  event?: 'progress' | 'complete' | 'error';
+  stage: string;
+  label?: string;
+  progress_percent?: number;
+  completed_count?: number | null;
+  total_count?: number | null;
+  official_results?: number;
+  summary_rows_refreshed?: number;
+  status?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface ReportComputeJob {
+  job_id: string;
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'BLOCKED' | string;
+  stage: string;
+  label?: string;
+  progress_percent: number;
+  completed_count?: number | null;
+  total_count?: number | null;
+  result_payload?: {
+    computed_count?: number;
+    official_results?: number;
+    summary_count?: number;
+    summary_rows_refreshed?: number;
+    summaries?: { summary_count?: number };
+    [key: string]: unknown;
+  };
+  error_payload?: Record<string, unknown>;
+  events_url?: string;
+  latest_event?: ReportComputeProgressEvent;
+  readiness?: ReportComputeReadiness;
 }
 
 export interface ReportFilters {

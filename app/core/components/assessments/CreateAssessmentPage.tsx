@@ -220,14 +220,18 @@ export function CreateAssessmentPage() {
         () => policyGuidance?.available_assessment_components ?? [],
         [policyGuidance],
     );
-    const policyReady = policyGuidance?.policy_ready !== false && !policyGuidance?.blocked_reason;
+    const policyDisabledReason = policyGuidance?.disabled_reason ?? policyGuidance?.blocked_reason ?? null;
+    const policyUserMessage = policyGuidance?.user_message ?? policyGuidance?.message ?? null;
+    const policyReady = policyGuidance?.policy_ready !== false && !policyDisabledReason;
     const cbcComponentsExhausted = Boolean(
         isCbcPolicyContext
         && form.term
         && form.cohort_subject
-        && policyReady
         && policyGuidance
-        && availableAssessmentComponents.length === 0
+        && (
+            policyDisabledReason === 'all_components_created'
+            || (policyReady && availableAssessmentComponents.length === 0)
+        )
     );
     const assessmentTypeOptions = useMemo(() => {
         if (isCbcPolicyContext && policyGuidance) {
@@ -284,25 +288,28 @@ export function CreateAssessmentPage() {
         }).then((guidance) => {
             if (cancelled) return;
             setPolicyGuidance(guidance);
-            if (guidance.policy_ready === false) {
+            const disabledReason = guidance.disabled_reason ?? guidance.blocked_reason ?? null;
+            if ((guidance.policy_ready === false || disabledReason) && disabledReason !== 'all_components_created') {
                 setPolicyGuidanceError(
                     isTeachingActor
-                        ? 'Assessment creation is unavailable for this term because your school has not completed report policy setup for this subject. Contact your academic admin.'
-                        : guidance.message ?? 'No effective report policy exists for this subject and term.',
+                        ? guidance.user_message ?? 'Official assessment creation is blocked because your school has not completed report policy setup for this subject and term. Contact your academic admin.'
+                        : guidance.user_message ?? guidance.message ?? 'No effective report policy exists for this subject and term.',
                 );
                 return;
             }
             const selectedStillAvailable = guidance.available_assessment_components?.some(
                 (component) => component.component_key === form.report_component_key,
             );
-            const nextComponent = guidance.available_assessment_components?.[0];
+            const nextComponent = guidance.available_assessment_components?.length === 1
+                ? guidance.available_assessment_components[0]
+                : null;
             if (nextComponent && (!form.report_component_key || !selectedStillAvailable)) {
                 setField('report_component_key', nextComponent.component_key);
                 setField('assessment_type', nextComponent.assessment_type);
                 if (!form.name.trim()) {
                     setField('name', nextComponent.default_name || nextComponent.label);
                 }
-            } else if (!nextComponent) {
+            } else if (!selectedStillAvailable) {
                 setField('report_component_key', null);
             }
         }).catch((error) => {
@@ -339,6 +346,46 @@ export function CreateAssessmentPage() {
         isCbcPolicyContext,
         isTeachingActor,
         setField,
+    ]);
+
+    const submitDisabledReason = useMemo(() => {
+        if (saving) return null;
+        if (!isAdminLike && !isTeachingActor) return 'You do not have permission to create assessments.';
+        if (!isSelectedCurriculumWritable) return 'This curriculum is blocked for new work.';
+        if (isCbcPolicyContext && !form.term) return 'Select a term before creating an official assessment.';
+        if (isCbcPolicyContext && form.term && form.cohort_subject && policyGuidanceLoading) {
+            return 'Loading active policy guidance.';
+        }
+        if (isCbcPolicyContext && form.term && form.cohort_subject && policyGuidanceError) {
+            return policyGuidanceError;
+        }
+        if (isCbcPolicyContext && form.term && form.cohort_subject && policyDisabledReason === 'all_components_created') {
+            return policyUserMessage ?? 'All official assessment components have already been created for this subject and term.';
+        }
+        if (isCbcPolicyContext && form.term && form.cohort_subject && !policyReady) {
+            return policyUserMessage ?? 'Official assessment creation is blocked by report policy setup.';
+        }
+        if (isCbcPolicyContext && form.term && form.cohort_subject && cbcComponentsExhausted) {
+            return 'All official assessment components have already been created for this subject and term.';
+        }
+        if (unsupportedAssessmentType) return `This term policy allows ${allowedAssessmentTypes.join(', ')} only.`;
+        return null;
+    }, [
+        allowedAssessmentTypes,
+        cbcComponentsExhausted,
+        form.cohort_subject,
+        form.term,
+        isAdminLike,
+        isCbcPolicyContext,
+        isSelectedCurriculumWritable,
+        isTeachingActor,
+        policyDisabledReason,
+        policyGuidanceError,
+        policyGuidanceLoading,
+        policyReady,
+        policyUserMessage,
+        saving,
+        unsupportedAssessmentType,
     ]);
 
     useEffect(() => {
@@ -581,7 +628,19 @@ export function CreateAssessmentPage() {
                             />
                             {selectedPolicyComponent ? (
                                 <p className="text-xs text-gray-500">
-                                    Uses internal type {selectedPolicyComponent.assessment_type}.
+                                    Official component type: {selectedPolicyComponent.assessment_type}.
+                                </p>
+                            ) : null}
+                            {isCbcPolicyContext && availableAssessmentComponents.length === 1 && !cbcComponentsExhausted ? (
+                                <p className="text-sm text-green-700">
+                                    Next official component: {availableAssessmentComponents[0].label}.
+                                </p>
+                            ) : null}
+                            {isCbcPolicyContext && (policyGuidanceError || cbcComponentsExhausted) ? (
+                                <p className={`text-sm ${policyGuidanceError ? 'text-red-600' : 'text-amber-700'}`}>
+                                    {policyGuidanceError
+                                        ?? policyUserMessage
+                                        ?? 'All official assessment components have already been created for this subject and term.'}
                                 </p>
                             ) : null}
                             {unsupportedAssessmentType ? (
@@ -633,7 +692,8 @@ export function CreateAssessmentPage() {
                                     ) : policyGuidance ? (
                                         <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
                                             <p className="font-medium">
-                                                This term uses {policyGuidance.policy_name ?? 'the active report policy'}{policyTermName ? ` for ${policyTermName}` : ''}.
+                                                {policyUserMessage
+                                                    ?? `This term uses ${policyGuidance.policy_name ?? 'the active report policy'}${policyTermName ? ` for ${policyTermName}` : ''}.`}
                                             </p>
                                             <p className="mt-1">
                                                 Allowed this term: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
@@ -646,8 +706,20 @@ export function CreateAssessmentPage() {
                                             </p>
                                             {cbcComponentsExhausted ? (
                                                 <p className="mt-2 font-medium text-amber-800">
-                                                    All required policy components have already been created for this subject and term.
+                                                    {policyUserMessage ?? 'All official assessment components have already been created for this subject and term.'}
                                                 </p>
+                                            ) : null}
+                                            {availableAssessmentComponents.length === 1 && !cbcComponentsExhausted ? (
+                                                <p className="mt-2 font-medium text-green-900">
+                                                    Next official component: {availableAssessmentComponents[0].label}.
+                                                </p>
+                                            ) : null}
+                                            {policyGuidance.possible_next_steps?.length ? (
+                                                <ul className="mt-2 list-disc space-y-1 pl-5 text-green-700">
+                                                    {policyGuidance.possible_next_steps.map((step) => (
+                                                        <li key={step}>{step}</li>
+                                                    ))}
+                                                </ul>
                                             ) : null}
                                             {policyGuidance.updated_by || policyGuidance.last_updated ? (
                                                 <p className="mt-1 text-xs text-green-700">
@@ -805,21 +877,19 @@ export function CreateAssessmentPage() {
                     />
                 ) : null}
 
+                {submitDisabledReason ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        {submitDisabledReason}
+                    </div>
+                ) : null}
+
                 <div className="flex items-center justify-end gap-4">
                     <Link href={safeReturnTo ?? '/assessments'}>
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>
                     <Button
                         type="submit"
-                        disabled={
-                            saving
-                            || (!isAdminLike && !isTeachingActor)
-                            || !isSelectedCurriculumWritable
-                            || (isCbcPolicyContext && !form.term)
-                            || (isCbcPolicyContext && form.term && form.cohort_subject && (policyGuidanceLoading || Boolean(policyGuidanceError)))
-                            || (isCbcPolicyContext && form.term && form.cohort_subject && (!policyReady || cbcComponentsExhausted))
-                            || unsupportedAssessmentType
-                        }
+                        disabled={saving || Boolean(submitDisabledReason)}
                     >
                         <Save className="w-4 h-4 mr-2" />
                         {saving ? 'Creating…' : 'Create Assessment'}

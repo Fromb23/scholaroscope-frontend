@@ -1,5 +1,6 @@
 import { GradePolicy, ComputedGradeDTO } from '../types/gradePolicy';
 import { apiClient } from './client';
+import { getAccessToken } from '@/app/core/auth/tokenStore';
 import {
   getDownloadFileName,
   normalizeBlobError,
@@ -33,11 +34,24 @@ import {
   TeacherPerformanceReflectionItem,
   TeacherPerformanceReportPayload,
   ComputeResponse,
+  ReportComputeJob,
+  ReportComputeProgressEvent,
   ReportComputeReadiness,
-  ReportComputeResult,
   ReportExportFormat,
   ReportFilters,
 } from '@/app/core/types/reporting';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+
+function absoluteApiUrl(path: string): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const normalizedPath = path.startsWith('/api/')
+    ? path.slice(4)
+    : path.startsWith('/')
+      ? path
+      : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -59,6 +73,33 @@ function toStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === 'string')
     : [];
+}
+
+function parseSseBlock(block: string): ReportComputeProgressEvent | null {
+  const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return null;
+
+  const rawEvent = lines.find((line) => line.startsWith('event:'))?.slice(6).trim();
+  const event = rawEvent === 'progress' || rawEvent === 'complete' || rawEvent === 'error'
+    ? rawEvent
+    : undefined;
+  const data = lines
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trim())
+    .join('\n');
+
+  if (!data) {
+    return event ? { event, stage: event } : null;
+  }
+
+  try {
+    const parsed = JSON.parse(data);
+    return isRecord(parsed)
+      ? { event, ...parsed } as ReportComputeProgressEvent
+      : { event, stage: event ?? 'message', label: String(parsed) };
+  } catch {
+    return { event, stage: 'parse_error', label: data };
+  }
 }
 
 function toAttendanceRiskLevel(value: unknown): AttendanceRiskLevel {
@@ -839,13 +880,85 @@ export const reportsAPI = {
     );
     return response.data;
   },
-  computeReports: async (termId: number): Promise<ReportComputeResult> => {
-    const response = await apiClient.post<ReportComputeResult>(
+
+  prepareTermForReports: async (termId: number): Promise<ReportComputeReadiness> => {
+    const response = await apiClient.post<ReportComputeReadiness>(
+      '/reporting/reports/prepare/',
+      { term: termId },
+    );
+    return response.data;
+  },
+
+  applyRecommendedFix: async (
+    termId: number,
+    recommendationId: string,
+  ): Promise<ReportComputeReadiness> => {
+    const response = await apiClient.post<ReportComputeReadiness>(
+      '/reporting/reports/prepare/apply-recommended/',
+      { term: termId, recommendation_id: recommendationId },
+    );
+    return response.data;
+  },
+
+  computeReports: async (termId: number): Promise<ReportComputeJob> => {
+    const response = await apiClient.post<ReportComputeJob>(
       '/reporting/reports/compute/',
       { term: termId },
     );
     return response.data;
   },
+
+  getComputeJob: async (jobId: string): Promise<ReportComputeJob> => {
+    const response = await apiClient.get<ReportComputeJob>(
+      `/reporting/reports/compute/jobs/${jobId}/`,
+    );
+    return response.data;
+  },
+
+  streamComputeJobEvents: async (
+    eventsUrl: string,
+    onEvent: (event: ReportComputeProgressEvent) => void,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const token = getAccessToken();
+    const response = await fetch(absoluteApiUrl(eventsUrl), {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: 'include',
+      signal,
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error('Progress stream unavailable');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split('\n\n');
+      buffer = blocks.pop() ?? '';
+
+      for (const block of blocks) {
+        const event = parseSseBlock(block);
+        if (event) onEvent(event);
+      }
+    }
+
+    if (buffer.trim()) {
+      const event = parseSseBlock(buffer);
+      if (event) onEvent(event);
+    }
+  },
+
   getAdminOverview: adminReportsAPI.getOverview,
   getAdminCohortSummary: adminReportsAPI.getCohortSummary,
   getAdminSubjectOverview: adminReportsAPI.getSubjectOverview,

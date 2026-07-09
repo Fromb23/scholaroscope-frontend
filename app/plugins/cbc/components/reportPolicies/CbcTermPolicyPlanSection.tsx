@@ -28,6 +28,7 @@ interface CbcTermPolicyPlanSectionProps {
     policies: CbcReportPolicy[];
     terms: TermOption[];
     canManage: boolean;
+    initialTermId?: number | null;
     onCreatePolicy: () => void;
     onRefreshPolicies: () => Promise<unknown>;
 }
@@ -58,10 +59,11 @@ export function CbcTermPolicyPlanSection({
     policies,
     terms,
     canManage,
+    initialTermId = null,
     onCreatePolicy,
     onRefreshPolicies,
 }: CbcTermPolicyPlanSectionProps) {
-    const [selectedTermId, setSelectedTermId] = useState<number | null>(terms[0]?.id ?? null);
+    const [selectedTermId, setSelectedTermId] = useState<number | null>(initialTermId ?? terms[0]?.id ?? null);
     const [selectedPolicyIds, setSelectedPolicyIds] = useState<number[]>([]);
     const [actionError, setActionError] = useState<AppError | null>(null);
     const [reusingId, setReusingId] = useState<number | null>(null);
@@ -83,6 +85,12 @@ export function CbcTermPolicyPlanSection({
             setSelectedTermId(terms[0].id);
         }
     }, [selectedTermId, terms]);
+
+    useEffect(() => {
+        if (initialTermId && initialTermId !== selectedTermId) {
+            setSelectedTermId(initialTermId);
+        }
+    }, [initialTermId, selectedTermId]);
 
     const plan = planForCoverage(coverage?.plan, coverage?.term_policy_plan);
     const fallbackActivePolicies = useMemo(
