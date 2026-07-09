@@ -164,7 +164,7 @@ export function ReportPrepareTermSheet({
       size="lg"
       state={sheetState}
       closeDisabled={busy}
-      preventBackdropClose={busy}
+      preventBackdropClose
       footer={
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>

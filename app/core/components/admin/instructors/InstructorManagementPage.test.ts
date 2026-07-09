@@ -15,4 +15,16 @@ describe('InstructorManagementPage desire paths', () => {
     expect(source).toContain('Progress');
     expect(source).toContain('Report');
   });
+
+  it('keeps create-instructor success in the foreground sheet instead of a page banner', () => {
+    expect(source).toContain('const [createSuccess, setCreateSuccess]');
+    expect(source).toContain('title="Instructor created"');
+    expect(source).toContain('message={createSuccess}');
+    expect(source).toContain('footer={');
+    expect(source).toContain('closeDisabled={submitting}');
+    expect(source).toContain('closeOnBackdrop={false}');
+    expect(source).not.toContain('actionSuccess');
+    expect(source).not.toContain('setActionSuccess');
+    expect(source).not.toContain("flash('Instructor created successfully')");
+  });
 });

@@ -4,7 +4,7 @@
 // app/core/components/instructors/InstructorModals.tsx
 //
 // All modals for the instructor progress page.
-// No any. Typed props. ErrorBanner for errors.
+// No any. Typed props. Foreground action state stays inside each sheet.
 // ============================================================================
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -13,7 +13,7 @@ import Modal from '@/app/components/ui/Modal';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { ActionStateBanner } from '@/app/components/ui/actions';
 import { cohortAPI } from '@/app/core/api/academic';
 import { useInstructorDetail } from '@/app/core/hooks/useInstructors';
 import { instructorsAPI, type InstructorProfile } from '@/app/core/api/instructors';
@@ -45,6 +45,8 @@ export function EditModal({ isOpen, onClose, onSubmit, instructor, submitting }:
         last_name: instructor.last_name,
         phone: instructor.phone ?? '',
     });
+    const [actionError, setActionError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     useEffect(() => {
         setForm({
@@ -52,34 +54,91 @@ export function EditModal({ isOpen, onClose, onSubmit, instructor, submitting }:
             last_name: instructor.last_name,
             phone: instructor.phone ?? '',
         });
+        setActionError('');
+        setSuccessMessage('');
     }, [instructor, isOpen]);
 
+    const handleClose = () => {
+        if (submitting) return;
+        onClose();
+    };
+
+    const updateField = (field: keyof typeof form, value: string) => {
+        setForm(p => ({ ...p, [field]: value }));
+        setActionError('');
+        setSuccessMessage('');
+    };
+
+    const handleSubmit = async () => {
+        setActionError('');
+        setSuccessMessage('');
+        try {
+            await onSubmit(form);
+            setSuccessMessage('Instructor details updated.');
+        } catch (err) {
+            setActionError(extractErrorMessage(err as ApiError, 'Failed to update instructor'));
+        }
+    };
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Edit Instructor" size="md">
+        <Modal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title="Edit Instructor"
+            size="md"
+            closeDisabled={submitting}
+            closeOnBackdrop={false}
+            footer={
+                successMessage ? (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <Button variant="primary" onClick={handleClose}>
+                            Done
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <Button variant="secondary" onClick={handleClose} disabled={submitting}>Cancel</Button>
+                        <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
+                            {submitting ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </div>
+                )
+            }
+        >
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                {successMessage ? (
+                    <ActionStateBanner
+                        variant="success"
+                        title="Instructor updated"
+                        message={successMessage}
+                    />
+                ) : null}
+                {actionError ? (
+                    <ActionStateBanner
+                        variant="error"
+                        title="Update failed"
+                        message={actionError}
+                        onDismiss={() => setActionError('')}
+                    />
+                ) : null}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Input
                         label="First Name"
                         value={form.first_name}
-                        onChange={e => setForm(p => ({ ...p, first_name: e.target.value }))}
+                        onChange={e => updateField('first_name', e.target.value)}
                     />
                     <Input
                         label="Last Name"
                         value={form.last_name}
-                        onChange={e => setForm(p => ({ ...p, last_name: e.target.value }))}
+                        onChange={e => updateField('last_name', e.target.value)}
                     />
                 </div>
                 <Input
                     label="Phone"
                     value={form.phone}
-                    onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                    onChange={e => updateField('phone', e.target.value)}
                 />
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                    <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
-                    <Button variant="primary" onClick={() => onSubmit(form)} disabled={submitting}>
-                        {submitting ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                </div>
             </div>
         </Modal>
     );
@@ -98,39 +157,109 @@ export function ResetPasswordModal({ isOpen, onClose, onSubmit, submitting }: Re
     const [pw, setPw] = useState('');
     const [confirm, setConfirm] = useState('');
     const [err, setErr] = useState('');
+    const [submitError, setSubmitError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
-    useEffect(() => { if (!isOpen) { setPw(''); setConfirm(''); setErr(''); } }, [isOpen]);
+    useEffect(() => {
+        if (!isOpen) {
+            setPw('');
+            setConfirm('');
+            setErr('');
+            setSubmitError('');
+            setSuccessMessage('');
+        }
+    }, [isOpen]);
+
+    const handleClose = () => {
+        if (submitting) return;
+        onClose();
+    };
+
+    const handlePasswordChange = (value: string) => {
+        setPw(value);
+        setErr('');
+        setSubmitError('');
+        setSuccessMessage('');
+    };
+
+    const handleConfirmChange = (value: string) => {
+        setConfirm(value);
+        setErr('');
+        setSubmitError('');
+        setSuccessMessage('');
+    };
 
     const handleSubmit = async () => {
         if (pw.length < 8) { setErr('Minimum 8 characters'); return; }
         if (pw !== confirm) { setErr('Passwords do not match'); return; }
         setErr('');
-        await onSubmit(pw);
-        setPw(''); setConfirm('');
+        setSubmitError('');
+        setSuccessMessage('');
+        try {
+            await onSubmit(pw);
+            setPw('');
+            setConfirm('');
+            setSuccessMessage('Password reset successfully.');
+        } catch (caught) {
+            setSubmitError(extractErrorMessage(caught as ApiError, 'Failed to reset password'));
+        }
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Reset Password" size="sm">
+        <Modal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title="Reset Password"
+            size="sm"
+            closeDisabled={submitting}
+            closeOnBackdrop={false}
+            footer={
+                successMessage ? (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <Button variant="primary" onClick={handleClose}>
+                            Done
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                        <Button variant="secondary" onClick={handleClose} disabled={submitting}>Cancel</Button>
+                        <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
+                            {submitting ? 'Resetting...' : 'Reset Password'}
+                        </Button>
+                    </div>
+                )
+            }
+        >
             <div className="space-y-4">
+                {successMessage ? (
+                    <ActionStateBanner
+                        variant="success"
+                        title="Password reset"
+                        message={successMessage}
+                    />
+                ) : null}
+                {submitError ? (
+                    <ActionStateBanner
+                        variant="error"
+                        title="Reset failed"
+                        message={submitError}
+                        onDismiss={() => setSubmitError('')}
+                    />
+                ) : null}
+
                 <Input
                     label="New Password"
                     type="password"
                     value={pw}
-                    onChange={e => { setPw(e.target.value); setErr(''); }}
+                    onChange={e => handlePasswordChange(e.target.value)}
                 />
                 <Input
                     label="Confirm Password"
                     type="password"
                     value={confirm}
-                    onChange={e => { setConfirm(e.target.value); setErr(''); }}
+                    onChange={e => handleConfirmChange(e.target.value)}
                     error={err}
                 />
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                    <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
-                    <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
-                        {submitting ? 'Resetting...' : 'Reset Password'}
-                    </Button>
-                </div>
             </div>
         </Modal>
     );
@@ -147,20 +276,59 @@ interface DeleteModalProps {
 }
 
 export function DeleteModal({ isOpen, onClose, onConfirm, name, submitting }: DeleteModalProps) {
+    const [actionError, setActionError] = useState('');
+
+    useEffect(() => {
+        if (!isOpen) {
+            setActionError('');
+        }
+    }, [isOpen]);
+
+    const handleClose = () => {
+        if (submitting) return;
+        onClose();
+    };
+
+    const handleConfirm = async () => {
+        setActionError('');
+        try {
+            await onConfirm();
+        } catch (caught) {
+            setActionError(extractErrorMessage(caught as ApiError, 'Failed to remove instructor from organization'));
+        }
+    };
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Remove from Organization" size="sm">
+        <Modal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title="Remove from Organization"
+            size="sm"
+            closeDisabled={submitting}
+            closeOnBackdrop={false}
+            footer={
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <Button variant="secondary" onClick={handleClose} disabled={submitting}>Cancel</Button>
+                    <Button variant="danger" onClick={handleConfirm} disabled={submitting}>
+                        {submitting ? 'Removing...' : 'Remove from Organization'}
+                    </Button>
+                </div>
+            }
+        >
             <div className="space-y-4">
+                {actionError ? (
+                    <ActionStateBanner
+                        variant="error"
+                        title="Removal failed"
+                        message={actionError}
+                        onDismiss={() => setActionError('')}
+                    />
+                ) : null}
                 <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-100">
                     <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                     <p className="text-sm text-red-700">
                         Remove <strong>{name}</strong> from this organization? Access will be revoked, active teaching assignments will be closed, and historical records will remain attributed to them.
                     </p>
-                </div>
-                <div className="flex justify-end gap-3">
-                    <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
-                    <Button variant="danger" onClick={onConfirm} disabled={submitting}>
-                        {submitting ? 'Removing...' : 'Remove from Organization'}
-                    </Button>
                 </div>
             </div>
         </Modal>
@@ -691,6 +859,7 @@ export function CohortAssignModal({
     const [selectedCohortSubject, setSelectedCohortSubject] = useState('');
     const [working, setWorking] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [unassignReason, setUnassignReason] = useState('MANUAL');
     const [unassignNotes, setUnassignNotes] = useState('');
     const [pendingReassignment, setPendingReassignment] = useState<PendingReassignment | null>(null);
@@ -778,6 +947,7 @@ export function CohortAssignModal({
         setSelectedCohortSubject('');
         setPendingReassignment(null);
         setError(null);
+        setSuccessMessage(null);
     }, [isOpen]);
 
     const normalizedCohortSubjects = allCohortSubjects.map((cohortSubject) =>
@@ -830,12 +1000,14 @@ export function CohortAssignModal({
     const assignSubject = async (subject: AvailableCohortSubject) => {
         setWorking(true);
         setError(null);
+        setSuccessMessage(null);
         try {
             await instructorsAPI.assignToCohortSubject(instructorId, subject);
             setSelectedCohortSubject('');
             setPendingReassignment(null);
             await refetch();
             await onAssignmentsChanged?.();
+            setSuccessMessage(`${subject.subject_name} assigned to ${instructorName}.`);
         } catch (err) {
             setError(extractErrorMessage(err as ApiError, 'Failed to assign cohort subject'));
         } finally {
@@ -852,6 +1024,8 @@ export function CohortAssignModal({
         const currentInstructorLabel = subject.current_instructor_name?.trim()
             || subject.current_instructor_email?.trim()
             || 'another teacher';
+        setError(null);
+        setSuccessMessage(null);
         setPendingReassignment({
             subject,
             currentInstructorLabel,
@@ -867,7 +1041,7 @@ export function CohortAssignModal({
     };
 
     const handleUnassign = async (assignment: ActiveTeachingAssignment) => {
-        setWorking(true); setError(null);
+        setWorking(true); setError(null); setSuccessMessage(null);
         try {
             await instructorsAPI.unassignFromCohortSubject(
                 instructorId, assignment, unassignReason, unassignNotes
@@ -876,15 +1050,47 @@ export function CohortAssignModal({
             await onAssignmentsChanged?.();
             setUnassignReason('MANUAL');
             setUnassignNotes('');
+            setSuccessMessage(`${assignment.subjectName} unassigned from ${instructorName}.`);
         } catch (err) {
             setError(extractErrorMessage(err as ApiError, 'Failed to unassign cohort subject'));
         } finally { setWorking(false); }
     };
 
+    const handleClose = () => {
+        if (working) return;
+        onClose();
+    };
+
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Teaching Assignments — ${instructorName}`} size="md">
+        <Modal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title={`Teaching Assignments — ${instructorName}`}
+            size="md"
+            closeDisabled={working}
+            closeOnBackdrop={false}
+            footer={
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <Button variant="secondary" onClick={handleClose} disabled={working}>Close</Button>
+                </div>
+            }
+        >
             <div className="min-w-0 space-y-5">
-                {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+                {error ? (
+                    <ActionStateBanner
+                        variant="error"
+                        title="Teaching assignment failed"
+                        message={error}
+                        onDismiss={() => setError(null)}
+                    />
+                ) : null}
+                {successMessage ? (
+                    <ActionStateBanner
+                        variant="success"
+                        title="Teaching assignment updated"
+                        message={successMessage}
+                    />
+                ) : null}
 
                 {initialSubjectName && initialCohortName ? (
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
@@ -1094,10 +1300,6 @@ export function CohortAssignModal({
                             </div>
                         )}
                     </div>
-                </div>
-
-                <div className="flex justify-end pt-2 border-t border-gray-100">
-                    <Button variant="secondary" onClick={onClose}>Close</Button>
                 </div>
             </div>
         </Modal>

@@ -26,7 +26,7 @@ export default function Modal({
   size = 'md',
   description,
   footer,
-  closeOnBackdrop = true,
+  closeOnBackdrop = false,
   closeOnEscape = true,
   closeDisabled = false,
   panelClassName = '',

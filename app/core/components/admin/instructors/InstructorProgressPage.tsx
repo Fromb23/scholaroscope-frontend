@@ -84,18 +84,24 @@ export default function InstructorProgressPage() {
         finally { setSubmitting(false); }
     };
 
-    const handleEdit = (data: UserUpdatePayload) =>
-        withSubmit(async () => {
+    const handleEdit = async (data: UserUpdatePayload) => {
+        setSubmitting(true);
+        try {
             await instructorsAPI.update(instructorId, data);
-            setEditOpen(false);
             await refetch();
-        }, 'Instructor updated', 'Failed to update instructor');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
-    const handleResetPw = (password: string) =>
-        withSubmit(async () => {
+    const handleResetPw = async (password: string) => {
+        setSubmitting(true);
+        try {
             await instructorsAPI.resetPassword(instructorId, password);
-            setResetOpen(false);
-        }, 'Password reset successfully', 'Failed to reset password');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const handleToggle = () => {
         const isRestricted = instructor?.membership_status === 'SUSPENDED';
@@ -110,11 +116,15 @@ export default function InstructorProgressPage() {
         );
     };
 
-    const handleDelete = () =>
-        withSubmit(async () => {
+    const handleDelete = async () => {
+        setSubmitting(true);
+        try {
             await instructorsAPI.removeFromOrganization(instructorId);
             router.push('/admin/instructors');
-        }, 'Instructor removed from organization', 'Failed to remove instructor from organization');
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     if (loading) return <LoadingSpinner message="Loading instructor..." />;
 

@@ -397,7 +397,7 @@ function ComputeReportsSheet({
             size="lg"
             state={status}
             closeDisabled={computing}
-            preventBackdropClose={computing}
+            preventBackdropClose
             footer={
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={computing}>
