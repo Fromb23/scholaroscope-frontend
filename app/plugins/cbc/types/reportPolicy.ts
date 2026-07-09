@@ -174,6 +174,8 @@ export interface CbcPolicyCoverageEntry {
     subject?: { id: number; name: string; code?: string | null } | null;
     resolved_policy?: CbcReportPolicy | null;
     effective_policy?: CbcReportPolicy | null;
+    status?: 'READY' | 'MISSING' | 'CONFLICT' | string | null;
+    message?: string | null;
     resolution_path: string[];
     policy_scope: string | null;
     policy_status: string | null;
@@ -220,6 +222,8 @@ export interface CbcTermPolicyCoverage {
     missing_count?: number;
     conflict_count?: number;
     shadowed_policies?: CbcShadowedPolicyWarning[];
+    readiness_status?: 'READY' | 'MISSING_POLICIES' | 'CONFLICTS' | 'NOT_CONFIGURED' | string;
+    status?: 'READY' | 'NOT_READY' | 'CONFLICT' | string;
     computation_allowed: boolean;
     message?: string | null;
 }

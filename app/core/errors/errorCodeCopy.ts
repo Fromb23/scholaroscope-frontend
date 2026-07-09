@@ -30,10 +30,10 @@ export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
   },
   policy_required: {
     kind: 'setup_required',
-    title: 'No active policy is available for this class subject and term.',
+    title: 'Reports are blocked.',
     message:
-      'No active report policy is available for this class subject and term.',
-    actionLabel: 'View policy plan',
+      'Reports are blocked because no active organization policy exists for this class subject and term.',
+    actionLabel: 'Open term report setup',
     retryable: false,
     severity: 'warning',
   },

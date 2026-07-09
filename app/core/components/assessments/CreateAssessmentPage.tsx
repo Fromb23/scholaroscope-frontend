@@ -248,7 +248,7 @@ export function CreateAssessmentPage() {
             setPolicyGuidance(null);
             setPolicyGuidanceError(
                 resolved.serverCode === 'policy_required'
-                    ? 'Create or activate a policy before creating assessments for this term.'
+                    ? 'Create or activate a term policy before creating official assessments.'
                     : resolved.message,
             );
         }).finally(() => {
@@ -480,7 +480,7 @@ export function CreateAssessmentPage() {
                             />
                             {unsupportedAssessmentType ? (
                                 <p className="text-sm text-red-600">
-                                    This assessment type is not allowed by the active policy.
+                                    This term policy allows {allowedAssessmentTypes.join(', ')} only.
                                 </p>
                             ) : null}
 
@@ -506,20 +506,17 @@ export function CreateAssessmentPage() {
                                     {policyGuidanceError ? (
                                         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                                             <p className="font-medium">
-                                                Create or activate a policy before creating assessments for this term.
+                                                {policyGuidanceError}
                                             </p>
                                             <div className="mt-3 flex flex-wrap gap-2">
                                                 <Link href="/reports/policies/cbc">
                                                     <Button type="button" variant="secondary" size="sm">Create policy</Button>
                                                 </Link>
                                                 <Link href="/reports/policies/cbc">
-                                                    <Button type="button" variant="secondary" size="sm">Activate existing policy</Button>
-                                                </Link>
-                                                <Link href="/reports/policies/cbc">
                                                     <Button type="button" variant="secondary" size="sm">Reuse previous term policy</Button>
                                                 </Link>
                                                 <Link href="/reports/policies/cbc">
-                                                    <Button type="button" variant="secondary" size="sm">View policy plan</Button>
+                                                    <Button type="button" variant="secondary" size="sm">Open term report setup</Button>
                                                 </Link>
                                             </div>
                                         </div>
@@ -529,7 +526,7 @@ export function CreateAssessmentPage() {
                                                 This term uses {policyGuidance.policy_name ?? 'the active report policy'}{policyTermName ? ` for ${policyTermName}` : ''}.
                                             </p>
                                             <p className="mt-1">
-                                                Allowed: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
+                                                Allowed this term: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
                                             </p>
                                             <p>
                                                 Required: {(policyGuidance.required_components ?? []).join(', ') || 'None'}

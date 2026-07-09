@@ -25,6 +25,7 @@ export interface LearnerAttendanceReportRouteState {
   cohortId?: number | null;
   subjectId?: number | null;
   cohortSubjectId?: number | null;
+  sessionId?: number | null;
   returnTo?: string | null;
 }
 
@@ -53,6 +54,7 @@ export function buildLearnerAttendanceReportHref(
     setPositiveParam(params, 'cohortSubject', state.cohortSubjectId);
   } else {
     setPositiveParam(params, 'subject', state.subjectId ?? null);
+    setPositiveParam(params, 'session', state.sessionId ?? null);
   }
 
   setReturnToParam(params, state.returnTo ?? null);
@@ -70,6 +72,7 @@ export function buildSessionLearnerAttendanceReportHref(
     cohortId: state.cohortId ?? null,
     subjectId: state.subjectId ?? null,
     cohortSubjectId: state.cohortSubjectId ?? null,
+    sessionId: state.sessionId,
     returnTo: `/sessions/${state.sessionId}?section=attendance`,
   });
 }

@@ -349,7 +349,7 @@ export function AssignmentCreateModal({
             setPolicyGuidanceCode(resolved.serverCode);
             setPolicyGuidanceError(
                 resolved.serverCode === 'policy_required'
-                    ? 'Create or activate a policy before creating assignments for this term.'
+                    ? 'Create or activate a term policy before creating official assignments.'
                     : resolved.message,
             );
         }).finally(() => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
 import { shouldRefreshForOrganizationChange } from '@/app/core/lib/organizationScope';
@@ -13,8 +13,8 @@ import {
 } from '@/app/core/lib/academicSetup';
 import {
   getUnauthorizedRouteFallback,
-  getRouteRules,
   isPlatformSuperadminBlockedPath,
+  routeAllowedForRole,
   roleHomeRoute,
 } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
@@ -185,6 +185,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   });
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const previousOrganizationIdRef = useRef<number | null | undefined>(undefined);
 
   useEffect(() => {
@@ -240,9 +241,10 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
-    const matchedRule = getRouteRules().find((rule) => rule.pattern.test(pathname));
-    if (!matchedRule) return;
-    if (!matchedRule.allowedRoles.includes(activeRole)) {
+    const search = searchParams.toString();
+    const routePath = search ? `${pathname}?${search}` : pathname;
+
+    if (!routeAllowedForRole(routePath, activeRole)) {
       router.replace(getUnauthorizedRouteFallback(activeRole, pathname));
       return;
     }
@@ -279,6 +281,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     pluginRegistry.error,
     pluginRegistry.isRoutePluginLoading,
     router,
+    searchParams,
     user,
   ]);
 

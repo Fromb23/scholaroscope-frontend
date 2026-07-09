@@ -264,7 +264,7 @@ export function EditAssessmentPage() {
             setPolicyGuidance(null);
             setPolicyGuidanceError(
                 resolved.serverCode === 'policy_required'
-                    ? 'Create or activate a policy before creating assessments for this term.'
+                    ? 'Create or activate a term policy before creating official assessments.'
                     : resolved.message,
             );
         }).finally(() => {
@@ -318,7 +318,7 @@ export function EditAssessmentPage() {
             return;
         }
         if (unsupportedAssessmentType) {
-            setSaveError('This assessment type is not allowed by the active policy.');
+            setSaveError(`This term policy allows ${allowedAssessmentTypes.join(', ')} only.`);
             return;
         }
         if (!validateForm()) return;
@@ -474,7 +474,7 @@ export function EditAssessmentPage() {
                             />
                             {unsupportedAssessmentType ? (
                                 <p className="text-sm text-red-600">
-                                    This assessment type is not allowed by the active policy.
+                                    This term policy allows {allowedAssessmentTypes.join(', ')} only.
                                 </p>
                             ) : null}
 
@@ -498,7 +498,7 @@ export function EditAssessmentPage() {
                                 <div className="md:col-span-2">
                                     {policyGuidanceError ? (
                                         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                            Create or activate a policy before creating assessments for this term.
+                                            {policyGuidanceError}
                                         </div>
                                     ) : policyGuidance ? (
                                         <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
@@ -506,7 +506,7 @@ export function EditAssessmentPage() {
                                                 This term uses {policyGuidance.policy_name ?? 'the active report policy'}.
                                             </p>
                                             <p className="mt-1">
-                                                Allowed: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
+                                                Allowed this term: {(policyGuidance.allowed_assessment_types ?? []).join(', ') || 'None'}
                                             </p>
                                             <p>
                                                 Required: {(policyGuidance.required_components ?? []).join(', ') || 'None'}
