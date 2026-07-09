@@ -30,7 +30,7 @@ registerPluginNavigationEntry({
             capabilities,
             authoringMode: 'INSTITUTION_GOVERNANCE',
         })
-            ? [{ name: 'Report Policies', href: '/cbc/report-policies', icon: Award }]
+            ? [{ name: 'Academic Policies', href: '/reports/policies/cbc', icon: Award }]
             : [];
 
         return {

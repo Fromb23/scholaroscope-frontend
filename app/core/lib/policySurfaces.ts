@@ -42,9 +42,9 @@ export const POLICY_SURFACE_DEFINITIONS: Record<PolicySurfaceKey, PolicySurfaceD
     },
     cbc: {
         key: 'cbc',
-        label: 'CBC Report Policies',
-        description: 'CBC plugin-owned report policies for CBC assessment interpretation.',
-        href: '/cbc/report-policies',
+        label: 'CBC Academic Policies',
+        description: 'Academic report policies used by the CBC report engine.',
+        href: '/reports/policies/cbc',
         owner: 'plugin',
         pluginKey: 'cbc',
     },

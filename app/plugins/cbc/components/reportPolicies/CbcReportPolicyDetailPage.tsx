@@ -64,6 +64,13 @@ export function CbcReportPolicyDetailPage() {
         () => buildCbcCohortSubjectOptions(cohortSubjects),
         [cohortSubjects],
     );
+    const cohortOptions = useMemo(
+        () => cohorts.map((cohort) => ({
+            id: cohort.id,
+            label: cohort.name,
+        })),
+        [cohorts],
+    );
     const termOptions = useMemo(
         () => terms.map((term) => ({
             id: term.id,
@@ -77,7 +84,7 @@ export function CbcReportPolicyDetailPage() {
     }
 
     if (!canManagePolicies) {
-        return <PolicyAdminOnlyState title="CBC Report Policies" />;
+        return <PolicyAdminOnlyState title="Report Policies" />;
     }
 
     if (loading) {
@@ -113,21 +120,24 @@ export function CbcReportPolicyDetailPage() {
             setActivating(false);
         }
     };
+    const policyBriefTermName = typeof policy.policy_brief?.term === 'string'
+        ? policy.policy_brief.term
+        : policy.policy_brief?.term?.name ?? null;
 
     return (
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div className="space-y-3">
-                    <Link href="/cbc/report-policies">
+                    <Link href="/reports/policies/cbc">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to CBC Report Policies
+                            Back to Academic Governance
                         </Button>
                     </Link>
                     <div>
                         <h1 className="text-2xl font-semibold text-gray-900">{policy.name}</h1>
                         <div className="mt-2 flex flex-wrap gap-2">
-                            <Badge variant="green">CBC plugin-owned</Badge>
+                            <Badge variant="green">Academic policy</Badge>
                             {policy.is_default && <Badge variant="orange">Default</Badge>}
                             <Badge variant={policy.is_active ? 'green' : 'red'}>
                                 {policy.is_active ? 'Active' : 'Inactive'}
@@ -142,7 +152,7 @@ export function CbcReportPolicyDetailPage() {
                         setShowEditModal(true);
                     }}>
                         <Edit className="mr-1.5 h-4 w-4" />
-                        Edit CBC Report Policy
+                        Edit Report Policy
                     </Button>
                 )}
             </div>
@@ -157,7 +167,7 @@ export function CbcReportPolicyDetailPage() {
                         setTemplatePolicy(policy);
                         setShowEditModal(true);
                     }}
-                    backHref="/cbc/report-policies"
+                    backHref="/reports/policies/cbc"
                 />
             )}
 
@@ -170,7 +180,7 @@ export function CbcReportPolicyDetailPage() {
                 <Card>
                     <h2 className="text-lg font-semibold text-gray-900">Scope</h2>
                     <div className="mt-4 space-y-2 text-sm text-gray-700">
-                        <p><span className="font-medium text-gray-900">Catalog fallback / reference:</span> {policy.subject_profile_name ?? 'None'}</p>
+                        <p><span className="font-medium text-gray-900">Registered subject / reference:</span> {policy.subject_profile_name ?? 'None'}</p>
                         <p><span className="font-medium text-gray-900">CBC Cohort Subject:</span> {policy.cbc_cohort_subject_name ?? 'Any'}</p>
                         <p><span className="font-medium text-gray-900">Term:</span> {policy.term_name ?? 'Any'}</p>
                         <p><span className="font-medium text-gray-900">Rounding Mode:</span> {policy.rounding_mode}</p>
@@ -209,6 +219,12 @@ export function CbcReportPolicyDetailPage() {
             <Card>
                 <h2 className="text-lg font-semibold text-gray-900">Policy summary</h2>
                 <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                    {policy.policy_brief ? (
+                        <li>
+                            {policy.policy_brief.policy_name} governs {policyBriefTermName ?? 'any term'}
+                            {policy.policy_brief.updated_by ? `, updated by ${policy.policy_brief.updated_by}` : ''}.
+                        </li>
+                    ) : null}
                     {buildCbcPolicyRuleSummary(policy).map((line) => (
                         <li key={line}>{line}</li>
                     ))}
@@ -270,6 +286,7 @@ export function CbcReportPolicyDetailPage() {
                     editingPolicy={templatePolicy ? null : policy}
                     templatePolicy={templatePolicy}
                     subjectProfiles={subjectProfileOptions}
+                    cohorts={cohortOptions}
                     cohortSubjects={cohortSubjectOptions}
                     terms={termOptions}
                     onSuccess={async () => {

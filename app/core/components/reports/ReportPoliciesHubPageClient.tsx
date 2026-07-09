@@ -83,7 +83,7 @@ function PolicyHubHeader() {
             <div>
                 <h1 className="text-2xl font-semibold text-gray-900">Report Policies</h1>
                 <p className="mt-1 text-gray-500">
-                    Policy authoring stays inside the reporting module that owns the curriculum workflow.
+                    Academic policies define which report computations are official for each term and class subject.
                 </p>
             </div>
             <Award className="h-7 w-7 text-blue-600" />
@@ -126,7 +126,7 @@ function PolicySurfaceCard({ surface }: { surface: PolicySurfaceDefinition }) {
                                 </h2>
                                 <div className="mt-1 flex flex-wrap gap-2">
                                     <Badge variant={surface.owner === 'kernel' ? 'blue' : 'green'}>
-                                        {surface.owner === 'kernel' ? 'Kernel-owned' : 'Plugin-owned'}
+                                        {surface.owner === 'kernel' ? 'Core reports' : 'Report engine'}
                                     </Badge>
                                     {surface.pluginKey && (
                                         <Badge variant="default">{surface.pluginKey}</Badge>

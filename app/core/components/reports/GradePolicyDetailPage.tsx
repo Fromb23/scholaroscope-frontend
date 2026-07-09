@@ -194,11 +194,11 @@ export function GradePolicyDetailPage() {
         return (
             <div className="space-y-6">
                 <ErrorBanner
-                    message="This policy scope is managed by the CBC module. Open CBC Report Policies instead."
+                    message="This policy scope is managed by CBC academic report governance. Open CBC Academic Policies instead."
                     onDismiss={() => {}}
                 />
-                <Link href="/cbc/report-policies">
-                    <Button>Open CBC Report Policies</Button>
+                <Link href="/reports/policies/cbc">
+                    <Button>Open CBC Academic Policies</Button>
                 </Link>
             </div>
         );

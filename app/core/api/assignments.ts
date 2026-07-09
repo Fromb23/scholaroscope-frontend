@@ -55,6 +55,7 @@ import type {
     AssignmentTeachingTodayResponse,
     AssignmentUpdatePayload,
 } from '@/app/core/types/assignments';
+import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 
 const ASSIGNMENTS_BASE = '/assignments';
 const ASSIGNMENT_OUTCOMES_BASE = '/assignment-outcomes';
@@ -86,6 +87,18 @@ export const assignmentsAPI = {
         const response = await apiClient.get<AssignmentTeachingTodayResponse>(
             `${ASSIGNMENTS_BASE}/teaching-today/`
         );
+        return response.data;
+    },
+
+    getPolicyGuidance: async (params: {
+        term: number;
+        cohort_subject: number;
+        task_type?: string;
+        report_counting?: boolean;
+    }): Promise<AcademicPolicyBrief> => {
+        const response = await apiClient.get<AcademicPolicyBrief>(`${ASSIGNMENTS_BASE}/policy-guidance/`, {
+            params,
+        });
         return response.data;
     },
 

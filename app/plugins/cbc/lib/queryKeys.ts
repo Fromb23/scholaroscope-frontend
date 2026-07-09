@@ -105,6 +105,7 @@ export const cbcKeys = {
         all: ['cbc', 'report-policies'] as const,
         list: (filters?: CbcReportPolicyFilters) => ['cbc', 'report-policies', 'list', filters] as const,
         detail: (id: number) => ['cbc', 'report-policies', id] as const,
+        termPlan: (termId: number | null) => ['cbc', 'report-policies', 'term-plan', termId] as const,
     },
 
     fineArtsPracticals: {

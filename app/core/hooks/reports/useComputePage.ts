@@ -12,10 +12,13 @@ import {
 import { useComputedGrades } from '@/app/core/hooks/useGradePolicies';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import type { FormFieldErrors } from '@/app/core/forms';
+import { resolveReportError } from '@/app/core/errors';
 
 export interface ComputeResult {
     success: boolean;
     message: string;
+    title?: string;
+    serverCode?: string;
 }
 
 export interface ComputeOption {
@@ -39,9 +42,17 @@ export function useComputePage() {
     const { computeSummaries: computeSubjects } = useSubjectSummaries();
     const { computeSummaries: computeAssessmentTypes } = useAssessmentTypeSummaries();
     const { computeWithPolicy } = useComputedGrades();
+    const selectedTermRecord = terms.find((term) => term.id === selectedTerm) ?? null;
+    const selectedTermClosed = Boolean(
+        selectedTermRecord?.is_frozen || selectedTermRecord?.status === 'CLOSED_HISTORICAL',
+    );
 
     const requireSelectedTerm = () => {
         if (selectedTerm) {
+            if (selectedTermClosed) {
+                setGlobalError('This term is closed. Policies and reports are historical.');
+                return false;
+            }
             return true;
         }
 
@@ -61,11 +72,20 @@ export function useComputePage() {
                 [id]: { success: true, message: 'Completed successfully' },
             }));
         } catch (error) {
+            const resolved = resolveReportError(error, {
+                action: 'compute',
+                entityLabel: id === 'policy' ? 'official report' : 'report summary',
+                role: 'ADMIN',
+            });
             setResults((previous) => ({
                 ...previous,
                 [id]: {
                     success: false,
-                    message: extractErrorMessage(error as ApiError, 'Computation failed'),
+                    title: resolved.title,
+                    message: resolved.serverCode === 'policy_required'
+                        ? 'No active policy is available for this class subject and term.'
+                        : resolved.message ?? extractErrorMessage(error as ApiError, 'Computation failed'),
+                    serverCode: resolved.serverCode,
                 },
             }));
         } finally {
@@ -129,11 +149,20 @@ export function useComputePage() {
                     [option.id]: { success: true, message: 'Completed' },
                 }));
             } catch (error) {
+                const resolved = resolveReportError(error, {
+                    action: 'compute',
+                    entityLabel: 'report summary',
+                    role: 'ADMIN',
+                });
                 setResults((previous) => ({
                     ...previous,
                     [option.id]: {
                         success: false,
-                        message: extractErrorMessage(error as ApiError, 'Failed'),
+                        title: resolved.title,
+                        message: resolved.serverCode === 'policy_required'
+                            ? 'No active policy is available for this class subject and term.'
+                            : resolved.message ?? extractErrorMessage(error as ApiError, 'Failed'),
+                        serverCode: resolved.serverCode,
                     },
                 }));
             }
@@ -145,6 +174,7 @@ export function useComputePage() {
         setSelectedTerm(value ? Number(value) : null);
         setFieldErrors({});
         setResults({});
+        setGlobalError(null);
     };
 
     const successCount = Object.values(results).filter((result) => result.success).length;
@@ -159,6 +189,7 @@ export function useComputePage() {
 
     return {
         selectedTerm,
+        selectedTermClosed,
         computing,
         results,
         fieldErrors,

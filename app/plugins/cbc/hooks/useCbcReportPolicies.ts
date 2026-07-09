@@ -7,6 +7,7 @@ import type {
     CbcReportPolicy,
     CbcReportPolicyFilters,
     CbcReportPolicyPayload,
+    CbcTermPolicyCoverage,
 } from '@/app/plugins/cbc/types/reportPolicy';
 
 export function useCbcReportPolicies(
@@ -81,5 +82,44 @@ export function useCbcReportPolicy(
         loading: query.isLoading,
         error: query.error ?? null,
         refetch: query.refetch,
+    };
+}
+
+export function useCbcTermPolicyPlan(
+    termId: number | null,
+    options?: {
+        enabled?: boolean;
+    },
+) {
+    const queryClient = useQueryClient();
+    const enabled = options?.enabled ?? true;
+
+    const query = useQuery<CbcTermPolicyCoverage>({
+        queryKey: cbcKeys.reportPolicies.termPlan(termId),
+        queryFn: () => cbcReportPolicyAPI.getTermPlan(termId!),
+        enabled: enabled && termId !== null,
+        staleTime: 60 * 1000,
+    });
+
+    const saveMutation = useMutation({
+        mutationFn: (payload: {
+            term_id: number;
+            selected_policy_ids?: number[];
+            use_all_active_policies?: boolean;
+            status?: 'DRAFT' | 'ACTIVE' | 'FROZEN';
+        }) => cbcReportPolicyAPI.saveTermPlan(payload),
+        onSuccess: async (coverage) => {
+            queryClient.setQueryData(cbcKeys.reportPolicies.termPlan(coverage.term?.id ?? coverage.term_id ?? null), coverage);
+            await queryClient.invalidateQueries({ queryKey: cbcKeys.reportPolicies.all });
+        },
+    });
+
+    return {
+        coverage: query.data ?? null,
+        loading: query.isLoading,
+        error: query.error ?? null,
+        refetch: query.refetch,
+        savePlan: saveMutation.mutateAsync,
+        saving: saveMutation.isPending,
     };
 }

@@ -22,7 +22,10 @@ import {
 import { useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { useCreateAssignment, useUpdateAssignment } from '@/app/core/hooks/useAssignments';
 import { useRubricScales } from '@/app/core/hooks/useAssessments';
+import { useTerms } from '@/app/core/hooks/useAcademic';
+import { assignmentsAPI } from '@/app/core/api/assignments';
 import type { CohortSubject } from '@/app/core/types/academic';
+import type { AcademicPolicyBrief } from '@/app/core/types/policyGuidance';
 import type {
     Assignment,
     AssignmentAttachmentSlot,
@@ -82,6 +85,14 @@ const EVALUATION_OPTIONS: Array<{ value: AssignmentEvaluationType; label: string
 const DELIVERY_MODE_OPTIONS: Array<{ value: AssignmentDeliveryMode; label: string }> = [
     { value: 'INDIVIDUAL', label: 'Individual learners' },
     { value: 'GROUP', label: 'Group work' },
+];
+
+type AssignmentTaskType = 'ASSIGNMENT' | 'PROJECT' | 'PRACTICAL';
+
+const BASE_TASK_TYPE_OPTIONS: Array<{ value: AssignmentTaskType; label: string }> = [
+    { value: 'ASSIGNMENT', label: 'Assignment' },
+    { value: 'PROJECT', label: 'Project' },
+    { value: 'PRACTICAL', label: 'Practical' },
 ];
 
 const ATTACHMENT_OPTIONS: AttachmentOption[] = [
@@ -162,6 +173,7 @@ export function AssignmentCreateModal({
     const { rubricScales, loading: rubricScalesLoading } = useRubricScales(
         cohortCurriculumId ?? undefined
     );
+    const { terms } = useTerms();
     const learnersQuery = useCohortEnrolledStudents(cohortId);
     const isEditMode = Boolean(assignment);
     const resolvedLinkedSessionId = isEditMode
@@ -192,6 +204,9 @@ export function AssignmentCreateModal({
     const [cohortSubjectId, setCohortSubjectId] = useState('');
     const [title, setTitle] = useState('');
     const [instructions, setInstructions] = useState('');
+    const [termId, setTermId] = useState('');
+    const [taskType, setTaskType] = useState<AssignmentTaskType>('ASSIGNMENT');
+    const [reportCounting, setReportCounting] = useState(false);
     const [startsAt, setStartsAt] = useState('');
     const [dueAt, setDueAt] = useState('');
     const [deliveryMode, setDeliveryMode] = useState<AssignmentDeliveryMode>('INDIVIDUAL');
@@ -208,6 +223,10 @@ export function AssignmentCreateModal({
     const [requiresAttachments, setRequiresAttachments] = useState(false);
     const [attachmentOptionKeys, setAttachmentOptionKeys] = useState<string[]>([]);
     const [formError, setFormError] = useState<AppError | null>(null);
+    const [policyGuidance, setPolicyGuidance] = useState<AcademicPolicyBrief | null>(null);
+    const [policyGuidanceLoading, setPolicyGuidanceLoading] = useState(false);
+    const [policyGuidanceError, setPolicyGuidanceError] = useState<string | null>(null);
+    const [policyGuidanceCode, setPolicyGuidanceCode] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -221,6 +240,19 @@ export function AssignmentCreateModal({
         );
         setTitle(assignment?.title ?? '');
         setInstructions(assignment?.instructions ?? '');
+        setTermId(
+            assignment?.curriculum_context?.term_id || assignment?.curriculum_context?.term
+                ? String(assignment.curriculum_context.term_id ?? assignment.curriculum_context.term)
+                : ''
+        );
+        setTaskType(
+            String(assignment?.curriculum_context?.task_type ?? 'ASSIGNMENT').toUpperCase() as AssignmentTaskType
+        );
+        setReportCounting(Boolean(
+            assignment?.curriculum_context?.report_counting
+            ?? assignment?.curriculum_context?.counts_for_reports
+            ?? false
+        ));
         setStartsAt(toDateTimeLocalValue(assignment?.starts_at));
         setDueAt(toDateTimeLocalValue(assignment?.due_at));
         setDeliveryMode(assignment?.delivery_mode ?? 'INDIVIDUAL');
@@ -235,6 +267,9 @@ export function AssignmentCreateModal({
         setRequiresAttachments(Boolean(assignment?.requires_attachments));
         setAttachmentOptionKeys(buildInitialAttachmentOptionKeys(assignment));
         setFormError(null);
+        setPolicyGuidance(null);
+        setPolicyGuidanceError(null);
+        setPolicyGuidanceCode(undefined);
     }, [assignment, defaultCohortSubjectId, hasLinkedLesson, isOpen, sortedSubjects]);
 
     const filteredLearners = useMemo(() => {
@@ -255,6 +290,85 @@ export function AssignmentCreateModal({
     const selectedSubject = useMemo(() => (
         sortedSubjects.find((subject) => String(subject.id) === cohortSubjectId) ?? null
     ), [cohortSubjectId, sortedSubjects]);
+    const isCbcPolicyContext = selectedSubject?.curriculum_type === 'CBE' || selectedSubject?.curriculum_type === 'CBC';
+    const taskTypeOptions = useMemo(() => {
+        if (!policyGuidance) {
+            return BASE_TASK_TYPE_OPTIONS;
+        }
+
+        return BASE_TASK_TYPE_OPTIONS.filter((option) => {
+            if (option.value === 'ASSIGNMENT') return true;
+            if (option.value === 'PROJECT') return Boolean(policyGuidance.include_projects);
+            if (option.value === 'PRACTICAL') return Boolean(policyGuidance.include_practicals);
+            return false;
+        });
+    }, [policyGuidance]);
+    const selectedTaskTypeAllowed = taskTypeOptions.some((option) => option.value === taskType);
+    const assignmentPracticeOnly = policyGuidance?.reporting_mode === 'practice_only';
+    const officialAssignmentBlocked = policyGuidanceCode === 'assignment_not_counted_by_policy'
+        || Boolean(policyGuidanceError?.includes('does not count assignments'));
+
+    useEffect(() => {
+        if (!selectedTaskTypeAllowed) {
+            setTaskType('ASSIGNMENT');
+        }
+    }, [selectedTaskTypeAllowed]);
+
+    useEffect(() => {
+        if (!isOpen || !isCbcPolicyContext || !termId || !cohortSubjectId) {
+            setPolicyGuidance(null);
+            setPolicyGuidanceError(null);
+            setPolicyGuidanceCode(undefined);
+            setPolicyGuidanceLoading(false);
+            return;
+        }
+
+        let cancelled = false;
+        setPolicyGuidanceLoading(true);
+        setPolicyGuidanceError(null);
+        setPolicyGuidanceCode(undefined);
+
+        assignmentsAPI.getPolicyGuidance({
+            term: Number(termId),
+            cohort_subject: Number(cohortSubjectId),
+            task_type: taskType,
+            report_counting: reportCounting,
+        }).then((guidance) => {
+            if (!cancelled) {
+                setPolicyGuidance(guidance);
+                setPolicyGuidanceCode(undefined);
+            }
+        }).catch((error) => {
+            if (cancelled) return;
+            const resolved = resolveAssignmentError(error, {
+                action: 'load',
+                entityLabel: 'assignment policy guidance',
+                role: 'INSTRUCTOR',
+            });
+            setPolicyGuidance(null);
+            setPolicyGuidanceCode(resolved.serverCode);
+            setPolicyGuidanceError(
+                resolved.serverCode === 'policy_required'
+                    ? 'Create or activate a policy before creating assignments for this term.'
+                    : resolved.message,
+            );
+        }).finally(() => {
+            if (!cancelled) {
+                setPolicyGuidanceLoading(false);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        cohortSubjectId,
+        isCbcPolicyContext,
+        isOpen,
+        reportCounting,
+        taskType,
+        termId,
+    ]);
 
     const handleToggleStudent = (studentId: number) => {
         setSelectedStudentIds((previous) => (
@@ -339,6 +453,13 @@ export function AssignmentCreateModal({
             return;
         }
 
+        if (isCbcPolicyContext && termId && (policyGuidanceLoading || policyGuidanceError)) {
+            setFormError(makeAssignmentValidationError(
+                policyGuidanceError ?? 'Wait for active policy guidance before saving the assignment.',
+            ));
+            return;
+        }
+
         if (!title.trim()) {
             setFormError(makeAssignmentValidationError('Assignment title is required.'));
             return;
@@ -374,6 +495,14 @@ export function AssignmentCreateModal({
             return;
         }
 
+        const curriculumContext = {
+            ...(assignment?.curriculum_context ?? {}),
+            ...(termId ? { term_id: Number(termId), term: Number(termId) } : {}),
+            task_type: taskType,
+            report_counting: reportCounting,
+            counts_for_reports: reportCounting,
+        };
+
         const basePayload = {
             cohort_subject: Number(cohortSubjectId),
             title: title.trim(),
@@ -388,7 +517,7 @@ export function AssignmentCreateModal({
             requires_attachments: requiresAttachments,
             attachment_policy: requiresAttachments ? 'REQUIRED' as const : 'NONE' as const,
             attachment_slots: requiresAttachments ? buildAttachmentSlots(attachmentOptionKeys) : [],
-            ...(assignment?.curriculum_context ? { curriculum_context: assignment.curriculum_context } : {}),
+            curriculum_context: curriculumContext,
         };
 
         try {
@@ -476,6 +605,82 @@ export function AssignmentCreateModal({
                         placeholder={isLessonPreparationMode ? 'Learner task title' : 'Assignment title'}
                     />
                 </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    <Select
+                        label="Term"
+                        value={termId}
+                        onChange={(event) => setTermId(event.target.value)}
+                        options={[
+                            { value: '', label: 'Select term' },
+                            ...terms.map((term) => ({
+                                value: String(term.id),
+                                label: `${term.academic_year_name} · ${term.name}`,
+                            })),
+                        ]}
+                    />
+                    <Select
+                        label="Task category"
+                        value={selectedTaskTypeAllowed ? taskType : 'ASSIGNMENT'}
+                        onChange={(event) => setTaskType(event.target.value as AssignmentTaskType)}
+                        options={taskTypeOptions.map((option) => ({
+                            value: option.value,
+                            label: option.label,
+                        }))}
+                    />
+                    <label className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3">
+                        <input
+                            type="checkbox"
+                            checked={reportCounting}
+                            onChange={(event) => setReportCounting(event.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>
+                            <span className="block text-sm font-medium text-gray-900">Counts in official reports</span>
+                            <span className="block text-sm text-gray-500">Leave unchecked for practice-only tasks.</span>
+                        </span>
+                    </label>
+                </div>
+
+                {isCbcPolicyContext && termId && cohortSubjectId ? (
+                    <div className={`rounded-lg border px-4 py-3 text-sm ${
+                        policyGuidanceError
+                            ? 'border-red-200 bg-red-50 text-red-700'
+                            : assignmentPracticeOnly
+                                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                                : 'border-green-200 bg-green-50 text-green-800'
+                    }`}>
+                        {policyGuidanceError ? (
+                            <>
+                                <p className="font-medium">
+                                    {officialAssignmentBlocked
+                                        ? 'This policy does not count assignments for official reports.'
+                                        : policyGuidanceError}
+                                </p>
+                                {officialAssignmentBlocked ? (
+                                    <p className="mt-1">Create this as practice only, or update the policy.</p>
+                                ) : null}
+                            </>
+                        ) : policyGuidance ? (
+                            <>
+                                <p className="font-medium">
+                                    {policyGuidance.message
+                                        ?? (assignmentPracticeOnly
+                                            ? 'Assignments are practice-only under this policy.'
+                                            : 'Assignments count in this policy.')}
+                                </p>
+                                <p className="mt-1">
+                                    Policy: {policyGuidance.policy_name ?? 'Active report policy'}
+                                </p>
+                                <p>
+                                    Projects: {policyGuidance.include_projects ? 'counted' : 'not counted'}; Practicals: {policyGuidance.include_practicals ? 'counted' : 'not counted'}
+                                </p>
+                            </>
+                        ) : policyGuidanceLoading ? (
+                            <p>Loading active policy guidance...</p>
+                        ) : null}
+                    </div>
+                ) : null}
 
                 <Select
                     label={isLessonPreparationMode ? 'Task type' : 'Delivery Mode'}
@@ -798,7 +1003,11 @@ export function AssignmentCreateModal({
                     <Button
                         type="button"
                         onClick={handleSubmit}
-                        disabled={saving || sortedSubjects.length === 0}
+                        disabled={
+                            saving
+                            || sortedSubjects.length === 0
+                            || (isCbcPolicyContext && Boolean(termId) && (policyGuidanceLoading || Boolean(policyGuidanceError)))
+                        }
                     >
                         {saving
                             ? (isEditMode ? 'Saving...' : 'Creating...')
