@@ -1,6 +1,7 @@
 // app/core/api/notifications.ts
 
 import { apiClient } from './client';
+import { unwrapPaginated } from './unwrap';
 import type {
     Notification,
     UnreadCountResponse,
@@ -12,9 +13,7 @@ export const notificationAPI = {
         const res = await apiClient.get<{ results: Notification[] } | Notification[]>(
             '/notifications/'
         );
-        return Array.isArray(res.data)
-            ? res.data
-            : (res.data as { results: Notification[] }).results ?? [];
+        return unwrapPaginated(res.data);
     },
 
     getUnreadCount: async (): Promise<number> => {

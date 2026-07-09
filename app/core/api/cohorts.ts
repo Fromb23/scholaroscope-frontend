@@ -4,6 +4,7 @@
 
 import { CohortSubject } from '../types/academic';
 import { apiClient } from './client';
+import { unwrapPaginated } from './unwrap';
 
 const KERNEL_COHORT_SUBJECTS_BASE = '/academic/cohort-subjects';
 
@@ -140,7 +141,7 @@ export const cohortsAPI = {
       `${KERNEL_COHORT_SUBJECTS_BASE}/`,
       { params: { cohort: id } }
     );
-    return Array.isArray(data) ? data : data.results ?? [];
+    return unwrapPaginated(data);
   },
 
   // Add subject to cohort

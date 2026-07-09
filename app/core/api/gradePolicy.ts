@@ -1,6 +1,7 @@
 // app/core/api/gradePolicy.ts
 
 import { apiClient } from './client';
+import { unwrapPaginated } from './unwrap';
 import {
     GradePolicy,
     GradePolicyPayload,
@@ -12,20 +13,14 @@ import {
     ComputedGradeFilters,
 } from '@/app/core/types/gradePolicy';
 
-interface Paginated<T> { results?: T[]; count?: number; }
-
-function unwrap<T>(data: T[] | Paginated<T>): T[] {
-    return Array.isArray(data) ? data : data?.results ?? [];
-}
-
 export const gradePolicyAPI = {
     // ── Policies ──────────────────────────────────────────────────────────
 
     getAll: async (filters?: PolicyFilters): Promise<GradePolicy[]> => {
-        const { data } = await apiClient.get<GradePolicy[] | Paginated<GradePolicy>>(
+        const { data } = await apiClient.get<GradePolicy[] | { results?: GradePolicy[]; count?: number }>(
             '/reporting/grade-policies/', { params: filters }
         );
-        return unwrap(data);
+        return unwrapPaginated(data);
     },
 
     getById: async (id: number): Promise<GradePolicy> => {
@@ -59,10 +54,10 @@ export const gradePolicyAPI = {
     // ── Computed Grades ───────────────────────────────────────────────────
 
     getComputedGrades: async (filters?: ComputedGradeFilters): Promise<ComputedGradeDTO[]> => {
-        const { data } = await apiClient.get<ComputedGradeDTO[] | Paginated<ComputedGradeDTO>>(
+        const { data } = await apiClient.get<ComputedGradeDTO[] | { results?: ComputedGradeDTO[]; count?: number }>(
             '/reporting/computed-grades/', { params: filters }
         );
-        return unwrap(data);
+        return unwrapPaginated(data);
     },
 
     computeWithPolicy: async (payload: ComputeGradesPayload): Promise<ComputeResponse> => {

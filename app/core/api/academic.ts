@@ -4,6 +4,7 @@ import {
   getDownloadFileName,
   normalizeBlobError,
 } from '@/app/core/api/downloads';
+import { unwrapPaginated } from '@/app/core/api/unwrap';
 import {
   AcademicYear,
   Term,
@@ -70,9 +71,7 @@ export async function listCohortSubjects(cohortId: number): Promise<CohortSubjec
     { params: { cohort: cohortId } }
   );
 
-  return Array.isArray(response.data)
-    ? response.data
-    : response.data.results ?? [];
+  return unwrapPaginated(response.data);
 }
 
 export async function getCohortSubjectLearners(
@@ -286,9 +285,7 @@ export const curriculumDisableRequestAPI = {
     ordering?: string;
   }) => {
     const response = await apiClient.get<CurriculumDisableRequest[]>('/curriculum-disable-requests/', { params });
-    return Array.isArray(response.data)
-      ? response.data
-      : (response.data as { results?: CurriculumDisableRequest[] })?.results ?? [];
+    return unwrapPaginated(response.data);
   },
 
   getById: async (id: number) => {
@@ -354,9 +351,7 @@ export const subjectOfferingAPI = {
     const response = await apiClient.get<SubjectCatalogItem[]>('/academic/subject-catalog/', {
       params: { curriculum: curriculumId },
     });
-    return Array.isArray(response.data)
-      ? response.data
-      : (response.data as { results?: SubjectCatalogItem[] }).results ?? [];
+    return unwrapPaginated(response.data);
   },
 
   offer: async (payload: SubjectOfferingMutationPayload): Promise<SubjectCatalogItem> => {
@@ -555,9 +550,7 @@ export const cohortSubjectAPI = {
     has_active_instructor: boolean;
   }[]> => {
     const response = await apiClient.get(`${KERNEL_COHORT_SUBJECTS_BASE}/`);
-    const data = Array.isArray(response.data)
-      ? response.data
-      : (response.data as { results: unknown[] })?.results ?? [];
+    const data = unwrapPaginated<unknown>(response.data);
     return (data as { has_active_instructor: boolean }[]).filter(
       cs => !cs.has_active_instructor
     ) as {
