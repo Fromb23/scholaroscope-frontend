@@ -65,12 +65,19 @@ export const DEFAULT_WORKSPACE_CAPABILITIES: WorkspaceCapabilities = {
   is_workspace_owner: false,
   workspace_mode: null,
   workspace_behavior: null,
+  product_capabilities: {},
+  effective_capabilities: {},
 };
 
 function normalizeCapabilities(capabilities?: Partial<WorkspaceCapabilities>): WorkspaceCapabilities {
+  const productCapabilities = capabilities?.product_capabilities
+    ?? capabilities?.effective_capabilities
+    ?? {};
   return {
     ...DEFAULT_WORKSPACE_CAPABILITIES,
     ...(capabilities ?? {}),
+    product_capabilities: productCapabilities,
+    effective_capabilities: capabilities?.effective_capabilities ?? productCapabilities,
   };
 }
 

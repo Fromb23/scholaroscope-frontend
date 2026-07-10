@@ -1,0 +1,332 @@
+[
+  {
+    "file": "app/(dashboard)/academic/cohorts/[id]/report-computation/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/routes/CohortReportSetupRoutes",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/academic/cohorts/[id]/report-setup/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/routes/CohortReportSetupRoutes",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/academic/cohorts/[id]/subjects/[cohortSubjectId]/report-computation/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/routes/CohortReportSetupRoutes",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/academic/cohorts/[id]/subjects/[cohortSubjectId]/report-policy/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/routes/CohortReportSetupRoutes",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/announcements/page.tsx",
+    "import": "@/app/plugins/announcements/components/AnnouncementsRoutePage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/frameworks/[frameworkId]/strands/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeAuthoringFrameworkStrandsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/programmes/[programmeId]/subjects/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeAuthoringProgrammeSubjectsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/programmes/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeAuthoringProgrammesPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/strands/[strandId]/children/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeAuthoringStrandChildrenPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/subjects/[subjectId]/frameworks/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeAuthoringSubjectFrameworksPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/substrands/[substrandId]/objectives/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeAuthoringSubstrandObjectivesPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/authoring/syllabuses/[syllabusId]/children/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeAuthoringSyllabusChildrenPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/frameworks/[frameworkId]/strands/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/offerings/[offeringId]/cohorts/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeOfferingCohortsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeDashboardPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/programmes/[programmeId]/subjects/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/progress/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeProgressPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/setup/frameworks/[frameworkId]/strands/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeInstallationFrameworkStrandsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/setup/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeSetupPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/setup/programmes/[programmeId]/subjects/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeInstallationProgrammeSubjectsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/setup/subjects/[id]/frameworks/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeInstallationSubjectFrameworksPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/setup/subjects/[id]/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeSubjectDetailPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/setup/subjects/[id]/syllabuses/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeInstallationSubjectSyllabusesPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/setup/syllabuses/[syllabusId]/components/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeInstallationSyllabusComponentsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/subjects/[id]/frameworks/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/subjects/[id]/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/subjects/[id]/syllabuses/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/subjects/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeSubjectManagementPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/syllabuses/[syllabusId]/components/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cambridge/teaching/sessions/[sessionId]/page.tsx",
+    "import": "@/app/plugins/cambridge/pages/CambridgeTeachingSessionPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/assessment-results/[id]/page.tsx",
+    "import": "@/app/plugins/cbc/pages/CBCAssessmentReportResultDetailPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/assessment-results/page.tsx",
+    "import": "@/app/plugins/cbc/pages/CBCAssessmentReportResultsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/authoring/page.tsx",
+    "import": "@/app/plugins/cbc/pages/CBCAuthoringPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/authoring/strands/[strandId]/page.tsx",
+    "import": "@/app/plugins/cbc/components/authoring/CBCAuthoringSubStrandsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/authoring/strands/page.tsx",
+    "import": "@/app/plugins/cbc/components/authoring/CBCAuthoringStrandsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/authoring/sub-strands/[subStrandId]/page.tsx",
+    "import": "@/app/plugins/cbc/components/authoring/CBCAuthoringOutcomesPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/browser/page.tsx",
+    "import": "@/app/plugins/cbc/components/browser/CBCBrowserPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/browser/strands/[strandId]/page.tsx",
+    "import": "@/app/plugins/cbc/components/browser/CBCBrowserStrandPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/layout.tsx",
+    "import": "@/app/plugins/cbc/context/CBCContext",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/progress/cohort/[cohortId]/page.tsx",
+    "import": "@/app/plugins/cbc/components/progress/CBCCohortProgressPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/progress/learner/[studentId]/page.tsx",
+    "import": "@/app/plugins/cbc/pages/CBCStudentProgressPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/progress/page.tsx",
+    "import": "@/app/plugins/cbc/components/progress/CBCProgressPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/progress/strand/[strandId]/page.tsx",
+    "import": "@/app/plugins/cbc/pages/CBCStrandProgressPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/report-policies/[id]/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/report-policies/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/CbcReportPoliciesPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCTeachingPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/[sessionId]/fine-arts-practical/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCFineArtsPracticalPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/[sessionId]/learners/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCSessionLearnersPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/[learningOutcomeId]/evidence/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCEvidenceEntryPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/[learningOutcomeId]/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCOutcomeSessionPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/add/page.tsx",
+    "import": "@/app/plugins/cbc/pages/CBCRedirectPages",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/[sessionId]/outcomes/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCSessionOutcomesPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/[sessionId]/practical/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCPracticalPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/cbc/teaching/sessions/page.tsx",
+    "import": "@/app/plugins/cbc/components/teaching/CBCTeachingSessionsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/reports/policies/cbc/[id]/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/CbcReportPolicyDetailPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/reports/policies/cbc/page.tsx",
+    "import": "@/app/plugins/cbc/components/reportPolicies/CbcReportPoliciesRouteClient",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/requests/[id]/page.tsx",
+    "import": "@/app/plugins/requests/components/RequestDetailPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/requests/new/page.tsx",
+    "import": "@/app/plugins/requests/components/NewRequestPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/requests/page.tsx",
+    "import": "@/app/plugins/requests/components/RequestsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/schemes/[id]/page.tsx",
+    "import": "@/app/plugins/schemes/components/SchemeDetailPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/schemes/new/page.tsx",
+    "import": "@/app/plugins/schemes/components/CreateSchemePage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/schemes/page.tsx",
+    "import": "@/app/plugins/schemes/components/SchemesPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/superadmin/audit/page.tsx",
+    "import": "@/app/plugins/audit/components/AuditLogsPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/superadmin/feedback/page.tsx",
+    "import": "@/app/plugins/requests/components/SuperAdminFeedbackPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  },
+  {
+    "file": "app/(dashboard)/superadmin/support/page.tsx",
+    "import": "@/app/plugins/requests/components/SuperAdminSupportPage",
+    "reason": "Existing direct plugin UI import. Migrate this route/surface to a declared plugin registry or slot before removing from baseline."
+  }
+]
