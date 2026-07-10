@@ -20,6 +20,7 @@ const registerAll = read('app/plugins/registerAll.ts');
 const manifest = read('app/plugins/manifest.ts');
 const loader = read('app/plugins/loadPlugin.ts');
 const provider = read('app/plugins/PluginRegistryProvider.tsx');
+const capabilityHelpers = read('app/core/lib/productCapabilities.ts');
 const cbcRegister = read('app/plugins/cbc/register.ts');
 const cambridgeRegister = read('app/plugins/cambridge/register.ts');
 
@@ -56,6 +57,16 @@ check(
     && manifest.includes('getRequiredPluginIdsForPath')
     && manifest.includes('selectPluginManifestEntries'),
   'Plugin selection must be driven from a manifest with route/nav availability metadata.',
+);
+
+check(
+  'Plugin manifest must prefer backend-resolved product capabilities',
+  manifest.includes('hasResolvedPluginCapability')
+    && manifest.includes('hasPluginCapability')
+    && capabilityHelpers.includes('getProductCapability')
+    && capabilityHelpers.includes('product_capabilities')
+    && capabilityHelpers.includes('enabledFeatures'),
+  'Plugin loading must use resolved product capabilities first, with installed-plugin feature keys only as a migration fallback.',
 );
 
 check(

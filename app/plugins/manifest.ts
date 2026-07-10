@@ -2,6 +2,7 @@
 
 import type { ActiveOrg, Role, WorkspaceCapabilities } from '@/app/core/types/auth';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
+import { hasPluginCapability } from '@/app/core/lib/productCapabilities';
 
 export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'schemes';
 
@@ -43,8 +44,11 @@ function hasCurriculumType(context: PluginLoadContext, types: Set<string>): bool
   return context.curriculumTypes.some((type) => types.has(normalize(type)));
 }
 
-function hasEnabledFeature(context: PluginLoadContext, feature: string): boolean {
-  return context.enabledFeatures.some((enabled) => enabled === feature);
+function hasResolvedPluginCapability(context: PluginLoadContext, pluginId: PluginId): boolean {
+  return hasPluginCapability({
+    capabilities: context.capabilities,
+    enabledFeatures: context.enabledFeatures,
+  }, pluginId);
 }
 
 function routeMatches(context: PluginLoadContext, entry: Pick<PluginManifestEntry, 'routePatterns'>): boolean {
@@ -76,7 +80,7 @@ export const pluginManifest: PluginManifestEntry[] = [
     ],
     shouldLoad: (context) => (
       routeMatches(context, pluginManifestById.cbc)
-      || hasEnabledFeature(context, 'cbc')
+      || hasResolvedPluginCapability(context, 'cbc')
       || hasCurriculumType(context, CBC_CURRICULUM_TYPES)
       || Boolean(context.isSuperadmin)
     ),
@@ -103,7 +107,7 @@ export const pluginManifest: PluginManifestEntry[] = [
     ],
     shouldLoad: (context) => (
       routeMatches(context, pluginManifestById.cambridge)
-      || hasEnabledFeature(context, 'cambridge')
+      || hasResolvedPluginCapability(context, 'cambridge')
       || hasCurriculumType(context, CAMBRIDGE_CURRICULUM_TYPES)
     ),
     load: async () => {
@@ -123,7 +127,7 @@ export const pluginManifest: PluginManifestEntry[] = [
     ],
     shouldLoad: (context) => (
       routeMatches(context, pluginManifestById.announcements)
-      || hasEnabledFeature(context, 'announcements')
+      || hasResolvedPluginCapability(context, 'announcements')
       || Boolean(context.isSuperadmin)
       || (isWorkspaceRole(context) && !isPersonalOrFreelanceWorkspace(context))
     ),
@@ -143,7 +147,7 @@ export const pluginManifest: PluginManifestEntry[] = [
     ],
     shouldLoad: (context) => (
       routeMatches(context, pluginManifestById.requests)
-      || hasEnabledFeature(context, 'requests')
+      || hasResolvedPluginCapability(context, 'requests')
       || isWorkspaceRole(context)
     ),
     load: async () => {
@@ -162,7 +166,7 @@ export const pluginManifest: PluginManifestEntry[] = [
     ],
     shouldLoad: (context) => (
       routeMatches(context, pluginManifestById.schemes)
-      || hasEnabledFeature(context, 'schemes')
+      || hasResolvedPluginCapability(context, 'schemes')
     ),
     load: async () => {
       const { registerSchemesPlugin } = await import('./schemes/register');

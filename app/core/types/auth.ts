@@ -16,6 +16,26 @@ export type WorkspaceMode =
   | 'PERSONAL';
 export type RegisterOrgType = WorkspaceMode | 'INSTITUTION' | 'LEARNER_WORKSPACE';
 export type MembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
+export type EffectiveCapabilitySource =
+  | 'PLATFORM_DEFAULT'
+  | 'WORKSPACE_STANDARD'
+  | 'PREMIUM'
+  | 'METERED'
+  | 'EXTERNAL_INTEGRATION'
+  | 'OVERRIDE';
+export type WorkspacePluginClassification = EffectiveCapabilitySource | 'NOT_APPLICABLE';
+
+export interface EffectiveCapability {
+  enabled: boolean;
+  source?: EffectiveCapabilitySource | null;
+  reason?: string | null;
+  plugin_key?: string | null;
+  entitled?: boolean;
+  installed?: boolean;
+  required?: boolean;
+  remaining_requests?: number | null;
+  limit?: number | null;
+}
 
 export interface WorkspaceCapabilities {
   can_teach: boolean;
@@ -42,6 +62,8 @@ export interface WorkspaceCapabilities {
     reporting_governance_routes_allowed: boolean;
     allowed_policy_scopes: string[];
   };
+  product_capabilities?: Record<string, EffectiveCapability>;
+  effective_capabilities?: Record<string, EffectiveCapability>;
 }
 
 export interface AccessNotice {

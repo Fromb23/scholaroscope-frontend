@@ -7,6 +7,7 @@ import type {
     CurriculumDisableImpactSnapshot,
     CurriculumDisableRequest,
 } from '@/app/core/types/academic';
+import type { WorkspacePluginClassification } from '@/app/core/types/auth';
 
 export type PluginSource = 'core' | 'third_party';
 export type PluginState = 'active' | 'disabled' | 'grace_period' | 'uninstalled';
@@ -59,6 +60,9 @@ export interface InstalledPlugin {
     uninstalled_at: string | null;
     data_retention_until: string | null;
     capabilities?: string[];
+    policy_classification?: WorkspacePluginClassification;
+    required_by_policy?: boolean;
+    default_enabled_by_policy?: boolean;
 }
 
 export interface InstalledPluginToggleWorkflowResponse {

@@ -14,6 +14,11 @@ import { renderAssessmentPolicyPreviewExtension } from '@/app/core/registry/asse
 import { getRouteRules } from '@/app/utils/routeAccess';
 import type { ActiveOrg, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import type { AssessmentPolicyPreviewSubject } from '@/app/core/registry/assessmentPolicyPreviews';
+import {
+  getProductCapability,
+  hasPluginCapability,
+  hasProductCapability,
+} from '@/app/core/lib/productCapabilities';
 
 const institutionOrg: ActiveOrg = {
   id: 1,
@@ -146,6 +151,71 @@ describe('selective plugin loading manifest', () => {
     expect(freelanceIds).not.toContain('announcements');
     expect(freelanceIds).not.toContain('schemes');
     expect(schemesIds).toContain('schemes');
+  });
+
+  it('selects plugins from resolved product capabilities before legacy signals', () => {
+    const ids = selectPluginManifestEntries(buildLoadContext({
+      enabledFeatures: [],
+      capabilities: {
+        ...baseCapabilities,
+        product_capabilities: {
+          schemes: {
+            enabled: true,
+            source: 'WORKSPACE_STANDARD',
+          },
+        },
+      },
+    })).map((entry) => entry.id);
+
+    expect(ids).toContain('schemes');
+  });
+
+  it('does not select disabled product capabilities without a legacy fallback', () => {
+    const ids = selectPluginManifestEntries(buildLoadContext({
+      enabledFeatures: [],
+      capabilities: {
+        ...baseCapabilities,
+        product_capabilities: {
+          schemes: {
+            enabled: false,
+            source: 'WORKSPACE_STANDARD',
+            reason: 'Plugin disabled for this workspace.',
+          },
+        },
+      },
+    })).map((entry) => entry.id);
+
+    expect(ids).not.toContain('schemes');
+  });
+});
+
+describe('product capability helpers', () => {
+  it('reads product_capabilities and effective_capabilities aliases', () => {
+    const capabilities: WorkspaceCapabilities = {
+      ...baseCapabilities,
+      product_capabilities: {
+        announcements: {
+          enabled: true,
+          source: 'WORKSPACE_STANDARD',
+        },
+      },
+      effective_capabilities: {
+        cbc: {
+          enabled: true,
+          source: 'PREMIUM',
+        },
+      },
+    };
+
+    expect(hasProductCapability(capabilities, 'announcements')).toBe(true);
+    expect(getProductCapability(capabilities, 'cbc')?.source).toBe('PREMIUM');
+  });
+
+  it('falls back to active installed plugin feature keys during migration', () => {
+    expect(hasPluginCapability({
+      capabilities: baseCapabilities,
+      enabledFeatures: ['cbc'],
+    }, 'cbc')).toBe(true);
   });
 });
 
