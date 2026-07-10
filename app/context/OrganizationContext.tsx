@@ -1,7 +1,7 @@
 // ============================================================================
 // app/context/OrganizationContext.tsx
-// NEW: Provides organization ID to child components when SuperAdmin is viewing
-// a specific org's detail page
+// Provides an explicit organization ID to child components when a workspace
+// surface needs to override the active organization context.
 // ============================================================================
 
 'use client';

@@ -1,4 +1,4 @@
-export type RouteAccessRole = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+export type RouteAccessRole = 'ADMIN' | 'INSTRUCTOR';
 
 export interface RouteAccessContext {
     role: RouteAccessRole;

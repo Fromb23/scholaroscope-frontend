@@ -14,8 +14,8 @@ import { CambridgeBreadcrumb, CambridgeWorkflowNav } from '../components/Cambrid
 import { modeLabel, resolveCambridgeError } from './authoringUtils';
 
 export default function CambridgeSetupPage() {
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
 
   const { data: installation, isLoading: installationLoading, error: installationError } = useCambridgeInstallationStatus();
@@ -58,7 +58,7 @@ export default function CambridgeSetupPage() {
             <Card>
               <h2 className="font-semibold text-gray-900">Read-only access</h2>
               <p className="mt-2 text-sm text-gray-600">
-                Enable/disable actions require admin or superadmin role.
+                Enable/disable actions require workspace administrator access.
               </p>
             </Card>
           ) : null}

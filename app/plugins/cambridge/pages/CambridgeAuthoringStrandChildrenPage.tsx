@@ -30,8 +30,8 @@ export default function CambridgeAuthoringStrandChildrenPage() {
   const params = useParams<{ strandId: string }>();
   const strandId = toPositiveNumber(params.strandId);
 
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);

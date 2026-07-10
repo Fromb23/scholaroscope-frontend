@@ -2,7 +2,7 @@
 // ============================================================================
 // app/(dashboard)/requests/new/page.tsx
 // Instructor → submit to Admin
-// Admin → submit to SuperAdmin
+// Admin -> submit to Scholaroscope support
 // Type options change based on role automatically
 // ============================================================================
 
@@ -161,7 +161,7 @@ export function NewRequestPage() {
                     <h2 className="text-2xl font-bold text-gray-900">Request Submitted</h2>
                     <p className="text-gray-500 mt-2">
                         {isAdmin
-                            ? 'Your request has been sent to the platform SuperAdmin for review.'
+                            ? 'Your request has been sent to the Scholaroscope support team for review.'
                             : 'Your request has been sent to your organization Admin for review.'
                         }
                     </p>
@@ -183,7 +183,7 @@ export function NewRequestPage() {
 
     // ── Destination label ─────────────────────────────────────────────────────
     const destinationLabel = isAdmin
-        ? 'SuperAdmin (Platform Level)'
+        ? 'Scholaroscope support'
         : `${activeOrg?.name ?? 'Your Organization'} Admin`;
 
     const destinationColor = isAdmin

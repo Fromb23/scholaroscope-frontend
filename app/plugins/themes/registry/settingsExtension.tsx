@@ -9,10 +9,3 @@ registerSettingsExtension({
   priority: 10,
   render: () => <ThemeSettingsCard />,
 });
-
-registerSettingsExtension({
-  key: 'themes.platform-appearance',
-  slot: 'superadmin.settings.appearance',
-  priority: 10,
-  render: () => <ThemeSettingsCard showOrganizationEditor={false} />,
-});

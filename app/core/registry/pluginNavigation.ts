@@ -13,8 +13,6 @@ export interface NavItem {
 }
 
 export type PluginNavigationSlot =
-    | 'superadmin.primary.afterOrganizations'
-    | 'superadmin.primary.afterPluginRegistry'
     | 'admin.primary.afterDashboard'
     | 'admin.primary.afterAssessments'
     | 'admin.secondary.beforeSettings'

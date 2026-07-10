@@ -441,7 +441,7 @@ export default function CohortHubPage() {
     });
     const isTeachingActor = instructorAccess.isTeachingActor;
     const isInstitutionInstructorWorkspace = isTeachingActor && !isPersonalTeachingWorkspace;
-    const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !isTeachingActor);
+    const isInstitutionAdminView = activeRole === 'ADMIN' && !isTeachingActor;
     const accessLoading = authLoading || pluginsLoading || (isTeachingActor && instructorAccess.isLoading);
     const allowed = !user
         ? false

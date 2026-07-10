@@ -256,7 +256,7 @@ export function SessionDetailPage() {
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const returnTo = searchParams.get('returnTo');

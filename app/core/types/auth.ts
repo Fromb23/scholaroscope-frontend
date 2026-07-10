@@ -1,6 +1,6 @@
 // app/core/types/auth.ts
 
-export type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+export type Role = 'ADMIN' | 'INSTRUCTOR';
 export type OrgType =
   | 'INSTITUTION'
   | 'PERSONAL'

@@ -13,10 +13,7 @@ import { useRouter } from 'next/navigation';
 import { AuthFrame } from './AuthFrame';
 import { themeClasses } from '@/app/core/theme/themeClasses';
 import { isSafeNextPath } from '@/app/core/auth/navigation';
-import {
-  isPlatformSuperadminBlockedPath,
-  roleHomeRoute,
-} from '@/app/utils/routeAccess';
+import { getPlatformAppUrl } from '@/app/core/auth/platformRedirect';
 import type { AccessNotice } from '@/app/core/types/auth';
 
 function LoginForm() {
@@ -27,6 +24,7 @@ function LoginForm() {
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  const [platformLoginRequired, setPlatformLoginRequired] = useState(false);
   const searchParams = useSearchParams();
   const { login, acceptInvite } = useAuth();
   const router = useRouter();
@@ -111,6 +109,7 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setPlatformLoginRequired(false);
     setVerificationEmail(null);
     setResendMessage(null);
     setLoading(true);
@@ -120,20 +119,17 @@ function LoginForm() {
         await acceptInvite(inviteToken, email, password);
         router.replace('/dashboard');
       } else {
-        const response = await login(email, password);
+        await login(email, password);
         const nextPath = isSafeNextPath(next) ? next : '/dashboard';
-        const redirectTarget = (
-          response.user.is_superadmin
-          && !response.active_org
-          && isPlatformSuperadminBlockedPath(nextPath)
-        )
-          ? roleHomeRoute.SUPERADMIN
-          : nextPath;
-        router.replace(redirectTarget);
+        router.replace(nextPath);
       }
     } catch (err: unknown) {
       const e = err as { data?: Record<string, unknown>; message?: string };
       const data = e?.data ?? {};
+      const errorEnvelope = data.error as { code?: string; message?: string } | undefined;
+      if (errorEnvelope?.code === 'platform_login_required') {
+        setPlatformLoginRequired(true);
+      }
       if (data.error === 'email_not_verified' || data.code === 'email_not_verified') {
         setVerificationEmail(email);
       }
@@ -201,6 +197,14 @@ function LoginForm() {
                     {resending ? 'Sending...' : 'Resend verification email'}
                   </Button>
                 </div>
+              ) : null}
+              {platformLoginRequired ? (
+                <a
+                  className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  href={getPlatformAppUrl('/login')}
+                >
+                  Open platform console
+                </a>
               ) : null}
             </div>
           )}

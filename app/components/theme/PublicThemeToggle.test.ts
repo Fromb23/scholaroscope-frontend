@@ -11,11 +11,11 @@ describe('public light/dark theme toggle', () => {
     expect(source).not.toContain('device settings');
   });
 
-  it('is present on auth frame and landing page', () => {
+  it('is present on auth frame and public header', () => {
     const authFrame = readFileSync(join(process.cwd(), 'app/core/components/auth/AuthFrame.tsx'), 'utf8');
-    const landingPage = readFileSync(join(process.cwd(), 'app/core/components/root/LandingPage.tsx'), 'utf8');
+    const publicHeader = readFileSync(join(process.cwd(), 'app/core/components/public/PublicHeader.tsx'), 'utf8');
 
     expect(authFrame).toContain('PublicThemeToggle');
-    expect(landingPage).toContain('PublicThemeToggle');
+    expect(publicHeader).toContain('PublicThemeToggle');
   });
 });

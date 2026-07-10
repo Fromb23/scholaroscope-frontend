@@ -41,7 +41,7 @@ export function AnnouncementsPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole } = useAuth();
+    const { activeRole } = useAuth();
     const {
         announcements, loading, error, refetch,
         create, update, remove, markRead, submitFeedback,
@@ -52,8 +52,7 @@ export function AnnouncementsPage() {
     const [pageError, setPageError] = useState<string | null>(null);
     const filter = parseFilter(searchParams.get('filter'));
 
-    const isAdmin = activeRole === 'ADMIN' || activeRole === 'SUPERADMIN';
-    const isSuperAdmin = !!user?.is_superadmin;
+    const isAdmin = activeRole === 'ADMIN';
 
     const filtered = announcements.filter(a => {
         if (filter === 'unread') return !a.is_read;
@@ -300,7 +299,7 @@ export function AnnouncementsPage() {
                     open={showModal}
                     onClose={closeModal}
                     editing={editing}
-                    isSuperAdmin={isSuperAdmin}
+                    allowSystemAnnouncement={false}
                     onCreate={create}
                     onUpdate={update}
                 />

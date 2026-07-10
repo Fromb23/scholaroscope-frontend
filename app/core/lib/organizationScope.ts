@@ -16,10 +16,6 @@ export function resolveMembershipRoleForOrganization(
     return null;
   }
 
-  if (user.is_superadmin) {
-    return 'SUPERADMIN';
-  }
-
   if (!activeOrg) {
     return null;
   }

@@ -166,7 +166,7 @@ export default function CohortAssignmentsPage() {
     const instructorAccess = useInstructorCohortAccess();
     const cohortId = Number(params.id);
     const isTeachingActor = instructorAccess.isTeachingActor;
-    const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !isTeachingActor);
+    const isInstitutionAdminView = activeRole === 'ADMIN' && !isTeachingActor;
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
     const [statusFilter, setStatusFilter] = useState<AssignmentStatus | ''>(
         normalizeQueryParam(searchParams.get('status'), STATUS_OPTIONS) as AssignmentStatus | ''
@@ -264,7 +264,7 @@ export default function CohortAssignmentsPage() {
     }, [assignmentsLoading, highlightAssignmentId]);
 
     const canManageAssignments = Boolean(user) && (
-        Boolean(user?.is_superadmin)
+        false
         || activeRole === 'ADMIN'
         || activeRole === 'INSTRUCTOR'
     );

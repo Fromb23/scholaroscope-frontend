@@ -100,13 +100,13 @@ const institutionReportPolicyCapabilities = {
 } satisfies WorkspaceCapabilities;
 
 describe('report access policy', () => {
-  it('resolves superadmins to the institution report surface', () => {
+  it('does not treat platform superadmins as report-surface members', () => {
     expect(resolveReportSurface({
       user: { ...user, is_superadmin: true },
-      activeRole: 'SUPERADMIN',
+      activeRole: null,
       activeOrg: institution,
       capabilities: institutionCapabilities,
-    })).toBe('institution');
+    })).toBe('none');
   });
 
   it('resolves supervision-only admins to the institution report surface', () => {

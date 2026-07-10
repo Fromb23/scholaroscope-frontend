@@ -642,23 +642,23 @@ export function AssessmentsOverview() {
     const searchParams = useSearchParams();
     const { activeOrg, user, activeRole, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAdminLike = activeRole === 'ADMIN';
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');

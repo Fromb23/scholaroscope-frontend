@@ -17,10 +17,6 @@ export function resolveReportSurface(params: {
     return 'none';
   }
 
-  if (params.user.is_superadmin) {
-    return 'institution';
-  }
-
   if (isSelfManagedTeachingAdmin(params)) {
     return 'freelance';
   }
@@ -46,14 +42,10 @@ export function canRenderInstitutionReportOverview(params: {
   if (!user) {
     return false;
   }
-  if (user.is_superadmin) {
-    return true;
-  }
-
   return isSupervisionOnlyAdmin({
     role: activeRole,
     orgType: activeOrg?.org_type,
-    isSuperadmin: user.is_superadmin,
+    isSuperadmin: false,
     capabilities,
   });
 }
@@ -66,10 +58,6 @@ export function canManageInstitutionReportPolicy(params: {
   if (!user) {
     return false;
   }
-  if (user.is_superadmin) {
-    return true;
-  }
-
   const reportConfiguration = capabilities?.report_configuration;
   const reportPolicyAvailable = Boolean(
     reportConfiguration?.report_policy_available

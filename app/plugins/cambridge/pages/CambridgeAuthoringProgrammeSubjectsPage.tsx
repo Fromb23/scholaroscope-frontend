@@ -25,8 +25,8 @@ export default function CambridgeAuthoringProgrammeSubjectsPage() {
   const params = useParams<{ programmeId: string }>();
   const programmeId = toPositiveNumber(params.programmeId);
 
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
 

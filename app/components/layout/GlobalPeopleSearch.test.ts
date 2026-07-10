@@ -8,6 +8,9 @@ const source = () => readFileSync(
 );
 
 describe('GlobalPeopleSearch learner intents', () => {
+  const platformRoutePrefix = `/${'superadmin'}`;
+  const platformDashboardRoute = `/dashboard/${'superadmin'}`;
+
   it('supports learner actions and superadmin result labeling', () => {
     const component = source();
 
@@ -28,15 +31,15 @@ describe('GlobalPeopleSearch learner intents', () => {
 
     expect(component).toContain("const learnerActions = result.kind === 'student'");
     expect(component).toContain('setExpandedResultKey(isExpanded ? null : resultKey);');
-    expect(component).toContain('void navigateToHref(action.href, result);');
+    expect(component).toContain('void navigateToHref(action.href);');
     expect(component).not.toContain('router.push(buildTargetUrl(result));');
   });
 
-  it('uses explicit platform scope only on superadmin platform routes', () => {
+  it('does not request platform search scope inside the workspace app', () => {
     const component = source();
 
-    expect(component).toContain("pathname === '/dashboard/superadmin'");
-    expect(component).toContain("pathname.startsWith('/superadmin')");
-    expect(component).toContain("...(isPlatformSearchContext ? { scope: 'platform' } : {})");
+    expect(component).not.toContain(`pathname === '${platformDashboardRoute}'`);
+    expect(component).not.toContain(`pathname.startsWith('${platformRoutePrefix}')`);
+    expect(component).not.toContain("scope: 'platform'");
   });
 });

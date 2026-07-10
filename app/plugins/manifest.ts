@@ -9,7 +9,6 @@ export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'sch
 export type PluginLoadContext = {
   activeOrg?: ActiveOrg | null;
   activeRole?: Role | null;
-  isSuperadmin?: boolean;
   capabilities: WorkspaceCapabilities;
   curriculumTypes: string[];
   enabledFeatures: string[];
@@ -82,7 +81,6 @@ export const pluginManifest: PluginManifestEntry[] = [
     featureFlags: ['cbc'],
     routePatterns: [/^\/cbc(?:\/|$)/],
     navigationSlots: [
-      'superadmin.primary.afterPluginRegistry',
       'admin.primary.afterAssessments',
       'instructor.primary.afterAssessments',
     ],
@@ -91,8 +89,7 @@ export const pluginManifest: PluginManifestEntry[] = [
       if (resolved !== null) return resolved;
       return routeMatches(context, pluginManifestById.cbc)
         || hasLegacyInstalledFeature(context, 'cbc')
-        || hasCurriculumType(context, CBC_CURRICULUM_TYPES)
-        || Boolean(context.isSuperadmin);
+        || hasCurriculumType(context, CBC_CURRICULUM_TYPES);
     },
     load: async () => {
       const { registerCbcPlugin } = await import('./cbc/register');
@@ -133,7 +130,6 @@ export const pluginManifest: PluginManifestEntry[] = [
     featureFlags: ['announcements'],
     routePatterns: [/^\/announcements(?:\/|$)/],
     navigationSlots: [
-      'superadmin.primary.afterOrganizations',
       'admin.secondary.beforeSettings',
       'instructor.secondary.beforeSubmitRequest',
     ],
@@ -142,7 +138,6 @@ export const pluginManifest: PluginManifestEntry[] = [
       if (resolved !== null) return resolved;
       return routeMatches(context, pluginManifestById.announcements)
         || hasLegacyInstalledFeature(context, 'announcements')
-        || Boolean(context.isSuperadmin)
         || (isWorkspaceRole(context) && !isPersonalOrFreelanceWorkspace(context));
     },
     load: async () => {
@@ -195,7 +190,7 @@ export const pluginManifest: PluginManifestEntry[] = [
     id: 'themes',
     label: 'Themes',
     featureFlags: ['themes'],
-    routePatterns: [/^\/settings(?:\/|$)/, /^\/superadmin\/settings(?:\/|$)/],
+    routePatterns: [/^\/settings(?:\/|$)/],
     navigationSlots: [],
     shouldLoad: (context) => {
       const resolved = shouldLoadFromResolvedCapability(context, 'themes');

@@ -359,7 +359,7 @@ export function LessonPlansPage() {
     const instructorAccess = useInstructorCohortAccess();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAdminLike = activeRole === 'ADMIN';
     const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type,
         capabilities,
@@ -368,19 +368,19 @@ export function LessonPlansPage() {
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const { curricula } = useCurricula();

@@ -27,8 +27,8 @@ function GeneralTab() {
 function SettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { activeOrg, activeRole, capabilities, loading, user } = useAuth();
-  const canManageSettings = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+  const { activeOrg, activeRole, capabilities, loading } = useAuth();
+  const canManageSettings = activeRole === 'ADMIN';
   const isFreelance = activeOrg?.org_type === 'PERSONAL'
     || capabilities.workspace_behavior === 'FREELANCE_TEACHER';
 

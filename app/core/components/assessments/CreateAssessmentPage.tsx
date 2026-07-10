@@ -52,11 +52,11 @@ type InstructorSubjectOption = {
 export function CreateAssessmentPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, activeRole } = useAuth();
+    const { activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const { curricula } = useCurricula();
     const isTeachingActor = instructorAccess.isTeachingActor;
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAdminLike = activeRole === 'ADMIN';
     const [policyGuidance, setPolicyGuidance] = useState<AcademicPolicyBrief | null>(null);
     const [policyGuidanceLoading, setPolicyGuidanceLoading] = useState(false);
     const [policyGuidanceError, setPolicyGuidanceError] = useState<string | null>(null);

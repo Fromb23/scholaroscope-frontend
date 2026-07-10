@@ -144,8 +144,11 @@ function normalizeRegisterPayload(payload: RegisterPayload): RegisterPayload {
 
 async function parseError(response: Response, fallbackMessage: string) {
   const data = await response.json().catch(() => ({}));
+  const errorEnvelope = (data as { error?: { code?: string; message?: string } }).error;
   const resolvedMessage = (
-    (data as { message?: string }).message
+    errorEnvelope?.message
+    || errorEnvelope?.code
+    || (data as { message?: string }).message
     || (data as { detail?: string }).detail
     || (Array.isArray((data as { non_field_errors?: string[] }).non_field_errors)
       ? (data as { non_field_errors?: string[] }).non_field_errors?.[0]

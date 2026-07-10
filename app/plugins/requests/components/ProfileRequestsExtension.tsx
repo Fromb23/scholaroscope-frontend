@@ -20,7 +20,6 @@ export function ProfileRequestsExtension({ profile }: ProfileExtensionContext) {
 
     const isInstructor = profile.role === 'INSTRUCTOR';
     const isAdmin = profile.role === 'ADMIN';
-    const isSuperAdmin = profile.role === 'SUPERADMIN';
     const selfManagedTeachingWorkspace = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type,
         capabilities,
@@ -36,7 +35,7 @@ export function ProfileRequestsExtension({ profile }: ProfileExtensionContext) {
         }] : []),
         ...(isAdmin ? [{
             label: `Delete Organization${profile.organization_name ? ` · ${profile.organization_name}` : ''}`,
-            description: 'Request the complete deletion of your organization and all its data. This will be escalated to a SuperAdmin.',
+            description: 'Request the complete deletion of your organization and all its data. This will be escalated to Scholaroscope support.',
             pending: hasPendingDeletion('ORG_DELETION'),
             pendingLabel: 'Request Pending',
             onDelete: () => setDeletionModal('ORG_DELETION'),
@@ -45,7 +44,7 @@ export function ProfileRequestsExtension({ profile }: ProfileExtensionContext) {
 
     return (
         <>
-            {!isSuperAdmin && !selfManagedTeachingWorkspace ? (
+            {!selfManagedTeachingWorkspace ? (
                 <RecentRequestsCard
                     requests={requests}
                     loading={loading}

@@ -269,7 +269,7 @@ export function SchemesPage() {
   const searchParams = useSearchParams();
   const { activeOrg, activeRole, capabilities, user } = useAuth();
   const isInstructor = activeRole === 'INSTRUCTOR';
-  const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+  const isAdminLike = activeRole === 'ADMIN';
   const canUseTeacherModeAsAdmin = isSelfManagedTeachingAdmin({
     activeRole,
     activeOrg,

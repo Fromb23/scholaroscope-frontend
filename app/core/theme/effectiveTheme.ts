@@ -399,19 +399,14 @@ export function applyThemeTokens(
 export function canEditOrganizationTheme({
   activeOrg,
   activeRole,
-  user,
 }: {
   activeOrg: ActiveOrg | null;
   activeRole: Role | null;
   capabilities: WorkspaceCapabilities;
-  user: User | null;
+  user?: User | null;
 }): boolean {
   if (!activeOrg) {
     return false;
-  }
-
-  if (user?.is_superadmin) {
-    return true;
   }
 
   return activeRole === 'ADMIN';

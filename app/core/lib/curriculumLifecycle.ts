@@ -16,7 +16,7 @@ export type CurriculumRouteIntent =
   | 'admin-disable'
   | 'admin-reactivate';
 
-export type CurriculumLifecycleRole = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+export type CurriculumLifecycleRole = 'ADMIN' | 'INSTRUCTOR';
 
 export interface CurriculumRouteAccessDecision {
   allowed: boolean;

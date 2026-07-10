@@ -32,8 +32,8 @@ export default function CambridgeOfferingCohortsPage() {
   const params = useParams<{ offeringId: string }>();
   const pathname = usePathname();
   const offeringId = toPositiveNumber(params.offeringId);
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
 
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);

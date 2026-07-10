@@ -105,7 +105,7 @@ export function CurriculumLifecycleNotice({
   status?: CurriculumOfferingStatus | null;
   title?: string;
   message?: string | null;
-  role?: 'ADMIN' | 'INSTRUCTOR' | 'SUPERADMIN';
+  role?: 'ADMIN' | 'INSTRUCTOR';
 }) {
   const variant = getNoticeVariant(status);
   const accentColor = getNoticeAccentColor(variant);

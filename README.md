@@ -1,15 +1,17 @@
 # ScholaroScope Frontend
 
-This frontend is not a marketing site and not a collection of isolated pages. It is the operator console for a multi-tenant school platform.
+This repository serves `scholaroscope.com`, the customer workspace application and public commercial onboarding surface.
 
-Its job is to let real users run school operations across organizations, roles, curricula, plugins, sessions, assessments, learners, reporting, and administrative controls without leaking backend complexity into the UI.
+It is not the Scholaroscope platform control plane. Platform-superadmin operations live in the separate `superadmin-scholaroscope` frontend deployed at `admin.scholaroscope.com`.
+
+Its job is to let public visitors create commercial workspace quotes and let real workspace users run school operations across organizations, roles, curricula, plugins, sessions, assessments, learners, reporting, and workspace administration without leaking backend complexity into the UI.
 
 ## What This System Is
 
 At runtime, the frontend behaves as a single application shell with four constant dimensions:
 
-- Organization-aware: every meaningful action happens inside an organization context, or from a superadmin view looking into one.
-- Role-aware: superadmins, admins, and instructors do not see the same system, because they do not have the same authority or responsibilities.
+- Organization-aware: every meaningful authenticated action happens inside an organization/workspace context.
+- Role-aware: workspace admins and instructors do not see the same system, because they do not have the same authority or responsibilities.
 - Curriculum-aware: kernel academic flows exist alongside curriculum-specific flows such as CBC and Cambridge.
 - Plugin-aware: features are not all hardcoded into the core shell; some are mounted into it through registry and extension points.
 
@@ -19,9 +21,9 @@ This means the frontend should be understood as an operations surface over a gov
 
 The frontend follows these principles:
 
-- Workflow first: model teacher, admin, and superadmin tasks first; route files are only entry points into those workflows.
+- Workflow first: model teacher, workspace-admin, public registration, and commercial onboarding tasks first; route files are only entry points into those workflows.
 - Backend contract first: the API owns system truth. The frontend should express, validate, and visualize that truth, not invent parallel business rules.
-- Isolation where it matters: Cambridge, CBC, requests, announcements, and audit concerns can extend the shell without forcing everything into one generic model.
+- Isolation where it matters: Cambridge, CBC, requests, announcements, and workspace plugin concerns can extend the shell without forcing everything into one generic model.
 - Shared shell where it matters: authentication, navigation, organization context, session handling, and reporting still feel like one product.
 - State should follow system boundaries: auth state, active organization, role, membership version, and plugin capability are first-class concerns.
 
@@ -29,7 +31,7 @@ The frontend follows these principles:
 
 When you work in this codebase, think in this order:
 
-1. Who is the actor: superadmin, admin, instructor, invited user?
+1. Who is the actor: public visitor, invited user, workspace admin, instructor, or workspace owner?
 2. What organization context is active?
 3. What domain is being operated on: academic setup, teaching, learners, assessments, requests, reports, plugins?
 4. Is the behavior kernel-wide, or does it belong to a plugin boundary such as CBC or Cambridge?
@@ -42,12 +44,41 @@ If those questions are clear, the code usually becomes straightforward. If they 
 The frontend is effectively made of five cooperating layers:
 
 - Application shell: authentication, organization switching, layout, navigation, route protection, and global UI state.
-- Core domain client: typed API adapters, hooks, shared components, and shared types for kernel platform features.
-- Plugin surfaces: CBC, Cambridge, requests, announcements, audit, and other mounted capabilities.
+- Core domain client: typed API adapters, hooks, shared components, and shared types for workspace and public features.
+- Plugin surfaces: CBC, Cambridge, requests, announcements, and other mounted workspace capabilities.
 - Registry layer: the mechanism that lets plugins extend navigation, providers, routes, slots, and modal surfaces.
 - Route entry points: Next.js pages that compose the above into actual user journeys.
 
 Pages are the thinnest layer. They should not become the place where system behavior is invented.
+
+## Platform Control Plane Boundary
+
+This repository must not contain platform-superadmin routes, navigation, dashboards, or management pages.
+
+- Platform operators authenticate through `admin.scholaroscope.com`.
+- The customer app may keep `user.is_superadmin` only as a boundary signal for redirecting legacy sessions away from `scholaroscope.com`.
+- The customer app must not issue platform refresh requests, clear platform refresh cookies, call `/api/platform/**`, or render platform management UI.
+- Workspace roles remain `ADMIN` and `INSTRUCTOR` in this frontend. Workspace-defined role details still come from `apps.workspace_access`.
+- `npm run check:platform-boundary` fails when prohibited platform routes or symbols are reintroduced.
+
+Required public environment values:
+
+```bash
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
+NEXT_PUBLIC_PLATFORM_APP_URL=http://localhost:3001
+```
+
+Production should set `NEXT_PUBLIC_PLATFORM_APP_URL=https://admin.scholaroscope.com`.
+
+## Commercial Onboarding
+
+Public onboarding is backend-catalogue driven:
+
+- `/subscriptions/catalog/` provides workspace types, Standard plan prices, premium plugin prices, and capabilities.
+- `/subscriptions/catalog/quote/` creates the authoritative quote and token used by registration.
+- The frontend formats prices for display but does not calculate authoritative totals.
+- The public landing page composes focused sections in `app/core/components/public`.
+- The commercial setup flow lives in `app/core/components/commercial` and is reused for authenticated additional-workspace creation at `/workspaces/new`.
 
 ## What Makes This Frontend Different
 

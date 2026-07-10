@@ -49,7 +49,7 @@ function activePluginKeys(plugins: ReturnType<typeof usePlugins>['plugins']): st
 export function PluginRegistryProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { activeOrg, activeRole, capabilities, loading: authLoading, user } = useAuth();
-  const canLoadPlugins = Boolean(user) && !authLoading && (Boolean(activeRole) || Boolean(user?.is_superadmin));
+  const canLoadPlugins = Boolean(user) && !authLoading && Boolean(activeRole);
   const { plugins } = usePlugins({ enabled: canLoadPlugins });
   const { curricula } = useCurricula({ enabled: canLoadPlugins });
   const [loadedPluginIds, setLoadedPluginIds] = useState<PluginId[]>(() => getLoadedPluginIds());
@@ -61,7 +61,6 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     return {
       activeOrg,
       activeRole,
-      isSuperadmin: Boolean(user?.is_superadmin),
       capabilities,
       curriculumTypes: curricula
         .filter((curriculum) => curriculum.is_active !== false)
@@ -76,7 +75,6 @@ export function PluginRegistryProvider({ children }: { children: ReactNode }) {
     curricula,
     pathname,
     plugins,
-    user?.is_superadmin,
   ]);
 
   const selectedEntries = useMemo(

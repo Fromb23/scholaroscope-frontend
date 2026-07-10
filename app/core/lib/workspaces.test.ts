@@ -199,9 +199,9 @@ describe('workspace teaching capabilities', () => {
     expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'TUITION_CENTER' })).toBe(false);
   });
 
-  it('always allows instructors and never allows superadmins', () => {
+  it('allows instructors and blocks platform flags from teaching mode', () => {
     expect(canUseTeachingMode({ role: 'INSTRUCTOR', orgType: 'INSTITUTION' })).toBe(true);
-    expect(canUseTeachingMode({ role: 'SUPERADMIN', orgType: 'HOMESCHOOL', isSuperadmin: true })).toBe(false);
+    expect(canUseTeachingMode({ role: 'ADMIN', orgType: 'HOMESCHOOL', isSuperadmin: true })).toBe(false);
   });
 
   it('does not expose independent teacher as a distinct registration workspace type', () => {

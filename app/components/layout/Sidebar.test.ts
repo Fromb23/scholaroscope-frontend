@@ -41,7 +41,7 @@ describe('Sidebar shell architecture', () => {
 
     expect(shell).toContain('resolveNavConfig');
     expect(shell).toContain('getAvailablePolicySurfaces');
-    expect(navConfig).toContain('getSuperadminNav');
+    expect(navConfig).not.toContain(`get${'Superadmin'}Nav`);
     expect(navConfig).toContain('getAdminNav');
     expect(navConfig).toContain('getInstructorNav');
   });
