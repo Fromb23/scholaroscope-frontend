@@ -33,6 +33,10 @@ export interface EffectiveCapability {
   entitled?: boolean;
   installed?: boolean;
   required?: boolean;
+  entitlement_source?: string | null;
+  entitlement_status?: string | null;
+  entitlement_starts_at?: string | null;
+  entitlement_ends_at?: string | null;
   remaining_requests?: number | null;
   limit?: number | null;
 }

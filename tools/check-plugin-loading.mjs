@@ -61,12 +61,13 @@ check(
 
 check(
   'Plugin manifest must prefer backend-resolved product capabilities',
-  manifest.includes('hasResolvedPluginCapability')
-    && manifest.includes('hasPluginCapability')
+  manifest.includes('shouldLoadFromResolvedCapability')
+    && manifest.includes('hasLegacyInstalledFeature')
     && capabilityHelpers.includes('getProductCapability')
+    && capabilityHelpers.includes('hasResolvedProductCapabilityEntry')
     && capabilityHelpers.includes('product_capabilities')
     && capabilityHelpers.includes('enabledFeatures'),
-  'Plugin loading must use resolved product capabilities first, with installed-plugin feature keys only as a migration fallback.',
+  'Plugin loading must use explicit resolved capability entries first, with installed-plugin feature keys only when a plugin key is absent.',
 );
 
 check(

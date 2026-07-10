@@ -21,12 +21,20 @@ export function hasProductCapability(
   return getProductCapability(capabilities, key)?.enabled === true;
 }
 
+export function hasResolvedProductCapabilityEntry(
+  capabilities: WorkspaceCapabilities | null | undefined,
+  key: string,
+): boolean {
+  return getProductCapability(capabilities, key) !== null;
+}
+
 export function hasPluginCapability(
   context: PluginCapabilityContext,
   key: string,
 ): boolean {
-  if (hasProductCapability(context.capabilities, key)) {
-    return true;
+  const resolved = getProductCapability(context.capabilities, key);
+  if (resolved !== null) {
+    return resolved.enabled === true;
   }
   return context.enabledFeatures?.some((feature) => feature === key) === true;
 }

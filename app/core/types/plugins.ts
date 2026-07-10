@@ -60,6 +60,10 @@ export interface InstalledPlugin {
     uninstalled_at: string | null;
     data_retention_until: string | null;
     capabilities?: string[];
+    entitled?: boolean;
+    effective_enabled?: boolean;
+    entitlement_source?: string | null;
+    entitlement_ends_at?: string | null;
     policy_classification?: WorkspacePluginClassification;
     required_by_policy?: boolean;
     default_enabled_by_policy?: boolean;
