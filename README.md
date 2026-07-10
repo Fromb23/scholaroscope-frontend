@@ -65,7 +65,7 @@ Required public environment values:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api
-NEXT_PUBLIC_PLATFORM_APP_URL=http://localhost:3001
+NEXT_PUBLIC_PLATFORM_APP_URL=http://127.0.0.1:3001
 ```
 
 Production should set `NEXT_PUBLIC_PLATFORM_APP_URL=https://admin.scholaroscope.com`.
@@ -77,6 +77,8 @@ Public onboarding is backend-catalogue driven:
 - `/subscriptions/catalog/` provides workspace types, Standard plan prices, premium plugin prices, and capabilities.
 - `/subscriptions/catalog/quote/` creates the authoritative quote and token used by registration.
 - The frontend formats prices for display but does not calculate authoritative totals.
+- Only backend-published workspace types render as purchasable. Missing or disabled public plans are not replaced with hardcoded prices.
+- Standard is the base. Standard + Premium means Standard plus selected premium plugins and requires at least one selected premium plugin before quote confirmation.
 - The public landing page composes focused sections in `app/core/components/public`.
 - The commercial setup flow lives in `app/core/components/commercial` and is reused for authenticated additional-workspace creation at `/workspaces/new`.
 

@@ -29,6 +29,23 @@ NEXT_PUBLIC_PLATFORM_APP_URL/login
 
 The customer login page also handles the backend `platform_login_required` error and displays a single action to open the platform console.
 
+The backend response must not be treated as the source of the platform console URL.
+The UI uses `NEXT_PUBLIC_PLATFORM_APP_URL` for the button destination and never
+renders backend-provided `admin_url`, internal hostnames, cookie names, Redis
+prefixes, serializer context, or arbitrary backend context fields.
+
+Platform-login-required copy:
+
+```text
+Platform administrators sign in through the Scholaroscope control plane.
+```
+
+Primary action:
+
+```text
+Open platform console
+```
+
 ## Structural Guard
 
 Run:

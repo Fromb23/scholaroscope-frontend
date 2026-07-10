@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
+  ArrowRight,
   Building2,
   CheckCircle2,
   GraduationCap,
@@ -64,6 +65,13 @@ function selectedPremiumPlugins(
   selectedIds: number[],
 ): CommercialPremiumPlugin[] {
   return workspaceType?.premium_plugins.filter((plugin) => selectedIds.includes(plugin.price_id)) ?? [];
+}
+
+function capabilityCategoryPreview(workspaceType: CommercialWorkspaceType) {
+  const categories = workspaceType.standard.capabilities
+    .map((capability) => capability.category || 'Core')
+    .filter((category, index, all) => all.indexOf(category) === index);
+  return categories.slice(0, 4);
 }
 
 export function CommercialRateCards({
@@ -152,13 +160,13 @@ export function CommercialRateCards({
 
   return (
     <section id="commercial-rate-card" className="mx-auto w-full max-w-[1220px] px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mb-10 max-w-3xl">
-        <p className="text-sm font-semibold text-blue-700">Commercial workspace setup</p>
+      <div className="mb-10 max-w-4xl">
+        <p className="text-sm font-semibold text-blue-700">Live commercial catalogue</p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight theme-text sm:text-4xl">
-          Build a workspace quote from the live Scholaroscope catalogue
+          Choose the workspace that fits how you teach
         </h2>
         <p className="theme-muted mt-4 text-base leading-7">
-          Choose the plan experience, select the workspace type, review included capabilities, and confirm a server quote before creating the account or additional workspace.
+          Every published workspace starts with Standard. Standard + Premium adds only the specialist capabilities you select, each displayed price covers one three-calendar-month period, and the live backend catalogue controls the plans, capabilities, and quote.
         </p>
       </div>
 
@@ -169,7 +177,7 @@ export function CommercialRateCards({
               <p className="text-sm font-semibold theme-text">1. Choose plan experience</p>
               <p className="theme-subtle text-sm">Premium is Standard plus selected premium capabilities.</p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2" role="tablist" aria-label="Plan mode">
               {catalogQuery.data.rate_cards.map((rateCard) => {
                 const copy = planCopy(rateCard.mode);
                 const Icon = copy.icon;
@@ -178,12 +186,14 @@ export function CommercialRateCards({
                   <button
                     key={rateCard.mode}
                     type="button"
+                    role="tab"
+                    aria-selected={selected}
                     onClick={() => {
                       setMode(rateCard.mode);
                       if (rateCard.mode === 'STANDARD') setSelectedPremiumIds([]);
                       resetQuote();
                     }}
-                    className={`min-h-[210px] rounded-xl border p-6 text-left transition ${
+                    className={`min-h-[190px] rounded-xl border p-6 text-left transition ${
                       selected
                         ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm'
                         : 'bg-white theme-border theme-hover-surface theme-text'
@@ -226,6 +236,7 @@ export function CommercialRateCards({
               {workspaceTypes.map((item) => {
                 const Icon = workspaceIcons[item.key] ?? Building2;
                 const selected = workspaceType.key === item.key;
+                const categoryPreview = capabilityCategoryPreview(item);
                 return (
                   <button
                     key={item.key}
@@ -251,8 +262,19 @@ export function CommercialRateCards({
                     </div>
                     <h3 className="mt-4 text-base font-bold">{item.name}</h3>
                     <p className="theme-muted mt-2 line-clamp-3 text-sm leading-6">{item.description}</p>
-                    <p className="mt-4 text-lg font-bold">{formatMoney(item.standard.price, item.standard.currency)}</p>
-                    <p className="theme-subtle text-xs">per three-month period</p>
+                    <p className="mt-5 text-2xl font-bold">{formatMoney(item.standard.price, item.standard.currency)}</p>
+                    <p className="theme-subtle text-xs">for one three-month period</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {categoryPreview.slice(0, 3).map((category) => (
+                        <span key={category} className="rounded-full bg-white/80 px-2 py-1 text-xs font-medium text-slate-600">
+                          {category}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700">
+                      {selected ? 'Selected workspace' : 'Choose this workspace'}
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
                   </button>
                 );
               })}
@@ -300,6 +322,59 @@ export function CommercialRateCards({
               Could not create quote. Review the selected workspace type and premium plugins.
             </div>
           ) : null}
+
+          <section aria-labelledby="catalogue-comparison-heading" className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold theme-text">Compare published workspaces</p>
+              <p className="theme-subtle text-sm">This comparison is assembled from the same catalogue entries shown above.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {workspaceTypes.map((item) => {
+                const Icon = workspaceIcons[item.key] ?? Building2;
+                const categories = capabilityCategoryPreview(item);
+                return (
+                  <article key={item.key} className="rounded-xl border bg-white p-5 shadow-sm theme-border">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-bold theme-text">{item.name}</h3>
+                          <p className="theme-subtle text-xs">{formatMoney(item.standard.price, item.standard.currency)} per period</p>
+                        </div>
+                      </div>
+                      {item.premium_available ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                          Premium available
+                        </span>
+                      ) : null}
+                    </div>
+                    <dl className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <dt className="theme-subtle text-xs">Included capabilities</dt>
+                        <dd className="mt-1 font-semibold theme-text">{item.standard.capabilities.length}</dd>
+                      </div>
+                      <div>
+                        <dt className="theme-subtle text-xs">Premium options</dt>
+                        <dd className="mt-1 font-semibold theme-text">{item.premium_plugins.length}</dd>
+                      </div>
+                    </dl>
+                    {categories.length > 0 ? (
+                      <ul className="mt-4 space-y-2">
+                        {categories.map((category) => (
+                          <li key={category} className="flex items-center gap-2 text-sm theme-text">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            {category}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
         </div>
 
         <CommercialQuoteSummary

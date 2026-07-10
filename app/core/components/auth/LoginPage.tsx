@@ -106,6 +106,30 @@ function LoginForm() {
     return (data?.non_field_errors as string[])?.[0] || '';
   };
 
+  const platformLoginError = (): AppError => ({
+    kind: 'permission',
+    title: 'Use the platform console.',
+    message: 'Platform administrators sign in through the Scholaroscope control plane.',
+    retryable: false,
+    severity: 'info',
+  });
+
+  const invalidCredentialsError = (): AppError => ({
+    kind: 'authentication',
+    title: 'Login failed.',
+    message: 'Email or password is incorrect.',
+    retryable: false,
+    severity: 'warning',
+  });
+
+  const serviceUnavailableError = (): AppError => ({
+    kind: 'network',
+    title: 'Scholaroscope could not be reached.',
+    message: 'Scholaroscope could not be reached. Try again.',
+    retryable: true,
+    severity: 'error',
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -124,14 +148,29 @@ function LoginForm() {
         router.replace(nextPath);
       }
     } catch (err: unknown) {
-      const e = err as { data?: Record<string, unknown>; message?: string };
+      const e = err as { data?: Record<string, unknown>; message?: string; status?: number };
       const data = e?.data ?? {};
       const errorEnvelope = data.error as { code?: string; message?: string } | undefined;
       if (errorEnvelope?.code === 'platform_login_required') {
         setPlatformLoginRequired(true);
+        setError(platformLoginError());
+        return;
       }
       if (data.error === 'email_not_verified' || data.code === 'email_not_verified') {
         setVerificationEmail(email);
+      }
+      if (!e?.status && !Object.keys(data).length) {
+        setError(serviceUnavailableError());
+        return;
+      }
+      if (
+        [400, 401, 403].includes(e?.status ?? 0)
+        && data.error !== 'email_not_verified'
+        && data.code !== 'email_not_verified'
+        && !data.state
+      ) {
+        setError(invalidCredentialsError());
+        return;
       }
       const resolved = resolveAuthError(err, { action: 'login', entityLabel: 'account access' });
       const interpretedMessage = resolveErrorMessage(data);

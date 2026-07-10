@@ -5,8 +5,36 @@ const FIELD_LABELS: Record<string, string> = {
   password: 'Password',
   password2: 'Confirm password',
   workspace_name: 'Workspace name',
+  org_type: 'Workspace type',
+  invite_code: 'Invite code',
+  quote_token: 'Quote',
+  title: 'Title',
+  name: 'Name',
+  venue: 'Venue',
+  description: 'Description',
+  term: 'Term',
+  academic_year: 'Academic year',
+  cohort: 'Class',
+  cohort_subject: 'Class subject',
+  subject: 'Subject',
+  learner: 'Learner',
+  instructor: 'Instructor',
+  admission_number: 'Admission number',
+  numeric_score: 'Score',
+  assessment: 'Assessment',
+  assessment_weights: 'Assessment weights',
+  assignment: 'Assignment',
+  level_scale: 'Level scale',
+  scope: 'Scope',
+  subject_profile: 'Subject profile',
+  cbc_cohort_subject: 'CBC class subject',
+  due_date: 'Due date',
+  starts_at: 'Start time',
+  ends_at: 'End time',
   detail: 'Details',
 };
+
+const SAFE_FIELD_KEYS = new Set(Object.keys(FIELD_LABELS));
 
 const NON_FIELD_KEYS = new Set([
   'non_field_errors',
@@ -55,6 +83,7 @@ export function extractFieldErrors(data: unknown): Record<string, string[]> {
     if (!isRecord(source)) return;
     for (const [field, value] of Object.entries(source)) {
       if (NON_FIELD_KEYS.has(field)) continue;
+      if (!SAFE_FIELD_KEYS.has(field)) continue;
       const messages = normalizeMessages(value);
       if (messages.length > 0) {
         result[field] = [...(result[field] ?? []), ...messages];
