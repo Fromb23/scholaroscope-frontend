@@ -51,6 +51,17 @@ export interface WorkspaceRolePayload {
   permission_keys?: string[];
 }
 
+export interface WorkspaceRoleAssignmentPayload {
+  membership_id: number;
+  role_id: number;
+  assigned_reason?: string;
+  ends_at?: string | null;
+  scopes?: Array<{
+    scope_type: string;
+    scope_object_id?: number | null;
+  }>;
+}
+
 export interface WorkspaceRoleAssignment {
   id: number;
   membership: {

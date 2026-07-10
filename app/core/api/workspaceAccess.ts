@@ -5,6 +5,7 @@ import type {
   WorkspacePermissionDefinition,
   WorkspaceRole,
   WorkspaceRoleAssignment,
+  WorkspaceRoleAssignmentPayload,
   WorkspaceRolePayload,
   WorkspaceRoleTemplate,
 } from '@/app/core/types/workspaceAccess';
@@ -51,6 +52,18 @@ export const workspaceAccessAPI = {
   getAssignments: async (): Promise<WorkspaceRoleAssignment[]> => {
     const response = await apiClient.get<WorkspaceRoleAssignment[] | { results?: WorkspaceRoleAssignment[] }>('/workspace-access/assignments/');
     return unwrapPaginated(response.data);
+  },
+
+  assignRole: async (payload: WorkspaceRoleAssignmentPayload): Promise<WorkspaceRoleAssignment> => {
+    const response = await apiClient.post<WorkspaceRoleAssignment>('/workspace-access/assignments/', payload);
+    return response.data;
+  },
+
+  endAssignment: async (assignmentId: number, reason: string): Promise<WorkspaceRoleAssignment> => {
+    const response = await apiClient.post<WorkspaceRoleAssignment>(`/workspace-access/assignments/${assignmentId}/end/`, {
+      ended_reason: reason,
+    });
+    return response.data;
   },
 
   getMe: async (): Promise<WorkspaceAccessMe> => {

@@ -20,9 +20,11 @@ describe('workspace access frontend contract', () => {
     expect(apiSource).toContain('/workspace-access/permissions/');
     expect(apiSource).toContain('/workspace-access/templates/');
     expect(apiSource).toContain('/workspace-access/roles/');
+    expect(apiSource).toContain('/workspace-access/assignments/');
     expect(apiSource).toContain('/workspace-access/me/');
     expect(pageSource).toContain('PermissionMatrix');
     expect(pageSource).toContain('AdminSlotSummary');
+    expect(pageSource).toContain('RoleAssignmentPanel');
   });
 
   it('keeps product capabilities separate from actor permissions', () => {

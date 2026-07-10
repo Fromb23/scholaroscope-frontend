@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { workspaceAccessAPI } from '@/app/core/api/workspaceAccess';
-import type { WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
+import type { WorkspaceRoleAssignmentPayload, WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
 
 export const workspaceAccessKeys = {
   permissions: ['workspace-access', 'permissions'] as const,
@@ -58,6 +58,15 @@ export function useWorkspaceAccess() {
       workspaceAccessAPI.cloneTemplate(templateId, name),
     onSuccess: invalidate,
   });
+  const assignRole = useMutation({
+    mutationFn: (payload: WorkspaceRoleAssignmentPayload) => workspaceAccessAPI.assignRole(payload),
+    onSuccess: invalidate,
+  });
+  const endAssignment = useMutation({
+    mutationFn: ({ assignmentId, reason }: { assignmentId: number; reason: string }) =>
+      workspaceAccessAPI.endAssignment(assignmentId, reason),
+    onSuccess: invalidate,
+  });
 
   return {
     permissionsQuery,
@@ -70,6 +79,8 @@ export function useWorkspaceAccess() {
       updateRole,
       archiveRole,
       cloneTemplate,
+      assignRole,
+      endAssignment,
     },
   };
 }

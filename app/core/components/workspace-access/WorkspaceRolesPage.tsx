@@ -10,6 +10,7 @@ import { useWorkspaceAccess } from '@/app/core/hooks/useWorkspaceAccess';
 import type { WorkspaceRole } from '@/app/core/types/workspaceAccess';
 import { AdminSlotSummary } from './AdminSlotSummary';
 import { PermissionMatrix } from './PermissionMatrix';
+import { RoleAssignmentPanel } from './RoleAssignmentPanel';
 
 function RoleList({
   roles,
@@ -56,6 +57,7 @@ export function WorkspaceRolesPage() {
   } = useWorkspaceAccess();
   const roles = useMemo(() => rolesQuery.data ?? [], [rolesQuery.data]);
   const permissions = useMemo(() => permissionsQuery.data ?? [], [permissionsQuery.data]);
+  const assignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const selectedRole = useMemo(
     () => roles.find((role) => role.id === selectedRoleId) ?? roles[0],
@@ -136,12 +138,6 @@ export function WorkspaceRolesPage() {
               ))}
             </div>
           </div>
-          <div className="rounded-md border theme-border p-4">
-            <p className="text-sm font-semibold theme-text">Assignments</p>
-            <p className="theme-subtle mt-1 text-xs">
-              {assignmentsQuery.data?.length ?? 0} assignment records in this workspace.
-            </p>
-          </div>
         </div>
 
         <div className="space-y-4 rounded-md border theme-border p-4">
@@ -189,6 +185,19 @@ export function WorkspaceRolesPage() {
           </div>
         </div>
       </div>
+
+      <RoleAssignmentPanel
+        roles={roles}
+        assignments={assignments}
+        onAssign={async (payload) => {
+          await actions.assignRole.mutateAsync(payload);
+        }}
+        onEnd={async (assignmentId, reason) => {
+          await actions.endAssignment.mutateAsync({ assignmentId, reason });
+        }}
+        assigning={actions.assignRole.isPending}
+        ending={actions.endAssignment.isPending}
+      />
     </div>
   );
 }
