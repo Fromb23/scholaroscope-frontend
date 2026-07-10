@@ -99,11 +99,17 @@ function RegisterForm() {
     handleLogout,
     isPending,
     hasPersonalWorkspace,
+    quoteToken,
+    commercialQuote,
+    missingCommercialQuote,
   } = useRegister();
-  const [workspaceStep, setWorkspaceStep] = useState<'mode' | 'details'>('mode');
+  const [workspaceStep, setWorkspaceStep] = useState<'mode' | 'details'>('details');
   const isWorkspaceSetupFlow = isDirectSignupFlow || isNewWorkspaceFlow;
   const selectedWorkspace = WORKSPACE_MODE_COPY[form.org_type];
-  const isFreelanceTeacherWorkspace = form.org_type === 'PERSONAL';
+  const commercialWorkspaceLabel = commercialQuote
+    ? ORG_TYPE_LABELS[commercialQuote.workspace_type as keyof typeof ORG_TYPE_LABELS] ?? commercialQuote.workspace_type
+    : selectedWorkspace.label;
+  const isFreelanceTeacherWorkspace = commercialQuote?.workspace_type === 'PERSONAL' || form.org_type === 'PERSONAL';
   const workspaceModeOptions = WORKSPACE_MODE_OPTIONS.filter(
     ({ value }) => !(hasPersonalWorkspace && value === 'PERSONAL')
   );
@@ -377,25 +383,31 @@ function RegisterForm() {
     );
   }
 
-  const title = isWorkspaceSetupFlow && workspaceStep === 'mode'
+  const title = missingCommercialQuote
+    ? 'Choose a workspace plan first'
+    : isWorkspaceSetupFlow && workspaceStep === 'mode'
     ? 'How will you use ScholaroScope?'
     : isNewWorkspaceFlow
-      ? selectedWorkspace.label
+      ? commercialWorkspaceLabel
       : isInviteFlow
         ? isExistingUser
           ? 'Accept Invitation'
           : 'Create Your Account'
         : 'Create Your Account';
 
-  const subtitle = isWorkspaceSetupFlow && workspaceStep === 'mode'
+  const subtitle = missingCommercialQuote
+    ? 'Owner-created workspaces start from the commercial rate card.'
+    : isWorkspaceSetupFlow && workspaceStep === 'mode'
     ? 'Choose the workspace mode that matches how this academic record should be owned and managed.'
     : isNewWorkspaceFlow
-      ? selectedWorkspace.description
+      ? 'Enter the workspace details for the quoted commercial selection.'
       : isInviteFlow
         ? isExistingUser
           ? 'Sign in to accept this invitation'
           : 'Fill in your details to join'
-        : selectedWorkspace.description;
+        : commercialQuote
+          ? 'Enter your account and workspace details for the quoted commercial selection.'
+          : selectedWorkspace.description;
 
   const submitLabel = isFreelanceTeacherWorkspace
     ? 'Create Freelance Teacher Workspace'
@@ -448,6 +460,49 @@ function RegisterForm() {
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {!isInviteFlow && (
+            <div className="theme-card-muted mb-6 rounded-xl border p-4">
+              {commercialQuote ? (
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-semibold theme-text">
+                        {commercialQuote.commercial_mode === 'PREMIUM' ? 'Premium' : 'Standard'} · {commercialWorkspaceLabel}
+                      </p>
+                      <p className="theme-subtle text-xs">
+                        {commercialQuote.starts_on} to {commercialQuote.ends_on}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold theme-text">
+                        {commercialQuote.currency} {commercialQuote.total}
+                      </p>
+                      <p className="theme-subtle text-xs">Server quote</p>
+                    </div>
+                  </div>
+                  {commercialQuote.selected_premium_plugins.length > 0 ? (
+                    <p className="theme-muted text-xs">
+                      Premium plugins: {commercialQuote.selected_premium_plugins.map((plugin) => plugin.plugin_name).join(', ')}
+                    </p>
+                  ) : (
+                    <p className="theme-muted text-xs">No premium plugin selected.</p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-semibold theme-text">
+                    {quoteToken ? 'Quote token received' : 'Commercial quote required'}
+                  </p>
+                  <p className="theme-muted mt-1 text-xs">
+                    {quoteToken
+                      ? 'The backend will validate this quote when you submit.'
+                      : 'Go back to the rate card and choose Standard or Premium before continuing.'}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -519,15 +574,17 @@ function RegisterForm() {
                   <div className="theme-card-muted rounded-lg border px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold theme-text">{selectedWorkspace.label}</p>
-                        <p className="mt-1 text-sm theme-muted">{selectedWorkspace.description}</p>
+                        <p className="text-sm font-semibold theme-text">{commercialWorkspaceLabel}</p>
+                        <p className="mt-1 text-sm theme-muted">
+                          This workspace will have its own subscription, roles, plugin entitlements, and academic data.
+                        </p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setWorkspaceStep('mode')}
+                        onClick={() => router.push(isNewWorkspaceFlow ? '/workspaces/new' : '/#commercial-rate-card')}
                         className="theme-link text-sm font-medium"
                       >
-                        Change
+                        Change quote
                       </button>
                     </div>
                   </div>
@@ -598,7 +655,7 @@ function RegisterForm() {
                       id="workspace_name"
                       value={form.workspace_name}
                       onChange={(e) => setField('workspace_name', e.target.value)}
-                      placeholder={selectedWorkspace.placeholder}
+                      placeholder={selectedWorkspace.placeholder || 'e.g. Sunrise Academy'}
                       error={getFormFieldErrorMessage(fieldErrors.workspace_name)}
                       required
                     />
@@ -632,7 +689,7 @@ function RegisterForm() {
           <div className="mt-6 flex items-center justify-between text-sm">
             <button
               onClick={() => {
-                if (isWorkspaceSetupFlow && workspaceStep === 'details') {
+                if (isWorkspaceSetupFlow && workspaceStep === 'details' && !quoteToken) {
                   setWorkspaceStep('mode');
                   return;
                 }

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { authAPI } from '@/app/core/api/auth';
+import { readStoredCommercialQuote } from '@/app/core/api/commercialCatalog';
 import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvites';
 import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
+import type { CommercialQuote } from '@/app/core/types/commercialCatalog';
 import { resolveAuthError, resolveWorkspaceError, type AppError } from '@/app/core/errors';
 import {
     createFormValidationAppError,
@@ -61,6 +63,7 @@ export function useRegister() {
     const inviteToken = searchParams.get('invite');
     const mode = searchParams.get('mode');
     const reason = searchParams.get('reason');
+    const quoteToken = searchParams.get('quote') ?? searchParams.get('quote_token');
 
     const isNewWorkspaceFlow = mode === 'new_workspace';
     const isInviteFlow = !!inviteToken;
@@ -68,6 +71,7 @@ export function useRegister() {
     const isDirectSignupFlow = !isInviteFlow && !isNewWorkspaceFlow;
 
     const [invite, setInvite] = useState<ValidatedInvite | null>(null);
+    const [commercialQuote, setCommercialQuote] = useState<CommercialQuote | null>(null);
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [inviteLoading, setInviteLoading] = useState(isInviteFlow);
     const [suspendedOrgs, setSuspendedOrgs] = useState<SuspendedOrg[]>([]);
@@ -91,6 +95,20 @@ export function useRegister() {
     const hasPersonalWorkspace = memberships.some(
         (membership) => membership.organization.org_type === 'PERSONAL'
     );
+    const missingCommercialQuote = !isInviteFlow && !quoteToken;
+
+    useEffect(() => {
+        if (!quoteToken) {
+            setCommercialQuote(null);
+            return;
+        }
+        setCommercialQuote(readStoredCommercialQuote(quoteToken));
+    }, [quoteToken]);
+
+    useEffect(() => {
+        if (isInviteFlow || quoteToken) return;
+        router.replace('/#commercial-rate-card');
+    }, [isInviteFlow, quoteToken, router]);
 
     useEffect(() => {
         if (ENABLE_MULTI_WORKSPACE_SIGNUP && hasPersonalWorkspace && form.org_type === 'PERSONAL') {
@@ -186,17 +204,18 @@ export function useRegister() {
         try {
             // ── New workspace or suspended recovery ───────────────────────
             if (isNewWorkspaceFlow || isSuspendedRecovery) {
-                if (!ENABLE_MULTI_WORKSPACE_SIGNUP && form.org_type !== 'PERSONAL') {
+                if (!quoteToken) {
                     setApiError(makeRegisterError(
-                        'Workspace request is not available.',
-                        'Public multi-workspace signup is not available yet. Ask platform support to enable this workflow.',
+                        'Commercial quote required.',
+                        'Choose a workspace type and create a quote before creating another workspace.',
                         'setup_required',
                     ));
                     return;
                 }
                 const res = await ctxRegister({
                     workspace_name: form.workspace_name,
-                    org_type: form.org_type,
+                    quote_token: quoteToken,
+                    idempotency_key: quoteToken,
                 });
                 if (!res.organization) {
                     setApiError(makeRegisterError(
@@ -249,6 +268,14 @@ export function useRegister() {
             }
 
             // ── Personal flow (direct signup) ─────────────────────────────
+            if (!quoteToken) {
+                setApiError(makeRegisterError(
+                    'Commercial quote required.',
+                    'Choose Standard or Premium from the rate card before registering.',
+                    'setup_required',
+                ));
+                return;
+            }
             const res = await ctxRegister({
                 first_name: form.first_name,
                 last_name: form.last_name,
@@ -256,6 +283,8 @@ export function useRegister() {
                 password: form.password,
                 workspace_name: form.workspace_name,
                 org_type: form.org_type,
+                quote_token: quoteToken,
+                idempotency_key: quoteToken,
             });
 
             if (res.status === 'pending') {
@@ -330,7 +359,10 @@ export function useRegister() {
         submitting, apiError, setApiError, success,
         handleSubmit, handleRestore, handleLogout, isPending,
         isDirectSignupFlow,
-        isPersonalFlow: isDirectSignupFlow,
+        isPersonalFlow: commercialQuote?.workspace_type === 'PERSONAL' || isDirectSignupFlow,
         hasPersonalWorkspace,
+        quoteToken,
+        commercialQuote,
+        missingCommercialQuote,
     };
 }

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
 import { PublicThemeToggle } from '@/app/components/theme/PublicThemeToggle';
+import { CommercialRateCards } from '@/app/core/components/commercial/CommercialRateCards';
 
 export function LandingPage() {
   const router = useRouter();
@@ -393,9 +394,9 @@ export function LandingPage() {
               </Link>
             </li>
             <li>
-              <Link href="/register" className="nav-btn">
+              <a href="#commercial-rate-card" className="nav-btn">
                 Get Started <ArrowRight size={13} />
-              </Link>
+              </a>
             </li>
           </ul>
           <button className="hamburger" onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">
@@ -433,9 +434,9 @@ export function LandingPage() {
               </Link>
             </li>
             <li>
-              <Link href="/register" className="nav-btn" onClick={() => setMenuOpen(false)}>
+              <a href="#commercial-rate-card" className="nav-btn" onClick={() => setMenuOpen(false)}>
                 Get Started <ArrowRight size={13} />
-              </Link>
+              </a>
             </li>
           </ul>
         )}
@@ -456,9 +457,9 @@ export function LandingPage() {
             generate reports automatically — from any phone or browser.
           </p>
           <div className="hero-actions">
-            <Link href="/register" className="btn-p">
+            <a href="#commercial-rate-card" className="btn-p">
               Create Account <ArrowRight size={15} />
-            </Link>
+            </a>
             <Link href="/login" className="btn-ghost">
               Log In
             </Link>
@@ -485,6 +486,8 @@ export function LandingPage() {
             </div>
           </div>
         </div>
+
+        <CommercialRateCards />
 
         {/* PROBLEM */}
         <section className="problem-s">
@@ -719,9 +722,9 @@ export function LandingPage() {
               device, any curriculum, any scale.
             </p>
             <div className="cta-actions">
-              <Link href="/register" className="btn-p">
+              <a href="#commercial-rate-card" className="btn-p">
                 Create Account <ArrowRight size={15} />
-              </Link>
+              </a>
               <Link href="/login" className="btn-outline">
                 Log In
               </Link>
@@ -739,7 +742,7 @@ export function LandingPage() {
             <a href="#features">Features</a>
             <a href="#who">Who It&apos;s For</a>
             <Link href="/login">Log In</Link>
-            <Link href="/register">Register</Link>
+            <a href="#commercial-rate-card">Register</a>
           </div>
           <p style={{ marginTop: '1rem', fontSize: '.75rem' }}>
             © {new Date().getFullYear()} ScholaroScope. All rights reserved.
