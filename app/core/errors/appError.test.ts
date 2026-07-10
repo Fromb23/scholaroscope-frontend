@@ -313,6 +313,20 @@ describe('field errors', () => {
     })).toEqual({});
   });
 
+  it('does not expose backend platform URL or arbitrary context keys as fields', () => {
+    expect(extractFieldErrors({
+      admin_url: ['http://localhost:3001/login'],
+      redis_prefix: ['auth:platform:refresh:'],
+      error: {
+        code: 'platform_login_required',
+        context: {
+          admin_url: 'http://localhost:3001/login',
+          serializer: 'LoginSerializer',
+        },
+      },
+    })).toEqual({});
+  });
+
   it('excludes non_field_errors from field errors', () => {
     expect(extractFieldErrors({
       non_field_errors: ['The selected class is closed.'],

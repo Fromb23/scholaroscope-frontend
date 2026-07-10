@@ -51,7 +51,7 @@ export function CapabilityList({ capabilities }: CapabilityListProps) {
           onClick={() => setExpanded(true)}
           className="inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-sm font-semibold theme-border theme-text theme-hover-surface"
         >
-          Show {hiddenCount} more capabilities
+          Explore all included capabilities ({hiddenCount} more)
           <ChevronDown className="h-4 w-4" />
         </button>
       ) : null}

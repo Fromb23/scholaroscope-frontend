@@ -42,7 +42,6 @@ export function CommercialQuoteSummary({
   onQuote,
   onContinue,
 }: CommercialQuoteSummaryProps) {
-  const premiumTotal = selectedPlugins.reduce((total, plugin) => total + Number(plugin.price || 0), 0);
   const basePrice = workspaceType?.standard.price ?? '0';
   const currency = workspaceType?.standard.currency ?? quote?.currency ?? 'KES';
   const ctaLabel = mode === 'PREMIUM' && selectedPlugins.length === 0
@@ -106,15 +105,15 @@ export function CommercialQuoteSummary({
             <span className="font-semibold theme-text">{formatMoney(quote?.base_price ?? basePrice, currency)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="theme-muted">Premium total</span>
+            <span className="theme-muted">{quote ? 'Premium total' : 'Premium selections'}</span>
             <span className="font-semibold theme-text">
-              {formatMoney(quote?.premium_total ?? premiumTotal, currency)}
+              {quote ? formatMoney(quote.premium_total, quote.currency) : selectedPlugins.length ? `${selectedPlugins.length} selected` : 'None'}
             </span>
           </div>
           <div className="flex items-end justify-between border-t pt-3 theme-border">
-            <span className="text-sm font-semibold theme-text">Backend-confirmed total</span>
+            <span className="text-sm font-semibold theme-text">{quote ? 'Backend-confirmed total' : 'Total'}</span>
             <span className="text-2xl font-bold theme-text">
-              {quote ? formatMoney(quote.total, quote.currency) : 'Quote required'}
+              {quote ? formatMoney(quote.total, quote.currency) : 'Confirm quote'}
             </span>
           </div>
         </div>

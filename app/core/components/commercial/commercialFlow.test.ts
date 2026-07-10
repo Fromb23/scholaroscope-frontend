@@ -10,8 +10,20 @@ const commercialSource = readFileSync(
   join(process.cwd(), 'app/core/components/commercial/CommercialRateCards.tsx'),
   'utf8',
 );
+const commercialSummarySource = readFileSync(
+  join(process.cwd(), 'app/core/components/commercial/CommercialQuoteSummary.tsx'),
+  'utf8',
+);
+const commercialSectionSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/CommercialSection.tsx'),
+  'utf8',
+);
 const commercialApiSource = readFileSync(
   join(process.cwd(), 'app/core/api/commercialCatalog.ts'),
+  'utf8',
+);
+const moneySource = readFileSync(
+  join(process.cwd(), 'app/core/lib/money.ts'),
   'utf8',
 );
 const registerHookSource = readFileSync(
@@ -31,6 +43,19 @@ describe('commercial onboarding contract', () => {
     expect(commercialSource).toContain('Start with Standard and add only the premium curriculum or specialist capabilities you need.');
     expect(commercialSource).toContain('premium_plugin_price_ids');
     expect(commercialSource).not.toContain('total =');
+  });
+
+  it('keeps the public commercial experience catalogue-led and quote-authoritative', () => {
+    expect(commercialSource).toContain('Choose the workspace that fits how you teach');
+    expect(commercialSource).toContain('Every published workspace starts with Standard.');
+    expect(commercialSource).toContain('workspaceTypes.map');
+    expect(commercialSource).not.toContain('KES 15000.00');
+    expect(commercialSummarySource).toContain("quote ? formatMoney(quote.total, quote.currency) : 'Confirm quote'");
+    expect(commercialSummarySource).not.toContain('premiumTotal');
+    expect(commercialSectionSource).toContain('How activation works');
+    expect(commercialSectionSource).toContain('Only active public plans are shown.');
+    expect(moneySource).toContain('Intl.NumberFormat');
+    expect(moneySource).toContain('minimumFractionDigits: hasFraction ? 2 : 0');
   });
 
   it('requires quote tokens for owner-created registration while preserving invite bypass', () => {
