@@ -38,3 +38,27 @@ export function hasPluginCapability(
   }
   return context.enabledFeatures?.some((feature) => feature === key) === true;
 }
+
+export function hasWorkspacePermission(
+  capabilities: WorkspaceCapabilities | null | undefined,
+  permissionKey: string,
+): boolean {
+  return capabilities?.authorization?.permission_keys.includes(permissionKey) === true;
+}
+
+export function hasFeatureAccess(
+  capabilities: WorkspaceCapabilities | null | undefined,
+  options: {
+  permissionKey: string;
+  productCapabilityKey?: string;
+  },
+): boolean {
+  const { permissionKey, productCapabilityKey } = options;
+  if (!hasWorkspacePermission(capabilities, permissionKey)) {
+    return false;
+  }
+  if (!productCapabilityKey) {
+    return true;
+  }
+  return hasProductCapability(capabilities, productCapabilityKey);
+}

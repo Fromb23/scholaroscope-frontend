@@ -67,6 +67,13 @@ export const DEFAULT_WORKSPACE_CAPABILITIES: WorkspaceCapabilities = {
   workspace_behavior: null,
   product_capabilities: {},
   effective_capabilities: {},
+  authorization: {
+    enforced: false,
+    permission_keys: [],
+    roles: [],
+    admin_slots: null,
+    migration_state: null,
+  },
 };
 
 function normalizeCapabilities(capabilities?: Partial<WorkspaceCapabilities>): WorkspaceCapabilities {
@@ -78,6 +85,7 @@ function normalizeCapabilities(capabilities?: Partial<WorkspaceCapabilities>): W
     ...(capabilities ?? {}),
     product_capabilities: productCapabilities,
     effective_capabilities: capabilities?.effective_capabilities ?? productCapabilities,
+    authorization: capabilities?.authorization ?? DEFAULT_WORKSPACE_CAPABILITIES.authorization,
   };
 }
 

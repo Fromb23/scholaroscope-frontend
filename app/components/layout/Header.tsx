@@ -152,14 +152,14 @@ export default function Header() {
                     <button
                       onClick={() => {
                         setOrgDropdownOpen(false);
-                        router.push('/register?mode=new_workspace');
+                        router.push('/workspaces/new');
                       }}
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-sm theme-link theme-hover-surface"
                     >
                       <div className="theme-brand-icon h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0">
                         <Plus className="h-3 w-3" />
                       </div>
-                      <span className="font-medium">New Workspace</span>
+                      <span className="font-medium">Create another workspace</span>
                     </button>
                   </div>
                 </div>

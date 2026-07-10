@@ -28,7 +28,7 @@ export function TenantGuard({ children }: TenantGuardProps) {
     if (user.is_superadmin) return <>{children}</>;
 
     if (!activeOrg) {
-        router.replace('/register?mode=new_workspace&reason=suspended');
+        router.replace('/workspaces/new?reason=suspended');
         return <PermissionResolvingState message="Switching workspace..." />;
     }
 

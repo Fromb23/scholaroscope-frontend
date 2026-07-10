@@ -68,6 +68,32 @@ export interface WorkspaceCapabilities {
   };
   product_capabilities?: Record<string, EffectiveCapability>;
   effective_capabilities?: Record<string, EffectiveCapability>;
+  authorization?: {
+    enforced: boolean;
+    permission_keys: string[];
+    roles: Array<{
+      id: number | null;
+      name: string;
+      role_kind?: string;
+      is_workspace_admin?: boolean;
+      assignment_id?: number;
+      legacy_role?: string;
+      system?: boolean;
+      scopes?: Array<{
+        scope_type: string;
+        scope_object_id: number | null;
+      }>;
+    }>;
+    admin_slots?: {
+      maximum: number | null;
+      used: number | null;
+      remaining: number | null;
+      administrator_membership_ids?: number[];
+      migration_state?: string;
+      requires_review?: boolean;
+    } | null;
+    migration_state?: string | null;
+  };
 }
 
 export interface AccessNotice {
@@ -167,6 +193,8 @@ export interface RegisterPayload {
   workspace_name?: string;
   invite_code?: string;
   org_type?: RegisterOrgType;
+  quote_token?: string;
+  idempotency_key?: string;
 }
 
 export interface RegisterResponse {
@@ -185,6 +213,19 @@ export interface RegisterResponse {
     name: string;
     slug?: string;
     type: OrgType;
+    status?: string;
+  };
+  subscription_draft?: {
+    id: number;
+    status: string;
+    starts_on: string;
+    ends_on: string;
+    currency: string;
+    base_price: string;
+    premium_total: string;
+    total_price: string;
+    plan_code: string;
+    plan_version: number;
   };
   memberships?: OrgMembership[];
 }

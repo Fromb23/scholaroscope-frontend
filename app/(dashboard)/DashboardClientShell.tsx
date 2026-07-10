@@ -186,6 +186,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isWorkspaceCreationRoute = pathname === '/workspaces/new';
   const previousOrganizationIdRef = useRef<number | null | undefined>(undefined);
 
   useEffect(() => {
@@ -232,6 +233,10 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (isWorkspaceCreationRoute) {
+      return;
+    }
+
     if (activeRole === null) {
       router.replace(buildLoginPath(currentPath, { reason: 'no_access' }));
       return;
@@ -274,6 +279,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
     activeOrg,
     activeRole,
     capabilities,
+    isWorkspaceCreationRoute,
     loading,
     loggingOut,
     offline,
@@ -335,6 +341,10 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
 
   if (pluginRegistry.isRoutePluginLoading) {
     return <PluginRouteLoadingState pluginIds={pluginRegistry.pendingRoutePluginIds} />;
+  }
+
+  if (isWorkspaceCreationRoute) {
+    return <>{children}</>;
   }
 
   if (showAcademicSetupAccessDenied) {

@@ -247,6 +247,9 @@ export function getAdminNav(
     orgType,
     capabilities,
   });
+  const workspaceAccessNavItems: RegistryNavItem[] = capabilities?.authorization?.permission_keys.includes('workspace.roles.view')
+    ? [{ name: 'Workspace Roles', href: '/workspace-access/roles', icon: ShieldCheck }]
+    : [];
 
   if (academicSetup && !academicSetup.complete) {
     const setupItems = academicSetup.steps?.length
@@ -289,6 +292,7 @@ export function getAdminNav(
         academicSetupNavItem,
       ],
       secondary: [
+        ...workspaceAccessNavItems,
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ],
     };
@@ -324,6 +328,7 @@ export function getAdminNav(
         { name: 'Assessments', shortName: 'Assess', href: '/assessments', icon: ClipboardCheck, mobilePriority: 4 },
       ],
       secondary: [
+        ...workspaceAccessNavItems,
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ],
     };
@@ -360,6 +365,7 @@ export function getAdminNav(
       ],
       secondary: [
         ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        ...workspaceAccessNavItems,
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ],
     };
@@ -397,6 +403,7 @@ export function getAdminNav(
       secondary: [
         { name: 'Tutor Activity', href: '/admin/instructors', icon: Activity },
         ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        ...workspaceAccessNavItems,
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ],
     };
@@ -422,6 +429,7 @@ export function getAdminNav(
       ],
       secondary: [
         ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+        ...workspaceAccessNavItems,
         { name: 'Settings', href: '/admin/settings', icon: Settings },
       ],
     };
@@ -461,6 +469,7 @@ export function getAdminNav(
       { name: 'Instructor Activity', href: '/admin/instructors', icon: Activity },
       { name: 'System Alerts', href: '/admin/alerts', icon: AlertCircle },
       ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
+      ...workspaceAccessNavItems,
       { name: 'Settings', href: '/admin/settings', icon: Settings },
     ],
   };
