@@ -13,9 +13,7 @@ import {
 } from '@/app/core/lib/academicSetup';
 import {
   getUnauthorizedRouteFallback,
-  isPlatformSuperadminBlockedPath,
   routeAllowedForRole,
-  roleHomeRoute,
 } from '@/app/utils/routeAccess';
 import Sidebar from '@/app/components/layout/Sidebar';
 import MobileBottomNav from '@/app/components/layout/MobileBottomNav';
@@ -45,6 +43,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { AccessNotice, Role } from '@/app/core/types/auth';
 import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
+import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
@@ -94,7 +93,7 @@ function DashboardContent({
 
   const pluginNavigationContext = useMemo<PluginNavigationContext>(
     () => ({
-      role: (activeRole ?? (user?.is_superadmin ? 'SUPERADMIN' : 'ADMIN')) as Role,
+      role: (activeRole ?? 'ADMIN') as Role,
       user,
       orgType: activeOrg?.org_type ?? null,
       workspaceBehavior: capabilities.workspace_behavior,
@@ -227,9 +226,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
       return;
     }
     if (user.is_superadmin) {
-      if (!activeOrg && isPlatformSuperadminBlockedPath(pathname)) {
-        router.replace(roleHomeRoute.SUPERADMIN);
-      }
+      redirectToPlatformConsole('/login');
       return;
     }
 

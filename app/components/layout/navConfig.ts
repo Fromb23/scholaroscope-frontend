@@ -21,13 +21,9 @@ import {
   Activity,
   FileText,
   AlertCircle,
-  Inbox,
-  MessageCircle,
   UserCog,
-  TrendingUp,
   Database,
   CalendarDays,
-  Puzzle,
 } from 'lucide-react';
 import type { OrgType, Role, User, WorkspaceCapabilities } from '@/app/core/types/auth';
 import {
@@ -87,14 +83,6 @@ export interface RoleColorScheme {
 // ── Role colors ───────────────────────────────────────────────────────────
 
 export const ROLE_COLORS: Record<Role, RoleColorScheme> = {
-  SUPERADMIN: {
-    active: 'theme-nav-active',
-    hover: 'theme-nav-hover',
-    childActive: 'theme-nav-child-active',
-    badge: 'theme-nav-badge',
-    header: 'theme-nav-header',
-    iconBg: 'theme-nav-icon-bg',
-  },
   ADMIN: {
     active: 'theme-nav-active',
     hover: 'theme-nav-hover',
@@ -132,7 +120,6 @@ export function getRoleColorScheme(role: Role, orgType?: OrgType | null): RoleCo
 // ── Role icon lookup ──────────────────────────────────────────────────────
 
 export const ROLE_ICONS: Record<Role, LucideIcon> = {
-  SUPERADMIN: ShieldCheck,
   ADMIN: Building2,
   INSTRUCTOR: GraduationCap,
 };
@@ -171,7 +158,7 @@ export function resolveNavConfig({
   academicTodayMode = null,
 }: ResolveNavConfigInput): NavigationConfig {
   if (!user) return { primary: [] };
-  if (user.is_superadmin) return getSuperadminNav(pluginNavigationContext);
+  if (user.is_superadmin) return { primary: [] };
 
   switch (activeRole) {
     case 'ADMIN':
@@ -189,23 +176,6 @@ export function resolveNavConfig({
 }
 
 // ── Nav config builders ───────────────────────────────────────────────────
-
-export const SUPERADMIN_NAV: NavigationConfig = {
-  primary: [
-    { name: 'System Overview', shortName: 'Home', href: '/dashboard/superadmin', icon: LayoutDashboard, mobilePriority: 1 },
-    { name: 'Organizations', shortName: 'Orgs', href: '/superadmin/organizations', icon: Building2, mobilePriority: 2 },
-    { name: 'Global Users', shortName: 'Users', href: '/superadmin/users', icon: UserCog, mobilePriority: 3 },
-    { name: 'Plugin Registry', shortName: 'Plugins', href: '/superadmin/plugins', icon: Puzzle, mobilePriority: 4 },
-    { name: 'Feedback Center', href: '/superadmin/feedback', icon: MessageCircle },
-    { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },
-    { name: 'System Settings', href: '/superadmin/settings', icon: Settings },
-    { name: 'Audit Logs', href: '/superadmin/audit', icon: FileText },
-  ],
-  secondary: [
-    { name: 'Support Tickets', href: '/superadmin/support', icon: Inbox },
-    { name: 'System Health', href: '/superadmin/health', icon: Activity },
-  ],
-};
 
 const ACADEMIC_SETUP_NAV: RegistryNavItem = {
   name: 'Academic Setup',
@@ -543,30 +513,9 @@ export function getInstructorNav(
   };
 }
 
-export function getSuperadminNav(pluginContext: PluginNavigationContext): NavigationConfig {
-  return {
-    ...SUPERADMIN_NAV,
-    primary: [
-      { name: 'System Overview', shortName: 'Home', href: '/dashboard/superadmin', icon: LayoutDashboard, mobilePriority: 1 },
-      { name: 'Organizations', shortName: 'Orgs', href: '/superadmin/organizations', icon: Building2, mobilePriority: 2 },
-      ...getPluginNavigationItems('superadmin.primary.afterOrganizations', pluginContext),
-      { name: 'Global Users', shortName: 'Users', href: '/superadmin/users', icon: UserCog, mobilePriority: 3 },
-      { name: 'Plugin Registry', shortName: 'Plugins', href: '/superadmin/plugins', icon: Puzzle, mobilePriority: 4 },
-      { name: 'Feedback Center', href: '/superadmin/feedback', icon: MessageCircle },
-      ...getPluginNavigationItems('superadmin.primary.afterPluginRegistry', pluginContext),
-      { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: TrendingUp },
-      { name: 'System Settings', href: '/superadmin/settings', icon: Settings },
-      { name: 'Audit Logs', href: '/superadmin/audit', icon: FileText },
-    ],
-  };
-}
-
 // ── Footer label ──────────────────────────────────────────────────────────
 
 export function getRoleFooterLabel(role: Role, orgType?: OrgType | null): string {
-  if (role === 'SUPERADMIN') {
-    return 'System Governance';
-  }
   if (role === 'ADMIN') {
     return getWorkspaceManagementLabel(orgType);
   }

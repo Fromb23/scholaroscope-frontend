@@ -2,9 +2,7 @@
 
 import { Fragment, type ReactNode } from 'react';
 
-export type SettingsExtensionSlot =
-  | 'admin.settings.appearance'
-  | 'superadmin.settings.appearance';
+export type SettingsExtensionSlot = 'admin.settings.appearance';
 
 export type SettingsExtension = {
   key: string;

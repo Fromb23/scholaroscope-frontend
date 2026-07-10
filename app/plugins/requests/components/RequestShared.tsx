@@ -286,7 +286,7 @@ export function RequestDetailPanel({
                 )}
             </div>
 
-            {/* Review Actions — only for admin/superadmin on open requests */}
+            {/* Review Actions — only for workspace admins on open requests */}
             {canReview && isPending && (
                 <div id="request-review-section" className="px-6 py-4 border-b border-gray-100 bg-gray-50">
                     <p className="text-sm font-semibold text-gray-700 mb-3">Review this Request</p>

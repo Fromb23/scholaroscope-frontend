@@ -24,10 +24,6 @@ export function isScopedInstructorAttendanceReport(path: string): boolean {
 }
 
 const kernelRouteRules: RouteRule[] = [
-    // SUPERADMIN ONLY
-    { pattern: /^\/superadmin/, allowedRoles: ['SUPERADMIN'] },
-    { pattern: /^\/dashboard\/superadmin/, allowedRoles: ['SUPERADMIN'] },
-
     // ADMIN ONLY
     { pattern: /^\/dashboard\/admin/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/admin/, allowedRoles: ['ADMIN'] },
@@ -43,8 +39,8 @@ const kernelRouteRules: RouteRule[] = [
     { pattern: /^\/academic\/progress/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/new$/, allowedRoles: ['ADMIN'] },
     { pattern: /^\/learners\/[^/]+\/edit$/, allowedRoles: ['ADMIN'] },
-    { pattern: /^\/assessments\/new$/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/assessments\/new$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/assessments\/[^/]+\/edit$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/reports\/instructor(?:\/|$)/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/reports\/learners\/[^/]+\/subject$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/reports\/learners\/[^/]+\/assessments$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
@@ -71,9 +67,9 @@ const kernelRouteRules: RouteRule[] = [
     { pattern: /^\/academic\/cohorts\/\d+$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/academic\/cohort-subjects\/\d+\/learners$/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/sessions/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/lesson-plans/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/lesson-plans/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/learners/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
-    { pattern: /^\/assessments/, allowedRoles: ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'] },
+    { pattern: /^\/assessments/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
     { pattern: /^\/profile/, allowedRoles: ['ADMIN', 'INSTRUCTOR'] },
 ];
 
@@ -95,26 +91,7 @@ export function routeAllowedForRole(path: string, role: Role): boolean {
     return matchedRule.isAllowed?.({ role, pathname: url.pathname, url }) ?? true;
 }
 
-const platformContextBlockedPatterns: RegExp[] = [
-    /^\/dashboard\/admin/,
-    /^\/dashboard\/instructor/,
-    /^\/admin/,
-    /^\/academic/,
-    /^\/learners/,
-    /^\/sessions/,
-    /^\/lesson-plans/,
-    /^\/schemes/,
-    /^\/assessments/,
-    /^\/reports/,
-    /^\/cbc/,
-];
-
-export function isPlatformSuperadminBlockedPath(path: string): boolean {
-    return platformContextBlockedPatterns.some((pattern) => pattern.test(path));
-}
-
 export const roleHomeRoute: Record<Role, string> = {
-    SUPERADMIN: '/dashboard/superadmin',
     ADMIN: '/dashboard/admin',
     INSTRUCTOR: '/dashboard/instructor',
 };

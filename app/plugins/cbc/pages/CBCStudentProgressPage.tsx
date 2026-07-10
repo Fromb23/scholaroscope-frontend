@@ -184,8 +184,8 @@ export function CBCStudentProgressPage() {
         () => allStrands.filter(({ strand }) => strand.status === 'ON_TRACK'),
         [allStrands],
     );
-    const canGenerateOverviewReport = !!user && (user.is_superadmin || activeRole === 'ADMIN');
-    const canGenerateSubjectReport = !!user && (user.is_superadmin || activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
+    const canGenerateOverviewReport = !!user && activeRole === 'ADMIN';
+    const canGenerateSubjectReport = !!user && (activeRole === 'ADMIN' || activeRole === 'INSTRUCTOR');
     const currentReturnTo = buildReportReturnTo(pathname, searchParams.toString());
     const backHref = resolveReportBackHref({
         returnTo: searchParams.get('returnTo'),

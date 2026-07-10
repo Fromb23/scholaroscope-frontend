@@ -400,7 +400,7 @@ function SessionWorkspaceView() {
     const { activeOrg, activeRole, user, capabilities } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAdminLike = activeRole === 'ADMIN';
     const isSelfManagedTeaching = isSelfManagedTeachingWorkspace({
         orgType: activeOrg?.org_type,
         capabilities,
@@ -409,19 +409,19 @@ function SessionWorkspaceView() {
     const canUseMyTeaching = isInstructor || canShowAdminMyTeaching({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const supervisionOnlyAdmin = isSupervisionOnlyAdmin({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const [viewMode, setViewMode] = useState<AdminWorkViewMode>('admin_supervision');
@@ -443,6 +443,8 @@ function SessionWorkspaceView() {
     const safeReturnTo = returnTo?.startsWith('/') ? returnTo : null;
     const effectiveMyTeachingMode = canUseMyTeaching && (isInstructor || isSelfManagedTeaching || viewMode === 'my_teaching');
     const shouldFilterToMyTeaching = showInstitutionSupervision && effectiveMyTeachingMode;
+    const currentUserId = user?.id;
+    const currentUserFullName = user?.full_name;
     const selectedInstructorId = useMemo(() => {
         if (!selectedInstructorFilter.startsWith('id:')) {
             return undefined;
@@ -567,10 +569,10 @@ function SessionWorkspaceView() {
     }, []);
 
     const matchesMyTeachingSession = useCallback((session: Session) => {
-        const matchesInstructorId = typeof session.created_by_id === 'number' && session.created_by_id === user?.id;
-        const matchesInstructorName = normalizeText(getSessionInstructorLabel(session)) === normalizeText(user?.full_name);
+        const matchesInstructorId = typeof session.created_by_id === 'number' && session.created_by_id === currentUserId;
+        const matchesInstructorName = normalizeText(getSessionInstructorLabel(session)) === normalizeText(currentUserFullName);
         return matchesInstructorId || matchesInstructorName;
-    }, [user?.full_name, user?.id]);
+    }, [currentUserFullName, currentUserId]);
 
     const visibleSessions = useMemo(() => (
         sessions.filter((session) => {
@@ -1639,13 +1641,13 @@ function CohortSessionsView({
 }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { activeOrg, activeRole, capabilities } = useAuth();
     const { curricula } = useCurricula();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const [selectedTerm, setSelectedTerm] = useState<number | undefined>();

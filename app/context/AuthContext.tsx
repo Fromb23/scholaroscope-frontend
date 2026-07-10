@@ -16,6 +16,7 @@ import { DEFAULT_WORKSPACE_CAPABILITIES, authAPI } from '@/app/core/api/auth';
 import { registerAuthFailureHandler } from '@/app/core/api/client';
 import { logoutLocalFirst } from '@/app/core/auth/logout';
 import { isNetworkError } from '@/app/core/auth/networkDetection';
+import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { clearAccessToken, setAccessToken } from '@/app/core/auth/tokenStore';
 import { resolveMembershipRoleForOrganization } from '@/app/core/lib/organizationScope';
 import type {
@@ -166,6 +167,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const applyAuthState = useCallback((payload: AuthStatePayload) => {
+    if (payload.user?.is_superadmin) {
+      clearAuthState();
+      redirectToPlatformConsole('/login');
+      return;
+    }
     authStateVersionRef.current += 1;
     setLoggingOut(false);
     setOffline(false);
@@ -183,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
     );
     storeMembershipVersion(payload.membership_version ?? 0);
-  }, []);
+  }, [clearAuthState]);
 
   const applyMembershipContext = useCallback((payload: {
     active_org: ActiveOrg | null;

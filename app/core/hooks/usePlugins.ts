@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { usePathname } from 'next/navigation';
 import { pluginAPI } from '@/app/core/api/plugins';
 import type { InstalledPlugin } from '@/app/core/types/plugins';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
@@ -26,25 +25,15 @@ export const usePlugins = (options: UsePluginsOptions = {}): UsePluginsReturn =>
     const [loading, setLoading] = useState(enabled);
     const [error, setError] = useState<string | null>(null);
     const requestIdRef = useRef(0);
-    const pathname = usePathname();
     const { activeOrg } = useAuth();
     const { organizationId } = useOrganizationContext();
     const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
-    const isOrgScopedSettingsRoute = pathname.includes('/superadmin/organizations/');
-    const shouldWaitForOrganization = enabled && isOrgScopedSettingsRoute && scopedOrganizationId === null;
 
     const fetch = useCallback(async () => {
         if (!enabled) {
             setPlugins([]);
             setError(null);
             setLoading(false);
-            return;
-        }
-
-        if (shouldWaitForOrganization) {
-            setPlugins([]);
-            setError(null);
-            setLoading(true);
             return;
         }
 
@@ -65,7 +54,7 @@ export const usePlugins = (options: UsePluginsOptions = {}): UsePluginsReturn =>
                 setLoading(false);
             }
         }
-    }, [enabled, scopedOrganizationId, shouldWaitForOrganization]);
+    }, [enabled, scopedOrganizationId]);
 
     useEffect(() => { fetch(); }, [fetch]);
 

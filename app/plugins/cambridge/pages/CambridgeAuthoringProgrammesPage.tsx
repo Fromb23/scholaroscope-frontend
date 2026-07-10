@@ -28,8 +28,8 @@ const PROGRAMME_CODES = [
 ];
 
 export default function CambridgeAuthoringProgrammesPage() {
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -87,7 +87,7 @@ export default function CambridgeAuthoringProgrammesPage() {
             <Card>
               <h2 className="font-semibold text-gray-900">Read-only access</h2>
               <p className="mt-2 text-sm text-gray-600">
-                Programme create/edit/delete actions require admin or superadmin role.
+                Programme create/edit/delete actions require workspace administrator access.
               </p>
             </Card>
           ) : null}

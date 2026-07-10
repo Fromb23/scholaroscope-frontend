@@ -1,6 +1,6 @@
 // app/utils/permissions.ts
 
-type Role = 'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR';
+type Role = 'ADMIN' | 'INSTRUCTOR';
 type User = {
     is_superadmin?: boolean;
 } | null;
@@ -17,9 +17,6 @@ type WorkspaceCapabilities = {
 
 // ── Core role checks (take activeRole, not activeRole) ─────────────────────────
 
-export const isSuperAdmin = (user: User): boolean =>
-    !!user?.is_superadmin;
-
 export const isAdmin = (activeRole: Role | null): boolean =>
     activeRole === 'ADMIN';
 
@@ -27,7 +24,7 @@ export const isInstructor = (activeRole: Role | null): boolean =>
     activeRole === 'INSTRUCTOR';
 
 export const isAdminOrAbove = (user: User, activeRole: Role | null): boolean =>
-    !!user?.is_superadmin || activeRole === 'ADMIN';
+    !!user && activeRole === 'ADMIN';
 
 export const isAuthenticated = (user: User): boolean =>
     !!user;
@@ -40,9 +37,7 @@ export const hasRouteAccess = (
     allowedRoles: Role[]
 ): boolean => {
     if (!user) return false;
-    if (user.is_superadmin) return true;
     if (!activeRole) return false;
-    if (allowedRoles.includes('SUPERADMIN') && !allowedRoles.includes(activeRole)) return false;
     return allowedRoles.includes(activeRole);
 };
 
@@ -54,7 +49,6 @@ export const canManageUsers = (
     activeRole: Role | null,
     capabilities?: WorkspaceCapabilities,
 ): boolean => {
-    if (user?.is_superadmin) return true;
     if (capabilities) return Boolean(capabilities.can_manage_staff);
     return isAdminOrAbove(user, activeRole);
 };
@@ -121,9 +115,6 @@ export const canBulkUploadStudents = (
 
 export const canDeleteRecords = (user: User, activeRole: Role | null): boolean =>
     isAdminOrAbove(user, activeRole);
-
-export const canAccessSuperAdminPanel = (user: User): boolean =>
-    !!user?.is_superadmin;
 
 type Capability =
     | 'EDIT_LEARNER'

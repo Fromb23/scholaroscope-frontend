@@ -73,10 +73,9 @@ export default function Header() {
     }
   };
 
-  // Superadmins never see workspace controls
   const showWorkspaceControl = user && !user.is_superadmin;
-  const showPeopleSearch = !!user && (user.is_superadmin || activeRole === 'ADMIN');
-  const showSettingsLink = !!user && (user.is_superadmin || activeRole === 'ADMIN');
+  const showPeopleSearch = !!user && activeRole === 'ADMIN';
+  const showSettingsLink = !!user && activeRole === 'ADMIN';
 
   return (
     <header className="theme-header sticky top-0 z-30 flex h-16 items-center justify-between border-b theme-border px-4 lg:px-6">
@@ -201,7 +200,7 @@ export default function Header() {
                 </Link>
                 {showSettingsLink ? (
                   <Link
-                    href={user?.is_superadmin ? '/superadmin/settings' : '/admin/settings'}
+                    href="/admin/settings"
                     className="flex w-full items-center gap-3 px-4 py-2 text-sm theme-text theme-hover-surface"
                   >
                     <Settings className="h-4 w-4" />

@@ -31,11 +31,10 @@ const pluginContext = {
 
 let getAdminNav: typeof import('./navConfig').getAdminNav;
 let getInstructorNav: typeof import('./navConfig').getInstructorNav;
-let getSuperadminNav: typeof import('./navConfig').getSuperadminNav;
 let resolveMobilePrimaryNav: typeof import('./navConfig').resolveMobilePrimaryNav;
 
 beforeAll(async () => {
-  ({ getAdminNav, getInstructorNav, getSuperadminNav, resolveMobilePrimaryNav } = await import('./navConfig'));
+  ({ getAdminNav, getInstructorNav, resolveMobilePrimaryNav } = await import('./navConfig'));
 });
 
 describe('admin navigation config', () => {
@@ -325,14 +324,4 @@ describe('admin navigation config', () => {
     ]);
   });
 
-  it('keeps superadmin mobile navigation simple', () => {
-    const nav = getSuperadminNav(pluginContext);
-
-    expect(resolveMobilePrimaryNav(nav).map((item) => item.name)).toEqual([
-      'System Overview',
-      'Organizations',
-      'Global Users',
-      'Plugin Registry',
-    ]);
-  });
 });

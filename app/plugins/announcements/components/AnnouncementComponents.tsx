@@ -210,13 +210,13 @@ interface AnnouncementModalProps {
     open: boolean;
     onClose: () => void;
     editing: Announcement | null;
-    isSuperAdmin: boolean;
+    allowSystemAnnouncement: boolean;
     onCreate: (data: AnnouncementFormData) => Promise<Announcement | void>;
     onUpdate: (id: number, data: Partial<AnnouncementFormData>) => Promise<Announcement | void>;
 }
 
 export function AnnouncementModal({
-    open, onClose, editing, isSuperAdmin, onCreate, onUpdate,
+    open, onClose, editing, allowSystemAnnouncement, onCreate, onUpdate,
 }: AnnouncementModalProps) {
     const [form, setForm] = useState<AnnouncementFormData>(
         editing
@@ -314,7 +314,7 @@ export function AnnouncementModal({
                     />
                 </div>
 
-                {isSuperAdmin && (
+                {allowSystemAnnouncement && (
                     <label className="flex items-center gap-3 cursor-pointer">
                         <input
                             type="checkbox"

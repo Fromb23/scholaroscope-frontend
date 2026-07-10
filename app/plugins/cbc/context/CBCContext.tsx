@@ -93,7 +93,7 @@ export function CBCProvider({ children }: { children: ReactNode }) {
         capabilities,
         user,
     });
-    const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !teachingActorView);
+    const isInstitutionAdminView = activeRole === 'ADMIN' && !teachingActorView;
     const isAdmin = isInstitutionAdminView;
     const teachingLoading = authLoading;
 

@@ -1,21 +1,6 @@
-import { Award, BarChart3, BookOpen, Layers, Target, TrendingUp } from 'lucide-react';
+import { Award, BarChart3, BookOpen, Target, TrendingUp } from 'lucide-react';
 import { registerPluginNavigationEntry } from '@/app/core/registry/pluginNavigation';
 import { canManageCbcReportPolicyAuthoring } from '@/app/plugins/cbc/components/reportPolicies/reportPolicyAuthoringAccess';
-
-registerPluginNavigationEntry({
-    key: 'cbc-superadmin-authoring-nav',
-    slot: 'superadmin.primary.afterPluginRegistry',
-    priority: 10,
-    resolve: () => ({
-        name: 'Curriculum Authoring',
-        href: '/cbc/authoring',
-        icon: BookOpen,
-        children: [
-            { name: 'Overview', href: '/cbc/authoring', icon: BookOpen },
-            { name: 'Strands', href: '/cbc/authoring/strands', icon: Layers },
-        ],
-    }),
-});
 
 registerPluginNavigationEntry({
     key: 'cbc-admin-nav',

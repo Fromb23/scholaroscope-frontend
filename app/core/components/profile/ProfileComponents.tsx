@@ -574,9 +574,9 @@ const DELETION_COPY = {
             'All instructor and admin accounts within this organization will be removed.',
             'All CBC progress data, schemes of work, and curricula will be lost.',
             'Subscriptions and billing will be terminated immediately upon approval.',
-            'This action is irreversible and cannot be undone once approved by a SuperAdmin.',
+            'This action is irreversible and cannot be undone once approved by Scholaroscope support.',
         ],
-        note: 'This request will be escalated to a SuperAdmin for review. Your organization will continue to operate normally until the request is approved.',
+        note: 'This request will be escalated to Scholaroscope support for review. Your organization will continue to operate normally until the request is approved.',
         buttonLabel: 'Submit Organization Deletion Request',
     },
 };

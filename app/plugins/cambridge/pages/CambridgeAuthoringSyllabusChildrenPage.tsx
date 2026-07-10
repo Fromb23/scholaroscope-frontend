@@ -36,8 +36,8 @@ export default function CambridgeAuthoringSyllabusChildrenPage() {
   const params = useParams<{ syllabusId: string }>();
   const syllabusId = toPositiveNumber(params.syllabusId);
 
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [entryOptionComponentIds, setEntryOptionComponentIds] = useState<number[]>([]);

@@ -24,8 +24,7 @@ import type {
     UserUpdatePayload,
 } from '@/app/core/types/globalUsers';
 import type { TeachingAssignment } from '@/app/core/types/academic';
-import type { ApiError } from '@/app/core/types/errors';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { resolveWorkspaceError } from '@/app/core/errors';
 import { isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import type { CohortSubjectOption } from '@/app/core/types/session';
 
@@ -76,7 +75,11 @@ export function EditModal({ isOpen, onClose, onSubmit, instructor, submitting }:
             await onSubmit(form);
             setSuccessMessage('Instructor details updated.');
         } catch (err) {
-            setActionError(extractErrorMessage(err as ApiError, 'Failed to update instructor'));
+            setActionError(resolveWorkspaceError(err, {
+                action: 'update',
+                entityLabel: 'instructor details',
+                role: 'ADMIN',
+            }).message);
         }
     };
 
@@ -201,7 +204,11 @@ export function ResetPasswordModal({ isOpen, onClose, onSubmit, submitting }: Re
             setConfirm('');
             setSuccessMessage('Password reset successfully.');
         } catch (caught) {
-            setSubmitError(extractErrorMessage(caught as ApiError, 'Failed to reset password'));
+            setSubmitError(resolveWorkspaceError(caught, {
+                action: 'update',
+                entityLabel: 'instructor password',
+                role: 'ADMIN',
+            }).message);
         }
     };
 
@@ -294,7 +301,11 @@ export function DeleteModal({ isOpen, onClose, onConfirm, name, submitting }: De
         try {
             await onConfirm();
         } catch (caught) {
-            setActionError(extractErrorMessage(caught as ApiError, 'Failed to remove instructor from organization'));
+            setActionError(resolveWorkspaceError(caught, {
+                action: 'delete',
+                entityLabel: 'instructor workspace access',
+                role: 'ADMIN',
+            }).message);
         }
     };
 
@@ -1009,7 +1020,11 @@ export function CohortAssignModal({
             await onAssignmentsChanged?.();
             setSuccessMessage(`${subject.subject_name} assigned to ${instructorName}.`);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to assign cohort subject'));
+            setError(resolveWorkspaceError(err, {
+                action: 'update',
+                entityLabel: 'instructor subject assignment',
+                role: 'ADMIN',
+            }).message);
         } finally {
             setWorking(false);
         }
@@ -1052,7 +1067,11 @@ export function CohortAssignModal({
             setUnassignNotes('');
             setSuccessMessage(`${assignment.subjectName} unassigned from ${instructorName}.`);
         } catch (err) {
-            setError(extractErrorMessage(err as ApiError, 'Failed to unassign cohort subject'));
+            setError(resolveWorkspaceError(err, {
+                action: 'update',
+                entityLabel: 'instructor subject assignment',
+                role: 'ADMIN',
+            }).message);
         } finally { setWorking(false); }
     };
 

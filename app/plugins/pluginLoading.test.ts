@@ -72,7 +72,6 @@ function buildLoadContext(overrides: Partial<PluginLoadContext> = {}): PluginLoa
   return {
     activeOrg: institutionOrg,
     activeRole: 'ADMIN',
-    isSuperadmin: false,
     capabilities: baseCapabilities,
     curriculumTypes: [],
     enabledFeatures: [],
@@ -342,9 +341,9 @@ describe('selective plugin loading manifest', () => {
     expect(ids).not.toContain('themes');
   });
 
-  it('keeps temporary settings-path fallback when themes capability is absent', () => {
+  it('keeps workspace settings-path fallback when themes capability is absent', () => {
     const ids = selectedIds({
-      pathname: '/superadmin/settings',
+      pathname: '/settings',
       capabilities: {
         ...baseCapabilities,
         product_capabilities: {},

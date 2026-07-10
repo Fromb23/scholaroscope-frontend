@@ -336,7 +336,7 @@ export function TermsPage() {
     const subscriptionSummaryQuery = useWorkspaceSubscriptionSummary(undefined, { enabled: Boolean(user) });
     const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find((year) => year.is_current), [academicYears]);
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAdminLike = activeRole === 'ADMIN';
     const setupStatus = setupStatusQuery.data ?? null;
     const setupPageState = getAcademicSetupPageState(setupStatus, 'TERMS');
 

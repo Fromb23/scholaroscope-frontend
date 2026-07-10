@@ -30,8 +30,8 @@ export default function CambridgeAuthoringSubjectFrameworksPage() {
   const params = useParams<{ subjectId: string }>();
   const subjectId = toPositiveNumber(params.subjectId);
 
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
 

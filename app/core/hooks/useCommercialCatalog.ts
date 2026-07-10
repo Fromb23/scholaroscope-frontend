@@ -1,9 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
-import {
-  commercialCatalogAPI,
-  storeCommercialQuote,
-} from '@/app/core/api/commercialCatalog';
+import { commercialCatalogAPI, storeCommercialQuote } from '../api/commercialCatalog';
 import type { CommercialQuoteRequest } from '@/app/core/types/commercialCatalog';
 
 export const commercialCatalogKeys = {

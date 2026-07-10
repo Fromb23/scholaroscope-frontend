@@ -98,12 +98,6 @@ const QUICK_PROMPTS_BY_ROLE: Record<Role, string[]> = {
     'Help me assign a teacher',
     'Show school setup workflow',
   ],
-  SUPERADMIN: [
-    'Help me review organizations',
-    'Help me review feedback',
-    'Show platform workflow',
-    'Who are you?',
-  ],
 };
 
 const RESPONSE_KIND_META: Partial<

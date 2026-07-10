@@ -14,8 +14,8 @@ import { useCambridgeCohortSubjects, useCambridgeOfferings, useUpdateCambridgeOf
 import { modeLabel, mutationErrorMessage } from './authoringUtils';
 
 export default function CambridgeSubjectManagementPage() {
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
 

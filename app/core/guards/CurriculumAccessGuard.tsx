@@ -27,7 +27,6 @@ export function CurriculumAccessGuard({
 
     const curriculumType = curriculum === 'CBC' ? 'CBE' : 'CAMBRIDGE';
     const pluginKey = curriculum === 'CBC' ? 'cbc' : 'cambridge';
-    const isAuthoringRoute = pathname.startsWith('/cbc/authoring') || pathname.startsWith('/cambridge/authoring');
     const routeIntent = (() => {
         if (pathname.startsWith('/cbc/report-policies')) {
             return 'edit' as const;
@@ -49,8 +48,7 @@ export function CurriculumAccessGuard({
 
     const allowed = !user
         ? false
-        : user.is_superadmin
-            || activeRole === 'ADMIN'
+        : activeRole === 'ADMIN'
             || (activeRole === 'INSTRUCTOR' && access.hasCurriculumAccess(curriculum));
 
     const lifecycle = useCurriculumLifecycleGuard({
@@ -67,7 +65,6 @@ export function CurriculumAccessGuard({
 
     if (loading || access.isLoading) return <PermissionResolvingState message={`Checking ${curriculum} access...`} />;
     if (!allowed) return <>{fallback}</>;
-    if (isAuthoringRoute && user?.is_superadmin) return <>{children}</>;
     if (lifecycle.loading) return <PermissionResolvingState message={`Checking ${curriculum} setup...`} />;
     if (!lifecycle.allowed) {
         return (

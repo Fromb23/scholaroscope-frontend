@@ -176,7 +176,7 @@ export default function CohortAssignmentDetailPage() {
     const cohortId = Number(params.id);
     const assignmentId = Number(params.assignmentId);
     const isTeachingActor = instructorAccess.isTeachingActor;
-    const isInstitutionAdminView = Boolean(user?.is_superadmin) || (activeRole === 'ADMIN' && !isTeachingActor);
+    const isInstitutionAdminView = activeRole === 'ADMIN' && !isTeachingActor;
     const isValidRoute = Number.isFinite(cohortId) && cohortId > 0 && Number.isFinite(assignmentId) && assignmentId > 0;
     const [activeTab, setActiveTab] = useState<DetailTab>('overview');
     const [editOpen, setEditOpen] = useState(false);
@@ -198,7 +198,7 @@ export default function CohortAssignmentDetailPage() {
         : isInstitutionAdminView
             || (isTeachingActor && instructorAccess.cohortIds.includes(cohortId));
     const canManageAssignments = Boolean(user) && (
-        Boolean(user?.is_superadmin)
+        false
         || activeRole === 'ADMIN'
         || activeRole === 'INSTRUCTOR'
     );

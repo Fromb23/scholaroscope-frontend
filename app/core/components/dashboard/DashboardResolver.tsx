@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthContext';
 import { roleHomeRoute } from '@/app/utils/routeAccess';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
+import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { PermissionResolvingState } from '@/app/components/ui/loading';
 
 export function DashboardResolver() {
@@ -19,14 +20,16 @@ export function DashboardResolver() {
             return;
         }
 
-        // Wait for role to resolve
-        if (!user.is_superadmin && activeRole === null) return;
+        if (user.is_superadmin) {
+            redirectToPlatformConsole('/login');
+            return;
+        }
 
-        const destination = user.is_superadmin
-            ? roleHomeRoute['SUPERADMIN']
-            : activeRole
-                ? roleHomeRoute[activeRole]
-                : '/dashboard/admin';
+        if (activeRole === null) return;
+
+        const destination = activeRole
+            ? roleHomeRoute[activeRole]
+            : '/dashboard/admin';
 
         router.replace(destination);
     }, [activeRole, loading, router, user]);

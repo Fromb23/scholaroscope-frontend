@@ -404,13 +404,13 @@ export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
 // ── MembersTab ────────────────────────────────────────────────────────────
 
 export function MembersTab() {
-    const { activeRole, user } = useAuth();
+    const { activeRole } = useAuth();
     const { invites, loading, error, fetchInvites, createInvite, revokeInvite } = useInvites();
     const [createOpen, setCreateOpen] = useState(false);
     const [revoking, setRevoking] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    const canInviteMembers = Boolean(user?.is_superadmin || activeRole === 'ADMIN');
+    const canInviteMembers = activeRole === 'ADMIN';
 
     useEffect(() => {
         if (canInviteMembers) {

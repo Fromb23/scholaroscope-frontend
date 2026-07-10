@@ -81,7 +81,7 @@ export function useAssessmentDetailPage() {
     const isDraft = assessment?.status === AssessmentStatus.DRAFT;
     const isActive = assessment?.status === AssessmentStatus.ACTIVE;
     const isTrackedParticipation = tracksAssessmentParticipation(assessment?.participation_mode);
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAdminLike = activeRole === 'ADMIN';
     const isAssignedInstructor = Boolean(
         activeRole === 'INSTRUCTOR'
         && assessment

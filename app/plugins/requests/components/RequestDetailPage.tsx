@@ -1,7 +1,7 @@
 'use client';
 // ============================================================================
 // app/(dashboard)/requests/[id]/page.tsx
-// Shared detail page for INSTRUCTOR, ADMIN, SUPERADMIN
+// Shared detail page for INSTRUCTOR and ADMIN
 // Role determines what actions are available
 // ============================================================================
 
@@ -17,18 +17,15 @@ import { RequestDetailPanel } from '@/app/plugins/requests/components/RequestSha
 export function RequestDetailPage() {
     const router = useRouter();
     const params = useParams();
-    const { user, activeRole } = useAuth();
+    const { activeRole } = useAuth();
     const id = Number(params.id);
 
     const { request, loading, error, addComment, reviewRequest, executeRequest } = useRequestDetail(id);
 
     const isAdmin = activeRole === 'ADMIN';
-    const isSuperAdmin = !!user?.is_superadmin;
-    const canReview = isSuperAdmin
-        ? request?.submitted_by_role === 'ADMIN'
-        : isAdmin
-            ? request?.submitted_by_role === 'INSTRUCTOR'
-            : false;
+    const canReview = isAdmin
+        ? request?.submitted_by_role === 'INSTRUCTOR'
+        : false;
 
     const handleReview = async (action: 'approve' | 'reject' | 'review', note: string) => {
         await reviewRequest({ action, resolution_note: note });

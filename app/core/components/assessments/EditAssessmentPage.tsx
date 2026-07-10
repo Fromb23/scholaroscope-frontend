@@ -49,11 +49,11 @@ type InstructorSubjectOption = {
 export function EditAssessmentPage() {
     const params = useParams();
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { activeRole } = useAuth();
     const instructorAccess = useInstructorCohortAccess();
     const assessmentId = Number(params.id);
     const isInstructor = activeRole === 'INSTRUCTOR';
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const isAdminLike = activeRole === 'ADMIN';
 
     const [selectedCohortId, setSelectedCohortId] = useState<number>(0);
     const [saving, setSaving] = useState(false);

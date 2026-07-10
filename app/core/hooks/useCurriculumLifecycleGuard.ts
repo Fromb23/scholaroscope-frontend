@@ -35,11 +35,7 @@ interface CurriculumLifecycleGuardResult {
   role: CurriculumLifecycleRole;
 }
 
-function resolveLifecycleRole(activeRole: ReturnType<typeof useAuth>['activeRole'], isSuperadmin: boolean): CurriculumLifecycleRole {
-  if (isSuperadmin) {
-    return 'SUPERADMIN';
-  }
-
+function resolveLifecycleRole(activeRole: ReturnType<typeof useAuth>['activeRole']): CurriculumLifecycleRole {
   if (activeRole === 'INSTRUCTOR') {
     return 'INSTRUCTOR';
   }
@@ -52,9 +48,9 @@ export function useCurriculumLifecycleGuard(
 ): CurriculumLifecycleGuardResult {
   const { curricula, loading: curriculaLoading } = useCurricula();
   const { plugins, loading: pluginsLoading } = usePlugins();
-  const { user, activeRole } = useAuth();
+  const { activeRole } = useAuth();
 
-  const role = resolveLifecycleRole(activeRole, Boolean(user?.is_superadmin));
+  const role = resolveLifecycleRole(activeRole);
 
   const curriculum = useMemo(() => {
     if (typeof options.curriculumId === 'number' && options.curriculumId > 0) {

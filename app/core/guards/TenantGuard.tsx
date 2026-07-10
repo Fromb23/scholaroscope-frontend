@@ -5,6 +5,7 @@ import { ReactNode } from 'react';
 import { useAuth } from '@/app/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
+import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { PermissionResolvingState } from '@/app/components/ui/loading';
 
 interface TenantGuardProps {
@@ -12,9 +13,7 @@ interface TenantGuardProps {
 }
 
 /**
- * Blocks rendering until the user has a resolved org context.
- * Superadmins bypass — they operate platform-wide without an org.
- * Regular users must have an activeOrg before seeing tenant-scoped UI.
+ * Blocks rendering until the user has a resolved workspace context.
  */
 export function TenantGuard({ children }: TenantGuardProps) {
     const { user, activeOrg, loading } = useAuth();
@@ -25,7 +24,10 @@ export function TenantGuard({ children }: TenantGuardProps) {
         router.replace(buildLoginPath(getCurrentPath()));
         return null;
     }
-    if (user.is_superadmin) return <>{children}</>;
+    if (user.is_superadmin) {
+        redirectToPlatformConsole('/login');
+        return <PermissionResolvingState message="Opening platform console..." />;
+    }
 
     if (!activeOrg) {
         router.replace('/workspaces/new?reason=suspended');

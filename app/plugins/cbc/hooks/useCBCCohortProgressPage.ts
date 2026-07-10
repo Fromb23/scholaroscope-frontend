@@ -17,8 +17,8 @@ export function useCBCCohortProgressPage(cohortId: number) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { user, activeRole } = useAuth();
-    const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
+    const { activeRole } = useAuth();
+    const isAdminLike = activeRole === 'ADMIN';
     const querySubjectId = parsePositiveNumber(searchParams.get('subject'));
     const queryCohortSubjectId = parsePositiveNumber(searchParams.get('cohort_subject_id'));
     const queryInstructorId = parsePositiveNumber(searchParams.get('instructor_id'));

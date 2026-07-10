@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/app/context/AuthContext';
-import { globalUsersAPI } from '@/app/core/api/globalUsers';
+import { teachingLoadAPI, type MyTeachingLoadResponse } from '@/app/core/api/teachingLoad';
 import { isCambridgeCurriculumType } from '@/app/core/lib/curriculumBridge';
 import {
     isSelfManagedTeachingAdmin,
@@ -13,8 +13,6 @@ import { extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 
 export type InstructorCurriculumKey = 'CBC' | 'CAMBRIDGE';
-export type MyTeachingLoadResponse = Awaited<ReturnType<typeof globalUsersAPI.getMyTeachingLoad>>;
-
 export function useMyTeachingLoad(options?: { enabled?: boolean }) {
     const { user, activeRole, activeOrg, capabilities } = useAuth();
     const isTeachingActor = isTeachingActorView({
@@ -29,7 +27,7 @@ export function useMyTeachingLoad(options?: { enabled?: boolean }) {
         queryKey: ['my-teaching-load', activeOrg?.id ?? null, user?.id ?? null, activeRole],
         queryFn: async () => {
             try {
-                return await globalUsersAPI.getMyTeachingLoad();
+                return await teachingLoadAPI.getMyTeachingLoad();
             } catch (err) {
                 throw new Error(
                     extractErrorMessage(err as ApiError, 'Failed to fetch teaching load.')

@@ -121,8 +121,8 @@ export function isSelfManagedTeachingAdmin(params: {
   capabilities?: WorkspaceCapabilities | null;
   user?: User | null;
 }): boolean {
-  const { activeRole, activeOrg, capabilities, user } = params;
-  if (activeRole !== 'ADMIN' || user?.is_superadmin) {
+  const { activeRole, activeOrg, capabilities } = params;
+  if (activeRole !== 'ADMIN') {
     return false;
   }
 
@@ -194,10 +194,6 @@ export function canManageReportPolicyAuthoring(params: {
   if (!user) {
     return false;
   }
-  if (user.is_superadmin) {
-    return true;
-  }
-
   const reportConfiguration = capabilities?.report_configuration;
   const reportPolicyAvailable = Boolean(
     reportConfiguration?.report_policy_available
@@ -234,7 +230,7 @@ export function canUseTeachingMode({
     return capabilities.can_teach;
   }
 
-  if (isSuperadmin || role === 'SUPERADMIN') {
+  if (isSuperadmin) {
     return false;
   }
 
@@ -262,10 +258,6 @@ export function isSupervisionOnlyAdmin(params: TeachingCapabilityParams): boolea
 }
 
 export function canManageWorkspaceUsers(params: TeachingCapabilityParams): boolean {
-  if (params.isSuperadmin) {
-    return true;
-  }
-
   if (params.capabilities) {
     return Boolean(params.capabilities.can_manage_staff);
   }

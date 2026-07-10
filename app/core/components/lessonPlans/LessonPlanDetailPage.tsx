@@ -224,7 +224,7 @@ export function LessonPlanDetailPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeOrg, activeRole, user, capabilities } = useAuth();
+    const { activeOrg, activeRole, capabilities } = useAuth();
     const isInstructor = activeRole === 'INSTRUCTOR';
     const safeReturnTo = useMemo(() => {
         const value = searchParams.get('returnTo');
@@ -238,7 +238,7 @@ export function LessonPlanDetailPage() {
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
-        isSuperadmin: user?.is_superadmin,
+        isSuperadmin: false,
         capabilities,
     });
     const lessonPlanId = getLessonPlanId(params);

@@ -31,7 +31,7 @@ export type InstructorRequestType =
     | 'ACCOUNT_DELETION'   // NEW: instructor requests own account erasure
     | 'OTHER';
 
-// Admin → SuperAdmin
+// Admin -> Scholaroscope support
 export type AdminRequestType =
     | 'PLAN_UPGRADE'
     | 'ORG_SETTINGS_CHANGE'
@@ -39,7 +39,7 @@ export type AdminRequestType =
     | 'BUG_REPORT'
     | 'FEATURE_REQUEST'
     | 'SUSPEND_RESTORE_USER'
-    | 'ORG_DELETION'       // NEW: admin requests org deletion from superadmin
+    | 'ORG_DELETION'
     | 'OTHER';
 
 export type RequestType = InstructorRequestType | AdminRequestType;

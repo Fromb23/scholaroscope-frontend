@@ -35,8 +35,8 @@ describe('workspace permission helpers', () => {
     })).toBe(false);
   });
 
-  it('allows superadmins where platform context allows it', () => {
-    expect(canManageUsers({ is_superadmin: true }, null)).toBe(true);
+  it('does not treat platform identity as workspace staff authority', () => {
+    expect(canManageUsers({ is_superadmin: true }, null)).toBe(false);
   });
 
   it('keeps the legacy admin fallback when capabilities are absent', () => {

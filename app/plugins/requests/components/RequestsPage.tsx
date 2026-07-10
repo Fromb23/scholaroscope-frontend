@@ -2,7 +2,7 @@
 // ============================================================================
 // app/(dashboard)/requests/page.tsx
 // Shared by ADMIN and INSTRUCTOR — same page, role-aware content
-// ADMIN: sees instructor→admin requests in their org + button to submit to SuperAdmin
+// ADMIN: sees instructor-to-admin requests in their org + button to contact support
 // INSTRUCTOR: sees only their own requests + button to submit to Admin
 // ============================================================================
 
@@ -176,7 +176,7 @@ export function RequestsPage() {
                             onClick={() => router.push('/requests/new')}
                             className="gap-2 bg-purple-600 hover:bg-purple-700 focus:ring-purple-500"
                         >
-                            <Send className="h-4 w-4" /> Request to SuperAdmin
+                            <Send className="h-4 w-4" /> Contact support
                         </Button>
                     )}
                 </div>

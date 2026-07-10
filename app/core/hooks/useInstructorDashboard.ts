@@ -28,7 +28,7 @@ import type {
     TeachingCohortSummary,
 } from '@/app/core/types/academic';
 import type { DashboardAlert } from './useAdminDashboard';
-import { globalUsersAPI } from '../api/globalUsers';
+import { teachingLoadAPI } from '@/app/core/api/teachingLoad';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -331,7 +331,7 @@ export function useInstructorDashboard() {
         }
 
         try {
-            const data = await globalUsersAPI.getMyTeachingLoad();
+            const data = await teachingLoadAPI.getMyTeachingLoad();
             setTeachingLoad(data.assignments);
         } catch {
             setTeachingLoad([]);
@@ -347,7 +347,7 @@ export function useInstructorDashboard() {
     }, [loadTeachingLoad]);
 
     useEffect(() => {
-        globalUsersAPI.getMyTeachingHistory()
+        teachingLoadAPI.getMyTeachingHistory()
             .then(data => setTeachingHistory(data.history))
             .catch(() => setTeachingHistory([]));
     }, []);

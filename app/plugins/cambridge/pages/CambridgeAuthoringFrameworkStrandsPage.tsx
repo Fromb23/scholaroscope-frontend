@@ -35,8 +35,8 @@ export default function CambridgeAuthoringFrameworkStrandsPage() {
   const params = useParams<{ frameworkId: string }>();
   const frameworkId = toPositiveNumber(params.frameworkId);
 
-  const { user, activeRole } = useAuth();
-  const isAdmin = user?.is_superadmin || activeRole === 'ADMIN';
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'ADMIN';
   const [errorVisible, setErrorVisible] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);

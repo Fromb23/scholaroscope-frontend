@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react';
 import { apiClient } from '@/app/core/api/client';
-import { useAuth } from '@/app/context/AuthContext';
 import {
     globalStatusLabel,
     membershipStatusLabel,
@@ -51,38 +50,8 @@ function kindLabel(kind: PeopleSearchResult['kind']): string {
     }
 }
 
-function safeRelativeUrl(href: string): URL | null {
-    if (!href.startsWith('/') || href.startsWith('//')) {
-        return null;
-    }
-
-    return new URL(href, 'https://scholaroscope.local');
-}
-
-function getOrganizationIdFromHref(href: string): number | null {
-    const url = safeRelativeUrl(href);
-    if (!url) {
-        return null;
-    }
-
-    const parsed = Number(url.searchParams.get('organization'));
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function stripOrganizationParam(href: string): string {
-    const url = safeRelativeUrl(href);
-    if (!url) {
-        return href;
-    }
-
-    url.searchParams.delete('organization');
-    return `${url.pathname}${url.search}${url.hash}`;
-}
-
 export function GlobalPeopleSearch() {
     const router = useRouter();
-    const pathname = usePathname();
-    const { activeOrg, switchOrg, user } = useAuth();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<PeopleSearchResult[]>([]);
@@ -90,13 +59,6 @@ export function GlobalPeopleSearch() {
     const [open, setOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [expandedResultKey, setExpandedResultKey] = useState<string | null>(null);
-    const isPlatformSearchContext = Boolean(
-        user?.is_superadmin
-        && (
-            pathname === '/dashboard/superadmin'
-            || pathname.startsWith('/superadmin')
-        ),
-    );
 
     useEffect(() => {
         const handlePointerDown = (event: MouseEvent) => {
@@ -134,7 +96,6 @@ export function GlobalPeopleSearch() {
                     {
                         params: {
                             q: trimmedQuery,
-                            ...(isPlatformSearchContext ? { scope: 'platform' } : {}),
                         },
                     },
                 );
@@ -163,7 +124,7 @@ export function GlobalPeopleSearch() {
             cancelled = true;
             window.clearTimeout(timer);
         };
-    }, [isPlatformSearchContext, query]);
+    }, [query]);
 
     const shouldShowDropdown = open && (
         query.trim().length >= 2
@@ -172,47 +133,22 @@ export function GlobalPeopleSearch() {
     );
 
     const buildTargetUrl = (result: PeopleSearchResult): string => {
-        if (user?.is_superadmin) {
-            if (result.kind === 'student' && result.organization?.id) {
-                return `/superadmin/learners/${result.id}?organization=${result.organization.id}`;
-            }
-
-            if (result.kind !== 'student') {
-                return `/superadmin/users/${result.id}`;
-            }
-        }
-
         return result.target_url;
     };
 
-    const navigateToHref = async (href: string, result: PeopleSearchResult) => {
+    const navigateToHref = async (href: string) => {
         try {
-            let nextHref = href;
-            const organizationId = getOrganizationIdFromHref(href) ?? result.organization?.id ?? null;
-            if (
-                user?.is_superadmin
-                && organizationId
-                && !nextHref.startsWith('/superadmin/learners/')
-            ) {
-                if (activeOrg?.id !== organizationId) {
-                    await switchOrg(organizationId);
-                }
-                nextHref = stripOrganizationParam(nextHref);
-            }
-
             setOpen(false);
             setQuery('');
             setExpandedResultKey(null);
-            router.push(nextHref);
+            router.push(href);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Search navigation failed.');
             setOpen(true);
         }
     };
 
-    const visibleResults = user?.is_superadmin
-        ? results
-        : results.filter((result) => result.kind !== 'superadmin');
+    const visibleResults = results.filter((result) => result.kind !== 'superadmin');
 
     return (
         <div ref={containerRef} className="relative hidden md:block">
@@ -266,7 +202,7 @@ export function GlobalPeopleSearch() {
                                             setExpandedResultKey(isExpanded ? null : resultKey);
                                             return;
                                         }
-                                        void navigateToHref(buildTargetUrl(result), result);
+                                        void navigateToHref(buildTargetUrl(result));
                                     }}
                                     className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-[color:var(--color-surface-muted)]"
                                 >
@@ -324,7 +260,7 @@ export function GlobalPeopleSearch() {
                                                 key={action.key}
                                                 type="button"
                                                 onClick={() => {
-                                                    void navigateToHref(action.href, result);
+                                                    void navigateToHref(action.href);
                                                 }}
                                                 className="rounded-lg border px-3 py-2 text-left text-sm font-medium theme-border theme-hover-surface theme-text"
                                             >

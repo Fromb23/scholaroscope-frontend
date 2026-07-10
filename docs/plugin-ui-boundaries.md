@@ -13,7 +13,7 @@ Use the established registries for plugin-owned UI:
 - Provider registry for plugin context providers.
 - Domain-action registries for workflow actions such as teaching-session routes.
 - Policy-surface registries for report and assessment policy UI.
-- Settings extension slots for plugin-owned settings panels such as `admin.settings.appearance` and `superadmin.settings.appearance`.
+- Settings extension slots for plugin-owned settings panels such as `admin.settings.appearance`.
 
 Plugin-owned routes may freely compose their own internal components after the plugin has loaded through its manifest.
 
@@ -21,9 +21,9 @@ Plugin-owned routes may freely compose their own internal components after the p
 
 The frontend consumes backend-resolved `product_capabilities` or `effective_capabilities`. It does not decide whether a capability is platform-default, workspace-standard, premium, metered, or an external integration.
 
-An explicit backend capability result is authoritative. When a plugin key is present with `enabled: false`, plugin loading must not be re-enabled by installed plugin keys, route matches, workspace role, workspace type, curriculum type, or superadmin compatibility predicates.
+An explicit backend capability result is authoritative. When a plugin key is present with `enabled: false`, plugin loading must not be re-enabled by installed plugin keys, route matches, workspace role, or workspace type.
 
-During migration, plugin loading may fall back to active installed plugin keys, route-required plugin IDs, curriculum type signals, and existing superadmin exceptions only when the backend omitted that specific capability key. A missing capability key is compatibility data; a disabled capability key is a denial.
+During migration, plugin loading may fall back to active installed plugin keys, route-required plugin IDs, and curriculum type signals only when the backend omitted that specific capability key. A missing capability key is compatibility data; a disabled capability key is a denial.
 
 Route matching is not entitlement, and installation is not entitlement. Both are frontend loading hints only when backend capability data is absent. Backend plugin endpoints must independently verify workspace capability/entitlement and user role/resource permission.
 
