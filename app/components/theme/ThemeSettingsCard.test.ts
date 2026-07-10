@@ -15,17 +15,20 @@ describe('ThemeSettingsCard', () => {
   });
 
   it('describes settings as organization branding instead of device preference', () => {
-    const settingsSource = readFileSync(join(process.cwd(), 'app/components/theme/ThemeSettingsCard.tsx'), 'utf8');
+    const settingsSource = readFileSync(join(process.cwd(), 'app/plugins/themes/components/ThemeSettingsCard.tsx'), 'utf8');
     const adminSettingsSource = readFileSync(join(process.cwd(), 'app/core/components/settings/AdminSettingsPage.tsx'), 'utf8');
+    const extensionSource = readFileSync(join(process.cwd(), 'app/plugins/themes/registry/settingsExtension.tsx'), 'utf8');
 
     expect(settingsSource).toContain('Organization branding');
     expect(settingsSource).not.toContain('updateMyThemePreference');
-    expect(adminSettingsSource).toContain('ThemeSettingsCard');
+    expect(adminSettingsSource).toContain("renderSettingsExtensions('admin.settings.appearance')");
+    expect(adminSettingsSource).not.toContain('@/app/plugins/themes');
+    expect(extensionSource).toContain('ThemeSettingsCard');
     expect(adminSettingsSource).not.toContain('AppearanceSettingsCard');
   });
 
   it('shows the organization editor when the user can edit organization branding', () => {
-    const source = readFileSync(join(process.cwd(), 'app/components/theme/ThemeSettingsCard.tsx'), 'utf8');
+    const source = readFileSync(join(process.cwd(), 'app/plugins/themes/components/ThemeSettingsCard.tsx'), 'utf8');
 
     expect(source).toContain('canEditCustomTheme');
     expect(source).toContain('<OrganizationThemeSettingsCard />');

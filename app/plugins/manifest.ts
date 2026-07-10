@@ -2,9 +2,9 @@
 
 import type { ActiveOrg, Role, WorkspaceCapabilities } from '@/app/core/types/auth';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
-import { hasPluginCapability } from '@/app/core/lib/productCapabilities';
+import { getProductCapability } from '@/app/core/lib/productCapabilities';
 
-export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'schemes';
+export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'schemes' | 'themes';
 
 export type PluginLoadContext = {
   activeOrg?: ActiveOrg | null;
@@ -44,11 +44,19 @@ function hasCurriculumType(context: PluginLoadContext, types: Set<string>): bool
   return context.curriculumTypes.some((type) => types.has(normalize(type)));
 }
 
-function hasResolvedPluginCapability(context: PluginLoadContext, pluginId: PluginId): boolean {
-  return hasPluginCapability({
-    capabilities: context.capabilities,
-    enabledFeatures: context.enabledFeatures,
-  }, pluginId);
+function shouldLoadFromResolvedCapability(
+  context: PluginLoadContext,
+  pluginId: PluginId,
+): boolean | null {
+  const resolved = getProductCapability(context.capabilities, pluginId);
+  if (resolved === null) {
+    return null;
+  }
+  return resolved.enabled === true;
+}
+
+function hasLegacyInstalledFeature(context: PluginLoadContext, pluginId: PluginId): boolean {
+  return context.enabledFeatures.some((feature) => feature === pluginId);
 }
 
 function routeMatches(context: PluginLoadContext, entry: Pick<PluginManifestEntry, 'routePatterns'>): boolean {
@@ -78,12 +86,14 @@ export const pluginManifest: PluginManifestEntry[] = [
       'admin.primary.afterAssessments',
       'instructor.primary.afterAssessments',
     ],
-    shouldLoad: (context) => (
-      routeMatches(context, pluginManifestById.cbc)
-      || hasResolvedPluginCapability(context, 'cbc')
-      || hasCurriculumType(context, CBC_CURRICULUM_TYPES)
-      || Boolean(context.isSuperadmin)
-    ),
+    shouldLoad: (context) => {
+      const resolved = shouldLoadFromResolvedCapability(context, 'cbc');
+      if (resolved !== null) return resolved;
+      return routeMatches(context, pluginManifestById.cbc)
+        || hasLegacyInstalledFeature(context, 'cbc')
+        || hasCurriculumType(context, CBC_CURRICULUM_TYPES)
+        || Boolean(context.isSuperadmin);
+    },
     load: async () => {
       const { registerCbcPlugin } = await import('./cbc/register');
       await registerCbcPlugin();
@@ -105,11 +115,13 @@ export const pluginManifest: PluginManifestEntry[] = [
       'admin.primary.afterAssessments',
       'instructor.primary.afterAssessments',
     ],
-    shouldLoad: (context) => (
-      routeMatches(context, pluginManifestById.cambridge)
-      || hasResolvedPluginCapability(context, 'cambridge')
-      || hasCurriculumType(context, CAMBRIDGE_CURRICULUM_TYPES)
-    ),
+    shouldLoad: (context) => {
+      const resolved = shouldLoadFromResolvedCapability(context, 'cambridge');
+      if (resolved !== null) return resolved;
+      return routeMatches(context, pluginManifestById.cambridge)
+        || hasLegacyInstalledFeature(context, 'cambridge')
+        || hasCurriculumType(context, CAMBRIDGE_CURRICULUM_TYPES);
+    },
     load: async () => {
       const { registerCambridgePlugin } = await import('./cambridge/register');
       await registerCambridgePlugin();
@@ -125,12 +137,14 @@ export const pluginManifest: PluginManifestEntry[] = [
       'admin.secondary.beforeSettings',
       'instructor.secondary.beforeSubmitRequest',
     ],
-    shouldLoad: (context) => (
-      routeMatches(context, pluginManifestById.announcements)
-      || hasResolvedPluginCapability(context, 'announcements')
-      || Boolean(context.isSuperadmin)
-      || (isWorkspaceRole(context) && !isPersonalOrFreelanceWorkspace(context))
-    ),
+    shouldLoad: (context) => {
+      const resolved = shouldLoadFromResolvedCapability(context, 'announcements');
+      if (resolved !== null) return resolved;
+      return routeMatches(context, pluginManifestById.announcements)
+        || hasLegacyInstalledFeature(context, 'announcements')
+        || Boolean(context.isSuperadmin)
+        || (isWorkspaceRole(context) && !isPersonalOrFreelanceWorkspace(context));
+    },
     load: async () => {
       const { registerAnnouncementsPlugin } = await import('./announcements/register');
       await registerAnnouncementsPlugin();
@@ -145,11 +159,13 @@ export const pluginManifest: PluginManifestEntry[] = [
       'admin.primary.afterDashboard',
       'instructor.primary.afterMySessions',
     ],
-    shouldLoad: (context) => (
-      routeMatches(context, pluginManifestById.requests)
-      || hasResolvedPluginCapability(context, 'requests')
-      || isWorkspaceRole(context)
-    ),
+    shouldLoad: (context) => {
+      const resolved = shouldLoadFromResolvedCapability(context, 'requests');
+      if (resolved !== null) return resolved;
+      return routeMatches(context, pluginManifestById.requests)
+        || hasLegacyInstalledFeature(context, 'requests')
+        || isWorkspaceRole(context);
+    },
     load: async () => {
       const { registerRequestsPlugin } = await import('./requests/register');
       await registerRequestsPlugin();
@@ -164,13 +180,32 @@ export const pluginManifest: PluginManifestEntry[] = [
       'admin.primary.afterDashboard',
       'instructor.primary.afterDashboard',
     ],
-    shouldLoad: (context) => (
-      routeMatches(context, pluginManifestById.schemes)
-      || hasResolvedPluginCapability(context, 'schemes')
-    ),
+    shouldLoad: (context) => {
+      const resolved = shouldLoadFromResolvedCapability(context, 'schemes');
+      if (resolved !== null) return resolved;
+      return routeMatches(context, pluginManifestById.schemes)
+        || hasLegacyInstalledFeature(context, 'schemes');
+    },
     load: async () => {
       const { registerSchemesPlugin } = await import('./schemes/register');
       await registerSchemesPlugin();
+    },
+  },
+  {
+    id: 'themes',
+    label: 'Themes',
+    featureFlags: ['themes'],
+    routePatterns: [/^\/settings(?:\/|$)/, /^\/superadmin\/settings(?:\/|$)/],
+    navigationSlots: [],
+    shouldLoad: (context) => {
+      const resolved = shouldLoadFromResolvedCapability(context, 'themes');
+      if (resolved !== null) return resolved;
+      return routeMatches(context, pluginManifestById.themes)
+        || hasLegacyInstalledFeature(context, 'themes');
+    },
+    load: async () => {
+      const { registerThemesPlugin } = await import('./themes/register');
+      await registerThemesPlugin();
     },
   },
 ];

@@ -7,16 +7,16 @@ import { Building2, Check, Palette, RotateCcw, Save } from 'lucide-react';
 import { themeAPI } from '@/app/core/api/theme';
 import { Button } from '@/app/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Card';
-import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { AppErrorBanner } from '@/app/components/ui/errors';
 import { Input } from '@/app/components/ui/Input';
 import { useAuth } from '@/app/context/AuthContext';
 import { useEffectiveTheme } from '@/app/context/EffectiveThemeContext';
+import { resolvePluginError, type AppError } from '@/app/core/errors';
 import {
   DEFAULT_THEME_TOKENS,
   canEditOrganizationTheme,
   isFreelanceWorkspaceTheme,
 } from '@/app/core/theme/effectiveTheme';
-import { extractErrorMessage, type ApiError } from '@/app/core/types/errors';
 
 type ThemeForm = {
   primary_color: string;
@@ -147,7 +147,8 @@ export function OrganizationThemeSettingsCard() {
   const [form, setForm] = useState<ThemeForm>(() => buildFormFromEffectiveTheme(effectiveTheme));
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const isCustomized = effectiveTheme.is_customized;
   const defaultSummary = useMemo(() => (
@@ -168,7 +169,8 @@ export function OrganizationThemeSettingsCard() {
 
   const handleSave = async () => {
     setSaving(true);
-    setFeedback(null);
+    setSuccessMessage(null);
+    setError(null);
     try {
       await themeAPI.updateOrganizationTheme({
         primary_color: form.primary_color,
@@ -180,12 +182,13 @@ export function OrganizationThemeSettingsCard() {
         button_radius: form.button_radius,
       });
       await refetch();
-      setFeedback({ type: 'success', message: 'Theme saved.' });
-    } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: extractErrorMessage(error as ApiError, 'Theme could not be saved.'),
-      });
+      setSuccessMessage('Theme saved.');
+    } catch (err) {
+      setError(resolvePluginError(err, {
+        action: 'save',
+        entityLabel: 'theme',
+        channel: 'banner',
+      }));
     } finally {
       setSaving(false);
     }
@@ -193,16 +196,18 @@ export function OrganizationThemeSettingsCard() {
 
   const handleReset = async () => {
     setResetting(true);
-    setFeedback(null);
+    setSuccessMessage(null);
+    setError(null);
     try {
       await themeAPI.resetOrganizationTheme();
       await refetch();
-      setFeedback({ type: 'success', message: 'Theme reset to Scholaroscope defaults.' });
-    } catch (error) {
-      setFeedback({
-        type: 'error',
-        message: extractErrorMessage(error as ApiError, 'Theme could not be reset.'),
-      });
+      setSuccessMessage('Theme reset to Scholaroscope defaults.');
+    } catch (err) {
+      setError(resolvePluginError(err, {
+        action: 'update',
+        entityLabel: 'theme',
+        channel: 'banner',
+      }));
     } finally {
       setResetting(false);
     }
@@ -223,13 +228,12 @@ export function OrganizationThemeSettingsCard() {
       </CardHeader>
       <CardContent>
         <div className="space-y-5">
-          {feedback && (
-            <ErrorBanner
-              variant={feedback.type === 'success' ? 'success' : 'error'}
-              message={feedback.message}
-              onDismiss={() => setFeedback(null)}
-            />
-          )}
+          {successMessage ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              {successMessage}
+            </div>
+          ) : null}
+          {error ? <AppErrorBanner error={error} onDismiss={() => setError(null)} /> : null}
 
           <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
             <div className="space-y-4">
@@ -328,7 +332,7 @@ export function OrganizationThemeSettingsCard() {
                   <span className="inline-flex items-center gap-2">Saving...</span>
                 ) : (
                   <>
-                    {feedback?.type === 'success' ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                    {successMessage ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
                     Save theme
                   </>
                 )}
