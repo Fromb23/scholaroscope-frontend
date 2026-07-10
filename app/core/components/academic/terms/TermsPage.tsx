@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+    AlertTriangle,
     Calendar,
     CheckCircle2,
     Edit,
@@ -39,6 +40,7 @@ import {
 import type { TermFormState } from '@/app/core/components/academic/TermComponents';
 import { useAcademicYears, useTermCalendarEvents, useTerms } from '@/app/core/hooks/useAcademic';
 import { useAcademicSetupStatus } from '@/app/core/hooks/useAcademicSetupStatus';
+import { useWorkspaceSubscriptionSummary } from '@/app/core/hooks/useSubscriptions';
 import {
     getAcademicSetupPageState,
     withAcademicSetupMode,
@@ -48,7 +50,7 @@ import type {
     TermCalendarEvent,
     TermCalendarEventType,
 } from '@/app/core/types/academic';
-import { extractErrorMessage } from '@/app/core/types/errors';
+import { extractErrorCode, extractErrorMessage } from '@/app/core/types/errors';
 import type { ApiError } from '@/app/core/types/errors';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -329,9 +331,10 @@ export function TermsPage() {
     const searchParams = useSearchParams();
     const setupMode = searchParams.get('setup') === '1';
     const blockedNotice = searchParams.get('blocked') === '1';
-    const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
-    const { academicYears } = useAcademicYears();
     const { user, activeRole } = useAuth();
+    const setupStatusQuery = useAcademicSetupStatus({ enabled: setupMode });
+    const subscriptionSummaryQuery = useWorkspaceSubscriptionSummary(undefined, { enabled: Boolean(user) });
+    const { academicYears } = useAcademicYears();
     const currentYear = useMemo(() => academicYears.find((year) => year.is_current), [academicYears]);
     const isAdminLike = Boolean(user?.is_superadmin) || activeRole === 'ADMIN';
     const setupStatus = setupStatusQuery.data ?? null;
@@ -468,7 +471,15 @@ export function TermsPage() {
             return;
         }
 
-        const created = await createTerm(payload);
+        let created: Term;
+        try {
+            created = await createTerm(payload);
+        } catch (err) {
+            if (extractErrorCode(err as ApiError) === 'subscription_required_for_term') {
+                setPageError(err instanceof Error ? err.message : 'Subscription required for this term.');
+            }
+            throw err;
+        }
         setSelectedTermId(created.id);
         if (setupMode) {
             const refreshedStatus = (await setupStatusQuery.refetch()).data;
@@ -601,6 +612,19 @@ export function TermsPage() {
             </div>
 
             {pageError ? <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} /> : null}
+
+            {subscriptionSummaryQuery.data?.renewal_required ? (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                        <p className="font-medium">{subscriptionSummaryQuery.data.term_creation_message}</p>
+                        <p className="mt-1">
+                            Existing academic records remain available. A subscription period covering the
+                            proposed term dates is required only when creating a new term.
+                        </p>
+                    </div>
+                </div>
+            ) : null}
 
             <Card>
                 <div className="flex items-center gap-3">

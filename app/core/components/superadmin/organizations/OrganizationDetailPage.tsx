@@ -73,6 +73,7 @@ export function OrganizationDetailPage() {
         organization, loading, error,
         stats, statsLoading,
         users, usersLoading,
+        canManageSubscriptions,
         submitting, actionError, actionSuccess,
         setActionError,
         handleEdit, handleSuspend, handleUnsuspend, handleDelete,
@@ -226,7 +227,12 @@ export function OrganizationDetailPage() {
 
             {/* Tab content */}
             <div>
-                {activeTab === 'overview' && <OrgOverviewTab organization={organization} onChangePlan={() => setEditOpen(true)} />}
+                {activeTab === 'overview' && (
+                    <OrgOverviewTab
+                        organization={organization}
+                        canManageSubscriptions={canManageSubscriptions}
+                    />
+                )}
                 {activeTab === 'curricula' && <OrganizationProvider organizationId={id}><CurriculaPage /></OrganizationProvider>}
                 {activeTab === 'years' && <OrganizationProvider organizationId={id}><YearsPage /></OrganizationProvider>}
                 {activeTab === 'terms' && <OrganizationProvider organizationId={id}><TermsPage /></OrganizationProvider>}

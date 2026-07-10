@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 import { organizationAPI } from '@/app/core/api/organizations';
 import {
     useOrganizationDetail,
@@ -11,6 +12,7 @@ import type { OrganizationUpdatePayload, SuspensionReason } from '@/app/core/typ
 
 export function useOrganizationDetailPage(id: number) {
     const router = useRouter();
+    const { user } = useAuth();
     const { organization, loading, error, refetch, setOrganization } = useOrganizationDetail(id);
     const { stats, loading: statsLoading } = useOrganizationStats(id);
     const { users, loading: usersLoading, refetch: refetchUsers } = useOrganizationUsers(id);
@@ -128,6 +130,7 @@ export function useOrganizationDetailPage(id: number) {
         organization, loading, error, refetch,
         stats, statsLoading,
         users, usersLoading,
+        canManageSubscriptions: Boolean(user?.is_superadmin),
         submitting, actionError, actionSuccess,
         setActionError,
         handleEdit, handleSuspend, handleUnsuspend, handleDelete, addExistingUser,
