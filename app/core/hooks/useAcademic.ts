@@ -24,7 +24,7 @@ import {
 } from '@/app/core/types/academic';
 import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
-import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
+import { ApiError, ApiErrorWithCode, extractErrorCode, extractErrorMessage } from '@/app/core/types/errors';
 import { academicKeys } from '@/app/core/lib/queryKeys';
 
 export interface CohortFilters {
@@ -202,7 +202,13 @@ export const useTerms = (academicYearId?: number) => {
       setTerms(prev => [...prev, newTerm].sort((a, b) => a.sequence - b.sequence));
       return newTerm;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to create term'));
+      const apiError = err as ApiError;
+      const wrapped = new Error(
+        extractErrorMessage(apiError, 'Failed to create term')
+      ) as ApiErrorWithCode;
+      wrapped.code = extractErrorCode(apiError);
+      wrapped.response = apiError.response;
+      throw wrapped;
     }
   };
 

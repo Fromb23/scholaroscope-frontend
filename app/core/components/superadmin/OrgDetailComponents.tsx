@@ -17,9 +17,10 @@ import { Select } from '@/app/components/ui/Select';
 import Modal from '@/app/components/ui/Modal';
 import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/Card';
 import type { Organization, OrgUser, OrganizationStats, OrgFormData, OrganizationUpdatePayload, SuspensionReason } from '@/app/core/types/organization';
-import { PLAN_LABELS as PlanLabels, PLAN_COLORS as PlanColors, SUSPENSION_REASON_LABELS } from '@/app/core/types/organization';
+import { SUSPENSION_REASON_LABELS } from '@/app/core/types/organization';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ORG_TYPE_OPTIONS } from '@/app/core/lib/workspaces';
+import { WorkspaceSubscriptionCard } from '@/app/core/components/superadmin/subscriptions/WorkspaceSubscriptionCard';
 import {
     GlobalUser,
     globalStatusLabel,
@@ -101,10 +102,10 @@ export function InfoRow({ icon: Icon, label, value }: InfoRowProps) {
 
 interface OrgOverviewTabProps {
     organization: Organization;
-    onChangePlan: () => void;
+    canManageSubscriptions: boolean;
 }
 
-export function OrgOverviewTab({ organization, onChangePlan }: OrgOverviewTabProps) {
+export function OrgOverviewTab({ organization, canManageSubscriptions }: OrgOverviewTabProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2">
@@ -139,22 +140,12 @@ export function OrgOverviewTab({ organization, onChangePlan }: OrgOverviewTabPro
                     )}
                 </CardContent>
             </Card>
-            <Card>
-                <CardHeader><CardTitle>Subscription Plan</CardTitle></CardHeader>
-                <CardContent>
-                    <div className="flex flex-col items-center justify-center py-6 gap-3">
-                        <Badge variant={PlanColors[organization.plan_type]} size="lg">
-                            {PlanLabels[organization.plan_type]}
-                        </Badge>
-                        <p className="text-xs text-gray-500 text-center">
-                            Current plan tier for this organization
-                        </p>
-                        <Button variant="secondary" size="sm" onClick={onChangePlan} className="mt-2 w-full">
-                            Change Plan
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="lg:col-span-1">
+                <WorkspaceSubscriptionCard
+                    organization={organization}
+                    canMutate={canManageSubscriptions}
+                />
+            </div>
         </div>
     );
 }
@@ -311,7 +302,6 @@ export function EditModal({ isOpen, onClose, onSubmit, org, submitting }: EditMo
             email: form.email || undefined,
             phone: form.phone || undefined,
             address: form.address || undefined,
-            plan_type: form.plan_type,
             org_type: form.org_type,
         });
         if (ok) onClose();
@@ -330,15 +320,6 @@ export function EditModal({ isOpen, onClose, onSubmit, org, submitting }: EditMo
                 </div>
                 <Input label="Address" value={form.address}
                     onChange={e => handleChange('address', e.target.value)} />
-                <Select label="Plan Type" value={form.plan_type}
-                    onChange={e => handleChange('plan_type', e.target.value)}
-                    options={[
-                        { value: 'FREE', label: 'Free' },
-                        { value: 'BASIC', label: 'Basic' },
-                        { value: 'PREMIUM', label: 'Premium' },
-                        { value: 'ENTERPRISE', label: 'Enterprise' },
-                    ]}
-                />
                 <Select label="Organization Type" value={form.org_type}
                     onChange={e => handleChange('org_type', e.target.value)}
                     options={ORG_TYPE_OPTIONS}

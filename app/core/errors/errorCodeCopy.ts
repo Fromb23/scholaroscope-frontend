@@ -91,6 +91,15 @@ export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
     retryable: false,
     severity: 'error',
   },
+  subscription_required_for_term: {
+    kind: 'setup_required',
+    title: 'Subscription renewal required.',
+    message:
+      'Renew or activate the workspace subscription covering this academic term before creating it.',
+    actionLabel: 'Review subscription',
+    retryable: false,
+    severity: 'warning',
+  },
 };
 
 export function getErrorCodeCopy(serverCode?: string): ErrorCodeCopyEntry | undefined {

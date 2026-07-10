@@ -54,13 +54,6 @@ export const organizationAPI = {
         return response.data;
     },
 
-    changePlan: async (id: number, plan_type: string): Promise<Organization> => {
-        const response = await apiClient.patch<Organization>(`/organizations/${id}/`, {
-            plan_type,
-        });
-        return response.data;
-    },
-
     // GET /api/organizations/{id}/statistics/
     getStatistics: async (id: number): Promise<OrganizationStats> => {
         const response = await apiClient.get<OrganizationStats>(

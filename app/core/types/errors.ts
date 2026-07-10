@@ -71,3 +71,23 @@ export function extractErrorMessage(err: ApiError, fallback = 'An error occurred
 
     return fallback;
 }
+
+export function extractErrorCode(err: ApiError): string | null {
+    const data = err?.response?.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const structuredError = 'error' in data ? data.error : undefined;
+    if (
+        structuredError
+        && typeof structuredError === 'object'
+        && !Array.isArray(structuredError)
+        && typeof structuredError.code === 'string'
+    ) {
+        return structuredError.code;
+    }
+    return null;
+}
+
+export type ApiErrorWithCode = Error & {
+    code?: string | null;
+    response?: ApiError['response'];
+};
