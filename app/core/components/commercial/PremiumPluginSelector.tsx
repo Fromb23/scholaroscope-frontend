@@ -1,6 +1,7 @@
-import { PlugZap } from 'lucide-react';
+import { CheckCircle2, PlugZap } from 'lucide-react';
 
 import type { CommercialPremiumPlugin } from '@/app/core/types/commercialCatalog';
+import { formatMoney } from '@/app/core/lib/money';
 
 interface PremiumPluginSelectorProps {
   plugins: CommercialPremiumPlugin[];
@@ -24,38 +25,53 @@ export function PremiumPluginSelector({
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2">
       {plugins.map((plugin) => {
         const checked = selectedIds.includes(plugin.price_id);
         return (
           <label
             key={plugin.price_id}
-            className={`flex cursor-pointer gap-3 rounded-md border p-4 transition ${
-              checked ? 'border-blue-500 bg-blue-500/10' : 'theme-border theme-hover-surface'
+            className={`flex cursor-pointer gap-4 rounded-lg border p-5 transition ${
+              checked ? 'border-blue-600 bg-blue-50 text-blue-950' : 'theme-border theme-hover-surface theme-text'
             } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
           >
             <input
               type="checkbox"
-              className="mt-1"
+              className="sr-only"
               checked={checked}
               disabled={disabled}
               onChange={() => onToggle(plugin.price_id)}
             />
+            <span
+              aria-hidden="true"
+              className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border ${
+                checked ? 'border-blue-600 bg-blue-600 text-white' : 'theme-border theme-surface'
+              }`}
+            >
+              {checked ? <CheckCircle2 className="h-4 w-4" /> : null}
+            </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
-                <p className="flex items-center gap-2 text-sm font-semibold theme-text">
+                <p className="flex items-center gap-2 text-sm font-semibold">
                   <PlugZap className="h-4 w-4 text-blue-500" />
                   {plugin.plugin_name}
                 </p>
-                <p className="text-sm font-semibold theme-text">
-                  {plugin.currency} {plugin.price}
+                <p className="whitespace-nowrap text-sm font-semibold">
+                  {formatMoney(plugin.price, plugin.currency)}
                 </p>
               </div>
-              <p className="theme-muted mt-1 text-xs">{plugin.plugin_description}</p>
+              <p className="theme-muted mt-2 text-sm leading-6">{plugin.plugin_description}</p>
               {plugin.capabilities.length > 0 ? (
-                <p className="theme-subtle mt-2 text-xs">
-                  {plugin.capabilities.map((capability) => capability.name).join(', ')}
-                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {plugin.capabilities.slice(0, 4).map((capability) => (
+                    <span
+                      key={capability.key}
+                      className="rounded-full bg-white/70 px-2 py-1 text-xs font-medium text-slate-600"
+                    >
+                      {capability.name}
+                    </span>
+                  ))}
+                </div>
               ) : null}
             </div>
           </label>

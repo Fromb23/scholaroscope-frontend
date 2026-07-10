@@ -25,10 +25,10 @@ const headerSource = readFileSync(
 
 describe('commercial onboarding contract', () => {
   it('loads public rate cards from the backend and quotes before registration', () => {
-    expect(landingSource).toContain('<CommercialRateCards');
+    expect(landingSource).toContain('<CommercialSection');
     expect(commercialApiSource).toContain("'/subscriptions/catalog/'");
     expect(commercialApiSource).toContain("'/subscriptions/catalog/quote/'");
-    expect(commercialSource).toContain('Premium is Standard plus selected premium plugins');
+    expect(commercialSource).toContain('Start with Standard and add only the premium curriculum or specialist capabilities you need.');
     expect(commercialSource).toContain('premium_plugin_price_ids');
     expect(commercialSource).not.toContain('total =');
   });

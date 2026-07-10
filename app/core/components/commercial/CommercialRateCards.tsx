@@ -1,22 +1,69 @@
+'use client';
+
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowRight, Building2, CreditCard, Loader2 } from 'lucide-react';
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  GraduationCap,
+  Home,
+  Landmark,
+  Loader2,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-import { Button } from '@/app/components/ui/Button';
 import { useCommercialCatalog, useCommercialQuote } from '@/app/core/hooks/useCommercialCatalog';
-import type { CommercialMode, CommercialWorkspaceType } from '@/app/core/types/commercialCatalog';
+import type {
+  CommercialMode,
+  CommercialPremiumPlugin,
+  CommercialWorkspaceType,
+} from '@/app/core/types/commercialCatalog';
+import type { OrgType } from '@/app/core/types/auth';
 import { CapabilityList } from './CapabilityList';
 import { CommercialQuoteSummary } from './CommercialQuoteSummary';
 import { PremiumPluginSelector } from './PremiumPluginSelector';
+import { formatMoney } from '@/app/core/lib/money';
 
 interface CommercialRateCardsProps {
   authenticated?: boolean;
   continueBasePath?: string;
 }
 
-function formatPrice(workspaceType: CommercialWorkspaceType | undefined) {
-  if (!workspaceType) return '';
-  return `${workspaceType.standard.currency} ${workspaceType.standard.price}`;
+const workspaceIcons: Partial<Record<OrgType, LucideIcon>> = {
+  INSTITUTION: Landmark,
+  TUITION_CENTER: Building2,
+  HOMESCHOOL: Home,
+  LEARNER_WORKSPACE: GraduationCap,
+  PERSONAL: Users,
+  INDEPENDENT_TEACHER: Users,
+};
+
+function planCopy(mode: CommercialMode) {
+  if (mode === 'PREMIUM') {
+    return {
+      title: 'Standard + Premium',
+      body: 'Start with Standard and add only the premium curriculum or specialist capabilities you need.',
+      benefits: ['Standard foundation included', 'Choose premium capabilities', 'Backend-confirmed quote'],
+      icon: Sparkles,
+    };
+  }
+
+  return {
+    title: 'Standard',
+    body: 'Everything needed to run a Scholaroscope workspace.',
+    benefits: ['Workspace setup', 'Academic operations', 'Three-month billing period'],
+    icon: CheckCircle2,
+  };
+}
+
+function selectedPremiumPlugins(
+  workspaceType: CommercialWorkspaceType | null,
+  selectedIds: number[],
+): CommercialPremiumPlugin[] {
+  return workspaceType?.premium_plugins.filter((plugin) => selectedIds.includes(plugin.price_id)) ?? [];
 }
 
 export function CommercialRateCards({
@@ -32,18 +79,29 @@ export function CommercialRateCards({
 
   const workspaceTypes = useMemo(
     () => catalogQuery.data?.workspace_types ?? [],
-    [catalogQuery.data]
+    [catalogQuery.data],
   );
   const workspaceType = useMemo(
-    () => workspaceTypes.find((item) => item.key === workspaceTypeKey) ?? workspaceTypes[0],
-    [workspaceTypeKey, workspaceTypes]
+    () => workspaceTypes.find((item) => item.key === workspaceTypeKey) ?? workspaceTypes[0] ?? null,
+    [workspaceTypeKey, workspaceTypes],
   );
-  const resolvedWorkspaceTypeKey = workspaceType?.key ?? '';
+  const selectedPlugins = useMemo(
+    () => selectedPremiumPlugins(workspaceType, selectedPremiumIds),
+    [selectedPremiumIds, workspaceType],
+  );
+  const billingPeriodLabel = catalogQuery.data?.billing_period.description ?? 'Three-month period';
   const premiumUnavailable = mode === 'PREMIUM' && !workspaceType?.premium_available;
   const premiumMissing = mode === 'PREMIUM' && selectedPremiumIds.length === 0;
+  const actionDisabled = !workspaceType || premiumUnavailable || premiumMissing;
+
+  const resetQuote = () => {
+    if (quoteMutation.data || quoteMutation.isError) {
+      quoteMutation.reset();
+    }
+  };
 
   const requestQuote = async () => {
-    if (!workspaceType || premiumUnavailable || premiumMissing) return null;
+    if (!workspaceType || actionDisabled) return null;
     return quoteMutation.mutateAsync({
       commercial_mode: mode,
       workspace_type: workspaceType.key,
@@ -63,10 +121,10 @@ export function CommercialRateCards({
 
   if (catalogQuery.isLoading) {
     return (
-      <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-12">
-        <div className="rounded-md border theme-border p-8 text-center theme-muted">
-          <Loader2 className="mx-auto mb-3 h-5 w-5 animate-spin" />
-          Loading current commercial catalogue...
+      <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-16">
+        <div className="rounded-xl border bg-white p-10 text-center shadow-sm theme-border">
+          <Loader2 className="mx-auto mb-3 h-5 w-5 animate-spin text-blue-600" />
+          <p className="theme-muted">Loading current commercial catalogue...</p>
         </div>
       </section>
     );
@@ -74,8 +132,8 @@ export function CommercialRateCards({
 
   if (catalogQuery.isError || !catalogQuery.data) {
     return (
-      <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-12">
-        <div className="rounded-md border border-red-300 bg-red-50 p-5 text-sm text-red-700">
+      <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-16">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
           Commercial catalogue is unavailable. Try again shortly.
         </div>
       </section>
@@ -84,8 +142,8 @@ export function CommercialRateCards({
 
   if (!workspaceType) {
     return (
-      <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-12">
-        <div className="rounded-md border theme-border p-5 text-sm theme-muted">
+      <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-16">
+        <div className="rounded-xl border bg-white p-6 text-sm theme-border theme-muted">
           No public workspace plans are currently available.
         </div>
       </section>
@@ -93,139 +151,170 @@ export function CommercialRateCards({
   }
 
   return (
-    <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-12">
-      <div className="mb-6">
-        <p className="text-sm font-semibold text-blue-500">Commercial workspace setup</p>
-        <h2 className="mt-2 text-2xl font-bold theme-text">Choose Standard or Premium</h2>
-        <p className="theme-muted mt-1 text-sm">
-          Premium is Standard plus selected premium plugins. Prices and capabilities come from the backend catalogue.
+    <section id="commercial-rate-card" className="mx-auto w-full max-w-[1220px] px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mb-10 max-w-3xl">
+        <p className="text-sm font-semibold text-blue-700">Commercial workspace setup</p>
+        <h2 className="mt-3 text-3xl font-bold tracking-tight theme-text sm:text-4xl">
+          Build a workspace quote from the live Scholaroscope catalogue
+        </h2>
+        <p className="theme-muted mt-4 text-base leading-7">
+          Choose the plan experience, select the workspace type, review included capabilities, and confirm a server quote before creating the account or additional workspace.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {catalogQuery.data.rate_cards.map((rateCard) => {
-          const selected = mode === rateCard.mode;
-          return (
-            <button
-              key={rateCard.mode}
-              type="button"
-              onClick={() => {
-                setMode(rateCard.mode);
-                if (rateCard.mode === 'STANDARD') setSelectedPremiumIds([]);
-              }}
-              className={`rounded-md border p-5 text-left transition ${
-                selected ? 'border-blue-500 bg-blue-500/10' : 'theme-border theme-hover-surface'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="flex items-center gap-2 text-lg font-semibold theme-text">
-                  <CreditCard className="h-5 w-5 text-blue-500" />
-                  {rateCard.name}
-                </p>
-                <span className="theme-subtle text-xs">{rateCard.requires_premium_plugin ? 'Plugin selection required' : 'No premium plugin'}</span>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-8">
+          <section aria-labelledby="plan-experience-heading" className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold theme-text">1. Choose plan experience</p>
+              <p className="theme-subtle text-sm">Premium is Standard plus selected premium capabilities.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {catalogQuery.data.rate_cards.map((rateCard) => {
+                const copy = planCopy(rateCard.mode);
+                const Icon = copy.icon;
+                const selected = mode === rateCard.mode;
+                return (
+                  <button
+                    key={rateCard.mode}
+                    type="button"
+                    onClick={() => {
+                      setMode(rateCard.mode);
+                      if (rateCard.mode === 'STANDARD') setSelectedPremiumIds([]);
+                      resetQuote();
+                    }}
+                    className={`min-h-[210px] rounded-xl border p-6 text-left transition ${
+                      selected
+                        ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm'
+                        : 'bg-white theme-border theme-hover-surface theme-text'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <span className={`flex h-11 w-11 items-center justify-center rounded-lg ${
+                        selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+                        selected ? 'border-blue-600 bg-blue-600 text-white' : 'theme-border'
+                      }`}>
+                        {selected ? <CheckCircle2 className="h-4 w-4" /> : null}
+                      </span>
+                    </div>
+                    <h3 className="mt-5 text-xl font-bold">{copy.title}</h3>
+                    <p className="mt-2 text-sm leading-6 theme-muted">{copy.body}</p>
+                    <ul className="mt-4 space-y-2">
+                      {copy.benefits.map((benefit) => (
+                        <li key={benefit} className="flex items-center gap-2 text-sm">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          {benefit}
+                        </li>
+                      ))}
+                    </ul>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section aria-labelledby="workspace-type-heading" className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold theme-text">2. Choose workspace type</p>
+              <p className="theme-subtle text-sm">Prices are published by the backend subscription catalogue.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {workspaceTypes.map((item) => {
+                const Icon = workspaceIcons[item.key] ?? Building2;
+                const selected = workspaceType.key === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      setWorkspaceTypeKey(item.key);
+                      setSelectedPremiumIds([]);
+                      resetQuote();
+                    }}
+                    className={`min-h-[180px] rounded-xl border p-5 text-left transition ${
+                      selected
+                        ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm'
+                        : 'bg-white theme-border theme-hover-surface theme-text'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                        selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      {selected ? <CheckCircle2 className="h-5 w-5 text-blue-700" /> : null}
+                    </div>
+                    <h3 className="mt-4 text-base font-bold">{item.name}</h3>
+                    <p className="theme-muted mt-2 line-clamp-3 text-sm leading-6">{item.description}</p>
+                    <p className="mt-4 text-lg font-bold">{formatMoney(item.standard.price, item.standard.currency)}</p>
+                    <p className="theme-subtle text-xs">per three-month period</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section aria-labelledby="capabilities-heading" className="rounded-xl border bg-white p-6 shadow-sm theme-border">
+            <div className="mb-5">
+              <p className="text-sm font-semibold theme-text">3. Review included capabilities</p>
+              <p className="theme-subtle mt-1 text-sm">{workspaceType.name} Standard foundation.</p>
+            </div>
+            <CapabilityList capabilities={workspaceType.standard.capabilities} />
+          </section>
+
+          {mode === 'PREMIUM' ? (
+            <section aria-labelledby="premium-plugins-heading" className="rounded-xl border bg-white p-6 shadow-sm theme-border">
+              <div className="mb-5">
+                <p className="text-sm font-semibold theme-text">4. Select premium plugins</p>
+                <p className="theme-subtle mt-1 text-sm">Choose only the premium curriculum or specialist capabilities you need.</p>
               </div>
-              <p className="theme-muted mt-2 text-sm">{rateCard.summary}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 rounded-md border theme-border p-5">
-        <label className="text-sm font-semibold theme-text" htmlFor="commercial-workspace-type">
-          Workspace type
-        </label>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          {workspaceTypes.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => {
-                setWorkspaceTypeKey(item.key);
-                setSelectedPremiumIds([]);
-              }}
-              className={`rounded-md border p-4 text-left ${
-                resolvedWorkspaceTypeKey === item.key ? 'border-blue-500 bg-blue-500/10' : 'theme-border theme-hover-surface'
-              }`}
-            >
-              <p className="flex items-center gap-2 text-sm font-semibold theme-text">
-                <Building2 className="h-4 w-4" />
-                {item.name}
-              </p>
-              <p className="theme-subtle mt-1 text-xs">{item.description}</p>
-              <p className="mt-3 text-sm font-semibold theme-text">
-                {item.standard.currency} {item.standard.price}
-              </p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-6 rounded-md border theme-border p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold theme-text">{workspaceType.name} Standard foundation</h3>
-            <p className="theme-muted text-sm">
-              {catalogQuery.data.billing_period.description}: {formatPrice(workspaceType)}
-            </p>
-          </div>
-        </div>
-        <CapabilityList capabilities={workspaceType.standard.capabilities} />
-      </div>
-
-      {mode === 'PREMIUM' ? (
-        <div className="mt-6 rounded-md border theme-border p-5">
-          <h3 className="text-lg font-semibold theme-text">Selected premium plugins</h3>
-          <p className="theme-muted mb-4 text-sm">Choose at least one available premium plugin for this workspace type.</p>
-          <PremiumPluginSelector
-            plugins={workspaceType.premium_plugins}
-            selectedIds={selectedPremiumIds}
-            disabled={!workspaceType.premium_available}
-            onToggle={(priceId) => {
-              setSelectedPremiumIds((current) => (
-                current.includes(priceId)
-                  ? current.filter((id) => id !== priceId)
-                  : [...current, priceId]
-              ));
-            }}
-          />
-          {premiumUnavailable ? (
-            <p className="mt-3 flex items-center gap-2 text-sm text-amber-600">
-              <AlertCircle className="h-4 w-4" />
-              Premium mode is unavailable for this workspace type because no active premium plugin prices are published.
-            </p>
+              <PremiumPluginSelector
+                plugins={workspaceType.premium_plugins}
+                selectedIds={selectedPremiumIds}
+                disabled={!workspaceType.premium_available}
+                onToggle={(priceId) => {
+                  setSelectedPremiumIds((current) => (
+                    current.includes(priceId)
+                      ? current.filter((id) => id !== priceId)
+                      : [...current, priceId]
+                  ));
+                  resetQuote();
+                }}
+              />
+              {premiumUnavailable ? (
+                <p className="mt-4 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                  <AlertCircle className="h-4 w-4" />
+                  Premium mode is unavailable for this workspace type because no active premium plugin prices are published.
+                </p>
+              ) : null}
+            </section>
           ) : null}
-          {premiumMissing && !premiumUnavailable ? (
-            <p className="mt-3 flex items-center gap-2 text-sm text-amber-600">
-              <AlertCircle className="h-4 w-4" />
-              Select at least one premium plugin before continuing.
-            </p>
+
+          {quoteMutation.isError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              Could not create quote. Review the selected workspace type and premium plugins.
+            </div>
           ) : null}
         </div>
-      ) : null}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_auto]">
-        <CommercialQuoteSummary quote={quoteMutation.data ?? null} loading={quoteMutation.isPending} />
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="secondary"
-            disabled={quoteMutation.isPending || premiumUnavailable || premiumMissing}
-            onClick={() => void requestQuote()}
-          >
-            Quote total
-          </Button>
-          <Button
-            disabled={quoteMutation.isPending || premiumUnavailable || premiumMissing}
-            onClick={() => void continueToRegistration()}
-          >
-            Continue <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
+        <CommercialQuoteSummary
+          workspaceType={workspaceType}
+          mode={mode}
+          selectedPlugins={selectedPlugins}
+          quote={quoteMutation.data ?? null}
+          loading={quoteMutation.isPending}
+          billingPeriodLabel={billingPeriodLabel}
+          authenticated={authenticated}
+          disabled={actionDisabled}
+          onQuote={() => void requestQuote()}
+          onContinue={() => void continueToRegistration()}
+        />
       </div>
-      {quoteMutation.isError ? (
-        <div className="mt-4 rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-          Could not create quote. Review the selected workspace type and premium plugins.
-        </div>
-      ) : null}
     </section>
   );
 }
