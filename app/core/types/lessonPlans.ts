@@ -1,4 +1,5 @@
 import type { Session, SessionPracticalContext } from '@/app/core/types/session';
+import type { OperationalScope } from '@/app/core/lib/academicScope';
 import type {
     PrepareAssignmentFromLessonPlanResponse,
     PreparedAssignmentsForLessonPlanResponse,
@@ -13,6 +14,7 @@ export type LessonPlanStatus =
     | 'ARCHIVED';
 
 export interface LessonPlanQueryParams {
+    scope?: OperationalScope;
     search?: string;
     status?: LessonPlanStatus;
     term?: number;

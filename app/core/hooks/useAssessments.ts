@@ -26,6 +26,7 @@ import {
 import { PaginatedResponse } from '@/app/core/types/api';
 import { ApiError, extractErrorMessage } from '../types/errors';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
+import { withOperationalScope, type OperationalScope } from '@/app/core/lib/academicScope';
 
 // ── Helper ────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ function toIdSet(idsKey: string): Set<number> {
 // ── useAssessments ────────────────────────────────────────────────────────
 
 export const useAssessments = (params?: {
+  scope?: OperationalScope;
   term?: number;
   cohort_subject?: number;
   assessment_type?: string;
@@ -69,7 +71,8 @@ export const useAssessments = (params?: {
     [cohortSubjectIdsKey]
   );
   const assessmentFilters = useMemo(
-    () => ({
+    () => withOperationalScope({
+      scope: params?.scope,
       term: params?.term,
       cohort_subject: params?.cohort_subject,
       assessment_type: params?.assessment_type,
@@ -77,6 +80,7 @@ export const useAssessments = (params?: {
       status: params?.status,
     }),
     [
+      params?.scope,
       params?.term,
       params?.cohort_subject,
       params?.assessment_type,
@@ -267,6 +271,8 @@ export const useAssessmentDetail = (assessmentId: number | null) => {
 // ── useAssessmentScores ───────────────────────────────────────────────────
 
 export const useAssessmentScores = (params?: {
+  scope?: OperationalScope;
+  term?: number;
   assessment?: number;
   student?: number;
   assessment__term?: number;
@@ -282,7 +288,9 @@ export const useAssessmentScores = (params?: {
   const [totalItems, setTotalItems] = useState(0);
   const enabled = params?.enabled ?? true;
   const scoreFilters = useMemo(
-    () => ({
+    () => withOperationalScope({
+      scope: params?.scope,
+      term: params?.term,
       assessment: params?.assessment,
       student: params?.student,
       assessment__term: params?.assessment__term,
@@ -290,8 +298,10 @@ export const useAssessmentScores = (params?: {
       search: params?.search,
       page: params?.page,
       page_size: params?.page_size,
-    }),
+    }, ['assessment__term']),
     [
+      params?.scope,
+      params?.term,
       params?.assessment,
       params?.student,
       params?.assessment__term,

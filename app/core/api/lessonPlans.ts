@@ -4,6 +4,7 @@ import {
     normalizeBlobError,
 } from '@/app/core/api/downloads';
 import { withClientMutationId } from '@/app/core/lib/clientMutationId';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type {
     PrepareAssignmentFromLessonPlanPayload,
@@ -31,7 +32,7 @@ export const lessonPlanAPI = {
     getAll: async (params?: LessonPlanQueryParams): Promise<LessonPlan[] | PaginatedResponse<LessonPlan>> => {
         const response = await apiClient.get<LessonPlan[] | PaginatedResponse<LessonPlan>>(
             `${LESSON_PLANS_BASE_PATH}/`,
-            { params }
+            { params: withOperationalScope(params) }
         );
         return response.data;
     },

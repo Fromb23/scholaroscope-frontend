@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   academicYearAPI,
+  academicLifecycleAPI,
   termAPI,
   termCalendarEventAPI,
   curriculumAPI,
@@ -12,6 +13,7 @@ import {
 } from '@/app/core/api/academic';
 import {
   AcademicYear,
+  AcademicLifecycleContext,
   Term,
   TermCalendarEvent,
   Curriculum,
@@ -43,6 +45,26 @@ function toIdSet(idsKey: string): Set<number> {
       .map(value => Number(value))
       .filter(value => Number.isFinite(value))
   );
+}
+
+export function useAcademicLifecycleContext(options: { enabled?: boolean } = {}) {
+  const { organizationId } = useOrganizationContext();
+  const enabled = options.enabled ?? true;
+
+  return useQuery<AcademicLifecycleContext, Error>({
+    queryKey: academicKeys.currentContext.detail(organizationId),
+    queryFn: async () => {
+      try {
+        return await academicLifecycleAPI.getCurrentContext(
+          organizationId ? { organization: organizationId } : undefined
+        );
+      } catch (err) {
+        throw new Error(extractErrorMessage(err as ApiError, 'Failed to load academic context'));
+      }
+    },
+    enabled,
+    staleTime: 60_000,
+  });
 }
 
 // ── useAcademicYears ──────────────────────────────────────────────────────

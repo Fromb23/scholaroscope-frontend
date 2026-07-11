@@ -7,6 +7,10 @@ export const academicKeys = {
         detail: (organizationId: number | null) =>
             ['academic', 'today-mode', organizationId] as const,
     },
+    currentContext: {
+        detail: (organizationId: number | null) =>
+            ['academic', 'current-context', organizationId] as const,
+    },
     curricula: {
         all: ['academic', 'curricula'] as const,
         list: (organizationId: number | null) =>

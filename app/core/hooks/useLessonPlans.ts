@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import { emitLessonPlanDataChanged, subscribeToLessonPlanDataChanged } from '@/app/core/lib/lessonPlanEvents';
 import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type { LessonPlanCurriculumContext } from '@/app/core/types/lessonPlanCurriculum';
 import { extractErrorMessage } from '@/app/core/types/errors';
@@ -100,7 +101,8 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
     const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
     const requestFilters = useMemo(
-        () => ({
+        () => withOperationalScope({
+            scope: params?.scope,
             search: params?.search,
             status: params?.status,
             term: params?.term,
@@ -113,6 +115,7 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
             ordering: params?.ordering,
         }),
         [
+            params?.scope,
             params?.cohort,
             params?.ordering,
             params?.page,

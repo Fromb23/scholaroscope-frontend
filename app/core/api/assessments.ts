@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { withOperationalScope, type OperationalScope } from '@/app/core/lib/academicScope';
 import {
   downloadBlob,
   getDownloadFileName,
@@ -119,6 +120,7 @@ export const rubricLevelAPI = {
 // Assessment API
 export const assessmentAPI = {
   getAll: async (params?: {
+    scope?: OperationalScope;
     term?: number;
     cohort_subject?: number;
     assessment_type?: string;
@@ -128,13 +130,14 @@ export const assessmentAPI = {
     const response = await apiClient.get<Assessment[] | PaginatedResponse<Assessment>>(
       '/assessments/',
       {
-        params: {
+        params: withOperationalScope({
+          scope: params?.scope,
           term: params?.term,
           cohort_subject: params?.cohort_subject,
           assessment_type: params?.assessment_type,
           evaluation_type: params?.evaluation_type,
           status: params?.status,
-        },
+        }),
       }
     );
     return response.data;
@@ -303,6 +306,8 @@ export const assessmentAPI = {
 // Assessment Score API
 export const assessmentScoreAPI = {
   getAll: async (params?: {
+    scope?: OperationalScope;
+    term?: number;
     assessment?: number;
     student?: number;
     assessment__term?: number;
@@ -315,7 +320,9 @@ export const assessmentScoreAPI = {
     const response = await apiClient.get<AssessmentScore[] | PaginatedResponse<AssessmentScore>>(
       '/scores/',
       {
-        params: {
+        params: withOperationalScope({
+          scope: params?.scope,
+          term: params?.term,
           assessment: params?.assessment,
           student: params?.student,
           search: params?.search,
@@ -324,7 +331,7 @@ export const assessmentScoreAPI = {
           assessment__term: params?.assessment__term,
           assessment__subject: params?.assessment__subject,
           status: params?.status,
-        },
+        }, ['assessment__term']),
       }
     );
     return response.data;

@@ -7,6 +7,8 @@
 
 import { apiClient } from './client';
 import { withClientMutationId } from '@/app/core/lib/clientMutationId';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
+import type { OperationalScope } from '@/app/core/lib/academicScope';
 import {
   AvailableSessionCohortSubjectsResponse,
   Session,
@@ -43,6 +45,7 @@ export interface PaginatedResponse<T> {
 // ── Query param types ─────────────────────────────────────────────────────
 
 export interface SessionQueryParams {
+  scope?: OperationalScope;
   term?: number;
   cohort_subject?: number;
   cohort_subject__cohort?: number;
@@ -54,6 +57,8 @@ export interface SessionQueryParams {
 }
 
 export interface AttendanceQueryParams {
+  scope?: OperationalScope;
+  term?: number;
   session?: number;
   student?: number;
   status?: string;
@@ -95,7 +100,10 @@ export interface SessionLearner {
 
 export const sessionAPI = {
   getAll: async (params?: SessionQueryParams): Promise<Session[] | PaginatedResponse<Session>> => {
-    const res = await apiClient.get<Session[] | PaginatedResponse<Session>>('/sessions/', { params });
+    const res = await apiClient.get<Session[] | PaginatedResponse<Session>>(
+      '/sessions/',
+      { params: withOperationalScope(params) },
+    );
     return res.data;
   },
 
@@ -253,7 +261,7 @@ export const attendanceAPI = {
   ): Promise<AttendanceRecord[] | PaginatedResponse<AttendanceRecord>> => {
     const res = await apiClient.get<AttendanceRecord[] | PaginatedResponse<AttendanceRecord>>(
       '/attendance/',
-      { params }
+      { params: withOperationalScope(params, ['session__term']) }
     );
     return res.data;
   },

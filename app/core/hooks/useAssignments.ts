@@ -13,6 +13,7 @@ import { sessionAPI } from '@/app/core/api/sessions';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { assignmentKeys } from '@/app/core/lib/queryKeys';
 import { getStableClientMutationId } from '@/app/core/lib/clientMutationId';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
 import { emitLessonPlanDataChanged } from '@/app/core/lib/lessonPlanEvents';
 import { emitSessionDataChanged } from '@/app/core/lib/sessionEvents';
 import type { PaginatedResponse } from '@/app/core/types/api';
@@ -243,7 +244,9 @@ export function useAssignmentTeachingToday(options?: UseAssignmentsOptions) {
 export function useAssignments(filters?: AssignmentFilters, options?: UseAssignmentsOptions) {
     const instructorAccess = useInstructorCohortAccess({ enabled: options?.enabled });
     const enabled = options?.enabled ?? true;
-    const normalizedFilters = useMemo(() => compactFilters({
+    const normalizedFilters = useMemo(() => withOperationalScope(compactFilters({
+        scope: filters?.scope,
+        term: filters?.term,
         cohort: filters?.cohort,
         subject: filters?.subject,
         cohort_subject: filters?.cohort_subject,
@@ -259,7 +262,9 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
         ordering: filters?.ordering,
         page: filters?.page,
         page_size: filters?.page_size,
-    }), [
+    })), [
+        filters?.scope,
+        filters?.term,
         filters?.cohort,
         filters?.due_at_after,
         filters?.due_at_before,
