@@ -6,6 +6,10 @@ const pageSource = readFileSync(
   join(process.cwd(), 'app/core/components/workspace-access/WorkspaceRolesPage.tsx'),
   'utf8',
 );
+const assignmentPanelSource = readFileSync(
+  join(process.cwd(), 'app/core/components/workspace-access/RoleAssignmentPanel.tsx'),
+  'utf8',
+);
 const apiSource = readFileSync(
   join(process.cwd(), 'app/core/api/workspaceAccess.ts'),
   'utf8',
@@ -31,5 +35,28 @@ describe('workspace access frontend contract', () => {
     expect(productSource).toContain('hasWorkspacePermission');
     expect(productSource).toContain('hasFeatureAccess');
     expect(productSource).toContain('hasProductCapability');
+  });
+
+  it('uses staff terminology for role assignments', () => {
+    expect(pageSource).toContain('Roles &amp; permissions');
+    expect(assignmentPanelSource).toContain('Staff role assignments');
+    expect(assignmentPanelSource).toContain('Staff member');
+    expect(assignmentPanelSource).toContain('No active staff role assignments returned.');
+    expect(assignmentPanelSource).not.toContain('Membership ID');
+  });
+
+  it('does not hardcode workspace scope for new role assignments', () => {
+    expect(assignmentPanelSource).not.toContain("scope_type: 'WORKSPACE'");
+    expect(assignmentPanelSource).not.toContain('scope_type: "WORKSPACE"');
+    expect(assignmentPanelSource).toContain('scopeType');
+    expect(assignmentPanelSource).toContain('scope_object_id');
+    expect(assignmentPanelSource).toContain('broad_scope_confirmed');
+  });
+
+  it('requires explicit scope and confirmation for broad workspace assignment rendering', () => {
+    expect(assignmentPanelSource).toContain('Select scope');
+    expect(assignmentPanelSource).toContain('Workspace scope applies this role across the entire workspace.');
+    expect(assignmentPanelSource).toContain('workspaceScopeConfirmed');
+    expect(assignmentPanelSource).toContain('Reason');
   });
 });

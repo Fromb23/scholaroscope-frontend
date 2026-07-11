@@ -108,6 +108,29 @@ describe('resolveAppError', () => {
     expect(error.title).toBe('This report is not ready yet.');
   });
 
+  it('uses structured authority error copy', () => {
+    const error = resolveAppError(
+      {
+        response: {
+          status: 403,
+          data: {
+            error: {
+              code: 'teaching_assignment_required',
+              message: 'A teaching assignment is required.',
+              context: { authority: { blocked_layer: 'TEACHING_ASSIGNMENT' } },
+            },
+          },
+        },
+      },
+      { domain: 'lesson_plans', action: 'create', entityLabel: 'lesson plan' },
+    );
+
+    expect(error.kind).toBe('permission');
+    expect(error.title).toBe('Teaching assignment required.');
+    expect(error.message).toContain('teaching assignment');
+    expect(error.channel).toBe('banner');
+  });
+
   it('classifies personal workspace single-teacher codes as workspace boundaries', () => {
     const error = resolveAppError(
       { response: { status: 400, data: { error: { code: 'personal_workspace_single_teacher' } } } },

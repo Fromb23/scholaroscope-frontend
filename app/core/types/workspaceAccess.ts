@@ -1,3 +1,34 @@
+export type WorkspaceAssignmentScopeType =
+  | 'WORKSPACE'
+  | 'COHORT'
+  | 'SUBJECT'
+  | 'COHORT_SUBJECT';
+
+export interface WorkspaceRoleAssignmentScopePolicy {
+  preferred_scope_types: WorkspaceAssignmentScopeType[];
+  allowed_scope_types: WorkspaceAssignmentScopeType[];
+  workspace_scope_allowed: boolean;
+  workspace_scope_requires_confirmation: boolean;
+  teaching_assignment_required: boolean;
+  reason: string;
+}
+
+export interface WorkspaceStaffOption {
+  membership_id: number;
+  user_id: number;
+  label: string;
+  email: string;
+  classification: string;
+  status: string;
+}
+
+export interface WorkspaceScopeOption {
+  scope_type: Exclude<WorkspaceAssignmentScopeType, 'WORKSPACE'>;
+  id: number;
+  label: string;
+  description?: string;
+}
+
 export interface WorkspacePermissionDefinition {
   id: number;
   key: string;
@@ -25,6 +56,7 @@ export interface WorkspaceRole {
   permission_keys: string[];
   permission_count: number;
   active_assignment_count: number;
+  assignment_scope_policy?: WorkspaceRoleAssignmentScopePolicy;
   actions: {
     can_update: boolean;
     can_archive: boolean;
@@ -55,9 +87,10 @@ export interface WorkspaceRoleAssignmentPayload {
   membership_id: number;
   role_id: number;
   assigned_reason?: string;
+  broad_scope_confirmed?: boolean;
   ends_at?: string | null;
   scopes?: Array<{
-    scope_type: string;
+    scope_type: WorkspaceAssignmentScopeType;
     scope_object_id?: number | null;
   }>;
 }
