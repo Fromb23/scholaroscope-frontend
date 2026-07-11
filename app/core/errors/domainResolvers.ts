@@ -15,6 +15,10 @@ export function resolveAuthError(error: unknown, options: DomainErrorOptions): A
   return resolveDomainError(error, 'auth', options);
 }
 
+export function resolveRegistrationError(error: unknown, options: DomainErrorOptions): AppError {
+  return resolveDomainError(error, 'registration', options);
+}
+
 export function resolveWorkspaceError(error: unknown, options: DomainErrorOptions): AppError {
   return resolveDomainError(error, 'workspace', options);
 }

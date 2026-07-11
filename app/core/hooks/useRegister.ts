@@ -7,7 +7,7 @@ import { validateInviteToken, ValidatedInvite } from '@/app/core/hooks/useInvite
 import { ENABLE_MULTI_WORKSPACE_SIGNUP } from '@/app/core/lib/workspaces';
 import type { OrgType, WorkspaceMode } from '@/app/core/types/auth';
 import type { CommercialQuote } from '@/app/core/types/commercialCatalog';
-import { resolveAuthError, resolveWorkspaceError, type AppError } from '@/app/core/errors';
+import { resolveRegistrationError, resolveWorkspaceError, type AppError } from '@/app/core/errors';
 import {
     createFormValidationAppError,
     hasFormFieldErrors,
@@ -308,13 +308,13 @@ export function useRegister() {
 
         } catch (err: unknown) {
             const appError = isInviteFlow
-                ? resolveAuthError(err, {
+                ? resolveRegistrationError(err, {
                     action: 'verify',
                     entityLabel: 'account invitation',
                 })
-                : resolveWorkspaceError(err, {
-                    action: 'create',
-                    entityLabel: 'workspace',
+                : resolveRegistrationError(err, {
+                    action: 'submit',
+                    entityLabel: 'workspace registration',
                     workspaceBehavior: form.org_type === 'PERSONAL' ? 'FREELANCE_TEACHER' : null,
                 });
             setApiError(appError);

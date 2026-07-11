@@ -44,6 +44,7 @@ export interface ResolveAppErrorContext {
   background?: boolean;
   domain:
     | 'auth'
+    | 'registration'
     | 'workspace'
     | 'instructors'
     | 'learners'

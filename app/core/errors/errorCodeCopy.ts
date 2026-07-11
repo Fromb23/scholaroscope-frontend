@@ -10,6 +10,69 @@ export interface ErrorCodeCopyEntry {
 }
 
 export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
+  customer_registration_account_not_allowed: {
+    kind: 'permission',
+    title: 'This email cannot be used here.',
+    message:
+      'Use a customer account email or sign in with an existing customer account.',
+    actionLabel: 'Use another email',
+    retryable: false,
+    severity: 'warning',
+  },
+  platform_login_required: {
+    kind: 'authentication',
+    title: 'Use the control plane to sign in.',
+    message:
+      'Platform administrators sign in through the Scholaroscope control plane.',
+    actionLabel: 'Use control plane sign-in',
+    retryable: false,
+    severity: 'warning',
+  },
+  account_email_already_exists: {
+    kind: 'conflict',
+    title: 'An account already exists for this email.',
+    message:
+      'Sign in with that customer account or use a different email.',
+    actionLabel: 'Sign in',
+    retryable: false,
+    severity: 'warning',
+  },
+  registration_pending_approval: {
+    kind: 'setup_required',
+    title: 'Registration is awaiting approval.',
+    message:
+      'Your workspace request was submitted and is awaiting platform approval.',
+    actionLabel: 'Check status later',
+    retryable: false,
+    severity: 'info',
+  },
+  quote_expired: {
+    kind: 'setup_required',
+    title: 'This quote has expired.',
+    message:
+      'Request a fresh quote from the rate card before continuing.',
+    actionLabel: 'Request new quote',
+    retryable: false,
+    severity: 'warning',
+  },
+  quote_invalid: {
+    kind: 'validation',
+    title: 'This quote cannot be used.',
+    message:
+      'Return to the rate card and request a new quote.',
+    actionLabel: 'Request new quote',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_provisioning_failed: {
+    kind: 'server',
+    title: 'Workspace could not be created.',
+    message:
+      'The workspace request could not be completed. Try again later, or contact platform support if it continues.',
+    actionLabel: 'Try again',
+    retryable: true,
+    severity: 'error',
+  },
   personal_workspace_single_teacher: {
     kind: 'workspace_boundary',
     title: 'This workspace is for one teacher.',

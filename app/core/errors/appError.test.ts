@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   resolveLearnerError,
+  resolveRegistrationError,
   resolveReportError,
   resolveTeachingError,
   resolveWorkspaceError,
@@ -28,7 +29,7 @@ describe('resolveAppError', () => {
     );
 
     expect(error.kind).toBe('validation');
-    expect(error.title).toBe('Instructor account was not created.');
+    expect(error.title).toBe('Staff account was not created.');
     expect(error.retryable).toBe(false);
     expect(error.channel).toBe('inline');
     expect(error.fieldErrors?.email).toEqual(['A user with this email already exists.']);
@@ -237,6 +238,83 @@ describe('resolveAppError', () => {
 
     expect(error.fieldErrors?.term).toEqual(['Choose a term before calculating.']);
     expect(error.message).toBe('Create report rules for this class or subject before calculating results.');
+  });
+
+  it('resolves protected public registration accounts with safe customer copy', () => {
+    const error = resolveRegistrationError(
+      {
+        response: {
+          status: 400,
+          data: {
+            error: {
+              type: 'protected_account',
+              code: 'customer_registration_account_not_allowed',
+              message: 'This email cannot be used to create a customer workspace.',
+            },
+          },
+        },
+      },
+      { action: 'submit', entityLabel: 'workspace registration' },
+    );
+
+    expect(error.kind).toBe('permission');
+    expect(error.title).toBe('This email cannot be used here.');
+    expect(error.message).toBe('Use a customer account email or sign in with an existing customer account.');
+    expect(`${error.title} ${error.message}`.toLowerCase()).not.toContain('superadmin');
+    expect(error.channel).toBe('banner');
+  });
+
+  it('resolves platform login boundary with control-plane copy', () => {
+    const error = resolveRegistrationError(
+      {
+        response: {
+          status: 403,
+          data: {
+            error: {
+              code: 'platform_login_required',
+              message: 'Platform administrators sign in through the Scholaroscope control plane.',
+            },
+          },
+        },
+      },
+      { action: 'submit', entityLabel: 'workspace registration' },
+    );
+
+    expect(error.kind).toBe('authentication');
+    expect(error.title).toBe('Use the control plane to sign in.');
+    expect(error.message).toBe('Platform administrators sign in through the Scholaroscope control plane.');
+  });
+
+  it('uses registration-specific copy for duplicate email and quote failures', () => {
+    const duplicate = resolveRegistrationError(
+      {
+        response: {
+          status: 409,
+          data: {
+            error: {
+              code: 'account_email_already_exists',
+              field_errors: { email: ['An account already exists for this email.'] },
+            },
+          },
+        },
+      },
+      { action: 'submit', entityLabel: 'workspace registration' },
+    );
+    const expired = resolveRegistrationError(
+      { response: { status: 410, data: { error: { code: 'quote_expired' } } } },
+      { action: 'submit', entityLabel: 'quote registration' },
+    );
+    const invalid = resolveRegistrationError(
+      { response: { status: 400, data: { error: { code: 'quote_invalid' } } } },
+      { action: 'submit', entityLabel: 'quote registration' },
+    );
+
+    expect(duplicate.title).toBe('An account already exists for this email.');
+    expect(duplicate.fieldErrors?.email).toEqual(['An account already exists for this email.']);
+    expect(expired.title).toBe('This quote has expired.');
+    expect(expired.actionLabel).toBe('Request new quote');
+    expect(invalid.title).toBe('This quote cannot be used.');
+    expect(invalid.message).toBe('Return to the rate card and request a new quote.');
   });
 });
 
