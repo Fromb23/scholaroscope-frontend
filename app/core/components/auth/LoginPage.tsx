@@ -239,7 +239,7 @@ function LoginForm() {
               ) : null}
               {platformLoginRequired ? (
                 <a
-                  className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold theme-button-primary"
                   href={getPlatformAppUrl('/login')}
                 >
                   Open platform console

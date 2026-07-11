@@ -10,6 +10,38 @@ const commercialSource = readFileSync(
   join(process.cwd(), 'app/core/components/commercial/CommercialRateCards.tsx'),
   'utf8',
 );
+const commercialWorkspaceOnboardingSource = readFileSync(
+  join(process.cwd(), 'app/core/components/commercial/CommercialWorkspaceOnboardingPage.tsx'),
+  'utf8',
+);
+const premiumPluginSelectorSource = readFileSync(
+  join(process.cwd(), 'app/core/components/commercial/PremiumPluginSelector.tsx'),
+  'utf8',
+);
+const capabilityListSource = readFileSync(
+  join(process.cwd(), 'app/core/components/commercial/CapabilityList.tsx'),
+  'utf8',
+);
+const publicHeaderSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/PublicHeader.tsx'),
+  'utf8',
+);
+const heroSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/HeroSection.tsx'),
+  'utf8',
+);
+const howItWorksSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/HowItWorksSection.tsx'),
+  'utf8',
+);
+const featureSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/FeatureSection.tsx'),
+  'utf8',
+);
+const audienceSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/AudienceSection.tsx'),
+  'utf8',
+);
 const commercialSummarySource = readFileSync(
   join(process.cwd(), 'app/core/components/commercial/CommercialQuoteSummary.tsx'),
   'utf8',
@@ -24,6 +56,10 @@ const getStartedPageSource = readFileSync(
 );
 const getStartedComponentSource = readFileSync(
   join(process.cwd(), 'app/core/components/commercial/PublicGetStartedPage.tsx'),
+  'utf8',
+);
+const publicFooterSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/PublicFooter.tsx'),
   'utf8',
 );
 const commercialApiSource = readFileSync(
@@ -44,6 +80,43 @@ const headerSource = readFileSync(
 );
 
 describe('commercial onboarding contract', () => {
+  it('uses theme-safe surfaces on public landing and get-started components', () => {
+    const publicSources = [
+      landingSource,
+      getStartedComponentSource,
+      commercialWorkspaceOnboardingSource,
+      publicHeaderSource,
+      heroSource,
+      howItWorksSource,
+      featureSource,
+      audienceSource,
+      commercialSectionSource,
+      publicFooterSource,
+      commercialSource,
+      commercialSummarySource,
+      premiumPluginSelectorSource,
+      capabilityListSource,
+    ];
+    const lightOnlyTokens = [
+      'bg' + '-white',
+      'bg' + '-slate-50',
+      'text' + '-slate-950',
+      'text' + '-slate-600',
+      'border' + '-slate-300',
+      'hover:bg' + '-slate-100',
+    ];
+    const lightOnlyToken = new RegExp(`(?:^|\\s)(${lightOnlyTokens.join('|')})(?:\\s|["'\`])`);
+
+    expect(landingSource).toContain('theme-app-bg theme-text');
+    expect(getStartedComponentSource).toContain('theme-app-bg theme-text');
+    expect(publicHeaderSource).toContain('PublicThemeToggle');
+    expect(commercialSectionSource).toContain('href="/get-started"');
+
+    for (const source of publicSources) {
+      expect(source).not.toMatch(lightOnlyToken);
+    }
+  });
+
   it('loads public rate cards from the backend and quotes before registration', () => {
     expect(landingSource).toContain('<CommercialSection');
     expect(getStartedPageSource).toContain('<PublicGetStartedPage');

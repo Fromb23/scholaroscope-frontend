@@ -51,7 +51,7 @@ export function CommercialQuoteSummary({
       : 'Confirm price and continue';
 
   return (
-    <aside className="sticky top-24 rounded-xl border bg-white p-5 shadow-sm theme-border">
+    <aside className="sticky top-24 rounded-xl border p-5 shadow-sm theme-card">
       <div className="border-b pb-4 theme-border">
         <p className="text-sm font-semibold theme-text">Quote summary</p>
         <p className="theme-subtle mt-1 text-xs">Scholaroscope confirms the final price before registration.</p>
@@ -82,18 +82,18 @@ export function CommercialQuoteSummary({
                 ))}
               </div>
             ) : (
-              <p className="mt-1 text-sm text-amber-700">Select at least one premium capability.</p>
+              <p className="mt-1 text-sm text-[color:var(--color-warning)]">Select at least one premium capability.</p>
             )}
           </div>
         ) : null}
 
-        <div className="rounded-lg bg-slate-50 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <div className="rounded-lg p-4 theme-surface-muted">
+          <div className="flex items-center gap-2 text-sm font-semibold theme-text">
             <CalendarDays className="h-4 w-4" />
             {billingPeriodLabel}
           </div>
           {quote ? (
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs theme-subtle">
               {formatDate(quote.starts_on)} to {formatDate(quote.ends_on)}
             </p>
           ) : null}
@@ -119,7 +119,7 @@ export function CommercialQuoteSummary({
         </div>
 
         {quote ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+          <div className="rounded-lg border p-3 text-sm theme-success-surface">
             <p className="flex items-center gap-2 font-semibold">
               <CheckCircle2 className="h-4 w-4" />
               Quote confirmed

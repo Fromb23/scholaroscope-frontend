@@ -35,7 +35,7 @@ export function CapabilityList({ capabilities }: CapabilityListProps) {
           <div className="mt-3 divide-y theme-border">
             {items.map((capability) => (
               <div key={capability.key} className="flex gap-3 py-3 first:pt-0 last:pb-0">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-[color:var(--color-success)]" />
                 <div>
                   <p className="text-sm font-medium theme-text">{capability.name}</p>
                   <p className="theme-subtle text-xs leading-5">{capability.short_description}</p>

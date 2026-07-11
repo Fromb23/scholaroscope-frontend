@@ -11,20 +11,20 @@ const features = [
 
 export function FeatureSection() {
   return (
-    <section id="features" className="bg-white py-20">
+    <section id="features" className="theme-surface py-20">
       <div className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
-          <p className="text-sm font-semibold text-blue-700">Workspace capabilities</p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">Everything needed for repeat academic operations</h2>
+          <p className="text-sm font-semibold text-[color:var(--color-primary)]">Workspace capabilities</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight theme-text">Everything needed for repeat academic operations</h2>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <article key={feature.title} className="rounded-xl border border-slate-200 p-6">
-                <Icon className="h-6 w-6 text-blue-700" />
-                <h3 className="mt-5 text-lg font-bold text-slate-950">{feature.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{feature.body}</p>
+              <article key={feature.title} className="rounded-xl border p-6 theme-card">
+                <Icon className="h-6 w-6 text-[color:var(--color-primary)]" />
+                <h3 className="mt-5 text-lg font-bold theme-text">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-6 theme-muted">{feature.body}</p>
               </article>
             );
           })}

@@ -27,22 +27,22 @@ export function PublicHeader() {
   return (
     <header
       className={`fixed left-0 right-0 top-0 z-50 border-b transition ${
-        scrolled ? 'border-slate-200 bg-white/95 shadow-sm backdrop-blur' : 'border-transparent bg-white/80 backdrop-blur'
+        scrolled ? 'theme-border bg-[color:var(--color-header)] shadow-sm backdrop-blur' : 'border-transparent bg-[color:var(--color-header)] backdrop-blur'
       }`}
     >
       <div className="mx-auto flex h-16 max-w-[1220px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="text-lg font-bold tracking-tight text-slate-950">
+        <Link href="/" className="text-lg font-bold tracking-tight theme-text">
           Scholaroscope
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Public navigation">
           {navItems.map((item) => (
             item.href.startsWith('/') ? (
-              <Link key={item.href} href={item.href} className="text-sm font-medium text-slate-600 hover:text-slate-950">
+              <Link key={item.href} href={item.href} className="text-sm font-medium theme-muted hover:text-[color:var(--color-text)]">
                 {item.label}
               </Link>
             ) : (
-              <a key={item.href} href={item.href} className="text-sm font-medium text-slate-600 hover:text-slate-950">
+              <a key={item.href} href={item.href} className="text-sm font-medium theme-muted hover:text-[color:var(--color-text)]">
                 {item.label}
               </a>
             )
@@ -53,13 +53,13 @@ export function PublicHeader() {
           <PublicThemeToggle />
           <Link
             href="/login"
-            className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-800 hover:bg-slate-100"
+            className="inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-semibold theme-button-secondary"
           >
             Sign in
           </Link>
           <Link
             href="/get-started"
-            className="inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800"
+            className="inline-flex min-h-10 items-center rounded-lg px-4 text-sm font-semibold theme-button-primary"
           >
             Get started
           </Link>
@@ -67,7 +67,7 @@ export function PublicHeader() {
 
         <button
           type="button"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-300 text-slate-800 md:hidden"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg theme-button-secondary md:hidden"
           onClick={() => setMenuOpen((open) => !open)}
           aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
           aria-expanded={menuOpen}
@@ -77,14 +77,14 @@ export function PublicHeader() {
       </div>
 
       {menuOpen ? (
-        <div className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
+        <div className="border-t px-4 py-4 theme-border theme-surface-elevated md:hidden">
           <nav className="mx-auto grid max-w-[1220px] gap-2" aria-label="Mobile public navigation">
             {navItems.map((item) => (
               item.href.startsWith('/') ? (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  className="rounded-lg px-3 py-3 text-sm font-semibold theme-text theme-hover-surface"
                   onClick={() => setMenuOpen(false)}
                 >
                   {item.label}
@@ -93,7 +93,7 @@ export function PublicHeader() {
                 <a
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  className="rounded-lg px-3 py-3 text-sm font-semibold theme-text theme-hover-surface"
                   onClick={() => setMenuOpen(false)}
                 >
                   {item.label}
@@ -102,7 +102,7 @@ export function PublicHeader() {
             ))}
             <Link
               href="/login"
-              className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              className="rounded-lg px-3 py-3 text-sm font-semibold theme-text theme-hover-surface"
               onClick={() => setMenuOpen(false)}
             >
               Sign in
