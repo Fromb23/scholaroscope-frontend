@@ -163,6 +163,123 @@ export const ERROR_CODE_COPY: Record<string, ErrorCodeCopyEntry> = {
     retryable: false,
     severity: 'warning',
   },
+  platform_boundary_blocked: {
+    kind: 'permission',
+    title: 'Use the correct account area.',
+    message:
+      'Platform administrators cannot perform this customer workspace action here.',
+    actionLabel: 'Review account',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_boundary_blocked: {
+    kind: 'workspace_boundary',
+    title: 'This workspace cannot perform that action.',
+    message:
+      'The action requires an active workspace and a target that belongs to it.',
+    actionLabel: 'Review workspace',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_governance_not_applicable: {
+    kind: 'workspace_boundary',
+    title: 'This workspace does not use that workflow.',
+    message:
+      'The workspace governance model does not support this action.',
+    actionLabel: 'Review workspace type',
+    retryable: false,
+    severity: 'info',
+  },
+  product_entitlement_required: {
+    kind: 'setup_required',
+    title: 'Feature access is not available.',
+    message:
+      'This workspace does not currently have the required product or plugin entitlement.',
+    actionLabel: 'Review subscription',
+    retryable: false,
+    severity: 'warning',
+  },
+  lifecycle_action_blocked: {
+    kind: 'lifecycle_locked',
+    title: 'This period is read-only.',
+    message:
+      'The academic lifecycle blocks this change in the current period.',
+    actionLabel: 'Review academic period',
+    retryable: false,
+    severity: 'warning',
+  },
+  membership_inactive: {
+    kind: 'permission',
+    title: 'Workspace membership is not active.',
+    message:
+      'An active workspace membership is required before this action can continue.',
+    actionLabel: 'Review access',
+    retryable: false,
+    severity: 'warning',
+  },
+  permission_denied: {
+    kind: 'permission',
+    title: 'Permission required.',
+    message:
+      'You do not have permission to perform this action in this workspace.',
+    actionLabel: 'Review permissions',
+    retryable: false,
+    severity: 'warning',
+  },
+  scope_denied: {
+    kind: 'tenant_scope',
+    title: 'This role does not cover that scope.',
+    message:
+      'Your permission does not apply to the selected class, subject, or class subject.',
+    actionLabel: 'Review scope',
+    retryable: false,
+    severity: 'warning',
+  },
+  teaching_assignment_required: {
+    kind: 'permission',
+    title: 'Teaching assignment required.',
+    message:
+      'This instructional action requires a teaching assignment for the selected class subject.',
+    actionLabel: 'Review teaching assignment',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_role_scope_required: {
+    kind: 'validation',
+    title: 'Choose a role scope.',
+    message:
+      'This staff role must be assigned to an explicit workspace, cohort, subject, or class-subject scope.',
+    actionLabel: 'Choose scope',
+    retryable: false,
+    severity: 'warning',
+  },
+  workspace_role_scope_too_broad: {
+    kind: 'permission',
+    title: 'Workspace scope needs stronger authority.',
+    message:
+      'This role cannot be assigned across the whole workspace without role-management authority.',
+    actionLabel: 'Choose narrower scope',
+    retryable: false,
+    severity: 'warning',
+  },
+  assignment_scope_invalid: {
+    kind: 'validation',
+    title: 'Scope is invalid.',
+    message:
+      'Choose a valid scope that belongs to this workspace.',
+    actionLabel: 'Review scope',
+    retryable: false,
+    severity: 'warning',
+  },
+  broad_workspace_scope_requires_confirmation: {
+    kind: 'validation',
+    title: 'Confirm workspace-wide scope.',
+    message:
+      'Workspace-wide role assignment requires explicit confirmation and a reason.',
+    actionLabel: 'Confirm scope',
+    retryable: false,
+    severity: 'warning',
+  },
 };
 
 export function getErrorCodeCopy(serverCode?: string): ErrorCodeCopyEntry | undefined {

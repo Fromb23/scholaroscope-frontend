@@ -4,8 +4,10 @@ import { useMemo, useState } from 'react';
 import { CopyPlus, ShieldCheck, Trash2 } from 'lucide-react';
 
 import { Button } from '@/app/components/ui/Button';
+import { AppErrorBanner } from '@/app/components/ui/errors/AppErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
+import { resolveAppError, type AppError } from '@/app/core/errors';
 import { useWorkspaceAccess } from '@/app/core/hooks/useWorkspaceAccess';
 import type { WorkspaceRole } from '@/app/core/types/workspaceAccess';
 import { AdminSlotSummary } from './AdminSlotSummary';
@@ -36,7 +38,7 @@ function RoleList({
             <p className="font-semibold theme-text">{role.name}</p>
             <p className="theme-muted text-sm">{role.description || 'No description'}</p>
             <p className="theme-subtle mt-1 text-xs">
-              {role.role_kind.toLowerCase()} · {role.permission_count} permissions · {role.active_assignment_count} assignments
+              {role.role_kind.toLowerCase()} · {role.permission_count} permissions · {role.active_assignment_count} staff role assignments
             </p>
           </div>
           {role.is_workspace_admin ? <ShieldCheck className="h-5 w-5 text-blue-500" /> : null}
@@ -66,6 +68,7 @@ export function WorkspaceRolesPage() {
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
   const [draftPermissions, setDraftPermissions] = useState<string[]>([]);
+  const [assignmentError, setAssignmentError] = useState<AppError | null>(null);
   const loading = rolesQuery.isLoading || permissionsQuery.isLoading || meQuery.isLoading;
 
   const startFromRole = (role: WorkspaceRole) => {
@@ -107,7 +110,7 @@ export function WorkspaceRolesPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold theme-text">Workspace roles</h1>
+        <h1 className="text-2xl font-bold theme-text">Roles &amp; permissions</h1>
         <p className="theme-muted mt-1 text-sm">
           Role names are labels. Access is determined by permissions, assignments and scopes returned by the backend.
         </p>
@@ -186,11 +189,30 @@ export function WorkspaceRolesPage() {
         </div>
       </div>
 
+      {assignmentError ? (
+        <AppErrorBanner
+          error={assignmentError}
+          onDismiss={() => setAssignmentError(null)}
+          compact
+        />
+      ) : null}
+
       <RoleAssignmentPanel
         roles={roles}
         assignments={assignments}
         onAssign={async (payload) => {
-          await actions.assignRole.mutateAsync(payload);
+          setAssignmentError(null);
+          try {
+            await actions.assignRole.mutateAsync(payload);
+          } catch (error) {
+            setAssignmentError(resolveAppError(error, {
+              domain: 'workspace',
+              action: 'create',
+              entityLabel: 'staff role assignment',
+              channel: 'inline',
+            }));
+            throw error;
+          }
         }}
         onEnd={async (assignmentId, reason) => {
           await actions.endAssignment.mutateAsync({ assignmentId, reason });
