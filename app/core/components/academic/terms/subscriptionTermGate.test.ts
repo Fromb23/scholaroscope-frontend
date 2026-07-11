@@ -39,4 +39,20 @@ describe('terms subscription gate frontend behavior', () => {
     expect(renewalBlock).not.toContain('router.push');
     expect(renewalBlock).not.toContain('return (');
   });
+
+  it('honors backend term action metadata for ordinary edit and delete actions', () => {
+    const terms = source('app/core/components/academic/terms/TermsPage.tsx');
+    const types = source('app/core/types/academic.ts');
+
+    expect(types).toContain('actions?:');
+    expect(types).toContain('can_edit: boolean');
+    expect(types).toContain('can_delete: boolean');
+    expect(types).toContain('edit_blocked_reason?: string | null');
+    expect(terms).toContain('term.actions?.can_edit === true');
+    expect(terms).toContain('term.actions?.can_delete === true');
+    expect(terms).toContain('termLockedReason(term)');
+    expect(terms).toContain('Term record locked');
+    expect(terms).toContain("aria-label={actionLockedReason ?? 'Term actions locked'}");
+    expect(terms).not.toContain('isCurrentAcademicYear && isAdminLike');
+  });
 });
