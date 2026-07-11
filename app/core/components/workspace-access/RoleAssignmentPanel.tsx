@@ -22,34 +22,18 @@ const SCOPE_TYPES: Array<{
   { value: 'WORKSPACE', label: 'Workspace' },
 ];
 
+const EMPTY_SCOPE_TYPES: WorkspaceAssignmentScopeType[] = [];
+
 interface RoleAssignmentPanelProps {
   roles: WorkspaceRole[];
   assignments: WorkspaceRoleAssignment[];
   onAssign: (payload: WorkspaceRoleAssignmentPayload) => Promise<void>;
   onEnd: (assignmentId: number, reason: string) => Promise<void>;
-  // TODO: Connect institution staff search when the staff directory endpoint is exposed here.
   staffOptions?: WorkspaceStaffOption[];
-  // TODO: Connect cohort, subject, and class-subject option queries for scoped assignments.
   scopeOptions?: WorkspaceScopeOption[];
+  optionsLoading?: boolean;
   assigning?: boolean;
   ending?: boolean;
-}
-
-function staffOptionsFromAssignments(assignments: WorkspaceRoleAssignment[]): WorkspaceStaffOption[] {
-  const byMembershipId = new Map<number, WorkspaceStaffOption>();
-  assignments.forEach((assignment) => {
-    byMembershipId.set(assignment.membership.id, {
-      membership_id: assignment.membership.id,
-      user_id: assignment.membership.user_id,
-      label: assignment.membership.name || assignment.membership.email,
-      email: assignment.membership.email,
-      classification: assignment.membership.classification,
-      status: assignment.membership.status,
-    });
-  });
-  return Array.from(byMembershipId.values()).sort((left, right) => (
-    left.label.localeCompare(right.label)
-  ));
 }
 
 function scopeLabel(scope: WorkspaceRoleAssignment['scopes'][number]): string {
@@ -61,8 +45,9 @@ export function RoleAssignmentPanel({
   assignments,
   onAssign,
   onEnd,
-  staffOptions,
+  staffOptions = [],
   scopeOptions = [],
+  optionsLoading = false,
   assigning = false,
   ending = false,
 }: RoleAssignmentPanelProps) {
@@ -71,8 +56,8 @@ export function RoleAssignmentPanel({
     [roles],
   );
   const staff = useMemo(
-    () => staffOptions ?? staffOptionsFromAssignments(assignments),
-    [assignments, staffOptions],
+    () => [...staffOptions].sort((left, right) => left.label.localeCompare(right.label)),
+    [staffOptions],
   );
 
   const [staffMembershipId, setStaffMembershipId] = useState('');
@@ -87,7 +72,20 @@ export function RoleAssignmentPanel({
     () => assignableRoles.find((role) => String(role.id) === roleId) ?? null,
     [assignableRoles, roleId],
   );
+  const selectedRoleScopePolicy = selectedRole?.assignment_scope_policy;
+  const allowedScopeTypes = selectedRoleScopePolicy?.allowed_scope_types ?? EMPTY_SCOPE_TYPES;
+  const availableScopeTypes = useMemo(
+    () => SCOPE_TYPES.filter((scope) => allowedScopeTypes.includes(scope.value)),
+    [allowedScopeTypes],
+  );
   const selectedScopeRequiresObject = scopeType !== '' && scopeType !== 'WORKSPACE';
+  const selectedScopeTypeAllowed = Boolean(
+    scopeType && allowedScopeTypes.includes(scopeType),
+  );
+  const workspaceScopeRequiresConfirmation = Boolean(
+    scopeType === 'WORKSPACE'
+    && selectedRoleScopePolicy?.workspace_scope_requires_confirmation,
+  );
   const availableScopeOptions = useMemo(
     () => scopeOptions.filter((option) => option.scope_type === scopeType),
     [scopeOptions, scopeType],
@@ -96,36 +94,50 @@ export function RoleAssignmentPanel({
     staffMembershipId
     && roleId
     && reason.trim()
-    && scopeType
+    && selectedScopeTypeAllowed
     && (!selectedScopeRequiresObject || scopeObjectId)
-    && (scopeType !== 'WORKSPACE' || workspaceScopeConfirmed),
+    && !optionsLoading
+    && (!workspaceScopeRequiresConfirmation || workspaceScopeConfirmed),
   );
 
   const submitAssignment = async () => {
     const parsedMembershipId = Number(staffMembershipId);
     const parsedRoleId = Number(roleId);
     const parsedScopeObjectId = scopeType === 'WORKSPACE' ? null : Number(scopeObjectId);
+    const hasValidScopeObject = scopeType === 'WORKSPACE' || (
+      scopeObjectId !== ''
+      && typeof parsedScopeObjectId === 'number'
+      && Number.isInteger(parsedScopeObjectId)
+      && parsedScopeObjectId > 0
+    );
     if (
       !Number.isInteger(parsedMembershipId)
+      || parsedMembershipId <= 0
       || !Number.isInteger(parsedRoleId)
+      || parsedRoleId <= 0
       || !scopeType
-      || (scopeType !== 'WORKSPACE' && !Number.isInteger(parsedScopeObjectId))
+      || !allowedScopeTypes.includes(scopeType)
+      || !hasValidScopeObject
     ) {
       return;
     }
 
-    await onAssign({
-      membership_id: parsedMembershipId,
-      role_id: parsedRoleId,
-      assigned_reason: reason.trim(),
-      broad_scope_confirmed: scopeType === 'WORKSPACE' ? workspaceScopeConfirmed : false,
-      scopes: [
-        {
-          scope_type: scopeType,
-          scope_object_id: parsedScopeObjectId,
-        },
-      ],
-    });
+    try {
+      await onAssign({
+        membership_id: parsedMembershipId,
+        role_id: parsedRoleId,
+        assigned_reason: reason.trim(),
+        broad_scope_confirmed: workspaceScopeRequiresConfirmation ? workspaceScopeConfirmed : false,
+        scopes: [
+          {
+            scope_type: scopeType,
+            scope_object_id: parsedScopeObjectId,
+          },
+        ],
+      });
+    } catch {
+      return;
+    }
     setStaffMembershipId('');
     setRoleId('');
     setScopeType('');
@@ -150,10 +162,14 @@ export function RoleAssignmentPanel({
             value={staffMembershipId}
             onChange={(event) => setStaffMembershipId(event.target.value)}
             className="theme-input w-full rounded-lg px-4 py-2"
-            disabled={staff.length === 0}
+            disabled={optionsLoading || staff.length === 0}
           >
             <option value="">
-              {staff.length === 0 ? 'Staff directory not connected' : 'Select staff member'}
+              {optionsLoading
+                ? 'Loading assignment options...'
+                : staff.length === 0
+                  ? 'No assignable staff returned'
+                  : 'Select staff member'}
             </option>
             {staff.map((option) => (
               <option key={option.membership_id} value={option.membership_id}>
@@ -161,9 +177,9 @@ export function RoleAssignmentPanel({
               </option>
             ))}
           </select>
-          {staff.length === 0 ? (
+          {!optionsLoading && staff.length === 0 ? (
             <span className="theme-subtle mt-1 block text-xs">
-              Staff search is required before assigning a new staff member.
+              Assignment options must return staff before a new role can be assigned.
             </span>
           ) : null}
         </label>
@@ -172,7 +188,12 @@ export function RoleAssignmentPanel({
           <span className="mb-1 block font-medium theme-text">Role</span>
           <select
             value={roleId}
-            onChange={(event) => setRoleId(event.target.value)}
+            onChange={(event) => {
+              setRoleId(event.target.value);
+              setScopeType('');
+              setScopeObjectId('');
+              setWorkspaceScopeConfirmed(false);
+            }}
             className="theme-input w-full rounded-lg px-4 py-2"
           >
             <option value="">Select role</option>
@@ -194,9 +215,12 @@ export function RoleAssignmentPanel({
               setWorkspaceScopeConfirmed(false);
             }}
             className="theme-input w-full rounded-lg px-4 py-2"
+            disabled={!selectedRole || availableScopeTypes.length === 0}
           >
-            <option value="">Select scope</option>
-            {SCOPE_TYPES.map((scope) => (
+            <option value="">
+              {!selectedRole ? 'Select role first' : 'Select scope'}
+            </option>
+            {availableScopeTypes.map((scope) => (
               <option key={scope.value} value={scope.value}>
                 {scope.label}
               </option>
@@ -213,21 +237,23 @@ export function RoleAssignmentPanel({
             disabled={!selectedScopeRequiresObject || availableScopeOptions.length === 0}
           >
             <option value="">
-              {scopeType === 'WORKSPACE'
-                ? 'Workspace has no object'
-                : availableScopeOptions.length === 0
-                  ? 'Scope source not connected'
-                  : 'Select object'}
+              {!scopeType
+                ? 'Select scope type first'
+                : scopeType === 'WORKSPACE'
+                  ? 'Workspace has no object'
+                  : availableScopeOptions.length === 0
+                    ? 'No objects returned for this scope'
+                    : 'Select object'}
             </option>
             {availableScopeOptions.map((option) => (
               <option key={`${option.scope_type}:${option.id}`} value={option.id}>
-                {option.label}
+                {option.description ? `${option.label} - ${option.description}` : option.label}
               </option>
             ))}
           </select>
           {selectedScopeRequiresObject && availableScopeOptions.length === 0 ? (
             <span className="theme-subtle mt-1 block text-xs">
-              Connect a scope source before assigning this scoped role.
+              Assignment options did not return objects for this scope type.
             </span>
           ) : null}
         </label>
@@ -253,12 +279,17 @@ export function RoleAssignmentPanel({
           placeholder="Why this staff member needs this role and scope"
           required
         />
-        {selectedRole?.assignment_scope_policy ? (
-          <p className="theme-subtle text-xs">
-            Preferred scope: {selectedRole.assignment_scope_policy.preferred_scope_types.join(', ')}
-          </p>
+        {selectedRoleScopePolicy ? (
+          <div className="space-y-1">
+            <p className="theme-subtle text-xs">
+              Preferred scope: {selectedRoleScopePolicy.preferred_scope_types.join(', ')}
+            </p>
+            {selectedRoleScopePolicy.reason ? (
+              <p className="theme-subtle text-xs">{selectedRoleScopePolicy.reason}</p>
+            ) : null}
+          </div>
         ) : null}
-        {scopeType === 'WORKSPACE' ? (
+        {workspaceScopeRequiresConfirmation ? (
           <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />

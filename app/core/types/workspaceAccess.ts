@@ -20,6 +20,7 @@ export interface WorkspaceStaffOption {
   email: string;
   classification: string;
   status: string;
+  is_teaching_actor: boolean;
 }
 
 export interface WorkspaceScopeOption {
@@ -81,6 +82,11 @@ export interface WorkspaceRolePayload {
   name: string;
   description?: string;
   permission_keys?: string[];
+}
+
+export interface WorkspaceRoleAssignmentOptionsResponse {
+  staff_options: WorkspaceStaffOption[];
+  scope_options: WorkspaceScopeOption[];
 }
 
 export interface WorkspaceRoleAssignmentPayload {
