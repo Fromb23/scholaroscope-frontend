@@ -30,8 +30,12 @@ import {
 import { useAssessmentDetailPage } from '@/app/core/hooks/assessments/useAssessmentDetailPage';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
+import { useAuth } from '@/app/context/AuthContext';
+import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
 
 export function AssessmentDetailPage() {
+    const { capabilities } = useAuth();
+    const showInternalRequestActions = supportsInternalRequests(capabilities);
     const {
         assessmentId,
         assessment,
@@ -381,7 +385,7 @@ export function AssessmentDetailPage() {
                 </div>
             )}
 
-            {!isFinalized && !canScore && (
+            {!isFinalized && !canScore && showInternalRequestActions && (
                 <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
                     <p>This assessment is read-only for your account.</p>
                     <div className="flex flex-wrap gap-2">
@@ -425,7 +429,7 @@ export function AssessmentDetailPage() {
                 </div>
             )}
 
-            {isFinalized && !canReopen ? (
+            {isFinalized && !canReopen && showInternalRequestActions ? (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                     <ContextualApprovalRequestButton
                         intent={{

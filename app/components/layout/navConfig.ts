@@ -44,6 +44,10 @@ import {
   isSelfManagedTeachingWorkspace,
 } from '@/app/core/lib/workspaces';
 import { getAdminReportNavigationItems } from '../../core/components/reports/reportHierarchy';
+import {
+  supportsCustomRoles,
+  supportsInternalRequests,
+} from '@/app/core/lib/workspaceGovernance';
 
 export type { NavItem } from '@/app/core/registry/pluginNavigation';
 
@@ -217,7 +221,10 @@ export function getAdminNav(
     orgType,
     capabilities,
   });
-  const workspaceAccessNavItems: RegistryNavItem[] = capabilities?.authorization?.permission_keys.includes('workspace.roles.view')
+  const workspaceAccessNavItems: RegistryNavItem[] = (
+    supportsCustomRoles(capabilities)
+    && capabilities?.authorization?.permission_keys.includes('workspace.roles.view')
+  )
     ? [{ name: 'Workspace Roles', href: '/workspace-access/roles', icon: ShieldCheck }]
     : [];
 
@@ -508,7 +515,9 @@ export function getInstructorNav(
     secondary: [
       { name: 'Attendance Risk', href: '/reports/instructor/attendance-risk', icon: AlertCircle },
       ...getPluginNavigationItems('instructor.secondary.beforeSubmitRequest', pluginContext),
-      { name: 'Submit Request', href: '/requests/new', icon: FileText },
+      ...(supportsInternalRequests(pluginContext.capabilities)
+        ? [{ name: 'Submit Request', href: '/requests/new', icon: FileText }]
+        : []),
     ],
   };
 }

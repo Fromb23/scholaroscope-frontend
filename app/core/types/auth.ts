@@ -41,6 +41,19 @@ export interface EffectiveCapability {
   limit?: number | null;
 }
 
+export type WorkspaceGovernanceMode = 'SOLO_OWNER' | 'MANAGED_TEAM' | 'INVITED_SUPPORT';
+export type WorkspaceDefaultActionAuthority = 'DIRECT' | 'ROLE_DEPENDENT' | 'RELATIONSHIP_DEPENDENT';
+
+export interface WorkspaceGovernance {
+  mode: WorkspaceGovernanceMode;
+  supports_custom_roles: boolean;
+  supports_staff_management: boolean;
+  supports_announcements: boolean;
+  supports_internal_requests: boolean;
+  supports_internal_approvals: boolean;
+  default_action_authority: WorkspaceDefaultActionAuthority;
+}
+
 export interface WorkspaceCapabilities {
   can_teach: boolean;
   can_manage_academic_setup: boolean;
@@ -68,6 +81,7 @@ export interface WorkspaceCapabilities {
   };
   product_capabilities?: Record<string, EffectiveCapability>;
   effective_capabilities?: Record<string, EffectiveCapability>;
+  workspace_governance?: WorkspaceGovernance | null;
   authorization?: {
     enforced: boolean;
     permission_keys: string[];

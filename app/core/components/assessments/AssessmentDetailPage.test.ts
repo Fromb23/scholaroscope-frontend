@@ -41,4 +41,14 @@ describe('AssessmentDetailPage stage-oriented actions', () => {
     expect(source).toContain('Results finalized');
     expect(source).not.toContain('>Draft<');
   });
+
+  it('keeps ask-admin assessment flows behind backend workspace governance', () => {
+    const source = detailSource();
+
+    expect(source).toContain('supportsInternalRequests');
+    expect(source).toContain('showInternalRequestActions');
+    expect(source).toContain('!isFinalized && !canScore && showInternalRequestActions');
+    expect(source).toContain('isFinalized && !canReopen && showInternalRequestActions');
+    expect(source).toContain('Ask admin for late score entry');
+  });
 });

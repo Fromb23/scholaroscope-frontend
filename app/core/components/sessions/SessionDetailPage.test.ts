@@ -25,4 +25,13 @@ describe('SessionDetailPage attendance learner links', () => {
 
     expect(component).toContain('learnerHrefBuilder={buildAttendanceLearnerHref}');
   });
+
+  it('keeps session ask-admin actions behind backend workspace governance', () => {
+    const component = source();
+
+    expect(component).toContain('supportsInternalRequests');
+    expect(component).toContain('showInternalRequestActions');
+    expect(component).toContain('(!canCreateTeachingRecords || isCompleted) && showInternalRequestActions');
+    expect(component).toContain('Ask admin to reschedule');
+  });
 });

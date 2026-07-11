@@ -25,4 +25,10 @@ describe('cohort subject learner links', () => {
     expect(source).toContain('buildLearnerSubjectReportHref');
     expect(source).toContain('{ returnTo: currentReturnTo }');
   });
+
+  it('shows instructor-to-admin learner requests only when workspace governance supports them', () => {
+    expect(source).toContain('supportsInternalRequests');
+    expect(source).toContain('instructorView && showInternalRequestActions');
+    expect(source).toContain('Ask admin to add learner');
+  });
 });

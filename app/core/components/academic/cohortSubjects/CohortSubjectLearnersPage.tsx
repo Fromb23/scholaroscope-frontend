@@ -5,6 +5,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Users, UserPlus, UserMinus, X } from 'lucide-react';
 import { useAuth } from '@/app/context/AuthContext';
+import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
 import {
     bulkEnrollCohortSubjectLearners,
     bulkUnenrollCohortSubjectLearners,
@@ -74,6 +75,7 @@ export default function CohortSubjectLearnersPage() {
     const queryClient = useQueryClient();
     const { user, activeRole, activeOrg, capabilities, loading: authLoading } = useAuth();
     const instructorView = hasInstructorRole(activeRole);
+    const showInternalRequestActions = supportsInternalRequests(capabilities);
     const canManageLearners = isAdminOrAbove(user, activeRole);
     const instructorAccess = useInstructorCohortAccess({ enabled: instructorView });
 
@@ -377,7 +379,7 @@ export default function CohortSubjectLearnersPage() {
                 </div>
             ) : null}
 
-            {instructorView ? (
+            {instructorView && showInternalRequestActions ? (
                 <Card>
                     <div className="flex flex-wrap gap-2">
                         <ContextualApprovalRequestButton

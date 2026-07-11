@@ -66,6 +66,15 @@ const freelanceCapabilities: WorkspaceCapabilities = {
   is_workspace_owner: true,
   workspace_mode: 'PERSONAL',
   workspace_behavior: 'FREELANCE_TEACHER',
+  workspace_governance: {
+    mode: 'SOLO_OWNER',
+    supports_custom_roles: false,
+    supports_staff_management: false,
+    supports_announcements: false,
+    supports_internal_requests: false,
+    supports_internal_approvals: false,
+    default_action_authority: 'DIRECT',
+  },
 };
 
 function buildLoadContext(overrides: Partial<PluginLoadContext> = {}): PluginLoadContext {
@@ -154,7 +163,7 @@ describe('selective plugin loading manifest', () => {
 
     expect(institutionIds).toContain('requests');
     expect(institutionIds).toContain('announcements');
-    expect(freelanceIds).toContain('requests');
+    expect(freelanceIds).not.toContain('requests');
     expect(freelanceIds).not.toContain('announcements');
     expect(freelanceIds).not.toContain('schemes');
     expect(schemesIds).toContain('schemes');
@@ -258,6 +267,19 @@ describe('selective plugin loading manifest', () => {
     });
 
     expect(ids).not.toContain('requests');
+  });
+
+  it('does not load internal request or announcement plugins when governance says unsupported', () => {
+    const ids = selectedIds({
+      pathname: '/requests/new',
+      capabilities: {
+        ...baseCapabilities,
+        workspace_governance: freelanceCapabilities.workspace_governance,
+      },
+    });
+
+    expect(ids).not.toContain('requests');
+    expect(ids).not.toContain('announcements');
   });
 
   it('does not let route matching override explicit disabled capability', () => {

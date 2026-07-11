@@ -29,6 +29,36 @@ const pluginContext = {
   hasAnyReportPolicySurface: false,
 };
 
+const soloGovernanceCapabilities = {
+  can_teach: true,
+  can_manage_academic_setup: true,
+  can_manage_learners: true,
+  can_manage_cohorts: true,
+  can_manage_subjects: true,
+  can_manage_assessments: true,
+  can_view_reports: true,
+  can_manage_staff: false,
+  is_workspace_owner: true,
+  workspace_mode: 'PERSONAL',
+  workspace_behavior: 'FREELANCE_TEACHER',
+  workspace_governance: {
+    mode: 'SOLO_OWNER' as const,
+    supports_custom_roles: false,
+    supports_staff_management: false,
+    supports_announcements: false,
+    supports_internal_requests: false,
+    supports_internal_approvals: false,
+    default_action_authority: 'DIRECT' as const,
+  },
+  authorization: {
+    enforced: true,
+    permission_keys: ['workspace.roles.view'],
+    roles: [],
+    admin_slots: null,
+    migration_state: null,
+  },
+};
+
 let getAdminNav: typeof import('./navConfig').getAdminNav;
 let getInstructorNav: typeof import('./navConfig').getInstructorNav;
 let resolveMobilePrimaryNav: typeof import('./navConfig').resolveMobilePrimaryNav;
@@ -275,6 +305,12 @@ describe('admin navigation config', () => {
     expect(nav.secondary?.map((item) => item.name)).toEqual(['Settings']);
   });
 
+  it('hides workspace role management when governance marks it not applicable', () => {
+    const nav = getAdminNav(pluginContext, 'PERSONAL', null, soloGovernanceCapabilities);
+
+    expect(nav.secondary?.map((item) => item.name)).not.toContain('Workspace Roles');
+  });
+
   it('prioritizes institution admin mobile navigation for daily oversight', () => {
     const nav = getAdminNav(pluginContext, 'INSTITUTION');
 
@@ -322,6 +358,15 @@ describe('admin navigation config', () => {
       'Lessons',
       'Assess',
     ]);
+  });
+
+  it('hides instructor internal request navigation when governance marks it not applicable', () => {
+    const nav = getInstructorNav({
+      ...pluginContext,
+      capabilities: soloGovernanceCapabilities,
+    }, 'TEACHING');
+
+    expect(nav.secondary?.map((item) => item.name)).not.toContain('Submit Request');
   });
 
 });
