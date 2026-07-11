@@ -1,5 +1,6 @@
 import { apiClient } from '@/app/core/api/client';
 import { downloadBlob, getDownloadFileName, normalizeBlobError } from '@/app/core/api/downloads';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type {
   GenerateSchemePayload,
   SchemeEntry,
@@ -39,7 +40,7 @@ async function downloadSchemeFile(
 export const schemesAPI = {
   listSchemes: async (params?: SchemeListQueryParams): Promise<SchemeListResponse> => {
     const response = await apiClient.get<SchemeListResponse>(`${SCHEMES_BASE_PATH}/`, {
-      params,
+      params: withOperationalScope(params),
     });
     return response.data;
   },

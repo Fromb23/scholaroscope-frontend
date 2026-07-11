@@ -3,6 +3,10 @@
 import type { ActiveOrg, Role, WorkspaceCapabilities } from '@/app/core/types/auth';
 import { isSelfManagedTeachingWorkspace } from '@/app/core/lib/workspaces';
 import { getProductCapability } from '@/app/core/lib/productCapabilities';
+import {
+  supportsAnnouncements,
+  supportsInternalRequests,
+} from '@/app/core/lib/workspaceGovernance';
 
 export type PluginId = 'cbc' | 'cambridge' | 'announcements' | 'requests' | 'schemes' | 'themes';
 
@@ -134,6 +138,7 @@ export const pluginManifest: PluginManifestEntry[] = [
       'instructor.secondary.beforeSubmitRequest',
     ],
     shouldLoad: (context) => {
+      if (!supportsAnnouncements(context.capabilities)) return false;
       const resolved = shouldLoadFromResolvedCapability(context, 'announcements');
       if (resolved !== null) return resolved;
       return routeMatches(context, pluginManifestById.announcements)
@@ -155,6 +160,7 @@ export const pluginManifest: PluginManifestEntry[] = [
       'instructor.primary.afterMySessions',
     ],
     shouldLoad: (context) => {
+      if (!supportsInternalRequests(context.capabilities)) return false;
       const resolved = shouldLoadFromResolvedCapability(context, 'requests');
       if (resolved !== null) return resolved;
       return routeMatches(context, pluginManifestById.requests)

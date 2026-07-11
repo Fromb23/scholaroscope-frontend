@@ -59,7 +59,9 @@ export const usePlugins = (options: UsePluginsOptions = {}): UsePluginsReturn =>
     useEffect(() => { fetch(); }, [fetch]);
 
     const hasPlugin = useCallback(
-        (key: string): boolean => plugins.some(p => p.key === key && (p.state === 'active' || p.is_active)),
+        (key: string): boolean => plugins.some(p => (
+            p.key === key && (p.effective_enabled ?? (p.state === 'active' || p.is_active))
+        )),
         [plugins]
     );
 

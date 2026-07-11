@@ -42,12 +42,11 @@ import {
 import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import type { AcademicSetupStatus, Curriculum, CurriculumDisableRequest } from '@/app/core/types/academic';
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
-import { useOrganizationContext } from '@/app/context/OrganizationContext';
 import { useAuth } from '@/app/context/AuthContext';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import {
     CurriculumCatalogDetail, InstalledPlugin,
-    SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
+    PluginManagementContract, SubjectSelection, CurriculumTopicEntry, CurriculumSubtopicEntry,
 } from '@/app/core/types/plugins';
 import { pluginModalSlots } from '@/app/core/registry/pluginModalSlots';
 
@@ -165,6 +164,146 @@ function getAcademicYearSetupHref(setupStatus: AcademicSetupStatus | null | unde
     }
 
     return '/academic/years?setup=1&create=1';
+}
+
+type FeatureGroupKey = 'included' | 'premium' | 'integrations' | 'metered';
+
+interface FeatureGroup {
+    key: FeatureGroupKey;
+    title: string;
+    description: string;
+}
+
+const FEATURE_GROUPS: FeatureGroup[] = [
+    {
+        key: 'included',
+        title: 'Included features',
+        description: 'Available in this workspace through Scholaroscope policy.',
+    },
+    {
+        key: 'premium',
+        title: 'Premium features',
+        description: 'Subscription-backed capabilities and curriculum workflows.',
+    },
+    {
+        key: 'integrations',
+        title: 'Integrations',
+        description: 'External connections and configuration surfaces.',
+    },
+    {
+        key: 'metered',
+        title: 'Metered capabilities',
+        description: 'Usage-based features with allowance or renewal information.',
+    },
+];
+
+const POLICY_LABELS: Record<string, string> = {
+    PLATFORM_DEFAULT: 'Included with every Scholaroscope workspace',
+    WORKSPACE_STANDARD: 'Included in this workspace',
+    PREMIUM: 'Premium feature',
+    METERED: 'Metered capability',
+    EXTERNAL_INTEGRATION: 'Integration',
+    OVERRIDE: 'Workspace override',
+    NOT_APPLICABLE: 'Not available for this workspace',
+};
+
+const MANAGEMENT_LABELS: Record<PluginManagementContract['action_mode'], string> = {
+    READ_ONLY: 'Managed by Scholaroscope',
+    CONFIGURE_ONLY: 'Configurable',
+    TOGGLE: 'Workspace controlled',
+    CURRICULUM_LIFECYCLE: 'Curriculum lifecycle',
+    EXTERNAL_CONNECTION: 'Connection settings',
+    SUBSCRIPTION_MANAGED: 'Subscription managed',
+    METERED_STATUS: 'Usage tracked',
+};
+
+function hasConfigSchema(plugin: InstalledPlugin): boolean {
+    return Object.keys(plugin.config_schema ?? {}).length > 0;
+}
+
+function getPluginManagement(plugin: InstalledPlugin): PluginManagementContract {
+    if (plugin.management) {
+        return plugin.management;
+    }
+
+    const required = Boolean(plugin.required_by_policy || plugin.default_enabled_by_policy);
+    const configurable = hasConfigSchema(plugin);
+
+    return {
+        authority: required ? 'WORKSPACE_POLICY' : 'WORKSPACE_CONFIGURATION',
+        action_mode: configurable && required ? 'CONFIGURE_ONLY' : 'TOGGLE',
+        can_toggle: !required,
+        can_configure: configurable,
+        can_uninstall: false,
+        can_manage_curriculum: isCurriculumPlugin(plugin),
+        can_manage_subject_offerings: isCurriculumPlugin(plugin),
+        can_view_subscription: plugin.policy_classification === 'PREMIUM',
+        blocked_reason: required
+            ? 'Included with this workspace and managed by Scholaroscope policy.'
+            : null,
+    };
+}
+
+function getEffectivePluginEnabled(plugin: InstalledPlugin): boolean {
+    return plugin.effective_enabled ?? (plugin.state === 'active' || plugin.is_active);
+}
+
+function shouldShowPlugin(plugin: InstalledPlugin): boolean {
+    const management = getPluginManagement(plugin);
+
+    return plugin.policy_classification !== 'NOT_APPLICABLE' && management.authority !== 'NONE';
+}
+
+function getPluginPolicyLabel(plugin: InstalledPlugin): string {
+    return POLICY_LABELS[plugin.policy_classification ?? 'WORKSPACE_STANDARD'] ?? 'Workspace feature';
+}
+
+function getFeatureGroupKey(plugin: InstalledPlugin): FeatureGroupKey {
+    const management = getPluginManagement(plugin);
+
+    if (management.action_mode === 'EXTERNAL_CONNECTION' || plugin.policy_classification === 'EXTERNAL_INTEGRATION') {
+        return 'integrations';
+    }
+
+    if (management.action_mode === 'METERED_STATUS' || plugin.policy_classification === 'METERED') {
+        return 'metered';
+    }
+
+    if (
+        management.action_mode === 'CURRICULUM_LIFECYCLE'
+        || management.action_mode === 'SUBSCRIPTION_MANAGED'
+        || management.authority === 'SUBSCRIPTION'
+        || management.authority === 'SUBSCRIPTION_AND_LIFECYCLE'
+        || plugin.policy_classification === 'PREMIUM'
+    ) {
+        return 'premium';
+    }
+
+    return 'included';
+}
+
+function getConfigureActionLabel(plugin: InstalledPlugin, management: PluginManagementContract): string {
+    if (management.action_mode === 'EXTERNAL_CONNECTION') {
+        return getEffectivePluginEnabled(plugin) ? 'Reconnect' : 'Connect';
+    }
+
+    if (plugin.key === 'themes') {
+        return 'Customize appearance';
+    }
+
+    return 'Configure';
+}
+
+function getConfigureHref(plugin: InstalledPlugin, management: PluginManagementContract): string | null {
+    if (!management.can_configure) {
+        return null;
+    }
+
+    if (plugin.key === 'themes') {
+        return '/admin/settings?tab=general';
+    }
+
+    return null;
 }
 
 // ── FeedbackBanner ────────────────────────────────────────────────────────
@@ -545,10 +684,16 @@ export function InstalledPluginCard({
     const [curriculumOpen, setCurriculumOpen] = useState(false);
     const [disableWorkflowOpen, setDisableWorkflowOpen] = useState(false);
     const [modalKey, setModalKey] = useState(0);
+    const management = getPluginManagement(plugin);
     const isCurriculumManagedPlugin = isCurriculumPlugin(plugin) && Boolean(curriculum);
-    const isActive = plugin.state === 'active' || plugin.is_active;
+    const isActive = getEffectivePluginEnabled(plugin);
+    const isInstalledActive = plugin.state === 'active' || plugin.is_active;
     const PluginModal = pluginModalSlots[plugin.key] ?? null;
     const showLifecycleStatus = Boolean(curriculum && isCurriculumManagedPlugin);
+    const policyLabel = getPluginPolicyLabel(plugin);
+    const managementLabel = MANAGEMENT_LABELS[management.action_mode];
+    const configureHref = getConfigureHref(plugin, management);
+    const configureLabel = getConfigureActionLabel(plugin, management);
     const canStartDisableWorkflow = canStartNewDisableRequest({
         isEnabled: Boolean(isActive && plugin.is_available && curriculum?.is_active && curriculum.offering_status === 'ACTIVE'),
         activeDisableRequestStatus: activeDisableRequest?.status ?? null,
@@ -562,6 +707,25 @@ export function InstalledPluginCard({
         activeDisableRequestStatus: activeDisableRequest?.status ?? null,
         latestDisableRequestStatus: latestDisableRequest?.status ?? null,
     });
+    const canOpenCurriculumModal = Boolean(
+        PluginModal
+        && management.can_manage_curriculum
+        && canManagePluginCurriculum
+    );
+    const canShowSubjectOfferings = Boolean(curriculum && management.can_manage_subject_offerings);
+    const canOpenPluginConfiguration = Boolean(
+        PluginModal
+        && management.can_configure
+        && !isCurriculumManagedPlugin
+    );
+    const canUseCurriculumLifecycle = Boolean(
+        isCurriculumManagedPlugin
+        && (
+            management.action_mode === 'CURRICULUM_LIFECYCLE'
+            || management.can_manage_curriculum
+            || management.can_manage_subject_offerings
+        )
+    );
     const manageCurriculumHelperText = getCurriculumPluginManagementBlockMessage({
         pluginActive: isActive,
         pluginAvailable: plugin.is_available,
@@ -601,7 +765,16 @@ export function InstalledPluginCard({
     })();
 
     const openCurriculum = () => {
-        if (!PluginModal || !canManagePluginCurriculum) {
+        if (!canOpenCurriculumModal) {
+            return;
+        }
+
+        setModalKey(k => k + 1);
+        setCurriculumOpen(true);
+    };
+
+    const openPluginConfiguration = () => {
+        if (!canOpenPluginConfiguration) {
             return;
         }
 
@@ -633,7 +806,9 @@ export function InstalledPluginCard({
                         <div className="mb-1 flex flex-wrap items-center gap-2">
                             <h3 className="break-words text-sm font-semibold text-gray-900">{plugin.name}</h3>
                             <Badge variant="default" size="sm" className="max-w-full break-all font-mono">{plugin.version}</Badge>
-                            {plugin.is_core && <Badge variant="info" size="sm">Core</Badge>}
+                            <Badge variant={plugin.policy_classification === 'PREMIUM' ? 'purple' : 'info'} size="sm">
+                                {policyLabel}
+                            </Badge>
                             {showLifecycleStatus ? (
                                 <CurriculumLifecycleBadge status={curriculum?.offering_status} />
                             ) : (
@@ -641,9 +816,35 @@ export function InstalledPluginCard({
                                     ? <Badge variant="green" size="sm">Active</Badge>
                                     : <Badge variant="default" size="sm">Inactive</Badge>
                             )}
+                            {plugin.entitled === false ? (
+                                <Badge variant="warning" size="sm">Not entitled</Badge>
+                            ) : null}
+                            {plugin.entitlement_ends_at ? (
+                                <Badge variant="default" size="sm">
+                                    Entitlement ends {formatDate(plugin.entitlement_ends_at)}
+                                </Badge>
+                            ) : null}
                         </div>
                         <p className="max-w-md break-words text-xs text-gray-500">{plugin.description}</p>
-                        <p className="mt-1 break-all text-xs text-gray-400 font-mono">key: {plugin.key}</p>
+                        <div className="mt-2 space-y-1 text-xs text-gray-500">
+                            <p>{managementLabel}</p>
+                            {isActive && !isInstalledActive ? (
+                                <p>Enabled by workspace policy.</p>
+                            ) : null}
+                            {!isActive && isInstalledActive ? (
+                                <p>Installed, but not currently usable under workspace policy.</p>
+                            ) : null}
+                            {management.can_view_subscription || plugin.entitlement_source ? (
+                                <p>
+                                    Subscription status: {plugin.entitlement_source?.replace(/_/g, ' ').toLowerCase() ?? 'managed by subscription'}
+                                </p>
+                            ) : null}
+                            {management.blocked_reason ? (
+                                <p className="theme-warning-surface rounded-lg px-3 py-2 theme-text">
+                                    {management.blocked_reason}
+                                </p>
+                            ) : null}
+                        </div>
                         {curriculum ? (
                             <div className="mt-2 space-y-1">
                                 <p className="break-words text-xs text-gray-600">
@@ -683,7 +884,7 @@ export function InstalledPluginCard({
                             </div>
                         ) : (
                             <div className="mt-2 flex flex-wrap gap-3">
-                                {PluginModal && canManagePluginCurriculum && !shouldSuppressCurriculumManagement ? (
+                                {canOpenCurriculumModal && !shouldSuppressCurriculumManagement ? (
                                     <button
                                         onClick={openCurriculum}
                                         className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
@@ -693,7 +894,7 @@ export function InstalledPluginCard({
                                         <ChevronRight className="h-3 w-3" />
                                     </button>
                                 ) : null}
-                                {curriculum && !shouldSuppressCurriculumManagement ? (
+                                {curriculum && canShowSubjectOfferings && !shouldSuppressCurriculumManagement ? (
                                     <NextLink
                                         href={`/academic/subjects?setup=1&curriculum=${curriculum.id}`}
                                         className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
@@ -705,16 +906,16 @@ export function InstalledPluginCard({
                             </div>
                         )}
 
-                        {PluginModal && !canManagePluginCurriculum && manageCurriculumHelperText ? (
+                        {PluginModal && management.can_manage_curriculum && !canManagePluginCurriculum && manageCurriculumHelperText ? (
                             <div className="theme-warning-surface mt-3 rounded-lg px-3 py-2 text-xs theme-text">
                                 {manageCurriculumHelperText}
                             </div>
                         ) : null}
                     </div>
                 </div>
-                {!plugin.is_core ? (
-                    isCurriculumManagedPlugin ? (
-                        <div className="flex w-full shrink-0 items-center gap-2 sm:ml-4 sm:w-auto">
+                <div className="flex w-full shrink-0 flex-col gap-2 sm:ml-4 sm:w-auto sm:items-end">
+                    {canUseCurriculumLifecycle && management.can_manage_curriculum ? (
+                        <div className="flex w-full items-center gap-2 sm:w-auto">
                             <Button
                                 size="sm"
                                 variant={curriculum?.offering_status === 'DISABLED' ? 'secondary' : 'primary'}
@@ -724,19 +925,43 @@ export function InstalledPluginCard({
                                 {workflowButtonLabel}
                             </Button>
                         </div>
-                    ) : (
+                    ) : null}
+                    {canOpenPluginConfiguration ? (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={openPluginConfiguration}
+                            className="w-full sm:w-auto"
+                        >
+                            {configureLabel}
+                        </Button>
+                    ) : null}
+                    {configureHref && !canOpenPluginConfiguration ? (
+                        <NextLink href={configureHref} className="w-full sm:w-auto">
+                            <Button size="sm" variant="secondary" className="w-full sm:w-auto">
+                                {configureLabel}
+                            </Button>
+                        </NextLink>
+                    ) : null}
+                    {management.can_toggle ? (
                         <button
                             onClick={() => onToggle(plugin.id)}
-                            disabled={toggling}
-                            className={`ml-auto shrink-0 rounded-lg p-2 transition-colors ${isActive
+                            disabled={toggling || !plugin.is_available}
+                            aria-label={`${isActive ? 'Disable' : 'Enable'} ${plugin.name}`}
+                            className={`ml-auto shrink-0 rounded-lg p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isActive
                                 ? 'text-gray-400 hover:bg-red-50 hover:text-red-600'
                                 : 'text-gray-400 hover:bg-green-50 hover:text-green-600'
                                 }`}
                         >
                             {isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                         </button>
-                    )
-                ) : null}
+                    ) : null}
+                    {!canUseCurriculumLifecycle && !canOpenPluginConfiguration && !configureHref && !management.can_toggle ? (
+                        <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500">
+                            No workspace action
+                        </span>
+                    ) : null}
+                </div>
             </div>
 
             {PluginModal && (
@@ -778,14 +1003,11 @@ export function PluginsTab() {
         isLoading: disableRequestsLoading,
         refetch: refetchDisableRequests,
     } = useCurriculumDisableRequests();
-    const { activeOrg } = useAuth();
-    const { organizationId } = useOrganizationContext();
     const [toggling, setToggling] = useState(false);
     const [localPlugins, setLocalPlugins] = useState<InstalledPlugin[]>([]);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [highlightedPluginKey, setHighlightedPluginKey] = useState<string | null>(null);
     const pluginCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-    const scopedOrganizationId = organizationId ?? activeOrg?.id ?? null;
     const pluginQuery = searchParams.get('plugin')?.trim().toLowerCase() ?? '';
     const curriculumQuery = searchParams.get('curriculum') ?? '';
     const academicYearSetupHref = getAcademicYearSetupHref(setupStatusQuery.data);
@@ -875,23 +1097,11 @@ export function PluginsTab() {
         try {
             const response = await pluginAPI.toggle(id);
             const updatedPlugin = 'installed_plugin' in response ? response.installed_plugin : response;
-            console.debug('[PluginsTab.toggle] toggled', {
-                id,
-                organizationId: scopedOrganizationId,
-                returned: {
-                    id: updatedPlugin.id,
-                    is_active: updatedPlugin.is_active,
-                    state: updatedPlugin.state,
-                    organization: updatedPlugin.organization,
-                },
-            });
             setLocalPlugins(prev => prev.map(plugin => (
                 plugin.id === id ? updatedPlugin : plugin
             )));
-            await refetch();
-            await refetchDisableRequests();
+            await Promise.all([refetch(), refetchDisableRequests()]);
             flash('success', 'installed_plugin' in response ? response.detail : 'Plugin updated.');
-            window.location.reload();
         } catch (err) {
             flash('error', extractErrorMessage(err as ApiError, 'Failed to update plugin.'));
         } finally { setToggling(false); }
@@ -901,10 +1111,55 @@ export function PluginsTab() {
         await Promise.all([refetch(), refetchDisableRequests()]);
     };
 
-    const corePlugins = localPlugins.filter(p => p.is_core);
-    const optionalPlugins = localPlugins.filter(p => !p.is_core);
+    const featureGroups = useMemo(() => (
+        FEATURE_GROUPS.map((group) => ({
+            ...group,
+            plugins: localPlugins.filter((plugin) => (
+                shouldShowPlugin(plugin) && getFeatureGroupKey(plugin) === group.key
+            )),
+        })).filter((group) => group.plugins.length > 0)
+    ), [localPlugins]);
 
-    if (loading || disableRequestsLoading) return <LoadingSpinner fullScreen={false} message="Loading plugins..." />;
+    const renderPluginCard = (p: InstalledPlugin) => {
+        const curriculum = curriculumByPluginId.get(p.id) ?? null;
+        const isCurriculumManagedPlugin = isCurriculumPlugin(p) && Boolean(curriculum);
+        const isActive = getEffectivePluginEnabled(p);
+        const shouldSuppressCurriculumManagement = Boolean(
+            academicSetupMode
+            && setupIncomplete
+            && isCurriculumManagedPlugin
+        );
+        const shouldShowAcademicYearHandoff = Boolean(
+            shouldSuppressCurriculumManagement
+            && setupStatus?.current_step === 'ACADEMIC_YEAR'
+            && setupStatus.has_current_academic_year === false
+            && isActive
+            && curriculum?.is_active
+            && curriculum.offering_status === 'ACTIVE'
+        );
+
+        return (
+            <InstalledPluginCard
+                key={p.id}
+                plugin={p}
+                curriculum={curriculum}
+                activeDisableRequest={curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
+                latestDisableRequest={curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
+                shouldShowAcademicYearHandoff={shouldShowAcademicYearHandoff}
+                shouldSuppressCurriculumManagement={shouldSuppressCurriculumManagement}
+                academicYearSetupHref={academicYearSetupHref}
+                onToggle={handleToggle}
+                onWorkflowChanged={handleWorkflowChanged}
+                toggling={toggling}
+                highlighted={highlightedPluginKey === p.key}
+                containerRef={(node) => {
+                    pluginCardRefs.current[p.key] = node;
+                }}
+            />
+        );
+    };
+
+    if (loading || disableRequestsLoading) return <LoadingSpinner fullScreen={false} message="Loading features..." />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
 
     return (
@@ -917,107 +1172,29 @@ export function PluginsTab() {
                 </NextLink>
             ) : null}
 
-            <div>
-                <div className="mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">Core Plugins</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Auto-installed. Cannot be deactivated.</p>
-                </div>
-                <div className="space-y-2">
-                    {corePlugins.length === 0
-                        ? <p className="text-sm text-gray-400 py-4 text-center">No core plugins</p>
-                        : corePlugins.map(p => {
-                            const curriculum = curriculumByPluginId.get(p.id) ?? null;
-                            const isCurriculumManagedPlugin = isCurriculumPlugin(p) && Boolean(curriculum);
-                            const isActive = p.state === 'active' || p.is_active;
-                            const shouldSuppressCurriculumManagement = Boolean(
-                                academicSetupMode
-                                && setupIncomplete
-                                && isCurriculumManagedPlugin
-                            );
-                            const shouldShowAcademicYearHandoff = Boolean(
-                                shouldSuppressCurriculumManagement
-                                && setupStatus?.current_step === 'ACADEMIC_YEAR'
-                                && setupStatus.has_current_academic_year === false
-                                && isActive
-                                && curriculum?.is_active
-                                && curriculum.offering_status === 'ACTIVE'
-                            );
-
-                            return (
-                                <InstalledPluginCard
-                                    key={p.id}
-                                    plugin={p}
-                                    curriculum={curriculum}
-                                    activeDisableRequest={curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
-                                    latestDisableRequest={curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
-                                    shouldShowAcademicYearHandoff={shouldShowAcademicYearHandoff}
-                                    shouldSuppressCurriculumManagement={shouldSuppressCurriculumManagement}
-                                    academicYearSetupHref={academicYearSetupHref}
-                                    onToggle={handleToggle}
-                                    onWorkflowChanged={handleWorkflowChanged}
-                                    toggling={toggling}
-                                    highlighted={highlightedPluginKey === p.key}
-                                    containerRef={(node) => {
-                                        pluginCardRefs.current[p.key] = node;
-                                    }}
-                                />
-                            );
-                        })
-                    }
-                </div>
+            <div className="space-y-1">
+                <h2 className="text-lg font-semibold text-gray-900">Features & integrations</h2>
+                <p className="text-sm text-gray-500">
+                    Availability and management actions come from the workspace policy.
+                </p>
             </div>
 
-            <div>
-                <div className="mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900">Optional Plugins</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Activate or deactivate as needed.</p>
+            {featureGroups.length === 0 ? (
+                <div className="py-8 text-center border border-dashed border-gray-200 rounded-xl">
+                    <Puzzle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No manageable features are available for this workspace.</p>
                 </div>
-                <div className="space-y-2">
-                    {optionalPlugins.length === 0 ? (
-                        <div className="py-8 text-center border border-dashed border-gray-200 rounded-xl">
-                            <Puzzle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                            <p className="text-sm text-gray-500">No optional plugins installed.</p>
-                        </div>
-                    ) : optionalPlugins.map(p => {
-                        const curriculum = curriculumByPluginId.get(p.id) ?? null;
-                        const isCurriculumManagedPlugin = isCurriculumPlugin(p) && Boolean(curriculum);
-                        const isActive = p.state === 'active' || p.is_active;
-                        const shouldSuppressCurriculumManagement = Boolean(
-                            academicSetupMode
-                            && setupIncomplete
-                            && isCurriculumManagedPlugin
-                        );
-                        const shouldShowAcademicYearHandoff = Boolean(
-                            shouldSuppressCurriculumManagement
-                            && setupStatus?.current_step === 'ACADEMIC_YEAR'
-                            && setupStatus.has_current_academic_year === false
-                            && isActive
-                            && curriculum?.is_active
-                            && curriculum.offering_status === 'ACTIVE'
-                        );
-
-                        return (
-                            <InstalledPluginCard
-                                key={p.id}
-                                plugin={p}
-                                curriculum={curriculum}
-                                activeDisableRequest={curriculum ? activeDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
-                                latestDisableRequest={curriculum ? latestDisableRequestByCurriculumId.get(curriculum.id) ?? null : null}
-                                shouldShowAcademicYearHandoff={shouldShowAcademicYearHandoff}
-                                shouldSuppressCurriculumManagement={shouldSuppressCurriculumManagement}
-                                academicYearSetupHref={academicYearSetupHref}
-                                onToggle={handleToggle}
-                                onWorkflowChanged={handleWorkflowChanged}
-                                toggling={toggling}
-                                highlighted={highlightedPluginKey === p.key}
-                                containerRef={(node) => {
-                                    pluginCardRefs.current[p.key] = node;
-                                }}
-                            />
-                        );
-                    })}
-                </div>
-            </div>
+            ) : featureGroups.map((group) => (
+                <section key={group.key}>
+                    <div className="mb-3">
+                        <h3 className="text-sm font-semibold text-gray-900">{group.title}</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">{group.description}</p>
+                    </div>
+                    <div className="space-y-2">
+                        {group.plugins.map(renderPluginCard)}
+                    </div>
+                </section>
+            ))}
         </div>
     );
 }

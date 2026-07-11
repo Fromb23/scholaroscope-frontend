@@ -18,6 +18,14 @@ const commercialSectionSource = readFileSync(
   join(process.cwd(), 'app/core/components/public/CommercialSection.tsx'),
   'utf8',
 );
+const getStartedPageSource = readFileSync(
+  join(process.cwd(), 'app/get-started/page.tsx'),
+  'utf8',
+);
+const getStartedComponentSource = readFileSync(
+  join(process.cwd(), 'app/core/components/commercial/PublicGetStartedPage.tsx'),
+  'utf8',
+);
 const commercialApiSource = readFileSync(
   join(process.cwd(), 'app/core/api/commercialCatalog.ts'),
   'utf8',
@@ -38,6 +46,8 @@ const headerSource = readFileSync(
 describe('commercial onboarding contract', () => {
   it('loads public rate cards from the backend and quotes before registration', () => {
     expect(landingSource).toContain('<CommercialSection');
+    expect(getStartedPageSource).toContain('<PublicGetStartedPage');
+    expect(getStartedComponentSource).toContain('<CommercialRateCards');
     expect(commercialApiSource).toContain("'/subscriptions/catalog/'");
     expect(commercialApiSource).toContain("'/subscriptions/catalog/quote/'");
     expect(commercialSource).toContain('Start with Standard and add only the premium curriculum or specialist capabilities you need.');
@@ -45,15 +55,22 @@ describe('commercial onboarding contract', () => {
     expect(commercialSource).not.toContain('total =');
   });
 
-  it('keeps the public commercial experience catalogue-led and quote-authoritative', () => {
-    expect(commercialSource).toContain('Choose the workspace that fits how you teach');
-    expect(commercialSource).toContain('Every published workspace starts with Standard.');
+  it('keeps public landing marketing separate from the detailed plan flow', () => {
+    expect(commercialSectionSource).toContain('href="/get-started"');
+    expect(commercialSectionSource).not.toContain('CommercialRateCards');
+    expect(commercialSectionSource).toContain('Pick the workspace first, then compare plans');
+    expect(commercialSource).toContain('Get started with the right workspace');
+    expect(commercialSource).toContain('1. Choose workspace type');
+    expect(commercialSource).toContain('2. Compare Standard and Premium');
+    expect(commercialSource).toContain('3. Choose premium capabilities');
+    expect(commercialSource.indexOf('1. Choose workspace type')).toBeLessThan(
+      commercialSource.indexOf('2. Compare Standard and Premium'),
+    );
     expect(commercialSource).toContain('workspaceTypes.map');
-    expect(commercialSource).not.toContain('KES 15000.00');
+    expect(commercialSource).not.toMatch(/KES\s?\d/);
+    expect(commercialSource).not.toMatch(/price\s*=\s*['"`]\d/);
     expect(commercialSummarySource).toContain("quote ? formatMoney(quote.total, quote.currency) : 'Confirm quote'");
     expect(commercialSummarySource).not.toContain('premiumTotal');
-    expect(commercialSectionSource).toContain('How activation works');
-    expect(commercialSectionSource).toContain('Only active public plans are shown.');
     expect(moneySource).toContain('Intl.NumberFormat');
     expect(moneySource).toContain('minimumFractionDigits: hasFraction ? 2 : 0');
   });

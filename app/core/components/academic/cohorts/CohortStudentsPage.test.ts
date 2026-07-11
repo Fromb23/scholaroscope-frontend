@@ -17,4 +17,12 @@ describe('cohort class learner links', () => {
   it('uses class-aware learner profile links from the class list', () => {
     expect(source).toContain('buildClassLearnerProfileHref(student.id, cohortId)');
   });
+
+  it('keeps internal request actions behind backend workspace governance', () => {
+    expect(source).toContain('supportsInternalRequests');
+    expect(source).toContain('showInternalRequestActions');
+    expect(source).toContain('{showInternalRequestActions ? <TableHead>Requests</TableHead> : null}');
+    expect(source).toContain('Create learner');
+    expect(source).toContain('Request add learner');
+  });
 });

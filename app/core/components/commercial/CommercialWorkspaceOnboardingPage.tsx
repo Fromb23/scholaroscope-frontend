@@ -9,7 +9,7 @@ export function CommercialWorkspaceOnboardingPage() {
         <p className="text-sm font-semibold text-blue-700">Additional workspace</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight theme-text">Create another Scholaroscope workspace</h1>
         <p className="theme-muted mt-3 max-w-2xl text-sm leading-6">
-          Select the workspace type and confirm a backend quote before creating the new workspace under your account.
+          Select the workspace type and confirm a quote before creating the new workspace under your account.
         </p>
       </div>
       <CommercialRateCards authenticated continueBasePath="/register" />

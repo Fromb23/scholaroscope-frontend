@@ -8,12 +8,31 @@ const source = readFileSync(
 );
 
 describe('ActionMenu responsive surface contract', () => {
-  it('keeps the desktop absolute dropdown path', () => {
+  it('renders the desktop menu through a fixed portal instead of document flow', () => {
     expect(source).toContain("aria-haspopup={isMobileSheet ? 'dialog' : 'menu'}");
-    expect(source).toContain('open && !isMobileSheet');
+    expect(source).toContain('createPortal(');
+    expect(source).toContain('document.body');
+    expect(source).toContain("position: 'fixed'");
     expect(source).toContain('role="menu"');
-    expect(source).toContain('theme-dropdown absolute top-full');
-    expect(source).toContain("align === 'left' ? 'left-0' : 'right-0'");
+    expect(source).not.toContain('theme-dropdown absolute top-full');
+    expect(source).not.toContain("align === 'left' ? 'left-0' : 'right-0'");
+  });
+
+  it('uses collision-aware placement with upward preference and focus restoration', () => {
+    expect(source).toContain('VIEWPORT_COLLISION_PADDING');
+    expect(source).toContain('spaceAbove >= naturalMenuHeight || spaceAbove > spaceBelow');
+    expect(source).toContain("transformOrigin: placeAbove ? 'bottom right' : 'top right'");
+    expect(source).toContain('buttonRef.current?.focus()');
+    expect(source).toContain("closeMenu({ restoreFocus: true })");
+    expect(source).toContain("window.addEventListener('resize', updateMenuPosition)");
+    expect(source).toContain("window.addEventListener('scroll', updateMenuPosition, true)");
+  });
+
+  it('supports keyboard navigation inside the popover', () => {
+    expect(source).toContain('const handleMenuKeyDown');
+    expect(source).toContain("'ArrowDown', 'ArrowUp', 'Home', 'End'");
+    expect(source).toContain('focusableItems[nextIndex]?.focus()');
+    expect(source).toContain('onKeyDown={handleMenuKeyDown}');
   });
 
   it('renders mobile actions inside ResponsiveActionSheet', () => {
@@ -34,6 +53,6 @@ describe('ActionMenu responsive surface contract', () => {
     expect(source).toContain('disabled={item.disabled}');
     expect(source).toContain('if (item.href && !item.disabled)');
     expect(source).toContain('item.onSelect?.()');
-    expect(source).toContain('onSelect={() => setOpen(false)}');
+    expect(source).toContain("onSelect={() => closeMenu({ restoreFocus: true })}");
   });
 });

@@ -1,5 +1,6 @@
 import type { PaginatedResponse } from '@/app/core/types/api';
 import type { ClientMutationFields } from '@/app/core/lib/clientMutationId';
+import type { OperationalScope } from '@/app/core/lib/academicScope';
 
 export type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
 export type AssignmentDeliveryMode = 'INDIVIDUAL' | 'GROUP';
@@ -294,6 +295,8 @@ export interface AssignmentUpdatePayload {
 }
 
 export interface AssignmentFilters {
+    scope?: OperationalScope;
+    term?: number;
     cohort?: number;
     subject?: number;
     cohort_subject?: number;

@@ -72,6 +72,7 @@ import {
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { buildSessionLearnerAttendanceReportHref } from '@/app/core/lib/learnerIntentRoutes';
+import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 type SessionPageNotice = {
@@ -253,6 +254,7 @@ export function SessionDetailPage() {
     const { activeOrg, activeRole, user, capabilities } = useAuth();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
+    const showInternalRequestActions = supportsInternalRequests(capabilities);
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -1979,7 +1981,7 @@ export function SessionDetailPage() {
                     </div>
                 ) : null}
 
-                {!canCreateTeachingRecords || isCompleted ? (
+                {(!canCreateTeachingRecords || isCompleted) && showInternalRequestActions ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                         <div className="flex flex-wrap gap-2">
                             {!canReschedule ? (

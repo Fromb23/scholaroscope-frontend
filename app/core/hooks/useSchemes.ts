@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { schemesAPI } from '@/app/core/api/schemes';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type { ApiError } from '@/app/core/types/errors';
 import { extractErrorMessage } from '@/app/core/types/errors';
 import type {
@@ -46,7 +47,7 @@ export function useSchemes(params?: SchemeListQueryParams) {
   const fetchSchemes = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await schemesAPI.listSchemes(params);
+      const data = await schemesAPI.listSchemes(withOperationalScope(params));
       setSchemes(unwrapSchemes(data));
       setError(null);
     } catch (err) {

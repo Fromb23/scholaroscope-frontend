@@ -18,6 +18,7 @@ import {
   emitSessionDataChanged,
   subscribeToSessionDataChanged,
 } from '@/app/core/lib/sessionEvents';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
 import {
   AvailableSessionCohortSubject,
   AvailableSessionCohortSubjectsResponse,
@@ -163,7 +164,8 @@ export const useSessions = (params?: SessionQueryParams) => {
   const [error, setError] = useState<string | null>(null);
   const instructorAccess = useInstructorCohortAccess();
   const sessionFilters = useMemo(
-    () => ({
+    () => withOperationalScope({
+      scope: params?.scope,
       term: params?.term,
       cohort_subject: params?.cohort_subject,
       cohort_subject__cohort: params?.cohort_subject__cohort,
@@ -174,6 +176,7 @@ export const useSessions = (params?: SessionQueryParams) => {
       instructor_id: params?.instructor_id,
     }),
     [
+      params?.scope,
       params?.term,
       params?.cohort_subject,
       params?.cohort_subject__cohort,
@@ -586,7 +589,9 @@ export const useAttendance = (params?: AttendanceQueryParams) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const attendanceFilters = useMemo(
-    () => ({
+    () => withOperationalScope({
+      scope: params?.scope,
+      term: params?.term,
       session: params?.session,
       student: params?.student,
       status: params?.status,
@@ -598,8 +603,10 @@ export const useAttendance = (params?: AttendanceQueryParams) => {
       page: params?.page,
       page_size: params?.page_size,
       search: params?.search,
-    }),
+    }, ['session__term']),
     [
+      params?.scope,
+      params?.term,
       params?.session,
       params?.student,
       params?.status,

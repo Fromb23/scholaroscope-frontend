@@ -33,6 +33,8 @@ import {
 } from '@/app/components/ui/Table';
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
+import { useAuth } from '@/app/context/AuthContext';
+import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
 
 type LearnerRow = EnrolledStudent & {
     email?: string | null;
@@ -85,6 +87,7 @@ function buildSafeCohortFilename(cohortName: string, cohortId: number) {
 
 export function CohortStudentsPage() {
     const params = useParams<{ id: string }>();
+    const { capabilities } = useAuth();
     const cohortId = Number(params.id);
     const isValidCohortId = Number.isFinite(cohortId) && cohortId > 0;
     const enrolledQuery = useCohortEnrolledStudents(cohortId);
@@ -165,6 +168,7 @@ export function CohortStudentsPage() {
         cohortId,
         returnTo: `/academic/cohorts/${cohortId}`,
     });
+    const showInternalRequestActions = supportsInternalRequests(capabilities);
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
@@ -214,24 +218,26 @@ export function CohortStudentsPage() {
                                     Create learner
                                 </Button>
                             </Link>
-                            <ContextualApprovalRequestButton
-                                intent={{
-                                    actionKey: 'ENROLLMENT_CHANGE',
-                                    title: `Request add learner to ${cohortName || 'cohort'}`,
-                                    targetType: 'cohort',
-                                    targetId: cohortId,
-                                    returnTo: `/academic/cohorts/${cohortId}/students`,
-                                    requestKey: buildContextualRequestKey(['cohort', cohortId, 'add-learner']),
-                                    referenceData: {
-                                        contextual_action: 'add_to_cohort',
-                                        cohort_id: cohortId,
-                                        cohort_name: cohortName,
-                                    },
-                                }}
-                            >
-                                <UserCheck className="h-4 w-4" />
-                                Request add learner
-                            </ContextualApprovalRequestButton>
+                            {showInternalRequestActions ? (
+                                <ContextualApprovalRequestButton
+                                    intent={{
+                                        actionKey: 'ENROLLMENT_CHANGE',
+                                        title: `Request add learner to ${cohortName || 'cohort'}`,
+                                        targetType: 'cohort',
+                                        targetId: cohortId,
+                                        returnTo: `/academic/cohorts/${cohortId}/students`,
+                                        requestKey: buildContextualRequestKey(['cohort', cohortId, 'add-learner']),
+                                        referenceData: {
+                                            contextual_action: 'add_to_cohort',
+                                            cohort_id: cohortId,
+                                            cohort_name: cohortName,
+                                        },
+                                    }}
+                                >
+                                    <UserCheck className="h-4 w-4" />
+                                    Request add learner
+                                </ContextualApprovalRequestButton>
+                            ) : null}
                             <Button
                                 variant="secondary"
                                 size="sm"
@@ -265,7 +271,7 @@ export function CohortStudentsPage() {
                                     <TableHead>Learner</TableHead>
                                     <TableHead>Contact</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Requests</TableHead>
+                                    {showInternalRequestActions ? <TableHead>Requests</TableHead> : null}
                                 </tr>
                             </TableHeader>
                             <TableBody>
@@ -288,69 +294,71 @@ export function CohortStudentsPage() {
                                                 {getLearnerStatus(student)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-2">
-                                                <ContextualApprovalRequestButton
-                                                    variant="ghost"
-                                                    intent={{
-                                                        actionKey: 'ENROLLMENT_CHANGE',
-                                                        title: `Request unenroll ${student.full_name}`,
-                                                        targetType: 'learner',
-                                                        targetId: student.id,
-                                                        returnTo: `/academic/cohorts/${cohortId}/students`,
-                                                        requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'unenroll']),
-                                                        referenceData: {
-                                                            contextual_action: 'unenroll',
-                                                            student_id: student.id,
-                                                            cohort_id: cohortId,
-                                                            cohort_name: cohortName,
-                                                        },
-                                                    }}
-                                                >
-                                                    <UserMinus className="h-4 w-4" />
-                                                    Unenroll
-                                                </ContextualApprovalRequestButton>
-                                                <ContextualApprovalRequestButton
-                                                    variant="ghost"
-                                                    intent={{
-                                                        actionKey: 'ENROLLMENT_CHANGE',
-                                                        title: `Request transfer ${student.full_name}`,
-                                                        targetType: 'learner',
-                                                        targetId: student.id,
-                                                        returnTo: `/academic/cohorts/${cohortId}/students`,
-                                                        requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'transfer']),
-                                                        referenceData: {
-                                                            contextual_action: 'transfer',
-                                                            student_id: student.id,
-                                                            cohort_id: cohortId,
-                                                            cohort_name: cohortName,
-                                                        },
-                                                    }}
-                                                >
-                                                    <ArrowRightLeft className="h-4 w-4" />
-                                                    Transfer
-                                                </ContextualApprovalRequestButton>
-                                                <ContextualApprovalRequestButton
-                                                    variant="ghost"
-                                                    intent={{
-                                                        actionKey: 'ENROLLMENT_CHANGE',
-                                                        title: `Request cohort placement correction for ${student.full_name}`,
-                                                        targetType: 'learner',
-                                                        targetId: student.id,
-                                                        returnTo: `/academic/cohorts/${cohortId}/students`,
-                                                        requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'fix-placement']),
-                                                        referenceData: {
-                                                            contextual_action: 'fix_wrong_cohort_placement',
-                                                            student_id: student.id,
-                                                            cohort_id: cohortId,
-                                                            cohort_name: cohortName,
-                                                        },
-                                                    }}
-                                                >
-                                                    Fix placement
-                                                </ContextualApprovalRequestButton>
-                                            </div>
-                                        </TableCell>
+                                        {showInternalRequestActions ? (
+                                            <TableCell>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <ContextualApprovalRequestButton
+                                                        variant="ghost"
+                                                        intent={{
+                                                            actionKey: 'ENROLLMENT_CHANGE',
+                                                            title: `Request unenroll ${student.full_name}`,
+                                                            targetType: 'learner',
+                                                            targetId: student.id,
+                                                            returnTo: `/academic/cohorts/${cohortId}/students`,
+                                                            requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'unenroll']),
+                                                            referenceData: {
+                                                                contextual_action: 'unenroll',
+                                                                student_id: student.id,
+                                                                cohort_id: cohortId,
+                                                                cohort_name: cohortName,
+                                                            },
+                                                        }}
+                                                    >
+                                                        <UserMinus className="h-4 w-4" />
+                                                        Unenroll
+                                                    </ContextualApprovalRequestButton>
+                                                    <ContextualApprovalRequestButton
+                                                        variant="ghost"
+                                                        intent={{
+                                                            actionKey: 'ENROLLMENT_CHANGE',
+                                                            title: `Request transfer ${student.full_name}`,
+                                                            targetType: 'learner',
+                                                            targetId: student.id,
+                                                            returnTo: `/academic/cohorts/${cohortId}/students`,
+                                                            requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'transfer']),
+                                                            referenceData: {
+                                                                contextual_action: 'transfer',
+                                                                student_id: student.id,
+                                                                cohort_id: cohortId,
+                                                                cohort_name: cohortName,
+                                                            },
+                                                        }}
+                                                    >
+                                                        <ArrowRightLeft className="h-4 w-4" />
+                                                        Transfer
+                                                    </ContextualApprovalRequestButton>
+                                                    <ContextualApprovalRequestButton
+                                                        variant="ghost"
+                                                        intent={{
+                                                            actionKey: 'ENROLLMENT_CHANGE',
+                                                            title: `Request cohort placement correction for ${student.full_name}`,
+                                                            targetType: 'learner',
+                                                            targetId: student.id,
+                                                            returnTo: `/academic/cohorts/${cohortId}/students`,
+                                                            requestKey: buildContextualRequestKey(['cohort', cohortId, 'learner', student.id, 'fix-placement']),
+                                                            referenceData: {
+                                                                contextual_action: 'fix_wrong_cohort_placement',
+                                                                student_id: student.id,
+                                                                cohort_id: cohortId,
+                                                                cohort_name: cohortName,
+                                                            },
+                                                        }}
+                                                    >
+                                                        Fix placement
+                                                    </ContextualApprovalRequestButton>
+                                                </div>
+                                            </TableCell>
+                                        ) : null}
                                     </TableRow>
                                 ))}
                             </TableBody>

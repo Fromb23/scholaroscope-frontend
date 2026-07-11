@@ -1,4 +1,5 @@
 import type { PaginatedResponse } from '@/app/core/types/api';
+import type { OperationalScope } from '@/app/core/lib/academicScope';
 
 export type SchemeStatus = 'DRAFT' | 'GENERATED';
 export type SchemeGenerationMode = 'AI_ASSISTED_DRAFT' | 'MANUAL_DRAFT';
@@ -122,6 +123,7 @@ export interface SchemeOfWork {
 }
 
 export interface SchemeListQueryParams {
+    scope?: OperationalScope;
     term?: number | string;
     teacher?: number | string;
     cohort_subject?: number | string;

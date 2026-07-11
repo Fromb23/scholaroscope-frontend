@@ -26,6 +26,7 @@ import {
   CohortDetail,
   TermQueryParams,
   AcademicSetupStatus,
+  AcademicLifecycleContext,
   AcademicTodayMode,
   SubjectCatalogItem,
   SubjectOfferingMutationPayload,
@@ -52,6 +53,13 @@ export const academicTodayModeAPI = {
 export const academicSetupAPI = {
   getStatus: async (): Promise<AcademicSetupStatus> => {
     const response = await apiClient.get<AcademicSetupStatus>('/academic/setup-status/');
+    return response.data;
+  },
+};
+
+export const academicLifecycleAPI = {
+  getCurrentContext: async (params?: { organization?: number }): Promise<AcademicLifecycleContext> => {
+    const response = await apiClient.get<AcademicLifecycleContext>('/academic/current-context/', { params });
     return response.data;
   },
 };

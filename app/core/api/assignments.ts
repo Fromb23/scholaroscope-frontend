@@ -1,5 +1,6 @@
 import { apiClient } from '@/app/core/api/client';
 import { withClientMutationId } from '@/app/core/lib/clientMutationId';
+import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type {
     Assignment,
     AssignmentCreatePayload,
@@ -67,7 +68,10 @@ const ASSIGNMENT_GROUP_EVALUATIONS_BASE = '/assignment-group-evaluations';
 
 export const assignmentsAPI = {
     list: async (params?: AssignmentFilters): Promise<AssignmentListResponse> => {
-        const response = await apiClient.get<AssignmentListResponse>(`${ASSIGNMENTS_BASE}/`, { params });
+        const response = await apiClient.get<AssignmentListResponse>(
+            `${ASSIGNMENTS_BASE}/`,
+            { params: withOperationalScope(params) }
+        );
         return response.data;
     },
 

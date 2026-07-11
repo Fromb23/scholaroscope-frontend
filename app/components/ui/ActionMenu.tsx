@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react';
 import { Button } from '@/app/components/ui/Button';
@@ -37,10 +41,12 @@ interface ActionMenuProps {
 function ActionMenuItemButton({
   item,
   onSelect,
+  actionRef,
   surface = 'dropdown',
 }: {
   item: ActionMenuItem;
   onSelect: () => void;
+  actionRef?: (node: HTMLAnchorElement | HTMLButtonElement | null) => void;
   surface?: 'dropdown' | 'sheet';
 }) {
   const sizeClassName = surface === 'sheet'
@@ -56,7 +62,13 @@ function ActionMenuItemButton({
 
   if (item.href && !item.disabled) {
     return (
-      <Link href={item.href} role={surface === 'dropdown' ? 'menuitem' : undefined} className={itemClassName} onClick={onSelect}>
+      <Link
+        ref={actionRef as ((node: HTMLAnchorElement | null) => void) | undefined}
+        href={item.href}
+        role={surface === 'dropdown' ? 'menuitem' : undefined}
+        className={itemClassName}
+        onClick={onSelect}
+      >
         {item.icon ? <span className="shrink-0">{item.icon}</span> : null}
         <span className="min-w-0 flex-1">{item.label}</span>
       </Link>
@@ -65,6 +77,7 @@ function ActionMenuItemButton({
 
   return (
     <button
+      ref={actionRef as ((node: HTMLButtonElement | null) => void) | undefined}
       type="button"
       onClick={() => {
         if (item.disabled) {
@@ -82,6 +95,10 @@ function ActionMenuItemButton({
     </button>
   );
 }
+
+const VIEWPORT_COLLISION_PADDING = 8;
+const MENU_OFFSET = 8;
+const MIN_MENU_HEIGHT = 160;
 
 function useMobileActionSheet(): boolean {
   const [isMobile, setIsMobile] = useState(false);
@@ -125,7 +142,14 @@ export function ActionMenu({
   hideLabelOnMobile = false,
 }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({
+    position: 'fixed',
+    visibility: 'hidden',
+  });
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Array<HTMLAnchorElement | HTMLButtonElement | null>>([]);
   const menuId = useId();
   const isMobileSheet = useMobileActionSheet();
   const visibleItems = useMemo(
@@ -133,20 +157,83 @@ export function ActionMenu({
     [items]
   );
 
+  const restoreButtonFocus = useCallback(() => {
+    buttonRef.current?.focus();
+  }, []);
+
+  const closeMenu = useCallback((options: { restoreFocus?: boolean } = {}) => {
+    setOpen(false);
+    if (options.restoreFocus) {
+      requestAnimationFrame(restoreButtonFocus);
+    }
+  }, [restoreButtonFocus]);
+
+  const updateMenuPosition = useCallback(() => {
+    const button = buttonRef.current;
+    const menu = menuRef.current;
+    if (!button || !menu || typeof window === 'undefined') {
+      return;
+    }
+
+    const buttonRect = button.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const menuWidth = menuRect.width || 192;
+    const naturalMenuHeight = menuRect.height || MIN_MENU_HEIGHT;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const spaceAbove = buttonRect.top - VIEWPORT_COLLISION_PADDING - MENU_OFFSET;
+    const spaceBelow = viewportHeight - buttonRect.bottom - VIEWPORT_COLLISION_PADDING - MENU_OFFSET;
+    const placeAbove = spaceAbove >= naturalMenuHeight || spaceAbove > spaceBelow;
+    const availableHeight = Math.max(
+      MIN_MENU_HEIGHT,
+      placeAbove ? spaceAbove : spaceBelow,
+    );
+    const menuHeight = Math.min(naturalMenuHeight, availableHeight);
+    const unclampedTop = placeAbove
+      ? buttonRect.top - menuHeight - MENU_OFFSET
+      : buttonRect.bottom + MENU_OFFSET;
+    const maxLeft = viewportWidth - menuWidth - VIEWPORT_COLLISION_PADDING;
+    const alignedLeft = align === 'left'
+      ? buttonRect.left
+      : buttonRect.right - menuWidth;
+    const left = Math.min(
+      Math.max(VIEWPORT_COLLISION_PADDING, alignedLeft),
+      Math.max(VIEWPORT_COLLISION_PADDING, maxLeft),
+    );
+    const top = Math.min(
+      Math.max(VIEWPORT_COLLISION_PADDING, unclampedTop),
+      viewportHeight - menuHeight - VIEWPORT_COLLISION_PADDING,
+    );
+
+    setMenuStyle({
+      position: 'fixed',
+      left,
+      top,
+      maxHeight: availableHeight,
+      overflowY: naturalMenuHeight > availableHeight ? 'auto' : undefined,
+      visibility: 'visible',
+      transformOrigin: placeAbove ? 'bottom right' : 'top right',
+    });
+  }, [align]);
+
   useEffect(() => {
     if (!open || isMobileSheet) {
       return;
     }
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        !containerRef.current?.contains(target)
+        && !menuRef.current?.contains(target)
+      ) {
         setOpen(false);
       }
     };
 
-    const handleEscape = (event: KeyboardEvent) => {
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setOpen(false);
+        closeMenu({ restoreFocus: true });
       }
     };
 
@@ -157,15 +244,89 @@ export function ActionMenu({
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [isMobileSheet, open]);
+  }, [closeMenu, isMobileSheet, open]);
+
+  useEffect(() => {
+    if (!open || isMobileSheet) {
+      return;
+    }
+
+    setMenuStyle({ position: 'fixed', visibility: 'hidden' });
+    const frame = requestAnimationFrame(() => {
+      updateMenuPosition();
+      requestAnimationFrame(() => itemRefs.current.find(Boolean)?.focus());
+    });
+
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [isMobileSheet, open, updateMenuPosition, visibleItems.length]);
+
+  const handleMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMenu({ restoreFocus: true });
+      return;
+    }
+
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    const focusableItems = itemRefs.current.filter(Boolean);
+    if (focusableItems.length === 0) {
+      return;
+    }
+    const activeIndex = focusableItems.findIndex((item) => item === document.activeElement);
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? focusableItems.length - 1
+        : event.key === 'ArrowDown'
+          ? (activeIndex + 1) % focusableItems.length
+          : (activeIndex <= 0 ? focusableItems.length : activeIndex) - 1;
+    focusableItems[nextIndex]?.focus();
+  };
 
   if (visibleItems.length === 0) {
     return null;
   }
 
+  const dropdown = open && !isMobileSheet && typeof document !== 'undefined' ? createPortal(
+    <div
+      id={menuId}
+      ref={menuRef}
+      role="menu"
+      style={menuStyle}
+      onKeyDown={handleMenuKeyDown}
+      className={`theme-dropdown z-50 min-w-[12rem] rounded-lg p-1 shadow-lg ${menuClassName}`}
+    >
+      <div className="space-y-1">
+        {visibleItems.map((item, index) => (
+          <ActionMenuItemButton
+            key={`${item.label}:${item.href ?? 'action'}`}
+            item={item}
+            actionRef={(node) => {
+              itemRefs.current[index] = node;
+            }}
+            onSelect={() => closeMenu({ restoreFocus: true })}
+          />
+        ))}
+      </div>
+    </div>,
+    document.body,
+  ) : null;
+
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       <Button
+        ref={buttonRef}
         type="button"
         variant={variant}
         size={size}
@@ -173,7 +334,13 @@ export function ActionMenu({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={ariaLabel}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          if (open) {
+            closeMenu();
+            return;
+          }
+          setOpen(true);
+        }}
       >
         <MoreHorizontal className="h-4 w-4" />
         <span className={hideLabelOnMobile ? 'hidden sm:inline' : undefined}>
@@ -181,25 +348,7 @@ export function ActionMenu({
         </span>
       </Button>
 
-      {open && !isMobileSheet ? (
-        <div
-          id={menuId}
-          role="menu"
-          className={`theme-dropdown absolute top-full z-30 mt-2 min-w-[12rem] rounded-lg p-1 ${
-            align === 'left' ? 'left-0' : 'right-0'
-          } ${menuClassName}`}
-        >
-          <div className="space-y-1">
-            {visibleItems.map((item) => (
-              <ActionMenuItemButton
-                key={`${item.label}:${item.href ?? 'action'}`}
-                item={item}
-                onSelect={() => setOpen(false)}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
+      {dropdown}
 
       {isMobileSheet ? (
         <ResponsiveActionSheet
@@ -216,7 +365,7 @@ export function ActionMenu({
                 key={`${item.label}:${item.href ?? 'action'}`}
                 item={item}
                 surface="sheet"
-                onSelect={() => setOpen(false)}
+                onSelect={() => closeMenu({ restoreFocus: true })}
               />
             ))}
           </div>

@@ -15,13 +15,13 @@ export function HeroSection() {
             Run teaching records, assessments, learner progress, reports, and workspace provisioning from one secure academic operations workspace.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a
-              href="#commercial-rate-card"
+            <Link
+              href="/get-started"
               className="inline-flex min-h-12 items-center justify-center rounded-lg bg-blue-700 px-5 text-sm font-semibold text-white hover:bg-blue-800"
             >
-              Configure workspace
+              Get started
               <ArrowRight className="ml-2 h-4 w-4" />
-            </a>
+            </Link>
             <Link
               href="/login"
               className="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-300 px-5 text-sm font-semibold text-slate-800 hover:bg-slate-100"

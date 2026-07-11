@@ -2,7 +2,7 @@
 // components/ui/Button.tsx - Reusable Button Component
 // ============================================================================
 
-import { ReactNode, ButtonHTMLAttributes } from 'react';
+import { forwardRef, ReactNode, ButtonHTMLAttributes } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -10,14 +10,14 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export function Button({
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({
   children,
   variant = 'primary',
   size = 'md',
   className = '',
   style,
   ...props
-}: ButtonProps) {
+}, ref) {
   const baseStyles =
     'theme-focus-ring inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -36,6 +36,7 @@ export function Button({
 
   return (
     <button
+      ref={ref}
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
       style={{
         borderRadius: 'var(--brand-button-radius, 8px)',
@@ -46,4 +47,4 @@ export function Button({
       {children}
     </button>
   );
-}
+});

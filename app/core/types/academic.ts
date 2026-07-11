@@ -74,6 +74,31 @@ export interface AcademicSetupStatus {
   };
 }
 
+export type AcademicLifecycleMode =
+  | 'ACTIVE_TERM'
+  | 'UPCOMING_TERM'
+  | 'BETWEEN_TERMS'
+  | 'CLOSURE_GRACE'
+  | 'HISTORICAL'
+  | 'NO_ACADEMIC_SETUP';
+
+export interface AcademicLifecycleContext {
+  mode: AcademicLifecycleMode;
+  today: string;
+  organization: number | null;
+  academic_year: AcademicYear | null;
+  current_term: Term | null;
+  active_term: Term | null;
+  upcoming_term: Term | null;
+  previous_term: Term | null;
+  message: string;
+  actions?: Array<{
+    key: string;
+    label: string;
+    href?: string;
+  }>;
+}
+
 // Academic Year
 export interface AcademicYear {
   id: number;
