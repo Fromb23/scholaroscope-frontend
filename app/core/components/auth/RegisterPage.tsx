@@ -441,14 +441,14 @@ function RegisterForm() {
           {isInviteFlow && invite && (
             <div className="theme-info-surface mb-6 rounded-xl p-4">
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                  <Building2 className="h-5 w-5 text-blue-600" />
+                <div className="theme-brand-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+                  <Building2 className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-blue-900">
+                  <p className="text-sm font-semibold theme-text">
                     You&apos;ve been invited to join {invite.organization}
                   </p>
-                  <p className="mt-0.5 text-xs text-blue-700">
+                  <p className="mt-0.5 text-xs theme-muted">
                     You&apos;ll join as{' '}
                     <span className="font-medium">{ROLE_LABEL[invite.role] ?? invite.role}</span> ·
                     Expires{' '}

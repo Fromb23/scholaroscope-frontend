@@ -73,11 +73,11 @@ export function EditModal({ isOpen, onClose, onSubmit, instructor, submitting }:
         setSuccessMessage('');
         try {
             await onSubmit(form);
-            setSuccessMessage('Instructor details updated.');
+            setSuccessMessage('Staff details updated.');
         } catch (err) {
             setActionError(resolveWorkspaceError(err, {
                 action: 'update',
-                entityLabel: 'instructor details',
+                entityLabel: 'staff details',
                 role: 'ADMIN',
             }).message);
         }
@@ -87,7 +87,7 @@ export function EditModal({ isOpen, onClose, onSubmit, instructor, submitting }:
         <Modal
             isOpen={isOpen}
             onClose={handleClose}
-            title="Edit Instructor"
+            title="Edit staff member"
             size="md"
             closeDisabled={submitting}
             closeOnBackdrop={false}
@@ -112,7 +112,7 @@ export function EditModal({ isOpen, onClose, onSubmit, instructor, submitting }:
                 {successMessage ? (
                     <ActionStateBanner
                         variant="success"
-                        title="Instructor updated"
+                        title="Staff member updated"
                         message={successMessage}
                     />
                 ) : null}
@@ -206,7 +206,7 @@ export function ResetPasswordModal({ isOpen, onClose, onSubmit, submitting }: Re
         } catch (caught) {
             setSubmitError(resolveWorkspaceError(caught, {
                 action: 'update',
-                entityLabel: 'instructor password',
+                entityLabel: 'staff password',
                 role: 'ADMIN',
             }).message);
         }
@@ -303,7 +303,7 @@ export function DeleteModal({ isOpen, onClose, onConfirm, name, submitting }: De
         } catch (caught) {
             setActionError(resolveWorkspaceError(caught, {
                 action: 'delete',
-                entityLabel: 'instructor workspace access',
+                entityLabel: 'staff workspace access',
                 role: 'ADMIN',
             }).message);
         }

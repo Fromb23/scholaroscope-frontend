@@ -128,6 +128,13 @@ export interface Term {
   calendar_setup_completed_by_name: string;
   is_calendar_setup_complete: boolean;
   week_count: number;
+  actions?: {
+    can_edit: boolean;
+    can_delete: boolean;
+    can_close?: boolean;
+    edit_blocked_reason?: string | null;
+    delete_blocked_reason?: string | null;
+  };
   created_at: string;
 }
 

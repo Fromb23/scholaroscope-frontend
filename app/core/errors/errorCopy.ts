@@ -2,8 +2,9 @@ import type { AppErrorKind, AppErrorSeverity, ResolveAppErrorContext } from './a
 
 const DOMAIN_LABELS: Record<ResolveAppErrorContext['domain'], string> = {
   auth: 'account access',
+  registration: 'registration',
   workspace: 'workspace',
-  instructors: 'instructor account',
+  instructors: 'staff account',
   learners: 'learner record',
   sessions: 'lesson record',
   lesson_plans: 'lesson plan',
@@ -72,7 +73,8 @@ export function titleForKind(kind: AppErrorKind, context: ResolveAppErrorContext
   const label = domainLabel(context);
   if (context.domain === 'reports' && kind === 'report_not_ready') return 'This report is not ready yet.';
   if (context.domain === 'sessions' && context.action === 'save') return 'We could not save this lesson record.';
-  if (context.domain === 'instructors' && context.action === 'create') return 'Instructor account was not created.';
+  if (context.domain === 'registration' && context.action === 'submit') return 'Registration could not be submitted.';
+  if (context.domain === 'instructors' && context.action === 'create') return 'Staff account was not created.';
   if (context.domain === 'assignments' && context.action === 'publish') return 'This assignment cannot be published yet.';
   if (context.domain === 'assessments' && kind === 'lifecycle_locked') return 'This assessment is already finalized.';
 
@@ -109,10 +111,13 @@ export function defaultMessageForKind(kind: AppErrorKind, context: ResolveAppErr
   const actor = actorFor(context);
 
   if (context.domain === 'instructors' && context.action === 'create') {
-    return 'Check the email address and required fields, then try again. If the account already exists, use the existing instructor record or ask an admin to restore access.';
+    return 'Check the email address and required fields, then try again. If the account already exists, use the existing staff record or ask an admin to restore access.';
   }
   if (context.domain === 'sessions' && context.action === 'save') {
     return 'Your lesson record is still open. Try again before leaving this page. If it continues, ask an admin to check the lesson status.';
+  }
+  if (context.domain === 'registration' && context.action === 'submit') {
+    return 'Check the account and quote details, then try again.';
   }
   if (context.domain === 'reports' && kind === 'report_not_ready') {
     return 'Some summaries are stale or missing. Refresh the report data, then try again.';

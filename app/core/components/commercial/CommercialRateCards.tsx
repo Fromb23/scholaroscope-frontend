@@ -130,8 +130,8 @@ export function CommercialRateCards({
   if (catalogQuery.isLoading) {
     return (
       <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <div className="rounded-xl border bg-white p-10 text-center shadow-sm theme-border">
-          <Loader2 className="mx-auto mb-3 h-5 w-5 animate-spin text-blue-600" />
+        <div className="rounded-xl border p-10 text-center shadow-sm theme-card">
+          <Loader2 className="mx-auto mb-3 h-5 w-5 animate-spin text-[color:var(--color-primary)]" />
           <p className="theme-muted">Loading current plans...</p>
         </div>
       </section>
@@ -141,7 +141,7 @@ export function CommercialRateCards({
   if (catalogQuery.isError || !catalogQuery.data) {
     return (
       <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+        <div className="rounded-xl border p-6 text-sm theme-danger-surface">
           Plan information is unavailable. Try again shortly.
         </div>
       </section>
@@ -151,7 +151,7 @@ export function CommercialRateCards({
   if (!workspaceType) {
     return (
       <section id="commercial-rate-card" className="mx-auto w-full max-w-6xl px-4 py-16">
-        <div className="rounded-xl border bg-white p-6 text-sm theme-border theme-muted">
+        <div className="rounded-xl border p-6 text-sm theme-card theme-muted">
           No public workspace plans are currently available.
         </div>
       </section>
@@ -161,7 +161,7 @@ export function CommercialRateCards({
   return (
     <section id="commercial-rate-card" className="mx-auto w-full max-w-[1220px] px-4 py-16 sm:px-6 lg:px-8">
       <div className="mb-10 max-w-4xl">
-        <p className="text-sm font-semibold text-blue-700">Plans and quote</p>
+        <p className="text-sm font-semibold text-[color:var(--color-primary)]">Plans and quote</p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight theme-text sm:text-4xl">
           Get started with the right workspace
         </h2>
@@ -194,17 +194,17 @@ export function CommercialRateCards({
                     }}
                     className={`min-h-[180px] rounded-xl border p-5 text-left transition ${
                       selected
-                        ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm'
-                        : 'bg-white theme-border theme-hover-surface theme-text'
+                        ? 'theme-brand-selected shadow-sm'
+                        : 'theme-card theme-hover-surface'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                        selected ? 'theme-button-primary' : 'theme-brand-icon'
                       }`}>
                         <Icon className="h-5 w-5" />
                       </span>
-                      {selected ? <CheckCircle2 className="h-5 w-5 text-blue-700" /> : null}
+                      {selected ? <CheckCircle2 className="h-5 w-5 text-[color:var(--color-primary)]" /> : null}
                     </div>
                     <h3 className="mt-4 text-base font-bold">{item.name}</h3>
                     <p className="theme-muted mt-2 line-clamp-3 text-sm leading-6">{item.description}</p>
@@ -212,12 +212,12 @@ export function CommercialRateCards({
                     <p className="theme-subtle text-xs">{billingPeriodLabel}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {categoryPreview.slice(0, 3).map((category) => (
-                        <span key={category} className="rounded-full bg-white/80 px-2 py-1 text-xs font-medium text-slate-600">
+                        <span key={category} className="rounded-full px-2 py-1 text-xs font-medium theme-card-muted theme-muted">
                           {category}
                         </span>
                       ))}
                     </div>
-                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700">
+                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--color-primary)]">
                       {selected ? 'Selected workspace' : 'Choose this workspace'}
                       <ArrowRight className="h-4 w-4" />
                     </span>
@@ -253,18 +253,18 @@ export function CommercialRateCards({
                     }}
                     className={`min-h-[215px] rounded-xl border p-6 text-left transition ${
                       selected
-                        ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm'
-                        : 'bg-white theme-border theme-hover-surface theme-text'
+                        ? 'theme-brand-selected shadow-sm'
+                        : 'theme-card theme-hover-surface'
                     } ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <span className={`flex h-11 w-11 items-center justify-center rounded-lg ${
-                        selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'
+                        selected ? 'theme-button-primary' : 'theme-brand-icon'
                       }`}>
                         <Icon className="h-5 w-5" />
                       </span>
                       <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${
-                        selected ? 'border-blue-600 bg-blue-600 text-white' : 'theme-border'
+                        selected ? 'theme-button-primary' : 'theme-border'
                       }`}>
                         {selected ? <CheckCircle2 className="h-4 w-4" /> : null}
                       </span>
@@ -282,7 +282,7 @@ export function CommercialRateCards({
                     <ul className="mt-4 space-y-2">
                       {copy.benefits.map((benefit) => (
                         <li key={benefit} className="flex items-center gap-2 text-sm">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          <CheckCircle2 className="h-4 w-4 text-[color:var(--color-success)]" />
                           {benefit}
                         </li>
                       ))}
@@ -293,7 +293,7 @@ export function CommercialRateCards({
             </div>
           </section>
 
-          <section aria-labelledby="capabilities-heading" className="rounded-xl border bg-white p-6 shadow-sm theme-border">
+          <section aria-labelledby="capabilities-heading" className="rounded-xl border p-6 shadow-sm theme-card">
             <div className="mb-5">
               <p className="text-sm font-semibold theme-text">Included in Standard</p>
               <p className="theme-subtle mt-1 text-sm">{workspaceType.name} Standard foundation.</p>
@@ -302,7 +302,7 @@ export function CommercialRateCards({
           </section>
 
           {mode === 'PREMIUM' ? (
-            <section aria-labelledby="premium-plugins-heading" className="rounded-xl border bg-white p-6 shadow-sm theme-border">
+            <section aria-labelledby="premium-plugins-heading" className="rounded-xl border p-6 shadow-sm theme-card">
               <div className="mb-5">
                 <p className="text-sm font-semibold theme-text">3. Choose premium capabilities</p>
                 <p className="theme-subtle mt-1 text-sm">Choose only the premium curriculum or specialist capabilities you need.</p>
@@ -321,14 +321,14 @@ export function CommercialRateCards({
                 }}
               />
               {premiumUnavailable ? (
-                <p className="mt-4 flex items-center gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                <p className="mt-4 flex items-center gap-2 rounded-lg p-3 text-sm theme-warning-surface">
                   <AlertCircle className="h-4 w-4" />
                   Premium is not currently available for this workspace type.
                 </p>
               ) : null}
             </section>
           ) : (
-            <section aria-labelledby="premium-standard-heading" className="rounded-xl border border-dashed bg-white p-6 theme-border">
+            <section aria-labelledby="premium-standard-heading" className="rounded-xl border border-dashed p-6 theme-card">
               <p id="premium-standard-heading" className="text-sm font-semibold theme-text">3. Premium capabilities</p>
               <p className="theme-muted mt-2 text-sm leading-6">
                 Standard is selected. Choose Premium above if you want to add specialist capabilities before requesting a quote.
@@ -337,14 +337,14 @@ export function CommercialRateCards({
           )}
 
           {quoteMutation.isError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <div className="rounded-xl border p-4 text-sm theme-danger-surface">
               Could not create a quote. Review the selected workspace type and premium capabilities.
             </div>
           ) : null}
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-xl border bg-white p-5 shadow-sm theme-border">
+          <div className="rounded-xl border p-5 shadow-sm theme-card">
             <p className="text-sm font-semibold theme-text">4. Request and review your quote</p>
             <p className="theme-muted mt-2 text-sm leading-6">
               Scholaroscope confirms the final total from your selected workspace, plan, and premium capabilities.
@@ -362,7 +362,7 @@ export function CommercialRateCards({
             onQuote={() => void requestQuote()}
             onContinue={() => void continueToRegistration()}
           />
-          <div className="rounded-xl border bg-white p-5 shadow-sm theme-border">
+          <div className="rounded-xl border p-5 shadow-sm theme-card">
             <p className="text-sm font-semibold theme-text">5. Continue to registration</p>
             <p className="theme-muted mt-2 text-sm leading-6">
               After the quote is confirmed, continue with the quote token attached to your registration.

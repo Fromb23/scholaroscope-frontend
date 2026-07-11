@@ -4,7 +4,7 @@ import { CommercialRateCards } from '@/app/core/components/commercial/Commercial
 
 export function PublicGetStartedPage() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
+    <div className="min-h-screen theme-app-bg theme-text">
       <PublicHeader />
       <main className="pt-16">
         <CommercialRateCards />

@@ -164,6 +164,15 @@ function getCalendarSetupBadge(term: Term) {
 }
 
 function getTermLifecycleBadge(term: Term) {
+    if (term.status === 'CLOSED_HISTORICAL' || term.is_frozen) {
+        return { label: 'Historical', tone: 'default' as const };
+    }
+    if (term.status === 'CLOSING') {
+        return { label: 'Closing', tone: 'warning' as const };
+    }
+    if (term.status === 'ENDED_GRACE_PERIOD') {
+        return { label: 'Closure grace', tone: 'warning' as const };
+    }
     if (isTermActive(term)) {
         return { label: 'Active', tone: 'success' as const };
     }
@@ -171,6 +180,20 @@ function getTermLifecycleBadge(term: Term) {
         return { label: 'Ended', tone: 'default' as const };
     }
     return { label: 'Upcoming', tone: 'warning' as const };
+}
+
+function termCanEdit(term: Term): boolean {
+    return term.actions?.can_edit === true;
+}
+
+function termCanDelete(term: Term): boolean {
+    return term.actions?.can_delete === true;
+}
+
+function termLockedReason(term: Term): string | null {
+    return term.actions?.edit_blocked_reason
+        ?? term.actions?.delete_blocked_reason
+        ?? null;
 }
 
 interface TermCalendarEventModalProps {
@@ -684,6 +707,9 @@ export function TermsPage() {
                                 const lifecycleBadge = getTermLifecycleBadge(term);
                                 const setupBadge = getCalendarSetupBadge(term);
                                 const selected = term.id === selectedTermId;
+                                const canEditTerm = isAdminLike && termCanEdit(term);
+                                const canDeleteTerm = isAdminLike && termCanDelete(term);
+                                const actionLockedReason = termLockedReason(term);
 
                                 return (
                                     <TableRow
@@ -720,14 +746,27 @@ export function TermsPage() {
                                             <Badge className={getThemeBadgeClass(lifecycleBadge.tone)}>{lifecycleBadge.label}</Badge>
                                         </TableCell>
                                         <TableCell>
-                                            {!isHistoricalView && isAdminLike ? (
+                                            {isAdminLike ? (
                                                 <div className="flex justify-end gap-1">
-                                                    <Button size="sm" variant="ghost" onClick={() => openEdit(term)}>
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button size="sm" variant="ghost" onClick={() => handleDelete(term)}>
-                                                        <Trash2 className="h-4 w-4 text-[color:var(--color-danger)]" />
-                                                    </Button>
+                                                    {canEditTerm ? (
+                                                        <Button size="sm" variant="ghost" onClick={() => openEdit(term)}>
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : null}
+                                                    {canDeleteTerm ? (
+                                                        <Button size="sm" variant="ghost" onClick={() => handleDelete(term)}>
+                                                            <Trash2 className="h-4 w-4 text-[color:var(--color-danger)]" />
+                                                        </Button>
+                                                    ) : null}
+                                                    {!canEditTerm && !canDeleteTerm ? (
+                                                        <span
+                                                            className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg theme-subtle"
+                                                            title={actionLockedReason ?? 'This term is managed by its lifecycle state.'}
+                                                            aria-label={actionLockedReason ?? 'Term actions locked'}
+                                                        >
+                                                            <Lock className="h-4 w-4" />
+                                                        </span>
+                                                    ) : null}
                                                 </div>
                                             ) : null}
                                         </TableCell>
@@ -828,11 +867,12 @@ export function TermsPage() {
                         <div className="flex items-start gap-3 rounded-xl border theme-border theme-surface-muted px-4 py-4 text-sm theme-text">
                             <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                             <div>
-                                <p className="font-medium">Term calendar locked</p>
+                                <p className="font-medium">Term record locked</p>
                                 <p className="mt-1 theme-muted">
-                                    {isHistoricalView || isTermPast(selectedTerm)
-                                        ? 'Historical terms stay read-only.'
-                                        : 'Reopen setup if you need to update the calendar before schemes move further into history.'}
+                                    {termLockedReason(selectedTerm)
+                                        ?? (isHistoricalView || isTermPast(selectedTerm)
+                                            ? 'Historical terms stay read-only.'
+                                            : 'Reopen setup if you need to update the calendar before schemes move further into history.')}
                                 </p>
                             </div>
                         </div>

@@ -21,4 +21,20 @@ describe('RegisterPage form validation feedback', () => {
     expect(hookSource).toContain('createFormValidationAppError');
     expect(hookSource).not.toContain('if (!validate()) return');
   });
+
+  it('treats pending workspace approval as a submitted state instead of a red failure', () => {
+    expect(hookSource).toContain("if (res.status === 'pending')");
+    expect(hookSource).toContain('setIsPending(true);');
+    expect(hookSource).toContain('setSuccess(true);');
+    expect(pageSource).toContain('Workspace request submitted');
+    expect(pageSource).toContain('Platform approval is required before this workspace becomes active.');
+  });
+
+  it('classifies public registration errors by account state, not workspace switching', () => {
+    expect(hookSource).toContain('resolveRegistrationError(err,');
+    expect(hookSource).toContain("action: 'submit'");
+    expect(hookSource).toContain("entityLabel: 'workspace registration'");
+    expect(hookSource).not.toContain("action: 'switch',\n                    entityLabel: 'workspace registration'");
+    expect(hookSource).not.toContain("resolveWorkspaceError(err, {\n                    action: 'create'");
+  });
 });

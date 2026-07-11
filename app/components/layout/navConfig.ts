@@ -353,7 +353,7 @@ export function getAdminNav(
       primary: [
         { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
         ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
-        { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
+        { name: 'Staff', href: '/admin/instructors', icon: UserCog },
         { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
         { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
@@ -378,7 +378,7 @@ export function getAdminNav(
         },
       ],
       secondary: [
-        { name: 'Tutor Activity', href: '/admin/instructors', icon: Activity },
+        { name: 'Staff Activity', href: '/admin/instructors', icon: Activity },
         ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
         ...workspaceAccessNavItems,
         { name: 'Settings', href: '/admin/settings', icon: Settings },
@@ -417,7 +417,7 @@ export function getAdminNav(
       { name: 'Dashboard', shortName: 'Home', href: '/dashboard/admin', icon: LayoutDashboard, mobilePriority: 1 },
       ...getPluginNavigationItems('admin.primary.afterDashboard', pluginContext),
       ACADEMIC_SETUP_NAV,
-      { name: 'Instructors', href: '/admin/instructors', icon: UserCog },
+      { name: 'Staff', href: '/admin/instructors', icon: UserCog },
       { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
       { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
       { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
@@ -443,7 +443,7 @@ export function getAdminNav(
       },
     ],
     secondary: [
-      { name: 'Instructor Activity', href: '/admin/instructors', icon: Activity },
+      { name: 'Staff Activity', href: '/admin/instructors', icon: Activity },
       { name: 'System Alerts', href: '/admin/alerts', icon: AlertCircle },
       ...getPluginNavigationItems('admin.secondary.beforeSettings', pluginContext),
       ...workspaceAccessNavItems,

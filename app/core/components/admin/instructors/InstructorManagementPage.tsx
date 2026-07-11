@@ -3,7 +3,7 @@
 // ============================================================================
 // app/(dashboard)/admin/instructors/page.tsx
 //
-// Display-only list. All instructor actions live on the progress page.
+// Display-only staff list. Teaching actions live on the progress page.
 // Clicking any row navigates to /admin/instructors/[id]/progress.
 // ============================================================================
 
@@ -55,7 +55,7 @@ function StatsBar({ instructors }: { instructors: GlobalUser[] }) {
     return (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-                { label: 'Total Instructors', value: instructors.length, color: 'text-blue-600', bg: 'bg-blue-50', icon: Users },
+                { label: 'Total staff', value: instructors.length, color: 'text-blue-600', bg: 'bg-blue-50', icon: Users },
                 { label: 'Active', value: active, color: 'text-green-600', bg: 'bg-green-50', icon: UserCheck },
                 { label: 'Access Restricted', value: restricted, color: 'text-yellow-600', bg: 'bg-yellow-50', icon: UserX },
                 { label: 'Platform Restricted', value: platformRestricted, color: 'text-red-600', bg: 'bg-red-50', icon: BookOpen },
@@ -76,7 +76,7 @@ function StatsBar({ instructors }: { instructors: GlobalUser[] }) {
     );
 }
 
-// ── Create modal (stays here — creating an instructor is a list-level action) 
+// ── Create modal (stays here — creating a teacher identity is a list-level action) 
 
 interface CreateForm {
     first_name: string; last_name: string; email: string;
@@ -151,12 +151,12 @@ function CreateInstructorModal({
             });
             setForm(EMPTY_CREATE);
             setErrors({});
-            setCreateSuccess('Instructor created successfully.');
+            setCreateSuccess('Teacher added successfully.');
         } catch (err: unknown) {
             const appError = getAppError(err) ?? resolveAppError(err, {
                 domain: 'instructors',
                 action: 'create',
-                entityLabel: 'instructor account',
+                entityLabel: 'staff account',
                 role: 'ADMIN',
             });
             setApiError(appError);
@@ -177,7 +177,7 @@ function CreateInstructorModal({
         <Modal
             isOpen={isOpen}
             onClose={handleClose}
-            title="Add Instructor"
+            title="Add teacher"
             size="lg"
             closeDisabled={submitting}
             closeOnBackdrop={false}
@@ -192,7 +192,7 @@ function CreateInstructorModal({
                     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                         <Button variant="secondary" onClick={handleClose} disabled={submitting}>Cancel</Button>
                         <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
-                            {submitting ? 'Creating...' : 'Create Instructor'}
+                            {submitting ? 'Creating...' : 'Add teacher'}
                         </Button>
                     </div>
                 )
@@ -202,7 +202,7 @@ function CreateInstructorModal({
                 {createSuccess ? (
                     <ActionStateBanner
                         variant="success"
-                        title="Instructor created"
+                        title="Teacher added"
                         message={createSuccess}
                     />
                 ) : null}
@@ -283,7 +283,7 @@ function InstructorGridCard({
                 </div>
                 <div className="flex items-center gap-4 text-xs text-gray-500 border-t border-gray-100 pt-3">
                     <span className="flex items-center gap-1">
-                        <GraduationCap className="h-3.5 w-3.5 text-blue-400" />Instructor
+                        <GraduationCap className="h-3.5 w-3.5 text-blue-400" />Teaching role
                     </span>
                     <span>Joined {new Date(instructor.date_joined).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>
                     <span className="ml-auto flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
@@ -402,7 +402,7 @@ export function InstructorManagementPage() {
     const columns: Column<GlobalUser>[] = [
         {
             key: 'full_name',
-            header: 'Instructor',
+            header: 'Staff member',
             sortable: true,
             render: row => (
                 <div className="flex items-center gap-3">
@@ -484,8 +484,8 @@ export function InstructorManagementPage() {
     if (loading) return (
         <div className="flex items-center justify-center h-64">
             <div className="text-center">
-                <LoadingSpinner size="lg" fullScreen={false} message="Loading instructors..." showMessage={false} />
-                <p className="mt-3 text-sm text-gray-500">Loading instructors...</p>
+                <LoadingSpinner size="lg" fullScreen={false} message="Loading staff..." showMessage={false} />
+                <p className="mt-3 text-sm text-gray-500">Loading staff...</p>
             </div>
         </div>
     );
@@ -499,13 +499,13 @@ export function InstructorManagementPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Instructor Management</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        {instructors.length} instructor{instructors.length !== 1 ? 's' : ''} — click any row to view details and manage
+                        {instructors.length} staff member{instructors.length !== 1 ? 's' : ''} with teaching access — click any row to view details and manage assignments
                     </p>
                 </div>
                 <Button variant="primary" onClick={() => { setCreateOpen(true); }} className="gap-2">
-                    <Plus className="h-4 w-4" />Add Instructor
+                    <Plus className="h-4 w-4" />Add teacher
                 </Button>
             </div>
 
@@ -517,7 +517,7 @@ export function InstructorManagementPage() {
                         <div>
                             <h2 className="text-sm font-semibold text-gray-900">Cohort Subject Assignment</h2>
                             <p className="mt-1 text-sm text-gray-600">
-                                Select an instructor to manage <span className="font-medium text-gray-900">{selectedSubjectName}</span> in{' '}
+                                Select a teacher to manage <span className="font-medium text-gray-900">{selectedSubjectName}</span> in{' '}
                                 <span className="font-medium text-gray-900">{selectedCohortName}</span>.
                             </p>
                         </div>
@@ -565,11 +565,11 @@ export function InstructorManagementPage() {
                     data={filtered.map(i => i as GlobalUser & Record<string, unknown>)}
                     columns={columns}
                     loading={false}
-                    loadingMessage="Loading instructor accounts..."
+                    loadingMessage="Loading staff accounts..."
                     enableSearch
                     enableSort
                     searchPlaceholder="Search by name or email..."
-                    emptyMessage={search || statusFilter !== 'all' ? 'No instructors match your filters' : 'No instructors yet'}
+                    emptyMessage={search || statusFilter !== 'all' ? 'No staff match your filters' : 'No staff members yet'}
                     onSearch={setSearch}
                     onRowClick={row => navigateTo(row.id)}
                     onSort={() => { }}
@@ -578,11 +578,11 @@ export function InstructorManagementPage() {
                 <div className="bg-white rounded-xl border border-gray-200 p-14 text-center">
                     <GraduationCap className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-sm font-medium text-gray-500">
-                        {search || statusFilter !== 'all' ? 'No instructors match your filters' : 'No instructors yet'}
+                        {search || statusFilter !== 'all' ? 'No staff match your filters' : 'No staff members yet'}
                     </p>
                     {!search && statusFilter === 'all' && (
                         <button onClick={() => setCreateOpen(true)} className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
-                            Add your first instructor →
+                            Add your first teacher →
                         </button>
                     )}
                 </div>
