@@ -54,6 +54,8 @@ export function WorkspaceRolesPage() {
     templatesQuery,
     rolesQuery,
     assignmentsQuery,
+    assignmentOptionsQuery,
+    assignmentOptionsError,
     meQuery,
     actions,
   } = useWorkspaceAccess();
@@ -196,10 +198,19 @@ export function WorkspaceRolesPage() {
           compact
         />
       ) : null}
+      {assignmentOptionsError ? (
+        <AppErrorBanner
+          error={assignmentOptionsError}
+          compact
+        />
+      ) : null}
 
       <RoleAssignmentPanel
         roles={roles}
         assignments={assignments}
+        staffOptions={assignmentOptionsQuery.data?.staff_options ?? []}
+        scopeOptions={assignmentOptionsQuery.data?.scope_options ?? []}
+        optionsLoading={assignmentOptionsQuery.isLoading || assignmentOptionsQuery.isFetching}
         onAssign={async (payload) => {
           setAssignmentError(null);
           try {

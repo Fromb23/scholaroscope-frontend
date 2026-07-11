@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { workspaceAccessAPI } from '@/app/core/api/workspaceAccess';
+import { resolveAppError, type AppError } from '@/app/core/errors';
 import type { WorkspaceRoleAssignmentPayload, WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
 
 export const workspaceAccessKeys = {
@@ -8,6 +10,7 @@ export const workspaceAccessKeys = {
   templates: ['workspace-access', 'templates'] as const,
   roles: ['workspace-access', 'roles'] as const,
   assignments: ['workspace-access', 'assignments'] as const,
+  assignmentOptions: ['workspace-access', 'assignment-options'] as const,
   me: ['workspace-access', 'me'] as const,
 };
 
@@ -33,10 +36,37 @@ export function useWorkspaceAccess() {
     queryKey: workspaceAccessKeys.me,
     queryFn: workspaceAccessAPI.getMe,
   });
+  const roleActionsAllowAssignment = rolesQuery.data?.some(
+    (role) => role.actions.can_assign && role.is_active,
+  ) ?? false;
+  const meHasAssignmentPermission = meQuery.data?.permission_keys.includes(
+    'workspace.roles.assign',
+  ) ?? false;
+  const canLoadAssignmentOptions = Boolean(
+    rolesQuery.isSuccess
+    && meQuery.isSuccess
+    && (roleActionsAllowAssignment || meHasAssignmentPermission),
+  );
+  const assignmentOptionsQuery = useQuery({
+    queryKey: workspaceAccessKeys.assignmentOptions,
+    queryFn: workspaceAccessAPI.getAssignmentOptions,
+    enabled: canLoadAssignmentOptions,
+  });
+  const assignmentOptionsError = useMemo<AppError | null>(() => (
+    assignmentOptionsQuery.error
+      ? resolveAppError(assignmentOptionsQuery.error, {
+        domain: 'workspace',
+        action: 'load',
+        entityLabel: 'role assignment options',
+        channel: 'inline',
+      })
+      : null
+  ), [assignmentOptionsQuery.error]);
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.roles });
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignments });
+    void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.assignmentOptions });
     void queryClient.invalidateQueries({ queryKey: workspaceAccessKeys.me });
   };
 
@@ -73,6 +103,8 @@ export function useWorkspaceAccess() {
     templatesQuery,
     rolesQuery,
     assignmentsQuery,
+    assignmentOptionsQuery,
+    assignmentOptionsError,
     meQuery,
     actions: {
       createRole,
