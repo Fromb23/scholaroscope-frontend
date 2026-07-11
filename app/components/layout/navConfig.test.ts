@@ -90,6 +90,15 @@ describe('admin navigation config', () => {
     expect(nav.primary.some((item) => item.name === 'Learners' && item.href === '/learners')).toBe(true);
   });
 
+  it('labels institution people management as Staff without changing the instructors route', () => {
+    const nav = getAdminNav(pluginContext, 'INSTITUTION');
+    const staffItem = nav.primary.find((item) => item.href === '/admin/instructors');
+
+    expect(staffItem?.name).toBe('Staff');
+    expect(nav.primary.some((item) => item.name === 'Instructors')).toBe(false);
+    expect(nav.secondary?.find((item) => item.href === '/admin/instructors')?.name).toBe('Staff Activity');
+  });
+
   it('uses class-owned navigation for future self-managed workspace behavior', () => {
     const nav = getAdminNav(pluginContext, 'HOMESCHOOL', null, {
       can_teach: true,

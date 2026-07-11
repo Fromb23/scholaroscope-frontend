@@ -111,7 +111,7 @@ export default function InstructorProgressPage() {
                 : instructorsAPI.deactivate(instructorId));
             await refetch();
         },
-            isRestricted ? 'Instructor access reactivated' : 'Instructor access restricted',
+            isRestricted ? 'Staff access reactivated' : 'Staff access restricted',
             'Failed to update status'
         );
     };
@@ -126,13 +126,13 @@ export default function InstructorProgressPage() {
         }
     };
 
-    if (loading) return <LoadingSpinner message="Loading instructor..." />;
+    if (loading) return <LoadingSpinner message="Loading staff member..." />;
 
     if (error || !instructor) return (
         <div className="flex items-center justify-center h-64">
             <div className="text-center">
                 <AlertCircle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">{error ?? 'Instructor not found'}</p>
+                <p className="text-sm text-gray-500">{error ?? 'Staff member not found'}</p>
                 <Button variant="secondary" className="mt-3" onClick={goBack}>Back</Button>
             </div>
         </div>
@@ -158,7 +158,7 @@ export default function InstructorProgressPage() {
     return (
         <div className="mx-auto max-w-7xl space-y-6">
             <Button variant="ghost" size="sm" onClick={goBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />Back to Instructors
+                <ArrowLeft className="h-4 w-4 mr-2" />Back to Staff
             </Button>
 
             {feedback && (
@@ -313,7 +313,7 @@ export default function InstructorProgressPage() {
                     </div>
                     {schemes.length === 0 ? (
                         <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-                            No schemes of work have been created by this instructor yet.
+                            No schemes of work have been created by this teacher yet.
                         </p>
                     ) : (
                         <div className="space-y-4">

@@ -35,4 +35,15 @@ describe('Instructor foreground modals', () => {
     expect(modalsSource).toContain('setSuccessMessage(`${assignment.subjectName} unassigned from ${instructorName}.`)');
     expect(modalsSource).toContain('<Button variant="secondary" onClick={handleClose} disabled={working}>Close</Button>');
   });
+
+  it('uses staff account language for management actions on the detail page', () => {
+    expect(modalsSource).toContain('title="Edit staff member"');
+    expect(modalsSource).toContain('title="Staff member updated"');
+    expect(modalsSource).toContain("entityLabel: 'staff details'");
+    expect(modalsSource).toContain("entityLabel: 'staff workspace access'");
+    expect(progressPageSource).toContain('Back to Staff');
+    expect(progressPageSource).toContain('Loading staff member...');
+    expect(progressPageSource).not.toContain('Back to Instructors');
+    expect(progressPageSource).not.toContain('Instructor access restricted');
+  });
 });
