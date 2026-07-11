@@ -485,10 +485,10 @@ function RegisterForm() {
                   </div>
                   {commercialQuote.selected_premium_plugins.length > 0 ? (
                     <p className="theme-muted text-xs">
-                      Premium plugins: {commercialQuote.selected_premium_plugins.map((plugin) => plugin.plugin_name).join(', ')}
+                      Premium capabilities: {commercialQuote.selected_premium_plugins.map((plugin) => plugin.plugin_name).join(', ')}
                     </p>
                   ) : (
-                    <p className="theme-muted text-xs">No premium plugin selected.</p>
+                    <p className="theme-muted text-xs">No premium capability selected.</p>
                   )}
                 </div>
               ) : (
@@ -498,7 +498,7 @@ function RegisterForm() {
                   </p>
                   <p className="theme-muted mt-1 text-xs">
                     {quoteToken
-                      ? 'The backend will validate this quote when you submit.'
+                      ? 'Scholaroscope will validate this quote when you submit.'
                       : 'Go back to the rate card and choose Standard or Premium before continuing.'}
                   </p>
                 </div>
@@ -576,12 +576,12 @@ function RegisterForm() {
                       <div>
                         <p className="text-sm font-semibold theme-text">{commercialWorkspaceLabel}</p>
                         <p className="mt-1 text-sm theme-muted">
-                          This workspace will have its own subscription, roles, plugin entitlements, and academic data.
+                          This workspace will have its own subscription, roles, feature access, and academic data.
                         </p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => router.push(isNewWorkspaceFlow ? '/workspaces/new' : '/#commercial-rate-card')}
+                        onClick={() => router.push(isNewWorkspaceFlow ? '/workspaces/new' : '/get-started')}
                         className="theme-link text-sm font-medium"
                       >
                         Change quote

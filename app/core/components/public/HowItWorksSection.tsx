@@ -4,8 +4,8 @@ const steps = [
     body: 'Choose the institution, tuition, homeschool, learner, or personal teaching workspace that matches the operation.',
   },
   {
-    title: 'Confirm the backend quote',
-    body: 'Scholaroscope prices the three-month Standard foundation and any selected premium capabilities on the server.',
+    title: 'Confirm your quote',
+    body: 'Scholaroscope confirms the Standard foundation and any selected premium capabilities before you register.',
   },
   {
     title: 'Create the account or workspace',
@@ -13,7 +13,7 @@ const steps = [
   },
   {
     title: 'Run academic operations',
-    body: 'Workspace admins manage roles, members, academic setup, plugins, teaching records, assessments, and reports.',
+    body: 'Workspace admins manage members, academic setup, teaching records, assessments, and reports.',
   },
 ];
 

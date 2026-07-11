@@ -107,7 +107,7 @@ export function useRegister() {
 
     useEffect(() => {
         if (isInviteFlow || quoteToken) return;
-        router.replace('/#commercial-rate-card');
+        router.replace('/get-started');
     }, [isInviteFlow, quoteToken, router]);
 
     useEffect(() => {

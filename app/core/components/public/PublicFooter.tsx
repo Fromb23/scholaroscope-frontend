@@ -7,7 +7,7 @@ export function PublicFooter() {
         <p>&copy; {new Date().getFullYear()} Scholaroscope. All rights reserved.</p>
         <div className="flex gap-4">
           <Link href="/login" className="font-semibold hover:text-slate-950">Sign in</Link>
-          <a href="#commercial-rate-card" className="font-semibold hover:text-slate-950">Create workspace</a>
+          <Link href="/get-started" className="font-semibold hover:text-slate-950">Create workspace</Link>
         </div>
       </div>
     </footer>

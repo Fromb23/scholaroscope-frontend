@@ -53,8 +53,8 @@ export function CommercialQuoteSummary({
   return (
     <aside className="sticky top-24 rounded-xl border bg-white p-5 shadow-sm theme-border">
       <div className="border-b pb-4 theme-border">
-        <p className="text-sm font-semibold theme-text">Order summary</p>
-        <p className="theme-subtle mt-1 text-xs">Backend quote remains the price authority.</p>
+        <p className="text-sm font-semibold theme-text">Quote summary</p>
+        <p className="theme-subtle mt-1 text-xs">Scholaroscope confirms the final price before registration.</p>
       </div>
 
       <div className="space-y-4 py-5">
@@ -111,7 +111,7 @@ export function CommercialQuoteSummary({
             </span>
           </div>
           <div className="flex items-end justify-between border-t pt-3 theme-border">
-            <span className="text-sm font-semibold theme-text">{quote ? 'Backend-confirmed total' : 'Total'}</span>
+            <span className="text-sm font-semibold theme-text">{quote ? 'Confirmed total' : 'Total'}</span>
             <span className="text-2xl font-bold theme-text">
               {quote ? formatMoney(quote.total, quote.currency) : 'Confirm quote'}
             </span>
@@ -122,7 +122,7 @@ export function CommercialQuoteSummary({
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
             <p className="flex items-center gap-2 font-semibold">
               <CheckCircle2 className="h-4 w-4" />
-              Server quote confirmed
+              Quote confirmed
             </p>
             <p className="mt-1 text-xs">Expires {formatDate(quote.expires_at)}.</p>
           </div>

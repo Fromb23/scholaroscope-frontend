@@ -10,7 +10,7 @@ const navItems = [
   { href: '#how-it-works', label: 'Workflow' },
   { href: '#features', label: 'Capabilities' },
   { href: '#audiences', label: 'Use cases' },
-  { href: '#commercial-rate-card', label: 'Pricing' },
+  { href: '/get-started', label: 'Pricing' },
 ];
 
 export function PublicHeader() {
@@ -37,9 +37,15 @@ export function PublicHeader() {
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Public navigation">
           {navItems.map((item) => (
-            <a key={item.href} href={item.href} className="text-sm font-medium text-slate-600 hover:text-slate-950">
-              {item.label}
-            </a>
+            item.href.startsWith('/') ? (
+              <Link key={item.href} href={item.href} className="text-sm font-medium text-slate-600 hover:text-slate-950">
+                {item.label}
+              </Link>
+            ) : (
+              <a key={item.href} href={item.href} className="text-sm font-medium text-slate-600 hover:text-slate-950">
+                {item.label}
+              </a>
+            )
           ))}
         </nav>
 
@@ -51,12 +57,12 @@ export function PublicHeader() {
           >
             Sign in
           </Link>
-          <a
-            href="#commercial-rate-card"
+          <Link
+            href="/get-started"
             className="inline-flex min-h-10 items-center rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800"
           >
-            Start setup
-          </a>
+            Get started
+          </Link>
         </div>
 
         <button
@@ -74,14 +80,25 @@ export function PublicHeader() {
         <div className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
           <nav className="mx-auto grid max-w-[1220px] gap-2" aria-label="Mobile public navigation">
             {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                onClick={() => setMenuOpen(false)}
-              >
-                {item.label}
-              </a>
+              item.href.startsWith('/') ? (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-lg px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                </a>
+              )
             ))}
             <Link
               href="/login"

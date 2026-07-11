@@ -6,7 +6,7 @@ const features = [
   { title: 'Assessment and reports', body: 'Policy-driven assessment workflows and report computation across workspace contexts.', icon: FileBarChart },
   { title: 'Workspace roles', body: 'Workspace-defined roles and permission composition remain under the workspace access model.', icon: ShieldCheck },
   { title: 'Member management', body: 'Invite, activate, restrict, restore, and remove workspace members without deleting history.', icon: Users },
-  { title: 'Plugin catalogue', body: 'Standard and premium capabilities appear from the backend entitlement and subscription model.', icon: PlugZap },
+  { title: 'Features and integrations', body: 'Standard and Premium capabilities follow the workspace plan and subscription policy.', icon: PlugZap },
 ];
 
 export function FeatureSection() {
