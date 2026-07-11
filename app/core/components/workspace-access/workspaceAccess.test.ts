@@ -131,6 +131,8 @@ describe('workspace access frontend contract', () => {
   it('renders backend assignment scope errors through structured app errors', () => {
     expect(pageSource).toContain('setAssignmentError(resolveAppError(error');
     expect(pageSource).toContain('entityLabel: \'staff role assignment\'');
+    expect(pageSource).toContain('action: \'update\'');
+    expect(pageSource).toContain('await actions.endAssignment.mutateAsync({ assignmentId, reason });');
     expect(errorCopySource).toContain('workspace_role_scope_required');
     expect(errorCopySource).toContain('workspace_role_scope_too_broad');
     expect(errorCopySource).toContain('broad_workspace_scope_requires_confirmation');

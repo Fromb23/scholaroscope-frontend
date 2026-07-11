@@ -226,7 +226,18 @@ export function WorkspaceRolesPage() {
           }
         }}
         onEnd={async (assignmentId, reason) => {
-          await actions.endAssignment.mutateAsync({ assignmentId, reason });
+          setAssignmentError(null);
+          try {
+            await actions.endAssignment.mutateAsync({ assignmentId, reason });
+          } catch (error) {
+            setAssignmentError(resolveAppError(error, {
+              domain: 'workspace',
+              action: 'update',
+              entityLabel: 'staff role assignment',
+              channel: 'inline',
+            }));
+            throw error;
+          }
         }}
         assigning={actions.assignRole.isPending}
         ending={actions.endAssignment.isPending}
