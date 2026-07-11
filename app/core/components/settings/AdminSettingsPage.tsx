@@ -36,7 +36,7 @@ function SettingsContent() {
   const availableTabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'general', label: 'General', icon: Settings },
     ...(!isFreelance ? [{ key: 'members' as const, label: 'Members', icon: Users }] : []),
-    { key: 'plugins', label: 'Plugins', icon: Puzzle },
+    { key: 'plugins', label: 'Features & integrations', icon: Puzzle },
   ];
   const validTabs = availableTabs.map((tab) => tab.key);
   const activeTab: Tab = validTabs.includes(tabParam)

@@ -22,6 +22,10 @@ const getStartedPageSource = readFileSync(
   join(process.cwd(), 'app/get-started/page.tsx'),
   'utf8',
 );
+const getStartedComponentSource = readFileSync(
+  join(process.cwd(), 'app/core/components/commercial/PublicGetStartedPage.tsx'),
+  'utf8',
+);
 const commercialApiSource = readFileSync(
   join(process.cwd(), 'app/core/api/commercialCatalog.ts'),
   'utf8',
@@ -42,7 +46,8 @@ const headerSource = readFileSync(
 describe('commercial onboarding contract', () => {
   it('loads public rate cards from the backend and quotes before registration', () => {
     expect(landingSource).toContain('<CommercialSection');
-    expect(getStartedPageSource).toContain('<CommercialRateCards');
+    expect(getStartedPageSource).toContain('<PublicGetStartedPage');
+    expect(getStartedComponentSource).toContain('<CommercialRateCards');
     expect(commercialApiSource).toContain("'/subscriptions/catalog/'");
     expect(commercialApiSource).toContain("'/subscriptions/catalog/quote/'");
     expect(commercialSource).toContain('Start with Standard and add only the premium curriculum or specialist capabilities you need.');

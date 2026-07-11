@@ -11,6 +11,33 @@ import type { WorkspacePluginClassification } from '@/app/core/types/auth';
 
 export type PluginSource = 'core' | 'third_party';
 export type PluginState = 'active' | 'disabled' | 'grace_period' | 'uninstalled';
+export type PluginManagementAuthority =
+    | 'PLATFORM'
+    | 'WORKSPACE_POLICY'
+    | 'SUBSCRIPTION'
+    | 'SUBSCRIPTION_AND_LIFECYCLE'
+    | 'WORKSPACE_CONFIGURATION'
+    | 'NONE';
+export type PluginManagementActionMode =
+    | 'READ_ONLY'
+    | 'CONFIGURE_ONLY'
+    | 'TOGGLE'
+    | 'CURRICULUM_LIFECYCLE'
+    | 'EXTERNAL_CONNECTION'
+    | 'SUBSCRIPTION_MANAGED'
+    | 'METERED_STATUS';
+
+export interface PluginManagementContract {
+    authority: PluginManagementAuthority;
+    action_mode: PluginManagementActionMode;
+    can_toggle: boolean;
+    can_configure: boolean;
+    can_uninstall: boolean;
+    can_manage_curriculum: boolean;
+    can_manage_subject_offerings: boolean;
+    can_view_subscription: boolean;
+    blocked_reason: string | null;
+}
 
 export interface Plugin {
     id: number;
@@ -67,6 +94,7 @@ export interface InstalledPlugin {
     policy_classification?: WorkspacePluginClassification;
     required_by_policy?: boolean;
     default_enabled_by_policy?: boolean;
+    management?: PluginManagementContract;
 }
 
 export interface InstalledPluginToggleWorkflowResponse {

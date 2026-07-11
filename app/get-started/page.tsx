@@ -1,15 +1,5 @@
-import { PublicFooter } from '@/app/core/components/public/PublicFooter';
-import { PublicHeader } from '@/app/core/components/public/PublicHeader';
-import { CommercialRateCards } from '@/app/core/components/commercial/CommercialRateCards';
+import { PublicGetStartedPage } from '@/app/core/components/commercial/PublicGetStartedPage';
 
-export default function GetStartedPage() {
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <PublicHeader />
-      <main className="pt-16">
-        <CommercialRateCards />
-      </main>
-      <PublicFooter />
-    </div>
-  );
+export default function Page() {
+  return <PublicGetStartedPage />;
 }
