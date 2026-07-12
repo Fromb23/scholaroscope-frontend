@@ -332,17 +332,150 @@ export interface CbcStudentResult {
   computed_at: string | null;
 }
 
+export type CbcPerformanceLevel = 'BE' | 'AE' | 'ME' | 'EE' | '';
+
+export interface CbcCompetencyPerformance {
+  level: CbcPerformanceLevel | string;
+  label: string;
+  status: 'NO_EVIDENCE' | 'PROVISIONAL' | 'FINAL' | string;
+}
+
+export interface CbcCompetencyCoverage {
+  outcomes_selected: number;
+  outcomes_taught: number;
+  outcomes_observed: number;
+  outcomes_taught_not_observed: number;
+}
+
+export interface CbcOutcomeDistribution {
+  EE: number;
+  ME: number;
+  AE: number;
+  BE: number;
+  PROVISIONAL: number;
+  NO_EVIDENCE: number;
+  [key: string]: number;
+}
+
+export interface CbcOutcomeReference {
+  outcome_id: number;
+  code: string;
+  description: string;
+  level?: string | null;
+  label?: string | null;
+  result_status?: string | null;
+}
+
+export interface CbcEvidenceSummary {
+  total: number;
+  observations: number;
+  assignments: number;
+  group_assignments: number;
+  projects: number;
+  practicals: number;
+  assessments: number;
+  descriptive: number;
+  rubric: number;
+  numeric: number;
+  competency: number;
+  other?: number;
+  [key: string]: number | undefined;
+}
+
+export interface CbcTeacherReview {
+  id?: number | null;
+  teacher_remark: string;
+  recommended_next_steps: string[];
+  contextual_note?: string | null;
+  reviewed_by?: number | null;
+  reviewed_at?: string | null;
+  approved_by?: number | null;
+  approved_at?: string | null;
+  requires_re_review?: boolean;
+  updated_at?: string | null;
+}
+
+export interface CbcPortfolioEntry {
+  evidence_id: number;
+  source_type: string | null;
+  source_id: number | null;
+  learning_outcome: {
+    id: number;
+    code: string;
+    description: string;
+  } | null;
+  observed_at: string | null;
+  performance_level?: string | null;
+  evaluation_type: string | null;
+  teacher_narrative?: string | null;
+  source_reference?: string | number | null;
+  artifact?: unknown;
+}
+
+export interface CbcObservationRecord {
+  learner?: number | null;
+  learning_outcome: CbcPortfolioEntry['learning_outcome'];
+  date: string | null;
+  session?: number | null;
+  evaluation_type: string | null;
+  performance_level?: string | null;
+  teacher_narrative?: string | null;
+  follow_up?: string | null;
+}
+
+export interface CbcAssessmentIndicator {
+  weighted_score: number | null;
+  component_scores: Record<string, number | string | null>;
+  diagnostic_scores?: Record<string, number | string | null>;
+  missing_components?: string[];
+  result_status: string | null;
+  is_stale?: boolean;
+  computed_at?: string | null;
+}
+
+export interface CbcCompetencyResult {
+  id: number;
+  performance: CbcCompetencyPerformance;
+  coverage: CbcCompetencyCoverage;
+  distribution: CbcOutcomeDistribution;
+  strengths: CbcOutcomeReference[];
+  support_needed: CbcOutcomeReference[];
+  evidence_summary: CbcEvidenceSummary;
+  assessment_indicator_id?: number | null;
+  readiness?: {
+    has_result: boolean;
+    is_stale: boolean;
+    is_final: boolean;
+    missing_components?: string[];
+    missing_requirements?: string[];
+  } | null;
+  computation_details?: Record<string, unknown> | null;
+  computed_at?: string | null;
+}
+
 export interface CbcReadiness {
   has_result: boolean;
   is_stale: boolean;
   is_final: boolean;
-  missing_components: string[];
+  missing_components?: string[];
+  missing_requirements?: string[];
 }
 
 export interface CbcStudentSection {
   reporting_source: 'cbc';
   curriculum_type: 'CBE';
+  performance?: CbcCompetencyPerformance | null;
+  coverage?: CbcCompetencyCoverage | null;
+  distribution?: CbcOutcomeDistribution | null;
+  strengths?: CbcOutcomeReference[];
+  support_needed?: CbcOutcomeReference[];
+  evidence_summary?: CbcEvidenceSummary | null;
+  teacher_review?: CbcTeacherReview | null;
+  portfolio?: { entries: CbcPortfolioEntry[] } | null;
+  observation_records?: CbcObservationRecord[];
+  assessment_indicator?: CbcAssessmentIndicator | null;
   cbc_result: CbcStudentResult | null;
+  competency_result?: CbcCompetencyResult | null;
   progress_summary: Record<string, unknown> | null;
   readiness: CbcReadiness | null;
   note: string | null;
@@ -1156,6 +1289,7 @@ export interface LearnerReportProgressSection {
   strand_summaries: LearnerReportStrandSummary[];
   session_evidence_count: number;
   cbc_result: LearnerReportCbcResult | null;
+  competency_result?: CbcCompetencyResult | null;
 }
 
 export interface LearnerReportLearningGraphPoint {
@@ -1440,6 +1574,8 @@ export interface LearnerOverviewSubjectSummary {
   numeric_average: number | null;
   computed_grade: LearnerReportComputedGrade | null;
   cbc_result: LearnerReportCbcResult | null;
+  performance?: CbcCompetencyPerformance | null;
+  competency_result?: CbcCompetencyResult | null;
   risk_level: ReportRiskLevel;
   summary_status?: SubjectSummaryStatus | null;
   summary_note?: string | null;

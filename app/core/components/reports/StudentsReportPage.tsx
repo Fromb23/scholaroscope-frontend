@@ -44,7 +44,7 @@ import { useStudentReportCard } from '@/app/core/hooks/useReporting';
 import { useStudents } from '@/app/core/hooks/useStudents';
 import {
   formatPercent,
-  resolveCbcStudentResult,
+  resolveCbcCompetencyResult,
   resolveGenericStudentResult,
 } from '@/app/core/lib/reportingPresentation';
 import { getLearnerProfileExtensions } from '@/app/core/registry/learnerSlot';
@@ -69,6 +69,17 @@ function focusReportPanel(panelId: string) {
     panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     panel.focus({ preventScroll: true });
   }, 0);
+}
+
+function formatCbcCompetencyResultLabel(
+  competency: ReturnType<typeof resolveCbcCompetencyResult>,
+): string {
+  if (!competency) return 'CBC result pending';
+  const performance = competency.performance;
+  if (performance.level) {
+    return performance.label ? `${performance.level} · ${performance.label}` : performance.level;
+  }
+  return performance.status?.replace(/_/g, ' ') || 'CBC result pending';
 }
 
 export function StudentsReportPage({
@@ -98,7 +109,12 @@ export function StudentsReportPage({
   const { currentTerm, loading: currentTermLoading } = useCurrentTerm();
   const { terms, loading: termsLoading } = useTerms();
   const reportEnabled = Boolean(selectedStudentId) && Boolean(selectedTermId || currentTerm?.id);
-  const { reportCard, loading: reportLoading, error: reportError } = useStudentReportCard(
+  const {
+    reportCard,
+    loading: reportLoading,
+    error: reportError,
+    refetch: refetchReportCard,
+  } = useStudentReportCard(
     selectedStudentId,
     selectedTermId,
     { enabled: reportEnabled },
@@ -387,7 +403,7 @@ export function StudentsReportPage({
                   color="green"
                 />
                 <StatsCard
-                  title="CBC Weighted"
+                  title="CBC Assessment Indicator"
                   value={formatPercent(reportCard.overall.cbc_average_weighted_score)}
                   icon={FileText}
                   color="purple"
@@ -425,7 +441,8 @@ export function StudentsReportPage({
                 <div className="grid gap-4">
                   {reportCard.subjects.map((subject) => {
                     const genericResult = resolveGenericStudentResult(subject.generic);
-                    const cbcResult = resolveCbcStudentResult(subject.cbc);
+                    const cbcCompetency = resolveCbcCompetencyResult(subject.cbc);
+                    const isCbcSubject = subject.reporting_source === 'cbc';
                     const subjectActions = (
                       <>
                         <Link
@@ -499,6 +516,8 @@ export function StudentsReportPage({
                         assessmentCompletion={subject.assessment_completion}
                         genericStudent={subject.generic}
                         cbcStudent={subject.cbc}
+                        canManageCbcReview
+                        onCbcReviewSaved={() => void refetchReportCard()}
                         footer={(
                           <div className="space-y-4">
                             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -515,15 +534,14 @@ export function StudentsReportPage({
                                 value={`${subject.assignment_summary?.submitted_recipients ?? 0} submitted`}
                               />
                               <MetricTile
-                                label="Latest Score"
-                                value={
-                                  formatPercent(
-                                    genericResult.finalScore
-                                    ?? genericResult.averageScore
-                                    ?? cbcResult?.weighted_score
-                                    ?? null,
-                                  )
-                                }
+                                label={isCbcSubject ? 'Competency Result' : 'Latest Score'}
+                                value={isCbcSubject
+                                  ? formatCbcCompetencyResultLabel(cbcCompetency)
+                                  : formatPercent(
+                                      genericResult.finalScore
+                                      ?? genericResult.averageScore
+                                      ?? null,
+                                    )}
                               />
                             </div>
 

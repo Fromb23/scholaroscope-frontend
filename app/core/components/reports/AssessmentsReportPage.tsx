@@ -51,7 +51,7 @@ export function AssessmentsReportPage() {
         { key: 'total_assessments', label: 'Assessments', format: 'number', width: 14, align: 'right' as const },
         { key: 'missing_scores', label: 'Missing Scores', format: 'number', width: 14, align: 'right' as const },
         { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'cbc_weighted_score', label: 'CBC Weighted Score', format: 'percentage', width: 18, align: 'right' as const },
+        { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
       ],
       rows: summaries.map((summary) => ({
         assessment_type: summary.assessment_type,

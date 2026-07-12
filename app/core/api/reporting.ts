@@ -39,6 +39,7 @@ import {
   ReportComputeReadiness,
   ReportExportFormat,
   ReportFilters,
+  CbcTeacherReview,
 } from '@/app/core/types/reporting';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
@@ -870,6 +871,31 @@ export const learnerReportingAPI = {
     },
     `teacher-performance-report-${instructorId}.${format}`,
   ),
+};
+
+export const cbcReportingAPI = {
+  updateSubjectReportReview: async (
+    termSubjectResultId: number,
+    payload: {
+      teacher_remark?: string;
+      recommended_next_steps?: string[];
+      contextual_note?: string;
+      approve?: boolean;
+    },
+  ) => {
+    const response = await apiClient.patch<CbcTeacherReview>(
+      `/cbc/term-subject-results/${termSubjectResultId}/review/`,
+      payload,
+    );
+    return response.data;
+  },
+
+  approveSubjectReportReview: async (termSubjectResultId: number) => {
+    const response = await apiClient.post<CbcTeacherReview>(
+      `/cbc/term-subject-results/${termSubjectResultId}/approve/`,
+    );
+    return response.data;
+  },
 };
 
 export const reportsAPI = {

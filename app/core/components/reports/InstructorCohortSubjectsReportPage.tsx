@@ -58,7 +58,7 @@ export default function InstructorCohortSubjectsReportPage() {
         { key: 'average_attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
         { key: 'session_count', label: 'Sessions', format: 'number', width: 12, align: 'right' as const },
         { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'cbc_weighted_score', label: 'CBC Weighted Score', format: 'percentage', width: 18, align: 'right' as const },
+        { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
       ],
       rows: cohortSubjects.map((item) => ({
         ...item,

@@ -37,17 +37,15 @@ export function CbcPerformanceSummary({
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Learners" value={formatNumber(performance.learner_count, 0)} />
-        <Metric label="CBC Weighted Score" value={formatPercent(performance.average_weighted_score)} />
-        <Metric label="Average Points" value={formatNumber(performance.average_points)} />
+        <Metric label="Final Results" value={formatNumber(resultCounts.FINAL, 0)} />
         <Metric label="Missing Results" value={formatNumber(performance.missing_result_count, 0)} />
+        <Metric label="Stale Results" value={formatNumber(resultCounts.stale_count, 0)} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="Final" value={formatNumber(resultCounts.FINAL, 0)} />
         <Metric label="Baseline pending" value={formatNumber(resultCounts.LATE_ENTRY_BASELINE_PENDING ?? 0, 0)} />
         <Metric label="Provisional evidence" value={formatNumber(resultCounts.PROVISIONAL_EVIDENCE ?? resultCounts.PROVISIONAL, 0)} />
         <Metric label="No evidence" value={formatNumber(resultCounts.NO_EVIDENCE ?? resultCounts.INCOMPLETE, 0)} />
-        <Metric label="Stale" value={formatNumber(resultCounts.stale_count, 0)} />
       </div>
 
       <div>
@@ -60,6 +58,14 @@ export function CbcPerformanceSummary({
       {performance.note && (
         <p className="text-xs text-gray-500">{performance.note}</p>
       )}
+
+      <details className="rounded-md border border-gray-200 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-gray-900">Assessment computation details</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Metric label="Average Weighted Score" value={formatPercent(performance.average_weighted_score)} />
+          <Metric label="Average Points" value={formatNumber(performance.average_points)} />
+        </div>
+      </details>
     </div>
   );
 }

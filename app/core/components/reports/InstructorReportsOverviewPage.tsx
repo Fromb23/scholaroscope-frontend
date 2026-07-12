@@ -71,7 +71,7 @@ export function InstructorReportsOverviewPage() {
         { key: 'session_count', label: 'Sessions', format: 'number', width: 12, align: 'right' as const },
         { key: 'completed_session_count', label: 'Completed', format: 'number', width: 12, align: 'right' as const },
         { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'cbc_weighted_score', label: 'CBC Weighted Score', format: 'percentage', width: 18, align: 'right' as const },
+        { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
       ],
       rows: overview.assigned_cohort_subjects.map((item) => ({
         ...item,

@@ -288,7 +288,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
           { key: 'status', label: 'Status', width: 16 },
           { key: 'attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
           { key: 'mark', label: 'Mark', format: 'percentage', width: 14, align: 'right' as const },
-          { key: 'cbc_weighted_score', label: 'CBC Weighted Score', format: 'percentage', width: 18, align: 'right' as const },
+          { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
           { key: 'cbc_code', label: 'CBC Code', width: 12 },
           { key: 'assessments', label: 'Completed Assessments', width: 22 },
         ],
@@ -612,6 +612,8 @@ export default function InstructorCohortSubjectDetailReportPage() {
                   assessmentCompletion={item.assessment_completion}
                   genericStudent={resolveInstructorGenericStudent(item)}
                   cbcStudent={resolveInstructorCbcStudent(item)}
+                  canManageCbcReview
+                  onCbcReviewSaved={() => void learnersQuery.refetch()}
                 />
               ))}
             </CompactReportGrid>
@@ -635,7 +637,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
               <>
                 <StatsCard title="Learners" value={performanceQuery.report.total_learners} icon={Users} color="blue" />
                 <StatsCard title="Average Attendance" value={formatPercent(performanceQuery.report.average_attendance)} icon={Users} color="indigo" />
-                <StatsCard title="CBC Weighted Score" value={formatPercent(cbcPerformance?.average_weighted_score)} icon={BookOpen} color="green" />
+                <StatsCard title="CBC Assessment Indicator" value={formatPercent(cbcPerformance?.average_weighted_score)} icon={BookOpen} color="green" />
                 <StatsCard
                   title="Final Results"
                   value={cbcPerformance?.result_counts?.FINAL ?? 0}
