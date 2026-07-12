@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader, Play, Settings } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, Loader, Play, RefreshCcw, Settings } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
@@ -12,7 +12,8 @@ import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ActionProgress, ActionStateBanner, ResponsiveActionSheet } from '@/app/components/ui/actions';
 import { ReportPrepareTermSheet } from '@/app/core/components/reports/ReportPrepareTermSheet';
 import { getFormFieldErrorMessage, useFormValidationFeedback } from '@/app/core/forms';
-import { useComputePage } from '@/app/core/hooks/reports/useComputePage';
+import { useComputePage, type ComputeTransportState } from '@/app/core/hooks/reports/useComputePage';
+import { useAuth } from '@/app/context/AuthContext';
 import type {
     ReportComputeEngineReadiness,
     ReportComputeJob,
@@ -58,6 +59,7 @@ function engineMetric(engine: ReportComputeEngineReadiness, key: 'covered_count'
 }
 
 export function ComputePage() {
+    const { activeRole } = useAuth();
     const [prepareSheetOpen, setPrepareSheetOpen] = useState(false);
     const [prepareAutoRunKey, setPrepareAutoRunKey] = useState(0);
     const {
@@ -70,6 +72,7 @@ export function ComputePage() {
         job,
         progressEvent,
         streamFallback,
+        transportState,
         safeRecommendation,
         computeSheetOpen,
         computeActionStatus,
@@ -119,6 +122,15 @@ export function ComputePage() {
     const exceptionCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'exception_count'), 0) ?? 0;
     const officialEstimate = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'official_result_estimate'), 0) ?? 0;
     const progressPercent = Math.max(0, Math.min(100, Number(progressEvent?.progress_percent ?? job?.progress_percent ?? 0)));
+    const rawComputeMode = progressEvent?.mode ?? job?.mode ?? job?.result_payload?.mode ?? 'INCREMENTAL';
+    const computeMode = rawComputeMode === 'FULL_REBUILD' ? 'FULL_REBUILD' : 'INCREMENTAL';
+    const itemCounts = job?.item_counts;
+    const createdCount = progressEvent?.created_count ?? itemCounts?.created_count ?? job?.result_payload?.created_count ?? 0;
+    const updatedCount = progressEvent?.updated_count ?? itemCounts?.updated_count ?? job?.result_payload?.updated_count ?? 0;
+    const unchangedCount = progressEvent?.unchanged_count ?? itemCounts?.unchanged_count ?? job?.result_payload?.unchanged_count ?? 0;
+    const failedCount = progressEvent?.failed_count ?? itemCounts?.failed_count ?? job?.result_payload?.failed_count ?? 0;
+    const totalWork = itemCounts?.total_scopes ?? progressEvent?.total_count ?? job?.total_count ?? null;
+    const completedWork = itemCounts?.completed_scopes ?? progressEvent?.completed_count ?? job?.completed_count ?? null;
     const officialResults = progressEvent?.official_results
         ?? job?.result_payload?.official_results
         ?? job?.result_payload?.computed_count
@@ -133,6 +145,15 @@ export function ComputePage() {
     const openPrepareSheet = (autoRun = false) => {
         setPrepareSheetOpen(true);
         if (autoRun) setPrepareAutoRunKey((key) => key + 1);
+    };
+
+    const handleFullRebuild = () => {
+        const confirmed = window.confirm(
+            'Full rebuild recomputes every applicable report scope for the term. Use it for repair, migration, or audit work only.',
+        );
+        if (confirmed) {
+            void handleComputeReports('FULL_REBUILD');
+        }
     };
 
     return (
@@ -301,19 +322,33 @@ export function ComputePage() {
                             Compute enforces policy readiness and refreshes report summaries from official results.
                         </p>
                     </div>
-                    <Button onClick={handleComputeReports} disabled={computeDisabled} className="w-full sm:w-auto">
-                        {computing ? (
-                            <>
-                                <Loader className="mr-1.5 h-4 w-4 animate-spin" />
-                                Computing Reports
-                            </>
-                        ) : (
-                            <>
-                                <Play className="mr-1.5 h-4 w-4" />
-                                Compute Reports
-                            </>
-                        )}
-                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button onClick={() => handleComputeReports('INCREMENTAL')} disabled={computeDisabled} className="w-full sm:w-auto">
+                            {computing ? (
+                                <>
+                                    <Loader className="mr-1.5 h-4 w-4 animate-spin" />
+                                    Computing Reports
+                                </>
+                            ) : (
+                                <>
+                                    <Play className="mr-1.5 h-4 w-4" />
+                                    Compute Incremental Reports
+                                </>
+                            )}
+                        </Button>
+                        {activeRole === 'ADMIN' ? (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={handleFullRebuild}
+                                disabled={computeDisabled || computing}
+                                className="w-full sm:w-auto"
+                            >
+                                <RefreshCcw className="mr-1.5 h-4 w-4" />
+                                Full Rebuild
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
 
                 {computeDisabled && computeDisabledReason && !computing ? (
@@ -346,6 +381,14 @@ export function ComputePage() {
                 progressLabel={progressEvent?.label ?? job?.label ?? 'Computing official reports'}
                 progressPercent={progressPercent}
                 streamFallback={streamFallback}
+                transportState={transportState}
+                computeMode={computeMode}
+                completedWork={completedWork}
+                totalWork={totalWork}
+                createdCount={createdCount}
+                updatedCount={updatedCount}
+                unchangedCount={unchangedCount}
+                failedCount={failedCount}
                 completedMessage={completionMessage}
                 blockedReason={computeDisabledReason ?? 'Reports are not ready. Resolve report setup before computing official reports.'}
                 managePoliciesHref={manageCbcPoliciesHref}
@@ -366,6 +409,14 @@ function ComputeReportsSheet({
     progressLabel,
     progressPercent,
     streamFallback,
+    transportState,
+    computeMode,
+    completedWork,
+    totalWork,
+    createdCount,
+    updatedCount,
+    unchangedCount,
+    failedCount,
     completedMessage,
     blockedReason,
     managePoliciesHref,
@@ -381,12 +432,32 @@ function ComputeReportsSheet({
     progressLabel: string;
     progressPercent: number;
     streamFallback: boolean;
+    transportState: ComputeTransportState;
+    computeMode: 'INCREMENTAL' | 'FULL_REBUILD';
+    completedWork: number | null;
+    totalWork: number | null;
+    createdCount: number;
+    updatedCount: number;
+    unchangedCount: number;
+    failedCount: number;
     completedMessage: string;
     blockedReason: string;
     managePoliciesHref: string;
     onRetry: () => void;
 }) {
     const progressStatus = job?.status ?? (computing ? 'QUEUED' : status === 'success' ? 'COMPLETED' : undefined);
+    const transportMessage = streamFallback || transportState === 'polling'
+        ? 'Live updates disconnected. Checking progress periodically.'
+        : transportState === 'restored'
+            ? 'Live updates restored.'
+            : transportState === 'disconnected'
+                ? 'Live updates reconnecting.'
+                : transportState === 'live'
+                    ? 'Live updates connected.'
+                    : transportState === 'connecting'
+                        ? 'Connecting live updates.'
+                        : null;
+    const modeLabel = computeMode === 'FULL_REBUILD' ? 'Full rebuild' : 'Incremental';
 
     return (
         <ResponsiveActionSheet
@@ -430,19 +501,49 @@ function ComputeReportsSheet({
                 ) : null}
 
                 {(job || progressEvent || computing) ? (
-                    <ActionProgress
-                        label={progressLabel}
-                        stage={progressEvent?.stage ?? job?.stage}
-                        progressPercent={progressPercent}
-                        completedCount={progressEvent?.completed_count ?? job?.completed_count}
-                        totalCount={progressEvent?.total_count ?? job?.total_count}
-                        status={progressStatus}
-                        fallbackMessage={
-                            streamFallback
-                                ? 'Live stream unavailable. Polling the server for latest progress.'
-                                : null
-                        }
-                    />
+                    <div className="space-y-3">
+                        <ActionProgress
+                            label={progressLabel}
+                            stage={progressEvent?.stage ?? job?.stage}
+                            progressPercent={progressPercent}
+                            completedCount={progressEvent?.completed_count ?? job?.completed_count}
+                            totalCount={progressEvent?.total_count ?? job?.total_count}
+                            status={progressStatus}
+                            fallbackMessage={transportMessage}
+                        />
+                        <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="rounded-lg border border-gray-200 px-3 py-2">
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Mode</p>
+                                <p className="font-medium text-gray-900">{modeLabel}</p>
+                            </div>
+                            <div className="rounded-lg border border-gray-200 px-3 py-2">
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Work</p>
+                                <p className="font-medium text-gray-900">
+                                    {completedWork ?? progressEvent?.completed_count ?? 0}
+                                    {' / '}
+                                    {totalWork ?? progressEvent?.total_count ?? '—'}
+                                </p>
+                            </div>
+                            <div className="rounded-lg border border-gray-200 px-3 py-2">
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Projections</p>
+                                <p className="font-medium text-gray-900">
+                                    {createdCount} created, {updatedCount} updated
+                                </p>
+                                <p className="text-xs text-gray-500">{unchangedCount} unchanged</p>
+                            </div>
+                            <div className={`rounded-lg border px-3 py-2 ${failedCount > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
+                                <p className="text-xs uppercase tracking-wide text-gray-500">Failed batches</p>
+                                <p className={`font-medium ${failedCount > 0 ? 'text-red-700' : 'text-gray-900'}`}>{failedCount}</p>
+                            </div>
+                        </div>
+                        {failedCount > 0 ? (
+                            <ActionStateBanner
+                                variant="error"
+                                title="Partial batch failure"
+                                message={`${failedCount} batch${failedCount === 1 ? '' : 'es'} failed and can be retried without restarting completed batches.`}
+                            />
+                        ) : null}
+                    </div>
                 ) : null}
 
                 {status === 'blocked' ? (

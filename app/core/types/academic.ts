@@ -132,8 +132,11 @@ export interface Term {
     can_edit: boolean;
     can_delete: boolean;
     can_close?: boolean;
+    can_complete_setup?: boolean;
+    can_reopen_setup?: boolean;
     edit_blocked_reason?: string | null;
     delete_blocked_reason?: string | null;
+    setup_locked_reason?: string | null;
   };
   created_at: string;
 }

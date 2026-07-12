@@ -121,7 +121,7 @@ async function performRefreshRequest(): Promise<string> {
   return accessToken;
 }
 
-function refreshAccessToken(): Promise<string> {
+export function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = performRefreshRequest().finally(() => {
       refreshPromise = null;

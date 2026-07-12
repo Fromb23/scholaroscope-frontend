@@ -1,5 +1,5 @@
 import { GradePolicy, ComputedGradeDTO } from '../types/gradePolicy';
-import { apiClient } from './client';
+import { apiClient, refreshAccessToken } from './client';
 import { getAccessToken } from '@/app/core/auth/tokenStore';
 import {
   getDownloadFileName,
@@ -76,10 +76,23 @@ function toStringArray(value: unknown): string[] {
     : [];
 }
 
-function parseSseBlock(block: string): ReportComputeProgressEvent | null {
-  const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) return null;
+export class ReportComputeStreamFallbackError extends Error {
+  constructor(message = 'Report compute progress stream switched to polling.') {
+    super(message);
+    this.name = 'ReportComputeStreamFallbackError';
+  }
+}
 
+function parseSseBlock(block: string): ReportComputeProgressEvent | null {
+  const lines = block
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return null;
+  if (lines.every((line) => line.startsWith(':'))) return null;
+
+  const rawId = lines.find((line) => line.startsWith('id:'))?.slice(3).trim();
+  const sequence = rawId && /^\d+$/.test(rawId) ? Number(rawId) : undefined;
   const rawEvent = lines.find((line) => line.startsWith('event:'))?.slice(6).trim();
   const event = rawEvent === 'progress' || rawEvent === 'complete' || rawEvent === 'error'
     ? rawEvent
@@ -90,17 +103,39 @@ function parseSseBlock(block: string): ReportComputeProgressEvent | null {
     .join('\n');
 
   if (!data) {
-    return event ? { event, stage: event } : null;
+    return event ? { event, sequence, stage: event } : null;
   }
 
   try {
     const parsed = JSON.parse(data);
     return isRecord(parsed)
-      ? { event, ...parsed } as ReportComputeProgressEvent
-      : { event, stage: event ?? 'message', label: String(parsed) };
+      ? { event, sequence, ...parsed } as ReportComputeProgressEvent
+      : { event, sequence, stage: event ?? 'message', label: String(parsed) };
   } catch {
-    return { event, stage: 'parse_error', label: data };
+    return { event, sequence, stage: 'parse_error', label: data };
   }
+}
+
+function isTerminalProgressEvent(event: ReportComputeProgressEvent): boolean {
+  return event.event === 'complete'
+    || event.event === 'error'
+    || event.status === 'COMPLETED'
+    || event.status === 'FAILED'
+    || event.status === 'BLOCKED';
+}
+
+function appendAfterCursor(url: string, after: number | null): string {
+  if (!after || after < 1) return absoluteApiUrl(url);
+  const absolute = absoluteApiUrl(url);
+  const parsed = new URL(absolute);
+  parsed.searchParams.set('after', String(after));
+  return parsed.toString();
+}
+
+function streamDelay(attempt: number): number {
+  const base = Math.min(30000, 1000 * (2 ** attempt));
+  const jitter = Math.floor(Math.random() * 350);
+  return base + jitter;
 }
 
 function toAttendanceRiskLevel(value: unknown): AttendanceRiskLevel {
@@ -926,10 +961,10 @@ export const reportsAPI = {
     return response.data;
   },
 
-  computeReports: async (termId: number): Promise<ReportComputeJob> => {
+  computeReports: async (termId: number, mode: 'INCREMENTAL' | 'FULL_REBUILD' = 'INCREMENTAL'): Promise<ReportComputeJob> => {
     const response = await apiClient.post<ReportComputeJob>(
       '/reporting/reports/compute/',
-      { term: termId },
+      { term: termId, mode },
     );
     return response.data;
   },
@@ -945,43 +980,98 @@ export const reportsAPI = {
     eventsUrl: string,
     onEvent: (event: ReportComputeProgressEvent) => void,
     signal?: AbortSignal,
+    options: {
+      initialSequence?: number | null;
+      maxRetries?: number;
+      onTransportState?: (state: 'connecting' | 'live' | 'disconnected' | 'restored') => void;
+    } = {},
   ): Promise<void> => {
-    const token = getAccessToken();
-    const response = await fetch(absoluteApiUrl(eventsUrl), {
-      method: 'GET',
-      headers: {
-        Accept: 'text/event-stream',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      credentials: 'include',
-      signal,
-    });
+    let lastSequence = options.initialSequence ?? null;
+    let retryCount = 0;
+    let refreshedAfterUnauthorized = false;
+    let hadLiveConnection = false;
+    const maxRetries = options.maxRetries ?? 5;
 
-    if (!response.ok || !response.body) {
-      throw new Error('Progress stream unavailable');
-    }
+    while (!signal?.aborted) {
+      options.onTransportState?.(hadLiveConnection ? 'disconnected' : 'connecting');
+      try {
+        const token = getAccessToken();
+        const headers: Record<string, string> = { Accept: 'text/event-stream' };
+        if (token) headers.Authorization = `Bearer ${token}`;
+        if (lastSequence && lastSequence > 0) headers['Last-Event-ID'] = String(lastSequence);
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+        const response = await fetch(appendAfterCursor(eventsUrl, lastSequence), {
+          method: 'GET',
+          headers,
+          credentials: 'include',
+          signal,
+        });
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+        if (response.status === 401 && !refreshedAfterUnauthorized) {
+          refreshedAfterUnauthorized = true;
+          await refreshAccessToken();
+          continue;
+        }
 
-      buffer += decoder.decode(value, { stream: true });
-      const blocks = buffer.split('\n\n');
-      buffer = blocks.pop() ?? '';
+        if (!response.ok) {
+          throw new Error(`Progress stream failed with HTTP ${response.status}`);
+        }
 
-      for (const block of blocks) {
-        const event = parseSseBlock(block);
-        if (event) onEvent(event);
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.toLowerCase().includes('text/event-stream')) {
+          throw new Error('Progress stream response was not text/event-stream');
+        }
+
+        if (!response.body) {
+          throw new Error('Progress stream response body was empty');
+        }
+
+        options.onTransportState?.(hadLiveConnection ? 'restored' : 'live');
+        hadLiveConnection = true;
+        retryCount = 0;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (!signal?.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split('\n\n');
+          buffer = blocks.pop() ?? '';
+
+          for (const block of blocks) {
+            const event = parseSseBlock(block);
+            if (!event) continue;
+            if (typeof event.sequence === 'number') {
+              lastSequence = Math.max(lastSequence ?? 0, event.sequence);
+            }
+            onEvent(event);
+            if (isTerminalProgressEvent(event)) return;
+          }
+        }
+
+        if (buffer.trim()) {
+          const event = parseSseBlock(buffer);
+          if (event) {
+            if (typeof event.sequence === 'number') {
+              lastSequence = Math.max(lastSequence ?? 0, event.sequence);
+            }
+            onEvent(event);
+            if (isTerminalProgressEvent(event)) return;
+          }
+        }
+      } catch (error) {
+        if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) return;
+        retryCount += 1;
+        if (retryCount > maxRetries) {
+          throw new ReportComputeStreamFallbackError();
+        }
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, streamDelay(retryCount - 1));
+        });
       }
-    }
-
-    if (buffer.trim()) {
-      const event = parseSseBlock(buffer);
-      if (event) onEvent(event);
     }
   },
 

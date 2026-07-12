@@ -41,6 +41,32 @@ export interface CbcResultCounts {
   PROVISIONAL: number;
   INCOMPLETE: number;
   stale_count: number;
+  FINAL_percentage?: number;
+  PROVISIONAL_percentage?: number;
+  NO_EVIDENCE_percentage?: number;
+}
+
+export interface CbcCompetencyDistributionBucket {
+  count: number;
+  percentage: number;
+}
+
+export interface CbcCompetencyDistribution {
+  EE: CbcCompetencyDistributionBucket;
+  ME: CbcCompetencyDistributionBucket;
+  AE: CbcCompetencyDistributionBucket;
+  BE: CbcCompetencyDistributionBucket;
+  [key: string]: CbcCompetencyDistributionBucket;
+}
+
+export interface CbcWeightedAssessmentDetail {
+  label: string;
+  total_results: number;
+  final_count: number;
+  stale_count: number;
+  average_weighted_score: number | null;
+  average_points: number | null;
+  distribution_by_code: CbcDistributionByCode;
 }
 
 export interface TermParticipation {
@@ -202,8 +228,17 @@ export interface CbcPerformanceSummary {
   learner_count: number;
   result_counts: CbcResultCounts;
   distribution_by_code: CbcDistributionByCode;
-  average_weighted_score: number | null;
-  average_points: number | null;
+  competency_distribution?: CbcCompetencyDistribution;
+  distribution_by_level?: CbcCompetencyDistribution;
+  evidence_coverage?: Record<string, unknown>;
+  learning_outcome_coverage?: Record<string, number>;
+  learners_needing_support?: number;
+  learners_exceeding_expectations?: number;
+  evidence_source_distribution?: Record<string, number>;
+  review_state?: Record<string, number>;
+  weighted_assessment_detail?: CbcWeightedAssessmentDetail | null;
+  average_weighted_score?: number | null;
+  average_points?: number | null;
   missing_result_count: number;
   note?: string | null;
 }
@@ -398,6 +433,8 @@ export interface CbcTeacherReview {
 export interface CbcPortfolioEntry {
   evidence_id: number;
   source_type: string | null;
+  title?: string | null;
+  evidence_date?: string | null;
   source_id: number | null;
   learning_outcome: {
     id: number;
@@ -408,11 +445,24 @@ export interface CbcPortfolioEntry {
   performance_level?: string | null;
   evaluation_type: string | null;
   teacher_narrative?: string | null;
+  teacher?: { id: number | null; name: string };
+  learner?: { id: number | null; name: string };
+  subject?: { id: number | null; name: string };
+  cohort?: { id: number | null; name: string };
+  artifact_reference?: Record<string, unknown> | null;
+  attachments?: Array<Record<string, unknown>>;
+  submission_status?: string | null;
+  feedback?: string | null;
+  reflection?: string | null;
+  evidence_narrative?: string | null;
+  provenance?: Record<string, unknown> | null;
+  linked_artifact?: Record<string, unknown> | null;
   source_reference?: string | number | null;
   artifact?: unknown;
 }
 
 export interface CbcObservationRecord {
+  evidence_id?: number;
   learner?: number | null;
   learning_outcome: CbcPortfolioEntry['learning_outcome'];
   date: string | null;
@@ -420,7 +470,24 @@ export interface CbcObservationRecord {
   evaluation_type: string | null;
   performance_level?: string | null;
   teacher_narrative?: string | null;
-  follow_up?: string | null;
+  observation_context?: string | null;
+  observed_behavior?: string | null;
+  interpretation?: string | null;
+  strength?: string | null;
+  support_need?: string | null;
+  intervention_or_follow_up?: string | null;
+  responsible_teacher?: { id: number | null; name: string } | null;
+  follow_up_date?: string | null;
+  review_date?: string | null;
+  review_status?: string | null;
+  linked_artifact?: Record<string, unknown> | null;
+  provenance?: Record<string, unknown> | null;
+  follow_up?: {
+    action?: string | null;
+    date?: string | null;
+    review_date?: string | null;
+    status?: string | null;
+  } | string | null;
 }
 
 export interface CbcAssessmentIndicator {
@@ -473,8 +540,10 @@ export interface CbcStudentSection {
   teacher_review?: CbcTeacherReview | null;
   portfolio?: { entries: CbcPortfolioEntry[] } | null;
   observation_records?: CbcObservationRecord[];
+  weighted_assessment_detail_visible?: boolean;
   assessment_indicator?: CbcAssessmentIndicator | null;
   cbc_result: CbcStudentResult | null;
+  administrative_weighted_detail?: CbcStudentResult | null;
   competency_result?: CbcCompetencyResult | null;
   progress_summary: Record<string, unknown> | null;
   readiness: CbcReadiness | null;
@@ -513,8 +582,10 @@ export interface AdminOverviewCbcSummary {
   provisional_count: number;
   incomplete_count: number;
   stale_count: number;
-  average_weighted_score: number | null;
-  average_points: number | null;
+  competency_distribution?: CbcCompetencyDistribution;
+  weighted_assessment_detail?: CbcWeightedAssessmentDetail | null;
+  average_weighted_score?: number | null;
+  average_points?: number | null;
   distribution_by_code: CbcDistributionByCode;
 }
 
@@ -1046,10 +1117,21 @@ export interface ReportComputeEngineResult {
   engine: string;
   computed_count: number;
   skipped_count?: number;
+  created_count?: number;
+  updated_count?: number;
+  unchanged_count?: number;
+  failed_count?: number;
+  subject_results_recomputed_count?: number;
+  assessment_indicators_computed_count?: number;
+  assessment_indicator_failed_count?: number;
+  mode?: ReportComputeMode;
 }
+
+export type ReportComputeMode = 'INCREMENTAL' | 'FULL_REBUILD';
 
 export interface ReportComputeResult {
   detail: string;
+  mode?: ReportComputeMode;
   term: ReportComputeTerm;
   engines: ReportComputeEngineReadiness[];
   engine_results: ReportComputeEngineResult[];
@@ -1066,6 +1148,7 @@ export interface ReportComputeResult {
 }
 
 export interface ReportComputeProgressEvent {
+  sequence?: number;
   event?: 'progress' | 'complete' | 'error';
   stage: string;
   label?: string;
@@ -1075,19 +1158,43 @@ export interface ReportComputeProgressEvent {
   official_results?: number;
   summary_rows_refreshed?: number;
   status?: string;
+  mode?: ReportComputeMode;
+  created_count?: number;
+  updated_count?: number;
+  unchanged_count?: number;
+  failed_count?: number;
   data?: Record<string, unknown>;
+}
+
+export interface ReportComputeJobItemCounts {
+  total_scopes: number;
+  completed_scopes: number;
+  created_count: number;
+  updated_count: number;
+  unchanged_count: number;
+  failed_count: number;
 }
 
 export interface ReportComputeJob {
   job_id: string;
   status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'BLOCKED' | string;
+  mode?: ReportComputeMode;
   stage: string;
   label?: string;
   progress_percent: number;
   completed_count?: number | null;
   total_count?: number | null;
+  item_counts?: ReportComputeJobItemCounts;
   result_payload?: {
+    mode?: ReportComputeMode;
     computed_count?: number;
+    created_count?: number;
+    updated_count?: number;
+    unchanged_count?: number;
+    failed_count?: number;
+    subject_results_recomputed_count?: number;
+    assessment_indicators_computed_count?: number;
+    assessment_indicator_failed_count?: number;
     official_results?: number;
     summary_count?: number;
     summary_rows_refreshed?: number;
