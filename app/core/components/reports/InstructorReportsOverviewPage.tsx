@@ -1,11 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
 import {
   BookOpen,
   ClipboardList,
-  Download,
   FileBarChart,
   Calendar,
   Users,
@@ -17,7 +15,6 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { ExportModal } from '@/app/components/export/ExportModal';
 import { useInstructorOverview } from '@/app/core/hooks/useReporting';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
 import {
@@ -26,7 +23,6 @@ import {
   toCbcPerformance,
   toGenericPerformance,
 } from '@/app/core/lib/reportingPresentation';
-import type { ExportPayload } from '@/app/types/export';
 
 function average(values: Array<number | null | undefined>): number | null {
   const numbers = values.filter((value): value is number => typeof value === 'number');
@@ -35,7 +31,6 @@ function average(values: Array<number | null | undefined>): number | null {
 }
 
 export function InstructorReportsOverviewPage() {
-  const [exportOpen, setExportOpen] = useState(false);
   const { overview, loading, error } = useInstructorOverview();
 
   const averageAttendance = average(overview?.assigned_cohort_subjects.map((item) => item.average_attendance) ?? []);
@@ -47,46 +42,6 @@ export function InstructorReportsOverviewPage() {
     acc[item.reporting_source] = (acc[item.reporting_source] ?? 0) + 1;
     return acc;
   }, {});
-
-  const exportPayload = useMemo<ExportPayload | null>(() => {
-    if (!overview) return null;
-
-    return {
-      title: 'Instructor Overview',
-      subtitle: 'Assigned reporting scope',
-      metadata: {
-        assignedCohortSubjects: String(overview.total_assigned_cohort_subjects),
-        visibleLearners: String(overview.total_visible_learners),
-        averageAttendance: formatPercent(averageAttendance),
-        totalSessions: String(totalSessions),
-        generatedAt: new Date().toLocaleString(),
-      },
-      columns: [
-        { key: 'cohort_name', label: 'Cohort', width: 20 },
-        { key: 'subject_name', label: 'Subject', width: 24 },
-        { key: 'reporting_source', label: 'Reporting Source', width: 18 },
-        { key: 'status', label: 'Status', width: 16 },
-        { key: 'active_learner_count', label: 'Learners', format: 'number', width: 12, align: 'right' as const },
-        { key: 'average_attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
-        { key: 'session_count', label: 'Sessions', format: 'number', width: 12, align: 'right' as const },
-        { key: 'completed_session_count', label: 'Completed', format: 'number', width: 12, align: 'right' as const },
-        { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
-      ],
-      rows: overview.assigned_cohort_subjects.map((item) => ({
-        ...item,
-        generic_average: item.generic_summary?.average_score ?? item.generic_performance?.average_score ?? item.average_grade,
-        cbc_weighted_score: item.cbc_summary?.average_weighted_score ?? item.cbc_performance?.average_weighted_score ?? null,
-      })),
-      fileName: 'instructor-overview',
-      includeMetadata: true,
-      includeTimestamp: true,
-      sheetName: 'Instructor Overview',
-      freezeHeader: true,
-      autoFilter: true,
-      orientation: 'landscape' as const,
-    };
-  }, [averageAttendance, overview, totalSessions]);
 
   if (loading) return <LoadingSpinner message="Loading instructor report overview..." />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
@@ -131,15 +86,7 @@ export function InstructorReportsOverviewPage() {
             Open summary-first reports for learners, classes, subjects, and your own teaching visibility.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {exportPayload && (
-            <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
-              <Download className="mr-1.5 h-4 w-4" />
-              Export
-            </Button>
-          )}
-          <FileBarChart className="h-7 w-7 text-green-600" />
-        </div>
+        <FileBarChart className="h-7 w-7 text-green-600" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -233,16 +180,6 @@ export function InstructorReportsOverviewPage() {
             ))}
           </div>
         </div>
-      )}
-
-      {exportPayload && (
-        <ExportModal
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          payload={exportPayload}
-          defaultFormat="excel"
-          title="Export Instructor Overview"
-        />
       )}
     </div>
   );

@@ -9,7 +9,6 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
-  Download,
   FileText,
   Search,
   TrendingUp,
@@ -27,6 +26,7 @@ import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   buildAssessmentReportHref,
   buildAttendanceReportHref,
@@ -229,20 +229,11 @@ export function StudentsReportPage({
           </div>
 
           {selectedStudentId ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('pdf')}>
-                <Download className="h-4 w-4" />
-                Export PDF
-              </Button>
-              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('xlsx')}>
-                <Download className="h-4 w-4" />
-                Export Excel
-              </Button>
-              <Button variant="ghost" size="sm" disabled={exporting} onClick={() => void handleExport('csv')}>
-                <Download className="h-4 w-4" />
-                Export CSV
-              </Button>
-            </div>
+            <ReportExportButtons
+              reportType="admin_student_report"
+              exporting={exporting}
+              onExport={handleExport}
+            />
           ) : null}
         </div>
 

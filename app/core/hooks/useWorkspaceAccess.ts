@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { workspaceAccessAPI } from '@/app/core/api/workspaceAccess';
-import { resolveAppError, type AppError } from '@/app/core/errors';
+import { resolveWorkspaceError, type AppError } from '@/app/core/errors';
 import type { WorkspaceRoleAssignmentPayload, WorkspaceRolePayload } from '@/app/core/types/workspaceAccess';
 
 export const workspaceAccessKeys = {
@@ -54,8 +54,7 @@ export function useWorkspaceAccess() {
   });
   const assignmentOptionsError = useMemo<AppError | null>(() => (
     assignmentOptionsQuery.error
-      ? resolveAppError(assignmentOptionsQuery.error, {
-        domain: 'workspace',
+      ? resolveWorkspaceError(assignmentOptionsQuery.error, {
         action: 'load',
         entityLabel: 'role assignment options',
         channel: 'inline',

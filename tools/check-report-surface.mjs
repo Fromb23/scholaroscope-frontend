@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
+const appRoot = path.join(root, 'app');
 const reportsRoot = path.join(root, 'app/core/components/reports');
 const failures = [];
 
@@ -91,6 +92,50 @@ for (const file of walk(reportsRoot)) {
       /\bactiveRole\s*={0,2}=\s*['"]ADMIN['"]/,
       'reporting route decisions must not use inline activeRole ADMIN checks.',
     );
+  }
+}
+
+const forbiddenExportPatterns = [
+  {
+    pattern: /from ['"].*\/utils\/exportUtils['"]|from ['"].*exportUtils['"]/,
+    message: 'application code must not import browser document export utilities.',
+  },
+  {
+    pattern: /from ['"]xlsx['"]|require\(['"]xlsx['"]\)|\bXLSX\./,
+    message: 'application code must not import or use client-side XLSX generation.',
+  },
+  {
+    pattern: /\bwindow\.print\s*\(/,
+    message: 'application code must not use window.print for exports.',
+  },
+  {
+    pattern: /\bExportModal\b/,
+    message: 'application code must not reintroduce the browser export modal.',
+  },
+  {
+    pattern: /handleExport\(\s*['"]csv['"]\s*\)/,
+    message: 'CSV must not be exposed as a report export action.',
+  },
+  {
+    pattern: /format\s*:\s*['"]csv['"]/,
+    message: 'CSV must not be submitted as a report export format.',
+  },
+  {
+    pattern: /\.csv\b|['"`][^'"`]*CSV[^'"`]*['"`]/,
+    message: 'CSV must not be exposed in application export UI or filenames.',
+  },
+];
+
+for (const file of walk(appRoot)) {
+  const relativePath = rel(file);
+  if (/\.test\.(ts|tsx)$/.test(relativePath)) continue;
+  if (relativePath === 'app/core/api/downloads.ts') continue;
+  const source = readFileSync(file, 'utf8');
+
+  for (const { pattern, message } of forbiddenExportPatterns) {
+    if (pattern.test(source)) {
+      fail(relativePath, source, pattern, message);
+    }
   }
 }
 

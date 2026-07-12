@@ -72,14 +72,6 @@ export function useSchemes(params?: SchemeListQueryParams) {
     }
   };
 
-  const downloadSchemeCsv = async (id: number): Promise<void> => {
-    try {
-      await schemesAPI.triggerSchemeCsvDownload(id);
-    } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Could not download the scheme CSV.'));
-    }
-  };
-
   return {
     schemes,
     loading,
@@ -87,7 +79,6 @@ export function useSchemes(params?: SchemeListQueryParams) {
     refetch: fetchSchemes,
     downloadScheme: downloadSchemeDocx,
     downloadSchemeDocx,
-    downloadSchemeCsv,
   };
 }
 
@@ -268,18 +259,6 @@ export function useSchemeDetail(schemeId: number | null) {
     }
   };
 
-  const downloadSchemeCsv = async (): Promise<void> => {
-    if (!schemeId) {
-      throw new Error('No scheme selected.');
-    }
-
-    try {
-      await schemesAPI.triggerSchemeCsvDownload(schemeId);
-    } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Could not download the scheme CSV.'));
-    }
-  };
-
   return {
     scheme,
     weeks,
@@ -291,6 +270,5 @@ export function useSchemeDetail(schemeId: number | null) {
     updateEntry,
     downloadScheme: downloadSchemeDocx,
     downloadSchemeDocx,
-    downloadSchemeCsv,
   };
 }

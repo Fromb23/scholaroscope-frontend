@@ -34,8 +34,24 @@ const howItWorksSource = readFileSync(
   join(process.cwd(), 'app/core/components/public/HowItWorksSection.tsx'),
   'utf8',
 );
-const featureSource = readFileSync(
-  join(process.cwd(), 'app/core/components/public/FeatureSection.tsx'),
+const problemSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/ProblemSection.tsx'),
+  'utf8',
+);
+const evidenceDashboardSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/EvidenceDashboardSection.tsx'),
+  'utf8',
+);
+const reportAudienceSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/ReportAudienceSection.tsx'),
+  'utf8',
+);
+const evidenceIntegritySource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/EvidenceIntegritySection.tsx'),
+  'utf8',
+);
+const footerCtaSource = readFileSync(
+  join(process.cwd(), 'app/core/components/public/FooterCtaSection.tsx'),
   'utf8',
 );
 const audienceSource = readFileSync(
@@ -87,10 +103,14 @@ describe('commercial onboarding contract', () => {
       commercialWorkspaceOnboardingSource,
       publicHeaderSource,
       heroSource,
+      problemSource,
       howItWorksSource,
-      featureSource,
+      evidenceDashboardSource,
+      reportAudienceSource,
       audienceSource,
+      evidenceIntegritySource,
       commercialSectionSource,
+      footerCtaSource,
       publicFooterSource,
       commercialSource,
       commercialSummarySource,
@@ -131,7 +151,7 @@ describe('commercial onboarding contract', () => {
   it('keeps public landing marketing separate from the detailed plan flow', () => {
     expect(commercialSectionSource).toContain('href="/get-started"');
     expect(commercialSectionSource).not.toContain('CommercialRateCards');
-    expect(commercialSectionSource).toContain('Pick the workspace first, then compare plans');
+    expect(commercialSectionSource).toContain('Start with what you need. Add capabilities as you grow.');
     expect(commercialSource).toContain('Get started with the right workspace');
     expect(commercialSource).toContain('1. Choose workspace type');
     expect(commercialSource).toContain('2. Compare Standard and Premium');
@@ -146,6 +166,49 @@ describe('commercial onboarding contract', () => {
     expect(commercialSummarySource).not.toContain('premiumTotal');
     expect(moneySource).toContain('Intl.NumberFormat');
     expect(moneySource).toContain('minimumFractionDigits: hasFraction ? 2 : 0');
+  });
+
+  it('uses the CBC evidence landing hierarchy and public sample route', () => {
+    const order = [
+      '<HeroSection',
+      '<ProblemSection',
+      '<HowItWorksSection',
+      '<EvidenceDashboardSection',
+      '<ReportAudienceSection',
+      '<AudienceSection',
+      '<EvidenceIntegritySection',
+      '<CommercialSection',
+      '<FooterCtaSection',
+      '<PublicFooter',
+    ];
+    for (let index = 0; index < order.length - 1; index += 1) {
+      expect(landingSource.indexOf(order[index])).toBeLessThan(landingSource.indexOf(order[index + 1]));
+    }
+
+    expect(heroSource).toContain('CBC evidence doesn&apos;t wait.');
+    expect(heroSource).toContain('href="/sample-report"');
+    expect(problemSource).toContain('CBC was designed around continuous evidence.');
+    expect(howItWorksSource).toContain('Set up your workspace');
+    expect(evidenceDashboardSource).toContain('Every competency level is earned, not assigned');
+    expect(reportAudienceSource).toContain('Reports that mean something to the person reading them');
+    expect(audienceSource).toContain('Schools and institutions');
+    expect(evidenceIntegritySource).toContain("If the evidence isn&apos;t real, the curriculum isn&apos;t real");
+    expect(footerCtaSource).toContain('Kenyan schools need a better way to protect classroom evidence.');
+  });
+
+  it('does not publish unsupported public claims on the landing page', () => {
+    const publicCopy = [
+      heroSource,
+      problemSource,
+      evidenceDashboardSource,
+      reportAudienceSource,
+      audienceSource,
+      evidenceIntegritySource,
+      commercialSectionSource,
+      footerCtaSource,
+    ].join('\n');
+
+    expect(publicCopy).not.toMatch(/KNEC|KICD|Ministry approved|Ministry-certified|Cambridge aligned|30,000|government software/i);
   });
 
   it('requires quote tokens for owner-created registration while preserving invite bypass', () => {

@@ -1,19 +1,15 @@
 const steps = [
   {
-    title: 'Select the workspace model',
-    body: 'Choose the institution, tuition, homeschool, learner, or personal teaching workspace that matches the operation.',
+    title: 'Set up your workspace',
+    body: 'Create the school, centre, homeschool, or teacher workspace and add the classes, learning areas, learners, and terms you teach.',
   },
   {
-    title: 'Confirm your quote',
-    body: 'Scholaroscope confirms the Standard foundation and any selected premium capabilities before you register.',
+    title: 'Capture evidence daily',
+    body: 'Record attendance, observations, assignments, projects, practicals, and assessment evidence while learning is happening.',
   },
   {
-    title: 'Create the account or workspace',
-    body: 'Use the quote token to continue into registration or authenticated additional-workspace creation.',
-  },
-  {
-    title: 'Run academic operations',
-    body: 'Workspace admins manage members, academic setup, teaching records, assessments, and reports.',
+    title: 'Generate honest reports',
+    body: 'Use server-built reports that distinguish draft progress, review readiness, and official published results.',
   },
 ];
 
@@ -23,9 +19,9 @@ export function HowItWorksSection() {
       <div className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold text-[color:var(--color-primary)]">How it works</p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight theme-text">A clean path from public quote to workspace operations</h2>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight theme-text">From classroom evidence to report-ready records</h2>
         </div>
-        <div className="mt-10 grid gap-4 md:grid-cols-4">
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
           {steps.map((step, index) => (
             <div key={step.title} className="rounded-xl border p-5 shadow-sm theme-card">
               <p className="text-sm font-bold text-[color:var(--color-primary)]">{String(index + 1).padStart(2, '0')}</p>

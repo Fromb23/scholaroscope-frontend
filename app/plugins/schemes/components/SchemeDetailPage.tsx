@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
-  FileText,
   Link2,
   NotebookPen,
   Save,
@@ -273,7 +272,6 @@ export function SchemeDetailPage() {
     updateWeek,
     updateEntry,
     downloadSchemeDocx,
-    downloadSchemeCsv,
   } = useSchemeDetail(schemeId);
 
   const [titleDraft, setTitleDraft] = useState('');
@@ -281,7 +279,6 @@ export function SchemeDetailPage() {
   const [savingWeekId, setSavingWeekId] = useState<number | null>(null);
   const [savingEntryId, setSavingEntryId] = useState<number | null>(null);
   const [downloadingDocx, setDownloadingDocx] = useState(false);
-  const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [entryDrafts, setEntryDrafts] = useState<Record<number, EntryDraftState>>({});
@@ -486,18 +483,6 @@ export function SchemeDetailPage() {
     }
   }, [downloadSchemeDocx]);
 
-  const handleDownloadCsv = useCallback(async () => {
-    try {
-      setActionError(null);
-      setDownloadingCsv(true);
-      await downloadSchemeCsv();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not download the CSV export.');
-    } finally {
-      setDownloadingCsv(false);
-    }
-  }, [downloadSchemeCsv]);
-
   const assistantContext = useMemo(
     () => ({
       pageKey: 'schemes.detail',
@@ -622,15 +607,6 @@ export function SchemeDetailPage() {
                 </Button>
               </Link>
             ) : null}
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void handleDownloadCsv()}
-              disabled={downloadingCsv}
-            >
-              <FileText className="h-4 w-4" />
-              {downloadingCsv ? 'Downloading CSV...' : 'Download CSV'}
-            </Button>
             <Button
               type="button"
               onClick={() => void handleDownloadDocx()}

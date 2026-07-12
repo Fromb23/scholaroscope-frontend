@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, UserCheck, UserMinus, UserPlus, Users, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, UserCheck, UserMinus, UserPlus, Users, ArrowRightLeft } from 'lucide-react';
 import { useCohortDetail } from '@/app/core/hooks/useAcademic';
 import { type EnrolledStudent, useCohortEnrolledStudents } from '@/app/core/hooks/useCohortStudents';
 import { Button } from '@/app/components/ui/Button';
@@ -35,6 +35,11 @@ import { ContextualApprovalRequestButton } from '@/app/core/components/approvals
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { useAuth } from '@/app/context/AuthContext';
 import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
+import { learnersAPI } from '@/app/core/api/learners';
+import { downloadBlob } from '@/app/core/api/downloads';
+import { AppErrorBanner } from '@/app/components/ui/errors';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
+import { resolveReportError, type AppError } from '@/app/core/errors';
 
 type LearnerRow = EnrolledStudent & {
     email?: string | null;
@@ -71,20 +76,6 @@ function getLearnerStatusVariant(student: LearnerRow): 'success' | 'warning' | '
     }
 }
 
-function escapeCsvValue(value: string) {
-    return `"${value.replace(/"/g, '""')}"`;
-}
-
-function buildSafeCohortFilename(cohortName: string, cohortId: number) {
-    const normalized = cohortName
-        .trim()
-        .replace(/[^a-z0-9]+/gi, '-')
-        .replace(/^-+|-+$/g, '')
-        .toLowerCase();
-
-    return normalized || `cohort-${cohortId}`;
-}
-
 export function CohortStudentsPage() {
     const params = useParams<{ id: string }>();
     const { capabilities } = useAuth();
@@ -93,6 +84,8 @@ export function CohortStudentsPage() {
     const enrolledQuery = useCohortEnrolledStudents(cohortId);
     const { cohort } = useCohortDetail(isValidCohortId ? cohortId : null);
     const [searchEnrolled, setSearchEnrolled] = useState('');
+    const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState<AppError | null>(null);
 
     const enrolled = useMemo<LearnerRow[]>(() => enrolledQuery.data?.students ?? [], [enrolledQuery.data?.students]);
     const cohortName = enrolledQuery.data?.cohort_name || cohort?.name || '';
@@ -115,30 +108,27 @@ export function CohortStudentsPage() {
         ));
     }, [searchEnrolled, sortedEnrolled]);
 
-    const handleExportList = () => {
-        if (filteredEnrolled.length === 0) return;
+    const handleExportList = async () => {
+        if (filteredEnrolled.length === 0 || exporting) return;
 
-        const header = ['Admission No.', 'Learner Name', 'Contact', 'Status'];
-        const rows = filteredEnrolled.map((student) => ([
-            student.admission_number,
-            student.full_name,
-            getLearnerContact(student),
-            getLearnerStatus(student),
-        ]));
-        const csvContent = [header, ...rows]
-            .map((row) => row.map((value) => escapeCsvValue(value)).join(','))
-            .join('\n');
-        const fileName = `${buildSafeCohortFilename(cohortName, cohortId)}-class-list.csv`;
-        const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        try {
+            setExporting(true);
+            setExportError(null);
+            const file = await learnersAPI.exportStudents({
+                cohort: cohortId,
+                q: searchEnrolled.trim() || undefined,
+                format: 'xlsx',
+            });
+            downloadBlob(file.blob, file.fileName);
+        } catch (error) {
+            setExportError(resolveReportError(error, {
+                action: 'export',
+                entityLabel: 'learner roster',
+                channel: 'inline',
+            }));
+        } finally {
+            setExporting(false);
+        }
     };
 
     if (!isValidCohortId) {
@@ -238,16 +228,18 @@ export function CohortStudentsPage() {
                                     Request add learner
                                 </ContextualApprovalRequestButton>
                             ) : null}
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={handleExportList}
+                            <ReportExportButtons
+                                reportType="learner_roster"
+                                exporting={exporting}
                                 disabled={filteredEnrolled.length === 0}
-                                className="gap-2 sm:self-start lg:self-auto"
-                            >
-                                <Download className="h-4 w-4" />
-                                Export List
-                            </Button>
+                                onExport={(format) => {
+                                    if (format === 'xlsx') {
+                                        void handleExportList();
+                                    }
+                                }}
+                                className="sm:self-start lg:self-auto"
+                                labels={{ xlsx: 'Export XLSX' }}
+                            />
                             <div className="w-full lg:w-80">
                                 <Input
                                     value={searchEnrolled}
@@ -258,6 +250,13 @@ export function CohortStudentsPage() {
                             </div>
                         </div>
                     </div>
+
+                    {exportError ? (
+                        <AppErrorBanner
+                            error={exportError}
+                            onDismiss={() => setExportError(null)}
+                        />
+                    ) : null}
 
                     {filteredEnrolled.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">

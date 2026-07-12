@@ -6,7 +6,6 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import {
   ArrowLeft,
   BarChart3,
-  Download,
   FileBarChart,
   GraduationCap,
   LineChart,
@@ -18,7 +17,6 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import {
-  ButtonPendingContent,
   EntityLoadingState,
   ReportPreparingState,
   SectionLoading,
@@ -32,6 +30,7 @@ import {
 import { useLearnerSubjectIntelligence } from '@/app/core/hooks/useAcademicIntelligence';
 import { useStudent } from '@/app/core/hooks/useStudents';
 import { LearnerSubjectIntelligencePanel } from '@/app/core/components/reports/AcademicInsightPrimitives';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   BarListChart,
   formatDate,
@@ -407,41 +406,11 @@ export function LearnerSubjectReportPage() {
         </div>
 
         {canExport ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={exporting}
-              onClick={() => void handleExport('pdf')}
-            >
-              <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
-                <Download className="h-4 w-4" />
-                Export PDF
-              </ButtonPendingContent>
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={exporting}
-              onClick={() => void handleExport('xlsx')}
-            >
-              <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
-                <Download className="h-4 w-4" />
-                Export Excel
-              </ButtonPendingContent>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={exporting}
-              onClick={() => void handleExport('csv')}
-            >
-              <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
-                <Download className="h-4 w-4" />
-                Export CSV
-              </ButtonPendingContent>
-            </Button>
-          </div>
+          <ReportExportButtons
+            reportType="learner_subject"
+            exporting={exporting}
+            onExport={handleExport}
+          />
         ) : null}
       </div>
 

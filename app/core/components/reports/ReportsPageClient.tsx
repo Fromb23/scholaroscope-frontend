@@ -7,7 +7,6 @@ import {
   Briefcase,
   Calendar,
   ClipboardCheck,
-  Download,
   FileBarChart,
   GraduationCap,
   Users,
@@ -22,6 +21,7 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   getAdminReportLandingSections,
   REPORT_HIERARCHY_STEPS,
@@ -209,20 +209,11 @@ function ReportsOverviewHeader({
         <p className="mt-2 text-sm text-gray-500">{organizationSummary}</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void onExport('pdf')}>
-          <Download className="h-4 w-4" />
-          Export PDF
-        </Button>
-        <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void onExport('xlsx')}>
-          <Download className="h-4 w-4" />
-          Export Excel
-        </Button>
-        <Button variant="ghost" size="sm" disabled={exporting} onClick={() => void onExport('csv')}>
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
-      </div>
+      <ReportExportButtons
+        reportType="admin_overview"
+        exporting={exporting}
+        onExport={onExport}
+      />
     </div>
   );
 }

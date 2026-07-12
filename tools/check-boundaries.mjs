@@ -27,6 +27,10 @@ function importsFor(path) {
     .filter(Boolean);
 }
 
+function isTestFile(path) {
+  return /\.(test|spec)\.[cm]?[jt]sx?$/.test(path);
+}
+
 function pluginNameFromPath(path) {
   const normalized = relative(root, path).replaceAll('\\', '/');
   const match = normalized.match(/^app\/plugins\/([^/]+)\//);
@@ -37,6 +41,8 @@ const failures = [];
 
 for (const path of walk(join(root, 'app'))) {
   const relativePath = relative(root, path).replaceAll('\\', '/');
+  if (isTestFile(relativePath)) continue;
+
   const imports = importsFor(path);
   const sourcePlugin = pluginNameFromPath(path);
 

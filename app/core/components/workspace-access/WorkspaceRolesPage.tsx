@@ -7,7 +7,7 @@ import { Button } from '@/app/components/ui/Button';
 import { AppErrorBanner } from '@/app/components/ui/errors/AppErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { resolveAppError, type AppError } from '@/app/core/errors';
+import { resolveWorkspaceError, type AppError } from '@/app/core/errors';
 import { useWorkspaceAccess } from '@/app/core/hooks/useWorkspaceAccess';
 import type { WorkspaceRole } from '@/app/core/types/workspaceAccess';
 import { AdminSlotSummary } from './AdminSlotSummary';
@@ -216,8 +216,7 @@ export function WorkspaceRolesPage() {
           try {
             await actions.assignRole.mutateAsync(payload);
           } catch (error) {
-            setAssignmentError(resolveAppError(error, {
-              domain: 'workspace',
+            setAssignmentError(resolveWorkspaceError(error, {
               action: 'create',
               entityLabel: 'staff role assignment',
               channel: 'inline',
@@ -230,8 +229,7 @@ export function WorkspaceRolesPage() {
           try {
             await actions.endAssignment.mutateAsync({ assignmentId, reason });
           } catch (error) {
-            setAssignmentError(resolveAppError(error, {
-              domain: 'workspace',
+            setAssignmentError(resolveWorkspaceError(error, {
               action: 'update',
               entityLabel: 'staff role assignment',
               channel: 'inline',

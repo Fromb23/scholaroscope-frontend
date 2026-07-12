@@ -11,6 +11,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { ActionProgress, ActionStateBanner, ResponsiveActionSheet } from '@/app/components/ui/actions';
 import { ReportPrepareTermSheet } from '@/app/core/components/reports/ReportPrepareTermSheet';
+import { canRenderInstitutionReportOverview } from '@/app/core/components/reports/reportAccessPolicy';
 import { getFormFieldErrorMessage, useFormValidationFeedback } from '@/app/core/forms';
 import { useComputePage, type ComputeTransportState } from '@/app/core/hooks/reports/useComputePage';
 import { useAuth } from '@/app/context/AuthContext';
@@ -98,7 +99,7 @@ function reportSetStatusLabel(reportSet: TermReportSetReadiness | null): string 
 }
 
 export function ComputePage() {
-    const { activeRole } = useAuth();
+    const { user, activeOrg, activeRole, capabilities } = useAuth();
     const [prepareSheetOpen, setPrepareSheetOpen] = useState(false);
     const [prepareAutoRunKey, setPrepareAutoRunKey] = useState(0);
     const {
@@ -156,6 +157,12 @@ export function ComputePage() {
         || readiness?.engines.length === 0,
     );
     const reportsReady = Boolean(readiness && (readiness.can_compute ?? readiness.ready));
+    const canRunFullRebuild = canRenderInstitutionReportOverview({
+        user,
+        activeRole,
+        activeOrg,
+        capabilities,
+    });
     const coveredCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'covered_count'), 0) ?? 0;
     const missingCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'missing_count'), 0) ?? 0;
     const exceptionCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'exception_count'), 0) ?? 0;
@@ -390,7 +397,7 @@ export function ComputePage() {
                                 </>
                             )}
                         </Button>
-                        {activeRole === 'ADMIN' ? (
+                        {canRunFullRebuild ? (
                             <Button
                                 type="button"
                                 variant="secondary"

@@ -18,6 +18,10 @@ const baseline = {
     lines: 935,
     reason: 'Existing class subject report client island with filters, exports, and report policy state.',
   },
+  'app/core/components/reports/ComputePage.tsx': {
+    lines: 725,
+    reason: 'Existing final report computation client island with readiness, reconciliation, progress, and repair controls.',
+  },
   'app/core/components/reports/InstructorCohortSubjectReportPage.tsx': {
     lines: 760,
     reason: 'Existing instructor class-subject report client island.',
@@ -27,8 +31,8 @@ const baseline = {
     reason: 'Existing teacher performance report client island with export and summary sections.',
   },
   'app/core/components/reports/LearnerSubjectReportPage.tsx': {
-    lines: 715,
-    reason: 'Reduced in the report maintainability pass; remaining size is client state, route params, export handling, and report composition.',
+    lines: 819,
+    reason: 'Existing learner subject detail report remains client-heavy; this phase removed client-side exports while leaving deeper presentation splits deferred.',
   },
 };
 

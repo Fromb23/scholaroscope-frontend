@@ -64,3 +64,56 @@ npm run check:error-placement
 ```
 
 The guard keeps the existing duplicate-banner baseline and also checks the highest-value foreground action flows so active action state does not move back to page-level banners.
+
+## Server-Owned Report Exports
+
+The browser must not calculate, construct, or print exported report documents.
+Frontend code may select a report, filters, and an allowed format, then request a
+server file and download the returned blob. It must not build XLSX workbooks,
+CSV strings, PDF content, printable HTML, or transform rendered tables into
+files.
+
+The single frontend format policy lives in `app/core/reportExportPolicy.ts` and
+drives `ReportExportButtons`. The server remains the final authority and may
+reject any unsupported report type/format combination.
+
+Use these pathways:
+
+- `app/core/hooks/reports/useReportExport.ts` for report file actions.
+- `app/core/api/reporting.ts` for report endpoints with `responseType: 'blob'`.
+- `app/core/api/downloads.ts` for `Content-Disposition` filename parsing,
+  normalized blob errors, temporary object URL download, and URL revocation.
+
+CSV is not a user-facing export format. Scheme of work DOCX is the only Word
+document exception and remains a server-generated file. Learner roster exports
+are server XLSX files, not client-generated spreadsheets.
+
+The architecture guard `npm run check:report-surface` rejects imports from
+deleted browser export utilities, direct `xlsx` imports, `window.print` export
+paths, `ExportModal`, CSV export actions, and CSV filenames in application code.
+
+## Public Landing Page
+
+The public landing page keeps `PublicHeader`, `PublicThemeToggle`, global theme
+tokens, responsive breakpoints, and authenticated redirect behavior. Its message
+hierarchy is:
+
+1. Hero
+2. The problem
+3. How it works
+4. Evidence dashboard
+5. Three reports / three audiences
+6. Who it is for
+7. Evidence integrity
+8. Pricing
+9. Footer CTA
+10. Existing footer
+
+The sample report CTA points to `/sample-report`, a public static page built
+from fixture data. It must not call production learner APIs or expose real
+learner data.
+
+Public copy must avoid unsupported claims such as Ministry approval, KNEC
+certification, full KICD compliance, national adoption counts, Cambridge
+alignment while pending, or statements implying Scholaroscope is an official
+government system.
