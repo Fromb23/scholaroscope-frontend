@@ -126,7 +126,21 @@ export interface Term {
   calendar_setup_completed_at: string | null;
   calendar_setup_completed_by: number | null;
   calendar_setup_completed_by_name: string;
+  calendar_setup_reopened_at?: string | null;
+  calendar_setup_reopened_by?: number | null;
+  calendar_setup_reopened_by_name?: string;
   is_calendar_setup_complete: boolean;
+  configuration_state: 'SETUP_OPEN' | 'SETUP_LOCKED' | 'HISTORICAL_LOCKED';
+  configuration_actions: {
+    can_edit_term: boolean;
+    can_delete_term: boolean;
+    can_add_calendar_event: boolean;
+    can_edit_calendar_event: boolean;
+    can_delete_calendar_event: boolean;
+    can_complete_setup: boolean;
+    can_reopen_setup: boolean;
+  };
+  configuration_locked_reason: string | null;
   week_count: number;
   actions?: {
     can_edit: boolean;

@@ -5,8 +5,9 @@ import {
   SELF_MANAGED_TERM_SETUP_INCOMPLETE_MESSAGE,
 } from './CreateSchemePage';
 
-const incompleteTerm = { is_calendar_setup_complete: false };
-const completeTerm = { is_calendar_setup_complete: true };
+const incompleteTerm = { configuration_state: 'SETUP_OPEN' as const, configuration_locked_reason: null };
+const completeTerm = { configuration_state: 'SETUP_LOCKED' as const, configuration_locked_reason: 'Term configuration locked.' };
+const historicalTerm = { configuration_state: 'HISTORICAL_LOCKED' as const, configuration_locked_reason: 'Historical terms are locked.' };
 
 describe('create scheme term calendar setup copy', () => {
   it('keeps institution teacher wording when the term calendar is incomplete', () => {
@@ -31,5 +32,13 @@ describe('create scheme term calendar setup copy', () => {
       selfManagedTeachingAdmin: true,
       isTeachingActor: true,
     })).toBeNull();
+  });
+
+  it('uses the server locked reason for historical terms', () => {
+    expect(getSchemeTermCalendarSetupMessage({
+      selectedTerm: historicalTerm,
+      selfManagedTeachingAdmin: true,
+      isTeachingActor: true,
+    })).toBe('Historical terms are locked.');
   });
 });

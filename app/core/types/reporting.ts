@@ -1052,6 +1052,8 @@ export interface ReportComputeEngineReadiness {
   official_result_estimate?: number;
   default_policy?: ReportPolicyReference | null;
   summary_message?: string;
+  projection_freshness?: ReportProjectionFreshness | null;
+  background_updates?: ReportProjectionFreshness | null;
   coverage?: {
     default_policy?: ReportPolicyReference | null;
     coverage_by_scope?: Record<string, Array<Record<string, unknown>>>;
@@ -1070,6 +1072,33 @@ export interface ReportComputeEngineReadiness {
     missing_policy_rows?: unknown[];
     [key: string]: unknown;
   };
+}
+
+export interface ReportProjectionFreshness {
+  last_projection_update_at: string | null;
+  pending_dirty_scope_count: number;
+  claimed_dirty_scope_count: number;
+  failed_dirty_scope_count: number;
+  updating_in_background: boolean;
+  oldest_pending_update_at: string | null;
+  oldest_pending_update_age_seconds: number | null;
+  stale_outcome_result_count: number;
+  stale_subject_result_count: number;
+  stale_assessment_indicator_count: number;
+  stale_required_projection_count: number;
+}
+
+export interface TermReportSetReadiness {
+  status: 'DRAFT' | 'RECONCILING' | 'READY_FOR_REVIEW' | 'READY_FOR_PUBLICATION' | 'REQUIRES_RECONCILIATION' | string;
+  requires_reconciliation: boolean;
+  reconciliation_required_reason: string;
+  reconciliation_required_at?: string | null;
+  evidence_cutoff_at: string | null;
+  evidence_cutoff_dirty_version?: number | null;
+  ready_for_review_at: string | null;
+  ready_for_publication_at: string | null;
+  last_job_id?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ReportComputeReadiness {
@@ -1094,6 +1123,9 @@ export interface ReportComputeReadiness {
     recommendation_id: string;
     policy: ReportPolicyReference;
   };
+  projection_freshness?: ReportProjectionFreshness | null;
+  background_updates?: ReportProjectionFreshness | null;
+  report_set?: TermReportSetReadiness;
 }
 
 export interface ReportReadinessRecommendation {
@@ -1127,7 +1159,7 @@ export interface ReportComputeEngineResult {
   mode?: ReportComputeMode;
 }
 
-export type ReportComputeMode = 'INCREMENTAL' | 'FULL_REBUILD';
+export type ReportComputeMode = 'INCREMENTAL' | 'FINAL_RECONCILIATION' | 'FULL_REBUILD';
 
 export interface ReportComputeResult {
   detail: string;
@@ -1187,6 +1219,8 @@ export interface ReportComputeJob {
   item_counts?: ReportComputeJobItemCounts;
   result_payload?: {
     mode?: ReportComputeMode;
+    detail?: string;
+    report_set?: TermReportSetReadiness;
     computed_count?: number;
     created_count?: number;
     updated_count?: number;

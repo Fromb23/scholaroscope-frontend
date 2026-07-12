@@ -46,7 +46,10 @@ import {
     withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
 import {
-    canEditTermCalendar,
+    canAddTermCalendarEvent,
+    canCompleteTermCalendar,
+    canDeleteTermCalendarEvent,
+    canEditTermCalendarEvent,
     canReopenTermCalendar,
     isTermDetailLocked,
     resolveSelectedTermId,
@@ -82,6 +85,13 @@ const TERM_CALENDAR_EVENT_TYPE_OPTIONS: Array<{ value: TermCalendarEventType; la
     { value: 'SCHOOL_EVENT', label: 'School event' },
     { value: 'OTHER', label: 'Other' },
 ];
+
+const TERM_CONFIGURATION_LOCK_ERROR_CODES = new Set([
+    'TERM_CONFIGURATION_LOCKED',
+    'TERM_HISTORICAL_LOCKED',
+    'TERM_DELETE_BLOCKED_BY_ACADEMIC_RECORDS',
+    'TERM_SETUP_REOPEN_NOT_ALLOWED',
+]);
 
 function emptyTermCalendarEventForm(term: Term | null): TermCalendarEventFormState {
     return {
@@ -154,17 +164,25 @@ function getTermCalendarEventBadgeTone(eventType: TermCalendarEventType): ThemeB
 }
 
 function getCalendarSetupBadge(term: Term) {
-    if (term.is_calendar_setup_complete) {
+    if (term.configuration_state === 'HISTORICAL_LOCKED') {
+        return {
+            label: 'Historical configuration locked',
+            helper: term.configuration_locked_reason ?? 'Historical terms stay read-only',
+            tone: 'default' as const,
+        };
+    }
+
+    if (term.configuration_state === 'SETUP_LOCKED') {
         return {
             label: 'Calendar setup complete',
-            helper: 'Term configuration locked',
+            helper: term.configuration_locked_reason ?? 'Term configuration locked',
             tone: 'success' as const,
         };
     }
 
     return {
-        label: 'Calendar setup incomplete',
-        helper: 'Finish the term calendar before teachers generate schemes',
+        label: 'Calendar setup open',
+        helper: 'Term dates and calendar events can still be configured',
         tone: 'warning' as const,
     };
 }
@@ -189,17 +207,15 @@ function getTermLifecycleBadge(term: Term) {
 }
 
 function termCanEdit(term: Term): boolean {
-    return term.actions?.can_edit === true;
+    return term.configuration_actions.can_edit_term;
 }
 
 function termCanDelete(term: Term): boolean {
-    return term.actions?.can_delete === true;
+    return term.configuration_actions.can_delete_term;
 }
 
 function termLockedReason(term: Term): string | null {
-    return term.actions?.edit_blocked_reason
-        ?? term.actions?.delete_blocked_reason
-        ?? null;
+    return term.configuration_locked_reason;
 }
 
 interface TermCalendarEventModalProps {
@@ -391,6 +407,7 @@ export function TermsPage() {
         deleteTerm,
         completeCalendarSetup,
         reopenCalendarSetup,
+        refetch: refetchTerms,
     } = useTerms(selectedYearId);
 
     const visibleTerms = useMemo(
@@ -421,14 +438,17 @@ export function TermsPage() {
         createEvent,
         updateEvent,
         deleteEvent,
+        refetch: refetchEvents,
     } = useTermCalendarEvents(selectedTerm?.id ?? null);
 
     const calendarAccessContext = {
         isAdminLike,
-        isHistoricalView,
         term: selectedTerm,
     };
-    const calendarEditable = canEditTermCalendar(calendarAccessContext);
+    const calendarCanAddEvent = canAddTermCalendarEvent(calendarAccessContext);
+    const calendarCanEditEvent = canEditTermCalendarEvent(calendarAccessContext);
+    const calendarCanDeleteEvent = canDeleteTermCalendarEvent(calendarAccessContext);
+    const calendarCanComplete = canCompleteTermCalendar(calendarAccessContext);
     const calendarReopenable = canReopenTermCalendar(calendarAccessContext);
     const termDetailLocked = isTermDetailLocked(calendarAccessContext);
 
@@ -482,6 +502,29 @@ export function TermsPage() {
         setEditingEvent(null);
     };
 
+    const recoverFromConfigurationLockError = async (
+        err: ApiError & { code?: string | null },
+        fallback: string,
+    ): Promise<boolean> => {
+        const code = extractErrorCode(err) ?? err.code ?? null;
+        if (!code || !TERM_CONFIGURATION_LOCK_ERROR_CODES.has(code)) {
+            return false;
+        }
+
+        const refreshedTerms = await refetchTerms();
+        await refetchEvents();
+        const refreshedTerm = selectedTermId
+            ? refreshedTerms.find((term) => term.id === selectedTermId)
+            : null;
+        closeModal();
+        closeEventModal();
+        setPageError(
+            refreshedTerm?.configuration_locked_reason
+            ?? extractErrorMessage(err, fallback),
+        );
+        return true;
+    };
+
     const handleSave = async (data: TermFormState, editingId?: number) => {
         const payload = {
             name: data.name,
@@ -492,7 +535,15 @@ export function TermsPage() {
         };
 
         if (editingId) {
-            await updateTerm(editingId, payload);
+            try {
+                await updateTerm(editingId, payload);
+            } catch (err) {
+                await recoverFromConfigurationLockError(
+                    err as ApiError & { code?: string | null },
+                    'Failed to update term.',
+                );
+                throw err;
+            }
             return;
         }
 
@@ -525,7 +576,13 @@ export function TermsPage() {
         try {
             await deleteTerm(term.id);
         } catch (err) {
-            setPageError(extractErrorMessage(err as ApiError, 'Failed to delete term.'));
+            const recovered = await recoverFromConfigurationLockError(
+                err as ApiError & { code?: string | null },
+                'Failed to delete term.',
+            );
+            if (!recovered) {
+                setPageError(extractErrorMessage(err as ApiError, 'Failed to delete term.'));
+            }
         }
     };
 
@@ -548,11 +605,27 @@ export function TermsPage() {
         };
 
         if (editingId) {
-            await updateEvent(editingId, payload);
+            try {
+                await updateEvent(editingId, payload);
+            } catch (err) {
+                await recoverFromConfigurationLockError(
+                    err as ApiError & { code?: string | null },
+                    'Failed to update term calendar event.',
+                );
+                throw err;
+            }
             return;
         }
 
-        await createEvent(payload);
+        try {
+            await createEvent(payload);
+        } catch (err) {
+            await recoverFromConfigurationLockError(
+                err as ApiError & { code?: string | null },
+                'Failed to create term calendar event.',
+            );
+            throw err;
+        }
     };
 
     const handleDeleteEvent = async (event: TermCalendarEvent) => {
@@ -564,7 +637,13 @@ export function TermsPage() {
         try {
             await deleteEvent(event.id);
         } catch (err) {
-            setPageError(extractErrorMessage(err as ApiError, 'Failed to delete term calendar event.'));
+            const recovered = await recoverFromConfigurationLockError(
+                err as ApiError & { code?: string | null },
+                'Failed to delete term calendar event.',
+            );
+            if (!recovered) {
+                setPageError(extractErrorMessage(err as ApiError, 'Failed to delete term calendar event.'));
+            }
         }
     };
 
@@ -575,9 +654,17 @@ export function TermsPage() {
 
         setPageError(null);
         try {
-            await completeCalendarSetup(selectedTerm.id);
+            const updated = await completeCalendarSetup(selectedTerm.id);
+            setSelectedTermId(updated.id);
+            await refetchEvents();
         } catch (err) {
-            setPageError(extractErrorMessage(err as ApiError, 'Failed to complete term calendar setup.'));
+            const recovered = await recoverFromConfigurationLockError(
+                err as ApiError & { code?: string | null },
+                'Failed to complete term calendar setup.',
+            );
+            if (!recovered) {
+                setPageError(extractErrorMessage(err as ApiError, 'Failed to complete term calendar setup.'));
+            }
         }
     };
 
@@ -594,9 +681,17 @@ export function TermsPage() {
 
         setPageError(null);
         try {
-            await reopenCalendarSetup(selectedTerm.id);
+            const updated = await reopenCalendarSetup(selectedTerm.id);
+            setSelectedTermId(updated.id);
+            await refetchEvents();
         } catch (err) {
-            setPageError(extractErrorMessage(err as ApiError, 'Failed to reopen term calendar setup.'));
+            const recovered = await recoverFromConfigurationLockError(
+                err as ApiError & { code?: string | null },
+                'Failed to reopen term calendar setup.',
+            );
+            if (!recovered) {
+                setPageError(extractErrorMessage(err as ApiError, 'Failed to reopen term calendar setup.'));
+            }
         }
     };
 
@@ -634,7 +729,7 @@ export function TermsPage() {
                             : 'Manage academic terms and the organization term calendar used for schemes of work.'}
                     </p>
                 </div>
-                {!isHistoricalView && isAdminLike ? (
+                {isAdminLike ? (
                     <Button onClick={openCreate}>
                         <Plus className="h-4 w-4" />
                         Add Term
@@ -691,7 +786,7 @@ export function TermsPage() {
                                 ? 'No terms exist for this academic year.'
                                 : 'Create a term to set up the school calendar for schemes of work.'}
                         </p>
-                        {!isHistoricalView && isAdminLike ? (
+                        {isAdminLike ? (
                             <Button className="mt-4" onClick={openCreate}>
                                 <Plus className="h-4 w-4" />
                                 Add Term
@@ -807,17 +902,21 @@ export function TermsPage() {
                         </div>
 
                         <div className="flex flex-col gap-2 sm:flex-row">
-                            {calendarEditable ? (
-                                <>
-                                    <Button variant="secondary" onClick={openCreateEvent}>
-                                        <Plus className="h-4 w-4" />
-                                        Add Calendar Event
-                                    </Button>
-                                    <Button onClick={handleCompleteCalendarSetup}>
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        Mark Setup Complete
-                                    </Button>
-                                </>
+                            {calendarCanAddEvent || calendarCanComplete ? (
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    {calendarCanAddEvent ? (
+                                        <Button variant="secondary" onClick={openCreateEvent}>
+                                            <Plus className="h-4 w-4" />
+                                            Add Calendar Event
+                                        </Button>
+                                    ) : null}
+                                    {calendarCanComplete ? (
+                                        <Button onClick={handleCompleteCalendarSetup}>
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Mark Setup Complete
+                                        </Button>
+                                    ) : null}
+                                </div>
                             ) : null}
                             {calendarReopenable ? (
                                 <Button variant="secondary" onClick={handleReopenCalendarSetup}>
@@ -832,7 +931,9 @@ export function TermsPage() {
                         <div className={`rounded-xl px-4 py-4 text-sm ${
                             selectedTermCalendarBadge.tone === 'success'
                                 ? 'theme-success-surface'
-                                : 'theme-warning-surface'
+                                : selectedTermCalendarBadge.tone === 'warning'
+                                    ? 'theme-warning-surface'
+                                    : 'theme-border theme-surface-muted border'
                         }`}>
                             <div className="flex items-start gap-3">
                                 {selectedTermCalendarBadge.tone === 'success' ? (
@@ -843,18 +944,25 @@ export function TermsPage() {
                                 <div>
                                     <p className="font-medium theme-text">{selectedTermCalendarBadge.label}</p>
                                     <p className="mt-1 theme-muted">{selectedTermCalendarBadge.helper}</p>
-                                    {selectedTerm.is_calendar_setup_complete ? (
+                                    {selectedTerm.configuration_state === 'SETUP_LOCKED' ? (
                                         <p className="mt-1 theme-muted">
                                             The term dates and calendar are being used by schemes of work.
                                             Reopen setup to make changes.
                                         </p>
                                     ) : null}
-                                    {selectedTerm.is_calendar_setup_complete && selectedTerm.calendar_setup_completed_by_name ? (
+                                    {selectedTerm.configuration_state === 'SETUP_LOCKED' && selectedTerm.calendar_setup_completed_by_name ? (
                                         <p className="mt-2 text-xs theme-subtle">
                                             Completed by {selectedTerm.calendar_setup_completed_by_name}
                                             {selectedTerm.calendar_setup_completed_at
                                                 ? ` on ${formatDate(selectedTerm.calendar_setup_completed_at)}`
                                                 : ''}
+                                        </p>
+                                    ) : null}
+                                    {selectedTerm.calendar_setup_reopened_by_name && selectedTerm.calendar_setup_reopened_at ? (
+                                        <p className="mt-2 text-xs theme-subtle">
+                                            Last reopened by {selectedTerm.calendar_setup_reopened_by_name}
+                                            {' on '}
+                                            {formatDate(selectedTerm.calendar_setup_reopened_at)}
                                         </p>
                                     ) : null}
                                 </div>
@@ -882,15 +990,12 @@ export function TermsPage() {
                             <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                             <div>
                                 <p className="font-medium">
-                                    {selectedTerm.is_calendar_setup_complete ? 'Term configuration locked' : 'Term record locked'}
+                                    {selectedTerm.configuration_state === 'HISTORICAL_LOCKED'
+                                        ? 'Historical term locked'
+                                        : 'Term configuration locked'}
                                 </p>
                                 <p className="mt-1 theme-muted">
-                                    {selectedTerm.is_calendar_setup_complete
-                                        ? 'The term dates and calendar are being used by schemes of work. Reopen setup to make changes.'
-                                        : termLockedReason(selectedTerm)
-                                            ?? (isHistoricalView || isTermPast(selectedTerm)
-                                                ? 'Historical terms stay read-only.'
-                                                : 'Reopen setup if you need to update the calendar before schemes move further into history.')}
+                                    {termLockedReason(selectedTerm) ?? 'The server has locked configuration changes for this term.'}
                                 </p>
                             </div>
                         </div>
@@ -948,14 +1053,18 @@ export function TermsPage() {
                                                 </p>
                                             </div>
 
-                                            {calendarEditable ? (
+                                            {calendarCanEditEvent || calendarCanDeleteEvent ? (
                                                 <div className="flex gap-1">
-                                                    <Button size="sm" variant="ghost" onClick={() => openEditEvent(event)}>
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button size="sm" variant="ghost" onClick={() => handleDeleteEvent(event)}>
-                                                        <Trash2 className="h-4 w-4 text-[color:var(--color-danger)]" />
-                                                    </Button>
+                                                    {calendarCanEditEvent ? (
+                                                        <Button size="sm" variant="ghost" onClick={() => openEditEvent(event)}>
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : null}
+                                                    {calendarCanDeleteEvent ? (
+                                                        <Button size="sm" variant="ghost" onClick={() => handleDeleteEvent(event)}>
+                                                            <Trash2 className="h-4 w-4 text-[color:var(--color-danger)]" />
+                                                        </Button>
+                                                    ) : null}
                                                 </div>
                                             ) : null}
                                         </div>

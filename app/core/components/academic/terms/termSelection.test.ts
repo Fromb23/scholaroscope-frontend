@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Term } from '@/app/core/types/academic';
 import {
+    canAddTermCalendarEvent,
+    canCompleteTermCalendar,
+    canDeleteTermCalendarEvent,
     canEditTermCalendar,
+    canEditTermCalendarEvent,
     canReopenTermCalendar,
     resolveDefaultSelectedTerm,
     resolveSelectedTermId,
@@ -29,6 +33,17 @@ function buildTerm(overrides: Partial<Term>): Term {
         calendar_setup_completed_by: null,
         calendar_setup_completed_by_name: '',
         is_calendar_setup_complete: false,
+        configuration_state: 'SETUP_OPEN',
+        configuration_actions: {
+            can_edit_term: true,
+            can_delete_term: true,
+            can_add_calendar_event: true,
+            can_edit_calendar_event: true,
+            can_delete_calendar_event: true,
+            can_complete_setup: true,
+            can_reopen_setup: false,
+        },
+        configuration_locked_reason: null,
         week_count: 13,
         created_at: '2026-01-01T00:00:00Z',
         ...overrides,
@@ -187,14 +202,47 @@ describe('academic term calendar access', () => {
 
         expect(canEditTermCalendar({
             isAdminLike: true,
-            isHistoricalView: false,
+            term: activeIncompleteTerm,
+        })).toBe(true);
+        expect(canAddTermCalendarEvent({
+            isAdminLike: true,
+            term: activeIncompleteTerm,
+        })).toBe(true);
+        expect(canCompleteTermCalendar({
+            isAdminLike: true,
             term: activeIncompleteTerm,
         })).toBe(true);
         expect(canReopenTermCalendar({
             isAdminLike: true,
-            isHistoricalView: false,
             term: activeIncompleteTerm,
         })).toBe(false);
+    });
+
+    it('does not infer edit permission from term dates', () => {
+        const serverOpenEndedTerm = buildTerm({
+            id: 3,
+            start_date: '2026-01-01',
+            end_date: '2026-03-31',
+            configuration_state: 'SETUP_OPEN',
+            configuration_actions: {
+                can_edit_term: true,
+                can_delete_term: false,
+                can_add_calendar_event: true,
+                can_edit_calendar_event: true,
+                can_delete_calendar_event: true,
+                can_complete_setup: true,
+                can_reopen_setup: false,
+            },
+        });
+
+        expect(canEditTermCalendar({
+            isAdminLike: true,
+            term: serverOpenEndedTerm,
+        })).toBe(true);
+        expect(canEditTermCalendarEvent({
+            isAdminLike: true,
+            term: serverOpenEndedTerm,
+        })).toBe(true);
     });
 
     it('keeps a historical selected term read-only', () => {
@@ -204,31 +252,59 @@ describe('academic term calendar access', () => {
             end_date: '2026-09-30',
             status: 'CLOSED_HISTORICAL',
             is_frozen: true,
+            configuration_state: 'HISTORICAL_LOCKED',
+            configuration_actions: {
+                can_edit_term: false,
+                can_delete_term: false,
+                can_add_calendar_event: false,
+                can_edit_calendar_event: false,
+                can_delete_calendar_event: false,
+                can_complete_setup: false,
+                can_reopen_setup: false,
+            },
+            configuration_locked_reason: 'Historical terms are locked.',
         });
 
         expect(canEditTermCalendar({
             isAdminLike: true,
-            isHistoricalView: false,
+            term: historicalTerm,
+        })).toBe(false);
+        expect(canDeleteTermCalendarEvent({
+            isAdminLike: true,
             term: historicalTerm,
         })).toBe(false);
         expect(canReopenTermCalendar({
             isAdminLike: true,
-            isHistoricalView: false,
             term: historicalTerm,
         })).toBe(false);
     });
 
     it('wires setup actions and locked state to the shared calendar access predicates', () => {
         const termsPage = source('app/core/components/academic/terms/TermsPage.tsx');
+        const helperSource = source('app/core/components/academic/terms/termSelection.ts');
+        const canEditBlock = helperSource.slice(
+            helperSource.indexOf('export function canEditTermCalendar'),
+            helperSource.indexOf('export function canAddTermCalendarEvent'),
+        );
 
-        expect(termsPage).toContain('const calendarEditable = canEditTermCalendar(calendarAccessContext);');
+        expect(termsPage).toContain('const calendarCanAddEvent = canAddTermCalendarEvent(calendarAccessContext);');
+        expect(termsPage).toContain('const calendarCanEditEvent = canEditTermCalendarEvent(calendarAccessContext);');
+        expect(termsPage).toContain('const calendarCanDeleteEvent = canDeleteTermCalendarEvent(calendarAccessContext);');
+        expect(termsPage).toContain('const calendarCanComplete = canCompleteTermCalendar(calendarAccessContext);');
         expect(termsPage).toContain('const calendarReopenable = canReopenTermCalendar(calendarAccessContext);');
         expect(termsPage).toContain('const termDetailLocked = isTermDetailLocked(calendarAccessContext);');
-        expect(termsPage).toContain('{calendarEditable ? (');
+        expect(termsPage).toContain('{calendarCanAddEvent ? (');
+        expect(termsPage).toContain('{calendarCanComplete ? (');
         expect(termsPage).toContain('Add Calendar Event');
         expect(termsPage).toContain('Mark Setup Complete');
         expect(termsPage).toContain('{termDetailLocked ? (');
         expect(termsPage).toContain('Term configuration locked');
         expect(termsPage).toContain('Existing schemes may require review or regeneration.');
+        expect(termsPage).toContain('TERM_CONFIGURATION_LOCKED');
+        expect(termsPage).toContain('TERM_SETUP_REOPEN_NOT_ALLOWED');
+        expect(canEditBlock).toContain('term.configuration_actions');
+        expect(canEditBlock).not.toContain('isTermPast');
+        expect(canEditBlock).not.toContain('is_calendar_setup_complete');
+        expect(canEditBlock).not.toContain('term.actions');
     });
 });

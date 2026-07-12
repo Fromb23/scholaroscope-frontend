@@ -17,7 +17,10 @@ import { useAuth } from '@/app/context/AuthContext';
 import type {
     ReportComputeEngineReadiness,
     ReportComputeJob,
+    ReportComputeMode,
     ReportComputeProgressEvent,
+    ReportProjectionFreshness,
+    TermReportSetReadiness,
 } from '@/app/core/types/reporting';
 
 const COMPUTE_FIELD_LABELS = {
@@ -56,6 +59,42 @@ function engineSummary(engine: ReportComputeEngineReadiness): string {
 function engineMetric(engine: ReportComputeEngineReadiness, key: 'covered_count' | 'missing_count' | 'exception_count' | 'official_result_estimate'): number {
     const value = engine[key] ?? engine.context?.[key];
     return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function formatDateTime(value: string | null | undefined): string {
+    if (!value) return 'Never';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+}
+
+function formatAge(seconds: number | null | undefined): string {
+    if (seconds === null || seconds === undefined) return 'None pending';
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) return `${hours}h ${minutes % 60}m`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ${hours % 24}h`;
+}
+
+function reportSetStatusLabel(reportSet: TermReportSetReadiness | null): string {
+    if (!reportSet) return 'Draft';
+    switch (reportSet.status) {
+        case 'RECONCILING':
+            return 'Reconciling';
+        case 'READY_FOR_REVIEW':
+            return 'Ready for review';
+        case 'READY_FOR_PUBLICATION':
+            return 'Ready for publication';
+        case 'REQUIRES_RECONCILIATION':
+            return 'Reconciliation required';
+        case 'DRAFT':
+            return 'Draft';
+        default:
+            return reportSet.status;
+    }
 }
 
 export function ComputePage() {
@@ -122,8 +161,14 @@ export function ComputePage() {
     const exceptionCount = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'exception_count'), 0) ?? 0;
     const officialEstimate = readiness?.engines.reduce((total, engine) => total + engineMetric(engine, 'official_result_estimate'), 0) ?? 0;
     const progressPercent = Math.max(0, Math.min(100, Number(progressEvent?.progress_percent ?? job?.progress_percent ?? 0)));
-    const rawComputeMode = progressEvent?.mode ?? job?.mode ?? job?.result_payload?.mode ?? 'INCREMENTAL';
-    const computeMode = rawComputeMode === 'FULL_REBUILD' ? 'FULL_REBUILD' : 'INCREMENTAL';
+    const rawComputeMode = progressEvent?.mode ?? job?.mode ?? job?.result_payload?.mode ?? 'FINAL_RECONCILIATION';
+    const computeMode: ReportComputeMode = rawComputeMode === 'FULL_REBUILD'
+        ? 'FULL_REBUILD'
+        : rawComputeMode === 'INCREMENTAL'
+            ? 'INCREMENTAL'
+            : 'FINAL_RECONCILIATION';
+    const projectionFreshness = readiness?.background_updates ?? readiness?.projection_freshness ?? null;
+    const reportSet = readiness?.report_set ?? null;
     const itemCounts = job?.item_counts;
     const createdCount = progressEvent?.created_count ?? itemCounts?.created_count ?? job?.result_payload?.created_count ?? 0;
     const updatedCount = progressEvent?.updated_count ?? itemCounts?.updated_count ?? job?.result_payload?.updated_count ?? 0;
@@ -140,7 +185,9 @@ export function ComputePage() {
         ?? job?.result_payload?.summary_count
         ?? job?.result_payload?.summaries?.summary_count
         ?? 0;
-    const completionMessage = `Reports computed successfully. ${officialResults} official result${officialResults === 1 ? '' : 's'} computed; ${summaryRows} summary row${summaryRows === 1 ? '' : 's'} refreshed.`;
+    const completionMessage = computeMode === 'FINAL_RECONCILIATION'
+        ? String(job?.result_payload?.detail ?? 'Final reports prepared for review or publication.')
+        : `Reports computed successfully. ${officialResults} official result${officialResults === 1 ? '' : 's'} computed; ${summaryRows} summary row${summaryRows === 1 ? '' : 's'} refreshed.`;
 
     const openPrepareSheet = (autoRun = false) => {
         setPrepareSheetOpen(true);
@@ -160,9 +207,9 @@ export function ComputePage() {
         <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Compute Reports</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">Prepare Final Reports</h1>
                     <p className="mt-1 text-gray-500">
-                        Run official report computation for a selected term.
+                        Reconcile final report projections for a selected term.
                     </p>
                 </div>
                 <Settings className="h-7 w-7 text-gray-500" />
@@ -314,25 +361,32 @@ export function ComputePage() {
                 </div>
             </Card>
 
+            {readiness ? (
+                <ProjectionFreshnessPanel
+                    freshness={projectionFreshness}
+                    reportSet={reportSet}
+                />
+            ) : null}
+
             <Card>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h2 className="font-semibold text-gray-900">Official Computation</h2>
+                        <h2 className="font-semibold text-gray-900">Final Reconciliation</h2>
                         <p className="mt-1 text-sm text-gray-600">
-                            Compute enforces policy readiness and refreshes report summaries from official results.
+                            The background pipeline keeps projections current. This final action captures the cutoff and verifies the term is ready for review or publication.
                         </p>
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row">
-                        <Button onClick={() => handleComputeReports('INCREMENTAL')} disabled={computeDisabled} className="w-full sm:w-auto">
+                        <Button onClick={() => handleComputeReports('FINAL_RECONCILIATION')} disabled={computeDisabled} className="w-full sm:w-auto">
                             {computing ? (
                                 <>
                                     <Loader className="mr-1.5 h-4 w-4 animate-spin" />
-                                    Computing Reports
+                                    Preparing Final Reports
                                 </>
                             ) : (
                                 <>
                                     <Play className="mr-1.5 h-4 w-4" />
-                                    Compute Incremental Reports
+                                    Prepare Final Reports
                                 </>
                             )}
                         </Button>
@@ -398,6 +452,71 @@ export function ComputePage() {
     );
 }
 
+function ProjectionFreshnessPanel({
+    freshness,
+    reportSet,
+}: {
+    freshness: ReportProjectionFreshness | null;
+    reportSet: TermReportSetReadiness | null;
+}) {
+    const pendingCount = freshness?.pending_dirty_scope_count ?? 0;
+    const claimedCount = freshness?.claimed_dirty_scope_count ?? 0;
+    const failedCount = freshness?.failed_dirty_scope_count ?? 0;
+    const staleCount = freshness?.stale_required_projection_count ?? 0;
+    const updating = Boolean(freshness?.updating_in_background);
+    const reconciliationRequired = Boolean(reportSet?.requires_reconciliation || reportSet?.status === 'REQUIRES_RECONCILIATION');
+
+    return (
+        <Card>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Background Update Status</h2>
+                    <p className="mt-1 text-sm text-gray-600">
+                        Reports read precomputed projections while evidence updates are reconciled in the background.
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <Badge variant={updating ? 'orange' : 'green'}>
+                        {updating ? 'Updating in background' : 'Projections current'}
+                    </Badge>
+                    <Badge variant={reconciliationRequired ? 'orange' : 'green'}>
+                        {reportSetStatusLabel(reportSet)}
+                    </Badge>
+                </div>
+            </div>
+
+            {reconciliationRequired ? (
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <p className="font-medium">Final reconciliation required</p>
+                    <p className="mt-1">
+                        {reportSet?.reconciliation_required_reason || 'Newer evidence was added after the final cutoff.'}
+                    </p>
+                </div>
+            ) : null}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-lg border border-gray-200 px-3 py-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Last Projection Update</p>
+                    <p className="font-medium text-gray-900">{formatDateTime(freshness?.last_projection_update_at)}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 px-3 py-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Pending Dirty Scopes</p>
+                    <p className="font-medium text-gray-900">{pendingCount}</p>
+                    <p className="text-xs text-gray-500">{claimedCount} claimed, {failedCount} failed</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 px-3 py-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Oldest Pending Update</p>
+                    <p className="font-medium text-gray-900">{formatAge(freshness?.oldest_pending_update_age_seconds)}</p>
+                </div>
+                <div className={`rounded-lg border px-3 py-2 ${staleCount > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200'}`}>
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Stale Required Projections</p>
+                    <p className={`font-medium ${staleCount > 0 ? 'text-amber-800' : 'text-gray-900'}`}>{staleCount}</p>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
 function ComputeReportsSheet({
     open,
     onOpenChange,
@@ -433,7 +552,7 @@ function ComputeReportsSheet({
     progressPercent: number;
     streamFallback: boolean;
     transportState: ComputeTransportState;
-    computeMode: 'INCREMENTAL' | 'FULL_REBUILD';
+    computeMode: ReportComputeMode;
     completedWork: number | null;
     totalWork: number | null;
     createdCount: number;
@@ -457,14 +576,18 @@ function ComputeReportsSheet({
                     : transportState === 'connecting'
                         ? 'Connecting live updates.'
                         : null;
-    const modeLabel = computeMode === 'FULL_REBUILD' ? 'Full rebuild' : 'Incremental';
+    const modeLabel = computeMode === 'FULL_REBUILD'
+        ? 'Full rebuild'
+        : computeMode === 'INCREMENTAL'
+            ? 'Incremental'
+            : 'Final reconciliation';
 
     return (
         <ResponsiveActionSheet
             open={open}
             onOpenChange={onOpenChange}
-            title="Compute Reports"
-            description="Official report computation progress and results stay here until you close this action."
+            title="Prepare Final Reports"
+            description="Final reconciliation progress and results stay here until you close this action."
             size="lg"
             state={status}
             closeDisabled={computing}
@@ -496,7 +619,7 @@ function ComputeReportsSheet({
                     <ActionStateBanner
                         variant="loading"
                         title="Queueing compute job"
-                        message="Starting official report computation for the selected term."
+                        message="Starting final report reconciliation for the selected term."
                     />
                 ) : null}
 
@@ -577,7 +700,7 @@ function ComputeReportsSheet({
                 {status === 'success' ? (
                     <ActionStateBanner
                         variant="success"
-                        title="Reports computed successfully"
+                        title={computeMode === 'FINAL_RECONCILIATION' ? 'Final reports prepared' : 'Reports computed successfully'}
                         message={completedMessage}
                     />
                 ) : null}
@@ -585,8 +708,8 @@ function ComputeReportsSheet({
                 {status === 'idle' ? (
                     <ActionStateBanner
                         variant="info"
-                        title="Ready to compute"
-                        message="Start report computation to see queued, progress, and result states here."
+                        title="Ready to prepare"
+                        message="Start final report reconciliation to see queued, progress, and result states here."
                     />
                 ) : null}
             </div>

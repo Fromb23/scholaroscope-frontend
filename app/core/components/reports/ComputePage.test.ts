@@ -20,7 +20,7 @@ describe('report compute form validation', () => {
     expect(hookSource).not.toContain('if (!selectedTerm) return;');
   });
 
-  it('uses readiness-driven incremental compute with explicit full rebuild', () => {
+  it('uses readiness-driven final reconciliation with explicit full rebuild', () => {
     const pageSource = readFileSync(
       join(process.cwd(), 'app/core/components/reports/ComputePage.tsx'),
       'utf8',
@@ -30,21 +30,39 @@ describe('report compute form validation', () => {
       'utf8',
     );
 
-    expect(pageSource).toContain('Compute Incremental Reports');
+    expect(pageSource).toContain('Prepare Final Reports');
     expect(pageSource).toContain('Full Rebuild');
-    expect(pageSource).toContain("handleComputeReports('INCREMENTAL')");
+    expect(pageSource).toContain("handleComputeReports('FINAL_RECONCILIATION')");
     expect(pageSource).toContain("handleComputeReports('FULL_REBUILD')");
     expect(pageSource).toContain('Full rebuild recomputes every applicable report scope');
     expect(pageSource).toContain('Reporting Setup');
+    expect(pageSource).toContain('Background Update Status');
+    expect(pageSource).toContain('Final reconciliation required');
     expect(pageSource).toContain('Prepare Term for Reports');
     expect(pageSource).toContain('Manage Report Policies');
+    expect(pageSource).not.toContain('Compute Incremental Reports');
     expect(pageSource).not.toContain('Policy-Based Grade Computation');
     expect(pageSource).not.toContain('Compute All Summaries');
     expect(pageSource).not.toContain('Summary Recomputation');
     expect(hookSource).toContain('getComputeReadiness');
     expect(hookSource).toContain('streamComputeJobEvents');
-    expect(hookSource).toContain("mode: ReportComputeMode = 'INCREMENTAL'");
+    expect(hookSource).toContain("mode: ReportComputeMode = 'FINAL_RECONCILIATION'");
     expect(hookSource).toContain('computeReports(termId, mode)');
+  });
+
+  it('calls the dedicated final reconciliation endpoint', () => {
+    const apiSource = readFileSync(
+      join(process.cwd(), 'app/core/api/reporting.ts'),
+      'utf8',
+    );
+    const typesSource = readFileSync(
+      join(process.cwd(), 'app/core/types/reporting.ts'),
+      'utf8',
+    );
+
+    expect(typesSource).toContain("export type ReportComputeMode = 'INCREMENTAL' | 'FINAL_RECONCILIATION' | 'FULL_REBUILD'");
+    expect(apiSource).toContain("mode === 'FINAL_RECONCILIATION'");
+    expect(apiSource).toContain("'/reporting/reports/compute/final-reconciliation/'");
   });
 
   it('keeps compute progress and terminal states in a foreground sheet', () => {
@@ -64,7 +82,7 @@ describe('report compute form validation', () => {
     expect(pageSource).toContain('Live updates restored.');
     expect(pageSource).toContain('Partial batch failure');
     expect(pageSource).toContain('created, {updatedCount} updated');
-    expect(pageSource).toContain('Reports computed successfully');
+    expect(pageSource).toContain('Final reports prepared');
     expect(pageSource).toContain('Computation blocked');
     expect(hookSource).toContain('setComputeSheetOpen(true)');
     expect(hookSource).toContain('setComputeActionError(');

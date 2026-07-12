@@ -64,15 +64,18 @@ const ADMIN_TERM_SETUP_MESSAGE =
   'Complete the term calendar in term setup before generating schemes of work.';
 
 export function getSchemeTermCalendarSetupMessage(params: {
-  selectedTerm: Pick<Term, 'is_calendar_setup_complete'> | null;
+  selectedTerm: Pick<Term, 'configuration_state' | 'configuration_locked_reason'> | null;
   selfManagedTeachingAdmin: boolean;
   isTeachingActor: boolean;
 }): string | null {
   if (!params.selectedTerm) {
     return null;
   }
-  if (params.selectedTerm.is_calendar_setup_complete) {
+  if (params.selectedTerm.configuration_state === 'SETUP_LOCKED') {
     return null;
+  }
+  if (params.selectedTerm.configuration_state === 'HISTORICAL_LOCKED') {
+    return params.selectedTerm.configuration_locked_reason ?? 'Historical terms stay read-only.';
   }
   if (params.selfManagedTeachingAdmin) {
     return SELF_MANAGED_TERM_SETUP_INCOMPLETE_MESSAGE;
@@ -699,7 +702,7 @@ export function CreateSchemePage() {
       if (!selectedTerm) {
         return 'Choose the teaching term first.';
       }
-      if (!selectedTerm.is_calendar_setup_complete) {
+      if (selectedTerm.configuration_state !== 'SETUP_LOCKED') {
         return termCalendarSetupMessage;
       }
       if (learningWeekSummary.activeLearningWeekCount <= 0) {
