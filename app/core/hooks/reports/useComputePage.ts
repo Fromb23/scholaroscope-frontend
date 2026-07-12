@@ -229,7 +229,7 @@ export function useComputePage() {
         return latest;
     }, []);
 
-    const handleComputeReports = async (mode: ReportComputeMode = 'INCREMENTAL') => {
+    const handleComputeReports = async (mode: ReportComputeMode = 'FINAL_RECONCILIATION') => {
         if (!requireSelectedTerm()) return;
         const termId = selectedTerm;
         if (!termId) return;
@@ -251,7 +251,9 @@ export function useComputePage() {
         setProgressEvent({
             event: 'progress',
             stage: 'queued',
-            label: 'Queueing report computation',
+            label: mode === 'FINAL_RECONCILIATION'
+                ? 'Queueing final report reconciliation'
+                : 'Queueing report computation',
             progress_percent: 0,
             completed_count: 0,
             total_count: null,

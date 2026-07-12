@@ -6,7 +6,6 @@ import type { Term } from '@/app/core/types/academic';
 
 interface TermCalendarAccessContext {
     isAdminLike: boolean;
-    isHistoricalView: boolean;
     term: Term | null;
 }
 
@@ -65,30 +64,57 @@ export function resolveSelectedTermId(
 
 export function canEditTermCalendar({
     isAdminLike,
-    isHistoricalView,
     term,
 }: TermCalendarAccessContext): boolean {
-    if (!isAdminLike || !term || isHistoricalView) return false;
-    if (term.actions?.can_complete_setup === false) return false;
-    if (term.actions?.can_complete_setup === true) return true;
-    return Boolean(isSelectableCurrentOrFutureTerm(term) && !term.is_calendar_setup_complete);
+    if (!isAdminLike || !term) return false;
+    const actions = term.configuration_actions;
+    return Boolean(
+        actions.can_add_calendar_event
+        || actions.can_edit_calendar_event
+        || actions.can_delete_calendar_event
+        || actions.can_complete_setup
+    );
+}
+
+export function canAddTermCalendarEvent({
+    isAdminLike,
+    term,
+}: TermCalendarAccessContext): boolean {
+    return Boolean(isAdminLike && term?.configuration_actions.can_add_calendar_event);
+}
+
+export function canEditTermCalendarEvent({
+    isAdminLike,
+    term,
+}: TermCalendarAccessContext): boolean {
+    return Boolean(isAdminLike && term?.configuration_actions.can_edit_calendar_event);
+}
+
+export function canDeleteTermCalendarEvent({
+    isAdminLike,
+    term,
+}: TermCalendarAccessContext): boolean {
+    return Boolean(isAdminLike && term?.configuration_actions.can_delete_calendar_event);
+}
+
+export function canCompleteTermCalendar({
+    isAdminLike,
+    term,
+}: TermCalendarAccessContext): boolean {
+    return Boolean(isAdminLike && term?.configuration_actions.can_complete_setup);
 }
 
 export function canReopenTermCalendar({
     isAdminLike,
-    isHistoricalView,
     term,
 }: TermCalendarAccessContext): boolean {
-    if (!isAdminLike || !term || isHistoricalView) return false;
-    if (term.actions?.can_reopen_setup === false) return false;
-    if (term.actions?.can_reopen_setup === true) return true;
-    return Boolean(isSelectableCurrentOrFutureTerm(term) && term.is_calendar_setup_complete);
+    return Boolean(isAdminLike && term?.configuration_actions.can_reopen_setup);
 }
 
 export function isTermDetailLocked(context: TermCalendarAccessContext): boolean {
     return Boolean(
         context.isAdminLike
         && context.term
-        && !canEditTermCalendar(context)
+        && context.term.configuration_state !== 'SETUP_OPEN'
     );
 }

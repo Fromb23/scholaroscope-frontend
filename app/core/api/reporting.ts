@@ -35,6 +35,7 @@ import {
   TeacherPerformanceReportPayload,
   ComputeResponse,
   ReportComputeJob,
+  ReportComputeMode,
   ReportComputeProgressEvent,
   ReportComputeReadiness,
   ReportExportFormat,
@@ -961,7 +962,15 @@ export const reportsAPI = {
     return response.data;
   },
 
-  computeReports: async (termId: number, mode: 'INCREMENTAL' | 'FULL_REBUILD' = 'INCREMENTAL'): Promise<ReportComputeJob> => {
+  computeReports: async (termId: number, mode: ReportComputeMode = 'FINAL_RECONCILIATION'): Promise<ReportComputeJob> => {
+    if (mode === 'FINAL_RECONCILIATION') {
+      const response = await apiClient.post<ReportComputeJob>(
+        '/reporting/reports/compute/final-reconciliation/',
+        { term: termId },
+      );
+      return response.data;
+    }
+
     const response = await apiClient.post<ReportComputeJob>(
       '/reporting/reports/compute/',
       { term: termId, mode },

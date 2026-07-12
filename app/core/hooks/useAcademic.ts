@@ -47,6 +47,14 @@ function toIdSet(idsKey: string): Set<number> {
   );
 }
 
+function wrapApiMutationError(err: unknown, fallback: string): ApiErrorWithCode {
+  const apiError = err as ApiError;
+  const wrapped = new Error(extractErrorMessage(apiError, fallback)) as ApiErrorWithCode;
+  wrapped.code = extractErrorCode(apiError);
+  wrapped.response = apiError.response;
+  return wrapped;
+}
+
 export function useAcademicLifecycleContext(options: { enabled?: boolean } = {}) {
   const { organizationId } = useOrganizationContext();
   const enabled = options.enabled ?? true;
@@ -207,10 +215,13 @@ export const useTerms = (academicYearId?: number) => {
       if (organizationId) params.organization = String(organizationId);
       if (academicYearId) params.academic_year = String(academicYearId);
       const data = await termAPI.getAll(params);
-      setTerms(Array.isArray(data) ? data : (data as { results?: Term[] })?.results ?? []);
+      const nextTerms = Array.isArray(data) ? data : (data as { results?: Term[] })?.results ?? [];
+      setTerms(nextTerms);
       setError(null);
+      return nextTerms;
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch terms'));
+      return [];
     } finally {
       setLoading(false);
     }
@@ -224,13 +235,7 @@ export const useTerms = (academicYearId?: number) => {
       setTerms(prev => [...prev, newTerm].sort((a, b) => a.sequence - b.sequence));
       return newTerm;
     } catch (err) {
-      const apiError = err as ApiError;
-      const wrapped = new Error(
-        extractErrorMessage(apiError, 'Failed to create term')
-      ) as ApiErrorWithCode;
-      wrapped.code = extractErrorCode(apiError);
-      wrapped.response = apiError.response;
-      throw wrapped;
+      throw wrapApiMutationError(err, 'Failed to create term');
     }
   };
 
@@ -240,7 +245,7 @@ export const useTerms = (academicYearId?: number) => {
       setTerms(prev => prev.map(t => t.id === id ? updated : t));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to update term'));
+      throw wrapApiMutationError(err, 'Failed to update term');
     }
   };
 
@@ -249,7 +254,7 @@ export const useTerms = (academicYearId?: number) => {
       await termAPI.delete(id);
       setTerms(prev => prev.filter(t => t.id !== id));
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete term'));
+      throw wrapApiMutationError(err, 'Failed to delete term');
     }
   };
 
@@ -259,7 +264,7 @@ export const useTerms = (academicYearId?: number) => {
       setTerms(prev => prev.map(t => t.id === id ? updated : t));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to complete term calendar setup'));
+      throw wrapApiMutationError(err, 'Failed to complete term calendar setup');
     }
   };
 
@@ -269,7 +274,7 @@ export const useTerms = (academicYearId?: number) => {
       setTerms(prev => prev.map(t => t.id === id ? updated : t));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to reopen term calendar setup'));
+      throw wrapApiMutationError(err, 'Failed to reopen term calendar setup');
     }
   };
 
@@ -335,7 +340,7 @@ export const useTermCalendarEvents = (termId: number | null) => {
       )));
       return created;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to create term calendar event'));
+      throw wrapApiMutationError(err, 'Failed to create term calendar event');
     }
   };
 
@@ -351,7 +356,7 @@ export const useTermCalendarEvents = (termId: number | null) => {
         )));
       return updated;
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to update term calendar event'));
+      throw wrapApiMutationError(err, 'Failed to update term calendar event');
     }
   };
 
@@ -360,7 +365,7 @@ export const useTermCalendarEvents = (termId: number | null) => {
       await termCalendarEventAPI.delete(id);
       setEvents(prev => prev.filter(event => event.id !== id));
     } catch (err) {
-      throw new Error(extractErrorMessage(err as ApiError, 'Failed to delete term calendar event'));
+      throw wrapApiMutationError(err, 'Failed to delete term calendar event');
     }
   };
 
