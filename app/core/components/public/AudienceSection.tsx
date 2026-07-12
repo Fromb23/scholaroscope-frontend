@@ -1,10 +1,10 @@
 import { Building2, GraduationCap, Home, UserRoundCheck } from 'lucide-react';
 
 const audiences = [
-  { title: 'Schools and institutions', body: 'Structured academic management for administrators, staff, teachers, cohorts, and reports.', icon: Building2 },
-  { title: 'Tuition centers', body: 'Tutor-led learning operations with learners, groups, sessions, and progress tracking.', icon: GraduationCap },
-  { title: 'Homeschool workspaces', body: 'Guardian-led learning records, tutoring coordination, and learner academic history.', icon: Home },
-  { title: 'Freelance teachers', body: 'A self-managed teaching workspace for learners, preparation, assessments, and reports.', icon: UserRoundCheck },
+  { title: 'Schools and institutions', body: 'For schools that need shared teacher records, class evidence, review workflows, and parent-facing progress reports.', icon: Building2 },
+  { title: 'Tuition centres', body: 'For centres that need to track learner attendance, assignments, assessments, and evidence across groups without heavy paperwork.', icon: GraduationCap },
+  { title: 'Homeschool families', body: 'For families coordinating learning records, term progress, and tutor evidence in one place.', icon: Home },
+  { title: 'Freelance teachers', body: 'For independent teachers who need a professional record of sessions, learner progress, and evidence-backed reporting.', icon: UserRoundCheck },
 ];
 
 export function AudienceSection() {
@@ -12,8 +12,8 @@ export function AudienceSection() {
     <section id="audiences" className="bg-slate-950 py-20 text-white">
       <div className="mx-auto max-w-[1220px] px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
-          <p className="text-sm font-semibold text-blue-300">Built for different learning operations</p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight">One platform, distinct workspace behavior</h2>
+          <p className="text-sm font-semibold text-blue-300">Who it is for</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight">Built for the people protecting classroom evidence</h2>
         </div>
         <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {audiences.map((audience) => {

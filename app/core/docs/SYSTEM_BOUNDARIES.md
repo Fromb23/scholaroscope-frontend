@@ -321,8 +321,7 @@ client, state manager, plugin entitlement system, or lifecycle system.
 - No raw `error.response.data.detail` rendering.
 - No `activeRole`-only mutation decisions.
 - No local date-only lifecycle mutation decisions.
-- No deriving backend-owned options from displayed rows when an options endpoint
-  exists.
+- No deriving backend-owned options from displayed rows when an options endpoint exists.
 - No hardcoded workspace-wide authority.
 - No page-specific permission matrices.
 - No plugin access based only on route names.

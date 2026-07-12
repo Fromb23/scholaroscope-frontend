@@ -12,7 +12,7 @@ const REMOVE_BY_BY_PRIORITY = {
 };
 const VALID_PRIORITIES = new Set(['P0', 'P1', 'P2']);
 
-function priorityFor(relative, rule) {
+function priorityFor(relative) {
   if (
     /app\/core\/components\/auth\//.test(relative)
     || /app\/core\/hooks\/useRegister\.ts$/.test(relative)
@@ -40,8 +40,8 @@ function priorityFor(relative, rule) {
   return 'P1';
 }
 
-function metadataForFinding(relative, rule) {
-  const priority = priorityFor(relative, rule);
+function metadataForFinding(relative) {
+  const priority = priorityFor(relative);
   return {
     owner: BASELINE_OWNER,
     priority,
@@ -52,13 +52,6 @@ function metadataForFinding(relative, rule) {
 // Migration baseline: exact file/rule counts that existed when the AppError architecture was introduced.
 // Each entry carries a reason and blocks count increases, so new work cannot add more legacy error copy.
 const BASELINE = {
-  "app/components/export/ExportModal.tsx::console-only-catch": {
-    "count": 1,
-    "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
-    "owner": "frontend-migration",
-    "priority": "P1",
-    "removeBy": "2026-10-31"
-  },
   "app/components/layout/Header.tsx::console-only-catch": {
     "count": 1,
     "reason": "Existing migration debt documented during the AppError architecture migration; do not add new occurrences. Review owner/priority/removeBy before committing generated baseline metadata.",
@@ -2272,7 +2265,7 @@ if (process.env.PRINT_ERROR_COPY_BASELINE === '1') {
     {
       count: finding.count,
       reason: `${DEFAULT_BASELINE_REASON} Review owner/priority/removeBy before committing generated baseline metadata.`,
-      ...metadataForFinding(finding.relative, finding.rule),
+      ...metadataForFinding(finding.relative),
     },
   ]));
   console.log(JSON.stringify(baseline, null, 2));

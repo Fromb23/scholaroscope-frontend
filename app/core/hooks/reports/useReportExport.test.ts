@@ -15,6 +15,7 @@ vi.mock('react', async () => {
   return {
     ...actual,
     useCallback: (callback: unknown) => callback,
+    useRef: (initialValue: unknown) => ({ current: initialValue }),
     useState: () => [false, reactMocks.setExporting],
   };
 });
@@ -57,12 +58,32 @@ describe('useReportExport', () => {
     });
     const { handleExport } = useReportExport(exportFn, 'attendance report');
 
-    await expect(handleExport('csv')).resolves.toBeUndefined();
+    await expect(handleExport('pdf')).resolves.toBeUndefined();
 
     expect(downloadMocks.downloadBlob).not.toHaveBeenCalled();
     expect(toastMocks.showToast).toHaveBeenCalledWith({
       severity: 'error',
       message: 'Could not export attendance report. Try again.',
+    });
+  });
+
+  it('shows normalized server messages on export failure', async () => {
+    const exportFn = vi.fn(async () => {
+      throw {
+        response: {
+          data: {
+            format: "Unsupported export format 'xlsx' for report type 'learner_term_progress'.",
+          },
+        },
+      };
+    });
+    const { handleExport } = useReportExport(exportFn, 'learner progress report');
+
+    await handleExport('xlsx');
+
+    expect(toastMocks.showToast).toHaveBeenCalledWith({
+      severity: 'error',
+      message: "Unsupported export format 'xlsx' for report type 'learner_term_progress'.",
     });
   });
 

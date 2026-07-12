@@ -71,7 +71,7 @@ describe('workspace access frontend contract', () => {
     expect(hookSource).toContain('meQuery.isSuccess');
     expect(hookSource).toContain('enabled: canLoadAssignmentOptions');
     expect(hookSource).toContain('assignmentOptionsError');
-    expect(hookSource).toContain('resolveAppError');
+    expect(hookSource).toContain('resolveWorkspaceError');
   });
 
   it('passes real staff and scope options into the assignment panel', () => {
@@ -129,7 +129,7 @@ describe('workspace access frontend contract', () => {
   });
 
   it('renders backend assignment scope errors through structured app errors', () => {
-    expect(pageSource).toContain('setAssignmentError(resolveAppError(error');
+    expect(pageSource).toContain('setAssignmentError(resolveWorkspaceError(error');
     expect(pageSource).toContain('entityLabel: \'staff role assignment\'');
     expect(pageSource).toContain('action: \'update\'');
     expect(pageSource).toContain('await actions.endAssignment.mutateAsync({ assignmentId, reason });');

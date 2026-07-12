@@ -27,6 +27,7 @@ import {
   LearnerAssessmentReportPayload,
   LearnerAssessmentReportQueryParams,
   LearnerOverviewReportPayload,
+  LearnerTermProgressReportPayload,
   LearnerAvailableReportScopesPayload,
   LearnerSubjectReportPayload,
   TeacherPerformanceReportPayload,
@@ -827,6 +828,48 @@ export const useLearnerOverviewReport = (
       setLoading(false);
     }
   }, [enabled, learnerId]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+  return { report, loading, error, errorStatus, refetch: fetchReport };
+};
+
+export const useLearnerTermProgressReport = (
+  learnerId: number | null,
+  termId: number | null,
+  options?: { enabled?: boolean },
+) => {
+  const enabled = options?.enabled ?? true;
+  const [report, setReport] = useState<LearnerTermProgressReportPayload | null>(null);
+  const [loading, setLoading] = useState(Boolean(enabled));
+  const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+
+  const fetchReport = useCallback(async () => {
+    if (!learnerId || !termId) {
+      setReport(null);
+      setLoading(false);
+      setError(null);
+      setErrorStatus(null);
+      return;
+    }
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setReport(await learnerReportingAPI.getLearnerTermProgressReport(learnerId, termId));
+      setError(null);
+      setErrorStatus(null);
+    } catch (err) {
+      const apiError = err as ApiError;
+      setReport(null);
+      setError(extractErrorMessage(apiError, 'Could not load learner term progress report.'));
+      setErrorStatus(statusCode(apiError));
+    } finally {
+      setLoading(false);
+    }
+  }, [enabled, learnerId, termId]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
   return { report, loading, error, errorStatus, refetch: fetchReport };

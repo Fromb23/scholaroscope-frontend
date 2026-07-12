@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Calendar,
-  Download,
   Search,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
@@ -15,7 +14,6 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import { Input } from '@/app/components/ui/Input';
 import {
-  ButtonPendingContent,
   ReportPreparingState,
   SectionLoading,
 } from '@/app/components/ui/loading';
@@ -24,6 +22,7 @@ import { adminReportsAPI } from '@/app/core/api/reporting';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
 import { AttendanceReportStats } from '@/app/core/components/reports/AttendanceReportStats';
 import { AttendanceReportTable } from '@/app/core/components/reports/AttendanceReportTable';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   buildAttendanceReportHref,
   buildReportReturnTo,
@@ -218,26 +217,11 @@ export function AttendanceReportPage() {
           </div>
 
           {hasScope ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('pdf')}>
-                <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
-                  <Download className="h-4 w-4" />
-                  Export PDF
-                </ButtonPendingContent>
-              </Button>
-              <Button variant="secondary" size="sm" disabled={exporting} onClick={() => void handleExport('xlsx')}>
-                <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
-                  <Download className="h-4 w-4" />
-                  Export Excel
-                </ButtonPendingContent>
-              </Button>
-              <Button variant="ghost" size="sm" disabled={exporting} onClick={() => void handleExport('csv')}>
-                <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
-                  <Download className="h-4 w-4" />
-                  Export CSV
-                </ButtonPendingContent>
-              </Button>
-            </div>
+            <ReportExportButtons
+              reportType="attendance_scope"
+              exporting={exporting}
+              onExport={handleExport}
+            />
           ) : null}
         </div>
 

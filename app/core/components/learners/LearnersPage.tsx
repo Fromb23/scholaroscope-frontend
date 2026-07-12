@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { FileSpreadsheet, FileText, UserPlus, Users } from 'lucide-react';
+import { UserPlus, Users } from 'lucide-react';
 import { useStudentStats, useStudentsByCohort } from '@/app/core/hooks/useStudents';
 import { useCurricula, useCohorts, useCohortSubjects } from '@/app/core/hooks/useAcademic';
 import { usePersistedFilters } from '@/app/core/hooks/usePersistedFilters';
@@ -23,6 +23,7 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
     ACTIVE: 'success',
@@ -168,7 +169,7 @@ function LearnersPageInner() {
         numericKeys: ['curriculum', 'cohort', 'cohort_subject', 'page', 'page_size'],
         staleKeys: ['admission_number', 'name'],
     });
-    const [exportingFormat, setExportingFormat] = useState<'xlsx' | 'pdf' | null>(null);
+    const [exportingFormat, setExportingFormat] = useState<'xlsx' | null>(null);
     const [instructorStudents, setInstructorStudents] = useState<Student[]>([]);
     const [instructorStudentsLoading, setInstructorStudentsLoading] = useState(false);
     const [instructorStudentsError, setInstructorStudentsError] = useState<string | null>(null);
@@ -197,8 +198,8 @@ function LearnersPageInner() {
         isAdmin ? (filters.cohort ?? undefined) : undefined
     );
     const { handleExport: runExport, exporting } = useReportExport((format) => {
-        if (format !== 'xlsx' && format !== 'pdf') {
-            throw new Error('Learner exports support Excel and PDF only.');
+        if (format !== 'xlsx') {
+            throw new Error('Learner roster exports support Excel only.');
         }
 
         return learnersAPI.exportStudents({
@@ -530,7 +531,7 @@ function LearnersPageInner() {
         });
     };
 
-    const handleExport = async (format: 'xlsx' | 'pdf') => {
+    const handleExport = async (format: 'xlsx') => {
         setExportingFormat(format);
         try {
             await runExport(format);
@@ -715,26 +716,16 @@ function LearnersPageInner() {
 
                 <div className="flex items-center gap-2">
                     {(isInstructor || hasGeneratedAdminList) ? (
-                        <>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={() => void handleExport('xlsx')}
-                                disabled={currentVisibleCount === 0 || exporting}
-                            >
-                                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                                {exportingFormat === 'xlsx' ? 'Exporting...' : 'Export Excel'}
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={() => void handleExport('pdf')}
-                                disabled={currentVisibleCount === 0 || exporting}
-                            >
-                                <FileText className="mr-2 h-4 w-4" />
-                                {exportingFormat === 'pdf' ? 'Preparing...' : 'Download PDF'}
-                            </Button>
-                        </>
+                        <ReportExportButtons
+                            reportType="learner_roster"
+                            exporting={Boolean(exportingFormat) || exporting}
+                            disabled={currentVisibleCount === 0}
+                            onExport={(format) => {
+                                if (format === 'xlsx') {
+                                    void handleExport(format);
+                                }
+                            }}
+                        />
                     ) : null}
 
                     {canCreate ? (

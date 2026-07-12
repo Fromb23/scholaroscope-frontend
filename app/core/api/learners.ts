@@ -99,7 +99,7 @@ export const learnersAPI = {
     admission_number?: string;
     name?: string;
     ordering?: string;
-    format: 'xlsx' | 'pdf';
+    format: 'xlsx';
   }): Promise<{ blob: Blob; fileName: string }> => {
     try {
       const response = await apiClient.get<Blob>('/students/export/', {

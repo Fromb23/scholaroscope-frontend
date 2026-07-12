@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { BookOpen, Download, Users } from 'lucide-react';
+import { BookOpen, Users } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -10,7 +9,6 @@ import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { ExportModal } from '@/app/components/export/ExportModal';
 import { useInstructorCohortSubjects } from '@/app/core/hooks/useReporting';
 import { CurriculumSubjectReportCard } from '@/app/core/components/reports/CurriculumSubjectReportCard';
 import {
@@ -19,7 +17,6 @@ import {
   toCbcPerformance,
   toGenericPerformance,
 } from '@/app/core/lib/reportingPresentation';
-import type { ExportPayload } from '@/app/types/export';
 
 function average(values: Array<number | null | undefined>): number | null {
   const numbers = values.filter((value): value is number => typeof value === 'number');
@@ -28,7 +25,6 @@ function average(values: Array<number | null | undefined>): number | null {
 }
 
 export default function InstructorCohortSubjectsReportPage() {
-  const [exportOpen, setExportOpen] = useState(false);
   const { cohortSubjects, loading, error } = useInstructorCohortSubjects();
 
   const averageAttendance = average(cohortSubjects.map((item) => item.average_attendance));
@@ -36,44 +32,6 @@ export default function InstructorCohortSubjectsReportPage() {
     acc[item.reporting_source] = (acc[item.reporting_source] ?? 0) + 1;
     return acc;
   }, {});
-
-  const exportPayload = useMemo<ExportPayload | null>(() => {
-    if (cohortSubjects.length === 0) return null;
-
-    return {
-      title: 'My Cohort Subjects',
-      subtitle: 'Assigned reporting scope',
-      metadata: {
-        totalCohortSubjects: String(cohortSubjects.length),
-        averageAttendance: formatPercent(averageAttendance),
-        generatedAt: new Date().toLocaleString(),
-      },
-      columns: [
-        { key: 'cohort_name', label: 'Cohort', width: 20 },
-        { key: 'subject_name', label: 'Subject', width: 24 },
-        { key: 'subject_code', label: 'Code', width: 10 },
-        { key: 'reporting_source', label: 'Reporting Source', width: 18 },
-        { key: 'status', label: 'Status', width: 16 },
-        { key: 'active_learner_count', label: 'Learners', format: 'number', width: 12, align: 'right' as const },
-        { key: 'average_attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
-        { key: 'session_count', label: 'Sessions', format: 'number', width: 12, align: 'right' as const },
-        { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
-      ],
-      rows: cohortSubjects.map((item) => ({
-        ...item,
-        generic_average: item.generic_summary?.average_score ?? item.generic_performance?.average_score ?? item.average_grade,
-        cbc_weighted_score: item.cbc_summary?.average_weighted_score ?? item.cbc_performance?.average_weighted_score ?? null,
-      })),
-      fileName: 'my-cohort-subjects',
-      includeMetadata: true,
-      includeTimestamp: true,
-      sheetName: 'Cohort Subjects',
-      freezeHeader: true,
-      autoFilter: true,
-      orientation: 'landscape' as const,
-    };
-  }, [averageAttendance, cohortSubjects]);
 
   if (loading) return <LoadingSpinner message="Loading instructor class subject reports..." />;
   if (error) return <ErrorBanner message={error} onDismiss={() => {}} />;
@@ -87,15 +45,7 @@ export default function InstructorCohortSubjectsReportPage() {
             Assigned cohort-subject reporting with curriculum-aware performance blocks.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {exportPayload && (
-            <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
-              <Download className="mr-1.5 h-4 w-4" />
-              Export
-            </Button>
-          )}
-          <BookOpen className="h-7 w-7 text-green-600" />
-        </div>
+        <BookOpen className="h-7 w-7 text-green-600" />
       </div>
 
       <StatStrip mdColumns={2} xlColumns={4}>
@@ -148,16 +98,6 @@ export default function InstructorCohortSubjectsReportPage() {
             />
           ))}
         </div>
-      )}
-
-      {exportPayload && (
-        <ExportModal
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          payload={exportPayload}
-          defaultFormat="excel"
-          title="Export My Cohort Subjects"
-        />
       )}
     </div>
   );

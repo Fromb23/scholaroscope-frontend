@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
-  Download,
   FileBarChart,
   GraduationCap,
   ShieldAlert,
@@ -18,7 +17,6 @@ import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import {
-  ButtonPendingContent,
   ReportPreparingState,
   SectionLoading,
 } from '@/app/components/ui/loading';
@@ -33,6 +31,7 @@ import {
   subjectStatusTone,
   toneToBadgeVariant,
 } from '@/app/core/components/reports/ReportSummaryPrimitives';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   useClassSubjectReport,
   useInstructorCohortSubjects,
@@ -627,44 +626,13 @@ export function ClassSubjectReportPage({
               </div>
             </div>
 
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap xl:w-auto xl:justify-end">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full sm:w-auto"
-                disabled={!report || exporting}
-                onClick={() => void handleExport('pdf')}
-              >
-                <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
-                  <Download className="h-4 w-4" />
-                  Export PDF
-                </ButtonPendingContent>
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full sm:w-auto"
-                disabled={!report || exporting}
-                onClick={() => void handleExport('xlsx')}
-              >
-                <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
-                  <Download className="h-4 w-4" />
-                  Export Excel
-                </ButtonPendingContent>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full sm:w-auto"
-                disabled={!report || exporting}
-                onClick={() => void handleExport('csv')}
-              >
-                <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
-                  <Download className="h-4 w-4" />
-                  Export CSV
-                </ButtonPendingContent>
-              </Button>
-            </div>
+            <ReportExportButtons
+              reportType="class_subject"
+              exporting={exporting}
+              disabled={!report}
+              onExport={handleExport}
+              className="w-full sm:w-auto xl:justify-end"
+            />
           </div>
         </Card>
       </div>

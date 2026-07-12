@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ClipboardList,
-  Download,
   FileBarChart,
   RefreshCw,
   ShieldAlert,
@@ -17,7 +16,6 @@ import { Card } from '@/app/components/ui/Card';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
 import {
   BackgroundRefreshBadge,
-  ButtonPendingContent,
   ReportPreparingState,
 } from '@/app/components/ui/loading';
 import { Select } from '@/app/components/ui/Select';
@@ -30,6 +28,7 @@ import {
   teacherStatusTone,
   toneToBadgeVariant,
 } from '@/app/core/components/reports/ReportSummaryPrimitives';
+import { ReportExportButtons } from '@/app/core/components/reports/ReportExportButtons';
 import {
   useAdminInstructorTeacherReport,
   useInstructorCohortSubjects,
@@ -325,41 +324,12 @@ export function TeacherPerformanceReportPage({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={!report || exporting}
-            onClick={() => void handleExport('pdf')}
-          >
-            <ButtonPendingContent pending={exporting} pendingLabel="Preparing PDF...">
-              <Download className="h-4 w-4" />
-              Export PDF
-            </ButtonPendingContent>
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={!report || exporting}
-            onClick={() => void handleExport('xlsx')}
-          >
-            <ButtonPendingContent pending={exporting} pendingLabel="Preparing Excel...">
-              <Download className="h-4 w-4" />
-              Export Excel
-            </ButtonPendingContent>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={!report || exporting}
-            onClick={() => void handleExport('csv')}
-          >
-            <ButtonPendingContent pending={exporting} pendingLabel="Preparing CSV...">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </ButtonPendingContent>
-          </Button>
-        </div>
+        <ReportExportButtons
+          reportType="teacher_performance"
+          exporting={exporting}
+          disabled={!report}
+          onExport={handleExport}
+        />
       </div>
 
       {error ? (

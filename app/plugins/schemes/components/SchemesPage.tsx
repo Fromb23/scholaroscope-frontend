@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, Download, Eye, FileText, Plus } from 'lucide-react';
+import { BookOpen, Download, Eye, Plus } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Card } from '@/app/components/ui/Card';
@@ -87,17 +87,13 @@ function SectionHeading({ title, description }: SectionHeadingProps) {
 function SchemeCard({
   scheme,
   downloading,
-  downloadingCsv,
   onDownloadDocx,
-  onDownloadCsv,
   onOpen,
   openLabel,
 }: {
   scheme: SchemeOfWork;
   downloading: boolean;
-  downloadingCsv: boolean;
   onDownloadDocx: () => void;
-  onDownloadCsv: () => void;
   onOpen: () => void;
   openLabel?: string;
 }) {
@@ -119,16 +115,6 @@ function SchemeCard({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onDownloadCsv}
-            disabled={downloadingCsv}
-          >
-            <FileText className="h-4 w-4" />
-            {downloadingCsv ? 'Downloading CSV...' : 'CSV'}
-          </Button>
           <Button type="button" size="sm" onClick={onDownloadDocx} disabled={downloading}>
             <Download className="h-4 w-4" />
             {downloading ? 'Downloading...' : 'Download Word document'}
@@ -288,7 +274,6 @@ export function SchemesPage() {
   const [instructorFilter, setInstructorFilter] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [downloadingCsvId, setDownloadingCsvId] = useState<number | null>(null);
   const { curricula } = useCurricula();
   const { terms } = useTerms();
   const { subjects } = useSubjects();
@@ -358,7 +343,7 @@ export function SchemesPage() {
       ? user?.id
       : selectedInstructorId,
   }), [cohortSubjectFilter, effectiveMyTeachingMode, selectedInstructorId, subjectFilter, termFilter, user?.id]);
-  const { schemes, loading, error, downloadSchemeDocx, downloadSchemeCsv } = useSchemes(schemeFilters);
+  const { schemes, loading, error, downloadSchemeDocx } = useSchemes(schemeFilters);
   const showCreateDraft = isInstructor || canUseTeacherModeAsAdmin;
   const createButtonLabel = effectiveMyTeachingMode
     ? 'Create my draft scheme'
@@ -529,18 +514,6 @@ export function SchemesPage() {
       setActionError(err instanceof Error ? err.message : 'Could not download the Word document.');
     } finally {
       setDownloadingId(null);
-    }
-  };
-
-  const handleDownloadCsv = async (schemeId: number) => {
-    try {
-      setActionError(null);
-      setDownloadingCsvId(schemeId);
-      await downloadSchemeCsv(schemeId);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Could not download the scheme CSV.');
-    } finally {
-      setDownloadingCsvId(null);
     }
   };
 
@@ -782,9 +755,7 @@ export function SchemesPage() {
                       key={scheme.id}
                       scheme={scheme}
                       downloading={downloadingId === scheme.id}
-                      downloadingCsv={downloadingCsvId === scheme.id}
                       onDownloadDocx={() => void handleDownloadDocx(scheme.id)}
-                      onDownloadCsv={() => void handleDownloadCsv(scheme.id)}
                       openLabel="Instructor progress"
                       onOpen={() => {
                         if (!scheme.teacher) {
@@ -834,9 +805,7 @@ export function SchemesPage() {
                         key={scheme.id}
                         scheme={scheme}
                         downloading={downloadingId === scheme.id}
-                        downloadingCsv={downloadingCsvId === scheme.id}
                         onDownloadDocx={() => void handleDownloadDocx(scheme.id)}
-                        onDownloadCsv={() => void handleDownloadCsv(scheme.id)}
                         onOpen={() => router.push(`/schemes/${scheme.id}`)}
                       />
                     ))}

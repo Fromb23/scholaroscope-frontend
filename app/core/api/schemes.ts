@@ -85,21 +85,12 @@ export const schemesAPI = {
     return downloadSchemeFile(id, 'export-docx/', `scheme-of-work-${id}.docx`);
   },
 
-  downloadSchemeCsv: async (id: number): Promise<SchemeExportResponse> => {
-    return downloadSchemeFile(id, 'export/', `scheme-of-work-${id}.csv`);
-  },
-
   downloadScheme: async (id: number): Promise<SchemeExportResponse> => {
     return schemesAPI.downloadSchemeDocx(id);
   },
 
   triggerSchemeDocxDownload: async (id: number): Promise<void> => {
     const file = await schemesAPI.downloadSchemeDocx(id);
-    downloadBlob(file.blob, file.fileName);
-  },
-
-  triggerSchemeCsvDownload: async (id: number): Promise<void> => {
-    const file = await schemesAPI.downloadSchemeCsv(id);
     downloadBlob(file.blob, file.fileName);
   },
 

@@ -1,11 +1,4 @@
 {
-  "components/export/ExportModal.tsx::console-only-validation-catch": {
-    "count": 1,
-    "reason": "Existing form-validation migration debt. Do not add new silent validation paths.",
-    "owner": "frontend-migration",
-    "priority": "P1",
-    "removeBy": "2026-10-31"
-  },
   "components/layout/Header.tsx::console-only-validation-catch": {
     "count": 1,
     "reason": "Existing form-validation migration debt. Do not add new silent validation paths.",
@@ -113,13 +106,6 @@
   },
   "plugins/cbc/hooks/useCBCOutcomeSessionPage.ts::console-only-validation-catch": {
     "count": 3,
-    "reason": "Existing form-validation migration debt. Do not add new silent validation paths.",
-    "owner": "frontend-migration",
-    "priority": "P1",
-    "removeBy": "2026-10-31"
-  },
-  "utils/exportUtils.ts::console-only-validation-catch": {
-    "count": 1,
     "reason": "Existing form-validation migration debt. Do not add new silent validation paths.",
     "owner": "frontend-migration",
     "priority": "P1",

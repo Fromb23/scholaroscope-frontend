@@ -1,16 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ClipboardCheck, Download, PieChart } from 'lucide-react';
+import { useState } from 'react';
+import { ClipboardCheck, PieChart } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Select } from '@/app/components/ui/Select';
 import { Badge } from '@/app/components/ui/Badge';
-import { Button } from '@/app/components/ui/Button';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
-import { ExportModal } from '@/app/components/export/ExportModal';
 import { useAssessmentTypeSummaries } from '@/app/core/hooks/useReporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { AdminReportAccessGate } from '@/app/core/components/reports/AdminReportAccessGate';
@@ -19,11 +17,9 @@ import {
   formatNumber,
   formatPercent,
 } from '@/app/core/lib/reportingPresentation';
-import type { ExportPayload } from '@/app/types/export';
 
 export function AssessmentsReportPage() {
   const [selectedTerm, setSelectedTerm] = useState<number | null>(null);
-  const [exportOpen, setExportOpen] = useState(false);
 
   const { terms, loading: termsLoading } = useTerms();
   const { summaries, loading, error } = useAssessmentTypeSummaries({
@@ -31,48 +27,6 @@ export function AssessmentsReportPage() {
   });
 
   const totalAssessments = summaries.reduce((sum, item) => sum + item.total_assessments, 0);
-
-  const exportPayload = useMemo<ExportPayload | null>(() => {
-    if (!selectedTerm || summaries.length === 0) return null;
-
-    return {
-      title: 'Assessment Report',
-      subtitle: 'Assessment completion and curriculum-aware performance',
-      metadata: {
-        term: terms.find((term) => term.id === selectedTerm)?.name ?? 'Selected term',
-        generatedAt: new Date().toLocaleString(),
-      },
-      columns: [
-        { key: 'assessment_type', label: 'Assessment Type', width: 18 },
-        { key: 'subject_name', label: 'Subject', width: 22 },
-        { key: 'cohort_name', label: 'Cohort', width: 18 },
-        { key: 'reporting_source', label: 'Reporting Source', width: 18 },
-        { key: 'status', label: 'Status', width: 16 },
-        { key: 'total_assessments', label: 'Assessments', format: 'number', width: 14, align: 'right' as const },
-        { key: 'missing_scores', label: 'Missing Scores', format: 'number', width: 14, align: 'right' as const },
-        { key: 'generic_average', label: 'Generic Numeric Average', format: 'percentage', width: 18, align: 'right' as const },
-        { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
-      ],
-      rows: summaries.map((summary) => ({
-        assessment_type: summary.assessment_type,
-        subject_name: summary.subject_name,
-        cohort_name: summary.cohort_name,
-        reporting_source: summary.reporting_source ?? 'unsupported',
-        status: summary.status ?? '—',
-        total_assessments: summary.total_assessments,
-        missing_scores: summary.assessment_completion?.missing_scores_count ?? null,
-        generic_average: summary.generic_performance?.average_score ?? summary.average_score,
-        cbc_weighted_score: summary.cbc_performance?.average_weighted_score ?? null,
-      })),
-      fileName: 'assessment-report',
-      includeMetadata: true,
-      includeTimestamp: true,
-      sheetName: 'Assessment Report',
-      freezeHeader: true,
-      autoFilter: true,
-      orientation: 'landscape' as const,
-    };
-  }, [selectedTerm, summaries, terms]);
 
   return (
     <AdminReportAccessGate>
@@ -85,15 +39,7 @@ export function AssessmentsReportPage() {
               start from the learner, class, subject, or instructor report path first.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {exportPayload && (
-              <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
-                <Download className="mr-1.5 h-4 w-4" />
-                Export
-              </Button>
-            )}
-            <PieChart className="h-7 w-7 text-orange-500" />
-          </div>
+          <PieChart className="h-7 w-7 text-orange-500" />
         </div>
 
         {summaries.length > 0 && (
@@ -182,15 +128,6 @@ export function AssessmentsReportPage() {
           </Card>
         )}
 
-        {exportPayload && (
-          <ExportModal
-            open={exportOpen}
-            onClose={() => setExportOpen(false)}
-            payload={exportPayload}
-            defaultFormat="excel"
-            title="Export Assessment Report"
-          />
-        )}
       </div>
     </AdminReportAccessGate>
   );

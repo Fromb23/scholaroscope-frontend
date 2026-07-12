@@ -27,6 +27,7 @@ import {
   InstructorAttendanceRiskItem,
   InstructorAttendanceRiskResponse,
   LearnerOverviewReportPayload,
+  LearnerTermProgressReportPayload,
   LearnerAssessmentReportPayload,
   LearnerAssessmentReportQueryParams,
   LearnerAvailableReportScopesPayload,
@@ -782,6 +783,34 @@ export const learnerReportingAPI = {
     `learner-overview-report-${learnerId}.${format}`,
   ),
 
+  getLearnerTermProgressReport: async (
+    learnerId: number,
+    termId: number,
+  ) => {
+    const response = await apiClient.get<LearnerTermProgressReportPayload>(
+      `/reporting/learners/${learnerId}/term-progress-report/`,
+      {
+        params: { term_id: termId },
+      },
+    );
+    return response.data;
+  },
+
+  exportLearnerTermProgressReport: async (
+    learnerId: number,
+    params: {
+      termId: number;
+      format: 'pdf';
+    },
+  ) => fetchReportDownload(
+    `/reporting/learners/${learnerId}/term-progress-report/export/`,
+    {
+      term_id: params.termId,
+      format: params.format,
+    },
+    `learner-term-progress-report-${learnerId}.${params.format}`,
+  ),
+
   getClassSubjectReport: async (
     cohortId: number,
     params: {
@@ -1099,6 +1128,8 @@ export const reportsAPI = {
   exportLearnerSubjectReport: learnerReportingAPI.exportLearnerSubjectReport,
   getLearnerOverviewReport: learnerReportingAPI.getLearnerOverviewReport,
   exportLearnerOverviewReport: learnerReportingAPI.exportLearnerOverviewReport,
+  getLearnerTermProgressReport: learnerReportingAPI.getLearnerTermProgressReport,
+  exportLearnerTermProgressReport: learnerReportingAPI.exportLearnerTermProgressReport,
   getClassSubjectReport: learnerReportingAPI.getClassSubjectReport,
   exportClassSubjectReport: learnerReportingAPI.exportClassSubjectReport,
   getInstructorTeacherReport: learnerReportingAPI.getInstructorTeacherReport,

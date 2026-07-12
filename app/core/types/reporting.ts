@@ -1283,7 +1283,7 @@ export interface InstructorAttendanceRiskResponse {
 }
 
 export type ReportRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
-export type ReportExportFormat = 'pdf' | 'xlsx' | 'csv';
+export type ReportExportFormat = 'pdf' | 'xlsx' | 'docx';
 export type LearnerReportIndicatorTone = 'success' | 'warning' | 'danger';
 export type ReportCardTone = 'success' | 'warning' | 'danger' | 'neutral';
 export type SubjectSummaryStatus = 'ON_TRACK' | 'WATCH' | 'NEEDS_SUPPORT';
@@ -1742,6 +1742,125 @@ export interface LearnerOverviewReportPayload {
   participation_risk_level: ReportRiskLevel;
   learning_risk_level: ReportRiskLevel;
   overall_recommendations: string[];
+}
+
+export type LearnerTermProgressDocumentState = 'DRAFT' | 'READY_FOR_REVIEW' | 'OFFICIAL';
+export type LearnerTermProgressResultStatus =
+  | 'FINAL'
+  | 'PROVISIONAL'
+  | 'NO_EVIDENCE'
+  | 'STALE'
+  | 'ASSESSED'
+  | 'AWAITING_EVIDENCE'
+  | string;
+
+export interface LearnerTermProgressTermRef {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface LearnerTermProgressLearnerRef {
+  id: number;
+  name: string;
+  admission_number: string;
+  cohort: string | null;
+  level: string | null;
+}
+
+export interface LearnerTermProgressAttendanceSummary {
+  sessions_recorded: number;
+  sessions_attended: number;
+  attendance_percentage: number | null;
+  status: string;
+  evidence_reliability_note: string;
+}
+
+export interface LearnerTermProgressEvidenceSummary {
+  assessments: number;
+  assignments: number;
+  group_assignments: number;
+  observations: number;
+  projects: number;
+  practicals: number;
+  portfolio_items: number;
+  total: number;
+}
+
+export interface LearnerTermProgressPerformance {
+  level: string;
+  label: string;
+  status: LearnerTermProgressResultStatus;
+}
+
+export interface LearnerTermProgressOutcome {
+  strand: string;
+  sub_strand: string;
+  outcome_code: string;
+  description: string;
+  level: string;
+  label: string;
+  evidence_count: number;
+  status: LearnerTermProgressResultStatus;
+}
+
+export interface LearnerTermProgressTeacherReview {
+  teacher_remark: string;
+  recommended_next_steps: string[];
+  contextual_note: string;
+  approved: boolean;
+  requires_re_review: boolean;
+}
+
+export interface LearnerTermProgressLearningArea {
+  cohort_subject_id: number;
+  name: string;
+  code: string;
+  curriculum_type: string | null;
+  reporting_source: string;
+  attendance: {
+    attended: number;
+    recorded: number;
+    percentage: number | null;
+  };
+  evidence_summary: LearnerTermProgressEvidenceSummary;
+  performance: LearnerTermProgressPerformance;
+  coverage: {
+    selected: number;
+    taught: number;
+    observed: number;
+    taught_not_observed: number;
+  };
+  outcomes: LearnerTermProgressOutcome[];
+  teacher_review: LearnerTermProgressTeacherReview;
+  portfolio_references: unknown[];
+  observation_summaries: unknown[];
+  strengths?: string[];
+  support_needs?: string[];
+}
+
+export interface LearnerTermProgressReportPayload {
+  report_type: 'learner_term_progress';
+  document_state: LearnerTermProgressDocumentState;
+  generated_at: string;
+  organization: ReportOrganization;
+  academic_year: { id: number; name: string };
+  term: LearnerTermProgressTermRef;
+  learner: LearnerTermProgressLearnerRef;
+  attendance_summary: LearnerTermProgressAttendanceSummary;
+  learning_areas: LearnerTermProgressLearningArea[];
+  core_competencies: {
+    available: boolean;
+    message?: string;
+    items: unknown[];
+  };
+  evidence_metrics: Record<string, number | string | null>;
+  evidence_integrity: {
+    statements: string[];
+  };
+  sign_off: Record<string, unknown>;
+  provenance: Record<string, unknown>;
 }
 
 export interface ClassSubjectLearnerRow extends LearnerOverviewSubjectSummary {

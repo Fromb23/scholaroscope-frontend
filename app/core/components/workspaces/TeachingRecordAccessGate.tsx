@@ -74,7 +74,7 @@ export function TeachingRecordAccessGate({
             <Link href="/admin/instructors">
               <Button variant="secondary">
                 <Users className="mr-2 h-4 w-4" />
-                Staff
+                Teaching team
               </Button>
             </Link>
             <Link href="/reports">

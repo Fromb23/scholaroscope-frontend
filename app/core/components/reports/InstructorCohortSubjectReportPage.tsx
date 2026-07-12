@@ -10,8 +10,6 @@ import {
 import {
   useCallback,
   useEffect,
-  useMemo,
-  useState,
   type ElementType,
 } from 'react';
 import {
@@ -19,7 +17,6 @@ import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
-  Download,
   FileBarChart,
   Users,
 } from 'lucide-react';
@@ -29,7 +26,6 @@ import { Button } from '@/app/components/ui/Button';
 import { Select } from '@/app/components/ui/Select';
 import { ErrorState } from '@/app/components/ui/ErrorState';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
-import { ExportModal } from '@/app/components/export/ExportModal';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { AssessmentCompletionSummary } from '@/app/core/components/reports/AssessmentCompletionSummary';
@@ -56,7 +52,6 @@ import {
   getReportingSourceLabel,
   getReportingSourceVariant,
   getReportingStatusLabel,
-  resolveCbcStudentResult,
   toCbcPerformance,
   toGenericPerformance,
 } from '@/app/core/lib/reportingPresentation';
@@ -66,7 +61,6 @@ import type {
   InstructorLearnerReportRow,
   ReportingSource,
 } from '@/app/core/types/reporting';
-import type { ExportPayload } from '@/app/types/export';
 import {
   buildInstructorClassReportHref,
   buildInstructorCohortSubjectDetailHref,
@@ -166,8 +160,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
   });
   const backLabel = getReturnBackLabel(searchParams.get('returnTo'));
 
-  const [exportOpen, setExportOpen] = useState(false);
-
   const updateSearchParams = useCallback((updates: {
     tab?: DetailTab;
     term?: number | null;
@@ -245,11 +237,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
     : null;
 
   const learners = learnersQuery.report?.learners ?? EMPTY_LEARNERS;
-  const termLabel = effectiveTermId
-    ? terms.find((term) => term.id === effectiveTermId)?.name
-      ?? currentTerm?.name
-      ?? `Term ${effectiveTermId}`
-    : 'Select a term';
 
   const pageTitle = cohortSubjectMeta
     ? `${cohortSubjectMeta.cohort_name} — ${cohortSubjectMeta.subject_name}`
@@ -270,166 +257,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
         performanceQuery.report?.cbc_performance ?? performanceQuery.report?.cbc_summary,
       )
     : null;
-
-  const exportPayload = useMemo<ExportPayload | null>(() => {
-    if (!isValidCohortSubjectId) return null;
-
-    if (activeTab === 'learners' && learnersQuery.report) {
-      return {
-        title: `${pageTitle} Class Learners`,
-        subtitle: termLabel,
-        metadata: {
-          generatedAt: new Date().toLocaleString(),
-        },
-        columns: [
-          { key: 'student_name', label: 'Learner', width: 24 },
-          { key: 'admission_number', label: 'Admission No.', width: 14 },
-          { key: 'report_type', label: 'Report Type', width: 18 },
-          { key: 'status', label: 'Status', width: 16 },
-          { key: 'attendance', label: 'Attendance', format: 'percentage', width: 14, align: 'right' as const },
-          { key: 'mark', label: 'Mark', format: 'percentage', width: 14, align: 'right' as const },
-          { key: 'cbc_weighted_score', label: 'CBC Assessment Indicator', format: 'percentage', width: 22, align: 'right' as const },
-          { key: 'cbc_code', label: 'CBC Code', width: 12 },
-          { key: 'assessments', label: 'Completed Assessments', width: 22 },
-        ],
-        rows: learners.map((item) => {
-          const genericResult = resolveInstructorGenericStudent(item);
-          const cbcStudent = resolveInstructorCbcStudent(item);
-          const cbcResult = resolveCbcStudentResult(cbcStudent);
-          return {
-            student_name: item.student.name,
-            admission_number: item.student.admission_number,
-            report_type: getReportingSourceLabel(item.reporting_source),
-            status: getReportingStatusLabel(item.status)
-              ?? genericResult?.grade_status
-              ?? cbcResult?.result_status
-              ?? '—',
-            attendance: item.attendance_summary?.average ?? null,
-            mark: genericResult?.final_score ?? genericResult?.average_score ?? genericResult?.weighted_average ?? null,
-            cbc_weighted_score: cbcResult?.weighted_score ?? null,
-            cbc_code: cbcResult?.cbc_code ?? '—',
-            assessments: `${item.assessment_completion.completed_scores ?? item.assessment_completion.finalized_assessments}/${item.assessment_completion.total_assessments}`,
-          };
-        }),
-        fileName: `class-learners-${cohortSubjectId}`,
-        includeMetadata: true,
-        includeTimestamp: true,
-        sheetName: 'Class Learners',
-        freezeHeader: true,
-        autoFilter: true,
-        orientation: 'landscape' as const,
-      };
-    }
-
-    if (activeTab === 'performance' && performanceQuery.report) {
-      const rows = genericPerformance
-        ? [
-            ...Object.entries(genericPerformance.distribution_by_letter ?? {}).map(([label, count]) => ({
-              section: 'Marks Distribution',
-              label,
-              count,
-              score: null,
-            })),
-            ...Object.entries(genericPerformance.grade_status_counts ?? {}).map(([label, count]) => ({
-              section: 'Result Status',
-              label,
-              count,
-              score: null,
-            })),
-            ...(genericPerformance.assessment_type_breakdown ?? []).map((item) => ({
-              section: 'Assessment Type',
-              label: item.assessment_type,
-              count: item.total_assessments,
-              score: item.average_score,
-            })),
-          ]
-        : cbcPerformance
-          ? [
-              ...Object.entries(cbcPerformance.result_counts ?? {}).map(([label, count]) => ({
-                section: 'CBC Result Status',
-                label,
-                count,
-                score: null,
-              })),
-              ...Object.entries(cbcPerformance.distribution_by_code ?? {}).map(([label, count]) => ({
-                section: 'CBC Code',
-                label,
-                count,
-                score: null,
-              })),
-            ]
-          : [];
-
-      return {
-        title: `${pageTitle} Class Results`,
-        subtitle: termLabel,
-        metadata: {
-          reportType: getReportingSourceLabel(reportingSource),
-          generatedAt: new Date().toLocaleString(),
-        },
-        columns: [
-          { key: 'section', label: 'Section', width: 20 },
-          { key: 'label', label: 'Label', width: 24 },
-          { key: 'count', label: 'Count', format: 'number', width: 12, align: 'right' as const },
-          { key: 'score', label: 'Average Score', format: 'percentage', width: 16, align: 'right' as const },
-        ],
-        rows,
-        fileName: `class-results-${cohortSubjectId}`,
-        includeMetadata: true,
-        includeTimestamp: true,
-        sheetName: 'Class Results',
-        freezeHeader: true,
-        autoFilter: true,
-        orientation: 'landscape' as const,
-      };
-    }
-
-    if (activeTab === 'teaching-activity' && teachingActivityQuery.report) {
-      return {
-        title: `${pageTitle} Teaching Progress`,
-        subtitle: termLabel,
-        metadata: {
-          generatedAt: new Date().toLocaleString(),
-        },
-        columns: [
-          { key: 'sessions_created', label: 'Lessons Planned', format: 'number', width: 16, align: 'right' as const },
-          { key: 'sessions_completed', label: 'Lessons Completed', format: 'number', width: 18, align: 'right' as const },
-          { key: 'attendance_marked', label: 'Attendance Marked', format: 'number', width: 18, align: 'right' as const },
-          { key: 'attendance_expected', label: 'Attendance Expected', format: 'number', width: 18, align: 'right' as const },
-          { key: 'attendance_completeness', label: 'Attendance Completeness', format: 'percentage', width: 20, align: 'right' as const },
-        ],
-        rows: [{
-          sessions_created: teachingActivityQuery.report.sessions_created,
-          sessions_completed: teachingActivityQuery.report.sessions_completed,
-          attendance_marked: teachingActivityQuery.report.attendance_marked,
-          attendance_expected: teachingActivityQuery.report.attendance_expected,
-          attendance_completeness: teachingActivityQuery.report.attendance_completeness,
-        }],
-        fileName: `teaching-progress-${cohortSubjectId}`,
-        includeMetadata: true,
-        includeTimestamp: true,
-        sheetName: 'Teaching Progress',
-        freezeHeader: true,
-        autoFilter: true,
-        orientation: 'landscape' as const,
-      };
-    }
-
-    return null;
-  }, [
-    activeTab,
-    cbcPerformance,
-    cohortSubjectId,
-    genericPerformance,
-    isValidCohortSubjectId,
-    learners,
-    learnersQuery.report,
-    pageTitle,
-    performanceQuery.report,
-    reportingSource,
-    teachingActivityQuery.report,
-    termLabel,
-  ]);
 
   if (!isValidCohortSubjectId) {
     return <ErrorState message="This class subject could not be found." fullScreen={false} />;
@@ -460,15 +287,7 @@ export default function InstructorCohortSubjectDetailReportPage() {
               Your class view for learners, marks, attendance, and teaching progress.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {exportPayload && (
-              <Button variant="secondary" size="sm" onClick={() => setExportOpen(true)}>
-                <Download className="mr-1.5 h-4 w-4" />
-                Export
-              </Button>
-            )}
-            <FileBarChart className="h-7 w-7 text-green-600" />
-          </div>
+          <FileBarChart className="h-7 w-7 text-green-600" />
         </div>
       </div>
 
@@ -746,16 +565,6 @@ export default function InstructorCohortSubjectDetailReportPage() {
             </Card>
           )}
         </div>
-      )}
-
-      {exportPayload && (
-        <ExportModal
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          payload={exportPayload}
-          defaultFormat="excel"
-          title="Export Class View"
-        />
       )}
     </ReportPageShell>
   );

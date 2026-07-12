@@ -7,10 +7,10 @@ export function CommercialSection() {
         <div>
           <p className="text-sm font-semibold text-[color:var(--color-primary)]">Plans and pricing</p>
           <h2 id="commercial-heading" className="mt-3 text-3xl font-bold tracking-tight theme-text sm:text-4xl">
-            Pick the workspace first, then compare plans
+            Start with what you need. Add capabilities as you grow.
           </h2>
           <p className="theme-muted mt-4 text-base leading-7">
-            Scholaroscope starts with a Standard workspace foundation. Premium adds the specialist capabilities you choose, then Scholaroscope confirms the final quote before registration.
+            Start with the Standard workspace foundation, then add Premium capabilities when your school or teaching practice needs more depth.
           </p>
           <Link
             href="/get-started"
