@@ -35,15 +35,28 @@ import { useReportExport } from '@/app/core/hooks/reports/useReportExport';
 import { useStudent } from '@/app/core/hooks/useStudents';
 import type { LearnerOverviewSubjectSummary } from '@/app/core/types/reporting';
 
+function labelize(value: string | null | undefined): string {
+  return String(value ?? '').replace(/_/g, ' ').trim() || 'Not available';
+}
+
 function formatMasteryOrScore(subject: LearnerOverviewSubjectSummary): string {
+  if (subject.reporting_source === 'cbc') {
+    const performance = subject.competency_result?.performance ?? subject.performance ?? null;
+    if (performance?.level) {
+      return performance.label ? `${performance.level} · ${performance.label}` : performance.level;
+    }
+    if (performance?.status) {
+      return labelize(performance.status);
+    }
+    return subject.cbc_result?.result_status
+      ? labelize(subject.cbc_result.result_status)
+      : 'CBC result pending';
+  }
   if (subject.mastery_percentage != null) {
     return formatReportPercent(subject.mastery_percentage);
   }
   if (subject.numeric_average != null) {
     return formatReportPercent(subject.numeric_average);
-  }
-  if (subject.cbc_result?.weighted_score != null) {
-    return formatReportPercent(subject.cbc_result.weighted_score);
   }
   return 'No data yet';
 }

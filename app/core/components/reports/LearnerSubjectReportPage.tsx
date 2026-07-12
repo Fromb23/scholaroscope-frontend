@@ -45,6 +45,7 @@ import {
   SubjectMetricCard,
 } from '@/app/core/components/reports/LearnerSubjectReportPresentation';
 import type {
+  CbcCompetencyResult,
   LearnerAvailableReportScope,
   LearnerSubjectReportAssignmentCompletionPoint,
   LearnerSubjectReportAttendanceTrendPoint,
@@ -166,6 +167,124 @@ function buildLearningTimelineItems(points: LearnerSubjectReportLearningTimeline
   }));
 }
 
+function labelize(value: string | null | undefined): string {
+  return String(value ?? '').replace(/_/g, ' ').trim() || 'Not available';
+}
+
+function formatCbcCompetency(competency: CbcCompetencyResult | null | undefined): string {
+  if (!competency) return 'CBC result pending';
+  const performance = competency.performance;
+  if (performance.level) {
+    return performance.label ? `${performance.level} - ${performance.label}` : performance.level;
+  }
+  return labelize(performance.status);
+}
+
+function CbcCompetencyReportCard({
+  competency,
+}: {
+  competency: CbcCompetencyResult;
+}) {
+  const performance = competency.performance;
+  const strengths = competency.strengths ?? [];
+  const support = competency.support_needed ?? [];
+
+  return (
+    <Card>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide theme-subtle">CBC Competency Result</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-3xl font-semibold theme-text">
+              {performance.level || labelize(performance.status)}
+            </span>
+            {performance.label ? (
+              <span className="text-sm font-medium theme-muted">{performance.label}</span>
+            ) : null}
+            <Badge variant={performance.status === 'FINAL' ? 'green' : 'orange'}>
+              {labelize(performance.status)}
+            </Badge>
+            {competency.readiness?.is_stale ? <Badge variant="orange">Stale</Badge> : null}
+          </div>
+        </div>
+        <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:min-w-[28rem]">
+          <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
+            <p className="text-xs theme-subtle">Outcomes observed</p>
+            <p className="mt-1 text-lg font-semibold theme-text">
+              {competency.coverage.outcomes_observed}/{competency.coverage.outcomes_taught}
+            </p>
+          </div>
+          <div className="rounded-lg border theme-border theme-surface-muted px-3 py-2">
+            <p className="text-xs theme-subtle">Evidence records</p>
+            <p className="mt-1 text-lg font-semibold theme-text">
+              {competency.evidence_summary.total}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        <KeyValueTable
+          title="Competency Coverage"
+          rows={[
+            { label: 'Outcomes selected', value: String(competency.coverage.outcomes_selected) },
+            { label: 'Outcomes taught', value: String(competency.coverage.outcomes_taught) },
+            { label: 'Outcomes observed', value: String(competency.coverage.outcomes_observed) },
+            { label: 'Taught not observed', value: String(competency.coverage.outcomes_taught_not_observed) },
+          ]}
+        />
+        <KeyValueTable
+          title="Outcome Distribution"
+          rows={[
+            { label: 'Exceeding Expectations', value: String(competency.distribution.EE ?? 0) },
+            { label: 'Meeting Expectations', value: String(competency.distribution.ME ?? 0) },
+            { label: 'Approaching Expectations', value: String(competency.distribution.AE ?? 0) },
+            { label: 'Below Expectations', value: String(competency.distribution.BE ?? 0) },
+            { label: 'Provisional', value: String(competency.distribution.PROVISIONAL ?? 0) },
+            { label: 'No evidence', value: String(competency.distribution.NO_EVIDENCE ?? 0) },
+          ]}
+        />
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        <OutcomeSummaryList title="Strengths" items={strengths} emptyText="No final ME or EE outcomes recorded." />
+        <OutcomeSummaryList title="Support Needed" items={support} emptyText="No final AE or BE outcomes recorded." />
+      </div>
+    </Card>
+  );
+}
+
+function OutcomeSummaryList({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: CbcCompetencyResult['strengths'];
+  emptyText: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold theme-text">{title}</h3>
+      {items.length === 0 ? (
+        <p className="mt-2 text-sm theme-muted">{emptyText}</p>
+      ) : (
+        <ul className="mt-2 space-y-2">
+          {items.slice(0, 5).map((item) => (
+            <li key={`${title}-${item.outcome_id}`} className="rounded-lg border theme-border theme-surface-muted p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium theme-text">{item.code}</span>
+                {item.level ? <Badge variant="green">{item.level}</Badge> : null}
+              </div>
+              <p className="mt-1 text-sm theme-muted">{item.description}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function LearnerSubjectReportPage() {
   const params = useParams<{ learnerId: string }>();
   const pathname = usePathname();
@@ -262,6 +381,8 @@ export function LearnerSubjectReportPage() {
   const permissionDenied = selectedScopeAllowed && reportErrorStatus === 403;
   const showAccessState = (!scopesLoading && requestedCohortSubjectId != null && !selectedScopeAllowed) || permissionDenied;
   const canExport = Boolean(report) && !reportLoading && !reportError && !showAccessState;
+  const isCbcReport = report?.reporting_source === 'cbc';
+  const cbcCompetency = report?.progress.competency_result ?? null;
 
   if (learnerLoading && !student) {
     return <EntityLoadingState entity="learner reporting context" action="Loading" />;
@@ -433,7 +554,13 @@ export function LearnerSubjectReportPage() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={riskVariant(report.risk_level)}>{report.risk_level} risk</Badge>
+                    {isCbcReport && cbcCompetency ? (
+                      <Badge variant={cbcCompetency.performance.status === 'FINAL' ? 'green' : 'orange'}>
+                        {formatCbcCompetency(cbcCompetency)}
+                      </Badge>
+                    ) : (
+                      <Badge variant={riskVariant(report.risk_level)}>{report.risk_level} risk</Badge>
+                    )}
                     <Badge variant="blue">{report.subject.code}</Badge>
                     <Badge variant="default">{report.cohort.name}</Badge>
                   </div>
@@ -479,14 +606,18 @@ export function LearnerSubjectReportPage() {
               </div>
             </Card>
 
-            {intelligenceLoading ? (
+            {isCbcReport && cbcCompetency ? (
+              <CbcCompetencyReportCard competency={cbcCompetency} />
+            ) : null}
+
+            {!isCbcReport && intelligenceLoading ? (
               <SectionLoading title="Loading learner subject intelligence..." />
-            ) : intelligenceError ? (
+            ) : !isCbcReport && intelligenceError ? (
               <ErrorBanner
                 message={intelligenceError}
                 onDismiss={() => void refetchIntelligence()}
               />
-            ) : subjectIntelligence ? (
+            ) : !isCbcReport && subjectIntelligence ? (
               <LearnerSubjectIntelligencePanel intelligence={subjectIntelligence} />
             ) : null}
 
@@ -540,13 +671,19 @@ export function LearnerSubjectReportPage() {
                       <div className="rounded-lg border theme-border theme-surface-muted p-4">
                         <div className="font-medium theme-text">Learning Progress</div>
                         <p className="mt-2 theme-muted">
-                          {report.progress.outcomes_taught} of {report.progress.outcomes_selected} selected outcomes have been taught, and {report.progress.outcomes_mastered} have reached mastery.
+                          {isCbcReport && cbcCompetency
+                            ? `${cbcCompetency.coverage.outcomes_observed} of ${cbcCompetency.coverage.outcomes_taught} taught outcomes have eligible evidence. Current competency judgement: ${formatCbcCompetency(cbcCompetency)}.`
+                            : `${report.progress.outcomes_taught} of ${report.progress.outcomes_selected} selected outcomes have been taught, and ${report.progress.outcomes_mastered} have reached mastery.`}
                         </p>
                       </div>
                       <div className="rounded-lg border theme-border theme-surface-muted p-4">
-                        <div className="font-medium theme-text">Assessment Performance</div>
+                        <div className="font-medium theme-text">
+                          {isCbcReport ? 'Assessment Computation Details' : 'Assessment Performance'}
+                        </div>
                         <p className="mt-2 theme-muted">
-                          Current assessment average: {formatPercent(report.assessments.numeric_average)}.
+                          {isCbcReport
+                            ? `Assessment indicator: ${formatPercent(report.assessments.cbc_result?.weighted_score ?? report.assessments.numeric_average)}.`
+                            : `Current assessment average: ${formatPercent(report.assessments.numeric_average)}.`}
                         </p>
                       </div>
                     </div>
@@ -654,25 +791,47 @@ export function LearnerSubjectReportPage() {
                     ]}
                   />
                   <KeyValueTable
-                    title="Learning Progress"
-                    rows={[
-                      { label: 'Outcomes selected', value: String(report.progress.outcomes_selected) },
-                      { label: 'Outcomes taught', value: String(report.progress.outcomes_taught) },
-                      { label: 'Outcomes mastered', value: String(report.progress.outcomes_mastered) },
-                      { label: 'Coverage', value: formatPercent(report.progress.outcome_coverage_percentage) },
-                      { label: 'Mastery', value: formatPercent(report.progress.mastery_percentage) },
-                      { label: 'Evidence count', value: String(report.progress.evidence_count) },
-                    ]}
+                    title={isCbcReport ? 'CBC Competency Result' : 'Learning Progress'}
+                    rows={isCbcReport
+                      ? cbcCompetency
+                        ? [
+                            { label: 'Performance', value: formatCbcCompetency(cbcCompetency) },
+                            { label: 'Status', value: labelize(cbcCompetency.performance.status) },
+                            { label: 'Outcomes selected', value: String(cbcCompetency.coverage.outcomes_selected) },
+                            { label: 'Outcomes taught', value: String(cbcCompetency.coverage.outcomes_taught) },
+                            { label: 'Outcomes observed', value: String(cbcCompetency.coverage.outcomes_observed) },
+                            { label: 'Taught not observed', value: String(cbcCompetency.coverage.outcomes_taught_not_observed) },
+                            { label: 'Evidence count', value: String(cbcCompetency.evidence_summary.total) },
+                          ]
+                        : [
+                            { label: 'Performance', value: 'CBC result pending' },
+                            { label: 'Evidence count', value: String(report.progress.evidence_count) },
+                          ]
+                      : [
+                          { label: 'Outcomes selected', value: String(report.progress.outcomes_selected) },
+                          { label: 'Outcomes taught', value: String(report.progress.outcomes_taught) },
+                          { label: 'Outcomes mastered', value: String(report.progress.outcomes_mastered) },
+                          { label: 'Coverage', value: formatPercent(report.progress.outcome_coverage_percentage) },
+                          { label: 'Mastery', value: formatPercent(report.progress.mastery_percentage) },
+                          { label: 'Evidence count', value: String(report.progress.evidence_count) },
+                        ]}
                   />
                   <KeyValueTable
-                    title="Assessment Performance"
-                    rows={[
-                      { label: 'Assessment count', value: String(report.assessments.assessment_count) },
-                      { label: 'Finalized assessments', value: String(report.assessments.finalized_assessment_count) },
-                      { label: 'Average score', value: formatPercent(report.assessments.numeric_average) },
-                      { label: 'Grade', value: report.assessments.computed_grade?.letter_grade ?? '-' },
-                      { label: 'Grade label', value: report.assessments.computed_grade?.letter_label ?? '-' },
-                    ]}
+                    title={isCbcReport ? 'Assessment Computation Details' : 'Assessment Performance'}
+                    rows={isCbcReport
+                      ? [
+                          { label: 'Assessment count', value: String(report.assessments.assessment_count) },
+                          { label: 'Finalized assessments', value: String(report.assessments.finalized_assessment_count) },
+                          { label: 'Assessment indicator', value: formatPercent(report.assessments.cbc_result?.weighted_score ?? report.assessments.numeric_average) },
+                          { label: 'Indicator status', value: labelize(report.assessments.cbc_result?.result_status) },
+                        ]
+                      : [
+                          { label: 'Assessment count', value: String(report.assessments.assessment_count) },
+                          { label: 'Finalized assessments', value: String(report.assessments.finalized_assessment_count) },
+                          { label: 'Average score', value: formatPercent(report.assessments.numeric_average) },
+                          { label: 'Grade', value: report.assessments.computed_grade?.letter_grade ?? '-' },
+                          { label: 'Grade label', value: report.assessments.computed_grade?.letter_label ?? '-' },
+                        ]}
                   />
                 </div>
 

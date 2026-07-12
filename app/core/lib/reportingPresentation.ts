@@ -4,6 +4,7 @@ import type {
   CbcCode,
   CbcPerformance,
   CbcPerformanceSummary,
+  CbcCompetencyResult,
   CbcStudentResult,
   CbcStudentSection,
   GenericPerformance,
@@ -236,6 +237,56 @@ export function resolveCbcStudentResult(
 ): CbcStudentResult | null {
   if (!cbc) return null;
   return 'cbc_result' in cbc ? cbc.cbc_result : cbc;
+}
+
+export function resolveCbcCompetencyResult(
+  cbc: CbcStudentSection | CbcStudentResult | null | undefined,
+): CbcCompetencyResult | null {
+  if (!cbc || !('cbc_result' in cbc)) return null;
+  if (cbc.competency_result) return cbc.competency_result;
+  if (!cbc.performance) return null;
+  return {
+    id: 0,
+    performance: cbc.performance,
+    coverage: cbc.coverage ?? {
+      outcomes_selected: 0,
+      outcomes_taught: 0,
+      outcomes_observed: 0,
+      outcomes_taught_not_observed: 0,
+    },
+    distribution: cbc.distribution ?? {
+      EE: 0,
+      ME: 0,
+      AE: 0,
+      BE: 0,
+      PROVISIONAL: 0,
+      NO_EVIDENCE: 0,
+    },
+    strengths: cbc.strengths ?? [],
+    support_needed: cbc.support_needed ?? [],
+    evidence_summary: cbc.evidence_summary ?? {
+      total: 0,
+      observations: 0,
+      assignments: 0,
+      group_assignments: 0,
+      projects: 0,
+      practicals: 0,
+      assessments: 0,
+      descriptive: 0,
+      rubric: 0,
+      numeric: 0,
+      competency: 0,
+    },
+    assessment_indicator_id: null,
+    readiness: cbc.readiness
+      ? {
+          has_result: cbc.readiness.has_result,
+          is_stale: cbc.readiness.is_stale,
+          is_final: cbc.readiness.is_final,
+          missing_requirements: cbc.readiness.missing_requirements ?? cbc.readiness.missing_components ?? [],
+        }
+      : null,
+  };
 }
 
 export function resolveCbcReadiness(

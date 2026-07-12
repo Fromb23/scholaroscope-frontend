@@ -50,6 +50,8 @@ interface CurriculumSubjectReportCardProps {
   cbcPerformance?: CbcPerformance | null;
   genericStudent?: GenericStudentSection | null;
   cbcStudent?: CbcStudentSection | CbcStudentResult | null;
+  canManageCbcReview?: boolean;
+  onCbcReviewSaved?: () => void;
   averageGrade?: number | null;
   averageGradeNote?: string | null;
   actions?: ReactNode;
@@ -73,6 +75,8 @@ export function CurriculumSubjectReportCard({
   cbcPerformance,
   genericStudent,
   cbcStudent,
+  canManageCbcReview = false,
+  onCbcReviewSaved,
   averageGrade,
   averageGradeNote,
   actions,
@@ -90,7 +94,13 @@ export function CurriculumSubjectReportCard({
         : <ReportingSourceState reportingSource={reportingSource} status={status} note={note} />
     : reportingSource === 'cbc'
       ? cbcStudent
-        ? <CbcStudentResultSummary cbc={cbcStudent} />
+        ? (
+          <CbcStudentResultSummary
+            cbc={cbcStudent}
+            canManageReview={canManageCbcReview}
+            onReviewSaved={onCbcReviewSaved}
+          />
+        )
         : cbcPerformance
           ? <CbcPerformanceSummary performance={cbcPerformance} />
           : <ReportingSourceState reportingSource={reportingSource} status={status} note={note} />
