@@ -33,6 +33,43 @@ export type SessionScheduleState =
   | 'COMPLETED'
   | 'UNKNOWN';
 
+export type SessionWorkflowStage =
+  | 'SCHEDULED'
+  | 'ATTENDANCE'
+  | 'TAUGHT_OUTCOMES'
+  | 'EVIDENCE'
+  | 'REFLECTION'
+  | 'READY'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REQUIRES_REVIEW';
+
+export type SessionWorkflowLifecycleStatus =
+  | 'SCHEDULED'
+  | 'READY_TO_START'
+  | 'IN_PROGRESS'
+  | 'NEEDS_COMPLETION'
+  | 'READY'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REQUIRES_REVIEW';
+
+export type SessionWorkflowActionOwner = 'INSTRUCTOR' | 'NONE';
+
+export interface SessionWorkflowSummary {
+  stage: SessionWorkflowStage;
+  stage_label: string;
+  message: string;
+  missing: string[];
+  missing_labels: string[];
+  ready_to_close: boolean;
+  needs_teacher_action: boolean;
+  action_owner: SessionWorkflowActionOwner;
+  viewer_can_advance: boolean;
+  lifecycle_status: SessionWorkflowLifecycleStatus;
+  lifecycle_label: string;
+}
+
 export interface Session {
   linked_cohorts: SessionCohort[];
   id: number;
@@ -82,6 +119,7 @@ export interface Session {
   start_available_at: string | null;
   start_available_date?: string | null;
   start_available_time?: string | null;
+  workflow_summary?: SessionWorkflowSummary | null;
   attendance_count: {
     total: number;
     present: number;
@@ -107,12 +145,16 @@ export interface SessionLifecycleReminder {
 }
 
 export type SessionClosureNextStep =
+  | 'SCHEDULED'
   | 'ATTENDANCE'
   | 'TAUGHT_OUTCOMES'
   | 'INTERRUPTED'
   | 'EVIDENCE'
   | 'REFLECTION'
-  | 'READY';
+  | 'READY'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REQUIRES_REVIEW';
 
 export interface SessionClosureState {
   ready: boolean;
@@ -131,6 +173,7 @@ export interface SessionClosureState {
   session_proof_complete?: boolean;
   learner_evidence_ready?: boolean;
   learner_evidence_summary?: FineArtsLearnerEvidenceSummary;
+  workflow_summary?: SessionWorkflowSummary;
 }
 
 export interface SessionDetail extends Session {

@@ -10,6 +10,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
+    BookOpen,
     Calendar,
     ChevronDown,
     ChevronRight,
@@ -67,6 +68,99 @@ function attendanceVariant(rate: number): 'success' | 'blue' | 'yellow' | 'defau
     return 'default';
 }
 
+type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'default' | 'blue' | 'green' | 'yellow' | 'red' | 'maroon' | 'purple' | 'indigo' | 'orange';
+
+function getSessionLifecycleStatus(session: Session) {
+    if (session.workflow_summary?.lifecycle_status) {
+        return session.workflow_summary.lifecycle_status;
+    }
+    if (session.status === 'CANCELLED') return 'CANCELLED';
+    if (session.status === 'COMPLETED') return 'COMPLETED';
+    if (session.needs_completion) return 'NEEDS_COMPLETION';
+    if (session.status === 'IN_PROGRESS') return 'IN_PROGRESS';
+    if (session.status === 'SCHEDULED') return 'SCHEDULED';
+    return 'REQUIRES_REVIEW';
+}
+
+export function getSessionWorkflowOrderingPriority(session: Session) {
+    const status = getSessionLifecycleStatus(session);
+    if (status === 'NEEDS_COMPLETION') return 0;
+    if (status === 'READY') return 1;
+    if (status === 'IN_PROGRESS') return 2;
+    if (status === 'REQUIRES_REVIEW') return 3;
+    if (status === 'SCHEDULED' || status === 'READY_TO_START') return 4;
+    if (status === 'COMPLETED') return 5;
+    if (status === 'CANCELLED') return 6;
+    return 3;
+}
+
+function lifecycleBadgeVariant(status: string): BadgeVariant {
+    if (status === 'NEEDS_COMPLETION' || status === 'REQUIRES_REVIEW') return 'orange';
+    if (status === 'READY') return 'blue';
+    if (status === 'IN_PROGRESS') return 'yellow';
+    if (status === 'COMPLETED') return 'green';
+    if (status === 'CANCELLED') return 'red';
+    return 'default';
+}
+
+function getLifecycleLabel(session: Session) {
+    return session.workflow_summary?.lifecycle_label ?? getSessionLifecycleStatus(session).replaceAll('_', ' ').toLowerCase();
+}
+
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
+    return `${count} ${count === 1 ? singular : plural}`;
+}
+
+export function summarizeSessionGroupStatus(sessions: Session[]) {
+    const counts = sessions.reduce<Record<string, number>>((acc, session) => {
+        const status = getSessionLifecycleStatus(session);
+        acc[status] = (acc[status] ?? 0) + 1;
+        return acc;
+    }, {});
+
+    const parts = [
+        counts.NEEDS_COMPLETION ? `${counts.NEEDS_COMPLETION} ${counts.NEEDS_COMPLETION === 1 ? 'needs' : 'need'} completion` : null,
+        counts.READY ? `${counts.READY} ready to close` : null,
+        counts.IN_PROGRESS ? `${counts.IN_PROGRESS} in progress` : null,
+        counts.REQUIRES_REVIEW ? `${counts.REQUIRES_REVIEW} ${counts.REQUIRES_REVIEW === 1 ? 'requires' : 'require'} review` : null,
+        counts.READY_TO_START ? `${counts.READY_TO_START} ready to start` : null,
+        counts.SCHEDULED ? `${counts.SCHEDULED} scheduled` : null,
+        counts.COMPLETED ? `${counts.COMPLETED} completed` : null,
+        counts.CANCELLED ? `${counts.CANCELLED} cancelled` : null,
+    ].filter(Boolean);
+
+    return parts.length > 0 ? parts.join(' · ') : pluralize(sessions.length, 'session');
+}
+
+function formatAttendanceSummary(session: Session) {
+    const total = session.attendance_count?.total ?? 0;
+    const present = session.attendance_count?.present ?? 0;
+    const unmarked = session.attendance_count?.unmarked ?? 0;
+    const marked = Math.max(0, total - unmarked);
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    return {
+        rate,
+        label: total > 0 ? `${marked}/${total} marked · ${rate}% present` : 'No attendance records',
+    };
+}
+
+function formatMissingRecords(session: Session) {
+    const labels = session.workflow_summary?.missing_labels ?? [];
+    return labels.length > 0 ? labels.join(' · ') : 'No required records missing';
+}
+
+function formatActionOwner(session: Session) {
+    const summary = session.workflow_summary;
+    if (!summary || summary.action_owner === 'NONE') {
+        return 'No open action';
+    }
+    if (summary.stage === 'REQUIRES_REVIEW') {
+        return 'Review required';
+    }
+    return summary.needs_teacher_action ? 'Teacher action required' : 'Teacher owns next action';
+}
+
 function teachingSourceLabel(assignment: TeachingAssignment) {
     if (assignment.source?.trim()) {
         return assignment.source.trim().toUpperCase();
@@ -87,54 +181,72 @@ function SessionCohortGroup({ group, returnTo }: { group: SessionGroup; returnTo
     const paginated = group.sessions.slice((page - 1) * pageSize, page * pageSize);
 
     return (
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-gray-200">
             <button
                 type="button"
                 onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left"
+                className="flex w-full items-start gap-3 bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50"
             >
                 {open
-                    ? <ChevronDown className="h-4 w-4 text-blue-600 shrink-0" />
-                    : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                    ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                    : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                 }
-                <span className="font-semibold text-gray-900 flex-1 min-w-0 break-words">
-                    {group.cohortName}
+                <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-gray-900 break-words">
+                        {group.cohortName}
+                    </span>
+                    <span className="mt-1 block text-xs text-gray-500">
+                        {summarizeSessionGroupStatus(group.sessions)}
+                    </span>
                 </span>
-                <Badge variant="info" size="sm" className="shrink-0 ml-auto">
+                <Badge variant="info" size="sm" className="ml-auto shrink-0">
                     {group.sessions.length} session{group.sessions.length !== 1 ? 's' : ''}
                 </Badge>
             </button>
 
             {open && (
-                <div className="border-t border-gray-100 overflow-x-auto">
-                    <div className="min-w-[480px]">  {/* prevents shrinking below this width */}
-                        <div className="divide-y divide-gray-50">
+                <div className="border-t border-gray-100">
+                    <div>
+                        <div className="divide-y divide-gray-100">
                             {paginated.map(session => {
-                                const total = session.attendance_count?.total ?? 0;
-                                const present = session.attendance_count?.present ?? 0;
-                                const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+                                const attendance = formatAttendanceSummary(session);
+                                const lifecycleStatus = getSessionLifecycleStatus(session);
+                                const workflowStage = session.workflow_summary?.stage_label ?? 'Review lesson record';
                                 return (
-                                    <div key={session.id} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-gray-900 break-words">
-                                                {session.title || session.subject_name}
-                                            </p>
-                                            <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                                                <span className="text-xs text-gray-400 break-words">{session.subject_name}</span>
-                                                <span className="text-xs text-gray-300">·</span>
-                                                <span className="text-xs text-gray-400 shrink-0">
-                                                    {new Date(session.session_date).toLocaleDateString('en-GB', {
-                                                        day: '2-digit', month: 'short',
+                                    <div key={session.id} className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-gray-50 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="min-w-0 flex-1 space-y-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge variant={lifecycleBadgeVariant(lifecycleStatus)} size="sm">
+                                                    {getLifecycleLabel(session)}
+                                                </Badge>
+                                                <Badge variant={attendanceVariant(attendance.rate)} size="sm">
+                                                    Attendance: {attendance.label}
+                                                </Badge>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-900 break-words">
+                                                    {session.title || session.subject_name || 'Untitled lesson'}
+                                                </p>
+                                                <p className="mt-1 text-xs text-gray-500 break-words">
+                                                    {session.subject_name || 'Subject not set'} · {new Date(session.session_date).toLocaleDateString('en-GB', {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        year: 'numeric',
                                                     })}
-                                                </span>
+                                                </p>
+                                            </div>
+                                            <div className="grid gap-1 text-xs text-gray-600 md:grid-cols-3">
+                                                <p><span className="font-medium text-gray-700">Current stage:</span> {workflowStage}</p>
+                                                <p><span className="font-medium text-gray-700">Missing:</span> {formatMissingRecords(session)}</p>
+                                                <p><span className="font-medium text-gray-700">Action owner:</span> {formatActionOwner(session)}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <Badge variant={attendanceVariant(rate)} size="sm">
-                                                {total > 0 ? `${rate}%` : 'Unmarked'}
-                                            </Badge>
+                                        <div className="shrink-0">
                                             <Link href={buildSessionDetailHref(session.id, returnTo)}>
-                                                <Button size="sm" variant="ghost">View</Button>
+                                                <Button size="sm" variant="secondary" className="w-full lg:w-auto">
+                                                    <BookOpen className="mr-1.5 h-3.5 w-3.5" />
+                                                    Open lesson
+                                                </Button>
                                             </Link>
                                         </div>
                                     </div>
@@ -184,10 +296,14 @@ export function GroupedSessions({ sessions, returnTo }: GroupedSessionsProps) {
             }
             map.get(cohortId)!.sessions.push(s);
         });
-        map.forEach(g => g.sessions.sort(
-            (a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
-        ));
-        return Array.from(map.values());
+        map.forEach(g => g.sessions.sort((a, b) => {
+            const priorityDelta = getSessionWorkflowOrderingPriority(a) - getSessionWorkflowOrderingPriority(b);
+            if (priorityDelta !== 0) {
+                return priorityDelta;
+            }
+            return new Date(b.session_date).getTime() - new Date(a.session_date).getTime();
+        }));
+        return Array.from(map.values()).sort((a, b) => a.cohortName.localeCompare(b.cohortName));
     }, [sessions]);
 
     if (sessions.length === 0) return (

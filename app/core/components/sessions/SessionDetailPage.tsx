@@ -60,6 +60,7 @@ import type { Assignment } from '@/app/core/types/assignments';
 import type {
     RescheduleSessionPayload,
     SessionClosureState,
+    SessionWorkflowSummary,
 } from '@/app/core/types/session';
 import { calcAttendanceStats } from '@/app/utils/sessionUtils';
 import { useAuth } from '@/app/context/AuthContext';
@@ -245,6 +246,30 @@ function withReturnTo(href: string, returnTo: string) {
     return `${href}${separator}${new URLSearchParams({ returnTo }).toString()}`;
 }
 
+function lowerFirst(value: string) {
+    return value.length > 0 ? `${value.charAt(0).toLowerCase()}${value.slice(1)}` : value;
+}
+
+function joinHumanList(values: string[]) {
+    if (values.length <= 1) {
+        return values[0] ?? '';
+    }
+    if (values.length === 2) {
+        return `${values[0]} and ${values[1]}`;
+    }
+    return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`;
+}
+
+function buildSupervisionMissingMessage(summary: SessionWorkflowSummary | null) {
+    const labels = summary?.missing_labels ?? [];
+    if (labels.length === 0) {
+        return summary?.message || 'The assigned instructor must complete this lesson record.';
+    }
+
+    const readableLabels = labels.map((label, index) => (index === 0 ? label : lowerFirst(label)));
+    return `${joinHumanList(readableLabels)} ${labels.length === 1 ? 'is' : 'are'} still required.`;
+}
+
 export function SessionDetailPage() {
     const params = useParams();
     const pathname = usePathname();
@@ -328,7 +353,10 @@ export function SessionDetailPage() {
     const isInProgressOverdue = scheduleState === 'IN_PROGRESS_OVERDUE';
     const needsCompletion = Boolean(session?.needs_completion || isInProgressOverdue);
     const canReschedule = Boolean(session?.can_reschedule && !isHistorical);
-    const canEditAttendance = canCreateTeachingRecords && isInProgress && !isHistorical;
+    const workflowSummary = closureState?.workflow_summary ?? session?.workflow_summary ?? null;
+    const viewerCanAdvanceWorkflow = workflowSummary?.viewer_can_advance ?? canCreateTeachingRecords;
+    const canAdvanceTeachingWorkflow = canCreateTeachingRecords && viewerCanAdvanceWorkflow;
+    const canEditAttendance = canAdvanceTeachingWorkflow && isInProgress && !isHistorical;
     const midtermBreakPausesNormalStart = todayMode?.mode === 'MIDTERM_BREAK'
         && todayMode.allows_new_teaching === false
         && session?.session_type !== 'EXAM'
@@ -384,7 +412,7 @@ export function SessionDetailPage() {
         || 'Learner performance is required before this lesson can be closed.';
     const requiresClosureReflection = isInProgress && closureNextStep === 'REFLECTION';
     const canRecordEvidence = Boolean(
-        canCreateTeachingRecords &&
+        canAdvanceTeachingWorkflow &&
         isInProgress &&
         teachingWorkflow &&
         hasMarkedAttendance &&
@@ -676,6 +704,11 @@ export function SessionDetailPage() {
 
     const openCompletionSection = useCallback(() => {
         setGuidedSection('complete');
+    }, []);
+
+    const revealWorkflowSection = useCallback(() => {
+        setChecklistOpen(true);
+        window.setTimeout(() => scrollToSection('workflow-section'), 0);
     }, []);
 
     const resolveClosureTeachingWorkflowHref = useCallback(async () => {
@@ -1165,7 +1198,7 @@ export function SessionDetailPage() {
         ? `${attendanceMarkedCount}/${attendanceStats.total} learners marked`
         : 'No attendance records are available yet.';
     const plannedOutcomeCount = session?.planned_outcomes.length ?? 0;
-    const canEditTaughtOutcomes = isInProgress && hasMarkedAttendance && !isHistorical && !isCompleted && !confirmingTaughtOutcomes;
+    const canEditTaughtOutcomes = canAdvanceTeachingWorkflow && isInProgress && hasMarkedAttendance && !isHistorical && !isCompleted && !confirmingTaughtOutcomes;
     const allPlannedOutcomesSelected = session?.planned_outcomes.every(
         (outcome) => Boolean(taughtSelections[outcome.outcome_id])
     ) ?? false;
@@ -1178,6 +1211,7 @@ export function SessionDetailPage() {
     );
     const canConfirmTaughtOutcomes = (
         isInProgress
+        && canAdvanceTeachingWorkflow
         && hasMarkedAttendance
         && !isHistorical
         && !isCompleted
@@ -1286,7 +1320,7 @@ export function SessionDetailPage() {
             };
         }
 
-        if (closureNextStep === 'EVIDENCE' && !isCompleted && canCreateTeachingRecords) {
+        if (closureNextStep === 'EVIDENCE' && !isCompleted && canAdvanceTeachingWorkflow) {
             return {
                 label: 'Record learner performance',
                 type: canRecordEvidence && closureTeachingWorkflowHref ? 'navigate' as const : 'page_action' as const,
@@ -1301,7 +1335,7 @@ export function SessionDetailPage() {
             };
         }
 
-        if (closureNextStep === 'REFLECTION' && canCreateTeachingRecords) {
+        if (closureNextStep === 'REFLECTION' && canAdvanceTeachingWorkflow) {
             return {
                 label: 'Add lesson reflection',
                 type: 'page_action' as const,
@@ -1310,7 +1344,7 @@ export function SessionDetailPage() {
             };
         }
 
-        if (closureNextStep === 'READY' && isInProgress && canCreateTeachingRecords) {
+        if (closureNextStep === 'READY' && isInProgress && canAdvanceTeachingWorkflow) {
             return {
                 label: 'Close lesson record',
                 type: 'page_action' as const,
@@ -1332,7 +1366,7 @@ export function SessionDetailPage() {
         return undefined;
     }, [
         hasLessonPlan,
-        canCreateTeachingRecords,
+        canAdvanceTeachingWorkflow,
         canRecordEvidence,
         isCompleted,
         isCancelled,
@@ -1406,7 +1440,7 @@ export function SessionDetailPage() {
                     href: closureTeachingWorkflowHref,
                 }]
                 : []),
-            ...(canCreateTeachingRecords
+            ...(canAdvanceTeachingWorkflow
                 ? [{
                     label: 'Add lesson reflection',
                     type: 'page_action' as const,
@@ -1436,7 +1470,7 @@ export function SessionDetailPage() {
             : undefined,
     }), [
         currentWorkflowStep,
-        canCreateTeachingRecords,
+        canAdvanceTeachingWorkflow,
         canRecordEvidence,
         closureNextStep,
         closureReady,
@@ -1676,7 +1710,39 @@ export function SessionDetailPage() {
     const lessonTaskReturnTo = learnerTaskForLesson
         ? `/sessions/${session.id}?section=${lessonTaskReturnSection}&highlightAssignment=${learnerTaskForLesson.id}`
         : `/sessions/${session.id}?section=${lessonTaskReturnSection}`;
-    const currentActionTitle = isScheduled
+    const supervisedWorkflowStage = workflowSummary?.stage ?? (closureNextStep === 'INTERRUPTED' ? 'REQUIRES_REVIEW' : closureNextStep);
+    const supervisedWorkflowIsActive = [
+        'ATTENDANCE',
+        'TAUGHT_OUTCOMES',
+        'EVIDENCE',
+        'REFLECTION',
+        'READY',
+        'REQUIRES_REVIEW',
+    ].includes(supervisedWorkflowStage);
+    const isSupervisionOnlyWorkflow = Boolean(
+        !canAdvanceTeachingWorkflow
+        && !isCompleted
+        && !isCancelled
+        && supervisedWorkflowIsActive
+        && (workflowSummary?.action_owner ?? 'INSTRUCTOR') === 'INSTRUCTOR'
+    );
+    const supervisedStageLabel = workflowSummary?.stage_label ?? (
+        supervisedWorkflowStage === 'EVIDENCE'
+            ? 'Record learner performance'
+            : supervisedWorkflowStage === 'REFLECTION'
+                ? 'Add lesson reflection'
+                : supervisedWorkflowStage === 'READY'
+                    ? 'Ready to close'
+                    : supervisedWorkflowStage === 'ATTENDANCE'
+                        ? 'Take attendance'
+                        : supervisedWorkflowStage === 'TAUGHT_OUTCOMES'
+                            ? 'Confirm what was taught'
+                            : 'Review lesson record'
+    );
+    const supervisionMissingMessage = buildSupervisionMissingMessage(workflowSummary);
+    const currentActionTitle = isSupervisionOnlyWorkflow
+        ? (supervisedWorkflowStage === 'REQUIRES_REVIEW' ? 'Review lesson record' : 'Teacher action required')
+        : isScheduled
         ? 'Current action: get ready to teach'
         : isCancelled
             ? 'Current action: lesson cancelled'
@@ -1699,7 +1765,9 @@ export function SessionDetailPage() {
                                         : 'Current action: close lesson record'
                     )
                     : 'Current action: review completed lesson';
-    const currentActionDescription = isScheduled
+    const currentActionDescription = isSupervisionOnlyWorkflow
+        ? 'The assigned instructor must complete this lesson record.'
+        : isScheduled
         ? (hasPreparedTaskForLesson
             ? 'Lesson preparation is linked and the learner task is ready. Start from the lesson window when class begins.'
             : 'Review lesson preparation, prepare the learner task if needed, and start from the lesson window when class begins.')
@@ -1733,7 +1801,14 @@ export function SessionDetailPage() {
     }`;
     const currentActionPrimary = isCancelled
         ? null
-        : !canCreateTeachingRecords
+        : isSupervisionOnlyWorkflow
+            ? {
+                label: 'View lesson workflow',
+                onClick: revealWorkflowSection,
+                icon: <ClipboardCheck className="mr-1.5 h-4 w-4" />,
+                disabled: false,
+            }
+        : !canAdvanceTeachingWorkflow
             ? (hasLessonPlan
                 ? {
                     label: 'View lesson preparation',
@@ -1750,7 +1825,7 @@ export function SessionDetailPage() {
             label: isScheduledOverdue ? 'Start late' : 'Start lesson',
             onClick: handleStartLesson,
             icon: <PlayCircle className="mr-1.5 h-4 w-4" />,
-            disabled: !session.can_start_now || midtermBreakPausesNormalStart,
+            disabled: !session.can_start_now || midtermBreakPausesNormalStart || !canAdvanceTeachingWorkflow,
         }
         : isScheduled && hasLessonPlan
             ? {
@@ -1843,7 +1918,7 @@ export function SessionDetailPage() {
                                     disabled: issuingPreparedTask,
                                 }
                                 : null;
-    const currentActionSecondary = !canCreateTeachingRecords
+    const currentActionSecondary = !canAdvanceTeachingWorkflow
         ? null
         : currentWorkflowStep === 'complete'
         ? (
@@ -2124,7 +2199,17 @@ export function SessionDetailPage() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-2">
                             <h2 className="text-lg font-semibold theme-text">{currentActionTitle}</h2>
-                            <p className="text-sm theme-muted">{currentActionDescription}</p>
+                            {isSupervisionOnlyWorkflow ? (
+                                <div className="space-y-1 text-sm theme-muted">
+                                    <p>
+                                        <span className="font-medium theme-text">Current stage:</span> {supervisedStageLabel}
+                                    </p>
+                                    <p>{supervisionMissingMessage}</p>
+                                    <p>{currentActionDescription}</p>
+                                </div>
+                            ) : (
+                                <p className="text-sm theme-muted">{currentActionDescription}</p>
+                            )}
                         </div>
 
                         {currentActionPrimary ? (
@@ -2452,7 +2537,7 @@ export function SessionDetailPage() {
                             </div>
                         </Card>
 
-                        {requiresClosureReflection && canCreateTeachingRecords ? (
+                        {requiresClosureReflection && canAdvanceTeachingWorkflow ? (
                             <div id="lesson-reflection-section">
                                 <LessonReflectionCard
                                     sessionId={session.id}
