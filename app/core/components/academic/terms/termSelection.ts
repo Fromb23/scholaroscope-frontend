@@ -68,13 +68,10 @@ export function canEditTermCalendar({
     isHistoricalView,
     term,
 }: TermCalendarAccessContext): boolean {
-    return Boolean(
-        isAdminLike
-        && term
-        && !isHistoricalView
-        && isSelectableCurrentOrFutureTerm(term)
-        && !term.is_calendar_setup_complete
-    );
+    if (!isAdminLike || !term || isHistoricalView) return false;
+    if (term.actions?.can_complete_setup === false) return false;
+    if (term.actions?.can_complete_setup === true) return true;
+    return Boolean(isSelectableCurrentOrFutureTerm(term) && !term.is_calendar_setup_complete);
 }
 
 export function canReopenTermCalendar({
@@ -82,13 +79,10 @@ export function canReopenTermCalendar({
     isHistoricalView,
     term,
 }: TermCalendarAccessContext): boolean {
-    return Boolean(
-        isAdminLike
-        && term
-        && !isHistoricalView
-        && isSelectableCurrentOrFutureTerm(term)
-        && term.is_calendar_setup_complete
-    );
+    if (!isAdminLike || !term || isHistoricalView) return false;
+    if (term.actions?.can_reopen_setup === false) return false;
+    if (term.actions?.can_reopen_setup === true) return true;
+    return Boolean(isSelectableCurrentOrFutureTerm(term) && term.is_calendar_setup_complete);
 }
 
 export function isTermDetailLocked(context: TermCalendarAccessContext): boolean {
@@ -96,6 +90,5 @@ export function isTermDetailLocked(context: TermCalendarAccessContext): boolean 
         context.isAdminLike
         && context.term
         && !canEditTermCalendar(context)
-        && !canReopenTermCalendar(context)
     );
 }

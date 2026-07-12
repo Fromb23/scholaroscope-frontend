@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { reportsAPI } from '@/app/core/api/reporting';
+import { ReportComputeStreamFallbackError, reportsAPI } from '@/app/core/api/reporting';
 import { useTerms } from '@/app/core/hooks/useAcademic';
 import { resolveReportError } from '@/app/core/errors';
 import type { FormFieldErrors } from '@/app/core/forms';
 import type {
     ReportComputeJob,
+    ReportComputeMode,
     ReportComputeProgressEvent,
     ReportComputeReadiness,
     ReportReadinessRecommendation,
@@ -27,6 +28,7 @@ export interface ComputeResult {
 }
 
 type ComputeActionStatus = 'idle' | 'loading' | 'blocked' | 'success' | 'error';
+export type ComputeTransportState = 'idle' | 'connecting' | 'live' | 'disconnected' | 'polling' | 'restored';
 
 const TERMINAL_JOB_STATUSES = new Set(['COMPLETED', 'FAILED', 'BLOCKED']);
 
@@ -83,6 +85,35 @@ function progressFromJob(job: ReportComputeJob): ReportComputeProgressEvent {
     };
 }
 
+function mergeProgressEvent(
+    current: ReportComputeProgressEvent | null,
+    next: ReportComputeProgressEvent,
+): ReportComputeProgressEvent {
+    if (!current) return next;
+    const currentSequence = current.sequence ?? 0;
+    const nextSequence = next.sequence ?? currentSequence;
+    const progressPercent = Math.max(
+        Number(current.progress_percent ?? 0),
+        Number(next.progress_percent ?? 0),
+    );
+    const completedCount = Math.max(
+        Number(current.completed_count ?? 0),
+        Number(next.completed_count ?? 0),
+    );
+    return {
+        ...current,
+        ...next,
+        sequence: Math.max(currentSequence, nextSequence),
+        progress_percent: progressPercent,
+        completed_count: completedCount,
+        total_count: next.total_count ?? current.total_count,
+        created_count: Math.max(Number(current.created_count ?? 0), Number(next.created_count ?? 0)),
+        updated_count: Math.max(Number(current.updated_count ?? 0), Number(next.updated_count ?? 0)),
+        unchanged_count: Math.max(Number(current.unchanged_count ?? 0), Number(next.unchanged_count ?? 0)),
+        failed_count: Math.max(Number(current.failed_count ?? 0), Number(next.failed_count ?? 0)),
+    };
+}
+
 export function useComputePage() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -97,12 +128,14 @@ export function useComputePage() {
     const [job, setJob] = useState<ReportComputeJob | null>(null);
     const [progressEvent, setProgressEvent] = useState<ReportComputeProgressEvent | null>(null);
     const [streamFallback, setStreamFallback] = useState(false);
+    const [transportState, setTransportState] = useState<ComputeTransportState>('idle');
     const [globalError, setGlobalError] = useState<string | null>(null);
     const [fieldErrors, setFieldErrors] = useState<FormFieldErrors<'term'>>({});
     const [computeSheetOpen, setComputeSheetOpen] = useState(false);
     const [computeActionStatus, setComputeActionStatus] = useState<ComputeActionStatus>('idle');
     const [computeActionError, setComputeActionError] = useState<string | null>(null);
     const streamAbortRef = useRef<AbortController | null>(null);
+    const lastSequenceRef = useRef<number | null>(null);
 
     const { terms, loading: termsLoading } = useTerms();
     const selectedTermRecord = terms.find((term) => term.id === selectedTerm) ?? null;
@@ -166,6 +199,8 @@ export function useComputePage() {
         setJob(null);
         setProgressEvent(null);
         setStreamFallback(false);
+        setTransportState('idle');
+        lastSequenceRef.current = null;
         setComputeActionStatus('idle');
         setComputeActionError(null);
 
@@ -183,9 +218,10 @@ export function useComputePage() {
         let latest: ReportComputeJob | null = null;
         for (let attempt = 0; attempt < 120; attempt += 1) {
             await sleep(attempt < 3 ? 1000 : 2000);
-            latest = await reportsAPI.getComputeJob(jobId);
+            const fetched = await reportsAPI.getComputeJob(jobId);
+            latest = fetched;
             setJob(latest);
-            setProgressEvent(progressFromJob(latest));
+            setProgressEvent((current) => mergeProgressEvent(current, progressFromJob(fetched)));
             if (TERMINAL_JOB_STATUSES.has(latest.status)) {
                 return latest;
             }
@@ -193,7 +229,7 @@ export function useComputePage() {
         return latest;
     }, []);
 
-    const handleComputeReports = async () => {
+    const handleComputeReports = async (mode: ReportComputeMode = 'INCREMENTAL') => {
         if (!requireSelectedTerm()) return;
         const termId = selectedTerm;
         if (!termId) return;
@@ -219,12 +255,15 @@ export function useComputePage() {
             progress_percent: 0,
             completed_count: 0,
             total_count: null,
+            mode,
         });
         setStreamFallback(false);
+        setTransportState('connecting');
+        lastSequenceRef.current = null;
         try {
-            const createdJob = await reportsAPI.computeReports(termId);
+            const createdJob = await reportsAPI.computeReports(termId, mode);
             setJob(createdJob);
-            setProgressEvent(progressFromJob(createdJob));
+            setProgressEvent((current) => mergeProgressEvent(current, progressFromJob(createdJob)));
 
             if (createdJob.status === 'BLOCKED') {
                 setReadiness(createdJob.readiness ?? readiness);
@@ -240,6 +279,7 @@ export function useComputePage() {
 
             if (!createdJob.events_url) {
                 setStreamFallback(true);
+                setTransportState('polling');
                 finalJob = await pollComputeJob(createdJob.job_id);
             } else {
                 const controller = new AbortController();
@@ -248,7 +288,10 @@ export function useComputePage() {
 
                 try {
                     await reportsAPI.streamComputeJobEvents(createdJob.events_url, (event) => {
-                        setProgressEvent(event);
+                        if (typeof event.sequence === 'number') {
+                            lastSequenceRef.current = Math.max(lastSequenceRef.current ?? 0, event.sequence);
+                        }
+                        setProgressEvent((current) => mergeProgressEvent(current, event));
                         setJob((current) => (
                             current
                                 ? {
@@ -256,19 +299,38 @@ export function useComputePage() {
                                     status: event.status ?? current.status,
                                     stage: event.stage ?? current.stage,
                                     label: event.label ?? current.label,
-                                    progress_percent: event.progress_percent ?? current.progress_percent,
-                                    completed_count: event.completed_count ?? current.completed_count,
+                                    progress_percent: Math.max(
+                                        Number(event.progress_percent ?? 0),
+                                        Number(current.progress_percent ?? 0),
+                                    ),
+                                    completed_count: Math.max(
+                                        Number(event.completed_count ?? 0),
+                                        Number(current.completed_count ?? 0),
+                                    ),
                                     total_count: event.total_count ?? current.total_count,
                                 }
                                 : current
                         ));
-                    }, controller.signal);
-                    finalJob = await reportsAPI.getComputeJob(createdJob.job_id);
-                    setJob(finalJob);
-                    setProgressEvent(progressFromJob(finalJob));
-                } catch {
+                    }, controller.signal, {
+                        initialSequence: lastSequenceRef.current,
+                        onTransportState: (state) => {
+                            if (state === 'live' || state === 'restored') {
+                                setStreamFallback(false);
+                            }
+                            setTransportState(state);
+                        },
+                    });
+                    const fetchedFinalJob = await reportsAPI.getComputeJob(createdJob.job_id);
+                    finalJob = fetchedFinalJob;
+                    setJob(fetchedFinalJob);
+                    setProgressEvent((current) => mergeProgressEvent(current, progressFromJob(fetchedFinalJob)));
+                } catch (streamError) {
                     if (controller.signal.aborted) return;
+                    if (!(streamError instanceof ReportComputeStreamFallbackError)) {
+                        // Transport errors are handled by polling; computation state remains authoritative.
+                    }
                     setStreamFallback(true);
+                    setTransportState('polling');
                     finalJob = await pollComputeJob(createdJob.job_id);
                 }
             }
@@ -308,6 +370,9 @@ export function useComputePage() {
         } finally {
             streamAbortRef.current = null;
             setComputing(false);
+            setTransportState((current) => (
+                current === 'polling' || current === 'disconnected' ? current : 'idle'
+            ));
             await fetchReadiness(termId, { showPageError: false });
         }
     };
@@ -357,6 +422,7 @@ export function useComputePage() {
         job,
         progressEvent,
         streamFallback,
+        transportState,
         safeRecommendation,
         computeSheetOpen,
         computeActionStatus,

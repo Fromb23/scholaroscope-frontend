@@ -157,7 +157,7 @@ function getCalendarSetupBadge(term: Term) {
     if (term.is_calendar_setup_complete) {
         return {
             label: 'Calendar setup complete',
-            helper: 'Schemes can now be generated for this term',
+            helper: 'Term configuration locked',
             tone: 'success' as const,
         };
     }
@@ -585,6 +585,12 @@ export function TermsPage() {
         if (!selectedTerm) {
             return;
         }
+        const confirmed = window.confirm(
+            'Reopening setup allows changes to term dates and calendar events. Existing schemes may require review or regeneration.',
+        );
+        if (!confirmed) {
+            return;
+        }
 
         setPageError(null);
         try {
@@ -837,6 +843,12 @@ export function TermsPage() {
                                 <div>
                                     <p className="font-medium theme-text">{selectedTermCalendarBadge.label}</p>
                                     <p className="mt-1 theme-muted">{selectedTermCalendarBadge.helper}</p>
+                                    {selectedTerm.is_calendar_setup_complete ? (
+                                        <p className="mt-1 theme-muted">
+                                            The term dates and calendar are being used by schemes of work.
+                                            Reopen setup to make changes.
+                                        </p>
+                                    ) : null}
                                     {selectedTerm.is_calendar_setup_complete && selectedTerm.calendar_setup_completed_by_name ? (
                                         <p className="mt-2 text-xs theme-subtle">
                                             Completed by {selectedTerm.calendar_setup_completed_by_name}
@@ -869,12 +881,16 @@ export function TermsPage() {
                         <div className="flex items-start gap-3 rounded-xl border theme-border theme-surface-muted px-4 py-4 text-sm theme-text">
                             <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                             <div>
-                                <p className="font-medium">Term record locked</p>
+                                <p className="font-medium">
+                                    {selectedTerm.is_calendar_setup_complete ? 'Term configuration locked' : 'Term record locked'}
+                                </p>
                                 <p className="mt-1 theme-muted">
-                                    {termLockedReason(selectedTerm)
-                                        ?? (isHistoricalView || isTermPast(selectedTerm)
-                                            ? 'Historical terms stay read-only.'
-                                            : 'Reopen setup if you need to update the calendar before schemes move further into history.')}
+                                    {selectedTerm.is_calendar_setup_complete
+                                        ? 'The term dates and calendar are being used by schemes of work. Reopen setup to make changes.'
+                                        : termLockedReason(selectedTerm)
+                                            ?? (isHistoricalView || isTermPast(selectedTerm)
+                                                ? 'Historical terms stay read-only.'
+                                                : 'Reopen setup if you need to update the calendar before schemes move further into history.')}
                                 </p>
                             </div>
                         </div>

@@ -228,6 +228,7 @@ describe('academic term calendar access', () => {
         expect(termsPage).toContain('Add Calendar Event');
         expect(termsPage).toContain('Mark Setup Complete');
         expect(termsPage).toContain('{termDetailLocked ? (');
-        expect(termsPage).toContain('Term record locked');
+        expect(termsPage).toContain('Term configuration locked');
+        expect(termsPage).toContain('Existing schemes may require review or regeneration.');
     });
 });
