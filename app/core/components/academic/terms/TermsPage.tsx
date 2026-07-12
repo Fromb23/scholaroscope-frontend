@@ -45,6 +45,12 @@ import {
     getAcademicSetupPageState,
     withAcademicSetupMode,
 } from '@/app/core/lib/academicSetup';
+import {
+    canEditTermCalendar,
+    canReopenTermCalendar,
+    isTermDetailLocked,
+    resolveSelectedTermId,
+} from '@/app/core/components/academic/terms/termSelection';
 import type {
     Term,
     TermCalendarEvent,
@@ -387,24 +393,26 @@ export function TermsPage() {
         reopenCalendarSetup,
     } = useTerms(selectedYearId);
 
+    const visibleTerms = useMemo(
+        () => (
+            selectedYearId
+                ? terms.filter((term) => term.academic_year === selectedYearId)
+                : terms
+        ),
+        [selectedYearId, terms],
+    );
+
     useEffect(() => {
-        if (!terms.length) {
-            setSelectedTermId(null);
-            return;
-        }
-
-        if (selectedTermId && terms.some((term) => term.id === selectedTermId)) {
-            return;
-        }
-
-        setSelectedTermId(terms[0].id);
-    }, [selectedTermId, terms]);
+        setSelectedTermId((currentSelectedTermId) => (
+            resolveSelectedTermId(currentSelectedTermId, visibleTerms)
+        ));
+    }, [visibleTerms]);
 
     const selectedYear = academicYears.find((year) => year.id === selectedYearId);
     const isHistoricalView = selectedYear ? !selectedYear.is_current : false;
     const selectedTerm = useMemo(
-        () => terms.find((term) => term.id === selectedTermId) ?? null,
-        [selectedTermId, terms],
+        () => visibleTerms.find((term) => term.id === selectedTermId) ?? null,
+        [selectedTermId, visibleTerms],
     );
     const {
         events,
@@ -415,20 +423,14 @@ export function TermsPage() {
         deleteEvent,
     } = useTermCalendarEvents(selectedTerm?.id ?? null);
 
-    const calendarEditable = Boolean(
-        isAdminLike
-        && selectedTerm
-        && !isHistoricalView
-        && !isTermPast(selectedTerm)
-        && !selectedTerm.is_calendar_setup_complete
-    );
-    const calendarReopenable = Boolean(
-        isAdminLike
-        && selectedTerm
-        && !isHistoricalView
-        && !isTermPast(selectedTerm)
-        && selectedTerm.is_calendar_setup_complete
-    );
+    const calendarAccessContext = {
+        isAdminLike,
+        isHistoricalView,
+        term: selectedTerm,
+    };
+    const calendarEditable = canEditTermCalendar(calendarAccessContext);
+    const calendarReopenable = canReopenTermCalendar(calendarAccessContext);
+    const termDetailLocked = isTermDetailLocked(calendarAccessContext);
 
     const initialData = useMemo((): TermFormState => (
         editingTerm
@@ -444,9 +446,9 @@ export function TermsPage() {
                 academic_year: currentYear ? String(currentYear.id) : '',
                 start_date: '',
                 end_date: '',
-                sequence: terms.length + 1,
+                sequence: visibleTerms.length + 1,
             }
-    ), [editingTerm, currentYear, terms.length]);
+    ), [editingTerm, currentYear, visibleTerms.length]);
 
     const selectedTermCalendarBadge = selectedTerm ? getCalendarSetupBadge(selectedTerm) : null;
 
@@ -674,7 +676,7 @@ export function TermsPage() {
             <Card>
                 {loading ? (
                     <LoadingSpinner fullScreen={false} message="Loading terms..." />
-                ) : terms.length === 0 ? (
+                ) : visibleTerms.length === 0 ? (
                     <div className="py-12 text-center">
                         <Calendar className="mx-auto h-12 w-12 theme-subtle" />
                         <h3 className="mt-2 text-sm font-medium theme-text">No terms found</h3>
@@ -703,7 +705,7 @@ export function TermsPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {terms.map((term) => {
+                            {visibleTerms.map((term) => {
                                 const lifecycleBadge = getTermLifecycleBadge(term);
                                 const setupBadge = getCalendarSetupBadge(term);
                                 const selected = term.id === selectedTermId;
@@ -863,7 +865,7 @@ export function TermsPage() {
                         </div>
                     </div>
 
-                    {!calendarEditable && !calendarReopenable && isAdminLike ? (
+                    {termDetailLocked ? (
                         <div className="flex items-start gap-3 rounded-xl border theme-border theme-surface-muted px-4 py-4 text-sm theme-text">
                             <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                             <div>
