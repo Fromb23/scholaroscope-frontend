@@ -31,14 +31,30 @@ describe('SessionDetailPage attendance learner links', () => {
 
     expect(component).toContain('viewerActions');
     expect(component).toContain('showInternalRequestActions');
+    expect(component).toContain('concreteRequestActions');
     expect(component).toContain('can_request_reschedule');
     expect(component).toContain('can_request_cancellation');
     expect(component).toContain('can_request_attendance_help');
-    expect(component).toContain('viewerActions?.can_submit_admin_request');
+    expect(component).toContain('viewerActions?.can_submit_admin_request === true');
+    expect(component).toContain('concreteRequestActions.some(Boolean)');
     expect(component).not.toContain('(!canCreateTeachingRecords || isCompleted) && showInternalRequestActions');
     expect(component).toContain('Ask admin to reschedule');
     expect(component).toContain('Ask admin to cancel');
     expect(component).toContain('Ask admin about attendance');
+  });
+
+  it('rejects unsafe returnTo values on the session detail back link', () => {
+    const component = source();
+
+    expect(component).toContain('isSafeNextPath(returnTo) ? returnTo : \'/sessions\'');
+    expect(component).not.toContain('returnTo?.startsWith(\'/\') ? returnTo : \'/sessions\'');
+  });
+
+  it('does not render an empty internal request panel', () => {
+    const component = source();
+
+    expect(component).toContain('concreteRequestActions.some(Boolean)');
+    expect(component).toContain('{showInternalRequestActions ? (');
   });
 
   it('shows a read-only supervision card for unfinished instructor-owned workflow steps', () => {

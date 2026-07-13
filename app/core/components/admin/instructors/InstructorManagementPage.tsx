@@ -350,23 +350,21 @@ export function InstructorManagementPage() {
     });
 
     const buildProgressHref = (id: number) => {
+        const params = new URLSearchParams({
+            returnTo: currentReturnTo,
+        });
+
         if (!hasTeachingContext) {
-            return `/admin/instructors/${id}/progress`;
+            return `/admin/instructors/${id}/progress?${params.toString()}`;
         }
 
-        const params = new URLSearchParams({
-            cohort_subject_id: selectedCohortSubjectId ?? '',
-            cohort_name: selectedCohortName ?? '',
-            subject_name: selectedSubjectName ?? '',
-            open: 'teaching',
-        });
+        params.set('cohort_subject_id', selectedCohortSubjectId ?? '');
+        params.set('cohort_name', selectedCohortName ?? '');
+        params.set('subject_name', selectedSubjectName ?? '');
+        params.set('open', 'teaching');
 
         if (selectedSubjectSource) {
             params.set('subject_source', selectedSubjectSource);
-        }
-
-        if (returnTo) {
-            params.set('returnTo', returnTo);
         }
 
         if (preservedContextQuery) {

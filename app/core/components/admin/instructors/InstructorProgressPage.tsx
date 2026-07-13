@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft, Calendar, Users, CheckCircle,
     AlertCircle, Award, GraduationCap, Pencil,
@@ -18,7 +18,6 @@ import { instructorsAPI } from '@/app/core/api/instructors';
 import {
     useInstructorProgress,
 } from '@/app/core/hooks/useInstructorProgress';
-import { useBackNavigation } from '@/app/core/hooks/useBackNavigation';
 import {
     EditModal,
     ResetPasswordModal,
@@ -31,6 +30,7 @@ import {
     TeachingAssignmentsList,
 } from '@/app/core/components/instructors/InstructorProgressComponents';
 import { buildInstructorReportHref } from '@/app/core/components/reports/reportNavigation';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 import type { UserUpdatePayload } from '@/app/core/types/globalUsers';
 import {
     globalStatusLabel,
@@ -40,12 +40,41 @@ import {
     resolveGlobalStatus,
 } from '@/app/core/types/globalUsers';
 
+function positiveNumberParam(value: string | null) {
+    if (!value) return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function resolveProgressBackTarget(returnTo: string | null) {
+    const safeReturnTo = isSafeNextPath(returnTo) ? returnTo : null;
+
+    if (safeReturnTo?.startsWith('/admin/lesson-plans')) {
+        return {
+            label: 'Back to Lesson Plan Review',
+            href: safeReturnTo,
+        };
+    }
+
+    if (safeReturnTo?.startsWith('/admin/instructors')) {
+        return {
+            label: 'Back to Staff',
+            href: safeReturnTo,
+        };
+    }
+
+    return {
+        label: 'Back to Staff',
+        href: '/admin/instructors',
+    };
+}
+
 export default function InstructorProgressPage() {
     const params = useParams();
+    const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
     const instructorId = Number(params.id);
-    const goBack = useBackNavigation('/admin/instructors');
     const initialCohortSubjectId = Number(searchParams.get('cohort_subject_id'));
     const hasInitialCohortSubjectId = Number.isFinite(initialCohortSubjectId) && initialCohortSubjectId > 0;
     const initialCohortName = searchParams.get('cohort_name');
@@ -56,7 +85,7 @@ export default function InstructorProgressPage() {
     const {
         instructor, sessions, loading, error,
         refetch, teachingAssignments, cbcTeachingAssignments,
-        sessionStats, attendanceStats, lessonPlans, schemes,
+        sessionStats, attendanceStats, schemes,
     } = useInstructorProgress(instructorId);
 
     const [submitting, setSubmitting] = useState(false);
@@ -65,8 +94,33 @@ export default function InstructorProgressPage() {
     const [resetOpen, setResetOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [cohortOpen, setCohortOpen] = useState(false);
-    const [expandedLessonPlanTerms, setExpandedLessonPlanTerms] = useState<Set<string>>(new Set());
     const [expandedSchemeTerms, setExpandedSchemeTerms] = useState<Set<string>>(new Set());
+    const progressBackTarget = useMemo(
+        () => resolveProgressBackTarget(searchParams.get('returnTo')),
+        [searchParams]
+    );
+    const progressReturnTo = useMemo(() => {
+        const query = searchParams.toString();
+        return `${pathname}${query ? `?${query}` : ''}#sessions`;
+    }, [pathname, searchParams]);
+    const planningReviewScope = useMemo(() => {
+        if (searchParams.get('source') !== 'lesson-plan-review') {
+            return undefined;
+        }
+        const startDate = searchParams.get('review_start_date');
+        const endDate = searchParams.get('review_end_date');
+        if (!startDate || !endDate) {
+            return undefined;
+        }
+
+        return {
+            startDate,
+            endDate,
+            termId: positiveNumberParam(searchParams.get('review_term_id')),
+            subjectId: positiveNumberParam(searchParams.get('review_subject_id')),
+            cohortId: positiveNumberParam(searchParams.get('review_cohort_id')),
+        };
+    }, [searchParams]);
 
     useEffect(() => {
         if (shouldOpenTeachingModal) {
@@ -82,7 +136,7 @@ export default function InstructorProgressPage() {
         if (target) {
             window.requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
         }
-    }, [lessonPlans.length, loading, schemes.length, sessions.length]);
+    }, [loading, schemes.length, sessions.length]);
 
     const flash = (type: 'success' | 'error', msg: string) => {
         setFeedback({ type, msg });
@@ -145,7 +199,7 @@ export default function InstructorProgressPage() {
             <div className="text-center">
                 <AlertCircle className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">{error ?? 'Staff member not found'}</p>
-                <Button variant="secondary" className="mt-3" onClick={goBack}>Back</Button>
+                <Button variant="secondary" className="mt-3" onClick={() => router.push(progressBackTarget.href)}>Back</Button>
             </div>
         </div>
     );
@@ -160,12 +214,6 @@ export default function InstructorProgressPage() {
         { label: 'Absent', value: attendanceStats.absent, color: 'text-red-600' },
         { label: 'Late', value: attendanceStats.late, color: 'text-yellow-600' },
     ];
-    const groupedLessonPlans = lessonPlans.reduce<Record<string, typeof lessonPlans>>((groups, plan) => {
-        const key = plan.term?.name || 'No term assigned';
-        groups[key] = groups[key] ?? [];
-        groups[key].push(plan);
-        return groups;
-    }, {});
     const groupedSchemes = schemes.reduce<Record<string, typeof schemes>>((groups, scheme) => {
         const key = scheme.term?.name || 'No term assigned';
         groups[key] = groups[key] ?? [];
@@ -175,8 +223,8 @@ export default function InstructorProgressPage() {
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
-            <Button variant="ghost" size="sm" onClick={goBack}>
-                <ArrowLeft className="h-4 w-4 mr-2" />Back to Staff
+            <Button variant="ghost" size="sm" onClick={() => router.push(progressBackTarget.href)}>
+                <ArrowLeft className="h-4 w-4 mr-2" />{progressBackTarget.label}
             </Button>
 
             {feedback && (
@@ -285,7 +333,7 @@ export default function InstructorProgressPage() {
             </StatStrip>
 
             {/* Attendance */}
-            <Card id="sessions">
+            <Card>
                 <div className="p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Users className="h-5 w-5 text-blue-500" />
@@ -314,88 +362,14 @@ export default function InstructorProgressPage() {
                         <CbcProgressAssignments
                             assignments={cbcTeachingAssignments}
                             instructorId={instructorId}
-                            returnTo={`/admin/instructors/${instructorId}/progress`}
+                            returnTo={progressReturnTo}
                         />
                     </div>
                 </Card>
             )}
 
-            <Card id="lesson-plans">
-                <div className="p-6">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                            <BookOpen className="h-5 w-5 text-emerald-500" />
-                            <h2 className="text-lg font-semibold text-gray-900">Lesson Plans</h2>
-                            <Badge variant="info" size="sm">{lessonPlans.length} total</Badge>
-                        </div>
-                    </div>
-                    {lessonPlans.length === 0 ? (
-                        <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-                            No lesson plans have been prepared by this teacher yet.
-                        </p>
-                    ) : (
-                        <div className="space-y-4">
-                            {Object.entries(groupedLessonPlans).map(([termName, items], index) => {
-                                const expanded = index === 0 || expandedLessonPlanTerms.has(termName);
-                                const visibleItems = expanded ? items : items.slice(0, 5);
-                                return (
-                                <div key={termName} className="rounded-xl border border-gray-200">
-                                    <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2">
-                                        <p className="text-sm font-semibold text-gray-900">{termName}</p>
-                                        <span className="text-xs text-gray-500">{items.length} plan{items.length === 1 ? '' : 's'}</span>
-                                    </div>
-                                    <div className="divide-y divide-gray-100">
-                                        {visibleItems.map((plan) => (
-                                            <div key={plan.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
-                                                <div className="min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <p className="truncate text-sm font-medium text-gray-900">{plan.title}</p>
-                                                        <Badge
-                                                            variant={plan.status === 'USED' || plan.status === 'SCHEDULED' ? 'success' : plan.status === 'DRAFT' ? 'warning' : 'default'}
-                                                            size="sm"
-                                                        >
-                                                            {plan.status_label || plan.status}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="mt-1 text-xs text-gray-500">
-                                                        {[plan.cohort?.name, plan.subject?.name, plan.session_date || plan.planned_date].filter(Boolean).join(' · ') || 'Class subject not assigned'}
-                                                    </p>
-                                                </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    <Link href={`/lesson-plans/${plan.id}`}>
-                                                        <Button size="sm" variant="secondary">View plan</Button>
-                                                    </Link>
-                                                    {plan.session_id ? (
-                                                        <Link href={`/sessions/${plan.session_id}`}>
-                                                            <Button size="sm" variant="ghost">View lesson</Button>
-                                                        </Link>
-                                                    ) : null}
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {!expanded && items.length > 5 ? (
-                                            <div className="px-4 py-3">
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => setExpandedLessonPlanTerms((current) => new Set(current).add(termName))}
-                                                >
-                                                    Show all
-                                                </Button>
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            );
-                            })}
-                        </div>
-                    )}
-                </div>
-            </Card>
-
             {/* Sessions */}
-            <Card>
+            <Card id="sessions">
                 <div className="p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Calendar className="h-5 w-5 text-blue-500" />
@@ -404,7 +378,8 @@ export default function InstructorProgressPage() {
                     </div>
                     <GroupedSessions
                         sessions={sessions}
-                        returnTo={`/admin/instructors/${instructorId}/progress`}
+                        returnTo={progressReturnTo}
+                        planningReviewScope={planningReviewScope}
                     />
                 </div>
             </Card>

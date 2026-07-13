@@ -14,10 +14,12 @@ describe('useInstructorProgress session scope', () => {
     expect(hookSource).not.toContain('shouldFilterByCreatorId');
   });
 
-  it('loads planning drill-downs through server-filtered instructor endpoints', () => {
-    expect(hookSource).toContain('lessonPlanAPI.getInstructorLessonPlans(instructorId)');
+  it('loads schemes but not the removed instructor lesson-plan drilldown', () => {
     expect(hookSource).toContain('schemesAPI.getInstructorSchemes(instructorId)');
-    expect(hookSource).toContain('setLessonPlans(lessonPlanData.results)');
+    expect(hookSource).not.toContain('lessonPlanAPI');
+    expect(hookSource).not.toContain('getInstructorLessonPlans');
+    expect(hookSource).not.toContain('setLessonPlans');
+    expect(hookSource).not.toContain('lessonPlans,');
     expect(hookSource).not.toContain("schemesAPI.listSchemes({ teacher: instructorId })");
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
@@ -15,6 +15,7 @@ import { resolveTeachingError } from '@/app/core/errors';
 import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useSubjects, useTerms, useCurrentTerm } from '@/app/core/hooks/useAcademic';
 import { useLessonPlanCompliance } from '@/app/core/hooks/useLessonPlans';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 import type { LessonPlanComplianceQueryParams, LessonPlanComplianceRow } from '@/app/core/types/lessonPlans';
 
 const WINDOW_OPTIONS = [
@@ -51,6 +52,7 @@ function toNumber(value: string | null): number | undefined {
 
 export function LessonPlanComplianceOverview() {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
     const { terms } = useTerms();
     const { currentTerm } = useCurrentTerm();
@@ -82,6 +84,15 @@ export function LessonPlanComplianceOverview() {
         };
     }, [page, searchParams, termId, windowValue]);
     const { data, loading, error } = useLessonPlanCompliance(queryParams);
+    const currentReviewHref = useMemo(() => {
+        const next = new URLSearchParams(searchParams.toString());
+        if (termId) {
+            next.set('term_id', termId);
+        }
+        next.set('window', next.get('window') || windowValue || 'week');
+        const query = next.toString();
+        return `${pathname}${query ? `?${query}` : ''}`;
+    }, [pathname, searchParams, termId, windowValue]);
     const resolvedError = error
         ? resolveTeachingError(error, {
             action: 'load',
@@ -100,6 +111,31 @@ export function LessonPlanComplianceOverview() {
 
     const setCompliance = (value: string) => updateParam('compliance', value);
     const summary = data?.summary;
+    const buildInstructorProgressHref = (row: LessonPlanComplianceRow) => {
+        const reviewReturnTo = isSafeNextPath(currentReviewHref) ? currentReviewHref : '/admin/lesson-plans';
+        const params = new URLSearchParams({
+            source: 'lesson-plan-review',
+            returnTo: reviewReturnTo,
+        });
+        if (termId) {
+            params.set('review_term_id', String(termId));
+        }
+        if (data?.window.start_date) {
+            params.set('review_start_date', data.window.start_date);
+        }
+        if (data?.window.end_date) {
+            params.set('review_end_date', data.window.end_date);
+        }
+        const subjectId = searchParams.get('subject_id');
+        const cohortId = searchParams.get('cohort_id');
+        if (subjectId) {
+            params.set('review_subject_id', subjectId);
+        }
+        if (cohortId) {
+            params.set('review_cohort_id', cohortId);
+        }
+        return `/admin/instructors/${row.instructor_id}/progress?${params.toString()}#sessions`;
+    };
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
@@ -204,7 +240,7 @@ export function LessonPlanComplianceOverview() {
                             {(data?.results ?? []).map((row) => (
                                 <TableRow
                                     key={row.instructor_id}
-                                    onClick={() => router.push(`/admin/instructors/${row.instructor_id}/progress#lesson-plans`)}
+                                    onClick={() => router.push(buildInstructorProgressHref(row))}
                                 >
                                     <TableCell>
                                         <div>
