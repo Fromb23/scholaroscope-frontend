@@ -16,6 +16,7 @@ import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import Modal from '@/app/components/ui/Modal';
 import { Select } from '@/app/components/ui/Select';
 import { LessonPlanStatusBadge } from '@/app/core/components/lessonPlans/LessonPlanStatusBadge';
+import { LessonPlanComplianceOverview } from '@/app/core/components/lessonPlans/LessonPlanComplianceOverview';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useAcademicTodayMode } from '@/app/core/hooks/useAcademicTodayMode';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
@@ -405,6 +406,8 @@ export function LessonPlansPage() {
     const [rowActionFeedback, setRowActionFeedback] = useState<Record<number, RowActionFeedback>>({});
     const [reflection, setReflection] = useState('');
     const [markUsedError, setMarkUsedError] = useState<string | null>(null);
+    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
+    const institutionComplianceMode = showInstitutionSupervision && !effectiveMyTeachingMode;
     const lessonPlanFilters = useMemo(() => ({
         status: statusFilter || undefined,
         term: toOptionalNumber(termFilter),
@@ -421,7 +424,7 @@ export function LessonPlansPage() {
         markUsed,
         archive,
         restore,
-    } = useLessonPlans(lessonPlanFilters);
+    } = useLessonPlans(lessonPlanFilters, { enabled: !institutionComplianceMode });
     const {
         target: markUsedTarget,
         isOpen: isMarkUsedOpen,
@@ -460,7 +463,6 @@ export function LessonPlansPage() {
         }
     }, [canUseMyTeaching, isSelfManagedTeaching, viewMode]);
 
-    const effectiveMyTeachingMode = isInstructor || (canUseMyTeaching && (isSelfManagedTeaching || viewMode === 'my_teaching'));
     const shouldFilterToMyTeaching = showInstitutionSupervision && effectiveMyTeachingMode;
     const useGroupedLessonPlanView = (showInstitutionSupervision && !effectiveMyTeachingMode) || isSelfManagedTeaching;
     const assignedCohortSubjectOptions = useMemo(() => (
@@ -875,6 +877,10 @@ export function LessonPlansPage() {
             </Card>
         );
     };
+
+    if (institutionComplianceMode) {
+        return <LessonPlanComplianceOverview />;
+    }
 
     if (loading && lessonPlans.length === 0) {
         return <LoadingSpinner message="Loading lesson plans..." fullScreen={false} />;

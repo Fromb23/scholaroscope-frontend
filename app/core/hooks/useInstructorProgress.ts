@@ -11,8 +11,10 @@ import type { PaginatedResponse } from '@/app/core/api/sessions';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
 import { schemesAPI } from '@/app/core/api/schemes';
+import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import type { Session } from '@/app/core/types/session';
-import type { SchemeOfWork } from '@/app/core/types/schemes';
+import type { InstructorLessonPlanDrilldownItem } from '@/app/core/types/lessonPlans';
+import type { InstructorSchemeDrilldownItem } from '@/app/core/types/schemes';
 
 export interface SessionStats {
     total: number;
@@ -79,7 +81,8 @@ export function getTeachingAssignmentKey(assignment: TeachingAssignmentIdentity)
 export function useInstructorProgress(instructorId: number) {
     const [instructor, setInstructor] = useState<InstructorProfile | null>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
-    const [schemes, setSchemes] = useState<SchemeOfWork[]>([]);
+    const [lessonPlans, setLessonPlans] = useState<InstructorLessonPlanDrilldownItem[]>([]);
+    const [schemes, setSchemes] = useState<InstructorSchemeDrilldownItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -99,8 +102,12 @@ export function useInstructorProgress(instructorId: number) {
                 : (sessionsData as PaginatedResponse<Session>)?.results ?? [];
             setSessions(allSessions);
 
-            const schemesData = await schemesAPI.listSchemes({ teacher: instructorId });
-            setSchemes(Array.isArray(schemesData) ? schemesData : (schemesData.results ?? []));
+            const [lessonPlanData, schemesData] = await Promise.all([
+                lessonPlanAPI.getInstructorLessonPlans(instructorId),
+                schemesAPI.getInstructorSchemes(instructorId),
+            ]);
+            setLessonPlans(lessonPlanData.results);
+            setSchemes(schemesData.results);
         } catch {
             if (showLoadingState) {
                 setError('Failed to load instructor data');
@@ -167,6 +174,7 @@ export function useInstructorProgress(instructorId: number) {
     return {
         instructor,
         sessions,
+        lessonPlans,
         schemes,
         loading,
         error,

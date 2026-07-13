@@ -3,8 +3,11 @@ import { downloadBlob, getDownloadFileName, normalizeBlobError } from '@/app/cor
 import { withOperationalScope } from '@/app/core/lib/academicScope';
 import type {
   GenerateSchemePayload,
+  InstructorSchemeDrilldown,
   SchemeEntry,
   SchemeEntryUpdatePayload,
+  SchemeComplianceQueryParams,
+  SchemeComplianceResponse,
   SchemeExportResponse,
   SchemeListQueryParams,
   SchemeListResponse,
@@ -42,6 +45,27 @@ export const schemesAPI = {
     const response = await apiClient.get<SchemeListResponse>(`${SCHEMES_BASE_PATH}/`, {
       params: withOperationalScope(params),
     });
+    return response.data;
+  },
+
+  getCompliance: async (
+    params: SchemeComplianceQueryParams,
+  ): Promise<SchemeComplianceResponse> => {
+    const response = await apiClient.get<SchemeComplianceResponse>(
+      '/admin/schemes/compliance/',
+      { params },
+    );
+    return response.data;
+  },
+
+  getInstructorSchemes: async (
+    instructorId: number,
+    params?: { term_id?: number | string; subject_id?: number | string },
+  ): Promise<InstructorSchemeDrilldown> => {
+    const response = await apiClient.get<InstructorSchemeDrilldown>(
+      `/admin/instructors/${instructorId}/schemes/`,
+      { params },
+    );
     return response.data;
   },
 

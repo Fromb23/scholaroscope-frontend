@@ -356,7 +356,7 @@ export function getAdminNav(
         { name: 'Staff', href: '/admin/instructors', icon: UserCog },
         { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
-        { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
+        { name: 'Lesson Plan Review', href: '/admin/lesson-plans', icon: FileText },
         {
           name: 'Assessment Overview',
           shortName: 'Assess',
@@ -394,7 +394,7 @@ export function getAdminNav(
         { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
         { name: 'Tutors', href: '/admin/instructors', icon: UserCog },
         { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
-        { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
+        { name: 'Lesson Plan Review', href: '/admin/lesson-plans', icon: FileText },
         {
           name: 'Reports',
           shortName: 'Reports',
@@ -420,7 +420,7 @@ export function getAdminNav(
       { name: 'Staff', href: '/admin/instructors', icon: UserCog },
       { name: 'Learners', shortName: 'Learners', href: '/learners', icon: Users, mobilePriority: 2 },
       { name: 'Lesson Supervision', href: '/sessions', icon: Calendar },
-      { name: 'Lesson Plan Review', href: '/lesson-plans', icon: FileText },
+      { name: 'Lesson Plan Review', href: '/admin/lesson-plans', icon: FileText },
       {
         name: 'Assessment Overview',
         shortName: 'Assess',

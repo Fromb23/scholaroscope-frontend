@@ -122,6 +122,93 @@ export interface SchemeOfWork {
     entries?: SchemeEntry[];
 }
 
+export type SchemeComplianceStatus =
+    | 'COMPLETE'
+    | 'PARTIAL'
+    | 'MISSING'
+    | 'NEEDS_REVIEW'
+    | 'NOT_EXPECTED';
+
+export interface SchemeComplianceSummary {
+    total_instructors: number;
+    complete: number;
+    partial: number;
+    missing: number;
+    needs_review: number;
+}
+
+export interface SchemeComplianceRow {
+    instructor_id: number;
+    instructor_name: string;
+    instructor_email: string;
+    subjects: Array<{ id: number | null; name: string }>;
+    cohorts: Array<{ id: number | null; name: string }>;
+    expected: number;
+    submitted: number;
+    generated: number;
+    draft: number;
+    missing: number;
+    needs_review: number;
+    compliance_percentage: number;
+    status: SchemeComplianceStatus;
+    status_label: string;
+}
+
+export interface SchemeComplianceResponse {
+    term: {
+        id: number;
+        name: string;
+    };
+    summary: SchemeComplianceSummary;
+    results: SchemeComplianceRow[];
+    pagination: {
+        count: number;
+        next: number | null;
+        previous: number | null;
+    };
+}
+
+export interface SchemeComplianceQueryParams {
+    term_id: number | string;
+    subject_id?: number | string;
+    cohort_id?: number | string;
+    search?: string;
+    compliance?: SchemeComplianceStatus | '';
+    page?: number;
+    page_size?: number;
+    ordering?: string;
+}
+
+export interface InstructorSchemeDrilldownItem {
+    id: number;
+    title: string;
+    cohort_subject_id: number | null;
+    status: SchemeStatus;
+    status_label: string;
+    calendar_needs_review: boolean;
+    calendar_review_reason: string;
+    term: {
+        id: number;
+        name: string;
+        start_date: string;
+        end_date: string;
+    } | null;
+    cohort: { id: number | null; name: string } | null;
+    subject: { id: number | null; name: string } | null;
+    updated_at: string | null;
+    generated_at: string | null;
+}
+
+export interface InstructorSchemeDrilldown {
+    instructor: {
+        id: number;
+        name: string;
+        email: string;
+    };
+    total: number;
+    results: InstructorSchemeDrilldownItem[];
+}
+
 export interface SchemeListQueryParams {
     scope?: OperationalScope;
     term?: number | string;

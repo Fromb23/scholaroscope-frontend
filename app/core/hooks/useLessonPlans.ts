@@ -15,6 +15,8 @@ import type {
     GenerateLessonPlanResponse,
     LessonPlanAssignmentDraftResponse,
     LessonPlan,
+    LessonPlanComplianceQueryParams,
+    LessonPlanComplianceResponse,
     LessonPlanCreatePayload,
     LessonPlanQueryParams,
     LessonPlanUpdatePayload,
@@ -94,9 +96,13 @@ function replaceLessonPlan(items: LessonPlan[], updated: LessonPlan): LessonPlan
     return [updated, ...items];
 }
 
-export const useLessonPlans = (params?: LessonPlanQueryParams) => {
+export const useLessonPlans = (
+    params?: LessonPlanQueryParams,
+    options: { enabled?: boolean } = {},
+) => {
+    const enabled = options.enabled ?? true;
     const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(enabled);
     const [error, setError] = useState<string | null>(null);
     const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
@@ -130,6 +136,14 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
     );
 
     const fetchLessonPlans = useCallback(async () => {
+        if (!enabled) {
+            setLessonPlans([]);
+            setLoading(false);
+            setError(null);
+            setErrorStatus(null);
+            return;
+        }
+
         try {
             setLoading(true);
             const data = await lessonPlanAPI.getAll(requestFilters);
@@ -144,7 +158,7 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
         } finally {
             setLoading(false);
         }
-    }, [requestFilters]);
+    }, [enabled, requestFilters]);
 
     useEffect(() => {
         void fetchLessonPlans();
@@ -152,9 +166,11 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
 
     useEffect(() => {
         return subscribeToLessonPlanDataChanged(() => {
-            void fetchLessonPlans();
+            if (enabled) {
+                void fetchLessonPlans();
+            }
         });
-    }, [fetchLessonPlans]);
+    }, [enabled, fetchLessonPlans]);
 
     const createLessonPlan = async (payload: LessonPlanCreatePayload): Promise<LessonPlan> => {
         try {
@@ -242,6 +258,44 @@ export const useLessonPlans = (params?: LessonPlanQueryParams) => {
         restore,
     };
 };
+
+export function useLessonPlanCompliance(params: LessonPlanComplianceQueryParams | null) {
+    const [data, setData] = useState<LessonPlanComplianceResponse | null>(null);
+    const [loading, setLoading] = useState(Boolean(params));
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchCompliance = useCallback(async () => {
+        if (!params) {
+            setData(null);
+            setLoading(false);
+            setError(null);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const response = await lessonPlanAPI.getCompliance(params);
+            setData(response);
+            setError(null);
+        } catch (err) {
+            setData(null);
+            setError(extractErrorMessage(err as ApiError, 'We could not load lesson plan compliance.'));
+        } finally {
+            setLoading(false);
+        }
+    }, [params]);
+
+    useEffect(() => {
+        void fetchCompliance();
+    }, [fetchCompliance]);
+
+    return {
+        data,
+        loading,
+        error,
+        refetch: fetchCompliance,
+    };
+}
 
 export const useLessonPlanDetail = (lessonPlanId: number | null) => {
     const [lessonPlan, setLessonPlan] = useState<LessonPlan | null>(null);

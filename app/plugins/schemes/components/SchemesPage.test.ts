@@ -6,10 +6,10 @@ describe('SchemesPage supervision rules', () => {
   it('keeps institutional admins in supervision mode without draft creation', () => {
     const source = readFileSync(join(process.cwd(), 'app/plugins/schemes/components/SchemesPage.tsx'), 'utf8');
 
-    expect(source).toContain('Schemes of Work Supervision');
+    expect(source).toContain('SchemeComplianceOverview');
     expect(source).toContain('isInstitutionalAdminSupervisor');
+    expect(source).toContain('institutionComplianceMode');
     expect(source).toContain('showCreateDraft');
-    expect(source).toContain('Instructor progress');
-    expect(source).toContain('/admin/instructors/${scheme.teacher}/progress');
+    expect(source).toContain('enabled: !institutionComplianceMode');
   });
 });

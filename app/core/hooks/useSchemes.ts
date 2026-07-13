@@ -9,6 +9,8 @@ import type {
   GenerateSchemePayload,
   SchemeEntry,
   SchemeEntryUpdatePayload,
+  SchemeComplianceQueryParams,
+  SchemeComplianceResponse,
   SchemeListQueryParams,
   SchemeOfWork,
   SchemeSubjectStrandOption,
@@ -39,12 +41,23 @@ function getSchemeDetailMessage(error: ApiError): string {
   return extractErrorMessage(error, 'We could not load this scheme of work. Try again.');
 }
 
-export function useSchemes(params?: SchemeListQueryParams) {
+export function useSchemes(
+  params?: SchemeListQueryParams,
+  options: { enabled?: boolean } = {},
+) {
+  const enabled = options.enabled ?? true;
   const [schemes, setSchemes] = useState<SchemeOfWork[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSchemes = useCallback(async () => {
+    if (!enabled) {
+      setSchemes([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await schemesAPI.listSchemes(withOperationalScope(params));
@@ -56,7 +69,7 @@ export function useSchemes(params?: SchemeListQueryParams) {
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [enabled, params]);
 
   useEffect(() => {
     void fetchSchemes();
@@ -79,6 +92,44 @@ export function useSchemes(params?: SchemeListQueryParams) {
     refetch: fetchSchemes,
     downloadScheme: downloadSchemeDocx,
     downloadSchemeDocx,
+  };
+}
+
+export function useSchemeCompliance(params: SchemeComplianceQueryParams | null) {
+  const [data, setData] = useState<SchemeComplianceResponse | null>(null);
+  const [loading, setLoading] = useState(Boolean(params));
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCompliance = useCallback(async () => {
+    if (!params) {
+      setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await schemesAPI.getCompliance(params);
+      setData(response);
+      setError(null);
+    } catch (err) {
+      setData(null);
+      setError(extractErrorMessage(err as ApiError, 'We could not load scheme compliance.'));
+    } finally {
+      setLoading(false);
+    }
+  }, [params]);
+
+  useEffect(() => {
+    void fetchCompliance();
+  }, [fetchCompliance]);
+
+  return {
+    data,
+    loading,
+    error,
+    refetch: fetchCompliance,
   };
 }
 

@@ -29,10 +29,16 @@ describe('SessionDetailPage attendance learner links', () => {
   it('keeps session ask-admin actions behind backend workspace governance', () => {
     const component = source();
 
-    expect(component).toContain('supportsInternalRequests');
+    expect(component).toContain('viewerActions');
     expect(component).toContain('showInternalRequestActions');
-    expect(component).toContain('(!canCreateTeachingRecords || isCompleted) && showInternalRequestActions');
+    expect(component).toContain('can_request_reschedule');
+    expect(component).toContain('can_request_cancellation');
+    expect(component).toContain('can_request_attendance_help');
+    expect(component).toContain('viewerActions?.can_submit_admin_request');
+    expect(component).not.toContain('(!canCreateTeachingRecords || isCompleted) && showInternalRequestActions');
     expect(component).toContain('Ask admin to reschedule');
+    expect(component).toContain('Ask admin to cancel');
+    expect(component).toContain('Ask admin about attendance');
   });
 
   it('shows a read-only supervision card for unfinished instructor-owned workflow steps', () => {

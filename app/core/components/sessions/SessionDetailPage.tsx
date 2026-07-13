@@ -73,7 +73,6 @@ import {
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { buildSessionLearnerAttendanceReportHref } from '@/app/core/lib/learnerIntentRoutes';
-import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 type SessionPageNotice = {
@@ -279,7 +278,6 @@ export function SessionDetailPage() {
     const { activeOrg, activeRole, user, capabilities } = useAuth();
     const { data: todayMode } = useAcademicTodayMode({ enabled: Boolean(user) });
     const isInstructor = activeRole === 'INSTRUCTOR';
-    const showInternalRequestActions = supportsInternalRequests(capabilities);
     const canCreateTeachingRecords = canCreateTeachingRecord({
         role: activeRole,
         orgType: activeOrg?.org_type,
@@ -354,8 +352,19 @@ export function SessionDetailPage() {
     const needsCompletion = Boolean(session?.needs_completion || isInProgressOverdue);
     const canReschedule = Boolean(session?.can_reschedule && !isHistorical);
     const workflowSummary = closureState?.workflow_summary ?? session?.workflow_summary ?? null;
+    const viewerActions = session?.viewer_actions ?? closureState?.viewer_actions ?? null;
     const viewerCanAdvanceWorkflow = workflowSummary?.viewer_can_advance ?? canCreateTeachingRecords;
-    const canAdvanceTeachingWorkflow = canCreateTeachingRecords && viewerCanAdvanceWorkflow;
+    const canAdvanceTeachingWorkflow = Boolean(
+        viewerActions?.can_advance_teaching_record ?? (canCreateTeachingRecords && viewerCanAdvanceWorkflow)
+    );
+    const canRequestReschedule = Boolean(viewerActions?.can_request_reschedule);
+    const canRequestCancellation = Boolean(viewerActions?.can_request_cancellation);
+    const canRequestAttendanceHelp = Boolean(viewerActions?.can_request_attendance_help);
+    const canRequestReopen = Boolean(viewerActions?.can_request_reopen);
+    const showInternalRequestActions = Boolean(
+        viewerActions?.can_submit_admin_request
+        && (canRequestReschedule || canRequestCancellation || canRequestAttendanceHelp || canRequestReopen)
+    );
     const canEditAttendance = canAdvanceTeachingWorkflow && isInProgress && !isHistorical;
     const midtermBreakPausesNormalStart = todayMode?.mode === 'MIDTERM_BREAK'
         && todayMode.allows_new_teaching === false
@@ -2056,10 +2065,10 @@ export function SessionDetailPage() {
                     </div>
                 ) : null}
 
-                {(!canCreateTeachingRecords || isCompleted) && showInternalRequestActions ? (
+                {showInternalRequestActions ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                         <div className="flex flex-wrap gap-2">
-                            {!canReschedule ? (
+                            {canRequestReschedule ? (
                                 <ContextualApprovalRequestButton
                                     intent={{
                                         actionKey: 'SESSION_RESCHEDULE',
@@ -2082,7 +2091,7 @@ export function SessionDetailPage() {
                                     Ask admin to reschedule
                                 </ContextualApprovalRequestButton>
                             ) : null}
-                            {!isCancelled && !isCompleted ? (
+                            {canRequestCancellation ? (
                                 <ContextualApprovalRequestButton
                                     intent={{
                                         actionKey: 'SESSION_RESCHEDULE',
@@ -2102,7 +2111,7 @@ export function SessionDetailPage() {
                                     Ask admin to cancel
                                 </ContextualApprovalRequestButton>
                             ) : null}
-                            {isCompleted ? (
+                            {canRequestReopen ? (
                                 <ContextualApprovalRequestButton
                                     intent={{
                                         actionKey: 'OTHER',
@@ -2121,24 +2130,26 @@ export function SessionDetailPage() {
                                     Ask admin to reopen
                                 </ContextualApprovalRequestButton>
                             ) : null}
-                            <ContextualApprovalRequestButton
-                                intent={{
-                                    actionKey: 'RESOURCE_REQUEST',
-                                    title: `Request attendance help for ${session.title || session.subject_name}`,
-                                    targetType: 'session',
-                                    targetId: session.id,
-                                    returnTo: sessionReturnTo,
-                                    requestKey: buildContextualRequestKey(['session', session.id, 'attendance-help']),
-                                    referenceData: {
-                                        contextual_action: 'attendance_correction_or_missing_learner',
-                                        session_id: session.id,
-                                        session_title: session.title || session.subject_name,
-                                    },
-                                }}
-                            >
-                                <ClipboardCheck className="h-4 w-4" />
-                                Ask admin about attendance
-                            </ContextualApprovalRequestButton>
+                            {canRequestAttendanceHelp ? (
+                                <ContextualApprovalRequestButton
+                                    intent={{
+                                        actionKey: 'RESOURCE_REQUEST',
+                                        title: `Request attendance help for ${session.title || session.subject_name}`,
+                                        targetType: 'session',
+                                        targetId: session.id,
+                                        returnTo: sessionReturnTo,
+                                        requestKey: buildContextualRequestKey(['session', session.id, 'attendance-help']),
+                                        referenceData: {
+                                            contextual_action: 'attendance_correction_or_missing_learner',
+                                            session_id: session.id,
+                                            session_title: session.title || session.subject_name,
+                                        },
+                                    }}
+                                >
+                                    <ClipboardCheck className="h-4 w-4" />
+                                    Ask admin about attendance
+                                </ContextualApprovalRequestButton>
+                            ) : null}
                         </div>
                     </div>
                 ) : null}
