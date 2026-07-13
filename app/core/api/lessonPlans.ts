@@ -18,7 +18,6 @@ import type {
     GenerateLessonPlanPayload,
     GenerateLessonPlanResponse,
     LessonPlan,
-    InstructorLessonPlanDrilldown,
     LessonPlanComplianceQueryParams,
     LessonPlanComplianceResponse,
     LessonPlanCreatePayload,
@@ -45,17 +44,6 @@ export const lessonPlanAPI = {
     ): Promise<LessonPlanComplianceResponse> => {
         const response = await apiClient.get<LessonPlanComplianceResponse>(
             '/admin/lesson-plans/compliance/',
-            { params }
-        );
-        return response.data;
-    },
-
-    getInstructorLessonPlans: async (
-        instructorId: number,
-        params?: { term_id?: number | string; subject_id?: number | string },
-    ): Promise<InstructorLessonPlanDrilldown> => {
-        const response = await apiClient.get<InstructorLessonPlanDrilldown>(
-            `/admin/instructors/${instructorId}/lesson-plans/`,
             { params }
         );
         return response.data;

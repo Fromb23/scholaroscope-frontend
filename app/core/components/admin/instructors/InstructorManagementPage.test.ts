@@ -11,9 +11,20 @@ describe('InstructorManagementPage desire paths', () => {
   it('keeps progress navigation and adds report navigation with return state', () => {
     expect(source).toContain('buildProgressHref');
     expect(source).toContain('canRenderInstitutionReportOverview');
+    expect(source).toContain('returnTo: currentReturnTo');
     expect(source).toContain('buildInstructorReportHref(id, { returnTo: currentReturnTo })');
     expect(source).toContain('Progress');
     expect(source).toContain('Report');
+  });
+
+  it('preserves Staff URL state for row, action, and grid-card progress navigation', () => {
+    expect(source).toContain('const currentReturnTo = useMemo');
+    expect(source).toContain('const params = new URLSearchParams({');
+    expect(source).toContain('returnTo: currentReturnTo');
+    expect(source).toContain('router.push(buildProgressHref(id))');
+    expect(source).toContain('href={buildProgressHref(row.id)}');
+    expect(source).toContain('progressHref={buildProgressHref(i.id)}');
+    expect(source).toContain("params.set('back', preservedContextQuery)");
   });
 
   it('keeps add-teacher success in the foreground sheet instead of a page banner', () => {

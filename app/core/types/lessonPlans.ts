@@ -90,35 +90,6 @@ export interface LessonPlanComplianceQueryParams {
     ordering?: string;
 }
 
-export interface InstructorLessonPlanDrilldownItem {
-    id: number;
-    title: string;
-    status: LessonPlanStatus;
-    status_label: string;
-    term: {
-        id: number;
-        name: string;
-        start_date: string;
-        end_date: string;
-    } | null;
-    cohort: PlanningEntityOption | null;
-    subject: PlanningEntityOption | null;
-    planned_date: string | null;
-    session_id: number | null;
-    session_date: string | null;
-    created_at: string | null;
-}
-
-export interface InstructorLessonPlanDrilldown {
-    instructor: {
-        id: number;
-        name: string;
-        email: string;
-    };
-    total: number;
-    results: InstructorLessonPlanDrilldownItem[];
-}
-
 export interface PlannedOutcome {
     plugin: string;
     outcome_id: number;

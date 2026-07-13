@@ -73,6 +73,7 @@ import {
 import { ContextualApprovalRequestButton } from '@/app/core/components/approvals/ApprovalIntentComponents';
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { buildSessionLearnerAttendanceReportHref } from '@/app/core/lib/learnerIntentRoutes';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 
 type TaughtStatus = 'TAUGHT' | 'PARTIALLY_TAUGHT' | 'NOT_TAUGHT';
 type SessionPageNotice = {
@@ -285,7 +286,7 @@ export function SessionDetailPage() {
         capabilities,
     });
     const returnTo = searchParams.get('returnTo');
-    const backHref = returnTo?.startsWith('/') ? returnTo : '/sessions';
+    const backHref = isSafeNextPath(returnTo) ? returnTo : '/sessions';
     const sessionReturnTo = useMemo(() => {
         const query = searchParams.toString();
         return query ? `${pathname}?${query}` : pathname;
@@ -361,9 +362,15 @@ export function SessionDetailPage() {
     const canRequestCancellation = Boolean(viewerActions?.can_request_cancellation);
     const canRequestAttendanceHelp = Boolean(viewerActions?.can_request_attendance_help);
     const canRequestReopen = Boolean(viewerActions?.can_request_reopen);
+    const concreteRequestActions = [
+        canRequestReschedule,
+        canRequestCancellation,
+        canRequestAttendanceHelp,
+        canRequestReopen,
+    ];
     const showInternalRequestActions = Boolean(
-        viewerActions?.can_submit_admin_request
-        && (canRequestReschedule || canRequestCancellation || canRequestAttendanceHelp || canRequestReopen)
+        viewerActions?.can_submit_admin_request === true
+        && concreteRequestActions.some(Boolean)
     );
     const canEditAttendance = canAdvanceTeachingWorkflow && isInProgress && !isHistorical;
     const midtermBreakPausesNormalStart = todayMode?.mode === 'MIDTERM_BREAK'

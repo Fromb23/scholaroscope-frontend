@@ -3,12 +3,18 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   getSessionWorkflowOrderingPriority,
+  sessionMatchesPlanningReviewScope,
+  sessionNeedsPlanningAttention,
   summarizeSessionGroupStatus,
 } from './InstructorProgressComponents';
 import type { Session, SessionWorkflowSummary } from '@/app/core/types/session';
 
 const componentSource = readFileSync(
   join(process.cwd(), 'app/core/components/instructors/InstructorProgressComponents.tsx'),
+  'utf8',
+);
+const progressPageSource = readFileSync(
+  join(process.cwd(), 'app/core/components/admin/instructors/InstructorProgressPage.tsx'),
   'utf8',
 );
 
@@ -128,13 +134,118 @@ describe('Instructor progress session workflow rows', () => {
     expect(componentSource).toContain('workflow_summary?.missing_labels');
   });
 
+  it('renders planning status from session lesson-plan fields', () => {
+    expect(componentSource).toContain('lesson_plan_id === null');
+    expect(componentSource).toContain('Lesson plan missing');
+    expect(componentSource).toContain('lesson_plan_status');
+    expect(componentSource).toContain('Plan: ${formatPlanStatus(session.lesson_plan_status)}');
+    expect(componentSource).toContain('PLAN_STATUS_LABELS');
+  });
+
+  it('shows View plan only for linked lesson plans and preserves returnTo', () => {
+    expect(componentSource).toContain('session.lesson_plan_id !== null');
+    expect(componentSource).toContain('buildLessonPlanDetailHref(session.lesson_plan_id, returnTo)');
+    expect(componentSource).toContain('View plan');
+    expect(componentSource).toContain('new URLSearchParams({ returnTo })');
+  });
+
+  it('limits lesson-plan review mode to the supplied review scope', () => {
+    const scope = {
+      startDate: '2026-07-13',
+      endDate: '2026-07-19',
+      termId: 4,
+      subjectId: 20,
+      cohortId: 10,
+    };
+
+    expect(sessionMatchesPlanningReviewScope(session({
+      term: 4,
+      subject_id: 20,
+      cohort_id: 10,
+      session_date: '2026-07-15',
+    }), scope)).toBe(true);
+    expect(sessionMatchesPlanningReviewScope(session({
+      term: 4,
+      subject_id: 20,
+      cohort_id: 10,
+      session_date: '2026-07-20',
+    }), scope)).toBe(false);
+  });
+
+  it('flags missing plans in review scope without treating cancelled sessions as urgent', () => {
+    const scope = {
+      startDate: '2026-07-13',
+      endDate: '2026-07-19',
+      termId: 1,
+      subjectId: 20,
+      cohortId: 10,
+    };
+
+    expect(sessionNeedsPlanningAttention(session({ lesson_plan_id: null }), scope)).toBe(true);
+    expect(sessionNeedsPlanningAttention(session({ lesson_plan_id: null, status: 'CANCELLED' }), scope)).toBe(false);
+    expect(sessionNeedsPlanningAttention(session({ lesson_plan_id: 12, lesson_plan_status: 'USED' }), scope)).toBe(false);
+  });
+
+  it('keeps review-mode sorting and auto-open behavior inside GroupedSessions', () => {
+    expect(componentSource).toContain('planningDelta');
+    expect(componentSource).toContain('defaultOpenGroupId');
+    expect(componentSource).toContain('attentionGroup ?? groups[0]');
+    expect(componentSource).toContain('Planning attention');
+  });
+
+  it('keeps session pagination functional', () => {
+    expect(componentSource).toContain('const pageSize = 10');
+    expect(componentSource).toContain('const paginated = group.sessions.slice');
+    expect(componentSource).toContain('Page {page} of {totalPages}');
+  });
+
   it('keeps mobile rows readable without a fixed minimum table width', () => {
     expect(componentSource).not.toContain('min-w-[480px]');
     expect(componentSource).toContain('flex flex-col gap-3');
+    expect(componentSource).toContain('sm:flex-row');
   });
 
   it('keeps returnTo navigation on session row links', () => {
     expect(componentSource).toContain('new URLSearchParams({ returnTo })');
     expect(componentSource).toContain('buildSessionDetailHref(session.id, returnTo)');
+    expect(componentSource).toContain('isSafeNextPath(returnTo)');
+  });
+
+  it('removes the duplicate Lesson Plans section while keeping Sessions and Schemes', () => {
+    expect(progressPageSource).not.toContain('id="lesson-plans"');
+    expect(progressPageSource).not.toContain('groupedLessonPlans');
+    expect(progressPageSource).not.toContain('expandedLessonPlanTerms');
+    expect(progressPageSource).not.toContain('getInstructorLessonPlans');
+    expect(progressPageSource).toContain('<h2 className="text-lg font-semibold text-gray-900">Sessions</h2>');
+    expect(progressPageSource).toContain('<h2 className="text-lg font-semibold text-gray-900">Schemes of Work</h2>');
+  });
+
+  it('uses the real Sessions card as the sessions hash target', () => {
+    const sessionsCardIndex = progressPageSource.indexOf('<Card id="sessions">');
+    const sessionsHeadingIndex = progressPageSource.indexOf('>Sessions</h2>', sessionsCardIndex);
+    const attendanceHeadingIndex = progressPageSource.indexOf('Attendance Overview');
+
+    expect(sessionsCardIndex).toBeGreaterThan(-1);
+    expect(sessionsHeadingIndex).toBeGreaterThan(sessionsCardIndex);
+    expect(attendanceHeadingIndex).toBeGreaterThan(-1);
+    expect(attendanceHeadingIndex).toBeLessThan(sessionsCardIndex);
+    expect(progressPageSource.match(/id="sessions"/g)?.length).toBe(1);
+  });
+
+  it('builds review-aware progress return navigation safely', () => {
+    expect(progressPageSource).toContain('resolveProgressBackTarget');
+    expect(progressPageSource).toContain('isSafeNextPath(returnTo)');
+    expect(progressPageSource).toContain("label: 'Back to Lesson Plan Review'");
+    expect(progressPageSource).toContain("label: 'Back to Staff'");
+    expect(progressPageSource).toContain("href: '/admin/instructors'");
+    expect(progressPageSource).toContain("searchParams.get('source') !== 'lesson-plan-review'");
+  });
+
+  it('passes full progress-page returnTo and review scope into grouped sessions', () => {
+    expect(progressPageSource).toContain("return `${pathname}${query ? `?${query}` : ''}#sessions`");
+    expect(progressPageSource).toContain('returnTo={progressReturnTo}');
+    expect(progressPageSource).toContain('planningReviewScope={planningReviewScope}');
+    expect(progressPageSource).toContain('review_start_date');
+    expect(progressPageSource).toContain('review_end_date');
   });
 });

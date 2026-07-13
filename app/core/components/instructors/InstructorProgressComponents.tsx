@@ -7,18 +7,20 @@
 // No any. Typed props.
 // ============================================================================
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
     BookOpen,
     Calendar,
     ChevronDown,
     ChevronRight,
+    FileText,
     GraduationCap,
     TrendingUp,
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import { isSafeNextPath } from '@/app/core/auth/navigation';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import type { Session } from '@/app/core/types/session';
 
@@ -30,13 +32,30 @@ interface SessionGroup {
     sessions: Session[];
 }
 
+export interface PlanningReviewScope {
+    startDate: string;
+    endDate: string;
+    termId?: number;
+    subjectId?: number;
+    cohortId?: number;
+}
+
 function buildSessionDetailHref(sessionId: number, returnTo?: string) {
-    if (!returnTo?.startsWith('/')) {
+    if (!isSafeNextPath(returnTo)) {
         return `/sessions/${sessionId}`;
     }
 
     const params = new URLSearchParams({ returnTo });
     return `/sessions/${sessionId}?${params.toString()}`;
+}
+
+function buildLessonPlanDetailHref(lessonPlanId: number, returnTo?: string) {
+    if (!isSafeNextPath(returnTo)) {
+        return `/lesson-plans/${lessonPlanId}`;
+    }
+
+    const params = new URLSearchParams({ returnTo });
+    return `/lesson-plans/${lessonPlanId}?${params.toString()}`;
 }
 
 function buildCbcProgressHref(assignment: TeachingAssignment, instructorId: number, returnTo?: string) {
@@ -54,7 +73,7 @@ function buildCbcProgressHref(assignment: TeachingAssignment, instructorId: numb
         params.set('cohort_subject_id', String(cohortSubjectId));
     }
 
-    if (returnTo?.startsWith('/')) {
+    if (isSafeNextPath(returnTo)) {
         params.set('returnTo', returnTo);
     }
 
@@ -69,6 +88,15 @@ function attendanceVariant(rate: number): 'success' | 'blue' | 'yellow' | 'defau
 }
 
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'default' | 'blue' | 'green' | 'yellow' | 'red' | 'maroon' | 'purple' | 'indigo' | 'orange';
+
+const PLAN_STATUS_LABELS: Record<string, string> = {
+    DRAFT: 'Draft',
+    GENERATED: 'Generated',
+    REVIEWED: 'Reviewed',
+    SCHEDULED: 'Scheduled',
+    USED: 'Used',
+    ARCHIVED: 'Archived',
+};
 
 function getSessionLifecycleStatus(session: Session) {
     if (session.workflow_summary?.lifecycle_status) {
@@ -105,6 +133,59 @@ function lifecycleBadgeVariant(status: string): BadgeVariant {
 
 function getLifecycleLabel(session: Session) {
     return session.workflow_summary?.lifecycle_label ?? getSessionLifecycleStatus(session).replaceAll('_', ' ').toLowerCase();
+}
+
+function formatPlanStatus(status: string | null) {
+    if (!status) return 'Linked';
+    return PLAN_STATUS_LABELS[status] ?? status.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function getLessonPlanStatusLabel(session: Session) {
+    if (session.lesson_plan_id === null) {
+        return 'Lesson plan missing';
+    }
+    return `Plan: ${formatPlanStatus(session.lesson_plan_status)}`;
+}
+
+function lessonPlanBadgeVariant(session: Session): BadgeVariant {
+    if (session.lesson_plan_id === null) {
+        return session.status === 'CANCELLED' ? 'default' : 'warning';
+    }
+    if (session.lesson_plan_status === 'USED' || session.lesson_plan_status === 'SCHEDULED') return 'success';
+    if (session.lesson_plan_status === 'REVIEWED' || session.lesson_plan_status === 'GENERATED') return 'blue';
+    if (session.lesson_plan_status === 'DRAFT') return 'yellow';
+    return 'default';
+}
+
+function normalizeDateValue(value: string | null | undefined) {
+    return value ? value.slice(0, 10) : '';
+}
+
+export function sessionMatchesPlanningReviewScope(session: Session, scope: PlanningReviewScope) {
+    const sessionDate = normalizeDateValue(session.session_date);
+    if (!sessionDate || sessionDate < scope.startDate || sessionDate > scope.endDate) {
+        return false;
+    }
+    if (scope.termId && session.term !== scope.termId) {
+        return false;
+    }
+    if (scope.subjectId && session.subject_id !== scope.subjectId) {
+        return false;
+    }
+    if (scope.cohortId && session.cohort_id !== scope.cohortId) {
+        return false;
+    }
+    return true;
+}
+
+export function sessionNeedsPlanningAttention(session: Session, scope?: PlanningReviewScope) {
+    if (session.status === 'CANCELLED') {
+        return false;
+    }
+    if (scope && !sessionMatchesPlanningReviewScope(session, scope)) {
+        return false;
+    }
+    return session.lesson_plan_id === null;
 }
 
 function pluralize(count: number, singular: string, plural = `${singular}s`) {
@@ -173,12 +254,34 @@ function teachingSourceLabel(assignment: TeachingAssignment) {
     return assignment.curriculum_name ?? assignment.curriculum_type;
 }
 
-function SessionCohortGroup({ group, returnTo }: { group: SessionGroup; returnTo?: string }) {
-    const [open, setOpen] = useState(false);
+function SessionCohortGroup({
+    group,
+    returnTo,
+    planningReviewScope,
+    defaultOpen = false,
+    scopeKey,
+}: {
+    group: SessionGroup;
+    returnTo?: string;
+    planningReviewScope?: PlanningReviewScope;
+    defaultOpen?: boolean;
+    scopeKey?: string;
+}) {
+    const [open, setOpen] = useState(defaultOpen);
     const [page, setPage] = useState(1);
     const pageSize = 10;
     const totalPages = Math.ceil(group.sessions.length / pageSize);
     const paginated = group.sessions.slice((page - 1) * pageSize, page * pageSize);
+
+    useEffect(() => {
+        setPage(1);
+    }, [group.cohortId, group.sessions.length, scopeKey]);
+
+    useEffect(() => {
+        if (defaultOpen) {
+            setOpen(true);
+        }
+    }, [defaultOpen, scopeKey]);
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200">
@@ -212,8 +315,15 @@ function SessionCohortGroup({ group, returnTo }: { group: SessionGroup; returnTo
                                 const attendance = formatAttendanceSummary(session);
                                 const lifecycleStatus = getSessionLifecycleStatus(session);
                                 const workflowStage = session.workflow_summary?.stage_label ?? 'Review lesson record';
+                                const needsPlanningAttention = sessionNeedsPlanningAttention(session, planningReviewScope);
                                 return (
-                                    <div key={session.id} className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-gray-50 lg:flex-row lg:items-start lg:justify-between">
+                                    <div
+                                        key={session.id}
+                                        className={`flex flex-col gap-3 px-4 py-4 transition-colors lg:flex-row lg:items-start lg:justify-between ${needsPlanningAttention
+                                            ? 'border-l-4 border-amber-400 bg-amber-50/50 hover:bg-amber-50'
+                                            : 'hover:bg-gray-50'
+                                            }`}
+                                    >
                                         <div className="min-w-0 flex-1 space-y-2">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <Badge variant={lifecycleBadgeVariant(lifecycleStatus)} size="sm">
@@ -222,6 +332,16 @@ function SessionCohortGroup({ group, returnTo }: { group: SessionGroup; returnTo
                                                 <Badge variant={attendanceVariant(attendance.rate)} size="sm">
                                                     Attendance: {attendance.label}
                                                 </Badge>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge variant={lessonPlanBadgeVariant(session)} size="sm">
+                                                    {getLessonPlanStatusLabel(session)}
+                                                </Badge>
+                                                {needsPlanningAttention ? (
+                                                    <Badge variant="orange" size="sm">
+                                                        Planning attention
+                                                    </Badge>
+                                                ) : null}
                                             </div>
                                             <div>
                                                 <p className="text-sm font-semibold text-gray-900 break-words">
@@ -241,13 +361,21 @@ function SessionCohortGroup({ group, returnTo }: { group: SessionGroup; returnTo
                                                 <p><span className="font-medium text-gray-700">Action owner:</span> {formatActionOwner(session)}</p>
                                             </div>
                                         </div>
-                                        <div className="shrink-0">
+                                        <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
                                             <Link href={buildSessionDetailHref(session.id, returnTo)}>
                                                 <Button size="sm" variant="secondary" className="w-full lg:w-auto">
                                                     <BookOpen className="mr-1.5 h-3.5 w-3.5" />
                                                     Open lesson
                                                 </Button>
                                             </Link>
+                                            {session.lesson_plan_id !== null ? (
+                                                <Link href={buildLessonPlanDetailHref(session.lesson_plan_id, returnTo)}>
+                                                    <Button size="sm" variant="ghost" className="w-full lg:w-auto">
+                                                        <FileText className="mr-1.5 h-3.5 w-3.5" />
+                                                        View plan
+                                                    </Button>
+                                                </Link>
+                                            ) : null}
                                         </div>
                                     </div>
                                 );
@@ -283,12 +411,31 @@ function SessionCohortGroup({ group, returnTo }: { group: SessionGroup; returnTo
 interface GroupedSessionsProps {
     sessions: Session[];
     returnTo?: string;
+    planningReviewScope?: PlanningReviewScope;
 }
 
-export function GroupedSessions({ sessions, returnTo }: GroupedSessionsProps) {
+function buildPlanningReviewScopeKey(scope?: PlanningReviewScope) {
+    if (!scope) return undefined;
+    return [
+        scope.startDate,
+        scope.endDate,
+        scope.termId ?? '',
+        scope.subjectId ?? '',
+        scope.cohortId ?? '',
+    ].join(':');
+}
+
+export function GroupedSessions({ sessions, returnTo, planningReviewScope }: GroupedSessionsProps) {
+    const scopedSessions = useMemo(() => {
+        if (!planningReviewScope) {
+            return sessions;
+        }
+        return sessions.filter(session => sessionMatchesPlanningReviewScope(session, planningReviewScope));
+    }, [planningReviewScope, sessions]);
+    const scopeKey = buildPlanningReviewScopeKey(planningReviewScope);
     const groups = useMemo<SessionGroup[]>(() => {
         const map = new Map<number, SessionGroup>();
-        sessions.forEach(s => {
+        scopedSessions.forEach(s => {
             const cohortId = s.cohort_id ?? 0;
             const cohortName = s.cohort_name ?? 'Unknown Cohort';
             if (!map.has(cohortId)) {
@@ -297,16 +444,37 @@ export function GroupedSessions({ sessions, returnTo }: GroupedSessionsProps) {
             map.get(cohortId)!.sessions.push(s);
         });
         map.forEach(g => g.sessions.sort((a, b) => {
+            if (planningReviewScope) {
+                const planningDelta = Number(sessionNeedsPlanningAttention(b, planningReviewScope)) - Number(sessionNeedsPlanningAttention(a, planningReviewScope));
+                if (planningDelta !== 0) {
+                    return planningDelta;
+                }
+            }
             const priorityDelta = getSessionWorkflowOrderingPriority(a) - getSessionWorkflowOrderingPriority(b);
             if (priorityDelta !== 0) {
                 return priorityDelta;
             }
             return new Date(b.session_date).getTime() - new Date(a.session_date).getTime();
         }));
-        return Array.from(map.values()).sort((a, b) => a.cohortName.localeCompare(b.cohortName));
-    }, [sessions]);
+        return Array.from(map.values()).sort((a, b) => {
+            if (planningReviewScope) {
+                const attentionDelta = Number(b.sessions.some(session => sessionNeedsPlanningAttention(session, planningReviewScope))) - Number(a.sessions.some(session => sessionNeedsPlanningAttention(session, planningReviewScope)));
+                if (attentionDelta !== 0) {
+                    return attentionDelta;
+                }
+            }
+            return a.cohortName.localeCompare(b.cohortName);
+        });
+    }, [planningReviewScope, scopedSessions]);
+    const defaultOpenGroupId = useMemo(() => {
+        if (!planningReviewScope) {
+            return null;
+        }
+        const attentionGroup = groups.find(group => group.sessions.some(session => sessionNeedsPlanningAttention(session, planningReviewScope)));
+        return (attentionGroup ?? groups[0])?.cohortId ?? null;
+    }, [groups, planningReviewScope]);
 
-    if (sessions.length === 0) return (
+    if (scopedSessions.length === 0) return (
         <div className="py-10 text-center border border-dashed border-gray-200 rounded-xl">
             <Calendar className="h-8 w-8 text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-500">No sessions recorded yet</p>
@@ -316,7 +484,14 @@ export function GroupedSessions({ sessions, returnTo }: GroupedSessionsProps) {
     return (
         <div className="space-y-3">
             {groups.map(group => (
-                <SessionCohortGroup key={group.cohortId} group={group} returnTo={returnTo} />
+                <SessionCohortGroup
+                    key={group.cohortId}
+                    group={group}
+                    returnTo={returnTo}
+                    planningReviewScope={planningReviewScope}
+                    defaultOpen={group.cohortId === defaultOpenGroupId}
+                    scopeKey={scopeKey}
+                />
             ))}
         </div>
     );

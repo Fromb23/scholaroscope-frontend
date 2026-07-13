@@ -11,9 +11,7 @@ import type { PaginatedResponse } from '@/app/core/api/sessions';
 import type { TeachingAssignment } from '@/app/core/types/academic';
 import { sessionAPI } from '@/app/core/api/sessions';
 import { schemesAPI } from '@/app/core/api/schemes';
-import { lessonPlanAPI } from '@/app/core/api/lessonPlans';
 import type { Session } from '@/app/core/types/session';
-import type { InstructorLessonPlanDrilldownItem } from '@/app/core/types/lessonPlans';
 import type { InstructorSchemeDrilldownItem } from '@/app/core/types/schemes';
 
 export interface SessionStats {
@@ -81,7 +79,6 @@ export function getTeachingAssignmentKey(assignment: TeachingAssignmentIdentity)
 export function useInstructorProgress(instructorId: number) {
     const [instructor, setInstructor] = useState<InstructorProfile | null>(null);
     const [sessions, setSessions] = useState<Session[]>([]);
-    const [lessonPlans, setLessonPlans] = useState<InstructorLessonPlanDrilldownItem[]>([]);
     const [schemes, setSchemes] = useState<InstructorSchemeDrilldownItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -102,11 +99,7 @@ export function useInstructorProgress(instructorId: number) {
                 : (sessionsData as PaginatedResponse<Session>)?.results ?? [];
             setSessions(allSessions);
 
-            const [lessonPlanData, schemesData] = await Promise.all([
-                lessonPlanAPI.getInstructorLessonPlans(instructorId),
-                schemesAPI.getInstructorSchemes(instructorId),
-            ]);
-            setLessonPlans(lessonPlanData.results);
+            const schemesData = await schemesAPI.getInstructorSchemes(instructorId);
             setSchemes(schemesData.results);
         } catch {
             if (showLoadingState) {
@@ -174,7 +167,6 @@ export function useInstructorProgress(instructorId: number) {
     return {
         instructor,
         sessions,
-        lessonPlans,
         schemes,
         loading,
         error,
