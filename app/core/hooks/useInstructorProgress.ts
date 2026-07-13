@@ -97,15 +97,7 @@ export function useInstructorProgress(instructorId: number) {
             const allSessions = Array.isArray(sessionsData)
                 ? sessionsData
                 : (sessionsData as PaginatedResponse<Session>)?.results ?? [];
-            const shouldFilterByCreatorId = allSessions.some(
-                (session) => typeof session.created_by_id === 'number'
-            );
-
-            setSessions(
-                shouldFilterByCreatorId
-                    ? allSessions.filter((session) => session.created_by_id === instructorId)
-                    : allSessions
-            );
+            setSessions(allSessions);
 
             const schemesData = await schemesAPI.listSchemes({ teacher: instructorId });
             setSchemes(Array.isArray(schemesData) ? schemesData : (schemesData.results ?? []));
