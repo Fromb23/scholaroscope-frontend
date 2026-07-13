@@ -56,7 +56,7 @@ export default function InstructorProgressPage() {
     const {
         instructor, sessions, loading, error,
         refetch, teachingAssignments, cbcTeachingAssignments,
-        sessionStats, attendanceStats, schemes,
+        sessionStats, attendanceStats, lessonPlans, schemes,
     } = useInstructorProgress(instructorId);
 
     const [submitting, setSubmitting] = useState(false);
@@ -65,12 +65,24 @@ export default function InstructorProgressPage() {
     const [resetOpen, setResetOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [cohortOpen, setCohortOpen] = useState(false);
+    const [expandedLessonPlanTerms, setExpandedLessonPlanTerms] = useState<Set<string>>(new Set());
+    const [expandedSchemeTerms, setExpandedSchemeTerms] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (shouldOpenTeachingModal) {
             setCohortOpen(true);
         }
     }, [shouldOpenTeachingModal]);
+
+    useEffect(() => {
+        if (loading || typeof window === 'undefined') return;
+        const targetId = window.location.hash.replace('#', '');
+        if (!targetId) return;
+        const target = document.getElementById(targetId);
+        if (target) {
+            window.requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
+        }
+    }, [lessonPlans.length, loading, schemes.length, sessions.length]);
 
     const flash = (type: 'success' | 'error', msg: string) => {
         setFeedback({ type, msg });
@@ -148,8 +160,14 @@ export default function InstructorProgressPage() {
         { label: 'Absent', value: attendanceStats.absent, color: 'text-red-600' },
         { label: 'Late', value: attendanceStats.late, color: 'text-yellow-600' },
     ];
+    const groupedLessonPlans = lessonPlans.reduce<Record<string, typeof lessonPlans>>((groups, plan) => {
+        const key = plan.term?.name || 'No term assigned';
+        groups[key] = groups[key] ?? [];
+        groups[key].push(plan);
+        return groups;
+    }, {});
     const groupedSchemes = schemes.reduce<Record<string, typeof schemes>>((groups, scheme) => {
-        const key = scheme.term_name || 'No term assigned';
+        const key = scheme.term?.name || 'No term assigned';
         groups[key] = groups[key] ?? [];
         groups[key].push(scheme);
         return groups;
@@ -267,7 +285,7 @@ export default function InstructorProgressPage() {
             </StatStrip>
 
             {/* Attendance */}
-            <Card>
+            <Card id="sessions">
                 <div className="p-6">
                     <div className="flex items-center gap-2 mb-4">
                         <Users className="h-5 w-5 text-blue-500" />
@@ -302,59 +320,75 @@ export default function InstructorProgressPage() {
                 </Card>
             )}
 
-            <Card>
+            <Card id="lesson-plans">
                 <div className="p-6">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-emerald-500" />
-                            <h2 className="text-lg font-semibold text-gray-900">Schemes of Work</h2>
-                            <Badge variant="info" size="sm">{schemes.length} total</Badge>
+                            <h2 className="text-lg font-semibold text-gray-900">Lesson Plans</h2>
+                            <Badge variant="info" size="sm">{lessonPlans.length} total</Badge>
                         </div>
                     </div>
-                    {schemes.length === 0 ? (
+                    {lessonPlans.length === 0 ? (
                         <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-                            No schemes of work have been created by this teacher yet.
+                            No lesson plans have been prepared by this teacher yet.
                         </p>
                     ) : (
                         <div className="space-y-4">
-                            {Object.entries(groupedSchemes).map(([termName, items]) => (
+                            {Object.entries(groupedLessonPlans).map(([termName, items], index) => {
+                                const expanded = index === 0 || expandedLessonPlanTerms.has(termName);
+                                const visibleItems = expanded ? items : items.slice(0, 5);
+                                return (
                                 <div key={termName} className="rounded-xl border border-gray-200">
                                     <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2">
                                         <p className="text-sm font-semibold text-gray-900">{termName}</p>
-                                        <span className="text-xs text-gray-500">{items.length} scheme{items.length === 1 ? '' : 's'}</span>
+                                        <span className="text-xs text-gray-500">{items.length} plan{items.length === 1 ? '' : 's'}</span>
                                     </div>
                                     <div className="divide-y divide-gray-100">
-                                        {items.map((scheme) => (
-                                            <div key={scheme.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                                        {visibleItems.map((plan) => (
+                                            <div key={plan.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
                                                 <div className="min-w-0">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <p className="truncate text-sm font-medium text-gray-900">{scheme.title}</p>
+                                                        <p className="truncate text-sm font-medium text-gray-900">{plan.title}</p>
                                                         <Badge
-                                                            variant={scheme.status === 'GENERATED' ? 'success' : scheme.status === 'DRAFT' ? 'warning' : 'default'}
+                                                            variant={plan.status === 'USED' || plan.status === 'SCHEDULED' ? 'success' : plan.status === 'DRAFT' ? 'warning' : 'default'}
                                                             size="sm"
                                                         >
-                                                            {scheme.status_display || scheme.status}
+                                                            {plan.status_label || plan.status}
                                                         </Badge>
                                                     </div>
                                                     <p className="mt-1 text-xs text-gray-500">
-                                                        {[scheme.cohort_name, scheme.subject_name, scheme.level_label].filter(Boolean).join(' · ') || 'Class subject not assigned'}
+                                                        {[plan.cohort?.name, plan.subject?.name, plan.session_date || plan.planned_date].filter(Boolean).join(' · ') || 'Class subject not assigned'}
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <Link href={`/schemes/${scheme.id}`}>
-                                                        <Button size="sm" variant="secondary">View scheme</Button>
+                                                    <Link href={`/lesson-plans/${plan.id}`}>
+                                                        <Button size="sm" variant="secondary">View plan</Button>
                                                     </Link>
-                                                    {scheme.cohort_subject ? (
-                                                        <Link href={`/sessions?cohort_subject=${scheme.cohort_subject}`}>
-                                                            <Button size="sm" variant="ghost">View related lessons</Button>
+                                                    {plan.session_id ? (
+                                                        <Link href={`/sessions/${plan.session_id}`}>
+                                                            <Button size="sm" variant="ghost">View lesson</Button>
                                                         </Link>
                                                     ) : null}
                                                 </div>
                                             </div>
                                         ))}
+                                        {!expanded && items.length > 5 ? (
+                                            <div className="px-4 py-3">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setExpandedLessonPlanTerms((current) => new Set(current).add(termName))}
+                                                >
+                                                    Show all
+                                                </Button>
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
-                            ))}
+                            );
+                            })}
                         </div>
                     )}
                 </div>
@@ -372,6 +406,83 @@ export default function InstructorProgressPage() {
                         sessions={sessions}
                         returnTo={`/admin/instructors/${instructorId}/progress`}
                     />
+                </div>
+            </Card>
+
+            <Card id="schemes">
+                <div className="p-6">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-emerald-500" />
+                            <h2 className="text-lg font-semibold text-gray-900">Schemes of Work</h2>
+                            <Badge variant="info" size="sm">{schemes.length} total</Badge>
+                        </div>
+                    </div>
+                    {schemes.length === 0 ? (
+                        <p className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+                            No schemes of work have been created by this teacher yet.
+                        </p>
+                    ) : (
+                        <div className="space-y-4">
+                            {Object.entries(groupedSchemes).map(([termName, items], index) => {
+                                const expanded = index === 0 || expandedSchemeTerms.has(termName);
+                                const visibleItems = expanded ? items : items.slice(0, 5);
+                                return (
+                                <div key={termName} className="rounded-xl border border-gray-200">
+                                    <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2">
+                                        <p className="text-sm font-semibold text-gray-900">{termName}</p>
+                                        <span className="text-xs text-gray-500">{items.length} scheme{items.length === 1 ? '' : 's'}</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {visibleItems.map((scheme) => (
+                                            <div key={scheme.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <p className="truncate text-sm font-medium text-gray-900">{scheme.title}</p>
+                                                        <Badge
+                                                            variant={scheme.status === 'GENERATED' ? 'success' : 'warning'}
+                                                            size="sm"
+                                                        >
+                                                            {scheme.status_label || scheme.status}
+                                                        </Badge>
+                                                        {scheme.calendar_needs_review ? (
+                                                            <Badge variant="danger" size="sm">Needs review</Badge>
+                                                        ) : null}
+                                                    </div>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {[scheme.cohort?.name, scheme.subject?.name].filter(Boolean).join(' · ') || 'Class subject not assigned'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <Link href={`/schemes/${scheme.id}`}>
+                                                        <Button size="sm" variant="secondary">View scheme</Button>
+                                                    </Link>
+                                                    {scheme.cohort_subject_id ? (
+                                                        <Link href={`/sessions?cohort_subject=${scheme.cohort_subject_id}`}>
+                                                            <Button size="sm" variant="ghost">View related lessons</Button>
+                                                        </Link>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {!expanded && items.length > 5 ? (
+                                            <div className="px-4 py-3">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setExpandedSchemeTerms((current) => new Set(current).add(termName))}
+                                                >
+                                                    Show all
+                                                </Button>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            );
+                            })}
+                        </div>
+                    )}
                 </div>
             </Card>
 

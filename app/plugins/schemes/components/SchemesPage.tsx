@@ -17,6 +17,7 @@ import { useCohorts } from '@/app/core/hooks/useCohorts';
 import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { useInstructors } from '@/app/core/hooks/useInstructors';
 import { useSchemes } from '@/app/core/hooks/useSchemes';
+import { SchemeComplianceOverview } from '@/app/plugins/schemes/components/SchemeComplianceOverview';
 import type { AdminGroupingMode, AdminWorkViewMode } from '@/app/core/types/adminWorkViews';
 import type { SchemeOfWork } from '@/app/core/types/schemes';
 import { useAuth } from '@/app/context/AuthContext';
@@ -292,6 +293,7 @@ export function SchemesPage() {
     return value?.startsWith('/') ? value : null;
   }, [searchParams]);
   const effectiveMyTeachingMode = isInstructor || canUseTeacherModeAsAdmin || viewMode === 'my_teaching';
+  const institutionComplianceMode = isInstitutionalAdminSupervisor && !effectiveMyTeachingMode;
   const assignedCohortSubjectOptions = useMemo(() => (
     Array.from(
       new Map(
@@ -343,7 +345,10 @@ export function SchemesPage() {
       ? user?.id
       : selectedInstructorId,
   }), [cohortSubjectFilter, effectiveMyTeachingMode, selectedInstructorId, subjectFilter, termFilter, user?.id]);
-  const { schemes, loading, error, downloadSchemeDocx } = useSchemes(schemeFilters);
+  const { schemes, loading, error, downloadSchemeDocx } = useSchemes(
+    schemeFilters,
+    { enabled: !institutionComplianceMode },
+  );
   const showCreateDraft = isInstructor || canUseTeacherModeAsAdmin;
   const createButtonLabel = effectiveMyTeachingMode
     ? 'Create my draft scheme'
@@ -516,6 +521,10 @@ export function SchemesPage() {
       setDownloadingId(null);
     }
   };
+
+  if (institutionComplianceMode) {
+    return <SchemeComplianceOverview />;
+  }
 
   if (loading) {
     return <LoadingSpinner message="Loading schemes of work..." fullScreen={false} />;

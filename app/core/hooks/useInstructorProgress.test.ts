@@ -13,4 +13,11 @@ describe('useInstructorProgress session scope', () => {
     expect(hookSource).not.toContain('created_by_id === instructorId');
     expect(hookSource).not.toContain('shouldFilterByCreatorId');
   });
+
+  it('loads planning drill-downs through server-filtered instructor endpoints', () => {
+    expect(hookSource).toContain('lessonPlanAPI.getInstructorLessonPlans(instructorId)');
+    expect(hookSource).toContain('schemesAPI.getInstructorSchemes(instructorId)');
+    expect(hookSource).toContain('setLessonPlans(lessonPlanData.results)');
+    expect(hookSource).not.toContain("schemesAPI.listSchemes({ teacher: instructorId })");
+  });
 });

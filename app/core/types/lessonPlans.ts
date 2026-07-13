@@ -27,6 +27,98 @@ export interface LessonPlanQueryParams {
     ordering?: string;
 }
 
+export type PlanningComplianceStatus =
+    | 'COMPLETE'
+    | 'PARTIAL'
+    | 'MISSING'
+    | 'OVERDUE'
+    | 'NEEDS_REVIEW'
+    | 'NOT_EXPECTED';
+
+export interface PlanningEntityOption {
+    id: number | null;
+    name: string;
+}
+
+export interface LessonPlanComplianceSummary {
+    total_instructors: number;
+    complete: number;
+    partial: number;
+    missing: number;
+    overdue: number;
+}
+
+export interface LessonPlanComplianceRow {
+    instructor_id: number;
+    instructor_name: string;
+    instructor_email: string;
+    subjects: PlanningEntityOption[];
+    cohorts: PlanningEntityOption[];
+    expected: number;
+    submitted: number;
+    missing: number;
+    overdue: number;
+    compliance_percentage: number;
+    status: Exclude<PlanningComplianceStatus, 'NEEDS_REVIEW'>;
+    status_label: string;
+}
+
+export interface LessonPlanComplianceResponse {
+    window: {
+        type: 'today' | 'week' | 'term';
+        start_date: string;
+        end_date: string;
+    };
+    summary: LessonPlanComplianceSummary;
+    results: LessonPlanComplianceRow[];
+    pagination: {
+        count: number;
+        next: number | null;
+        previous: number | null;
+    };
+}
+
+export interface LessonPlanComplianceQueryParams {
+    term_id: number | string;
+    window?: 'today' | 'week' | 'term';
+    subject_id?: number | string;
+    cohort_id?: number | string;
+    search?: string;
+    compliance?: LessonPlanComplianceRow['status'] | '';
+    page?: number;
+    page_size?: number;
+    ordering?: string;
+}
+
+export interface InstructorLessonPlanDrilldownItem {
+    id: number;
+    title: string;
+    status: LessonPlanStatus;
+    status_label: string;
+    term: {
+        id: number;
+        name: string;
+        start_date: string;
+        end_date: string;
+    } | null;
+    cohort: PlanningEntityOption | null;
+    subject: PlanningEntityOption | null;
+    planned_date: string | null;
+    session_id: number | null;
+    session_date: string | null;
+    created_at: string | null;
+}
+
+export interface InstructorLessonPlanDrilldown {
+    instructor: {
+        id: number;
+        name: string;
+        email: string;
+    };
+    total: number;
+    results: InstructorLessonPlanDrilldownItem[];
+}
+
 export interface PlannedOutcome {
     plugin: string;
     outcome_id: number;

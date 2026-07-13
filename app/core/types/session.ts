@@ -70,6 +70,16 @@ export interface SessionWorkflowSummary {
   lifecycle_label: string;
 }
 
+export interface SessionViewerActions {
+  can_advance_teaching_record: boolean;
+  can_submit_admin_request: boolean;
+  can_request_reschedule: boolean;
+  can_request_cancellation: boolean;
+  can_request_attendance_help: boolean;
+  can_request_reopen: boolean;
+  can_view_supervision: boolean;
+}
+
 export interface Session {
   linked_cohorts: SessionCohort[];
   id: number;
@@ -120,6 +130,7 @@ export interface Session {
   start_available_date?: string | null;
   start_available_time?: string | null;
   workflow_summary?: SessionWorkflowSummary | null;
+  viewer_actions?: SessionViewerActions | null;
   attendance_count: {
     total: number;
     present: number;
@@ -174,6 +185,7 @@ export interface SessionClosureState {
   learner_evidence_ready?: boolean;
   learner_evidence_summary?: FineArtsLearnerEvidenceSummary;
   workflow_summary?: SessionWorkflowSummary;
+  viewer_actions?: SessionViewerActions;
 }
 
 export interface SessionDetail extends Session {
