@@ -126,6 +126,7 @@ export const assessmentAPI = {
     assessment_type?: string;
     evaluation_type?: string;
     status?: string;
+    authority_mode?: 'teaching' | 'supervision';
   }): Promise<Assessment[] | PaginatedResponse<Assessment>> => {
     const response = await apiClient.get<Assessment[] | PaginatedResponse<Assessment>>(
       '/assessments/',
@@ -137,6 +138,7 @@ export const assessmentAPI = {
           assessment_type: params?.assessment_type,
           evaluation_type: params?.evaluation_type,
           status: params?.status,
+          authority_mode: params?.authority_mode,
         }),
       }
     );

@@ -37,39 +37,14 @@ import {
   CohortAttendanceSummary,
   CohortSubjectOption,
 } from '@/app/core/types/session';
-import { CohortSubject, TeachingAssignment } from '@/app/core/types/academic';
+import { CohortSubject } from '@/app/core/types/academic';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
-import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 
 
 // ── Helper — unwrap paginated or flat response ────────────────────────────
 
 function unwrapList<T>(data: T[] | { results?: T[] }): T[] {
   return Array.isArray(data) ? data : data?.results ?? [];
-}
-
-function toIdSet(idsKey: string): Set<number> {
-  if (!idsKey) return new Set<number>();
-  return new Set(
-    idsKey
-      .split(',')
-      .map(value => Number(value))
-      .filter(value => Number.isFinite(value))
-  );
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function firstFiniteNumber(...values: Array<number | null | undefined>): number | null {
-  for (const value of values) {
-    if (isFiniteNumber(value)) {
-      return value;
-    }
-  }
-
-  return null;
 }
 
 function mergeUniqueSessionCohorts(...collections: SessionCohort[][]): SessionCohort[] {
@@ -84,85 +59,20 @@ function mergeUniqueSessionCohorts(...collections: SessionCohort[][]): SessionCo
   return Array.from(cohorts.values());
 }
 
-function normalizeTeachingSource(source?: string | null, curriculumType?: string | null) {
-  if (curriculumType === 'CBE') {
-    return 'cbc';
-  }
-
-  return source?.trim().toLowerCase() || 'kernel';
-}
-
-function getSessionScopedCohortSubjectId(session: Session): number | null {
-  return firstFiniteNumber(session.cohort_subject, session.cambridge_cohort_subject_id);
-}
-
-function hasEquivalentSessionIdentity(session: Session) {
-  return isFiniteNumber(session.offering_id) || isFiniteNumber(session.subject_id);
-}
-
-function matchesInstructorAssignmentBySessionIdentity(
-  session: Session,
-  assignment: TeachingAssignment
-) {
-  if (session.cohort_id !== assignment.cohort_id) {
-    return false;
-  }
-
-  const sessionSource = normalizeTeachingSource(session.subject_source, session.curriculum_type);
-  const assignmentSource = normalizeTeachingSource(
-    assignment.source ?? assignment.subject_source,
-    assignment.curriculum_type
-  );
-
-  if (sessionSource !== assignmentSource) {
-    return false;
-  }
-
-  if (
-    sessionSource === 'cambridge' &&
-    isFiniteNumber(session.offering_id) &&
-    isFiniteNumber(assignment.offering_id)
-  ) {
-    return session.offering_id === assignment.offering_id;
-  }
-
-  return isFiniteNumber(session.subject_id) && session.subject_id === assignment.subject_id;
-}
-
-function filterInstructorSessions(
-  allSessions: Session[],
-  assignments: TeachingAssignment[],
-  allowedCohortSubjectIds: Set<number>,
-  allowedCohortIds: Set<number>
-) {
-  return allSessions.filter((session) => {
-    const scopedCohortSubjectId = getSessionScopedCohortSubjectId(session);
-
-    if (scopedCohortSubjectId !== null) {
-      if (allowedCohortSubjectIds.has(scopedCohortSubjectId)) {
-        return true;
-      }
-
-      return hasEquivalentSessionIdentity(session)
-        ? assignments.some((assignment) => matchesInstructorAssignmentBySessionIdentity(session, assignment))
-        : false;
-    }
-
-    if (hasEquivalentSessionIdentity(session)) {
-      return assignments.some((assignment) => matchesInstructorAssignmentBySessionIdentity(session, assignment));
-    }
-
-    return allowedCohortIds.has(session.cohort_id);
-  });
-}
-
 // ── useSessions ───────────────────────────────────────────────────────────
 
-export const useSessions = (params?: SessionQueryParams) => {
+interface SessionSupervisionOptions {
+  enabled: boolean;
+  instructorId?: number;
+}
+
+export const useSessions = (
+  params?: SessionQueryParams,
+  supervision?: SessionSupervisionOptions,
+) => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const instructorAccess = useInstructorCohortAccess();
   const sessionFilters = useMemo(
     () => withOperationalScope({
       scope: params?.scope,
@@ -172,8 +82,7 @@ export const useSessions = (params?: SessionQueryParams) => {
       cohort_subject__subject: params?.cohort_subject__subject,
       session_type: params?.session_type,
       session_date: params?.session_date,
-      created_by: params?.created_by,
-      instructor_id: params?.instructor_id,
+      authority_mode: 'teaching' as const,
     }),
     [
       params?.scope,
@@ -183,49 +92,26 @@ export const useSessions = (params?: SessionQueryParams) => {
       params?.cohort_subject__subject,
       params?.session_type,
       params?.session_date,
-      params?.created_by,
-      params?.instructor_id,
     ],
   );
-  const cohortIdsKey = instructorAccess.cohortIdsKey;
-  const allowedCohortIds = useMemo(
-    () => toIdSet(cohortIdsKey),
-    [cohortIdsKey]
-  );
-  const cohortSubjectIdsKey = instructorAccess.cohortSubjectIdsKey;
-  const allowedCohortSubjectIds = useMemo(
-    () => toIdSet(cohortSubjectIdsKey),
-    [cohortSubjectIdsKey]
-  );
-
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await sessionAPI.getAll(sessionFilters);
-      const allSessions = unwrapList(data);
-      setSessions(
-        instructorAccess.isTeachingActor
-          ? filterInstructorSessions(
-            allSessions,
-            instructorAccess.assignments,
-            allowedCohortSubjectIds,
-            allowedCohortIds
-          )
-          : allSessions
-      );
+      const data = supervision?.enabled
+        ? await sessionAPI.getSupervised({
+          ...sessionFilters,
+          authority_mode: 'supervision',
+          instructor_id: supervision.instructorId,
+        })
+        : await sessionAPI.getAll(sessionFilters);
+      setSessions(unwrapList(data));
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch sessions'));
     } finally {
       setLoading(false);
     }
-  }, [
-    allowedCohortIds,
-    allowedCohortSubjectIds,
-    instructorAccess.assignments,
-    instructorAccess.isTeachingActor,
-    sessionFilters,
-  ]);
+  }, [sessionFilters, supervision?.enabled, supervision?.instructorId]);
 
   useEffect(() => {
     fetchSessions();
@@ -237,7 +123,7 @@ export const useSessions = (params?: SessionQueryParams) => {
     });
   }, [fetchSessions]);
 
-  const createSession = async (data: SessionFormData & { created_by: number }): Promise<Session> => {
+  const createSession = async (data: SessionFormData): Promise<Session> => {
     const newSession = await sessionAPI.create(data);
     setSessions(prev => [newSession, ...prev]);
     return newSession;
@@ -271,44 +157,18 @@ export const useTodaySessions = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const instructorAccess = useInstructorCohortAccess();
-  const cohortIdsKey = instructorAccess.cohortIdsKey;
-  const allowedCohortIds = useMemo(
-    () => toIdSet(cohortIdsKey),
-    [cohortIdsKey]
-  );
-  const cohortSubjectIdsKey = instructorAccess.cohortSubjectIdsKey;
-  const allowedCohortSubjectIds = useMemo(
-    () => toIdSet(cohortSubjectIdsKey),
-    [cohortSubjectIdsKey]
-  );
-
   const fetchTodaySessions = useCallback(async () => {
     try {
       setLoading(true);
       const data = await sessionAPI.getToday();
-      setSessions(
-        instructorAccess.isTeachingActor
-          ? filterInstructorSessions(
-            data,
-            instructorAccess.assignments,
-            allowedCohortSubjectIds,
-            allowedCohortIds
-          )
-          : data
-      );
+      setSessions(data);
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, "Failed to fetch today's sessions"));
     } finally {
       setLoading(false);
     }
-  }, [
-    allowedCohortIds,
-    allowedCohortSubjectIds,
-    instructorAccess.assignments,
-    instructorAccess.isTeachingActor,
-  ]);
+  }, []);
 
   useEffect(() => {
     fetchTodaySessions();
@@ -688,7 +548,7 @@ export const useStudentAttendanceHistory = (
 // ── useCohortAttendanceSummary ───────────────────────────────────────────
 export const useCohortAttendanceSummary = (
   cohortId: number | null,
-  subjectId?: number,
+  cohortSubjectId: number,
   startDate?: string,
   endDate?: string
 ) => {
@@ -697,11 +557,11 @@ export const useCohortAttendanceSummary = (
   const [error, setError] = useState<string | null>(null);
 
   const fetchSummary = useCallback(async () => {
-    if (!cohortId) { setLoading(false); return; }
+    if (!cohortId || !cohortSubjectId) { setLoading(false); return; }
     try {
       setLoading(true);
       const result = await attendanceAPI.getCohortSummary(cohortId, {
-        subject_id: subjectId,
+        cohort_subject_id: cohortSubjectId,
         start_date: startDate,
         end_date: endDate,
       });
@@ -712,7 +572,7 @@ export const useCohortAttendanceSummary = (
     } finally {
       setLoading(false);
     }
-  }, [cohortId, endDate, startDate, subjectId]);
+  }, [cohortId, cohortSubjectId, endDate, startDate]);
 
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
 

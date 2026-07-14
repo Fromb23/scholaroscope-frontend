@@ -103,7 +103,7 @@ const SESSION_FIELD_LABELS: Partial<Record<SessionCreateField, string>> = {
 
 export function SessionForm({ currentYear }: SessionFormProps) {
     const router = useRouter();
-    const { user, activeRole } = useAuth();
+    const { activeRole } = useAuth();
     const { createSession } = useSessions();
     const { cohortSubjectIds } = useInstructorCohortAccess();
     const { curricula } = useCurricula();
@@ -281,7 +281,7 @@ export function SessionForm({ currentYear }: SessionFormProps) {
         setSubmitError(null);
 
         try {
-            const session = await createSession({ ...formData, created_by: user?.id ?? 0 });
+            const session = await createSession(formData);
             router.push(`/sessions/${session.id}`);
         } catch (err) {
             setSubmitError(extractErrorMessage(err as ApiError));

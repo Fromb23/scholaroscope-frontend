@@ -459,10 +459,10 @@ function SessionWorkspaceView() {
         cohort_subject: selectedCohortSubjectId ?? undefined,
         session_type: selectedType,
         cohort_subject__cohort: selectedCohortId,
-        instructor_id: showInstitutionSupervision
-            ? (shouldFilterToMyTeaching ? user?.id : selectedInstructorId)
-            : undefined,
-    });
+    }, showInstitutionSupervision ? {
+        enabled: true,
+        instructorId: shouldFilterToMyTeaching ? user?.id : selectedInstructorId,
+    } : undefined);
     const { sessions: todaySessions } = useTodaySessions();
     const { terms } = useTerms();
     const { cohorts } = useCohorts();

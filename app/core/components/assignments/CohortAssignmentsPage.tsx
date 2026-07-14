@@ -272,14 +272,11 @@ export default function CohortAssignmentsPage() {
 
     const visibleAssignments = useMemo(
         () => {
-            const scopedAssignments = isTeachingActor
-                ? assignments.filter((assignment) => instructorAccess.cohortSubjectIds.includes(assignment.cohort_subject))
-                : assignments;
             return reviewFilter === 'needs_review'
-                ? scopedAssignments.filter(isAssignmentNeedingReview)
-                : scopedAssignments;
+                ? assignments.filter(isAssignmentNeedingReview)
+                : assignments;
         },
-        [assignments, instructorAccess.cohortSubjectIds, isTeachingActor, reviewFilter]
+        [assignments, reviewFilter]
     );
 
     const dueSoonCount = useMemo(

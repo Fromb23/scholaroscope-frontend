@@ -93,7 +93,10 @@ export function useInstructorProgress(instructorId: number) {
             const instructorData = await instructorsAPI.getById(instructorId);
             setInstructor(instructorData);
 
-            const sessionsData = await sessionAPI.getAll({ instructor_id: instructorId });
+            const sessionsData = await sessionAPI.getSupervised({
+                authority_mode: 'supervision',
+                instructor_id: instructorId,
+            });
             const allSessions = Array.isArray(sessionsData)
                 ? sessionsData
                 : (sessionsData as PaginatedResponse<Session>)?.results ?? [];
