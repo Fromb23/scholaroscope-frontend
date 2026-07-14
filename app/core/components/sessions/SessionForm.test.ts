@@ -113,7 +113,8 @@ describe('session form validation', () => {
 
     expect(createSource).toContain('<FormValidationSummary');
     expect(createSource).toContain('focusFirstError(validationErrors)');
-    expect(createSource).toContain('createSession({ ...formData');
+    expect(createSource).toContain('createSession(formData)');
+    expect(createSource).not.toContain('created_by: user');
     expect(createSource).not.toContain('if (!validate()) return');
 
     expect(editSource).toContain('<FormValidationSummary');

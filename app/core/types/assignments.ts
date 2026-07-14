@@ -312,6 +312,7 @@ export interface AssignmentFilters {
     ordering?: string;
     page?: number;
     page_size?: number;
+    authority_mode?: 'teaching' | 'supervision';
 }
 
 export type AssignmentRecipientStatus =

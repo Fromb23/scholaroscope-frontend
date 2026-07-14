@@ -231,7 +231,6 @@ export interface BulkAttendanceData {
     status: string;
     notes?: string;
   }[];
-  marked_by?: string;
 }
 
 export interface RescheduleSessionPayload {

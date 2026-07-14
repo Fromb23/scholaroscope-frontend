@@ -242,7 +242,6 @@ export function useAssignmentTeachingToday(options?: UseAssignmentsOptions) {
 }
 
 export function useAssignments(filters?: AssignmentFilters, options?: UseAssignmentsOptions) {
-    const instructorAccess = useInstructorCohortAccess({ enabled: options?.enabled });
     const enabled = options?.enabled ?? true;
     const normalizedFilters = useMemo(() => withOperationalScope(compactFilters({
         scope: filters?.scope,
@@ -262,6 +261,7 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
         ordering: filters?.ordering,
         page: filters?.page,
         page_size: filters?.page_size,
+        authority_mode: filters?.authority_mode,
     })), [
         filters?.scope,
         filters?.term,
@@ -274,6 +274,7 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
         filters?.ordering,
         filters?.page,
         filters?.page_size,
+        filters?.authority_mode,
         filters?.search,
         filters?.starts_at_after,
         filters?.starts_at_before,
@@ -281,51 +282,36 @@ export function useAssignments(filters?: AssignmentFilters, options?: UseAssignm
         filters?.subject,
         filters?.cohort_subject,
     ]);
-    const allowedCohortSubjectIds = useMemo(
-        () => toIdSet(instructorAccess.cohortSubjectIdsKey),
-        [instructorAccess.cohortSubjectIdsKey]
-    );
-    const accessReady = !instructorAccess.isTeachingActor || !instructorAccess.isLoading;
-
     const query = useQuery<{ assignments: Assignment[]; totalCount: number }, Error>({
         queryKey: assignmentKeys.list(normalizedFilters),
         queryFn: async () => {
             try {
                 const response = await assignmentsAPI.list(normalizedFilters as AssignmentFilters);
                 const items = unwrapList(response);
-                const scopedItems = instructorAccess.isTeachingActor
-                    ? items.filter((assignment) => allowedCohortSubjectIds.has(assignment.cohort_subject))
-                    : items;
 
                 return {
-                    assignments: scopedItems,
-                    totalCount: instructorAccess.isTeachingActor ? scopedItems.length : unwrapCount(response),
+                    assignments: items,
+                    totalCount: unwrapCount(response),
                 };
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignments.'));
             }
         },
-        enabled: enabled && accessReady,
+        enabled,
         staleTime: 30_000,
     });
 
     return {
         assignments: query.data?.assignments ?? [],
         totalCount: query.data?.totalCount ?? 0,
-        loading: query.isLoading || (enabled && instructorAccess.isTeachingActor && instructorAccess.isLoading),
+        loading: query.isLoading,
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };
 }
 
 export function useAssignmentDetail(assignmentId: number | null, options?: UseAssignmentsOptions) {
-    const instructorAccess = useInstructorCohortAccess({ enabled: options?.enabled });
     const enabled = (options?.enabled ?? true) && typeof assignmentId === 'number' && assignmentId > 0;
-    const allowedCohortSubjectIds = useMemo(
-        () => toIdSet(instructorAccess.cohortSubjectIdsKey),
-        [instructorAccess.cohortSubjectIdsKey]
-    );
-    const accessReady = !instructorAccess.isTeachingActor || !instructorAccess.isLoading;
 
     const query = useQuery<Assignment, Error>({
         queryKey: assignmentKeys.detail(assignmentId),
@@ -335,24 +321,18 @@ export function useAssignmentDetail(assignmentId: number | null, options?: UseAs
             }
 
             try {
-                const assignment = await assignmentsAPI.getById(assignmentId);
-                ensureInstructorCohortSubjectAccess(
-                    instructorAccess.isTeachingActor,
-                    allowedCohortSubjectIds,
-                    assignment.cohort_subject
-                );
-                return assignment;
+                return await assignmentsAPI.getById(assignmentId);
             } catch (err) {
                 throw new Error(extractErrorMessage(err as ApiError, 'Failed to load assignment.'));
             }
         },
-        enabled: enabled && accessReady,
+        enabled,
         staleTime: 30_000,
     });
 
     return {
         assignment: query.data ?? null,
-        loading: query.isLoading || (enabled && instructorAccess.isTeachingActor && instructorAccess.isLoading),
+        loading: query.isLoading,
         error: query.error?.message ?? null,
         refetch: query.refetch,
     };

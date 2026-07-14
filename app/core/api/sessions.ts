@@ -52,7 +52,11 @@ export interface SessionQueryParams {
   cohort_subject__subject?: number;
   session_type?: string;
   session_date?: string;
-  created_by?: string;
+  authority_mode?: 'teaching';
+}
+
+export interface SupervisedSessionQueryParams extends Omit<SessionQueryParams, 'authority_mode'> {
+  authority_mode: 'supervision';
   instructor_id?: number;
 }
 
@@ -85,7 +89,7 @@ interface StudentHistoryParams extends DateRangeParams {
 }
 
 interface CohortSummaryParams extends DateRangeParams {
-  subject_id?: number;
+  cohort_subject_id: number;
 }
 
 export interface SessionLearner {
@@ -100,6 +104,16 @@ export interface SessionLearner {
 
 export const sessionAPI = {
   getAll: async (params?: SessionQueryParams): Promise<Session[] | PaginatedResponse<Session>> => {
+    const res = await apiClient.get<Session[] | PaginatedResponse<Session>>(
+      '/sessions/',
+      { params: withOperationalScope(params) },
+    );
+    return res.data;
+  },
+
+  getSupervised: async (
+    params: SupervisedSessionQueryParams,
+  ): Promise<Session[] | PaginatedResponse<Session>> => {
     const res = await apiClient.get<Session[] | PaginatedResponse<Session>>(
       '/sessions/',
       { params: withOperationalScope(params) },
@@ -151,7 +165,7 @@ export const sessionAPI = {
     return res.data;
   },
 
-  create: async (data: SessionFormData & { created_by: number }): Promise<Session> => {
+  create: async (data: SessionFormData): Promise<Session> => {
     const res = await apiClient.post<Session>('/sessions/', data);
     return res.data;
   },
@@ -276,7 +290,6 @@ export const attendanceAPI = {
     student: number;
     status: string;
     notes?: string;
-    marked_by: string;
   }): Promise<AttendanceRecord> => {
     const res = await apiClient.post<AttendanceRecord>('/sessions/attendance/', data);
     return res.data;

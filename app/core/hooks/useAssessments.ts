@@ -25,7 +25,6 @@ import {
 } from '../types/assessment';
 import { PaginatedResponse } from '@/app/core/types/api';
 import { ApiError, extractErrorMessage } from '../types/errors';
-import { useInstructorCohortAccess } from '@/app/core/hooks/useInstructorCohortAccess';
 import { withOperationalScope, type OperationalScope } from '@/app/core/lib/academicScope';
 
 // ── Helper ────────────────────────────────────────────────────────────────
@@ -39,16 +38,6 @@ function unwrapCount<T>(data: T[] | PaginatedResponse<T>): number {
   return Array.isArray(data) ? data.length : data?.count ?? data?.results?.length ?? 0;
 }
 
-function toIdSet(idsKey: string): Set<number> {
-  if (!idsKey) return new Set<number>();
-  return new Set(
-    idsKey
-      .split(',')
-      .map(value => Number(value))
-      .filter(value => Number.isFinite(value))
-  );
-}
-
 // ── useAssessments ────────────────────────────────────────────────────────
 
 export const useAssessments = (params?: {
@@ -58,18 +47,13 @@ export const useAssessments = (params?: {
   assessment_type?: string;
   evaluation_type?: string;
   status?: AssessmentStatus;
+  authority_mode?: 'teaching' | 'supervision';
   enabled?: boolean;
 }) => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const enabled = params?.enabled ?? true;
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
-  const instructorAccess = useInstructorCohortAccess();
-  const cohortSubjectIdsKey = instructorAccess.cohortSubjectIdsKey;
-  const allowedCohortSubjectIds = useMemo(
-    () => toIdSet(cohortSubjectIdsKey),
-    [cohortSubjectIdsKey]
-  );
   const assessmentFilters = useMemo(
     () => withOperationalScope({
       scope: params?.scope,
@@ -78,6 +62,7 @@ export const useAssessments = (params?: {
       assessment_type: params?.assessment_type,
       evaluation_type: params?.evaluation_type,
       status: params?.status,
+      authority_mode: params?.authority_mode,
     }),
     [
       params?.scope,
@@ -86,6 +71,7 @@ export const useAssessments = (params?: {
       params?.assessment_type,
       params?.evaluation_type,
       params?.status,
+      params?.authority_mode,
     ]
   );
 
@@ -100,19 +86,14 @@ export const useAssessments = (params?: {
     try {
       setLoading(true);
       const data = await assessmentAPI.getAll(assessmentFilters);
-      const allAssessments = unwrapList(data);
-      setAssessments(
-        instructorAccess.isTeachingActor
-          ? allAssessments.filter(assessment => allowedCohortSubjectIds.has(assessment.cohort_subject))
-          : allAssessments
-      );
+      setAssessments(unwrapList(data));
       setError(null);
     } catch (err) {
       setError(extractErrorMessage(err as ApiError, 'Failed to fetch assessments'));
     } finally {
       setLoading(false);
     }
-  }, [allowedCohortSubjectIds, assessmentFilters, enabled, instructorAccess.isTeachingActor]);
+  }, [assessmentFilters, enabled]);
 
   useEffect(() => {
     void fetchAssessments();

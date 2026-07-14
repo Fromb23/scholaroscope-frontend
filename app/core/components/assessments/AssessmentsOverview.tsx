@@ -897,6 +897,7 @@ export function AssessmentsOverview() {
         cohort_subject: isAdminSupervisionMode ? undefined : selectedCohortSubject,
         assessment_type: isAdminSupervisionMode ? undefined : selectedType,
         evaluation_type: isAdminSupervisionMode ? undefined : selectedEvalType,
+        authority_mode: isAdminSupervisionMode ? 'supervision' : 'teaching',
         enabled: shouldFetchAssessments,
     });
 
@@ -956,12 +957,8 @@ export function AssessmentsOverview() {
             return false;
         }
 
-        if (isAdminLike && effectiveMyTeachingMode) {
-            return assessment.created_by === user?.id;
-        }
-
         return true;
-    }), [assessments, effectiveMyTeachingMode, isAdminLike, isAdminSupervisionMode, selectedCohort, user?.id]);
+    }), [assessments, isAdminSupervisionMode, selectedCohort]);
 
     const selectedTermRecord = useMemo(
         () => terms.find((term) => term.id === selectedTerm),
