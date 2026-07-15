@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { LoadingSpinner } from '@/app/components/ui/LoadingSpinner';
 import { ErrorBanner } from '@/app/components/ui/ErrorBanner';
+import { Card } from '@/app/components/ui/Card';
 import { StatsCard } from '@/app/components/dashboard/StatsCard';
 import { StatStrip } from '@/app/components/dashboard/StatStrip';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
@@ -32,6 +33,7 @@ import { ContextualApprovalRequestButton } from '@/app/core/components/approvals
 import { buildContextualRequestKey } from '@/app/core/lib/approvalIntents';
 import { useAuth } from '@/app/context/AuthContext';
 import { supportsInternalRequests } from '@/app/core/lib/workspaceGovernance';
+import { isLearnerAssessmentDetail } from '@/app/core/types/assessment';
 
 export function AssessmentDetailPage() {
     const { capabilities } = useAuth();
@@ -39,6 +41,8 @@ export function AssessmentDetailPage() {
     const {
         assessmentId,
         assessment,
+        learnerScore,
+        learnerParticipation,
         loading,
         error,
         finalizing,
@@ -330,6 +334,68 @@ export function AssessmentDetailPage() {
     if (loading && !assessment) return <LoadingSpinner message="Loading assessment details..." />;
     if (error) return <ErrorBanner message={error} onDismiss={() => { }} />;
     if (!assessment) return <div className="p-10 text-gray-500">Assessment not found.</div>;
+
+    if (isLearnerAssessmentDetail(assessment)) {
+        const result = learnerScore
+            ? assessment.evaluation_type === 'NUMERIC'
+                ? learnerScore.score == null
+                    ? 'Not scored yet'
+                    : `${learnerScore.score}${assessment.total_marks ? ` / ${assessment.total_marks}` : ''}`
+                : learnerScore.rubric_level_label ?? learnerScore.status_display
+            : 'No result recorded';
+
+        return (
+            <div className="space-y-6">
+                <AssessmentDetailHeader
+                    assessment={assessment}
+                    isDraft={isDraft}
+                    isActive={isActive}
+                    isFinalized={isFinalized}
+                />
+
+                <Card>
+                    <div className="grid gap-4 p-4 sm:grid-cols-3">
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Assessment date</p>
+                            <p className="mt-1 text-sm text-gray-900">
+                                {assessment.assessment_date
+                                    ? new Date(assessment.assessment_date).toLocaleDateString()
+                                    : 'Date not set'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Participation</p>
+                            <p className="mt-1 text-sm text-gray-900">
+                                {learnerParticipation?.participation_status_display ?? 'Not recorded'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Your result</p>
+                            <p className="mt-1 text-sm font-medium text-gray-900">{result}</p>
+                        </div>
+                    </div>
+                </Card>
+
+                {assessment.description ? (
+                    <Card>
+                        <div className="p-4">
+                            <h2 className="text-sm font-semibold text-gray-900">Assessment details</h2>
+                            <p className="mt-2 text-sm text-gray-600">{assessment.description}</p>
+                        </div>
+                    </Card>
+                ) : null}
+
+                {learnerScore?.comments ? (
+                    <Card>
+                        <div className="p-4">
+                            <h2 className="text-sm font-semibold text-gray-900">Feedback</h2>
+                            <p className="mt-2 text-sm text-gray-600">{learnerScore.comments}</p>
+                        </div>
+                    </Card>
+                ) : null}
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

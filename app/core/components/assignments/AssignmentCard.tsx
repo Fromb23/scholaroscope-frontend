@@ -90,7 +90,7 @@ export function AssignmentCard({
 }: {
     assignment: Assignment;
     detailHref: string;
-    onEdit: (assignment: Assignment) => void;
+    onEdit?: (assignment: Assignment) => void;
     highlighted?: boolean;
 }) {
     const dueState = getDueState(assignment);
@@ -184,7 +184,7 @@ export function AssignmentCard({
                             View Assignment
                         </Button>
                     </Link>
-                    {assignment.status === 'DRAFT' ? (
+                    {assignment.status === 'DRAFT' && onEdit ? (
                         <Button
                             type="button"
                             variant="secondary"

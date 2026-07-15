@@ -171,11 +171,14 @@ export interface Assignment {
     group_count: number;
     group_submission_count: number;
     group_evaluation_count: number;
+    /** Present only on the learner-safe assignment representation. */
+    my_recipient?: AssignmentRecipient | null;
+    my_submission?: AssignmentSubmission | null;
+    my_evaluations?: LearnerAssignmentEvaluation[];
 }
 
 export interface AssignmentCreatePayload extends ClientMutationFields {
     cohort_subject: number;
-    instructor?: number;
     title: string;
     instructions?: string;
     starts_at?: string | null;
@@ -275,7 +278,6 @@ export interface AssignmentTeachingTodayResponse {
 
 export interface AssignmentUpdatePayload {
     cohort_subject?: number;
-    instructor?: number;
     title?: string;
     instructions?: string;
     starts_at?: string | null;
@@ -449,6 +451,63 @@ export interface AssignmentEvaluation {
     evidence_warning?: string;
     created_at: string;
     updated_at: string;
+}
+
+export interface LearnerAssignmentEvaluation {
+    id: number;
+    submission: number;
+    assignment: number;
+    student: number;
+    evaluated_at: string;
+    evaluation_type: AssignmentEvaluationType;
+    numeric_score: number | null;
+    rubric_level: number | null;
+    rubric_level_code: string | null;
+    rubric_level_label: string | null;
+    narrative: string;
+    competency_state: string | null;
+}
+
+export interface LearnerAssignmentOutcome {
+    id: number;
+    outcome_key: string;
+    outcome_label: string;
+    weight: number;
+}
+
+/** Minimized assignment representation containing only the caller's workflow rows. */
+export interface LearnerAssignment {
+    id: number;
+    cohort_subject: number;
+    cohort_id: number;
+    cohort_name: string;
+    subject_id: number;
+    subject_name: string;
+    curriculum_name: string;
+    curriculum_type: string;
+    instructor_name: string;
+    title: string;
+    instructions: string;
+    starts_at: string | null;
+    due_at: string | null;
+    status: AssignmentStatus;
+    delivery_mode: AssignmentDeliveryMode;
+    evaluation_type: AssignmentEvaluationType;
+    rubric_scale: number | null;
+    rubric_scale_name: string | null;
+    total_marks: number | null;
+    created_from_session: number | null;
+    created_from_session_title: string | null;
+    created_from_session_date: string | null;
+    requires_attachments: boolean;
+    attachment_policy: AssignmentAttachmentPolicy;
+    attachment_slots: AssignmentAttachmentSlot[];
+    published_at: string | null;
+    closed_at: string | null;
+    outcomes: LearnerAssignmentOutcome[];
+    my_recipient: AssignmentRecipient | null;
+    my_submission: AssignmentSubmission | null;
+    my_evaluations: LearnerAssignmentEvaluation[];
 }
 
 export interface AssignmentEvaluationCreatePayload extends ClientMutationFields {

@@ -38,6 +38,21 @@ export interface StudentCohortEnrollment {
   lock_reason?: string;
 }
 
+/** Read-only enrollment shape returned when a learner retrieves their own row. */
+export interface LearnerSelfEnrollment {
+  id: number;
+  cohort: number;
+  cohort_name: string;
+  cohort_level: string;
+  curriculum_name: string;
+  curriculum_type: string;
+  enrolled_date: string;
+  is_active: boolean;
+  enrollment_type: 'PRIMARY' | 'ELECTIVE' | 'REMEDIAL' | 'ADVANCED' | 'TRANSFER';
+  enrollment_type_display: string;
+  subject_registration_status?: CbcRegistrationStatus;
+}
+
 export interface StudentSummary {
   id: number;
   admission_number: string;

@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import type { AssessmentDetail } from '@/app/core/types/assessment';
+import type { AssessmentDetailResponse } from '@/app/core/types/assessment';
 
 interface AssessmentDetailHeaderProps {
-    assessment: AssessmentDetail;
+    assessment: AssessmentDetailResponse;
     isDraft: boolean;
     isActive: boolean;
     isFinalized: boolean;

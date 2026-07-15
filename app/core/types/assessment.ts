@@ -184,6 +184,28 @@ export interface AssessmentScore {
   graded_by: string;
 }
 
+/** Self-scoped score returned inside a learner assessment detail response. */
+export interface LearnerAssessmentScore {
+  id: number;
+  assessment: number;
+  assessment_name: string;
+  subject_name: string;
+  student: number;
+  score: number | null;
+  total_marks: number;
+  percentage: number | null;
+  rubric_level: number | null;
+  rubric_level_label: string | null;
+  rubric_level_code: string | null;
+  status: AssessmentScoreStatus;
+  status_display: string;
+  status_note?: string;
+  is_pending_review: boolean;
+  comments: string;
+  submitted_at: string | null;
+  graded_at: string | null;
+}
+
 export interface AssessmentScoreDraft {
   score?: number | null;
   rubric_level?: number | null;
@@ -237,6 +259,16 @@ export interface AssessmentParticipationRecord {
   has_score: boolean;
 }
 
+/** Self-scoped participation returned inside a learner assessment detail response. */
+export interface LearnerAssessmentParticipation {
+  id: number;
+  student: number;
+  expected_at_assessment_time: boolean;
+  participation_status: AssessmentParticipationStatus | null;
+  participation_status_display: string;
+  makeup_completed_at: string | null;
+}
+
 export interface AssessmentParticipationRosterResponse {
   summary: AssessmentParticipationSummary;
   records: AssessmentParticipationRecord[];
@@ -279,6 +311,44 @@ export interface AssessmentDetail extends Assessment {
   rubric_levels: RubricLevel[];
 }
 
+export interface LearnerAssessmentDetail extends Pick<
+  Assessment,
+  | 'id'
+  | 'cohort_subject'
+  | 'cohort_id'
+  | 'cohort_name'
+  | 'subject_id'
+  | 'subject_name'
+  | 'subject_code'
+  | 'term'
+  | 'term_name'
+  | 'name'
+  | 'assessment_type'
+  | 'assessment_type_display'
+  | 'evaluation_type'
+  | 'evaluation_type_display'
+  | 'total_marks'
+  | 'rubric_scale'
+  | 'rubric_scale_name'
+  | 'assessment_date'
+  | 'description'
+  | 'participation_mode'
+  | 'status'
+  | 'status_display'
+> {
+  rubric_levels: RubricLevel[];
+  own_score: LearnerAssessmentScore | null;
+  own_participation: LearnerAssessmentParticipation | null;
+}
+
+export type AssessmentDetailResponse = AssessmentDetail | LearnerAssessmentDetail;
+
+export function isLearnerAssessmentDetail(
+  assessment: AssessmentDetailResponse,
+): assessment is LearnerAssessmentDetail {
+  return 'own_score' in assessment || 'own_participation' in assessment;
+}
+
 export interface BulkScoreData {
   assessment: number;
   scores: {
@@ -290,7 +360,6 @@ export interface BulkScoreData {
     status_note?: string;
     narrative?: string;
   }[];
-  scored_by: string;
 }
 
 export interface AssessmentFormData {

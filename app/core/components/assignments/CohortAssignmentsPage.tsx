@@ -263,11 +263,8 @@ export default function CohortAssignmentsPage() {
         return () => window.clearTimeout(timer);
     }, [assignmentsLoading, highlightAssignmentId]);
 
-    const canManageAssignments = Boolean(user) && (
-        false
-        || activeRole === 'ADMIN'
-        || activeRole === 'INSTRUCTOR'
-    );
+    const canCreateAssignments = Boolean(user) && isTeachingActor;
+    const canManageAssignments = Boolean(user) && (isTeachingActor || isInstitutionAdminView);
     const midtermBreakPausesCreation = todayMode?.mode === 'MIDTERM_BREAK' && todayMode.allows_new_teaching === false;
 
     const visibleAssignments = useMemo(
@@ -447,7 +444,7 @@ export default function CohortAssignmentsPage() {
                             </p>
                         </div>
 
-                        {canManageAssignments && !midtermBreakPausesCreation ? (
+                        {canCreateAssignments && !midtermBreakPausesCreation ? (
                             <Button
                                 type="button"
                                 onClick={() => {
@@ -699,10 +696,12 @@ export default function CohortAssignmentsPage() {
                                     assignment={assignment}
                                     detailHref={buildAssignmentDetailHref(assignment.id)}
                                     highlighted={assignment.id === highlightAssignmentId}
-                                    onEdit={(nextAssignment) => {
-                                        setEditingAssignment(nextAssignment);
-                                        setCreateOpen(true);
-                                    }}
+                                    onEdit={canManageAssignments
+                                        ? (nextAssignment) => {
+                                            setEditingAssignment(nextAssignment);
+                                            setCreateOpen(true);
+                                        }
+                                        : undefined}
                                 />
                             ))}
                         </div>
@@ -725,7 +724,9 @@ export default function CohortAssignmentsPage() {
             )}
 
             <AssignmentCreateModal
-                isOpen={createOpen}
+                isOpen={createOpen && (
+                    editingAssignment ? canManageAssignments : canCreateAssignments
+                )}
                 onClose={() => {
                     setCreateOpen(false);
                     setEditingAssignment(null);

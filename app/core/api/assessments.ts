@@ -7,11 +7,12 @@ import {
 } from '@/app/core/api/downloads';
 import {
   Assessment,
-  AssessmentDetail,
+  AssessmentDetailResponse,
   AssessmentMakeupCompletionData,
   AssessmentParticipationBulkUpdateData,
   AssessmentParticipationRosterResponse,
   AssessmentScore,
+  AssessmentScoreDraft,
   AssessmentScoreStatus,
   RubricScale,
   RubricScaleDetail,
@@ -146,7 +147,7 @@ export const assessmentAPI = {
   },
 
   getById: async (id: number) => {
-    const response = await apiClient.get<AssessmentDetail>(`/assessments/${id}/`);
+    const response = await apiClient.get<AssessmentDetailResponse>(`/assessments/${id}/`);
     return response.data;
   },
 
@@ -350,13 +351,12 @@ export const assessmentScoreAPI = {
     score?: number;
     rubric_level?: number;
     comments?: string;
-    graded_by: string;
   }) => {
     const response = await apiClient.post<AssessmentScore>('/scores/', data);
     return response.data;
   },
 
-  update: async (id: number, data: Partial<AssessmentScore>) => {
+  update: async (id: number, data: AssessmentScoreDraft) => {
     const response = await apiClient.patch<AssessmentScore>(`/scores/${id}/`, data);
     return response.data;
   },

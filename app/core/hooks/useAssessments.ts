@@ -12,9 +12,10 @@ import {
 import { getDefaultAssessmentParticipationMode } from '@/app/core/lib/assessmentParticipation';
 import {
   Assessment,
-  AssessmentDetail,
+  AssessmentDetailResponse,
   AssessmentParticipationMode,
   AssessmentScore,
+  AssessmentScoreDraft,
   AssessmentScoreStatus,
   AssessmentStatus,
   RubricScale,
@@ -175,7 +176,7 @@ export const useOpenAssessmentsForStudent = (
 // ── useAssessmentDetail ───────────────────────────────────────────────────
 
 export const useAssessmentDetail = (assessmentId: number | null) => {
-  const [assessment, setAssessment] = useState<AssessmentDetail | null>(null);
+  const [assessment, setAssessment] = useState<AssessmentDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
@@ -321,7 +322,7 @@ export const useAssessmentScores = (params?: {
     void fetchScores();
   }, [fetchScores]);
 
-  const updateScore = async (id: number, data: Partial<AssessmentScore>): Promise<AssessmentScore> => {
+  const updateScore = async (id: number, data: AssessmentScoreDraft): Promise<AssessmentScore> => {
     const updated = await assessmentScoreAPI.update(id, data);
     setScores(prev => prev.map(s => s.id === id ? updated : s));
     return updated;
