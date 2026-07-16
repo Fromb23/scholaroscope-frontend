@@ -7,6 +7,12 @@ import {
   getAccessTokenVersion,
   setAccessToken,
 } from '@/app/core/auth/tokenStore';
+import {
+  assertWorkspaceGeneration,
+  getWorkspaceGeneration,
+  isWorkspaceGenerationSupersededError,
+  WorkspaceGenerationSupersededError,
+} from '@/app/core/runtime/workspaceGeneration';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 let hasWarnedAboutApiBaseUrl = false;
@@ -15,6 +21,7 @@ type AuthFailureHandler = () => void;
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+  _workspaceGeneration?: number;
 };
 
 interface RefreshPayload {
@@ -102,10 +109,14 @@ function handleAuthFailure(): void {
 
 async function performRefreshRequest(): Promise<string> {
   const tokenVersionAtStart = getAccessTokenVersion();
+  const workspaceGenerationAtStart = getWorkspaceGeneration();
   const response = await refreshClient.post<RefreshPayload>('/users/refresh/');
   const accessToken = response.data.access;
 
-  if (getAccessTokenVersion() !== tokenVersionAtStart) {
+  if (
+    getAccessTokenVersion() !== tokenVersionAtStart
+    || getWorkspaceGeneration() !== workspaceGenerationAtStart
+  ) {
     throw new AuthRefreshSupersededError();
   }
 
@@ -151,6 +162,8 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  const workspaceConfig = config as RetryableRequestConfig;
+  workspaceConfig._workspaceGeneration ??= getWorkspaceGeneration();
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -160,12 +173,23 @@ apiClient.interceptors.request.use((config) => {
 
 apiClient.interceptors.response.use(
   (response) => {
+    const generation = (response.config as RetryableRequestConfig)._workspaceGeneration;
+    if (generation !== undefined) {
+      assertWorkspaceGeneration(generation);
+    }
     syncMembershipVersion(response.headers['x-membership-version']);
     return response;
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
     const status = error.response?.status;
+
+    if (
+      originalRequest?._workspaceGeneration !== undefined
+      && originalRequest._workspaceGeneration !== getWorkspaceGeneration()
+    ) {
+      return Promise.reject(new WorkspaceGenerationSupersededError());
+    }
 
     if (status !== 401 || !originalRequest) {
       return Promise.reject(error);
@@ -182,7 +206,10 @@ apiClient.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${refreshedAccessToken}`;
       return apiClient(originalRequest);
     } catch (refreshError) {
-      if (isAuthRefreshSupersededError(refreshError)) {
+      if (
+        isAuthRefreshSupersededError(refreshError)
+        || isWorkspaceGenerationSupersededError(refreshError)
+      ) {
         return Promise.reject(refreshError);
       }
       handleAuthFailure();
@@ -191,10 +218,27 @@ apiClient.interceptors.response.use(
   }
 );
 
+refreshClient.interceptors.request.use((config) => {
+  const workspaceConfig = config as RetryableRequestConfig;
+  workspaceConfig._workspaceGeneration ??= getWorkspaceGeneration();
+  return workspaceConfig;
+});
+
 refreshClient.interceptors.response.use(
   (response) => {
+    const generation = (response.config as RetryableRequestConfig)._workspaceGeneration;
+    if (generation !== undefined) {
+      assertWorkspaceGeneration(generation);
+    }
     syncMembershipVersion(response.headers['x-membership-version']);
     return response;
   },
-  (error) => Promise.reject(error)
+  (error: AxiosError) => {
+    const generation = (error.config as RetryableRequestConfig | undefined)
+      ?._workspaceGeneration;
+    if (generation !== undefined && generation !== getWorkspaceGeneration()) {
+      return Promise.reject(new WorkspaceGenerationSupersededError());
+    }
+    return Promise.reject(error);
+  }
 );

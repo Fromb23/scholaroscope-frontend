@@ -5,6 +5,11 @@ import { notificationAPI } from '@/app/core/api/notifications';
 import { maybeShowBrowserNotification } from '@/app/core/lib/browserNotification';
 import { queueNotificationSound, initializeNotificationSound } from '@/app/core/lib/notificationSound';
 import { getNotificationSoundKey, isSessionNotification } from '@/app/core/lib/notificationUtils';
+import {
+  captureWorkspaceAuthority,
+  isWorkspaceAuthorityCurrent,
+  useWorkspaceGeneration,
+} from '@/app/core/runtime/workspaceGeneration';
 import type { Notification } from '@/app/core/types/notifications';
 
 const POLL_INTERVAL = 15_000; // Polling only; true realtime still requires WebSocket/SSE.
@@ -16,6 +21,7 @@ function buildNotificationSnapshot(nextNotifications: Notification[]): Map<numbe
 }
 
 export function useNotifications() {
+  const workspaceGeneration = useWorkspaceGeneration();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -62,27 +68,39 @@ export function useNotifications() {
   }, []);
 
   const syncNotifications = useCallback(async (showLoading = false) => {
+    const generationAtStart = workspaceGeneration;
+    const authorityAtStart = captureWorkspaceAuthority();
     if (showLoading) {
       setLoading(true);
     }
 
     try {
       const data = await notificationAPI.getAll();
+      if (
+        authorityAtStart.generation !== generationAtStart
+        || !isWorkspaceAuthorityCurrent(authorityAtStart)
+      ) {
+        return;
+      }
       commitNotifications(data, true);
     } catch {
     } finally {
-      if (showLoading) {
+      if (showLoading && isWorkspaceAuthorityCurrent(authorityAtStart)) {
         setLoading(false);
       }
     }
-  }, [commitNotifications]);
+  }, [commitNotifications, workspaceGeneration]);
 
   const fetchAll = useCallback(async () => {
     await syncNotifications(true);
   }, [syncNotifications]);
 
   const markRead = useCallback(async (ids: number[]) => {
+    const authorityAtStart = captureWorkspaceAuthority();
     await notificationAPI.markRead(ids);
+    if (!isWorkspaceAuthorityCurrent(authorityAtStart)) {
+      return;
+    }
 
     const next = notificationsRef.current.map((notification) =>
       ids.includes(notification.id) ? { ...notification, is_read: true } : notification
@@ -91,13 +109,23 @@ export function useNotifications() {
   }, [commitNotifications]);
 
   const markAllRead = useCallback(async () => {
+    const authorityAtStart = captureWorkspaceAuthority();
     await notificationAPI.markAllRead();
+    if (!isWorkspaceAuthorityCurrent(authorityAtStart)) {
+      return;
+    }
 
     const next = notificationsRef.current.map((notification) => ({ ...notification, is_read: true }));
     commitNotifications(next, false);
   }, [commitNotifications]);
 
   useEffect(() => {
+    setNotifications([]);
+    notificationsRef.current = [];
+    setUnreadCount(0);
+    setLoading(false);
+    hasEstablishedBaseline.current = false;
+    previousSnapshot.current = new Map();
     initializeNotificationSound();
     void syncNotifications();
 
@@ -106,7 +134,7 @@ export function useNotifications() {
     }, POLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [syncNotifications]);
+  }, [syncNotifications, workspaceGeneration]);
 
   return {
     notifications,

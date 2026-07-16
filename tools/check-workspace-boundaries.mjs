@@ -159,6 +159,42 @@ const RULES = [
   },
 ];
 
+const REQUIRED_WORKSPACE_GENERATION_ANCHORS = new Map([
+  [
+    'context/AuthContext.tsx',
+    [
+      ['workspaceGeneration', 'advanceWorkspaceGeneration'],
+      ['captureWorkspaceAuthority', 'getAccessTokenVersion', 'isWorkspaceAuthorityCurrent'],
+    ],
+  ],
+  [
+    'core/api/client.ts',
+    [
+      ['_workspaceGeneration', 'getWorkspaceGeneration'],
+      ['assertWorkspaceGeneration', 'WorkspaceGenerationSupersededError'],
+    ],
+  ],
+  [
+    'core/hooks/useNotifications.ts',
+    [
+      ['useWorkspaceGeneration', 'captureWorkspaceAuthority'],
+      ['setNotifications([])', 'setUnreadCount(0)', 'previousSnapshot.current = new Map()'],
+    ],
+  ],
+  [
+    '(dashboard)/DashboardClientShell.tsx',
+    [['WorkspaceGenerationBoundary']],
+  ],
+]);
+
+function missingWorkspaceGenerationAnchorCount(source, relative) {
+  const requiredGroups = REQUIRED_WORKSPACE_GENERATION_ANCHORS.get(relative);
+  if (!requiredGroups) return 0;
+  return requiredGroups.filter(
+    (group) => !group.every((anchor) => source.includes(anchor)),
+  ).length;
+}
+
 function collectFindings() {
   const files = existsSync(scanRoot) ? walk(scanRoot).filter(shouldScan) : [];
   const findings = new Map();
@@ -173,6 +209,14 @@ function collectFindings() {
       if (count > 0) {
         findings.set(`${relative}::${rule.id}`, count);
       }
+    }
+
+    const missingGenerationAnchors = missingWorkspaceGenerationAnchorCount(source, relative);
+    if (missingGenerationAnchors > 0) {
+      findings.set(
+        `${relative}::workspace-generation-boundary`,
+        missingGenerationAnchors,
+      );
     }
   }
 

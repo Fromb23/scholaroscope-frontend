@@ -46,6 +46,7 @@ import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
 import { canUseAnnouncements } from '@/app/core/lib/workspaceGovernance';
+import { WorkspaceGenerationBoundary } from '@/app/core/runtime/workspaceGeneration';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
 
@@ -386,19 +387,21 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
 
 export function DashboardClientShell({ children }: { children: ReactNode }) {
   return (
-    <PluginRegistryProvider>
-      <Suspense
-        fallback={
-          <PermissionResolvingState
-            fullScreen
-            message="Loading workspace..."
-            description="Preparing your dashboard."
-          />
-        }
-      >
-        <DashboardLayoutContent>{children}</DashboardLayoutContent>
-      </Suspense>
-    </PluginRegistryProvider>
+    <WorkspaceGenerationBoundary>
+      <PluginRegistryProvider>
+        <Suspense
+          fallback={
+            <PermissionResolvingState
+              fullScreen
+              message="Loading workspace..."
+              description="Preparing your dashboard."
+            />
+          }
+        >
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
+        </Suspense>
+      </PluginRegistryProvider>
+    </WorkspaceGenerationBoundary>
   );
 }
 

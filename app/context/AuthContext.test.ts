@@ -84,7 +84,7 @@ describe('AuthContext local-first logout', () => {
     const bootSource = source.slice(bootStart, bootEnd);
 
     expect(bootSource).toContain('const response = await authAPI.refresh();');
-    expect(bootSource).toContain('clearAuthState();');
+    expect(bootSource).toContain("clearAuthState('session-invalidation');");
     expect(bootSource).toContain('setLoading(false);');
   });
 
@@ -94,7 +94,7 @@ describe('AuthContext local-first logout', () => {
     const bootEnd = source.indexOf('}, [applyAuthState, clearAuthState]);', bootStart);
     const bootSource = source.slice(bootStart, bootEnd);
     const networkCheckIndex = bootSource.indexOf('if (isNetworkError(error)) {');
-    const clearIndex = bootSource.indexOf('clearAuthState();', networkCheckIndex);
+    const clearIndex = bootSource.indexOf("clearAuthState('session-invalidation');", networkCheckIndex);
     const networkBranch = bootSource.slice(networkCheckIndex, clearIndex);
 
     expect(source).toContain("import { isNetworkError } from '@/app/core/auth/networkDetection';");
@@ -138,7 +138,7 @@ describe('AuthContext local-first logout', () => {
     const bootEnd = source.indexOf('}, [applyAuthState, clearAuthState]);', bootStart);
     const bootSource = source.slice(bootStart, bootEnd);
     const networkCheckIndex = bootSource.indexOf('if (isNetworkError(error)) {');
-    const clearIndex = bootSource.indexOf('clearAuthState();', networkCheckIndex);
+    const clearIndex = bootSource.indexOf("clearAuthState('session-invalidation');", networkCheckIndex);
     const loadingFalseIndex = bootSource.indexOf('setLoading(false);', clearIndex);
 
     expect(clearIndex).toBeGreaterThan(networkCheckIndex);
