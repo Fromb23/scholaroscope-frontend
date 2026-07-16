@@ -12,6 +12,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Megaphone, Plus, AlertCircle, MessageSquare, RotateCcw } from 'lucide-react';
 import { useAnnouncements } from '@/app/plugins/announcements/hooks/useAnnouncements';
 import { useAuth } from '@/app/context/AuthContext';
+import { hasWorkspacePermission } from '@/app/core/lib/productCapabilities';
 import { useAssistantPageContext } from '@/app/core/components/assistant/useAssistantPageContext';
 import { ActionMenu } from '@/app/components/ui/ActionMenu';
 import { Card } from '@/app/components/ui/Card';
@@ -41,7 +42,7 @@ export function AnnouncementsPage() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeRole } = useAuth();
+    const { activeRole, capabilities } = useAuth();
     const {
         announcements, loading, error, refetch,
         create, update, remove, markRead, submitFeedback,
@@ -52,7 +53,7 @@ export function AnnouncementsPage() {
     const [pageError, setPageError] = useState<string | null>(null);
     const filter = parseFilter(searchParams.get('filter'));
 
-    const isAdmin = activeRole === 'ADMIN';
+    const canManageAnnouncements = hasWorkspacePermission(capabilities, 'announcements.manage');
 
     const filtered = announcements.filter(a => {
         if (filter === 'unread') return !a.is_read;
@@ -118,7 +119,7 @@ export function AnnouncementsPage() {
             is_loading: loading,
             is_empty: !loading && filtered.length === 0,
             unread_count: unreadCount,
-            can_create_announcement: isAdmin,
+            can_create_announcement: canManageAnnouncements,
             role: activeRole ?? null,
         },
         visibleActions: [
@@ -128,7 +129,7 @@ export function AnnouncementsPage() {
                 target: 'refresh_announcements',
                 handler: refetch,
             },
-            ...(isAdmin
+            ...(canManageAnnouncements
                 ? [{
                     label: 'Create announcement',
                     type: 'page_action' as const,
@@ -165,7 +166,7 @@ export function AnnouncementsPage() {
     }), [
         activeRole,
         filtered.length,
-        isAdmin,
+        canManageAnnouncements,
         loading,
         openCreate,
         refetch,
@@ -183,7 +184,7 @@ export function AnnouncementsPage() {
                     <p className="text-sm text-gray-500 mt-1">Stay informed with the latest updates</p>
                 </div>
                 <div className="flex items-center gap-2 self-start">
-                    {isAdmin ? (
+                    {canManageAnnouncements ? (
                         <Button onClick={openCreate}>
                             <Plus className="h-4 w-4 mr-2" />New Announcement
                         </Button>
@@ -284,7 +285,7 @@ export function AnnouncementsPage() {
                         <AnnouncementCard
                             key={a.id}
                             announcement={a}
-                            isAdmin={isAdmin}
+                            isAdmin={canManageAnnouncements}
                             onMarkRead={markRead}
                             onEdit={openEdit}
                             onDelete={handleDelete}

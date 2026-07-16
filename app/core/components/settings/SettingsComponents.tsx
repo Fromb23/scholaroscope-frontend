@@ -43,6 +43,7 @@ import { getCurriculumBridgeName } from '@/app/core/lib/curriculumBridge';
 import type { AcademicSetupStatus, Curriculum, CurriculumDisableRequest } from '@/app/core/types/academic';
 import { useInvites, Invite, CreateInvitePayload } from '@/app/core/hooks/useInvites';
 import { useAuth } from '@/app/context/AuthContext';
+import { hasWorkspacePermission } from '@/app/core/lib/productCapabilities';
 import { ApiError, extractErrorMessage } from '@/app/core/types/errors';
 import {
     CurriculumCatalogDetail, InstalledPlugin,
@@ -470,9 +471,10 @@ interface InviteRowProps {
     invite: Invite;
     onRevoke: (token: string) => void;
     revoking: boolean;
+    canRevoke: boolean;
 }
 
-export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
+export function InviteRow({ invite, onRevoke, revoking, canRevoke }: InviteRowProps) {
     const [copied, setCopied] = useState(false);
     const StatusIcon = STATUS_ICONS[invite.status] ?? Clock;
 
@@ -527,13 +529,15 @@ export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
                     >
                         {copied ? <CheckCheck className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </button>
-                    <button
-                        onClick={() => onRevoke(invite.token)}
-                        disabled={revoking}
-                        className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </button>
+                    {canRevoke ? (
+                        <button
+                            onClick={() => onRevoke(invite.token)}
+                            disabled={revoking}
+                            className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    ) : null}
                 </div>
             )}
         </div>
@@ -543,24 +547,25 @@ export function InviteRow({ invite, onRevoke, revoking }: InviteRowProps) {
 // ── MembersTab ────────────────────────────────────────────────────────────
 
 export function MembersTab() {
-    const { activeRole } = useAuth();
+    const { capabilities } = useAuth();
     const { invites, loading, error, fetchInvites, createInvite, revokeInvite } = useInvites();
     const [createOpen, setCreateOpen] = useState(false);
     const [revoking, setRevoking] = useState<string | null>(null);
     const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    const canInviteMembers = activeRole === 'ADMIN';
+    const canViewMembers = hasWorkspacePermission(capabilities, 'workspace.members.view');
+    const canInviteMembers = hasWorkspacePermission(capabilities, 'workspace.members.invite');
 
     useEffect(() => {
-        if (canInviteMembers) {
+        if (canViewMembers) {
             fetchInvites();
         }
-    }, [canInviteMembers, fetchInvites]);
+    }, [canViewMembers, fetchInvites]);
 
-    if (!canInviteMembers) {
+    if (!canViewMembers) {
         return (
             <div className="rounded-lg border theme-border theme-surface-muted px-4 py-3 text-sm theme-muted">
-                Only workspace administrators can invite members.
+                You do not have permission to view workspace invitations.
             </div>
         );
     }
@@ -592,9 +597,11 @@ export function MembersTab() {
                         Generate invite links to share manually via email, WhatsApp, or Slack.
                     </p>
                 </div>
-                <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)} className="w-full gap-2 sm:w-auto">
-                    <Plus className="h-4 w-4" />New Invite
-                </Button>
+                {canInviteMembers ? (
+                    <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)} className="w-full gap-2 sm:w-auto">
+                        <Plus className="h-4 w-4" />New Invite
+                    </Button>
+                ) : null}
             </div>
 
             <FeedbackBanner feedback={feedback} onDismiss={() => setFeedback(null)} />
@@ -621,6 +628,7 @@ export function MembersTab() {
                                 invite={inv}
                                 onRevoke={handleRevoke}
                                 revoking={revoking === inv.token}
+                                canRevoke={canInviteMembers}
                             />
                         ))}
                     </div>
@@ -634,6 +642,7 @@ export function MembersTab() {
                                     invite={inv}
                                     onRevoke={handleRevoke}
                                     revoking={revoking === inv.token}
+                                    canRevoke={canInviteMembers}
                                 />
                             ))}
                         </div>
@@ -641,11 +650,13 @@ export function MembersTab() {
                 </>
             )}
 
-            <CreateInviteModal
-                isOpen={createOpen}
-                onClose={() => setCreateOpen(false)}
-                onCreate={createInvite}
-            />
+            {canInviteMembers ? (
+                <CreateInviteModal
+                    isOpen={createOpen}
+                    onClose={() => setCreateOpen(false)}
+                    onCreate={createInvite}
+                />
+            ) : null}
         </div>
     );
 }
@@ -663,6 +674,11 @@ interface InstalledPluginCardProps {
     onToggle: (id: number) => void;
     onWorkflowChanged: () => Promise<void>;
     toggling: boolean;
+    canManagePluginConfiguration: boolean;
+    canManageCurriculum: boolean;
+    canManageSubjectOfferings: boolean;
+    canManageTheme: boolean;
+    canViewSubscription: boolean;
     highlighted?: boolean;
     containerRef?: (node: HTMLDivElement | null) => void;
 }
@@ -678,6 +694,11 @@ export function InstalledPluginCard({
     onToggle,
     onWorkflowChanged,
     toggling,
+    canManagePluginConfiguration,
+    canManageCurriculum,
+    canManageSubjectOfferings,
+    canManageTheme,
+    canViewSubscription,
     highlighted = false,
     containerRef,
 }: InstalledPluginCardProps) {
@@ -692,7 +713,10 @@ export function InstalledPluginCard({
     const showLifecycleStatus = Boolean(curriculum && isCurriculumManagedPlugin);
     const policyLabel = getPluginPolicyLabel(plugin);
     const managementLabel = MANAGEMENT_LABELS[management.action_mode];
-    const configureHref = getConfigureHref(plugin, management);
+    const canConfigurePlugin = plugin.key === 'themes'
+        ? canManageTheme
+        : canManagePluginConfiguration;
+    const configureHref = canConfigurePlugin ? getConfigureHref(plugin, management) : null;
     const configureLabel = getConfigureActionLabel(plugin, management);
     const canStartDisableWorkflow = canStartNewDisableRequest({
         isEnabled: Boolean(isActive && plugin.is_available && curriculum?.is_active && curriculum.offering_status === 'ACTIVE'),
@@ -710,16 +734,23 @@ export function InstalledPluginCard({
     const canOpenCurriculumModal = Boolean(
         PluginModal
         && management.can_manage_curriculum
+        && canManageCurriculum
         && canManagePluginCurriculum
     );
-    const canShowSubjectOfferings = Boolean(curriculum && management.can_manage_subject_offerings);
+    const canShowSubjectOfferings = Boolean(
+        curriculum
+        && management.can_manage_subject_offerings
+        && canManageSubjectOfferings
+    );
     const canOpenPluginConfiguration = Boolean(
         PluginModal
         && management.can_configure
+        && canConfigurePlugin
         && !isCurriculumManagedPlugin
     );
     const canUseCurriculumLifecycle = Boolean(
         isCurriculumManagedPlugin
+        && canManageCurriculum
         && (
             management.action_mode === 'CURRICULUM_LIFECYCLE'
             || management.can_manage_curriculum
@@ -834,7 +865,7 @@ export function InstalledPluginCard({
                             {!isActive && isInstalledActive ? (
                                 <p>Installed, but not currently usable under workspace policy.</p>
                             ) : null}
-                            {management.can_view_subscription || plugin.entitlement_source ? (
+                            {canViewSubscription && (management.can_view_subscription || plugin.entitlement_source) ? (
                                 <p>
                                     Subscription status: {plugin.entitlement_source?.replace(/_/g, ' ').toLowerCase() ?? 'managed by subscription'}
                                 </p>
@@ -906,7 +937,11 @@ export function InstalledPluginCard({
                             </div>
                         )}
 
-                        {PluginModal && management.can_manage_curriculum && !canManagePluginCurriculum && manageCurriculumHelperText ? (
+                        {PluginModal
+                        && canManageCurriculum
+                        && management.can_manage_curriculum
+                        && !canManagePluginCurriculum
+                        && manageCurriculumHelperText ? (
                             <div className="theme-warning-surface mt-3 rounded-lg px-3 py-2 text-xs theme-text">
                                 {manageCurriculumHelperText}
                             </div>
@@ -943,7 +978,7 @@ export function InstalledPluginCard({
                             </Button>
                         </NextLink>
                     ) : null}
-                    {management.can_toggle ? (
+                    {management.can_toggle && canManagePluginConfiguration ? (
                         <button
                             onClick={() => onToggle(plugin.id)}
                             disabled={toggling || !plugin.is_available}
@@ -956,7 +991,10 @@ export function InstalledPluginCard({
                             {isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                         </button>
                     ) : null}
-                    {!canUseCurriculumLifecycle && !canOpenPluginConfiguration && !configureHref && !management.can_toggle ? (
+                    {!canUseCurriculumLifecycle
+                    && !canOpenPluginConfiguration
+                    && !configureHref
+                    && !(management.can_toggle && canManagePluginConfiguration) ? (
                         <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500">
                             No workspace action
                         </span>
@@ -964,7 +1002,7 @@ export function InstalledPluginCard({
                 </div>
             </div>
 
-            {PluginModal && (
+            {PluginModal && (canOpenCurriculumModal || canOpenPluginConfiguration) && (
                 <PluginModal
                     key={modalKey}
                     isOpen={curriculumOpen}
@@ -972,7 +1010,7 @@ export function InstalledPluginCard({
                 />
             )}
 
-            {curriculum ? (
+            {curriculum && canUseCurriculumLifecycle ? (
                 <CurriculumDisableWorkflowModal
                     isOpen={disableWorkflowOpen}
                     onClose={() => setDisableWorkflowOpen(false)}
@@ -991,7 +1029,16 @@ export function InstalledPluginCard({
 export function PluginsTab() {
     const { plugins, loading, error, refetch } = usePlugins();
     const searchParams = useSearchParams();
+    const { capabilities } = useAuth();
     const { curricula } = useCurricula();
+    const canManagePluginConfiguration = hasWorkspacePermission(
+        capabilities,
+        'plugins.manage_workspace_configuration',
+    );
+    const canManageCurriculum = hasWorkspacePermission(capabilities, 'academic.curricula.manage');
+    const canManageSubjectOfferings = hasWorkspacePermission(capabilities, 'academic.subjects.manage');
+    const canManageTheme = hasWorkspacePermission(capabilities, 'themes.manage');
+    const canViewSubscription = hasWorkspacePermission(capabilities, 'subscriptions.view');
     const setupMode = searchParams.get('setup') === '1';
     const fromQuery = searchParams.get('from')?.trim().toLowerCase() ?? '';
     const academicSetupMode = setupMode || fromQuery === 'academic-setup';
@@ -1093,6 +1140,9 @@ export function PluginsTab() {
     };
 
     const handleToggle = async (id: number) => {
+        if (!canManagePluginConfiguration) {
+            return;
+        }
         setToggling(true);
         try {
             const response = await pluginAPI.toggle(id);
@@ -1151,6 +1201,11 @@ export function PluginsTab() {
                 onToggle={handleToggle}
                 onWorkflowChanged={handleWorkflowChanged}
                 toggling={toggling}
+                canManagePluginConfiguration={canManagePluginConfiguration}
+                canManageCurriculum={canManageCurriculum}
+                canManageSubjectOfferings={canManageSubjectOfferings}
+                canManageTheme={canManageTheme}
+                canViewSubscription={canViewSubscription}
                 highlighted={highlightedPluginKey === p.key}
                 containerRef={(node) => {
                     pluginCardRefs.current[p.key] = node;

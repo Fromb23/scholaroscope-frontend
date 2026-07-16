@@ -53,7 +53,7 @@ describe('workspace feature settings policy UI', () => {
   it('does not expose blocked power toggles as the default discovery path', () => {
     const source = settingsSource();
 
-    expect(source).toContain('management.can_toggle ?');
+    expect(source).toContain('management.can_toggle && canManagePluginConfiguration');
     expect(source).toContain('management.blocked_reason');
     expect(source).toContain('Customize appearance');
     expect(source).not.toContain('!plugin.is_core ?');

@@ -45,12 +45,13 @@ import type { PluginNavigationContext } from '@/app/core/registry/pluginNavigati
 import { buildLoginPath, getCurrentPath } from '@/app/core/auth/navigation';
 import { redirectToPlatformConsole } from '@/app/core/auth/platformRedirect';
 import { OfflineRetryState } from '@/app/offline/OfflineRetryState';
+import { canUseAnnouncements } from '@/app/core/lib/workspaceGovernance';
 
 const GUIDE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_GUIDE === 'true';
 
 function routeAllowedByCapabilities(pathname: string, capabilities: ReturnType<typeof useAuth>['capabilities']): boolean {
   if (/^\/announcements/.test(pathname)) {
-    return capabilities.workspace_behavior !== 'FREELANCE_TEACHER';
+    return canUseAnnouncements(capabilities);
   }
   if (/^\/admin\/(instructors|alerts)/.test(pathname)) {
     return capabilities.can_manage_staff;
